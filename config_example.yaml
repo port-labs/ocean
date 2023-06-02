@@ -16,6 +16,7 @@ integrations:
     # The type of the integration.
     type: "kafka"
     # The configuration of the integration.
+    # resyncOnStartup: true
     config:
       bootstrapServers: "localhost:9092"
   - identifier: "pager_duty"

@@ -1,6 +1,10 @@
 import importlib.util
 from framework.config.config import settings
 from framework.port.port import PortClient
+import logging
+
+logging.basicConfig(level=settings.LOG_LEVEL)
+logger = logging.getLogger(__name__)
 
 
 class IntegrationWorker:
@@ -16,10 +20,12 @@ class IntegrationWorker:
         )
         integration = importlib.util.module_from_spec(spec)
 
-        if spec.loader is None:
-            raise Exception("Validate that the integration type is valid")
-
-        spec.loader.exec_module(integration)
+        try:
+            spec.loader.exec_module(integration)
+        except Exception as e:
+            logger.error(
+                f"Failed to load integration {self.integration_type} with error: {e}, please validat the integration type exists")
+            raise e
 
         return integration
 
@@ -31,4 +37,5 @@ class IntegrationWorker:
         self.port_client.initiate_integration(
             self.integration_identifier, self.integration_type, trigger_channel)
 
-        self.integration.init(self.config)
+        # Create a new instance of the Integration class from the integration module
+        self.integration = self.integration.Integration(self.config)

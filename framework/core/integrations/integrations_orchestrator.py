@@ -3,6 +3,7 @@ from framework.consumers.kafka_consumer import KafkaConsumer
 from framework.common.resource_to_port_entity import resources_to_port_entity
 from framework.core.integrations.integration_worker import IntegrationWorker
 from framework.core.trigger_channel.trigger_channel_fcatory import TriggerChannelFactory
+from framework.port.port import PortClient
 
 
 class IntegrationsOrchestrator:
@@ -33,17 +34,15 @@ class IntegrationsOrchestrator:
                 break
 
         for mapping in mappings:
-            kinds.add(mapping["kind"])
+            raw_entities = integration_worker_to_use.integration.on_resync(
+                mapping["kind"])
 
-        raw_entities = integration_worker_to_use.integration.on_resync(
-            kinds)
+            port_client = PortClient(
+                settings.PORT_CLIENT_ID, settings.PORT_CLIENT_SECRET, integration_worker.integration_identifier)
 
-        for raw_entity in raw_entities:
-            port_entity = resources_to_port_entity(
-                raw_entity, mappings)
-
-            self.port_client.upsert_entity(
-                port_entity, integration_worker_to_use.integration_identifier)
+            for raw_entity in raw_entities:
+                port_entity = resources_to_port_entity(raw_entity, mapping)
+                port_client.upsert_entity(port_entity)
 
     def on_action(self, action: dict):
         pass
@@ -51,14 +50,12 @@ class IntegrationsOrchestrator:
     def start(self):
         integrations_from_config = self.config.get('integrations', [])
 
-        for integration in integrations_from_config:
-            # TODO: add validation that integration type is valid and exists
-            integration_type = integration.get('type')
-            integration_config = integration.get('config', {})
-            integration_identifier = integration.get('identifier', '')
+        for integration_config in integrations_from_config:
             integration_worker = IntegrationWorker(
-                integration_type, integration_identifier, integration_config)
+                integration_config.get('type'), integration_config.get('identifier', ''), integration_config.get('config', {}))
+
             integration_worker.init(self.config['triggerChannel'])
+
             self.integration_workers.append(integration_worker)
 
         self.trigger_channel.start()
