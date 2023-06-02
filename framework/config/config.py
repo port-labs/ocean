@@ -1,7 +1,4 @@
-from typing import Optional
-
 from pydantic import BaseSettings, validator
-
 
 class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"

@@ -1,16 +1,14 @@
 import importlib.util
 import json
-from sdk.config.config import settings
 
-from sdk.consumers.kafka import KafkaConsumer
-from sdk.core.resource_to_port_entity import resources_to_port_entity
-from sdk.port.port import PortClient
+from config.config import settings
+from consumers.kafka import KafkaConsumer
+from core.parsers.resource_to_port_entity import resources_to_port_entity
+from port.port import PortClient
 
-class SDK:
-    def __init__(self, integration_type: str, integration_identifier: str):
-        self.integration_type = integration_type
-        self.integration_identifier = integration_identifier
-        self.integration = None
+class IntegrationsOrchestrator:
+    def __init__(self, config: dict):
+        self.config = config
 
     def _load_integration(self):
         spec = importlib.util.spec_from_file_location(
@@ -68,4 +66,3 @@ class SDK:
 
         # starting kafka consumer
         KafkaConsumer(msg_process=self._handle_message, org_id=org_id, kafka_creds=kafka_creds).start()
-    

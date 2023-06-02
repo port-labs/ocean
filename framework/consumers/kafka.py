@@ -6,7 +6,6 @@ from confluent_kafka import Consumer, KafkaException, Message
 from consumers.base import BaseConsumer
 
 from config.config import settings
-from sdk.port.port import PortClient
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
