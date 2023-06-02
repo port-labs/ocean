@@ -2,7 +2,7 @@ import argparse
 
 import yaml
 
-from framework.core.integrations_orchestrator.integrations_orchestrator import IntegrationsOrchestrator
+from framework.core.integrations.integrations_orchestrator import IntegrationsOrchestrator
 
 if __name__ == "__main__":
     # Create an argument parser
@@ -21,5 +21,7 @@ if __name__ == "__main__":
 
     # Create an integrations orchestrator for the given integration config
     integrations_orchestrator = IntegrationsOrchestrator(
-        integrations_config=integrations_config
+        config=integrations_config
     )
+
+    integrations_orchestrator.start()

@@ -3,15 +3,15 @@ import signal
 from typing import Any, Callable
 
 from confluent_kafka import Consumer, KafkaException, Message
-from consumers.base import BaseConsumer
+from framework.consumers.base_consumer import BaseConsumer
 
-from config.config import settings
+from framework.config.config import settings
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
-class KafkaConsumer(BaseConsumer):
 
+class KafkaConsumer(BaseConsumer):
     def __init__(
         self, msg_process: Callable[[Message], None], consumer: Consumer = None, kafka_creds: dict = None, org_id: str = None
     ) -> None:
@@ -26,15 +26,22 @@ class KafkaConsumer(BaseConsumer):
         if consumer:
             self.consumer = consumer
         else:
-            conf = {
-                "bootstrap.servers": settings.KAFKA_CONSUMER_BROKERS,
-                "security.protocol": settings.KAFKA_CONSUMER_SECURITY_PROTOCOL,
-                "sasl.mechanism": settings.KAFKA_CONSUMER_AUTHENTICATION_MECHANISM,
-                "sasl.username": kafka_creds['username'],
-                "sasl.password": kafka_creds['password'],
-                "group.id": kafka_creds['username'],
-                "enable.auto.commit": "false",
-            }
+            if settings.KAFKA_SECURITY_ENABLED:
+                conf = {
+                    "bootstrap.servers": settings.KAFKA_CONSUMER_BROKERS,
+                    "security.protocol": settings.KAFKA_CONSUMER_SECURITY_PROTOCOL,
+                    "sasl.mechanism": settings.KAFKA_CONSUMER_AUTHENTICATION_MECHANISM,
+                    "sasl.username": kafka_creds['username'],
+                    "sasl.password": kafka_creds['password'],
+                    "group.id": kafka_creds['username'],
+                    "enable.auto.commit": "false",
+                }
+            else:
+                conf = {
+                    "bootstrap.servers": settings.KAFKA_CONSUMER_BROKERS,
+                    "group.id": "no-security",
+                    "enable.auto.commit": "false",
+                }
             self.consumer = Consumer(conf)
 
     def start(self) -> None:

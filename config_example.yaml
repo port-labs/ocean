@@ -4,8 +4,12 @@
 # The integrations list to load into the integration framework.
 # You can add as many integrations as you want, and you can use the same type of integration multiple times.
 port:
-  clientId: <client_id> # Can be loaded via environment variable: PORT_CLIENT_ID
-  clientSecret: <client_secret> # Can be loaded via environment variable: PORT_CLIENT_SECRET
+  clientId: <client_id> # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.
+  clientSecret: <client_secret> # Can be loaded via environment variable: PORT_CLIENT_SECRET, if both are set, the environment variable will be used.
+  baseUrl: https://api.getport.io/v1 # Can be loaded via environment variable: PORT_BASE_URL, if both are set, the environment variable will be used.
+# The trigger channel to use for the integration service.
+triggerChannel: 
+  type: kafka
 integrations:
   # The name of the integration.
   - identifier: "my_integration"

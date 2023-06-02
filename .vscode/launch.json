@@ -13,7 +13,7 @@
             "justMyCode": true,
             "envFile": "${workspaceFolder}/.env",
             "args": [
-                "--integrations-config=./config_example.yaml"
+                "--integrations-config=./config.yaml"
             ]
         }
     ]

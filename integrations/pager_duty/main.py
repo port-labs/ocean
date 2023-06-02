@@ -1,6 +1,7 @@
 def fetch_resources():
     return []
 
+
 def init(configuration):
     # Initialize the integration based on the provided configuration
     # Example implementation:
@@ -8,11 +9,13 @@ def init(configuration):
     # - Store configuration
     pass
 
+
 def sync_incrementally(resource):
     # Perform incremental synchronization based on the resource
     # Example implementation:
     # - Update data based on the resource
     pass
+
 
 def on_resync(kind_list):
     # Handle the on_resync event
@@ -22,10 +25,10 @@ def on_resync(kind_list):
     resources = fetch_resources(kind_list)
     return resources
 
+
 def on_action_invoked(type, configuration_mapping):
     # Handle the on_action_invoked event
     # Example implementation:
     # - Perform actions based on the type and configuration_mapping
     # - No need to consume Kafka message here
     pass
-
