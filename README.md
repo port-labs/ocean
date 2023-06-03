@@ -3,9 +3,12 @@
 # Integration Framework
 
 Integration Framework is a solution developed by Port to address the challenges faced while integrating various third-party systems with our developer portal product. This framework provides a standardized approach for implementing integrations, simplifying the process and allowing platform engineers to focus on the core functionality of the third-party system.
-
+ 
 ## Export Architecture
 ![image](./assets/IntegrationFrameworkExportArchitecture.svg)
+
+## Real-Time updates Architecture
+![image](./assets/IntergationFrameworkRealTimeUpdatesArchitecture.svg)
 
 ## Self Service Architecture
 ![image](./assets/IntegrationFrameworkSelfServiceArchitecture.svg)
