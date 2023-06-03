@@ -36,15 +36,8 @@ integration-framework/
 - The `requirements.txt` file inside each integration folder lists the required dependencies for that integration.
 
 ## Integration Lifecycle
-The lifecycle of an integration within the Integration Framework follows these steps:
 
-1. **Initialization**: On startup, the Integration Framework reads the `config.yaml` file to determine the integrations to be used. For each integration, it loads the corresponding module and performs necessary setup steps. The Integration Framework updates Port with the identifier and type of each integration.
-
-2. **Listening for Changes**: The Integration Framework continuously listens to the configured trigger channel (e.g., Kafka or webhook).
-
-3. **Resynchronization**: When a change is detected, the Integration Framework triggers the appropriate functions within the integration modules. These functions allow the integrations to synchronize with the updated mappings or perform any necessary actions.
-
-By following this lifecycle, the Integration Framework simplifies the integration process and ensures a standardized approach to integrating various third-party systems with Port.
+![image](./assets/IntegrationFrameworkLifecycleOfIntegration.svg)
 
 ## Configuration
 The Integration Framework utilizes a `config.yaml` file for configuration. This file specifies the integrations to be used within an array. Each integration has a unique identifier and type, which are used during initialization to update Port accordingly.
