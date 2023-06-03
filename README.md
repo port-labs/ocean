@@ -7,6 +7,9 @@ Integration Framework is a solution developed by Port to address the challenges 
 ## Export Architecture
 ![image](./assets/IntegrationFrameworkExportArchitecture.svg)
 
+## Self Service Architecture
+![image](./assets/IntegrationFrameworkSelfServiceArchitecture.svg)
+
 ## Folder Structure
 The Integration Framework follows a specific folder structure within the mono repository. This structure ensures proper organization and easy identification of integration modules. The suggested folder structure is as follows:
 
