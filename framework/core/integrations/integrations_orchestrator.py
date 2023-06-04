@@ -2,7 +2,7 @@ from framework.config.config import settings
 from framework.consumers.kafka_consumer import KafkaConsumer
 from framework.common.resource_to_port_entity import resources_to_port_entity
 from framework.core.integrations.integration_worker import IntegrationWorker
-from framework.core.trigger_channel.trigger_channel_fcatory import TriggerChannelFactory
+from framework.core.trigger_channel.trigger_channel_factory import TriggerChannelFactory
 from framework.port.port import PortClient
 
 

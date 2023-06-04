@@ -9,7 +9,7 @@ class Integration:
         self.configuration = configuration
         self.admin_client = KafkaAdminClient(**configuration)
 
-    def fetch_topics(self):
+    def __fetch_topics(self):
         topic_list = self.admin_client.list_topics()
         topics = self.admin_client.describe_topics(topics=topic_list)
         topics_configurations = self.admin_client.describe_configs(config_resources=[
@@ -32,11 +32,13 @@ class Integration:
 
     def on_resync(self, kind: str):
         if kind == 'topics':
-            return self.fetch_topics()
+            return self.__fetch_topics()
 
         return []
 
-    def on_action_invoked(type, configuration_mapping):
+    def on_action_invoked(type, action):
+        if type == 'create_topic':
+            self.admin_client.create_topics(topics=[action])
         # Handle the on_action_invoked event
         # Example implementation:
         # - Perform actions based on the type and configuration_mapping
