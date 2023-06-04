@@ -1,3 +1,4 @@
 requests==2.28.1
 jq==1.4.0
 pyyaml
+pydantic

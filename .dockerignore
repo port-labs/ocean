@@ -3,3 +3,4 @@ assets/
 *.md
 .git
 .gitignore
+.env

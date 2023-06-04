@@ -11,7 +11,11 @@ RUN wget https://github.com/edenhill/librdkafka/archive/v${LIBRDKAFKA_VERSION}.t
 
 COPY . /app
 
+ENV CONFIG_PATH /app/config.yaml
+
+
 RUN chmod +x ./deployment/docker/install_req.sh
 RUN ./deployment/docker/install_req.sh
+RUN pip3 install confluent-kafka
 
-CMD [ "python3", "--integration-config=./config.yaml", "main.py"]
+ENTRYPOINT python3 main.py --integrations-config=$CONFIG_PATH
