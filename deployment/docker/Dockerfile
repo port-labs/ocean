@@ -9,9 +9,9 @@ RUN wget https://github.com/edenhill/librdkafka/archive/v${LIBRDKAFKA_VERSION}.t
     tar xvzf v${LIBRDKAFKA_VERSION}.tar.gz &&  \
     (cd librdkafka-${LIBRDKAFKA_VERSION}/ && ./configure && make && make install && ldconfig)
 
-COPY requirements.txt requirements.txt
-RUN pip3 install -r requirements.txt
+COPY . /app
 
-COPY . .
+RUN chmod +x ./deployment/docker/install_req.sh
+RUN ./deployment/docker/install_req.sh
 
 CMD [ "python3", "--integration-config=./config.yaml", "main.py"]

@@ -12,6 +12,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "envFile": "${workspaceFolder}/.env",
+            "python": "${command:python.interpreterPath}",
             "args": [
                 "--integrations-config=./config.yaml"
             ]
