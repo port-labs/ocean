@@ -2,14 +2,12 @@ import logging
 
 import requests
 
-from framework.config.config import settings
-
 logger = logging.getLogger(__name__)
 
 
 class PortClient:
-    def __init__(self, client_id, client_secret, user_agent):
-        self.api_url = settings.PORT_BASE_URL
+    def __init__(self, client_id, client_secret, base_url, user_agent):
+        self.api_url = base_url
         self.access_token = self.get_token(client_id, client_secret)
         self.headers = {
             'Authorization': f'Bearer {self.access_token}', 'User-Agent': user_agent}
@@ -82,7 +80,7 @@ class PortClient:
         logger.info(f"Initiate integration with id: {id}")
 
         installation = requests.post(f"{self.api_url}/integration", headers=self.headers, json={
-                                     "installationId": id, "installationAppType": type, "changelogDestination": changelog_destination})
+            "installationId": id, "installationAppType": type, "changelogDestination": changelog_destination})
 
         if installation.status_code == 409:
             logger.info(

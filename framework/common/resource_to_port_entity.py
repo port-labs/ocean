@@ -1,6 +1,5 @@
 import jq
 
-
 def resources_to_port_entity(resource_object, mapping):
     def run_jq_query(jq_query):
         return jq.first(jq_query, resource_object)

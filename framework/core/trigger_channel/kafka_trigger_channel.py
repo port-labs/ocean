@@ -31,7 +31,7 @@ class KafkaTriggerChannel(BaseTriggerChannel):
             return
 
         if 'change.log' in topic:
-            self.on_changelog_event(message)
+            self.on_changelog_event()
             return
 
     def start(self) -> None:
