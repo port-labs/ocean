@@ -11,3 +11,7 @@ def portlink(**kwargs):
 def start(path: str, **kwargs):
     from framework.port_connect import connect
     connect(path)
+
+
+if __name__ == '__main__':
+    portlink()

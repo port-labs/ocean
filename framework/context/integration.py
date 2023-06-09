@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from werkzeug.local import LocalStack, LocalProxy
 
 from framework.context.event import NoContextError
-from framework.core.integrations.base import BaseIntegration
+from framework.core.integrations.base import BaseIntegration, Change
 
 _port_link_context_stack = LocalStack()
 
@@ -16,13 +16,19 @@ class PortLinkContextNotFoundError(NoContextError):
 @dataclass
 class PortLinkContext:
     installation_id: str
-    router: APIRouter | None
+    _router: APIRouter | None
     integration: BaseIntegration | None = None
+
+    @property
+    def router(self) -> APIRouter:
+        if self._router is None:
+            raise Exception("Router not set")
+        return self._router
 
     def on_resync(self):
         def wrapper(function):
             if self.integration:
-                return self.integration.on('resync')(function)
+                return self.integration.on_resync(function)
             else:
                 raise Exception("Integration not set")
 
@@ -31,15 +37,15 @@ class PortLinkContext:
     def on_start(self):
         def wrapper(function):
             if self.integration:
-                return self.integration.on('start')(function)
+                return self.integration.on_start(function)
             else:
                 raise Exception("Integration not set")
 
         return wrapper
 
-    def register_entities(self, entities: list):
+    async def register_change(self, kind: str, change: Change):
         if self.integration:
-            return self.integration.register_entities(entities)
+            return await self.integration.register_state(kind, change)
         else:
             raise Exception("Integration not set")
 
@@ -48,8 +54,7 @@ def initialize_port_link_context(installation_id: str, router: APIRouter | None 
     """
     This Function initiates the PortLink context and pushes it into the LocalStack().
     """
-    _port_link_context_stack.push(
-        PortLinkContext(router=router, installation_id=installation_id))
+    _port_link_context_stack.push(PortLinkContext(_router=router, installation_id=installation_id))
 
 
 def _get_port_link_context() -> PortLinkContext:

@@ -1,6 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from werkzeug.local import LocalStack, LocalProxy
+
+from framework.models.port_app_config import PortAppConfig
 
 _event_context_stack = LocalStack()
 
@@ -16,9 +18,8 @@ class EventContextNotFoundError(NoContextError):
 @dataclass
 class EventContext:
     event_type: str
-    kind: str
-    data: dict | None
-    port_app_config: dict
+    kind: str | None = field(default=None)
+    port_app_config: PortAppConfig | None = field(default=None)
 
 
 def initialize_event_context(event_context: EventContext) -> None:

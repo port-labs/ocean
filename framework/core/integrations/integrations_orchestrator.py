@@ -58,4 +58,4 @@ class IntegrationsOrchestrator:
 
             self.integration_workers.append(integration_worker)
 
-        self.trigger_channel.start()
+        self.trigger_channel.trigger_start()

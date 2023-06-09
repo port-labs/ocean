@@ -13,5 +13,5 @@ async def start():
 
 @portlink.router.post('/test')
 async def a():
-    await portlink.register_entities([dict(a=1)])
+    await portlink.register_change([dict(a=1)])
     return dict(a=1)

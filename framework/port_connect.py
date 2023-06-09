@@ -62,6 +62,6 @@ def connect(path: str):
 
     @app.on_event('startup')
     async def startup():
-        await integration.start()
+        await integration.trigger_start()
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
