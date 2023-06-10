@@ -5,15 +5,10 @@ from ocean.config.integration import IntegrationConfiguration
 from ocean.context.event import EventContext, initialize_event_context
 from ocean.core.manipulation.base import BaseManipulation
 from ocean.core.manipulation.jq_manipulation import JQManipulation
+from ocean.models.diff import Change
 from ocean.port.port import PortClient
 
-
 # from ocean.core.trigger_channel.trigger_channel_factory import TriggerChannelFactory
-
-
-class Change(TypedDict):
-    before: List[dict]
-    after: List[dict]
 
 
 RESYNC_EVENT_LISTENER = Callable[[str], Awaitable[Change]]

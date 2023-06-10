@@ -2,7 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import List, TypeVar, Union, Generic
 
-from ocean.core.integrations.base import Change
+from ocean.models.diff import Change
 from ocean.models.port import Entity, Blueprint
 from ocean.models.port_app_config import ResourceConfig
 

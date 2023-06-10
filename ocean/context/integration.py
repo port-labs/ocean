@@ -4,7 +4,8 @@ from fastapi import APIRouter
 from werkzeug.local import LocalStack, LocalProxy
 
 from ocean.context.event import NoContextError
-from ocean.core.integrations.base import BaseIntegration, Change
+from ocean.core.integrations.base import BaseIntegration
+from ocean.models.diff import Change
 
 _port_ocean_context_stack: LocalStack = LocalStack()
 

@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 import jq  # type: ignore
 
-from ocean.core.integrations.base import Change
+from ocean.models.diff import Change
 from ocean.core.manipulation.base import BaseManipulation, Entity, EntitiesDiff
 from ocean.core.utils import get_unique_entities
 from ocean.models.port import Blueprint
