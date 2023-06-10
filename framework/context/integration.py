@@ -50,11 +50,15 @@ class PortLinkContext:
             raise Exception("Integration not set")
 
 
-def initialize_port_link_context(installation_id: str, router: APIRouter | None = None) -> None:
+def initialize_port_link_context(
+    installation_id: str, router: APIRouter | None = None
+) -> None:
     """
     This Function initiates the PortLink context and pushes it into the LocalStack().
     """
-    _port_link_context_stack.push(PortLinkContext(_router=router, installation_id=installation_id))
+    _port_link_context_stack.push(
+        PortLinkContext(_router=router, installation_id=installation_id)
+    )
 
 
 def _get_port_link_context() -> PortLinkContext:

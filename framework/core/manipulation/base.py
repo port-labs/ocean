@@ -6,7 +6,7 @@ from framework.core.integrations.base import Change
 from framework.models.port import Entity, Blueprint
 from framework.models.port_app_config import ResourceConfig
 
-T = TypeVar('T', bound=Union[Blueprint, Entity])
+T = TypeVar("T", bound=Union[Blueprint, Entity])
 
 
 @dataclass
@@ -23,5 +23,7 @@ class EntitiesDiff(Generic[T]):
 
 class BaseManipulation:
     @abstractmethod
-    def get_entities_diff(self, mapping: ResourceConfig, raw_data: List[Change]) -> EntitiesDiff:
+    def get_entities_diff(
+        self, mapping: ResourceConfig, raw_data: List[Change]
+    ) -> EntitiesDiff:
         pass

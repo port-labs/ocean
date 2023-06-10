@@ -25,7 +25,9 @@ def replace_secrets(secrets_dir: Path, data: str) -> str:
     return data
 
 
-def yaml_config_settings_source(settings: "BaseYamlSettings", base_path: str) -> Dict[str, Any]:
+def yaml_config_settings_source(
+    settings: "BaseYamlSettings", base_path: str
+) -> Dict[str, Any]:
     """Loads settings from a YAML file at `Config.yaml_file`
 
     "<file:xxxx>" patterns are replaced with the contents of file xxxx. The root path
@@ -57,5 +59,7 @@ class BaseYamlSettings(BaseSettings):
         def customise_sources(cls, init_settings, *_, **__):
             return (
                 init_settings,
-                lambda s: yaml_config_settings_source(s, init_settings.init_kwargs["base_path"])
+                lambda s: yaml_config_settings_source(
+                    s, init_settings.init_kwargs["base_path"]
+                ),
             )

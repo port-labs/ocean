@@ -22,7 +22,7 @@ class JQManipulation(BaseManipulation):
         if isinstance(value, bool):
             return value
 
-        raise Exception(f'Expected boolean value, got {type(value)} instead')
+        raise Exception(f"Expected boolean value, got {type(value)} instead")
 
     def _search_as_object(self, data: dict, obj: dict) -> dict:
         result = {}
@@ -36,9 +36,9 @@ class JQManipulation(BaseManipulation):
                 result[key] = None
         return result
 
-    def _create_jq_entities(self,
-                            mapping: ResourceConfig,
-                            raw_data: List[dict]) -> Tuple[List[Entity], List[Blueprint]]:
+    def _create_jq_entities(
+        self, mapping: ResourceConfig, raw_data: List[dict]
+    ) -> Tuple[List[Entity], List[Blueprint]]:
         entities = []
         blueprints = []
         for data in raw_data:
@@ -48,42 +48,69 @@ class JQManipulation(BaseManipulation):
                 if mapping.port.entity:
                     entities.append(
                         self._search_as_object(
-                            data,
-                            mapping.port.entity.mappings.dict()
+                            data, mapping.port.entity.mappings.dict()
                         )
                     )
                 if mapping.port.blueprint:
                     blueprints.append(
                         self._search_as_object(
-                            data,
-                            mapping.port.blueprint.mappings.dict()
+                            data, mapping.port.blueprint.mappings.dict()
                         )
                     )
 
         return (
-            [Entity(**entity_data) for entity_data in
-             filter(lambda entity: entity.get('identifier') and entity.get('blueprint'), entities)],
-            [Blueprint(**blueprint_data) for blueprint_data in
-             filter(lambda blueprint: blueprint.get('identifier'), blueprints)]
+            [
+                Entity(**entity_data)
+                for entity_data in filter(
+                    lambda entity: entity.get("identifier") and entity.get("blueprint"),
+                    entities,
+                )
+            ],
+            [
+                Blueprint(**blueprint_data)
+                for blueprint_data in filter(
+                    lambda blueprint: blueprint.get("identifier"), blueprints
+                )
+            ],
         )
 
-    def get_entities_diff(self, mapping: ResourceConfig, raw_results: List[Change]) -> EntitiesDiff:
-        entities_before, blueprints_before, entities_after, blueprints_after = zip(*[
-            (*self._create_jq_entities(mapping, result["before"]), *self._create_jq_entities(mapping, result["after"]))
-            for result in raw_results
-        ])
+    def get_entities_diff(
+        self, mapping: ResourceConfig, raw_results: List[Change]
+    ) -> EntitiesDiff:
+        entities_before, blueprints_before, entities_after, blueprints_after = zip(
+            *[
+                (
+                    *self._create_jq_entities(mapping, result["before"]),
+                    *self._create_jq_entities(mapping, result["after"]),
+                )
+                for result in raw_results
+            ]
+        )
 
         return EntitiesDiff(
             deleted=get_unique_entities(
-                [entity for entity in entities_before if
-                 not any(entity == entity_after for entity_after in entities_after)]
+                [
+                    entity
+                    for entity in entities_before
+                    if not any(
+                        entity == entity_after for entity_after in entities_after
+                    )
+                ]
             ),
             created=get_unique_entities(
-                [entity for entity in entities_after if
-                 not any(entity == entity_before for entity_before in entities_before)]
+                [
+                    entity
+                    for entity in entities_after
+                    if not any(
+                        entity == entity_before for entity_before in entities_before
+                    )
+                ]
             ),
             modified=get_unique_entities(
-                [entity for entity in entities_after if
-                 any(entity == entity_before for entity_before in entities_before)]
-            )
+                [
+                    entity
+                    for entity in entities_after
+                    if any(entity == entity_before for entity_before in entities_before)
+                ]
+            ),
         )

@@ -11,10 +11,16 @@ class KafkaTriggerChannel(BaseTriggerChannel):
         self.on_changelog_event = on_changelog_event
 
     def should_be_processed(self, msg_value: dict, topic: str) -> dict:
-        if 'runs' in topic:
-            return msg_value.get("payload", {}).get("action", {}).get("invocationMethod", {}).get("type", "") == "KAFKA"
+        if "runs" in topic:
+            return (
+                msg_value.get("payload", {})
+                .get("action", {})
+                .get("invocationMethod", {})
+                .get("type", "")
+                == "KAFKA"
+            )
 
-        if 'change.log' in topic:
+        if "change.log" in topic:
             return msg_value.get("changelogDestination", {}).get("type", "") == "KAFKA"
 
         return False
@@ -26,20 +32,22 @@ class KafkaTriggerChannel(BaseTriggerChannel):
         if not self.should_be_processed(message, topic):
             return
 
-        if 'runs' in topic:
+        if "runs" in topic:
             self.on_action(message)
             return
 
-        if 'change.log' in topic:
+        if "change.log" in topic:
             self.on_changelog_event()
             return
 
     def start(self) -> None:
         self.port_client = PortClient(
-            settings.PORT_CLIENT_ID, settings.PORT_CLIENT_SECRET, "interation-framework")
-        kafka_creds = self.port_client.get_kafka_creds()['credentials']
+            settings.PORT_CLIENT_ID, settings.PORT_CLIENT_SECRET, "interation-framework"
+        )
+        kafka_creds = self.port_client.get_kafka_creds()["credentials"]
         org_id = self.port_client.get_org_id()
 
         # starting kafka consumer
-        KafkaConsumer(msg_process=self._handle_message,
-                      org_id=org_id, kafka_creds=kafka_creds).start()
+        KafkaConsumer(
+            msg_process=self._handle_message, org_id=org_id, kafka_creds=kafka_creds
+        ).start()

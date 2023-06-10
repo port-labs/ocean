@@ -4,7 +4,10 @@ from framework.models.port import Entity
 
 
 def is_same_entity(firs_entity: Entity, second_entity: Entity) -> bool:
-    return firs_entity.identifier == second_entity.identifier and firs_entity.blueprint == second_entity.blueprint
+    return (
+        firs_entity.identifier == second_entity.identifier
+        and firs_entity.blueprint == second_entity.blueprint
+    )
 
 
 def get_unique_entities(array: List[Entity]):

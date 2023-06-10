@@ -6,9 +6,11 @@ from framework.config.integration import LoggerConfiguration
 
 settings = LoggerConfiguration()
 
-LoggerFormat = "<green>{time:YY-MM-DD HH:mm:ss.SSS}</green> | " \
-               "<level>{level: <8}</level> | " \
-               "<level>{message}</level> | {extra}"
+LoggerFormat = (
+    "<green>{time:YY-MM-DD HH:mm:ss.SSS}</green> | "
+    "<level>{level: <8}</level> | "
+    "<level>{message}</level> | {extra}"
+)
 
 logger.remove()
 logger.add(
@@ -17,5 +19,5 @@ logger.add(
     format=LoggerFormat,
     serialize=settings.serialize,
     enqueue=True,  # process logs in background
-    diagnose=False  # hide variable values in log backtrace
+    diagnose=False,  # hide variable values in log backtrace
 )

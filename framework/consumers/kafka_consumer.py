@@ -13,7 +13,11 @@ logger = logging.getLogger(__name__)
 
 class KafkaConsumer(BaseConsumer):
     def __init__(
-        self, msg_process: Callable[[Message], None], consumer: Consumer = None, kafka_creds: dict = None, org_id: str = None
+        self,
+        msg_process: Callable[[Message], None],
+        consumer: Consumer = None,
+        kafka_creds: dict = None,
+        org_id: str = None,
     ) -> None:
         self.running = False
         self.org_id = org_id
@@ -31,9 +35,9 @@ class KafkaConsumer(BaseConsumer):
                     "bootstrap.servers": settings.KAFKA_CONSUMER_BROKERS,
                     "security.protocol": settings.KAFKA_CONSUMER_SECURITY_PROTOCOL,
                     "sasl.mechanism": settings.KAFKA_CONSUMER_AUTHENTICATION_MECHANISM,
-                    "sasl.username": kafka_creds['username'],
-                    "sasl.password": kafka_creds['password'],
-                    "group.id": kafka_creds['username'],
+                    "sasl.username": kafka_creds["username"],
+                    "sasl.password": kafka_creds["password"],
+                    "group.id": kafka_creds["username"],
                     "enable.auto.commit": "false",
                 }
             else:

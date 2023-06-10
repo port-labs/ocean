@@ -18,7 +18,8 @@ def _load_module(file_path):
         spec.loader.exec_module(module)
     except Exception as e:
         logger.error(
-            f"Failed to load integration with error: {e}, please validate the integration type exists")
+            f"Failed to load integration with error: {e}, please validate the integration type exists"
+        )
         raise e
 
     return module
@@ -35,7 +36,7 @@ def _get_class_from_module(module, base_class):
 def _include_target_channel_router(app: FastAPI):
     target_channel_router = APIRouter()
 
-    @target_channel_router.post('/resync')
+    @target_channel_router.post("/resync")
     def resync():
         portlink.integration.trigger_resync()
 
@@ -46,21 +47,21 @@ def connect(path: str):
     config = IntegrationConfiguration(base_path=path)
     app = FastAPI()
     router = APIRouter()
-    initialize_port_link_context('config.intallation_id', router)
-    module = _load_module(f'{path}/integration.py')
+    initialize_port_link_context("config.intallation_id", router)
+    module = _load_module(f"{path}/integration.py")
     integration_class = _get_class_from_module(module, BaseIntegration)
 
     integration = integration_class(config)
     portlink.integration = integration
 
-    _load_module(f'{path}/main.py')
+    _load_module(f"{path}/main.py")
 
-    app.include_router(router, prefix='/integration')
+    app.include_router(router, prefix="/integration")
     print(config.trigger_channel.type)
-    if config.trigger_channel.type == 'http':
+    if config.trigger_channel.type == "http":
         _include_target_channel_router(app)
 
-    @app.on_event('startup')
+    @app.on_event("startup")
     async def startup():
         await integration.trigger_start()
 

@@ -10,35 +10,39 @@ class IntegrationsOrchestrator:
     def __init__(self, config: dict):
         self.config = config
 
-        self.trigger_channel = TriggerChannelFactory(config['triggerChannel']['type']).create_trigger_channel(
-            self.on_action,
-            self.on_changelog_event
-        )
+        self.trigger_channel = TriggerChannelFactory(
+            config["triggerChannel"]["type"]
+        ).create_trigger_channel(self.on_action, self.on_changelog_event)
 
         self.integration_workers = []
 
     def on_changelog_event(self, event: dict):
         kinds = set()
 
-        integration_configurations = event.get(
-            "diff", {}).get("after", {})
+        integration_configurations = event.get("diff", {}).get("after", {})
 
-        mappings = integration_configurations.get(
-            "config", {}).get("resources", [])
+        mappings = integration_configurations.get("config", {}).get("resources", [])
 
         integration_worker_to_use = None
 
         for integration_worker in self.integration_workers:
-            if integration_worker.integration_identifier == integration_configurations.get("identifier", ""):
+            if (
+                integration_worker.integration_identifier
+                == integration_configurations.get("identifier", "")
+            ):
                 integration_worker_to_use = integration_worker
                 break
 
         for mapping in mappings:
             raw_entities = integration_worker_to_use.integration.on_resync(
-                mapping["kind"])
+                mapping["kind"]
+            )
 
             port_client = PortClient(
-                settings.PORT_CLIENT_ID, settings.PORT_CLIENT_SECRET, integration_worker.integration_identifier)
+                settings.PORT_CLIENT_ID,
+                settings.PORT_CLIENT_SECRET,
+                integration_worker.integration_identifier,
+            )
 
             for raw_entity in raw_entities:
                 port_entity = resources_to_port_entity(raw_entity, mapping)
@@ -48,13 +52,16 @@ class IntegrationsOrchestrator:
         pass
 
     def start(self):
-        integrations_from_config = self.config.get('integrations', [])
+        integrations_from_config = self.config.get("integrations", [])
 
         for integration_config in integrations_from_config:
             integration_worker = IntegrationWorker(
-                integration_config.get('type'), integration_config.get('identifier', ''), integration_config.get('config', {}))
+                integration_config.get("type"),
+                integration_config.get("identifier", ""),
+                integration_config.get("config", {}),
+            )
 
-            integration_worker.init(self.config['triggerChannel'])
+            integration_worker.init(self.config["triggerChannel"])
 
             self.integration_workers.append(integration_worker)
 
