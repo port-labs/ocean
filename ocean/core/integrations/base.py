@@ -1,14 +1,14 @@
 from abc import abstractmethod
 from typing import List, Callable, Awaitable, TypedDict, Type
 
-from framework.config.integration import IntegrationConfiguration
-from framework.context.event import EventContext, initialize_event_context
-from framework.core.manipulation.base import BaseManipulation
-from framework.core.manipulation.jq_manipulation import JQManipulation
-from framework.port.port import PortClient
+from ocean.config.integration import IntegrationConfiguration
+from ocean.context.event import EventContext, initialize_event_context
+from ocean.core.manipulation.base import BaseManipulation
+from ocean.core.manipulation.jq_manipulation import JQManipulation
+from ocean.port.port import PortClient
 
 
-# from framework.core.trigger_channel.trigger_channel_factory import TriggerChannelFactory
+# from ocean.core.trigger_channel.trigger_channel_factory import TriggerChannelFactory
 
 
 class Change(TypedDict):

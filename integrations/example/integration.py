@@ -1,4 +1,4 @@
-from framework.core.integrations.base import BaseIntegration
+from ocean.core.integrations.base import BaseIntegration
 
 
 class ExampleIntegration(BaseIntegration):

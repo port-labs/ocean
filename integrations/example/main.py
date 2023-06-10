@@ -1,17 +1,17 @@
-from framework.context.integration import portlink
+from ocean.context.integration import ocean
 
 
-@portlink.on_resync()
+@ocean.on_resync()
 async def resync():
     return []
 
 
-@portlink.on_start()
+@ocean.on_start()
 async def start():
-    print('start')
+    print("start")
 
 
-@portlink.router.post('/test')
+@ocean.router.post("/test")
 async def a():
-    await portlink.register_change([dict(a=1)])
+    await ocean.register_change([dict(a=1)])
     return dict(a=1)

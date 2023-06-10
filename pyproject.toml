@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A short description of the project"
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>"]
 packages = [
-    { include = "framework", from = "." },
+    { include = "ocean", from = "." },
 ]
 
 [tool.poetry.dependencies]
@@ -27,7 +27,7 @@ pylint = "^2.17.4"
 
 
 [tool.poetry.scripts]
-portconnect = "framework.cli:portlink"
+ocean = "ocean.cli:cli"
 
 [build-system]
 requires = ["poetry>=0.12"]

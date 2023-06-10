@@ -4,10 +4,10 @@ from inspect import getmembers, isclass
 import uvicorn
 from fastapi import FastAPI, APIRouter
 
-from framework.config.integration import IntegrationConfiguration
-from framework.context.integration import initialize_port_link_context, portlink
-from framework.core.integrations.base import BaseIntegration
-from framework.logging import logger
+from ocean.config.integration import IntegrationConfiguration
+from ocean.context.integration import initialize_port_ocean_context, ocean
+from ocean.core.integrations.base import BaseIntegration
+from ocean.logging import logger
 
 
 def _load_module(file_path):
@@ -38,7 +38,7 @@ def _include_target_channel_router(app: FastAPI):
 
     @target_channel_router.post("/resync")
     def resync():
-        portlink.integration.trigger_resync()
+        ocean.integration.trigger_resync()
 
     app.include_router(target_channel_router)
 
@@ -47,12 +47,12 @@ def connect(path: str):
     config = IntegrationConfiguration(base_path=path)
     app = FastAPI()
     router = APIRouter()
-    initialize_port_link_context("config.intallation_id", router)
+    initialize_port_ocean_context("config.intallation_id", router)
     module = _load_module(f"{path}/integration.py")
     integration_class = _get_class_from_module(module, BaseIntegration)
 
     integration = integration_class(config)
-    portlink.integration = integration
+    ocean.integration = integration
 
     _load_module(f"{path}/main.py")
 

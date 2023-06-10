@@ -2,9 +2,9 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import List, TypeVar, Union, Generic
 
-from framework.core.integrations.base import Change
-from framework.models.port import Entity, Blueprint
-from framework.models.port_app_config import ResourceConfig
+from ocean.core.integrations.base import Change
+from ocean.models.port import Entity, Blueprint
+from ocean.models.port_app_config import ResourceConfig
 
 T = TypeVar("T", bound=Union[Blueprint, Entity])
 

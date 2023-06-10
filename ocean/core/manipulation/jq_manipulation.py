@@ -2,11 +2,11 @@ from typing import List, Tuple
 
 import jq  # type: ignore
 
-from framework.core.integrations.base import Change
-from framework.core.manipulation.base import BaseManipulation, Entity, EntitiesDiff
-from framework.core.utils import get_unique_entities
-from framework.models.port import Blueprint
-from framework.models.port_app_config import ResourceConfig
+from ocean.core.integrations.base import Change
+from ocean.core.manipulation.base import BaseManipulation, Entity, EntitiesDiff
+from ocean.core.utils import get_unique_entities
+from ocean.models.port import Blueprint
+from ocean.models.port_app_config import ResourceConfig
 
 
 class JQManipulation(BaseManipulation):

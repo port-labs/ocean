@@ -2,7 +2,7 @@ import sys
 
 from loguru import logger
 
-from framework.config.integration import LoggerConfiguration
+from ocean.config.integration import LoggerConfiguration
 
 settings = LoggerConfiguration()
 

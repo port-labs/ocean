@@ -2,17 +2,17 @@ import click
 
 
 @click.group()
-def portlink(**kwargs):
+def cli(**kwargs):
     pass
 
 
-@portlink.command()
+@cli.command()
 @click.argument("path")
 def start(path: str, **kwargs):
-    from framework.port_connect import connect
+    from ocean.port_ocean import connect
 
     connect(path)
 
 
 if __name__ == "__main__":
-    portlink()
+    cli()

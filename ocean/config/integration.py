@@ -2,7 +2,7 @@ from typing import Dict, Any
 
 from pydantic import BaseModel, Field
 
-from framework.config.base import BaseYamlSettings
+from ocean.config.base import BaseYamlSettings
 
 
 class PortSettings(BaseModel):

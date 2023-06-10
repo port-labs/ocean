@@ -1,8 +1,8 @@
 import json
-from framework.consumers.kafka_consumer import KafkaConsumer
-from framework.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
-from framework.port.port import PortClient
-from framework.config.config import settings
+from ocean.consumers.kafka_consumer import KafkaConsumer
+from ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
+from ocean.port.port import PortClient
+from ocean.config.config import settings
 
 
 class KafkaTriggerChannel(BaseTriggerChannel):
@@ -42,7 +42,7 @@ class KafkaTriggerChannel(BaseTriggerChannel):
 
     def start(self) -> None:
         self.port_client = PortClient(
-            settings.PORT_CLIENT_ID, settings.PORT_CLIENT_SECRET, "interation-framework"
+            settings.PORT_CLIENT_ID, settings.PORT_CLIENT_SECRET, "interation-ocean"
         )
         kafka_creds = self.port_client.get_kafka_creds()["credentials"]
         org_id = self.port_client.get_org_id()

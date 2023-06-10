@@ -1,4 +1,4 @@
-from framework.core.trigger_channel.kafka_trigger_channel import KafkaTriggerChannel
+from ocean.core.trigger_channel.kafka_trigger_channel import KafkaTriggerChannel
 
 
 class TriggerChannelFactory:

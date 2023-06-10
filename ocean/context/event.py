@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from werkzeug.local import LocalStack, LocalProxy
 
-from framework.models.port_app_config import PortAppConfig
+from ocean.models.port_app_config import PortAppConfig
 
 _event_context_stack = LocalStack()
 
