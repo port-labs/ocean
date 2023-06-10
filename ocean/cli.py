@@ -2,17 +2,17 @@ import click
 
 
 @click.group()
-def cli(**kwargs):
+def cli_start(**kwargs):
     pass
 
 
-@cli.command()
+@cli_start.command()
 @click.argument("path")
-def start(path: str, **kwargs):
+def sail(path: str, **kwargs):
     from ocean.port_ocean import connect
 
     connect(path)
 
 
 if __name__ == "__main__":
-    cli()
+    cli_start()
