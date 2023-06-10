@@ -1,6 +1,6 @@
 from typing import List, Set
 
-from ocean.models.port import Entity
+from port_ocean.models.port import Entity
 
 
 def is_same_entity(firs_entity: Entity, second_entity: Entity) -> bool:

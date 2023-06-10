@@ -1,7 +1,7 @@
 # This is an example configuration file for the integration service.
 # Please copy this file to conf/config.yaml and edit it to your needs.
 
-# The integrations list to load into the integration ocean.
+# The integrations list to load into the integration port_ocean.
 # You can add as many integrations as you want, and you can use the same type of integration multiple times.
 port:
   clientId: <client_id> # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.

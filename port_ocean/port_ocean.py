@@ -5,10 +5,10 @@ from types import ModuleType
 import uvicorn
 from fastapi import FastAPI, APIRouter
 
-from ocean.config.integration import IntegrationConfiguration
-from ocean.context.integration import initialize_port_ocean_context, ocean
-from ocean.core.integrations.base import BaseIntegration
-from ocean.logging import logger
+from port_ocean.config.integration import IntegrationConfiguration
+from port_ocean.context.integration import initialize_port_ocean_context, ocean
+from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.logging import logger
 
 
 def _load_module(file_path: str) -> ModuleType:
@@ -64,7 +64,6 @@ def run(path: str) -> None:
     _load_module(f"{path}/main.py")
 
     app.include_router(router, prefix="/integration")
-    print(config.trigger_channel.type)
     if config.trigger_channel.type == "http":
         _include_target_channel_router(app)
 

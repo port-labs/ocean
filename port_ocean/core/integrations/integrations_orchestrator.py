@@ -1,9 +1,11 @@
-from ocean.config.config import settings
-from ocean.consumers.kafka_consumer import KafkaConsumer
-from ocean.common.resource_to_port_entity import resources_to_port_entity
-from ocean.core.integrations.integration_worker import IntegrationWorker
-from ocean.core.trigger_channel.trigger_channel_factory import TriggerChannelFactory
-from ocean.port.port import PortClient
+from port_ocean.config.config import settings
+from port_ocean.consumers.kafka_consumer import KafkaConsumer
+from port_ocean.common.resource_to_port_entity import resources_to_port_entity
+from port_ocean.core.integrations.integration_worker import IntegrationWorker
+from port_ocean.core.trigger_channel.trigger_channel_factory import (
+    TriggerChannelFactory,
+)
+from port_ocean.port.port import PortClient
 
 
 class IntegrationsOrchestrator:

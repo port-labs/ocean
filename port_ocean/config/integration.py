@@ -1,8 +1,11 @@
+import warnings
 from typing import Dict, Any
 
 from pydantic import BaseModel, Field
 
-from ocean.config.base import BaseYamlSettings
+from port_ocean.config.base import BaseYamlSettings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 class PortSettings(BaseModel):

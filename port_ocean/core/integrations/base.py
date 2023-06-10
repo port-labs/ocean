@@ -1,14 +1,14 @@
 from abc import abstractmethod
 from typing import List, Callable, Awaitable, TypedDict, Type
 
-from ocean.config.integration import IntegrationConfiguration
-from ocean.context.event import EventContext, initialize_event_context
-from ocean.core.manipulation.base import BaseManipulation
-from ocean.core.manipulation.jq_manipulation import JQManipulation
-from ocean.models.diff import Change
-from ocean.port.port import PortClient
+from port_ocean.config.integration import IntegrationConfiguration
+from port_ocean.context.event import EventContext, initialize_event_context
+from port_ocean.core.manipulation.base import BaseManipulation
+from port_ocean.core.manipulation.jq_manipulation import JQManipulation
+from port_ocean.models.diff import Change
+from port_ocean.port.port import PortClient
 
-# from ocean.core.trigger_channel.trigger_channel_factory import TriggerChannelFactory
+# from port_ocean.core.trigger_channel.trigger_channel_factory import TriggerChannelFactory
 
 
 RESYNC_EVENT_LISTENER = Callable[[str], Awaitable[Change]]
@@ -120,16 +120,16 @@ class BaseIntegration:
         ):
             raise NotImplementedError("on_resync is not implemented")
 
-        await self._init_manipulation_instance()
-        await self._init_transport_instance()
-        await self._init_port_configuration_instance()
-        port_client = await self._init_port_client_instance()
-
-        port_client.initiate_integration(
-            self.config.integration.identifier,
-            self.config.integration.type,
-            self.config.trigger_channel,
-        )
+        # await self._init_manipulation_instance()
+        # await self._init_transport_instance()
+        # await self._init_port_configuration_instance()
+        # port_client = await self._init_port_client_instance()
+        #
+        # port_client.initiate_integration(
+        #     self.config.integration.identifier,
+        #     self.config.integration.type,
+        #     self.config.trigger_channel,
+        # )
 
         self.started = True
         initialize_event_context(EventContext("start"))
