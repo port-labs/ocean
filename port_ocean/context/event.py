@@ -2,9 +2,7 @@ from dataclasses import dataclass, field
 
 from werkzeug.local import LocalStack, LocalProxy
 
-from port_ocean.models.port_app_config import PortAppConfig
-
-_event_context_stack = LocalStack()
+from port_ocean.models.port_app_config import PortAppConfig, ResourceConfig
 
 
 class NoContextError(Exception):
@@ -18,8 +16,11 @@ class EventContextNotFoundError(NoContextError):
 @dataclass
 class EventContext:
     event_type: str
-    kind: str | None = field(default=None)
+    resource_config: ResourceConfig | None = field(default=None)
     port_app_config: PortAppConfig | None = field(default=None)
+
+
+_event_context_stack: LocalStack[EventContext] = LocalStack()
 
 
 def initialize_event_context(event_context: EventContext) -> None:
@@ -42,4 +43,4 @@ def _get_event_context() -> EventContext:
     )
 
 
-event: EventContext = LocalProxy(lambda: _get_event_context())
+event: EventContext = LocalProxy(lambda: _get_event_context())  # type: ignore

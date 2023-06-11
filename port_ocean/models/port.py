@@ -1,8 +1,7 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 
-@dataclass
-class Entity:
+class Entity(BaseModel):
     identifier: str
     blueprint: str
     title: str | None
@@ -11,8 +10,7 @@ class Entity:
     relations: dict
 
 
-@dataclass
-class Blueprint:
+class Blueprint(BaseModel):
     identifier: str
     title: str | None
     team: str | None

@@ -1,13 +1,17 @@
 from dataclasses import dataclass
+from typing import Callable, NoReturn
 
 from fastapi import APIRouter
-from werkzeug.local import LocalStack, LocalProxy
+from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.context.event import NoContextError
-from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.integrations.base import (
+    BaseIntegration,
+    RESYNC_EVENT_LISTENER,
+    START_EVENT_LISTENER,
+)
+from port_ocean.core.port.port import PortClient
 from port_ocean.models.diff import Change
-
-_port_ocean_context_stack: LocalStack = LocalStack()
 
 
 class PortOceanContextNotFoundError(NoContextError):
@@ -19,6 +23,7 @@ class PortOceanContext:
     installation_id: str
     _router: APIRouter | None
     integration: BaseIntegration | None = None
+    port_client: PortClient | None = None
 
     @property
     def router(self) -> APIRouter:
@@ -26,8 +31,10 @@ class PortOceanContext:
             raise Exception("Router not set")
         return self._router
 
-    def on_resync(self):
-        def wrapper(function):
+    def on_resync(
+        self,
+    ) -> Callable[[RESYNC_EVENT_LISTENER], RESYNC_EVENT_LISTENER]:
+        def wrapper(function: RESYNC_EVENT_LISTENER) -> RESYNC_EVENT_LISTENER:
             if self.integration:
                 return self.integration.on_resync(function)
             else:
@@ -35,8 +42,8 @@ class PortOceanContext:
 
         return wrapper
 
-    def on_start(self):
-        def wrapper(function):
+    def on_start(self) -> Callable[[START_EVENT_LISTENER], START_EVENT_LISTENER]:
+        def wrapper(function: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
             if self.integration:
                 return self.integration.on_start(function)
             else:
@@ -44,11 +51,14 @@ class PortOceanContext:
 
         return wrapper
 
-    async def register_change(self, kind: str, change: Change):
+    async def register_change(self, kind: str, change: Change) -> NoReturn:
         if self.integration:
-            return await self.integration.register_state(kind, change)
+            await self.integration.register_state(kind, change)
         else:
             raise Exception("Integration not set")
+
+
+_port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()
 
 
 def initialize_port_ocean_context(

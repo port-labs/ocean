@@ -36,7 +36,7 @@ class PortAppConfig(BaseModel):
         ..., alias="createMissingRelatedEntities"
     )
     merge: bool
-    resources: Optional[List[ResourceConfig]]
+    resources: List[ResourceConfig] = Field(default_factory=list)
 
     class Config:
         allow_population_by_field_name = True

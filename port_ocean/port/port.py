@@ -6,15 +6,17 @@ logger = logging.getLogger(__name__)
 
 
 class PortClient:
-    def __init__(self, client_id, client_secret, base_url, user_agent):
+    def __init__(
+        self, base_url: str, client_id: str, client_secret: str, user_agent: str
+    ):
         self.api_url = base_url
-        self.access_token = self.get_token(client_id, client_secret)
+        self.access_token = self._get_token(client_id, client_secret)
         self.headers = {
             "Authorization": f"Bearer {self.access_token}",
             "User-Agent": user_agent,
         }
 
-    def get_token(self, client_id, client_secret):
+    def _get_token(self, client_id, client_secret):
         logger.info(f"Get access token for client: {client_id}")
 
         credentials = {"clientId": client_id, "clientSecret": client_secret}
@@ -24,7 +26,7 @@ class PortClient:
         token_response.raise_for_status()
         return token_response.json()["accessToken"]
 
-    def upsert_entity(self, entity):
+    def _upsert_entity(self, entity):
         logger.info(
             f"Upsert entity: {entity.get('identifier')} of blueprint: {entity.get('blueprint')}"
         )
@@ -47,7 +49,7 @@ class PortClient:
             logger.error(response.json())
             response.raise_for_status()
 
-    def delete_entity(self, entity):
+    def _delete_entity(self, entity):
         logger.info(
             f"Delete entity: {entity.get('identifier')} of blueprint: {entity.get('blueprint')}"
         )
@@ -60,21 +62,6 @@ class PortClient:
             headers=self.headers,
             params={"delete_dependents": "true"},
         ).raise_for_status()
-
-    def search_entities(self, query):
-        logger.info(f"Search entities by query: {query}")
-
-        search_req = requests.post(
-            f"{self.api_url}/entities/search",
-            json=query,
-            headers=self.headers,
-            params={
-                "exclude_calculated_properties": "true",
-                "include": ["blueprint", "identifier"],
-            },
-        )
-        search_req.raise_for_status()
-        return search_req.json()["entities"]
 
     def get_kafka_creds(self):
         logger.info(f"Get kafka credentials")

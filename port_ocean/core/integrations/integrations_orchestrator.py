@@ -1,11 +1,10 @@
 from port_ocean.config.config import settings
-from port_ocean.consumers.kafka_consumer import KafkaConsumer
 from port_ocean.common.resource_to_port_entity import resources_to_port_entity
 from port_ocean.core.integrations.integration_worker import IntegrationWorker
 from port_ocean.core.trigger_channel.trigger_channel_factory import (
     TriggerChannelFactory,
 )
-from port_ocean.port.port import PortClient
+from port_ocean.core.port.port import PortClient
 
 
 class IntegrationsOrchestrator:
@@ -48,7 +47,7 @@ class IntegrationsOrchestrator:
 
             for raw_entity in raw_entities:
                 port_entity = resources_to_port_entity(raw_entity, mapping)
-                port_client.upsert_entity(port_entity)
+                port_client._upsert_entity(port_entity)
 
     def on_action(self, action: dict):
         pass
