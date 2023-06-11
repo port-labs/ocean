@@ -1,7 +1,7 @@
 import json
 from port_ocean.consumers.kafka_consumer import KafkaConsumer
 from port_ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
-from port_ocean.core.port.port import PortClient
+from port_ocean.core.transport.port import PortClient
 from port_ocean.config.config import settings
 
 

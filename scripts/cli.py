@@ -25,7 +25,7 @@ By: Port.io
 
 @click.group()
 def cli_start() -> None:
-    pass
+    print_logo()
 
 
 @cli_start.command()
@@ -33,14 +33,12 @@ def cli_start() -> None:
 def sail(path: str) -> None:
     from port_ocean.port_ocean import run
 
-    print_logo()
     print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
     run(path)
 
 
 @cli_start.command()
 def new() -> None:
-    print_logo()
     print("⚓️ Docking at at Port... Initializing you integration.")
     print("🌟 Integration initialized successfully! Happy Porting!")
 

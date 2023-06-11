@@ -9,6 +9,7 @@ from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.context.integration import initialize_port_ocean_context, ocean
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.logging import logger
+from port_ocean.clients.port import PortClient
 
 
 def _load_module(file_path: str) -> ModuleType:
@@ -54,7 +55,13 @@ def run(path: str) -> None:
     config = IntegrationConfiguration(base_path=path)
     app = FastAPI()
     router = APIRouter()
-    initialize_port_ocean_context("config.intallation_id", router)
+    port_client = PortClient(
+        base_url=config.port.base_url,
+        client_id=config.port.client_id,
+        client_secret=config.port.client_secret,
+        user_agent=config.integration.identifier,
+    )
+    initialize_port_ocean_context(config.integration.identifier, port_client, router)
     module = _load_module(f"{path}/integration.py")
     integration_class = _get_class_from_module(module, BaseIntegration)
 

@@ -10,7 +10,7 @@ from port_ocean.core.integrations.base import (
     RESYNC_EVENT_LISTENER,
     START_EVENT_LISTENER,
 )
-from port_ocean.core.port.port import PortClient
+from port_ocean.clients.port import PortClient
 from port_ocean.models.diff import Change
 
 
@@ -21,9 +21,9 @@ class PortOceanContextNotFoundError(NoContextError):
 @dataclass
 class PortOceanContext:
     installation_id: str
+    port_client: PortClient
     _router: APIRouter | None
     integration: BaseIntegration | None = None
-    port_client: PortClient | None = None
 
     @property
     def router(self) -> APIRouter:
@@ -62,13 +62,15 @@ _port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()
 
 
 def initialize_port_ocean_context(
-    installation_id: str, router: APIRouter | None = None
+    installation_id: str, port_client: PortClient, router: APIRouter | None = None
 ) -> None:
     """
     This Function initiates the PortOcean context and pushes it into the LocalStack().
     """
     _port_ocean_context_stack.push(
-        PortOceanContext(_router=router, installation_id=installation_id)
+        PortOceanContext(
+            _router=router, installation_id=installation_id, port_client=port_client
+        )
     )
 
 

@@ -5,7 +5,7 @@ from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.core.manipulation.base import PortDiff
 
 
-class BasePortClient:
+class BaseTransport:
     def __init__(self, config: IntegrationConfiguration):
         self.config = config
 

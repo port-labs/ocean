@@ -9,15 +9,16 @@ from typing import (
 
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.context.event import EventContext, initialize_event_context
+from port_ocean.context.integration import ocean
 from port_ocean.core.manipulation.base import BaseManipulation
 from port_ocean.core.manipulation.jq_manipulation import JQManipulation
-from port_ocean.core.port.base import BasePortClient
-from port_ocean.core.port.port import PortClient
 from port_ocean.core.port_app_config.base import BasePortAppConfigHandler
+from port_ocean.core.transport.base import BaseTransport
+from port_ocean.core.transport.port import HttpPortTransport
+from port_ocean.core.trigger_channel.trigger_channel_factory import (
+    TriggerChannelFactory,
+)
 from port_ocean.models.diff import Change
-
-# from port_ocean.core.trigger_channel.trigger_channel_factory import TriggerChannelFactory
-
 
 RESYNC_EVENT_LISTENER = Callable[[str], Awaitable[Change]]
 START_EVENT_LISTENER = Callable[[], Awaitable]
@@ -37,12 +38,14 @@ class BaseIntegration:
         [IntegrationConfiguration], BasePortAppConfigHandler
     ] = BasePortAppConfigHandler
 
-    PortClientClass: Callable[[IntegrationConfiguration], BasePortClient] = PortClient
+    TransportClass: Callable[
+        [IntegrationConfiguration], BaseTransport
+    ] = HttpPortTransport
 
     def __init__(self, config: IntegrationConfiguration):
         self._manipulation: BaseManipulation | None = None
         self._port_app_config: BasePortAppConfigHandler | None = None
-        self._port_client: BasePortClient | None = None
+        self._transport: BaseTransport | None = None
 
         self.started = False
         self.config = config
@@ -50,10 +53,11 @@ class BaseIntegration:
             "start": [],
             "resync": [],
         }
-        # self.trigger_channel = TriggerChannelFactory(self.config.trigger_channel.type).create_trigger_channel(
-        #     self.on_action,
-        #     self.trigger_resync
-        # )
+        self.trigger_channel = TriggerChannelFactory(
+            self.config.integration.identifier,
+            self.config.trigger_channel.type,
+            {"action": self.trigger_action, "resync": self.trigger_resync},
+        )
 
     @property
     def manipulation(self) -> BaseManipulation:
@@ -68,22 +72,22 @@ class BaseIntegration:
         return self._port_app_config
 
     @property
-    def port_client(self) -> BasePortClient:
-        if not self._port_client:
+    def port_client(self) -> BaseTransport:
+        if not self._transport:
             raise Exception("Integration not started")
-        return self._port_client
+        return self._transport
 
     async def _init_manipulation_instance(self) -> BaseManipulation:
         self._manipulation = self.ManipulationClass(self.config)
         return self._manipulation
 
-    async def _init_port_configuration_instance(self) -> BasePortAppConfigHandler:
+    async def _init_port_app_config_handler_instance(self) -> BasePortAppConfigHandler:
         self._port_app_config = self.AppConfigClass(self.config)
         return self._port_app_config
 
-    async def _init_port_client_instance(self) -> BasePortClient:
-        self._port_client = self.PortClientClass(self.config)
-        return self._port_client
+    async def _init_transport_instance(self) -> BaseTransport:
+        self._transport = self.TransportClass(self.config)
+        return self._transport
 
     @abstractmethod
     async def _on_resync(self, kind: str) -> Change:
@@ -120,20 +124,24 @@ class BaseIntegration:
             raise NotImplementedError("on_resync is not implemented")
 
         await self._init_manipulation_instance()
-        await self._init_port_configuration_instance()
-        # port_client = await self._init_port_client_instance()
-        #
-        # port_client.initiate_integration(
-        #     self.config.integration.identifier,
-        #     self.config.integration.type,
-        #     self.config.trigger_channel,
-        # )
+        await self._init_port_app_config_handler_instance()
+        await self._init_transport_instance()
+        self.trigger_channel.create_trigger_channel()
+
+        ocean.port_client.initiate_integration(
+            self.config.integration.identifier,
+            self.config.integration.type,
+            self.config.trigger_channel.type,
+        )
 
         self.started = True
         initialize_event_context(EventContext("start"))
 
         for listener in self.event_strategy["start"]:
             await listener()
+
+    async def trigger_action(self, action: str) -> NoReturn:
+        raise NotImplementedError("trigger_action is not implemented")
 
     async def trigger_resync(self) -> NoReturn:
         app_config = await self.port_app_config.get_port_app_config()

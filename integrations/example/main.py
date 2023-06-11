@@ -2,7 +2,7 @@ from port_ocean.context.integration import ocean
 
 
 @ocean.on_resync()
-async def resync():
+async def resync(kind: str):
     return []
 
 
