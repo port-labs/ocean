@@ -6,6 +6,9 @@ from cookiecutter.main import cookiecutter  # type: ignore
 from rich import print
 from rich.console import Console
 
+from scripts.download_git_folder import download_folder
+from scripts.list_integrations import list_git_folders
+
 
 def print_logo() -> None:
     ascii_art = """
@@ -65,6 +68,24 @@ def new() -> None:
     )
     console.print(
         "⚓️ Smooth sailing with [blue]Make[/blue]: Alternatively, you can run [bold][blue]make run[/blue][/bold] to launch your project using Make. \n"
+    )
+
+
+@cli_start.command(name="list")
+def list_integrations() -> None:
+    console = Console()
+    console.print("🌊 Here are the integrations available to you:", style="bold")
+    options = list_git_folders("https://github.com/port-labs/pulumi", "examples")
+
+    for option in options:
+        console.print(f"⚓️ [bold][blue]{option}[/blue][/bold]")
+
+
+@cli_start.command()
+@click.argument("name")
+def pull(name: str) -> None:
+    download_folder(
+        "https://github.com/port-labs/pulumi", f"examples/{name}", f"./{name}"
     )
 
 
