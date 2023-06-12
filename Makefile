@@ -10,6 +10,12 @@ install: venv
 	$(ACTIVATE) && \
 	pip install --upgrade pip && \
 	pip install poetry && \
+	poetry install --with dev
+
+install/all: venv
+	$(ACTIVATE) && \
+	pip install --upgrade pip && \
+	pip install poetry && \
 	poetry install --with dev --all-extras
 
 build:
