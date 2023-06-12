@@ -2,7 +2,7 @@ from typing import List, Tuple, Dict, Any
 
 import jq  # type: ignore
 
-from port_ocean.core.manipulation.base import (
+from port_ocean.core.handlers.manipulation.base import (
     BaseManipulation,
     PortDiff,
 )

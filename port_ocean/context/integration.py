@@ -4,6 +4,7 @@ from typing import Callable, NoReturn
 from fastapi import APIRouter
 from werkzeug.local import LocalProxy, LocalStack
 
+from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.context.event import NoContextError
 from port_ocean.core.integrations.base import (
     BaseIntegration,
@@ -20,7 +21,7 @@ class PortOceanContextNotFoundError(NoContextError):
 
 @dataclass
 class PortOceanContext:
-    installation_id: str
+    config: IntegrationConfiguration
     port_client: PortClient
     _router: APIRouter | None
     integration: BaseIntegration | None = None
@@ -62,15 +63,15 @@ _port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()
 
 
 def initialize_port_ocean_context(
-    installation_id: str, port_client: PortClient, router: APIRouter | None = None
+    config: IntegrationConfiguration,
+    port_client: PortClient,
+    router: APIRouter | None = None,
 ) -> None:
     """
     This Function initiates the PortOcean context and pushes it into the LocalStack().
     """
     _port_ocean_context_stack.push(
-        PortOceanContext(
-            _router=router, installation_id=installation_id, port_client=port_client
-        )
+        PortOceanContext(_router=router, config=config, port_client=port_client)
     )
 
 

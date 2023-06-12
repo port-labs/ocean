@@ -26,7 +26,7 @@ class PortClient:
         token_response.raise_for_status()
         return token_response.json()["accessToken"]
 
-    def _upsert_entity(self, entity):
+    def upsert_entity(self, entity):
         logger.info(
             f"Upsert entity: {entity.get('identifier')} of blueprint: {entity.get('blueprint')}"
         )
@@ -49,7 +49,7 @@ class PortClient:
             logger.error(response.json())
             response.raise_for_status()
 
-    def _delete_entity(self, entity):
+    def delete_entity(self, entity):
         logger.info(
             f"Delete entity: {entity.get('identifier')} of blueprint: {entity.get('blueprint')}"
         )

@@ -42,11 +42,11 @@ def _include_target_channel_router(app: FastAPI) -> None:
     target_channel_router = APIRouter()
 
     @target_channel_router.post("/resync")
-    def resync() -> None:
+    async def resync() -> None:
         if ocean.integration is None:
             raise Exception("Integration not set")
 
-        ocean.integration.trigger_resync()
+        await ocean.integration.trigger_resync()
 
     app.include_router(target_channel_router)
 
@@ -61,7 +61,7 @@ def run(path: str) -> None:
         client_secret=config.port.client_secret,
         user_agent=config.integration.identifier,
     )
-    initialize_port_ocean_context(config.integration.identifier, port_client, router)
+    initialize_port_ocean_context(config, port_client, router)
     module = _load_module(f"{path}/integration.py")
     integration_class = _get_class_from_module(module, BaseIntegration)
 

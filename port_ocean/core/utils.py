@@ -1,6 +1,6 @@
 from typing import List, Set, TypeVar, Callable, Iterable, Union
 
-from port_ocean.core.manipulation.base import PortObjectDiff
+from port_ocean.core.handlers.manipulation.base import PortObjectDiff
 from port_ocean.models.port import Entity, Blueprint
 
 
