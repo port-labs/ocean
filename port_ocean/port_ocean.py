@@ -1,15 +1,26 @@
 from importlib.util import spec_from_file_location, module_from_spec
 from inspect import getmembers, isclass
 from types import ModuleType
+from typing import TypeVar
 
 import uvicorn
 from fastapi import FastAPI, APIRouter
 
+from port_ocean.clients.port import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.context.integration import initialize_port_ocean_context, ocean
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.logging import logger
-from port_ocean.clients.port import PortClient
+
+T = TypeVar('T', bound=type)
+
+
+def _get_class_from_module(module: ModuleType, base_class: T) -> T:
+    for name, obj in getmembers(module):
+        if isclass(obj) and issubclass(obj, base_class) and obj != base_class:  # noqa
+            return obj
+
+    raise Exception(f"Failed to load integration from module: {module.__name__}")
 
 
 def _load_module(file_path: str) -> ModuleType:
@@ -28,14 +39,6 @@ def _load_module(file_path: str) -> ModuleType:
         raise e
 
     return module
-
-
-def _get_class_from_module(module: ModuleType, base_class: type) -> type:
-    for name, obj in getmembers(module):
-        if isclass(obj) and issubclass(obj, base_class) and obj != base_class:
-            return obj
-
-    raise Exception(f"Failed to load integration from module: {module.__name__}")
 
 
 def _include_target_channel_router(app: FastAPI) -> None:
@@ -65,7 +68,7 @@ def run(path: str) -> None:
     module = _load_module(f"{path}/integration.py")
     integration_class = _get_class_from_module(module, BaseIntegration)
 
-    integration = integration_class(config)
+    integration = integration_class(ocean, logger)
     ocean.integration = integration
 
     _load_module(f"{path}/main.py")
