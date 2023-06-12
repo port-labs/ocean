@@ -1,4 +1,4 @@
-from src.port_ocean.context.integration import ocean
+from port_ocean.context.integration import ocean
 
 
 @ocean.on_resync()
