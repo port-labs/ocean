@@ -1,5 +1,5 @@
-from port_ocean.core.port_app_config.base import BasePortAppConfigHandler
-from port_ocean.models.port_app_config import PortAppConfig
+from src.port_ocean.core.port_app_config.base import BasePortAppConfigHandler
+from src.port_ocean.models.port_app_config import PortAppConfig
 
 
 class HttpPortAppConfig(BasePortAppConfigHandler):

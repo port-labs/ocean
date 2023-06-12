@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import os
 
 import click
@@ -6,8 +7,8 @@ from cookiecutter.main import cookiecutter  # type: ignore
 from rich import print
 from rich.console import Console
 
-from scripts.download_git_folder import download_folder
-from scripts.list_integrations import list_git_folders
+from port_ocean.cli.download_git_folder import download_folder
+from port_ocean.cli.list_integrations import list_git_folders
 
 
 def print_logo() -> None:
@@ -30,6 +31,7 @@ By: Port.io
 
 @click.group()
 def cli_start() -> None:
+    # Ocean root command
     pass
 
 
@@ -87,7 +89,3 @@ def pull(name: str) -> None:
     download_folder(
         "https://github.com/port-labs/pulumi", f"examples/{name}", f"./{name}"
     )
-
-
-if __name__ == "__main__":
-    cli_start()

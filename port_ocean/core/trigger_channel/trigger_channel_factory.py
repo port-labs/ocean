@@ -1,7 +1,9 @@
 from typing import TypedDict, Callable
 
-from port_ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
-from port_ocean.core.trigger_channel.kafka_trigger_channel import KafkaTriggerChannel
+from src.port_ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
+from src.port_ocean.core.trigger_channel.kafka_trigger_channel import (
+    KafkaTriggerChannel,
+)
 
 
 class Events(TypedDict):

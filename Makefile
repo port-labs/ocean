@@ -10,10 +10,13 @@ install: venv
 	$(ACTIVATE) && \
 	pip install --upgrade pip && \
 	pip install poetry && \
-	poetry install --with dev
+	poetry install --with dev --all-extras
+
+build:
+	$(ACTIVATE) && poetry build
 
 run:
-	$(ACTIVATE) && poetry run main.py
+	$(ACTIVATE) && ocean sail ./integrations/example
 
 generate_dot_env:
 	@if [[ ! -e .env ]]; then \
@@ -33,3 +36,4 @@ clean:
 	rm -rf .tox/
 	rm -rf docs/_build
 	rm -rf venv/
+	rm -rf dist/

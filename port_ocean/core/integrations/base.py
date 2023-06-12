@@ -9,15 +9,15 @@ from typing import (
 
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.context.event import EventContext, initialize_event_context
-from port_ocean.context.integration import ocean
 from port_ocean.core.manipulation.base import BaseManipulation
 from port_ocean.core.manipulation.jq_manipulation import JQManipulation
 from port_ocean.core.port_app_config.base import BasePortAppConfigHandler
 from port_ocean.core.transport.base import BaseTransport
 from port_ocean.core.transport.port import HttpPortTransport
-from port_ocean.core.trigger_channel.trigger_channel_factory import (
-    TriggerChannelFactory,
-)
+
+# from src.port_ocean.core.trigger_channel.trigger_channel_factory import (
+#     TriggerChannelFactory,
+# )
 from port_ocean.models.diff import Change
 
 RESYNC_EVENT_LISTENER = Callable[[str], Awaitable[Change]]
@@ -128,11 +128,11 @@ class BaseIntegration:
         await self._init_transport_instance()
         self.trigger_channel.create_trigger_channel()
 
-        ocean.port_client.initiate_integration(
-            self.config.integration.identifier,
-            self.config.integration.type,
-            self.config.trigger_channel.type,
-        )
+        # ocean.port_client.initiate_integration(
+        #     self.config.integration.identifier,
+        #     self.config.integration.type,
+        #     self.config.trigger_channel.type,
+        # )
 
         self.started = True
         initialize_event_context(EventContext("start"))

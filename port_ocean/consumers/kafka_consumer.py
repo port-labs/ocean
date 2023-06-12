@@ -3,9 +3,9 @@ import signal
 from typing import Any, Callable
 
 from confluent_kafka import Consumer, KafkaException, Message
-from port_ocean.consumers.base_consumer import BaseConsumer
+from src.port_ocean.consumers.base_consumer import BaseConsumer
 
-from port_ocean.config.config import settings
+from src.port_ocean import settings
 
 logging.basicConfig(level=settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
