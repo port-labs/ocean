@@ -3,7 +3,7 @@ import os
 import shutil
 
 
-def download_folder(repo_url, folder_path, destination_path):
+def download_folder(repo_url: str, folder_path: str, destination_path: str) -> None:
     # Parse the repository URL to extract the owner and repository name
     parts = repo_url.split("/")
     owner = parts[-2]

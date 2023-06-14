@@ -1,29 +1,28 @@
 from abc import abstractmethod
-from logging import Logger
 from typing import (
     List,
     Callable,
-    Awaitable,
     TypedDict,
-    NoReturn,
     Dict,
+    Any,
 )
 
 from port_ocean.context.event import EventContext, initialize_event_context
 from port_ocean.context.integration import PortOceanContext
 from port_ocean.core.handlers import (
     BaseManipulation,
-    BasePortAppConfigHandler,
+    BasePortAppConfigWithContext,
     BaseTransport,
     JQManipulation,
     HttpPortAppConfig,
     HttpPortTransport,
 )
+from port_ocean.core.trigger_channel.trigger_channel_factory import (
+    TriggerChannelFactory,
+)
 from port_ocean.models.diff import Change
 from port_ocean.models.port_app_config import ResourceConfig
-
-RESYNC_EVENT_LISTENER = Callable[[str], Awaitable[Change]]
-START_EVENT_LISTENER = Callable[[], Awaitable]
+from port_ocean.types import START_EVENT_LISTENER, RESYNC_EVENT_LISTENER
 
 
 class EventsCallbacks(TypedDict):
@@ -33,22 +32,21 @@ class EventsCallbacks(TypedDict):
 
 class BaseIntegration:
     ManipulationHandlerClass: Callable[
-        [PortOceanContext, Logger], BaseManipulation
+        [PortOceanContext], BaseManipulation
     ] = JQManipulation
 
     AppConfigHandlerClass: Callable[
-        [PortOceanContext, Logger], BasePortAppConfigHandler
+        [PortOceanContext], BasePortAppConfigWithContext
     ] = HttpPortAppConfig
 
     TransportHandlerClass: Callable[
-        [PortOceanContext, Logger], BaseTransport
+        [PortOceanContext], BaseTransport
     ] = HttpPortTransport
 
-    def __init__(self, context: PortOceanContext, logger: Logger):
+    def __init__(self, context: PortOceanContext):
         self._manipulation: BaseManipulation | None = None
-        self._port_app_config: BasePortAppConfigHandler | None = None
+        self._port_app_config: BasePortAppConfigWithContext | None = None
         self._transport: BaseTransport | None = None
-        self.logger = logger
 
         self.started = False
         self.context = context
@@ -56,11 +54,12 @@ class BaseIntegration:
             "start": [],
             "resync": [],
         }
-        # self.trigger_channel = TriggerChannelFactory(
-        #     self.context.config.integration.identifier,
-        #     self.context.config.trigger_channel.type,
-        #     {"action": self.trigger_action, "resync": self.trigger_resync},
-        # )
+        self.trigger_channel = TriggerChannelFactory(
+            context,
+            self.context.config.integration.identifier,
+            self.context.config.trigger_channel.type,
+            {"on_action": self.trigger_action, "on_resync": self.trigger_resync},
+        )
 
     @property
     def manipulation(self) -> BaseManipulation:
@@ -69,7 +68,7 @@ class BaseIntegration:
         return self._manipulation
 
     @property
-    def port_app_config(self) -> BasePortAppConfigHandler:
+    def port_app_config(self) -> BasePortAppConfigWithContext:
         if self._port_app_config is None:
             raise Exception("Integration not started")
         return self._port_app_config
@@ -81,15 +80,17 @@ class BaseIntegration:
         return self._transport
 
     async def _init_manipulation_instance(self) -> BaseManipulation:
-        self._manipulation = self.ManipulationHandlerClass(self.context, self.logger)
+        self._manipulation = self.ManipulationHandlerClass(self.context)
         return self._manipulation
 
-    async def _init_port_app_config_handler_instance(self) -> BasePortAppConfigHandler:
-        self._port_app_config = self.AppConfigHandlerClass(self.context, self.logger)
+    async def _init_port_app_config_handler_instance(
+        self,
+    ) -> BasePortAppConfigWithContext:
+        self._port_app_config = self.AppConfigHandlerClass(self.context)
         return self._port_app_config
 
     async def _init_transport_instance(self) -> BaseTransport:
-        self._transport = self.TransportHandlerClass(self.context, self.logger)
+        self._transport = self.TransportHandlerClass(self.context)
         return self._transport
 
     @abstractmethod
@@ -104,16 +105,14 @@ class BaseIntegration:
         self.event_strategy["resync"].append(func)
         return func
 
-    async def _register_raw(
-        self, raw_diff: Dict[ResourceConfig, List[Change]]
-    ) -> NoReturn:
+    async def _register_raw(self, raw_diff: Dict[ResourceConfig, List[Change]]) -> None:
         parsed_entities = [
             self.manipulation.get_diff(mapping, results)
             for mapping, results in raw_diff.items()
         ]
         await self.port_client.update_diff(parsed_entities)
 
-    async def register_state(self, kind: str, entities_state: Change) -> NoReturn:
+    async def register_state(self, kind: str, entities_state: Change) -> None:
         config = await self.port_app_config.get_port_app_config()
         resource_mappings = [
             resource for resource in config.resources if resource.kind == kind
@@ -150,10 +149,10 @@ class BaseIntegration:
         for listener in self.event_strategy["start"]:
             await listener()
 
-    async def trigger_action(self, action: str) -> NoReturn:
+    async def trigger_action(self, data: Dict[Any, Any]) -> None:
         raise NotImplementedError("trigger_action is not implemented")
 
-    async def trigger_resync(self) -> NoReturn:
+    async def trigger_resync(self, _: Dict[Any, Any] | None = None) -> None:
         app_config = await self.port_app_config.get_port_app_config()
         results = []
         mapping_object_to_raw_data = {}

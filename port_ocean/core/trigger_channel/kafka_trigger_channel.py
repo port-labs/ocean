@@ -1,16 +1,22 @@
-import json
-from src.port_ocean.consumers.kafka_consumer import KafkaConsumer
-from src.port_ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
-from port_ocean.core.handlers.transport.port import PortClient
-from src.port_ocean import settings
+from typing import Dict, Any
+
+from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
+from port_ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
+from port_ocean.core.trigger_channel.models import Events
 
 
 class KafkaTriggerChannel(BaseTriggerChannel):
-    def __init__(self, on_action: callable, on_changelog_event: callable):
-        self.on_action = on_action
-        self.on_changelog_event = on_changelog_event
+    def __init__(
+        self,
+        events: Events,
+        kafka_credentials: KafkaConsumerConfig,
+        org_id: str,
+    ):
+        super().__init__(events)
+        self.kafka_credentials = kafka_credentials
+        self.org_id = org_id
 
-    def should_be_processed(self, msg_value: dict, topic: str) -> dict:
+    def should_be_processed(self, msg_value: Dict[Any, Any], topic: str) -> bool:
         if "runs" in topic:
             return (
                 msg_value.get("payload", {})
@@ -25,31 +31,21 @@ class KafkaTriggerChannel(BaseTriggerChannel):
 
         return False
 
-    def _handle_message(self, raw_msg):
-        message = json.loads(raw_msg.value().decode())
-        topic = raw_msg.topic()
-
+    async def _handle_message(self, message: Dict[Any, Any], topic: str) -> None:
         if not self.should_be_processed(message, topic):
             return
 
-        if "runs" in topic:
-            self.on_action(message)
-            return
+        match topic:
+            case "runs":
+                # await self.on_action(message)
+                await self.events["on_action"](message)
 
-        if "change.log" in topic:
-            self.on_changelog_event()
-            return
+            case "change.log":
+                await self.events["on_resync"](message)
 
     def start(self) -> None:
-        self.port_client = PortClient(
-            settings.PORT_CLIENT_ID,
-            settings.PORT_CLIENT_SECRET,
-            "interation-port_ocean",
-        )
-        kafka_creds = self.port_client.get_kafka_creds()["credentials"]
-        org_id = self.port_client.get_org_id()
-
-        # starting kafka consumer
         KafkaConsumer(
-            msg_process=self._handle_message, org_id=org_id, kafka_creds=kafka_creds
+            msg_process=self._handle_message,
+            org_id=self.org_id,
+            config=self.kafka_credentials,
         ).start()

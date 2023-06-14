@@ -1,11 +1,11 @@
 from abc import abstractmethod
-from typing import List, NoReturn
+from typing import List
 
-from port_ocean.core.handlers.base import BaseHandler
+from port_ocean.core.base import BaseWithContext
 from port_ocean.core.handlers.manipulation.base import PortDiff
 
 
-class BaseTransport(BaseHandler):
+class BaseTransport(BaseWithContext):
     @abstractmethod
-    async def update_diff(self, changes: List[PortDiff]) -> NoReturn:
+    async def update_diff(self, changes: List[PortDiff]) -> None:
         pass

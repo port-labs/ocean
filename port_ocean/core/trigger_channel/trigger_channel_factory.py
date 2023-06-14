@@ -1,39 +1,58 @@
-from typing import TypedDict, Callable
+from typing import Callable, Dict, Any, Awaitable
 
-from src.port_ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
-from src.port_ocean.core.trigger_channel.kafka_trigger_channel import (
-    KafkaTriggerChannel,
-)
+from port_ocean.consumers.kafka_consumer import KafkaConsumerConfig
+from port_ocean.core.base import BaseWithContext
+from port_ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
+from port_ocean.core.trigger_channel.kafka_trigger_channel import KafkaTriggerChannel
+from port_ocean.core.trigger_channel.models import Events
 
-
-class Events(TypedDict):
-    resync: Callable[[], None]
-    action: Callable[[], None]
+from port_ocean.context.integration import PortOceanContext
 
 
-class TriggerChannelFactory:
-    def __init__(self, installation_id: str, trigger_channel_type: str, events: Events):
+class TriggerChannelFactory(BaseWithContext):
+    def __init__(
+        self,
+        context: PortOceanContext,
+        installation_id: str,
+        trigger_channel_type: str,
+        events: Events,
+    ):
+        super().__init__(context)
         self.installation_id = installation_id
         self.trigger_channel_type = trigger_channel_type
         self._trigger_channel: BaseTriggerChannel | None = None
         self.events = events
 
-    def on_event(self, callback: Callable[[], None]):
-        def wrapper(event: dict):
+    def on_event(
+        self, callback: Callable[[Dict[Any, Any]], Awaitable[None]]
+    ) -> Callable[[Dict[Any, Any]], Awaitable[None]]:
+        async def wrapper(event: Dict[Any, Any]) -> None:
             integration_identifier = (
                 event.get("diff", {}).get("after", {}).get("identifier")
             )
 
             if integration_identifier == self.installation_id:
-                callback()
+                await callback(event)
 
         return wrapper
 
-    def create_trigger_channel(self):
+    async def create_trigger_channel(self) -> None:
         if self.trigger_channel_type == "KAFKA":
+            kafka_creds = await self.context.port_client.get_kafka_creds()
+            org_id = await self.context.port_client.get_org_id()
             self._trigger_channel = KafkaTriggerChannel(
-                on_action=self.on_event(self.events["action"]),
-                on_changelog_event=self.on_event(self.events["resync"]),
+                {
+                    "on_resync": self.on_event(self.events["on_resync"]),
+                    "on_action": self.on_event(self.events["on_action"]),
+                },
+                KafkaConsumerConfig(
+                    username=kafka_creds["username"],
+                    password=kafka_creds["password"],
+                    brokers=self.context.config.trigger_channel.brokers,
+                    security_protocol=self.context.config.trigger_channel.security_protocol,
+                    authentication_mechanism=self.context.config.trigger_channel.authentication_mechanism,
+                ),
+                org_id,
             )
         else:
             raise Exception("Trigger channel type not supported")

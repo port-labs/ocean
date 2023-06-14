@@ -16,10 +16,9 @@ class PortSettings(BaseModel):
 
 class TriggerChannelSettings(BaseModel):
     type: str
-    kafka_consumer_brokers: str = ""
-    kafka_consumer_security_protocol: str = "SASL_SSL"
-    kafka_consumer_authentication_mechanism: str = "SCRAM-SHA-512"
-    kafka_security_enabled: bool = True
+    brokers: str = ""
+    security_protocol: str = "SASL_SSL"
+    authentication_mechanism: str = "SCRAM-SHA-512"
 
 
 class IntegrationSettings(BaseModel):

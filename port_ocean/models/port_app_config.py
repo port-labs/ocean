@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from pydantic import BaseModel, Field
 
@@ -7,7 +7,8 @@ class EntityMapping(BaseModel):
     identifier: str
     title: str
     blueprint: str
-    properties: dict = Field(default_factory=dict)
+    properties: Dict[str, str] = Field(default_factory=dict)
+    relations: Dict[str, str] = Field(default_factory=dict)
 
 
 class PortResourceConfig(BaseModel):

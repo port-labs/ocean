@@ -1,23 +1,28 @@
-import logging
+import json
 import signal
-from typing import Any, Callable
+from typing import Any, Callable, Awaitable, Dict
 
-from confluent_kafka import Consumer, KafkaException, Message
-from src.port_ocean.consumers.base_consumer import BaseConsumer
+from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
+from loguru import logger
+from pydantic import BaseModel
 
-from src.port_ocean import settings
+from port_ocean.consumers.base_consumer import BaseConsumer
 
-logging.basicConfig(level=settings.LOG_LEVEL)
-logger = logging.getLogger(__name__)
+
+class KafkaConsumerConfig(BaseModel):
+    brokers: str
+    username: str
+    password: str
+    security_protocol: str
+    authentication_mechanism: str
 
 
 class KafkaConsumer(BaseConsumer):
     def __init__(
         self,
-        msg_process: Callable[[Message], None],
-        consumer: Consumer = None,
-        kafka_creds: dict = None,
-        org_id: str = None,
+        msg_process: Callable[[Dict[Any, Any], str], Awaitable[None]],
+        config: KafkaConsumerConfig,
+        org_id: str | None = None,
     ) -> None:
         self.running = False
         self.org_id = org_id
@@ -27,26 +32,23 @@ class KafkaConsumer(BaseConsumer):
 
         self.msg_process = msg_process
 
-        if consumer:
-            self.consumer = consumer
-        else:
-            if settings.KAFKA_SECURITY_ENABLED:
-                conf = {
-                    "bootstrap.servers": settings.KAFKA_CONSUMER_BROKERS,
-                    "security.protocol": settings.KAFKA_CONSUMER_SECURITY_PROTOCOL,
-                    "sasl.mechanism": settings.KAFKA_CONSUMER_AUTHENTICATION_MECHANISM,
-                    "sasl.username": kafka_creds["username"],
-                    "sasl.password": kafka_creds["password"],
-                    "group.id": kafka_creds["username"],
-                    "enable.auto.commit": "false",
-                }
-            else:
-                conf = {
-                    "bootstrap.servers": settings.KAFKA_CONSUMER_BROKERS,
-                    "group.id": "no-security",
-                    "enable.auto.commit": "false",
-                }
-            self.consumer = Consumer(conf)
+        self.consumer = Consumer(
+            {
+                "bootstrap.servers": config.brokers,
+                "security.protocol": config.security_protocol,
+                "sasl.mechanism": config.authentication_mechanism,
+                "sasl.username": config.username,
+                "sasl.password": config.password,
+                "group.id": config.username,
+                "enable.auto.commit": "false",
+            }
+        )
+
+    def _handle_message(self, raw_msg: Message) -> None:
+        message = json.loads(raw_msg.value(None).decode())
+        topic = raw_msg.topic()
+
+        self.msg_process(message, topic)
 
     def start(self) -> None:
         try:
@@ -73,7 +75,7 @@ class KafkaConsumer(BaseConsumer):
                                 msg.partition(),
                                 msg.offset(),
                             )
-                            self.msg_process(msg)
+                            self._handle_message(msg)
                         except Exception as process_error:
                             logger.error(
                                 "Failed process message"

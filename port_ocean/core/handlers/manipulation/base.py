@@ -2,7 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import List, TypeVar, Union, Generic, Tuple
 
-from port_ocean.core.handlers.base import BaseHandler
+from port_ocean.core.base import BaseWithContext
 from port_ocean.models.diff import Change
 from port_ocean.models.port import Entity, Blueprint
 from port_ocean.models.port_app_config import ResourceConfig
@@ -27,7 +27,7 @@ def flatten_diff(changes: List[PortObjectDiff[T]]) -> PortObjectDiff[T]:
 PortDiff = Tuple[PortObjectDiff[Entity], PortObjectDiff[Blueprint]]
 
 
-class BaseManipulation(BaseHandler):
+class BaseManipulation(BaseWithContext):
     @abstractmethod
     def get_diff(self, mapping: ResourceConfig, raw_data: List[Change]) -> PortDiff:
         pass

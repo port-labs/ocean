@@ -56,7 +56,7 @@ class BaseYamlSettings(BaseSettings):
         yaml_file = "./config.yaml"
 
         @classmethod
-        def customise_sources(cls, init_settings, *_, **__):
+        def customise_sources(cls, init_settings, *_, **__):  # type: ignore
             return (
                 init_settings,
                 lambda s: yaml_config_settings_source(

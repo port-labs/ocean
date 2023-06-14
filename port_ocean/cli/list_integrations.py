@@ -1,7 +1,7 @@
 import requests
 
 
-def list_git_folders(repo_url, path):
+def list_git_folders(repo_url: str, path: str) -> list[str]:
     # Parse the repository URL to extract the owner and repository name
     parts = repo_url.split("/")
     owner = parts[-2]

@@ -1,10 +1,14 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+
+from port_ocean.core.trigger_channel.models import Events
 
 
 class BaseTriggerChannel:
-    @abstractmethod
-    def __init__(self, config: dict, on_resync: callable, on_changelog_event: callable):
-        self.config = config
+    def __init__(
+        self,
+        events: Events,
+    ):
+        self.events = events
 
     @abstractmethod
     def start(self) -> None:

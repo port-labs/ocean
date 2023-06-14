@@ -1,18 +1,17 @@
 from dataclasses import dataclass
-from typing import Callable, NoReturn
+from typing import Callable, TYPE_CHECKING, Optional
 
 from fastapi import APIRouter
 from werkzeug.local import LocalProxy, LocalStack
 
+from port_ocean.clients.port import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.context.event import NoContextError
-from port_ocean.core.integrations.base import (
-    BaseIntegration,
-    RESYNC_EVENT_LISTENER,
-    START_EVENT_LISTENER,
-)
-from port_ocean.clients.port import PortClient
 from port_ocean.models.diff import Change
+from port_ocean.types import RESYNC_EVENT_LISTENER, START_EVENT_LISTENER
+
+if TYPE_CHECKING:
+    from port_ocean.core.integrations.base import BaseIntegration
 
 
 class PortOceanContextNotFoundError(NoContextError):
@@ -24,7 +23,7 @@ class PortOceanContext:
     config: IntegrationConfiguration
     port_client: PortClient
     _router: APIRouter | None
-    integration: BaseIntegration | None = None
+    integration: Optional["BaseIntegration"] = None
 
     @property
     def router(self) -> APIRouter:
@@ -52,7 +51,7 @@ class PortOceanContext:
 
         return wrapper
 
-    async def register_change(self, kind: str, change: Change) -> NoReturn:
+    async def register_change(self, kind: str, change: Change) -> None:
         if self.integration:
             await self.integration.register_state(kind, change)
         else:

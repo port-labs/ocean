@@ -1,23 +1,28 @@
 from importlib.util import spec_from_file_location, module_from_spec
 from inspect import getmembers, isclass
 from types import ModuleType
-from typing import TypeVar
+from typing import Type
 
 import uvicorn
 from fastapi import FastAPI, APIRouter
+from loguru import logger
 
 from port_ocean.clients.port import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
-from port_ocean.context.integration import initialize_port_ocean_context, ocean
+from port_ocean.context.integration import PortOceanContext
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.logging import logger
-
-T = TypeVar('T', bound=type)
 
 
-def _get_class_from_module(module: ModuleType, base_class: T) -> T:
+def _get_base_integration_class_from_module(
+    module: ModuleType,
+) -> Type[BaseIntegration]:
     for name, obj in getmembers(module):
-        if isclass(obj) and issubclass(obj, base_class) and obj != base_class:  # noqa
+        if (
+            isclass(obj)
+            and type(obj) == type
+            and issubclass(obj, BaseIntegration)
+            and obj != BaseIntegration
+        ):
             return obj
 
     raise Exception(f"Failed to load integration from module: {module.__name__}")
@@ -41,7 +46,7 @@ def _load_module(file_path: str) -> ModuleType:
     return module
 
 
-def _include_target_channel_router(app: FastAPI) -> None:
+def _include_target_channel_router(app: FastAPI, ocean: PortOceanContext) -> None:
     target_channel_router = APIRouter()
 
     @target_channel_router.post("/resync")
@@ -55,6 +60,8 @@ def _include_target_channel_router(app: FastAPI) -> None:
 
 
 def run(path: str) -> None:
+    from port_ocean.context.integration import initialize_port_ocean_context, ocean
+
     config = IntegrationConfiguration(base_path=path)
     app = FastAPI()
     router = APIRouter()
@@ -66,16 +73,16 @@ def run(path: str) -> None:
     )
     initialize_port_ocean_context(config, port_client, router)
     module = _load_module(f"{path}/integration.py")
-    integration_class = _get_class_from_module(module, BaseIntegration)
+    integration_class = _get_base_integration_class_from_module(module)
 
-    integration = integration_class(ocean, logger)
+    integration = integration_class(ocean)
     ocean.integration = integration
 
     _load_module(f"{path}/main.py")
 
     app.include_router(router, prefix="/integration")
     if config.trigger_channel.type == "http":
-        _include_target_channel_router(app)
+        _include_target_channel_router(app, ocean)
 
     @app.on_event("startup")
     async def startup() -> None:

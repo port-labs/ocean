@@ -242,6 +242,52 @@ files = [
 ]
 
 [[package]]
+name = "confluent-kafka"
+version = "2.1.1"
+description = "Confluent's Python client for Apache Kafka"
+optional = false
+python-versions = "*"
+files = [
+    {file = "confluent-kafka-2.1.1.tar.gz", hash = "sha256:a665e74030a85c5f4203538cfe77e401133a849c4b92052a60225b26052a7e9d"},
+    {file = "confluent_kafka-2.1.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:50b80f7ed6a187f3b3b109ccbf89c4ddf16280c5717d8ee25cd9fac001baae7a"},
+    {file = "confluent_kafka-2.1.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:5de086a2e607f73ecab9d49b8d1c2adc2ed6a328e4087996f16742acc69062b8"},
+    {file = "confluent_kafka-2.1.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:22c88b63dded4c4b71e1e704f04c7209c8e04938b050e399b1883e3411899fe6"},
+    {file = "confluent_kafka-2.1.1-cp310-cp310-manylinux_2_28_aarch64.whl", hash = "sha256:c5ce525dbccabbf8cd0f0df975237e5c823a286b9a853fdeac8141336c29b4ef"},
+    {file = "confluent_kafka-2.1.1-cp310-cp310-win_amd64.whl", hash = "sha256:b517bcd0cbe88abbad60a1a6176f1c8db45d512f109b1a65f0110af4d92aba7c"},
+    {file = "confluent_kafka-2.1.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:f37cdeacb94a1c43b8bc5dddbe44b0bd72b932b906597ad62795cd43ef5aa6b8"},
+    {file = "confluent_kafka-2.1.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:4767e049c7d76e73b3c9fc036fcab24f1cff79b98c55d78b06edb4354b6e59c1"},
+    {file = "confluent_kafka-2.1.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c906bb753381c809dbd8576507ff3410193f8edb28a63caef85ccd0f85996b4d"},
+    {file = "confluent_kafka-2.1.1-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:7a6eb7aaced82bf0f99702e76829dfe0d318a5c504bd6a6c36a63737e4b6ff36"},
+    {file = "confluent_kafka-2.1.1-cp311-cp311-win_amd64.whl", hash = "sha256:82322e774f307d7fce236a47ced2830a92a43f98194c1d2a277b366587def382"},
+    {file = "confluent_kafka-2.1.1-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:c378b7d01ea1f4b2fc587ccd6f17059b1afd2d39489de797e0df87ec25ab8a67"},
+    {file = "confluent_kafka-2.1.1-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d673820d3473406fbd30e0a38d6fbd6b7b5a6a0db36ca2c1b4a7d5b9bc079dd1"},
+    {file = "confluent_kafka-2.1.1-cp36-cp36m-manylinux_2_28_aarch64.whl", hash = "sha256:9069cf9190d121e7a479dde2eb0b89f7f62aeb7ac48d56d28d7d4bc20689c233"},
+    {file = "confluent_kafka-2.1.1-cp36-cp36m-win_amd64.whl", hash = "sha256:326ec2261d994d2cede682d6015d5a10f188d82f0bff9c895e07e59b9e227138"},
+    {file = "confluent_kafka-2.1.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:a91c34aa8f3e4d095f5ed9f5cd7edf1217bed9bb69da412efd8541ace3683860"},
+    {file = "confluent_kafka-2.1.1-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dac1be768ece728ca9a15933a2f6c8184a4f0854d81a22302c90a222ec8ca55a"},
+    {file = "confluent_kafka-2.1.1-cp37-cp37m-manylinux_2_28_aarch64.whl", hash = "sha256:369dfd5d8cd84cf1d9355054e0f2c9e9b8cf3877aeab4a85aec8909e775ae4c2"},
+    {file = "confluent_kafka-2.1.1-cp37-cp37m-win_amd64.whl", hash = "sha256:82e286f573904e141f4e56add54f35f6f407713e329a344e0589443591c68481"},
+    {file = "confluent_kafka-2.1.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:51d02f06e67a316d0c4a2cd939bef925ee87488eef78f63e5a054b1b3c5c4431"},
+    {file = "confluent_kafka-2.1.1-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:09c6c44b484c75e88aad802b0433793969218af925d0b9fed4caae704fcd01d6"},
+    {file = "confluent_kafka-2.1.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:58126c36afea4c0de58342c5da3c4de2ce46b0951f3c8addb50f9ab340bddb39"},
+    {file = "confluent_kafka-2.1.1-cp38-cp38-manylinux_2_28_aarch64.whl", hash = "sha256:cb7b2f61db54f4b16609273f42c19fb05d69f44df5af8eaeff7cc502a9b8ff8f"},
+    {file = "confluent_kafka-2.1.1-cp38-cp38-win_amd64.whl", hash = "sha256:7fbaeaf4d236dd62b2822bdd48f276a8b39adc0987d021874368a69ac3b78fab"},
+    {file = "confluent_kafka-2.1.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:ca305c3256f7943ff0127d5e9797f7e4c314838232749db4ac8920552c38c0dd"},
+    {file = "confluent_kafka-2.1.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:e30ece4692355cc61b0acfe70d319c6ed4e38110e9b16c82619b46b58485f16b"},
+    {file = "confluent_kafka-2.1.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1cb88bd70cfc191cc81f6164f1f898f8bf2ec501ab7abb03629102b62b706c8a"},
+    {file = "confluent_kafka-2.1.1-cp39-cp39-manylinux_2_28_aarch64.whl", hash = "sha256:cb3c81563fcc9071ae799529a7a1a3aa8fb4d94770222aaa811b3e2a54e87f8a"},
+    {file = "confluent_kafka-2.1.1-cp39-cp39-win_amd64.whl", hash = "sha256:bea62d091cc38a305ab877b349931ae69064b9ea50f350d9f91a86d01b10d85c"},
+]
+
+[package.extras]
+avro = ["avro (>=1.11.1,<2)", "fastavro (>=0.23.0,<1.0)", "fastavro (>=1.0)", "requests"]
+dev = ["avro (>=1.11.1,<2)", "fastavro (>=0.23.0,<1.0)", "fastavro (>=1.0)", "flake8", "pytest", "pytest (==4.6.4)", "pytest-timeout", "requests"]
+doc = ["avro (>=1.11.1,<2)", "fastavro (>=0.23.0,<1.0)", "fastavro (>=1.0)", "requests", "sphinx", "sphinx-rtd-theme"]
+json = ["jsonschema", "pyrsistent", "pyrsistent (==0.16.1)", "requests"]
+protobuf = ["protobuf", "requests"]
+schema-registry = ["requests"]
+
+[[package]]
 name = "cookiecutter"
 version = "2.1.1"
 description = "A command-line utility that creates projects from project templates, e.g. creating a Python package project from a Python package project template."
@@ -1009,6 +1055,42 @@ files = [
 ]
 
 [[package]]
+name = "types-pyyaml"
+version = "6.0.12.10"
+description = "Typing stubs for PyYAML"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-PyYAML-6.0.12.10.tar.gz", hash = "sha256:ebab3d0700b946553724ae6ca636ea932c1b0868701d4af121630e78d695fc97"},
+    {file = "types_PyYAML-6.0.12.10-py3-none-any.whl", hash = "sha256:662fa444963eff9b68120d70cda1af5a5f2aa57900003c2006d7626450eaae5f"},
+]
+
+[[package]]
+name = "types-requests"
+version = "2.31.0.1"
+description = "Typing stubs for requests"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-requests-2.31.0.1.tar.gz", hash = "sha256:3de667cffa123ce698591de0ad7db034a5317457a596eb0b4944e5a9d9e8d1ac"},
+    {file = "types_requests-2.31.0.1-py3-none-any.whl", hash = "sha256:afb06ef8f25ba83d59a1d424bd7a5a939082f94b94e90ab5e6116bd2559deaa3"},
+]
+
+[package.dependencies]
+types-urllib3 = "*"
+
+[[package]]
+name = "types-urllib3"
+version = "1.26.25.13"
+description = "Typing stubs for urllib3"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-urllib3-1.26.25.13.tar.gz", hash = "sha256:3300538c9dc11dad32eae4827ac313f5d986b8b21494801f1bf97a1ac6c03ae5"},
+    {file = "types_urllib3-1.26.25.13-py3-none-any.whl", hash = "sha256:5dbd1d2bef14efee43f5318b5d36d805a489f6600252bb53626d4bfafd95e27c"},
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.6.3"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -1175,4 +1257,4 @@ cli = ["click", "cookiecutter", "rich"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "625683f67246ff919504db8a4cfef3870750b23b4bba01b56966d53d9e0319fc"
+content-hash = "4824bdf7080815cd52634d5e85090a3024c7831bfca87cc68aba60806eb02586"
