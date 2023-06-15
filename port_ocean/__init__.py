@@ -1,7 +1,9 @@
+from importlib.util import find_spec
+
 try:
-    import click
-    import cookiecutter  # type: ignore
-    import rich
+    find_spec("click")
+    find_spec("cookiecutter")
+    find_spec("rich")
 
     cli_included = True
 except ImportError:
@@ -13,7 +15,7 @@ defaults = [
     "consumers",
     "context",
     "core",
-    "models",
+    "common",
     "logging",
     "port_ocean",
 ]

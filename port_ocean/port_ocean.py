@@ -39,7 +39,8 @@ def _load_module(file_path: str) -> ModuleType:
         spec.loader.exec_module(module)
     except Exception as e:
         logger.error(
-            f"Failed to load integration with error: {e}, please validate the integration type exists"
+            f"Failed to load integration with error: {e}, "
+            f"please validate the integration type exists"
         )
         raise e
 

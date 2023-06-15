@@ -5,7 +5,8 @@ from typing import TypedDict, Dict, Any
 import requests
 from pydantic import BaseModel, Field, PrivateAttr
 
-from port_ocean.models.port import Entity
+from port_ocean.core.handlers.manipulation.base import Entity
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,10 @@ class PortClient:
 
         if not response.ok:
             logger.error(
-                f"Error upserting entity: {entity.identifier} of blueprint: {entity.blueprint}, error: {response.text}"
+                f"Error upserting "
+                f"entity: {entity.identifier} of "
+                f"blueprint: {entity.blueprint}, "
+                f"error: {response.text}"
             )
             response.raise_for_status()
 
@@ -114,12 +118,15 @@ class PortClient:
 
         if not response.ok:
             logger.error(
-                f"Error deleting entity: {entity.identifier} of blueprint: {entity.blueprint}, error: {response.text}"
+                f"Error deleting "
+                f"entity: {entity.identifier} of "
+                f"blueprint: {entity.blueprint}, "
+                f"error: {response.text}"
             )
             response.raise_for_status()
 
     async def get_kafka_creds(self) -> KafkaCreds:
-        logger.info(f"Get kafka credentials")
+        logger.info("Get kafka credentials")
 
         response = requests.get(
             f"{self.api_url}/kafka-credentials", headers=self.headers
@@ -131,7 +138,7 @@ class PortClient:
         return response.json()
 
     async def get_org_id(self) -> str:
-        logger.info(f"Get organization id")
+        logger.info("Get organization id")
 
         response = requests.get(f"{self.api_url}/organization", headers=self.headers)
         if not response.ok:
@@ -140,7 +147,7 @@ class PortClient:
 
         return response.json()["organization"]["id"]
 
-    async def get_integration(self, identifier: str) -> Dict[Any, Any]:
+    async def get_integration(self, identifier: str) -> PortAppConfig:
         logger.info(f"Get integration with id: {identifier}")
 
         integration = requests.get(
@@ -148,7 +155,7 @@ class PortClient:
         )
         integration.raise_for_status()
 
-        return integration.json()
+        return PortAppConfig.parse_obj(integration.json()["config"])
 
     async def initiate_integration(
         self, _id: str, _type: str, changelog_destination: Dict[Any, Any]

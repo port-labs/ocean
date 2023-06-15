@@ -2,9 +2,11 @@ from typing import Callable, Dict, Any, Awaitable
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumerConfig
 from port_ocean.core.base import BaseWithContext
-from port_ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
+from port_ocean.core.trigger_channel.base_trigger_channel import (
+    BaseTriggerChannel,
+    TriggerEventEvents,
+)
 from port_ocean.core.trigger_channel.kafka_trigger_channel import KafkaTriggerChannel
-from port_ocean.core.trigger_channel.models import Events
 
 from port_ocean.context.integration import PortOceanContext
 
@@ -15,7 +17,7 @@ class TriggerChannelFactory(BaseWithContext):
         context: PortOceanContext,
         installation_id: str,
         trigger_channel_type: str,
-        events: Events,
+        events: TriggerEventEvents,
     ):
         super().__init__(context)
         self.installation_id = installation_id

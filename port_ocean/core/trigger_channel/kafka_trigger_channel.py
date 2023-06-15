@@ -1,14 +1,16 @@
 from typing import Dict, Any
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
-from port_ocean.core.trigger_channel.base_trigger_channel import BaseTriggerChannel
-from port_ocean.core.trigger_channel.models import Events
+from port_ocean.core.trigger_channel.base_trigger_channel import (
+    BaseTriggerChannel,
+    TriggerEventEvents,
+)
 
 
 class KafkaTriggerChannel(BaseTriggerChannel):
     def __init__(
         self,
-        events: Events,
+        events: TriggerEventEvents,
         kafka_credentials: KafkaConsumerConfig,
         org_id: str,
     ):

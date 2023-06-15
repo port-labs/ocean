@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 from port_ocean.core.base import BaseWithContext
-from port_ocean.models.port_app_config import PortAppConfig
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
 class BasePortAppConfigWithContext(BaseWithContext):

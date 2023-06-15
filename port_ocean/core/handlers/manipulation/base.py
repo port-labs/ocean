@@ -1,11 +1,39 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import List, TypeVar, Union, Generic, Tuple
+from typing import List, TypeVar, Union, Generic, Tuple, Dict, Any
+
+from pydantic import BaseModel
 
 from port_ocean.core.base import BaseWithContext
-from port_ocean.models.diff import Change
-from port_ocean.models.port import Entity, Blueprint
-from port_ocean.models.port_app_config import ResourceConfig
+from port_ocean.types import ObjectDiff
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+
+
+class Entity(BaseModel):
+    identifier: str
+    blueprint: str
+    title: str | None
+    team: str | None
+    properties: Dict[str, Any]
+    relations: Dict[str, Any]
+
+    def to_api_dict(self) -> Dict[str, Any]:
+        return {
+            "identifier": self.identifier,
+            "title": self.title,
+            "team": self.team,
+            "properties": self.properties,
+            "relations": self.relations,
+        }
+
+
+class Blueprint(BaseModel):
+    identifier: str
+    title: str | None
+    team: str | None
+    properties: Dict[str, Any]
+    relations: Dict[str, Any]
+
 
 T = TypeVar("T", bound=Union[Blueprint, Entity])
 
@@ -29,5 +57,5 @@ PortDiff = Tuple[PortObjectDiff[Entity], PortObjectDiff[Blueprint]]
 
 class BaseManipulation(BaseWithContext):
     @abstractmethod
-    def get_diff(self, mapping: ResourceConfig, raw_data: List[Change]) -> PortDiff:
+    def get_diff(self, mapping: ResourceConfig, raw_data: List[ObjectDiff]) -> PortDiff:
         pass

@@ -12,8 +12,13 @@ install: venv
 	pip install poetry && \
 	poetry install --with dev
 
-run:
+mypy:
+	$(ACTIVATE) && mypy ./port_ocean
+
+run: mypy
 	$(ACTIVATE) && poetry run main.py
+
+test: mypy
 
 generate_dot_env:
 	@if [[ ! -e .env ]]; then \

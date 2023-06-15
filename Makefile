@@ -1,11 +1,26 @@
 SHELL := /bin/bash
 ACTIVATE := . venv/bin/activate
 
+define run_lint
+	mypy $1 || exit_code=$$?; \
+	ruff $1 || exit_code=$$?; \
+	black --check $1 || exit_code=$$?; \
+	\
+	if [ -n "$$exit_code " ]; then \
+		echo "One or more lints failed with exit code $$exit_code"; \
+	fi; \
+	if [ -n "$$exit_code " ] && [ "$2" = 1 ]; then \
+		exit 1; \
+	fi; \
+	echo "All lints executed successfully."
+endef
+
 venv:
 	@if [ ! -d "./venv" ]; then \
 		python3 -m venv "venv"; \
 	fi
 
+# Install dependencies
 install: venv
 	$(ACTIVATE) && \
 	pip install --upgrade pip && \
@@ -18,16 +33,36 @@ install/all: venv
 	pip install poetry && \
 	poetry install --with dev --all-extras
 
-build:
+
+# Linting
+lint/framework:
+	$(ACTIVATE) && \
+	exist_on_first_fail=1; \
+	$(call run_lint,./port_ocean,$$exist_on_first_fail)
+
+lint/integrations:
+	$(ACTIVATE) && \
+	exist_on_first_fail=0; \
+	for dir in $(wildcard $(CURDIR)/integrations/*); do \
+        echo "Linting $$dir"; \
+        $(call run_lint,$$dir,$$exist_on_first_fail) || failed_dirs+=" $$dir"; \
+    done;
+
+lint/all: lint/framework lint/integrations
+
+
+# Development commands
+build: lint/framework
 	$(ACTIVATE) && poetry build
 
-run:
-	$(ACTIVATE) && ocean sail ./integrations/example
+run: lint/framework
+	$(ACTIVATE) && poetry run ocean sail ./integrations/example
 
-generate_dot_env:
-	@if [[ ! -e .env ]]; then \
-		cp .env.example .env; \
-	fi
+new:
+	$(ACTIVATE) && poetry run ocean new ./integrations
+
+test: lint/framework
+	$(ACTIVATE) && pytest
 
 clean:
 	@find . -name '*.pyc' -exec rm -rf {} \;

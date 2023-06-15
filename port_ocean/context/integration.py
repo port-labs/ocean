@@ -6,16 +6,11 @@ from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.clients.port import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
-from port_ocean.context.event import NoContextError
-from port_ocean.models.diff import Change
-from port_ocean.types import RESYNC_EVENT_LISTENER, START_EVENT_LISTENER
+from port_ocean.errors import PortOceanContextNotFoundError
+from port_ocean.types import RESYNC_EVENT_LISTENER, START_EVENT_LISTENER, ObjectDiff
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
-
-
-class PortOceanContextNotFoundError(NoContextError):
-    pass
 
 
 @dataclass
@@ -51,7 +46,7 @@ class PortOceanContext:
 
         return wrapper
 
-    async def register_change(self, kind: str, change: Change) -> None:
+    async def register_change(self, kind: str, change: ObjectDiff) -> None:
         if self.integration:
             await self.integration.register_state(kind, change)
         else:

@@ -5,22 +5,23 @@ import jq  # type: ignore
 from port_ocean.core.handlers.manipulation.base import (
     BaseManipulation,
     PortDiff,
+    Entity,
+    Blueprint,
 )
 from port_ocean.core.utils import (
     is_same_entity,
     get_object_diff,
     is_same_blueprint,
 )
-from port_ocean.models.diff import Change
-from port_ocean.models.port import Blueprint, Entity
-from port_ocean.models.port_app_config import ResourceConfig
+from port_ocean.types import ObjectDiff
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 
 class JQManipulation(BaseManipulation):
     def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         try:
             return jq.first(pattern, data) or None
-        except:
+        except Exception:
             return None
 
     def _search_as_bool(self, data: Dict[str, Any], pattern: str) -> bool:
@@ -41,7 +42,7 @@ class JQManipulation(BaseManipulation):
                     result[key] = self._search_as_object(data, value)
                 else:
                     result[key] = self._search(data, value)
-            except:
+            except Exception:
                 result[key] = None
         return result
 
@@ -83,7 +84,9 @@ class JQManipulation(BaseManipulation):
             ],
         )
 
-    def get_diff(self, mapping: ResourceConfig, raw_results: List[Change]) -> PortDiff:
+    def get_diff(
+        self, mapping: ResourceConfig, raw_results: List[ObjectDiff]
+    ) -> PortDiff:
         entities_before, blueprints_before, entities_after, blueprints_after = zip(
             *(
                 (

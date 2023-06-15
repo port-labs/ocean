@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# ruff: noqa: E501
 
 import os
 
@@ -47,7 +48,8 @@ def sail(path: str) -> None:
 
 
 @cli_start.command()
-def new() -> None:
+@click.argument("path", default=".")
+def new(path: str) -> None:
     print_logo()
 
     console = Console()
@@ -55,7 +57,8 @@ def new() -> None:
         "🚢 Unloading cargo... Setting up your integration at the port.", style="bold"
     )
 
-    cookiecutter(f"{os.path.dirname(__file__)}/cookiecutter")
+    result = cookiecutter(f"{os.path.dirname(__file__)}/cookiecutter", output_dir=path)
+    name = result.split("/")[-1]
 
     console.print(
         "\n🌊 Ahoy, Captain! Your project has set sail into the vast ocean of possibilities!",
@@ -63,13 +66,16 @@ def new() -> None:
     )
     console.print("Here are your next steps: \n", style="bold")
     console.print(
-        "⚓️ Install necessary packages: Run [bold][blue]make install[/blue][/bold] to install all required packages for your project."
+        "⚓️ Install necessary packages: Run [bold][blue]make install[/blue][/bold] to install all required packages for your project.\n"
+        f"▶️ [bold][blue]cd {path}/{name} && make install && . venv/bin/activate[/blue][/bold]\n"
     )
     console.print(
-        "⚓️ Set sail with [blue]Ocean[/blue]: Run [bold][blue]ocean sail[/blue] <path_to_integration>[/bold] to run the project using Ocean."
+        "⚓️ Set sail with [blue]Ocean[/blue]: Run [bold][blue]ocean sail[/blue] <path_to_integration>[/bold] to run the project using Ocean.\n"
+        f"▶️ [bold][blue]ocean sail {path}/{name}[/blue][/bold] \n"
     )
     console.print(
         "⚓️ Smooth sailing with [blue]Make[/blue]: Alternatively, you can run [bold][blue]make run[/blue][/bold] to launch your project using Make. \n"
+        f"▶️ [bold][blue]make run {path}/{name}[/blue][/bold]"
     )
 
 

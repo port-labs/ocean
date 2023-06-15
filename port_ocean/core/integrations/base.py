@@ -2,7 +2,6 @@ from abc import abstractmethod
 from typing import (
     List,
     Callable,
-    TypedDict,
     Dict,
     Any,
 )
@@ -20,14 +19,13 @@ from port_ocean.core.handlers import (
 from port_ocean.core.trigger_channel.trigger_channel_factory import (
     TriggerChannelFactory,
 )
-from port_ocean.models.diff import Change
-from port_ocean.models.port_app_config import ResourceConfig
-from port_ocean.types import START_EVENT_LISTENER, RESYNC_EVENT_LISTENER
-
-
-class EventsCallbacks(TypedDict):
-    start: List[START_EVENT_LISTENER]
-    resync: List[RESYNC_EVENT_LISTENER]
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.types import (
+    START_EVENT_LISTENER,
+    RESYNC_EVENT_LISTENER,
+    ObjectDiff,
+    IntegrationEventsCallbacks,
+)
 
 
 class BaseIntegration:
@@ -50,7 +48,7 @@ class BaseIntegration:
 
         self.started = False
         self.context = context
-        self.event_strategy: EventsCallbacks = {
+        self.event_strategy: IntegrationEventsCallbacks = {
             "start": [],
             "resync": [],
         }
@@ -94,7 +92,7 @@ class BaseIntegration:
         return self._transport
 
     @abstractmethod
-    async def _on_resync(self, kind: str) -> Change:
+    async def _on_resync(self, kind: str) -> ObjectDiff:
         pass
 
     def on_start(self, func: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
@@ -105,14 +103,16 @@ class BaseIntegration:
         self.event_strategy["resync"].append(func)
         return func
 
-    async def _register_raw(self, raw_diff: Dict[ResourceConfig, List[Change]]) -> None:
+    async def _register_raw(
+        self, raw_diff: Dict[ResourceConfig, List[ObjectDiff]]
+    ) -> None:
         parsed_entities = [
             self.manipulation.get_diff(mapping, results)
             for mapping, results in raw_diff.items()
         ]
         await self.port_client.update_diff(parsed_entities)
 
-    async def register_state(self, kind: str, entities_state: Change) -> None:
+    async def register_state(self, kind: str, entities_state: ObjectDiff) -> None:
         config = await self.port_app_config.get_port_app_config()
         resource_mappings = [
             resource for resource in config.resources if resource.kind == kind

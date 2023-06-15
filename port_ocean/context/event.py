@@ -2,15 +2,11 @@ from dataclasses import dataclass, field
 
 from werkzeug.local import LocalStack, LocalProxy
 
-from port_ocean.models.port_app_config import PortAppConfig, ResourceConfig
-
-
-class NoContextError(Exception):
-    pass
-
-
-class EventContextNotFoundError(NoContextError):
-    pass
+from port_ocean.core.handlers.port_app_config.models import (
+    PortAppConfig,
+    ResourceConfig,
+)
+from port_ocean.errors import EventContextNotFoundError
 
 
 @dataclass

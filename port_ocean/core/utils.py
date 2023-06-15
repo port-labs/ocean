@@ -1,7 +1,6 @@
 from typing import List, Set, TypeVar, Callable, Iterable, Union
 
-from port_ocean.core.handlers.manipulation.base import PortObjectDiff
-from port_ocean.models.port import Entity, Blueprint
+from port_ocean.core.handlers.manipulation.base import PortObjectDiff, Entity, Blueprint
 
 
 def is_same_entity(firs_entity: Entity, second_entity: Entity) -> bool:

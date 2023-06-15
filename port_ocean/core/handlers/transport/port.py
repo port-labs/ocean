@@ -5,9 +5,10 @@ from port_ocean.core.handlers.manipulation.base import (
     PortDiff,
     PortObjectDiff,
     flatten_diff,
+    Entity,
+    Blueprint,
 )
 from port_ocean.core.handlers.transport.base import BaseTransport
-from port_ocean.models.port import Entity, Blueprint
 
 Node = Tuple[str, str]
 
