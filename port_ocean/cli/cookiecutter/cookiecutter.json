@@ -3,7 +3,7 @@
     "integration_slug": "{{ cookiecutter.integration_name.lower().replace(' ', '_') }}",
     "integration_short_description": "A short description of the project",
     "full_name": "Your name",
-    "email": "Your address email (you@example.com)",
+    "email": "Your address email <you@example.com>",
     "release_date": "{% now 'local' %}",
     "version": "0.1.0",
     "_extensions": [

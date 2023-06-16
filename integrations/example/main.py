@@ -3,7 +3,9 @@ from port_ocean.types import ObjectDiff
 
 
 @ocean.on_resync()
-async def resync(kind: str) -> ObjectDiff:
+async def on_resync(kind: str) -> ObjectDiff:
+    # Get all data from the source system
+    # Return raw data to run manipulation over
     return {
         "before": [],
         "after": [
@@ -16,9 +18,11 @@ async def resync(kind: str) -> ObjectDiff:
     }
 
 
+# Optional
 @ocean.on_start()
-async def start():
-    print("start")
+async def on_start() -> None:
+    # Something to do when the integration starts
+    print("Starting integration")
 
 
 @ocean.router.post("/test")
