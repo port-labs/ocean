@@ -1,5 +1,4 @@
 import asyncio
-from abc import abstractmethod
 from typing import (
     List,
     Dict,
@@ -12,14 +11,13 @@ from loguru import logger
 
 from port_ocean.context.event import EventContext, initialize_event_context
 from port_ocean.context.integration import PortOceanContext
-
-from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
-from port_ocean.core.trigger_channel.trigger_channel_factory import (
-    TriggerChannelFactory,
-)
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     PortAppConfig,
+)
+from port_ocean.core.integrations.mixins import HandlerMixin, EventsMixin
+from port_ocean.core.trigger_channel.trigger_channel_factory import (
+    TriggerChannelFactory,
 )
 from port_ocean.core.utils import validate_result
 from port_ocean.types import (

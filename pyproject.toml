@@ -63,6 +63,11 @@ no_implicit_reexport = true
 # for strict mypy: (this is the tricky one :-))
 disallow_untyped_defs = true
 
+
+[tool.ruff]
+# Never enforce `E501` (line length violations).
+ignore = ["E501"]
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true

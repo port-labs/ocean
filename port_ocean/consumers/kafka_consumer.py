@@ -56,7 +56,7 @@ class KafkaConsumer(BaseConsumer):
         message = json.loads(raw_msg.value().decode())
         topic = raw_msg.topic()
 
-        async def try_wrapper():
+        async def try_wrapper() -> None:
             try:
                 await self.msg_process(message, topic)
             except Exception as e:

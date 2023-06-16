@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, TYPE_CHECKING, Optional
+from typing import Callable, TYPE_CHECKING
 
 from fastapi import APIRouter
 from werkzeug.local import LocalProxy, LocalStack

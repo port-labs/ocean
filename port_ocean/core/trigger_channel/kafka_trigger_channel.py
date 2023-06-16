@@ -1,5 +1,5 @@
 import threading
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.integration import (
@@ -49,10 +49,12 @@ class KafkaTriggerChannel(BaseTriggerChannel):
         if "runs" in topic:
             await self.events["on_action"](message)
 
-    def wrapped_start(self, context: PortOceanContext, func):
+    def wrapped_start(
+        self, context: PortOceanContext, func: Callable[[], None]
+    ) -> Callable[[], None]:
         ocean_app = context.app
 
-        def wrapper():
+        def wrapper() -> None:
             initialize_port_ocean_context(ocean_app=ocean_app)
             func()
 
