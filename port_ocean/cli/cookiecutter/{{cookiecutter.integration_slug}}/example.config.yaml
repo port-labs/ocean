@@ -9,17 +9,13 @@ port:
   baseUrl: https://api.getport.io/v1 # Can be loaded via environment variable: PORT_BASE_URL, if both are set, the environment variable will be used.
 # The trigger channel to use for the integration service.
 triggerChannel: 
-  type: kafka
-integrations:
+  type: KAFKA
+integration:
   # The name of the integration.
-  - identifier: "my_integration"
-    # The type of the integration.
-    type: "kafka"
-    # The configuration of the integration.
-    # resyncOnStartup: true
-    config:
-      bootstrapServers: "localhost:9092"
-  - identifier: "pager_duty"
-    type : "pager_duty"
-    config: 
-      token: "TOKEN"
+  identifier: "my_integration"
+  # The type of the integration.
+  type: "KAFKA"
+  # The configuration of the integration.
+  # resyncOnStartup: true
+  config:
+    bootstrapServers: "localhost:9092"
