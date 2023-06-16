@@ -7,11 +7,12 @@ define run_lint
 	black --check $1 || exit_code=$$?; \
 	\
 	if [ -n "$$exit_code " ]; then \
-		echo "One or more lints failed with exit code $$exit_code"; \
+		echo -e "\033[0;31mOne or more lints failed with exit code $$exit_code\033[0m"; \
 	fi; \
 	if [ -n "$$exit_code " ] && [ "$2" = 1 ]; then \
 		exit 1; \
 	fi; \
+
 	echo "All lints executed successfully."
 endef
 
