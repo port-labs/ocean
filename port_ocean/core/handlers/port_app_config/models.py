@@ -39,14 +39,16 @@ class ResourceConfig(BaseModel):
 
 
 class PortAppConfig(BaseModel):
-    spec_path: str | List[str] = Field(..., alias="specPath")
-    branch: str = "main"
-    enable_merge_entity: bool = Field(..., alias="enableMergeEntity")
-    delete_dependent_entities: bool = Field(..., alias="deleteDependentEntities")
-    create_missing_related_entities: bool = Field(
-        ..., alias="createMissingRelatedEntities"
+    spec_path: Optional[str | List[str]] = Field(alias="specPath", default=None)
+    branch: Optional[str] = "main"
+    enable_merge_entity: Optional[bool] = Field(alias="enableMergeEntity", default=None)
+    delete_dependent_entities: Optional[bool] = Field(
+        alias="deleteDependentEntities", default=None
     )
-    merge: bool
+    create_missing_related_entities: Optional[bool] = Field(
+        alias="createMissingRelatedEntities", default=None
+    )
+    merge: Optional[bool] = True
     resources: List[ResourceConfig] = Field(default_factory=list)
 
     class Config:

@@ -19,6 +19,7 @@ class TriggerChannelSettings(BaseModel):
     brokers: str = ""
     security_protocol: str = "SASL_SSL"
     authentication_mechanism: str = "SCRAM-SHA-512"
+    kafka_security_enabled: bool = False
 
 
 class IntegrationSettings(BaseModel):

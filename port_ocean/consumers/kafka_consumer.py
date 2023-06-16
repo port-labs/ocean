@@ -1,3 +1,4 @@
+import asyncio
 import json
 import signal
 from typing import Any, Callable, Awaitable, Dict
@@ -15,6 +16,7 @@ class KafkaConsumerConfig(BaseModel):
     password: str
     security_protocol: str
     authentication_mechanism: str
+    kafka_security_enabled: bool
 
 
 class KafkaConsumer(BaseConsumer):
@@ -31,9 +33,8 @@ class KafkaConsumer(BaseConsumer):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
         self.msg_process = msg_process
-
-        self.consumer = Consumer(
-            {
+        if config.kafka_security_enabled:
+            config = {
                 "bootstrap.servers": config.brokers,
                 "security.protocol": config.security_protocol,
                 "sasl.mechanism": config.authentication_mechanism,
@@ -42,22 +43,38 @@ class KafkaConsumer(BaseConsumer):
                 "group.id": config.username,
                 "enable.auto.commit": "false",
             }
-        )
+        else:
+            config = {
+                "bootstrap.servers": config.brokers,
+                "group.id": "no-security",
+                "enable.auto.commit": "false",
+            }
+
+        self.consumer = Consumer(config)
 
     def _handle_message(self, raw_msg: Message) -> None:
-        message = json.loads(raw_msg.value(None).decode())
+        message = json.loads(raw_msg.value().decode())
         topic = raw_msg.topic()
 
-        self.msg_process(message, topic)
+        async def try_wrapper():
+            try:
+                await self.msg_process(message, topic)
+            except Exception as e:
+                logger.exception(f"Failed to process message: {str(e)}")
+
+        asyncio.run(try_wrapper())
 
     def start(self) -> None:
         try:
+            logger.info("Start consumer...")
+
             self.consumer.subscribe(
                 [f"{self.org_id}.runs", f"{self.org_id}.change.log"],
                 on_assign=lambda _, partitions: logger.info(
-                    "Assignment: %s", partitions
+                    f"Assignment: {partitions}"
                 ),
             )
+            logger.info("Subscribed to topics")
             self.running = True
             while self.running:
                 try:
@@ -70,20 +87,13 @@ class KafkaConsumer(BaseConsumer):
                         try:
                             logger.info(
                                 "Process message"
-                                " from topic %s, partition %d, offset %d",
-                                msg.topic(),
-                                msg.partition(),
-                                msg.offset(),
+                                f" from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}"
                             )
                             self._handle_message(msg)
                         except Exception as process_error:
-                            logger.error(
+                            logger.exception(
                                 "Failed process message"
-                                " from topic %s, partition %d, offset %d: %s",
-                                msg.topic(),
-                                msg.partition(),
-                                msg.offset(),
-                                str(process_error),
+                                f" from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}: {str(process_error)}"
                             )
                         finally:
                             self.consumer.commit(asynchronous=False)

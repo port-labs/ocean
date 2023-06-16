@@ -39,7 +39,7 @@ class TriggerChannelFactory(BaseWithContext):
         return wrapper
 
     async def create_trigger_channel(self) -> None:
-        if self.trigger_channel_type == "KAFKA":
+        if self.trigger_channel_type.lower() == "kafka":
             kafka_creds = await self.context.port_client.get_kafka_creds()
             org_id = await self.context.port_client.get_org_id()
             self._trigger_channel = KafkaTriggerChannel(
@@ -53,10 +53,13 @@ class TriggerChannelFactory(BaseWithContext):
                     brokers=self.context.config.trigger_channel.brokers,
                     security_protocol=self.context.config.trigger_channel.security_protocol,
                     authentication_mechanism=self.context.config.trigger_channel.authentication_mechanism,
+                    kafka_security_enabled=self.context.config.trigger_channel.kafka_security_enabled,
                 ),
                 org_id,
             )
         else:
-            raise Exception("Trigger channel type not supported")
+            raise Exception(
+                f"Trigger channel {self.trigger_channel_type} not supported"
+            )
 
         self._trigger_channel.start()

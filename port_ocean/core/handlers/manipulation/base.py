@@ -17,15 +17,6 @@ class Entity(BaseModel):
     properties: Dict[str, Any]
     relations: Dict[str, Any]
 
-    def to_api_dict(self) -> Dict[str, Any]:
-        return {
-            "identifier": self.identifier,
-            "title": self.title,
-            "team": self.team,
-            "properties": self.properties,
-            "relations": self.relations,
-        }
-
 
 class Blueprint(BaseModel):
     identifier: str
@@ -46,10 +37,13 @@ class PortObjectDiff(Generic[T]):
 
 
 def flatten_diff(changes: List[PortObjectDiff[T]]) -> PortObjectDiff[T]:
-    result: Tuple[List[T], List[T], List[T]] = zip(  # type: ignore
-        *((change.created, change.deleted, change.modified) for change in changes)
+    unpacked_changes = (
+        (change.deleted, change.modified, change.created) for change in changes
     )
-    return PortObjectDiff[T](*result)
+    deleted, modified, created = tuple(  # type: ignore
+        sum(items, []) for items in zip(*unpacked_changes)
+    )
+    return PortObjectDiff[T](deleted, modified, created)
 
 
 PortDiff = Tuple[PortObjectDiff[Entity], PortObjectDiff[Blueprint]]
@@ -57,5 +51,7 @@ PortDiff = Tuple[PortObjectDiff[Entity], PortObjectDiff[Blueprint]]
 
 class BaseManipulation(BaseWithContext):
     @abstractmethod
-    def get_diff(self, mapping: ResourceConfig, raw_data: List[ObjectDiff]) -> PortDiff:
+    async def get_diff(
+        self, mapping: ResourceConfig, raw_data: List[ObjectDiff]
+    ) -> PortDiff:
         pass

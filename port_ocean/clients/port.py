@@ -1,14 +1,12 @@
-import logging
+from loguru import logger
 from datetime import datetime
-from typing import TypedDict, Dict, Any
+from typing import TypedDict, Dict, Any, NotRequired
 
 import requests
 from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.core.handlers.manipulation.base import Entity
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-
-logger = logging.getLogger(__name__)
 
 Headers = TypedDict(
     "Headers",
@@ -24,6 +22,11 @@ KafkaCreds = TypedDict(
         "username": str,
         "password": str,
     },
+)
+
+ChangelogDestination = TypedDict(
+    "ChangelogDestination",
+    {"type": str, "url": NotRequired[str]},
 )
 
 
@@ -56,7 +59,7 @@ class PortClient:
         self._last_token_object: TokenResponse | None = None
 
     def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
-        logger.info(f"Get access token for client: {client_id}")
+        logger.info(f"Fetching access token for clientId: {client_id}")
 
         credentials = {"clientId": client_id, "clientSecret": client_secret}
         token_response = requests.post(
@@ -74,10 +77,13 @@ class PortClient:
 
     @property
     def token(self) -> str:
+        logger.info("Fetching access token")
         if not self._last_token_object or self._last_token_object.expired:
             self._last_token_object = self._get_token(
                 self.client_id, self.client_secret
             )
+        else:
+            logger.info("Access token found in cache")
 
         return self._last_token_object.full_token
 
@@ -88,7 +94,7 @@ class PortClient:
 
         response = requests.post(
             f"{self.api_url}/blueprints/{entity.blueprint}/entities",
-            json=entity.to_api_dict(),
+            json=entity.dict(exclude_unset=True),
             headers=self.headers,
             params={"upsert": "true", "merge": "true"},
         )
@@ -107,9 +113,6 @@ class PortClient:
             f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
         )
 
-        logger.info(
-            f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
-        )
         response = requests.delete(
             f"{self.api_url}/blueprints/{entity.blueprint}/entities/{entity.identifier}",
             headers=self.headers,
@@ -126,7 +129,7 @@ class PortClient:
             response.raise_for_status()
 
     async def get_kafka_creds(self) -> KafkaCreds:
-        logger.info("Get kafka credentials")
+        logger.info("Fetching organization kafka credentials")
 
         response = requests.get(
             f"{self.api_url}/kafka-credentials", headers=self.headers
@@ -135,10 +138,15 @@ class PortClient:
             logger.error(f"Error getting kafka credentials, error: {response.text}")
             response.raise_for_status()
 
-        return response.json()
+        credentials = response.json()["credentials"]
+
+        if credentials is None:
+            raise Exception("No kafka credentials found")
+
+        return credentials
 
     async def get_org_id(self) -> str:
-        logger.info("Get organization id")
+        logger.info("Fetching organization id")
 
         response = requests.get(f"{self.api_url}/organization", headers=self.headers)
         if not response.ok:
@@ -148,19 +156,18 @@ class PortClient:
         return response.json()["organization"]["id"]
 
     async def get_integration(self, identifier: str) -> PortAppConfig:
-        logger.info(f"Get integration with id: {identifier}")
+        logger.info(f"Fetching integration with id: {identifier}")
 
         integration = requests.get(
             f"{self.api_url}/integration/{identifier}", headers=self.headers
         )
         integration.raise_for_status()
-
-        return PortAppConfig.parse_obj(integration.json()["config"])
+        return PortAppConfig.parse_obj(integration.json()["integration"]["config"])
 
     async def initiate_integration(
-        self, _id: str, _type: str, changelog_destination: Dict[Any, Any]
+        self, _id: str, _type: str, changelog_destination: ChangelogDestination
     ) -> None:
-        logger.info(f"Initiate integration with id: {_id}")
+        logger.info(f"Initiating integration with id: {_id}")
 
         installation = requests.post(
             f"{self.api_url}/integration",
@@ -178,4 +185,6 @@ class PortClient:
             )
 
             return
+
         installation.raise_for_status()
+        logger.info(f"Integration with id: {_id} successfully registered")

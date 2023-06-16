@@ -11,20 +11,28 @@ from port_ocean.types import RESYNC_EVENT_LISTENER, START_EVENT_LISTENER, Object
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
+    from port_ocean.port_ocean import Ocean
 
 
 @dataclass
 class PortOceanContext:
-    config: IntegrationConfiguration
-    port_client: PortClient
-    _router: APIRouter | None
-    integration: Optional["BaseIntegration"] = None
+    app: "Ocean"
+
+    @property
+    def config(self) -> IntegrationConfiguration:
+        return self.app.config
 
     @property
     def router(self) -> APIRouter:
-        if self._router is None:
-            raise Exception("Router not set")
-        return self._router
+        return self.app.integration_router
+
+    @property
+    def integration(self) -> "BaseIntegration":
+        return self.app.integration
+
+    @property
+    def port_client(self) -> PortClient:
+        return self.app.port_client
 
     def on_resync(
         self,
@@ -56,17 +64,11 @@ class PortOceanContext:
 _port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()
 
 
-def initialize_port_ocean_context(
-    config: IntegrationConfiguration,
-    port_client: PortClient,
-    router: APIRouter | None = None,
-) -> None:
+def initialize_port_ocean_context(ocean_app: "Ocean") -> None:
     """
     This Function initiates the PortOcean context and pushes it into the LocalStack().
     """
-    _port_ocean_context_stack.push(
-        PortOceanContext(_router=router, config=config, port_client=port_client)
-    )
+    _port_ocean_context_stack.push(PortOceanContext(app=ocean_app))
 
 
 def _get_port_ocean_context() -> PortOceanContext:

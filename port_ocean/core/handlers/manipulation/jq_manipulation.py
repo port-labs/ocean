@@ -46,7 +46,7 @@ class JQManipulation(BaseManipulation):
                 result[key] = None
         return result
 
-    def _create_jq_entities(
+    def _parse_items(
         self, mapping: ResourceConfig, raw_data: List[Dict[str, Any]]
     ) -> Tuple[List[Entity], List[Blueprint]]:
         entities = []
@@ -84,17 +84,18 @@ class JQManipulation(BaseManipulation):
             ],
         )
 
-    def get_diff(
+    async def get_diff(
         self, mapping: ResourceConfig, raw_results: List[ObjectDiff]
     ) -> PortDiff:
-        entities_before, blueprints_before, entities_after, blueprints_after = zip(
-            *(
-                (
-                    *self._create_jq_entities(mapping, result["before"]),
-                    *self._create_jq_entities(mapping, result["after"]),
-                )
-                for result in raw_results
+        parsed_results = [
+            (
+                *self._parse_items(mapping, result["before"]),
+                *self._parse_items(mapping, result["after"]),
             )
+            for result in raw_results
+        ]
+        entities_before, blueprints_before, entities_after, blueprints_after = tuple(  # type: ignore
+            sum(items, []) for items in zip(*parsed_results)
         )
 
         entities_diff = get_object_diff(entities_before, entities_after, is_same_entity)
