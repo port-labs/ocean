@@ -105,3 +105,4 @@ class KafkaConsumer(BaseConsumer):
     def exit_gracefully(self, *_: Any) -> None:
         logger.info("Exiting gracefully...")
         self.running = False
+        self.consumer.close()

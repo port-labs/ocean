@@ -1,11 +1,11 @@
-from loguru import logger
 from datetime import datetime
-from typing import TypedDict, Dict, Any, NotRequired
+from typing import TypedDict, Dict, Any, NotRequired, List
 
 import requests
+from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
-from port_ocean.core.handlers.manipulation.base import Entity
+from port_ocean.core.handlers.manipulation.base import Entity, Blueprint
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 Headers = TypedDict(
@@ -27,6 +27,18 @@ KafkaCreds = TypedDict(
 ChangelogDestination = TypedDict(
     "ChangelogDestination",
     {"type": str, "url": NotRequired[str]},
+)
+
+RequestOptions = TypedDict(
+    "RequestOptions",
+    {
+        "merge": NotRequired[bool],
+        "create_missing_related_entities": NotRequired[bool],
+        "delete_dependent_entities": NotRequired[bool],
+        "validation_only": NotRequired[bool],
+        "upsert": NotRequired[bool],
+        "user_agent": NotRequired[str],
+    },
 )
 
 
@@ -87,7 +99,9 @@ class PortClient:
 
         return self._last_token_object.full_token
 
-    async def upsert_entity(self, entity: Entity) -> None:
+    async def upsert_entity(
+        self, entity: Entity, request_options: RequestOptions
+    ) -> None:
         logger.info(
             f"Upsert entity: {entity.identifier} of blueprint: {entity.blueprint}"
         )
@@ -96,7 +110,13 @@ class PortClient:
             f"{self.api_url}/blueprints/{entity.blueprint}/entities",
             json=entity.dict(exclude_unset=True),
             headers=self.headers,
-            params={"upsert": "true", "merge": "true"},
+            params={
+                "merge": request_options.get("merge", False),
+                "create_missing_related_entities": request_options.get(
+                    "create_missing_related_entities", False
+                ),
+                "validation_only": request_options.get("validation_only", False),
+            },
         )
 
         if not response.ok:
@@ -155,6 +175,52 @@ class PortClient:
 
         return response.json()["organization"]["id"]
 
+    async def validate_entity_exist(self, identifier: str, blueprint: str) -> None:
+        logger.info(f"Validating entity {identifier} of blueprint {blueprint} exists")
+
+        response = requests.get(
+            f"{self.api_url}/v1/blueprints/{blueprint}/entities/{identifier}",
+            headers=self.headers,
+        )
+        response.raise_for_status()
+
+    async def search_dependent_entities(self, entity: Entity) -> List[Entity]:
+        body = {
+            "combinator": "and",
+            "rules": [
+                {
+                    "operator": "relatedTo",
+                    "blueprint": entity.blueprint,
+                    "value": entity.identifier,
+                    "required": "true",
+                    "direction": "downstream",
+                }
+            ],
+        }
+
+        logger.info(f"Search dependent entity with body {body}")
+        response = requests.post(
+            f"{self.api_url}/v1/entities/search", headers=self.headers, json=body
+        )
+        response.raise_for_status()
+
+        return [Entity.parse_obj(result) for result in response.json()["entities"]]
+
+    async def validate_entity_payload(
+        self, entity: Entity, options: RequestOptions
+    ) -> None:
+        logger.info(f"Validating entity {entity.identifier}")
+        await self.upsert_entity(
+            entity,
+            {
+                "merge": options.get("merge", False),
+                "create_missing_related_entities": options.get(
+                    "create_missing_related_entities", False
+                ),
+                "validation_only": True,
+            },
+        )
+
     async def get_integration(self, identifier: str) -> PortAppConfig:
         logger.info(f"Fetching integration with id: {identifier}")
 
@@ -188,3 +254,11 @@ class PortClient:
 
         installation.raise_for_status()
         logger.info(f"Integration with id: {_id} successfully registered")
+
+    async def get_blueprint(self, identifier: str) -> Blueprint:
+        logger.info(f"Fetching blueprint with id: {identifier}")
+        response = requests.get(
+            f"{self.api_url}/v1/blueprints/{identifier}", headers=self.headers
+        )
+        response.raise_for_status()
+        return Blueprint.parse_obj(response.json()["blueprint"])

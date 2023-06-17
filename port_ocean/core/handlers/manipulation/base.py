@@ -14,8 +14,8 @@ class Entity(BaseModel):
     blueprint: str
     title: str | None
     team: str | None
-    properties: Dict[str, Any]
-    relations: Dict[str, Any]
+    properties: Dict[str, Any] = {}
+    relations: Dict[str, str] = {}
 
 
 class Blueprint(BaseModel):

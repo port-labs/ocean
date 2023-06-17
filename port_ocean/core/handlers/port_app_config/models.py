@@ -2,6 +2,8 @@ from typing import List, Optional, Dict, TypeVar, Union, Generic
 
 from pydantic import BaseModel, Field
 
+from port_ocean.clients.port import RequestOptions
+
 
 class EntityMapping(BaseModel):
     identifier: str
@@ -39,17 +41,21 @@ class ResourceConfig(BaseModel):
 
 
 class PortAppConfig(BaseModel):
-    spec_path: Optional[str | List[str]] = Field(alias="specPath", default=None)
-    branch: Optional[str] = "main"
-    enable_merge_entity: Optional[bool] = Field(alias="enableMergeEntity", default=None)
-    delete_dependent_entities: Optional[bool] = Field(
-        alias="deleteDependentEntities", default=None
+    enable_merge_entity: bool = Field(alias="enableMergeEntity", default=False)
+    delete_dependent_entities: bool = Field(
+        alias="deleteDependentEntities", default=False
     )
-    create_missing_related_entities: Optional[bool] = Field(
-        alias="createMissingRelatedEntities", default=None
+    create_missing_related_entities: bool = Field(
+        alias="createMissingRelatedEntities", default=False
     )
-    merge: Optional[bool] = True
     resources: List[ResourceConfig] = Field(default_factory=list)
+
+    def get_port_request_options(self) -> RequestOptions:
+        return {
+            "delete_dependent_entities": self.delete_dependent_entities,
+            "create_missing_related_entities": self.create_missing_related_entities,
+            "merge": self.enable_merge_entity,
+        }
 
     class Config:
         allow_population_by_field_name = True

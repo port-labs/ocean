@@ -12,8 +12,20 @@ from port_ocean.errors import EventContextNotFoundError
 @dataclass
 class EventContext:
     event_type: str
-    resource_config: ResourceConfig | None = field(default=None)
-    port_app_config: PortAppConfig | None = field(default=None)
+    _resource_config: ResourceConfig | None = field(default=None)
+    _port_app_config: PortAppConfig | None = field(default=None)
+
+    @property
+    def resource_config(self) -> ResourceConfig:
+        if self._resource_config is None:
+            raise ValueError("Resource config is not set")
+        return self._resource_config
+
+    @property
+    def port_app_config(self) -> PortAppConfig:
+        if self._port_app_config is None:
+            raise ValueError("Port app config is not set")
+        return self._port_app_config
 
 
 _event_context_stack: LocalStack[EventContext] = LocalStack()
