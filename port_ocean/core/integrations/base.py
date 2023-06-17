@@ -23,7 +23,6 @@ from port_ocean.core.utils import validate_result
 from port_ocean.types import (
     ObjectDiff,
 )
-from profiler import Profiler
 
 
 class BaseIntegration(HandlerMixin, EventsMixin):
@@ -47,13 +46,12 @@ class BaseIntegration(HandlerMixin, EventsMixin):
         self, raw_diff: List[Tuple[ResourceConfig, List[ObjectDiff]]]
     ) -> None:
         logger.info("Calculating diff in entities and blueprints between states")
-        with Profiler():
-            objects_diff = await asyncio.gather(
-                *[
-                    self.manipulation.get_diff(mapping, results)
-                    for mapping, results in raw_diff
-                ]
-            )
+        objects_diff = await asyncio.gather(
+            *[
+                self.manipulation.get_diff(mapping, results)
+                for mapping, results in raw_diff
+            ]
+        )
 
         await self.port_client.update_diff(objects_diff)
         logger.info("Finished registering change")

@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import List, Tuple, Dict, Any
 
 import pyjq as jq  # type: ignore
@@ -17,9 +18,13 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 
 class JQManipulation(BaseManipulation):
+    @lru_cache
+    def _compile(self, pattern: str) -> Any:
+        return jq.compile(pattern)
+
     def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         try:
-            return jq.first(pattern, data) or None
+            return self._compile(pattern).first(data) or None
         except Exception:
             return None
 

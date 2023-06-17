@@ -14,7 +14,7 @@ async def on_resync(kind: str) -> ObjectDiff:
                 "name": "test",
                 "http_url_to_repo": "http://test.com",
             }
-            for i in range(100)
+            for i in range(300)
         ],
     }
 

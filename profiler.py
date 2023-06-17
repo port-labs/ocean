@@ -9,5 +9,5 @@ class Profiler:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.pr.disable()
-        ps = pstats.Stats(self.pr).sort_stats("cumulative")
+        ps = pstats.Stats(self.pr).sort_stats("cumtime")
         ps.print_stats()
