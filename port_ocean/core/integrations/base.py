@@ -23,6 +23,7 @@ from port_ocean.core.utils import validate_result
 from port_ocean.types import (
     ObjectDiff,
 )
+from profiler import Profiler
 
 
 class BaseIntegration(HandlerMixin, EventsMixin):
@@ -45,14 +46,16 @@ class BaseIntegration(HandlerMixin, EventsMixin):
     async def _register_raw(
         self, raw_diff: List[Tuple[ResourceConfig, List[ObjectDiff]]]
     ) -> None:
-        parsed_entities = await asyncio.gather(
-            *[
-                self.manipulation.get_diff(mapping, results)
-                for mapping, results in raw_diff
-            ]
-        )
+        logger.info("Calculating diff in entities and blueprints between states")
+        with Profiler():
+            objects_diff = await asyncio.gather(
+                *[
+                    self.manipulation.get_diff(mapping, results)
+                    for mapping, results in raw_diff
+                ]
+            )
 
-        await self.port_client.update_diff(parsed_entities)
+        await self.port_client.update_diff(objects_diff)
         logger.info("Finished registering change")
 
     async def _resync_resource(
@@ -68,10 +71,13 @@ class BaseIntegration(HandlerMixin, EventsMixin):
             for wrapper in self.event_strategy["resync"]:
                 tasks.append(wrapper(resource_config.kind))
 
+            logger.info(f"Found {len(tasks)} resync tasks for {resource_config.kind}")
             results = [
                 validate_result(task_result)
                 for task_result in await asyncio.gather(*tasks)
             ]
+
+            logger.info(f"Found {len(results)} results for {resource_config.kind}")
             await self._register_raw([(resource_config, results)])
 
     async def register_state(self, kind: str, entities_state: ObjectDiff) -> None:

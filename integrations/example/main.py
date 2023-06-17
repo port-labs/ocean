@@ -10,10 +10,11 @@ async def on_resync(kind: str) -> ObjectDiff:
         "before": [],
         "after": [
             {
-                "id": "1",
+                "id": str(i),
                 "name": "test",
                 "http_url_to_repo": "http://test.com",
             }
+            for i in range(100)
         ],
     }
 

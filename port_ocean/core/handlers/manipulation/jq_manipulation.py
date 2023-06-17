@@ -1,6 +1,6 @@
 from typing import List, Tuple, Dict, Any
 
-import jq  # type: ignore
+import pyjq as jq  # type: ignore
 
 from port_ocean.core.handlers.manipulation.base import (
     BaseManipulation,
