@@ -1,6 +1,6 @@
 from typing import List, Tuple
 
-from port_ocean.core.handlers.manipulation.base import Entity, Blueprint
+from port_ocean.core.models import Entity, Blueprint
 from port_ocean.core.utils import is_same_entity
 
 

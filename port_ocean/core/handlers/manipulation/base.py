@@ -1,30 +1,11 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import List, TypeVar, Union, Generic, Tuple, Dict, Any
-
-from pydantic import BaseModel
+from typing import List, TypeVar, Union, Generic, Tuple
 
 from port_ocean.core.base import BaseWithContext
+from port_ocean.core.models import Entity, Blueprint
 from port_ocean.types import ObjectDiff
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-
-
-class Entity(BaseModel):
-    identifier: str
-    blueprint: str
-    title: str | None
-    team: str | None
-    properties: Dict[str, Any] = {}
-    relations: Dict[str, str] = {}
-
-
-class Blueprint(BaseModel):
-    identifier: str
-    title: str | None
-    team: str | None
-    properties: Dict[str, Any]
-    relations: Dict[str, Any]
-
 
 T = TypeVar("T", bound=Union[Blueprint, Entity])
 

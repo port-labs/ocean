@@ -5,9 +5,8 @@ import jq  # type: ignore
 from port_ocean.core.handlers.manipulation.base import (
     BaseManipulation,
     PortDiff,
-    Entity,
-    Blueprint,
 )
+from port_ocean.core.models import Entity, Blueprint
 from port_ocean.core.utils import (
     is_same_entity,
     get_object_diff,

@@ -1,7 +1,7 @@
 from graphlib import TopologicalSorter
 from typing import List, Dict, Set, Tuple
 
-from port_ocean.core.handlers.manipulation.base import Entity
+from port_ocean.core.models import Entity
 
 Node = Tuple[str, str]
 

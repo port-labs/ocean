@@ -5,10 +5,10 @@ from port_ocean.core.handlers import (
     BaseManipulation,
     BasePortAppConfigWithContext,
     BaseTransport,
-    JQManipulation,
-    HttpPortAppConfig,
-    HttpPortTransport,
 )
+from port_ocean.core.handlers.manipulation.jq_manipulation import JQManipulation
+from port_ocean.core.handlers.port_app_config.http import HttpPortAppConfig
+from port_ocean.core.handlers.transport.port.transport import HttpPortTransport
 from port_ocean.types import (
     START_EVENT_LISTENER,
     RESYNC_EVENT_LISTENER,

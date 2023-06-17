@@ -9,9 +9,8 @@ from port_ocean.core.handlers.manipulation.base import (
     PortDiff,
     PortObjectDiff,
     flatten_diff,
-    Entity,
-    Blueprint,
 )
+from port_ocean.core.models import Entity, Blueprint
 from port_ocean.core.handlers.transport.base import BaseTransport
 from port_ocean.core.handlers.transport.port.order_by_entities_dependencies import (
     order_by_entities_dependencies,
