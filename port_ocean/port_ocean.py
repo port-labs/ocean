@@ -111,7 +111,7 @@ def run(path: str) -> None:
     try:
         module = _load_module(f"{path}/integration.py")
         integration_class = _get_base_integration_class_from_module(module)
-    except Exception as e:
+    except Exception:
         integration_class = None
 
     app = Ocean(integration_class=integration_class, config=config)
