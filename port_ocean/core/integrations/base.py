@@ -53,6 +53,7 @@ class BaseIntegration(HandlerMixin, EventsMixin):
         )
 
         await self.port_client.update_diff(parsed_entities)
+        logger.info("Finished registering change")
 
     async def _resync_resource(
         self, resource_config: ResourceConfig, app_config: PortAppConfig

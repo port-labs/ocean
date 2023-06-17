@@ -74,8 +74,9 @@ class PortClient:
     async def upsert_entity(
         self, entity: Entity, request_options: RequestOptions
     ) -> None:
+        validation_only = request_options.get("validation_only", False)
         logger.info(
-            f"Upsert entity: {entity.identifier} of blueprint: {entity.blueprint}"
+            f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
         )
 
         response = requests.post(
@@ -83,11 +84,12 @@ class PortClient:
             json=entity.dict(exclude_unset=True),
             headers=self.headers,
             params={
-                "merge": request_options.get("merge", False),
-                "create_missing_related_entities": request_options.get(
-                    "create_missing_related_entities", False
-                ),
-                "validation_only": request_options.get("validation_only", False),
+                "upsert": "true",
+                "merge": str(request_options.get("merge", False)).lower(),
+                "create_missing_related_entities": str(
+                    request_options.get("create_missing_related_entities", False)
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
             },
         )
 
