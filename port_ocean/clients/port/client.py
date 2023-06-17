@@ -1,45 +1,17 @@
 from datetime import datetime
-from typing import TypedDict, Dict, Any, NotRequired, List
+from typing import Dict, Any, List
 
 import requests
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
+from port_ocean.clients.port.types import (
+    KafkaCreds,
+    ChangelogDestination,
+    RequestOptions,
+)
 from port_ocean.core.handlers.manipulation.base import Entity, Blueprint
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-
-Headers = TypedDict(
-    "Headers",
-    {
-        "Authorization": str,
-        "User-Agent": str,
-    },
-)
-
-KafkaCreds = TypedDict(
-    "KafkaCreds",
-    {
-        "username": str,
-        "password": str,
-    },
-)
-
-ChangelogDestination = TypedDict(
-    "ChangelogDestination",
-    {"type": str, "url": NotRequired[str]},
-)
-
-RequestOptions = TypedDict(
-    "RequestOptions",
-    {
-        "merge": NotRequired[bool],
-        "create_missing_related_entities": NotRequired[bool],
-        "delete_dependent_entities": NotRequired[bool],
-        "validation_only": NotRequired[bool],
-        "upsert": NotRequired[bool],
-        "user_agent": NotRequired[str],
-    },
-)
 
 
 class TokenResponse(BaseModel):

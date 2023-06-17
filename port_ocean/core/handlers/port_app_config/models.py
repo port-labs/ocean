@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, TypeVar, Union, Generic
 
 from pydantic import BaseModel, Field
 
-from port_ocean.clients.port import RequestOptions
+from port_ocean.clients.port.types import RequestOptions
 
 
 class EntityMapping(BaseModel):

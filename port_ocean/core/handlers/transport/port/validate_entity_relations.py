@@ -1,7 +1,7 @@
 import asyncio
 from itertools import groupby
 
-from port_ocean.clients.port import PortClient
+from port_ocean.clients.port.client import PortClient
 from port_ocean.core.handlers.manipulation.base import PortObjectDiff, Entity
 from port_ocean.core.handlers.transport.port.get_required_entities import (
     get_required_entities,

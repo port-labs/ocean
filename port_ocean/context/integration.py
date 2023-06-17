@@ -4,7 +4,7 @@ from typing import Callable, TYPE_CHECKING
 from fastapi import APIRouter
 from werkzeug.local import LocalProxy, LocalStack
 
-from port_ocean.clients.port import PortClient
+from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.errors import PortOceanContextNotFoundError
 from port_ocean.types import RESYNC_EVENT_LISTENER, START_EVENT_LISTENER, ObjectDiff

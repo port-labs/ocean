@@ -9,7 +9,7 @@ from fastapi import FastAPI, APIRouter
 from loguru import logger
 from starlette.types import Scope, Receive, Send
 
-from port_ocean.clients.port import PortClient
+from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.context.integration import (
     PortOceanContext,
