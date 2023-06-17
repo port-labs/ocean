@@ -67,5 +67,6 @@ class KafkaTriggerChannel(BaseTriggerChannel):
             config=self.kafka_credentials,
         )
         threading.Thread(
-            name="child procs", target=self.wrapped_start(ocean, consumer.start)
+            name="ocean_kafka_consumer",
+            target=self.wrapped_start(ocean, consumer.start),
         ).start()
