@@ -204,14 +204,14 @@ class PortClient:
             },
         )
 
-    async def get_integration(self, identifier: str) -> PortAppConfig:
+    async def get_integration(self, identifier: str) -> Dict[str, Any]:
         logger.info(f"Fetching integration with id: {identifier}")
         async with httpx.AsyncClient() as client:
             integration = await client.get(
                 f"{self.api_url}/integration/{identifier}", headers=await self.headers
             )
         integration.raise_for_status()
-        return PortAppConfig.parse_obj(integration.json()["integration"]["config"])
+        return integration.json()["integration"]
 
     async def initiate_integration(
         self, _id: str, _type: str, changelog_destination: ChangelogDestination
