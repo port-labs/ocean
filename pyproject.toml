@@ -5,8 +5,7 @@ description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>"]
 packages = [
-    { include = "port_ocean", from = "." },
-    { include = "assets", from = "." }
+    { include = "port_ocean", from = "." }
 ]
 
 [tool.poetry.scripts]
