@@ -15,7 +15,7 @@ jobs:
           python-version: '3.11'
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - name: Make install and build
+      - name: Lint
         run: | 
             make install
             make lint/all
