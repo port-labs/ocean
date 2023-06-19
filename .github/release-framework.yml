@@ -1,0 +1,26 @@
+name: Release framework
+on:
+  push:
+    tags:
+      - v*
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+  PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+jobs:
+  publish_ocean:
+    name: Publish SDKs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1 # tag=v1.8.5
+        with:
+          user: ${{ env.PYPI_USERNAME }}
+          password: ${{ env.PYPI_PASSWORD }}
+          packages_dir: ${{github.workspace}}/dist
