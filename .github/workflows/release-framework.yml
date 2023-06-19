@@ -5,9 +5,6 @@ on:
       - v*
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 env:
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
   PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
@@ -16,11 +13,10 @@ jobs:
     name: Publish Ocean
     runs-on: ubuntu-latest
     steps:
-      - name: Install python version
-        uses: gabrielfalcao/pyenv-action@v11
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
         with:
-          default: "3.11"
-          command: pip install -U pip  # upgrade pip after installing python 
+          python-version: 3.11
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: Make install and build
