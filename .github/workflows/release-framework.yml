@@ -13,9 +13,14 @@ env:
   PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
 jobs:
   publish_ocean:
-    name: Publish SDKs
+    name: Publish Ocean
     runs-on: ubuntu-latest
     steps:
+      - name: Install python version
+        uses: gabrielfalcao/pyenv-action@v11
+        with:
+          default: "3.11"
+          command: pip install -U pip  # upgrade pip after installing python 
       - name: Checkout Repo
         uses: actions/checkout@v3
       - name: Make install and build
