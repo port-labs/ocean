@@ -47,7 +47,7 @@ class HandlerMixin:
 
     def __init__(self) -> None:
         self._manipulation: BaseManipulation | None = None
-        self._port_app_config: BasePortAppConfigWithContext | None = None
+        self._port_app_config_handler: BasePortAppConfigWithContext | None = None
         self._transport: BaseTransport | None = None
 
     @property
@@ -57,10 +57,10 @@ class HandlerMixin:
         return self._manipulation
 
     @property
-    def port_app_config(self) -> BasePortAppConfigWithContext:
-        if self._port_app_config is None:
+    def port_app_config_handler(self) -> BasePortAppConfigWithContext:
+        if self._port_app_config_handler is None:
             raise Exception("Integration not started")
-        return self._port_app_config
+        return self._port_app_config_handler
 
     @property
     def port_client(self) -> BaseTransport:
@@ -75,8 +75,8 @@ class HandlerMixin:
     async def _init_port_app_config_handler_instance(
         self,
     ) -> BasePortAppConfigWithContext:
-        self._port_app_config = self.AppConfigHandlerClass(ocean)
-        return self._port_app_config
+        self._port_app_config_handler = self.AppConfigHandlerClass(ocean)
+        return self._port_app_config_handler
 
     async def _init_transport_instance(self) -> BaseTransport:
         self._transport = self.TransportHandlerClass(ocean)

@@ -40,7 +40,10 @@ class TriggerChannelFactory(BaseWithContext):
 
     async def create_trigger_channel(self) -> None:
         if self.trigger_channel_type.lower() == "kafka":
-            kafka_creds = await self.context.port_client.get_kafka_creds()
+            kafka_creds = {
+                "username": "",
+                "password": "",
+            }  # await self.context.port_client.get_kafka_creds()
             org_id = await self.context.port_client.get_org_id()
             self._trigger_channel = KafkaTriggerChannel(
                 {

@@ -1,9 +1,9 @@
 from port_ocean.context.integration import ocean
-from port_ocean.types import ObjectDiff
+from port_ocean.types import RawObjectDiff
 
 
 @ocean.on_resync()
-async def on_resync(kind: str) -> ObjectDiff:
+async def on_resync(kind: str) -> RawObjectDiff:
     # Get all data from the source system
     # Return raw data to run manipulation over
     return {

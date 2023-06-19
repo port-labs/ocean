@@ -2,14 +2,14 @@ from typing import List, TypeVar, Callable, Iterable, Union, Any
 
 from port_ocean.core.handlers.manipulation.base import PortObjectDiff
 from port_ocean.core.models import Entity, Blueprint
-from port_ocean.types import ObjectDiff
+from port_ocean.types import RawObjectDiff
 
 
 def is_valid_diff_item(item: Any) -> bool:
-    return isinstance(item, list) and all([isinstance(i, dict) for i in item])
+    return isinstance(item, list) and all([isinstance(i, dict) for i in item] or [True])
 
 
-def validate_result(result: Any) -> ObjectDiff:
+def validate_result(result: Any) -> RawObjectDiff:
     if isinstance(result, dict):
         before = result.get("before", [])
         after = result.get("after", [])

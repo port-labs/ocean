@@ -13,7 +13,7 @@ from port_ocean.core.utils import (
     get_object_diff,
     is_same_blueprint,
 )
-from port_ocean.types import ObjectDiff
+from port_ocean.types import RawObjectDiff
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 
@@ -89,7 +89,7 @@ class JQManipulation(BaseManipulation):
         )
 
     async def get_diff(
-        self, mapping: ResourceConfig, raw_results: List[ObjectDiff]
+        self, mapping: ResourceConfig, raw_results: List[RawObjectDiff]
     ) -> PortDiff:
         parsed_results = [
             (

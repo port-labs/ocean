@@ -6,8 +6,14 @@ from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
+from port_ocean.core.models import Entity, Blueprint
 from port_ocean.errors import PortOceanContextNotFoundError
-from port_ocean.types import RESYNC_EVENT_LISTENER, START_EVENT_LISTENER, ObjectDiff
+from port_ocean.types import (
+    RESYNC_EVENT_LISTENER,
+    START_EVENT_LISTENER,
+    RawObjectDiff,
+    ObjectDiff,
+)
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
@@ -54,9 +60,23 @@ class PortOceanContext:
 
         return wrapper
 
-    async def register_change(self, kind: str, change: ObjectDiff) -> None:
+    async def register_raw(self, kind: str, change: RawObjectDiff) -> None:
         if self.integration:
-            await self.integration.register_state(kind, change)
+            await self.integration.register_raw(kind, change)
+        else:
+            raise Exception("Integration not set")
+
+    async def register(
+        self, entities: ObjectDiff[Entity], blueprints: ObjectDiff[Blueprint]
+    ) -> None:
+        if self.integration:
+            await self.integration.register(entities, blueprints)
+        else:
+            raise Exception("Integration not set")
+
+    async def trigger_resync(self) -> None:
+        if self.integration:
+            await self.integration.trigger_resync()
         else:
             raise Exception("Integration not set")
 

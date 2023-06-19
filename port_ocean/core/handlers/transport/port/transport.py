@@ -98,5 +98,9 @@ class HttpPortTransport(BaseTransport):
         entities: PortObjectDiff[Entity] = flatten_diff(
             [change[0] for change in changes]
         )
+
+        logger.info(
+            f"Registering entity diff (created: {len(entities.created)}, deleted: {len(entities.deleted)}, modified: {len(entities.modified)})"
+        )
         await self._validate_entity_diff(entities)
         await self._update_entity_diff(entities)

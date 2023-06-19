@@ -17,6 +17,7 @@ from port_ocean.context.integration import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from pydantic import BaseSettings
 
 
 def _get_base_integration_class_from_module(
@@ -72,11 +73,15 @@ class Ocean:
         app: FastAPI | None = None,
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
         integration_router: APIRouter | None = None,
-        config: IntegrationConfiguration | None = None,
+        config_class: Type[BaseSettings] | None = None,
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()
-        self.config = config or IntegrationConfiguration()
+        self.config = IntegrationConfiguration(base_path="./")
+        if config_class:
+            self.config.integration.config = config_class(
+                **self.config.integration.config
+            ).dict()
         self.integration_router = integration_router or APIRouter()
 
         self.port_client = PortClient(
@@ -106,15 +111,13 @@ class Ocean:
 
 
 def run(path: str) -> None:
-    config = IntegrationConfiguration(base_path=path)
-
     try:
         module = _load_module(f"{path}/integration.py")
         integration_class = _get_base_integration_class_from_module(module)
     except Exception:
         integration_class = None
 
-    app = Ocean(integration_class=integration_class, config=config)
+    app = Ocean(integration_class=integration_class)
 
     _load_module(f"{path}/main.py")
 
