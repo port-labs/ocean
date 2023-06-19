@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 description = "A short description of the project"
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>"]
 packages = [

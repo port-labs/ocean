@@ -53,7 +53,7 @@ lint/all: lint/framework lint/integrations
 
 
 # Development commands
-build: lint/framework
+build: 
 	$(ACTIVATE) && poetry build
 
 run: lint/framework
