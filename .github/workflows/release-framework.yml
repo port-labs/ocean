@@ -27,4 +27,4 @@ jobs:
         with:
           user: ${{ env.PYPI_USERNAME }}
           password: ${{ env.PYPI_PASSWORD }}
-          packages_dir: ${{github.workspace}}/dist
+          packages-dir: ${{github.workspace}}/dist
