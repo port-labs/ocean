@@ -159,7 +159,7 @@ class PortClient:
 
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.api_url}/v1/blueprints/{blueprint}/entities/{identifier}",
+                f"{self.api_url}/blueprints/{blueprint}/entities/{identifier}",
                 headers=await self.headers,
             )
         response.raise_for_status()
@@ -172,7 +172,6 @@ class PortClient:
                     "operator": "relatedTo",
                     "blueprint": entity.blueprint,
                     "value": entity.identifier,
-                    "required": "true",
                     "direction": "downstream",
                 }
             ],
@@ -181,7 +180,7 @@ class PortClient:
         logger.info(f"Search dependent entity with body {body}")
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{self.api_url}/v1/entities/search",
+                f"{self.api_url}/entities/search",
                 headers=await self.headers,
                 json=body,
             )
@@ -242,7 +241,7 @@ class PortClient:
         logger.info(f"Fetching blueprint with id: {identifier}")
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.api_url}/v1/blueprints/{identifier}", headers=await self.headers
+                f"{self.api_url}/blueprints/{identifier}", headers=await self.headers
             )
         response.raise_for_status()
         return Blueprint.parse_obj(response.json()["blueprint"])

@@ -57,7 +57,7 @@ class HttpPortTransport(BaseTransport):
             new_dependent = get_unique(
                 [
                     entity
-                    for entity in chain(deps)
+                    for entity in chain.from_iterable(deps)
                     if not any([is_same_entity(item, entity) for item in diff.deleted])
                 ],
                 is_same_entity,
