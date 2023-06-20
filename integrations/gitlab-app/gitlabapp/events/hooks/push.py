@@ -1,0 +1,43 @@
+from gitlabapp.core.utils import generate_ref
+from gitlabapp.models.gitlab import HookContext, ScopeType, Scope
+from port_ocean.context.event import event
+from port_ocean.context.integration import ocean
+from starlette.requests import Request
+from gitlabapp.events.hooks.base import HookHandler
+
+
+class PushHook(HookHandler):
+    events = ["Push Hook"]
+
+    async def _on_hook(self, group_id: str, request: Request):
+        body = await request.json()
+        config = event.port_app_config
+        context = HookContext(**body)
+
+        if generate_ref(config.branch) != context.ref:
+            return
+
+        entities_before, entities_after = self.gitlab_service.get_entities_diff(
+            context, config.spec_path, context.before, context.after, config.branch
+        )
+        await ocean.register(
+            {
+                "before": entities_before,
+                "after": entities_after,
+            },
+            {"before": [], "after": []},
+        )
+
+        has_changed, scope = self.gitlab_service.validate_config_changed(context)
+        if has_changed:
+            await ocean.trigger_resync()
+
+        scope = Scope(ScopeType.Project, context.project.id)
+        projects = self.gitlab_service.get_all_projects(scope)
+        await ocean.register_raw(
+            "project",
+            {
+                "before": [],
+                "after": projects,
+            },
+        )
