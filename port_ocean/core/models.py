@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from pydantic import BaseModel
 
@@ -7,7 +7,7 @@ class Entity(BaseModel):
     identifier: str
     blueprint: str
     title: str | None
-    team: str | None
+    team: str | List[str] = []
     properties: Dict[str, Any] = {}
     relations: Dict[str, str] = {}
 

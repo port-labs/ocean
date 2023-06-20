@@ -54,7 +54,7 @@ def get_object_diff(
             [
                 item
                 for item in before
-                if not any(item == item_after for item_after in after)
+                if not any(comparator(item, item_after) for item_after in after)
             ],
             comparator,
         ),
@@ -62,7 +62,7 @@ def get_object_diff(
             [
                 item
                 for item in after
-                if not any(item == item_before for item_before in before)
+                if not any(comparator(item, item_before) for item_before in before)
             ],
             comparator,
         ),
@@ -70,7 +70,7 @@ def get_object_diff(
             [
                 item
                 for item in after
-                if any(item == entity_before for entity_before in before)
+                if any(comparator(item, entity_before) for entity_before in before)
             ],
             comparator,
         ),
