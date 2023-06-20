@@ -3,7 +3,7 @@ from typing import Callable
 from port_ocean.context.integration import PortOceanContext, ocean
 from port_ocean.core.handlers import (
     BaseManipulation,
-    BasePortAppConfigWithContext,
+    BasePortAppConfig,
     BaseTransport,
 )
 from port_ocean.core.handlers.manipulation.jq_manipulation import JQManipulation
@@ -38,7 +38,7 @@ class HandlerMixin:
     ] = JQManipulation
 
     AppConfigHandlerClass: Callable[
-        [PortOceanContext], BasePortAppConfigWithContext
+        [PortOceanContext], BasePortAppConfig
     ] = APIPortAppConfig
 
     TransportHandlerClass: Callable[
@@ -47,7 +47,7 @@ class HandlerMixin:
 
     def __init__(self) -> None:
         self._manipulation: BaseManipulation | None = None
-        self._port_app_config_handler: BasePortAppConfigWithContext | None = None
+        self._port_app_config_handler: BasePortAppConfig | None = None
         self._transport: BaseTransport | None = None
 
     @property
@@ -57,7 +57,7 @@ class HandlerMixin:
         return self._manipulation
 
     @property
-    def port_app_config_handler(self) -> BasePortAppConfigWithContext:
+    def port_app_config_handler(self) -> BasePortAppConfig:
         if self._port_app_config_handler is None:
             raise Exception("Integration not started")
         return self._port_app_config_handler
@@ -74,7 +74,7 @@ class HandlerMixin:
 
     async def _init_port_app_config_handler_instance(
         self,
-    ) -> BasePortAppConfigWithContext:
+    ) -> BasePortAppConfig:
         self._port_app_config_handler = self.AppConfigHandlerClass(ocean)
         return self._port_app_config_handler
 

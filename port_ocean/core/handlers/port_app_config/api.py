@@ -2,11 +2,11 @@ from typing import Any, Dict, Type
 
 from loguru import logger
 
-from port_ocean.core.handlers.port_app_config.base import BasePortAppConfigWithContext
+from port_ocean.core.handlers.port_app_config.base import BasePortAppConfig
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
-class APIPortAppConfig(BasePortAppConfigWithContext):
+class APIPortAppConfig(BasePortAppConfig):
     CONFIG_CLASS: Type[PortAppConfig] = PortAppConfig
 
     async def _get_port_app_config(self) -> Dict[str, Any]:

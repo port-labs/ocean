@@ -10,7 +10,6 @@ from port_ocean.clients.port.types import (
     ChangelogDestination,
     RequestOptions,
 )
-from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.models import Entity, Blueprint
 
 
