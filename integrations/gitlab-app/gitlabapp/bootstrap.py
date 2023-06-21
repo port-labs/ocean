@@ -15,7 +15,7 @@ def setup_listeners(gitlab_service, webhook_id: str):
 
 
 def setup_application():
-    logic_settings = ocean.app.config.integration.config
+    logic_settings = ocean.integration_config
     for token, group_mapping in logic_settings["token_mapping"].items():
         gitlab_client = Gitlab(logic_settings["gitlab_host"], token)
         gitlab_service = GitlabService(

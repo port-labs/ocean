@@ -19,7 +19,7 @@ def get_all_projects(gitlab_services: List[GitlabService]):
 
 
 def get_all_services() -> List[GitlabService]:
-    logic_settings = ocean.app.config.integration.config
+    logic_settings = ocean.integration_config
     all_tokens_services = []
 
     logger.info(

@@ -1,5 +1,6 @@
 from gitlabapp.core.utils import generate_ref
 from gitlabapp.models.gitlab import HookContext, ScopeType, Scope
+from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
 from port_ocean.context.integration import ocean
 from starlette.requests import Request
@@ -9,7 +10,7 @@ from gitlabapp.events.hooks.base import HookHandler
 class PushHook(HookHandler):
     events = ["Push Hook"]
 
-    async def _on_hook(self, group_id: str, request: Request):
+    async def _on_hook(self, group_id: str, request: Request) -> None:
         body = await request.json()
         context = HookContext(**body)
         config = event.port_app_config
@@ -26,6 +27,7 @@ class PushHook(HookHandler):
                 "after": entities_after,
             },
             {"before": [], "after": []},
+            UserAgentType.gitops,
         )
 
         has_changed, scope = self.gitlab_service.validate_config_changed(context)

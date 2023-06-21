@@ -1,9 +1,10 @@
+from typing import Any, Dict, List
+
 from gitlabapp.bootstrap import setup_application
 from gitlabapp.events.event_handler import EventHandler
 from gitlabapp.ocean_helper import get_all_projects, get_all_services
 from port_ocean.context.event import event_context
 from port_ocean.context.integration import ocean
-from port_ocean.types import RawObjectDiff
 from starlette.requests import Request
 
 
@@ -22,18 +23,12 @@ async def on_start() -> None:
 
 
 @ocean.on_resync()
-async def on_resync(kind: str) -> RawObjectDiff:
+async def on_resync(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
 
     if kind == "project":
         projects = get_all_projects(all_tokens_services)
-        return {
-            "before": [],
-            "after": projects,
-        }
+        return projects
 
     # ToDo: allow returning None
-    return {
-        "before": [],
-        "after": [],
-    }
+    return []
