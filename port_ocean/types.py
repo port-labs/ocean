@@ -26,7 +26,7 @@ class ObjectDiff(TypedDict, Generic[T]):
     after: List[T]
 
 
-RESYNC_EVENT_LISTENER = Callable[[str], Awaitable[RawObjectDiff]]
+RESYNC_EVENT_LISTENER = Callable[[str], Awaitable[List[Dict[Any, Any]]]]
 START_EVENT_LISTENER = Callable[[], Awaitable]
 
 

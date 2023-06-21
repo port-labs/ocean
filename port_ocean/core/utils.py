@@ -1,6 +1,6 @@
-from typing import List, TypeVar, Callable, Iterable, Union, Any
+from typing import List, TypeVar, Callable, Iterable, Union, Any, Dict
 
-from port_ocean.core.handlers.manipulation.base import PortObjectDiff
+from port_ocean.core.handlers.manipulation.base import PortDiff
 from port_ocean.core.models import Entity, Blueprint
 from port_ocean.types import RawObjectDiff
 
@@ -9,16 +9,10 @@ def is_valid_diff_item(item: Any) -> bool:
     return isinstance(item, list) and all([isinstance(i, dict) for i in item] or [True])
 
 
-def validate_result(result: Any) -> RawObjectDiff:
-    if isinstance(result, dict):
-        before = result.get("before", [])
-        after = result.get("after", [])
-
-        if is_valid_diff_item(before) and is_valid_diff_item(after):
-            return {
-                "after": after,
-                "before": before,
-            }
+def validate_result(result: Any) -> List[Dict[Any, Any]]:
+    if isinstance(result, list):
+        if is_valid_diff_item(result):
+            return result
     raise Exception(f"Expected dict, got {type(result)} instead")
 
 
@@ -46,10 +40,10 @@ def get_unique(array: List[T], comparator: Callable[[T, T], bool]) -> List[T]:
     return result
 
 
-def get_object_diff(
+def get_port_diff(
     before: Iterable[T], after: Iterable[T], comparator: Callable[[T, T], bool]
-) -> PortObjectDiff[T]:
-    return PortObjectDiff(
+) -> PortDiff[T]:
+    return PortDiff(
         deleted=get_unique(
             [
                 item

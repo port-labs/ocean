@@ -8,7 +8,7 @@ from port_ocean.core.trigger_channel.base_trigger_channel import (
 )
 from port_ocean.core.trigger_channel.kafka_trigger_channel import KafkaTriggerChannel
 
-from port_ocean.context.integration import PortOceanContext
+from port_ocean.context.ocean import PortOceanContext
 
 
 class TriggerChannelFactory(BaseWithContext):

@@ -5,16 +5,11 @@ import pyjq as jq  # type: ignore
 
 from port_ocean.core.handlers.manipulation.base import (
     BaseManipulation,
-    PortDiff,
+    Diff,
 )
-from port_ocean.core.models import Entity, Blueprint
-from port_ocean.core.utils import (
-    is_same_entity,
-    get_object_diff,
-    is_same_blueprint,
-)
-from port_ocean.types import RawObjectDiff
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.models import Entity, Blueprint
+from port_ocean.types import RawObjectDiff, ObjectDiff
 
 
 class JQManipulation(BaseManipulation):
@@ -88,9 +83,9 @@ class JQManipulation(BaseManipulation):
             ],
         )
 
-    async def get_diff(
+    async def parse_items(
         self, mapping: ResourceConfig, raw_results: List[RawObjectDiff]
-    ) -> PortDiff:
+    ) -> Diff:
         parsed_results = [
             (
                 *self._parse_items(mapping, result["before"]),
@@ -102,9 +97,13 @@ class JQManipulation(BaseManipulation):
             sum(items, []) for items in zip(*parsed_results)
         )
 
-        entities_diff = get_object_diff(entities_before, entities_after, is_same_entity)
-        blueprints_diff = get_object_diff(
-            blueprints_before, blueprints_after, is_same_blueprint
-        )
+        entities_diff: ObjectDiff[Entity] = {
+            "before": entities_before,
+            "after": entities_after,
+        }
+        blueprints_diff: ObjectDiff[Blueprint] = {
+            "before": blueprints_before,
+            "after": blueprints_after,
+        }
 
         return entities_diff, blueprints_diff

@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from typing import Callable, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING, Any, Dict, List
 
 from fastapi import APIRouter
 from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.clients.port.client import PortClient
+from port_ocean.clients.port.types import UserAgentType
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.core.models import Entity, Blueprint
 from port_ocean.errors import PortOceanContextNotFoundError
@@ -37,6 +38,10 @@ class PortOceanContext:
         return self.app.integration
 
     @property
+    def integration_config(self) -> Dict[str, Any]:
+        return self.app.config.integration.config
+
+    @property
     def port_client(self) -> PortClient:
         return self.app.port_client
 
@@ -44,35 +49,34 @@ class PortOceanContext:
         self,
     ) -> Callable[[RESYNC_EVENT_LISTENER], RESYNC_EVENT_LISTENER]:
         def wrapper(function: RESYNC_EVENT_LISTENER) -> RESYNC_EVENT_LISTENER:
-            if self.integration:
-                return self.integration.on_resync(function)
-            else:
-                raise Exception("Integration not set")
+            return self.integration.on_resync(function)
 
         return wrapper
 
     def on_start(self) -> Callable[[START_EVENT_LISTENER], START_EVENT_LISTENER]:
         def wrapper(function: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
-            if self.integration:
-                return self.integration.on_start(function)
-            else:
-                raise Exception("Integration not set")
+            return self.integration.on_start(function)
 
         return wrapper
 
-    async def register_raw(self, kind: str, change: RawObjectDiff) -> None:
-        if self.integration:
-            await self.integration.register_raw(kind, change)
-        else:
-            raise Exception("Integration not set")
+    async def register_raw(
+        self,
+        kind: str,
+        change: RawObjectDiff,
+        user_agent_type: UserAgentType = UserAgentType.exporter,
+    ) -> None:
+        await self.integration.register_raw(kind, change, user_agent_type)
 
     async def register(
-        self, entities: ObjectDiff[Entity], blueprints: ObjectDiff[Blueprint]
+        self,
+        entities: ObjectDiff[Entity],
+        blueprints: ObjectDiff[Blueprint],
+        user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
-        if self.integration:
-            await self.integration.register(entities, blueprints)
-        else:
-            raise Exception("Integration not set")
+        await self.integration.register(entities, blueprints, user_agent_type)
+
+    async def sync_raw(self, kind: str, change: List[Dict[Any, Any]]) -> None:
+        pass
 
     async def trigger_resync(self) -> None:
         if self.integration:

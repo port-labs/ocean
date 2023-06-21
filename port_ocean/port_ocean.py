@@ -88,7 +88,7 @@ class Ocean:
             base_url=self.config.port.base_url,
             client_id=self.config.port.client_id,
             client_secret=self.config.port.client_secret,
-            user_agent=self.config.integration.identifier,
+            user_agent_id=self.config.integration.identifier,
         )
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
