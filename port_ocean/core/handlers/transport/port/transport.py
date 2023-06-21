@@ -6,7 +6,7 @@ from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
 from port_ocean.core.handlers.manipulation.base import (
-    PortDiff,
+    EntityPortDiff,
 )
 from port_ocean.core.handlers.transport.base import BaseTransport
 from port_ocean.core.handlers.transport.port.order_by_entities_dependencies import (
@@ -15,19 +15,17 @@ from port_ocean.core.handlers.transport.port.order_by_entities_dependencies impo
 from port_ocean.core.handlers.transport.port.validate_entity_relations import (
     validate_entity_relations,
 )
-from port_ocean.core.models import Entity, Blueprint
 from port_ocean.core.utils import (
     is_same_entity,
     get_unique,
     get_port_diff,
-    is_same_blueprint,
 )
-from port_ocean.types import ObjectDiff
+from port_ocean.types import EntityDiff
 
 
 class HttpPortTransport(BaseTransport):
     async def _update_entity_diff(
-        self, diff: PortDiff[Entity], user_agent_type: UserAgentType
+        self, diff: EntityPortDiff, user_agent_type: UserAgentType
     ) -> None:
         ordered_deleted_entities = order_by_entities_dependencies(diff.deleted)
         for entity in ordered_deleted_entities:
@@ -53,7 +51,7 @@ class HttpPortTransport(BaseTransport):
                 user_agent_type,
             )
 
-    async def _validate_delete_dependent_entities(self, diff: PortDiff[Entity]) -> None:
+    async def _validate_delete_dependent_entities(self, diff: EntityPortDiff) -> None:
         logger.info("Validated deleted entities")
         if not event.port_app_config.delete_dependent_entities:
             deps = await asyncio.gather(
@@ -67,8 +65,7 @@ class HttpPortTransport(BaseTransport):
                     entity
                     for entity in chain.from_iterable(deps)
                     if not any([is_same_entity(item, entity) for item in diff.deleted])
-                ],
-                is_same_entity,
+                ]
             )
 
             if new_dependent:
@@ -77,7 +74,7 @@ class HttpPortTransport(BaseTransport):
                     f" {[(dep.blueprint, dep.identifier) for dep in new_dependent]}"
                 )
 
-    async def _validate_entity_diff(self, diff: PortDiff[Entity]) -> None:
+    async def _validate_entity_diff(self, diff: EntityPortDiff) -> None:
         config = event.port_app_config
         await self._validate_delete_dependent_entities(diff)
         modified_or_created_entities = diff.modified + diff.created
@@ -99,18 +96,10 @@ class HttpPortTransport(BaseTransport):
 
     async def update_diff(
         self,
-        entities: ObjectDiff[Entity],
-        blueprints: ObjectDiff[Blueprint],
+        entities: EntityDiff,
         user_agent_type: UserAgentType | None = None,
     ) -> None:
-        entities_diff = get_port_diff(
-            entities["before"], entities["after"], is_same_entity
-        )
-        blueprints_diff = get_port_diff(
-            blueprints["before"], blueprints["after"], is_same_blueprint
-        )
-
-        # ToDo: update blueprint diff
+        entities_diff = get_port_diff(entities["before"], entities["after"])
 
         logger.info(
             f"Registering entity diff (created: {len(entities_diff.created)}, deleted: {len(entities_diff.deleted)}, modified: {len(entities_diff.modified)})"

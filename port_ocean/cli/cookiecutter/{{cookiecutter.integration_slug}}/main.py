@@ -1,15 +1,13 @@
-from port_ocean.context.integration import ocean
-from port_ocean.types import RawObjectDiff
+from typing import Any, Dict, List
+
+from port_ocean.context.ocean import ocean
 
 
 @ocean.on_resync()
-async def on_resync(kind: str) -> RawObjectDiff:
+async def on_resync(kind: str) -> List[Dict[Any, Any]]:
     # Get all data from the source system
     # Return raw data to run manipulation over
-    return {
-        "before": [],
-        "after": [],
-    }
+    return []
 
 
 # Optional

@@ -11,19 +11,18 @@ from port_ocean.core.handlers import (
     BasePortAppConfig,
     BaseTransport,
 )
-from port_ocean.core.handlers.manipulation.base import Diff
 from port_ocean.core.handlers.manipulation.jq_manipulation import JQManipulation
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.transport.port.transport import HttpPortTransport
-from port_ocean.core.models import Entity, Blueprint
+from port_ocean.core.models import Entity
 from port_ocean.core.utils import validate_result
 from port_ocean.types import (
     START_EVENT_LISTENER,
     RESYNC_EVENT_LISTENER,
     IntegrationEventsCallbacks,
-    RawObjectDiff,
-    ObjectDiff,
+    EntityRawDiff,
+    EntityDiff,
 )
 
 
@@ -109,9 +108,9 @@ class SyncMixin(HandlerMixin, EventsMixin):
         raise NotImplementedError("on_resync must be implemented")
 
     async def _calculate_raw(
-        self, raw_diff: List[Tuple[ResourceConfig, List[RawObjectDiff]]]
-    ) -> List[Diff]:
-        logger.info("Calculating diff in entities and blueprints between states")
+        self, raw_diff: List[Tuple[ResourceConfig, List[EntityRawDiff]]]
+    ) -> List[EntityDiff]:
+        logger.info("Calculating diff in entities between states")
         return await asyncio.gather(
             *[
                 self.manipulation.parse_items(mapping, results)
@@ -146,15 +145,14 @@ class SyncMixin(HandlerMixin, EventsMixin):
 
     async def register(
         self,
-        entities: ObjectDiff[Entity],
-        blueprints: ObjectDiff[Blueprint],
+        entities: EntityDiff,
         user_agent_type: UserAgentType,
     ) -> None:
-        await self.transport.update_diff(entities, blueprints, user_agent_type)
+        await self.transport.update_diff(entities, user_agent_type)
         logger.info("Finished registering change")
 
     async def register_raw(
-        self, kind: str, change_state: RawObjectDiff, user_agent_type: UserAgentType
+        self, kind: str, change_state: EntityRawDiff, user_agent_type: UserAgentType
     ) -> None:
         logger.info(f"Registering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
@@ -174,45 +172,27 @@ class SyncMixin(HandlerMixin, EventsMixin):
                 for state in zip(
                     *(
                         (entities_change["before"], entities_change["after"])
-                        for entities_change, _ in objects_diff
-                    )
-                )
-            )
-            blueprints_before, blueprints_after = tuple(  # type: ignore
-                sum(state, [])
-                for state in zip(
-                    *(
-                        (blueprints_change["before"], blueprints_change["after"])
-                        for _, blueprints_change in objects_diff
+                        for entities_change in objects_diff
                     )
                 )
             )
 
             await self.register(
                 {"before": entities_before, "after": entities_after},
-                {"before": blueprints_before, "after": blueprints_after},
                 user_agent_type,
             )
 
     async def sync(
         self,
         entities: List[Entity],
-        blueprints: List[Blueprint],
         user_agent_type: UserAgentType,
     ) -> None:
         current_entities = await ocean.port_client.search_entities(user_agent_type)
-        current_blueprints = []
 
-        entities_diff: ObjectDiff[Entity] = {
+        entities_diff: EntityDiff = {
             "before": current_entities,
             "after": entities,
         }
-        blueprints_diff: ObjectDiff[Blueprint] = {
-            "before": current_blueprints,
-            "after": blueprints,
-        }
 
-        await self.transport.update_diff(
-            entities_diff, blueprints_diff, user_agent_type
-        )
+        await self.transport.update_diff(entities_diff, user_agent_type)
         logger.info("Finished syncing change")

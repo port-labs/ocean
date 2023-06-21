@@ -5,25 +5,19 @@ from typing import (
     List,
     Dict,
     Any,
-    Union,
-    Generic,
-    TypeVar,
 )
 
-from port_ocean.core.models import Blueprint, Entity
+from port_ocean.core.models import Entity
 
 
-class RawObjectDiff(TypedDict):
+class EntityRawDiff(TypedDict):
     before: List[Dict[Any, Any]]
     after: List[Dict[Any, Any]]
 
 
-T = TypeVar("T", bound=Union[Entity, Blueprint])
-
-
-class ObjectDiff(TypedDict, Generic[T]):
-    before: List[T]
-    after: List[T]
+class EntityDiff(TypedDict):
+    before: List[Entity]
+    after: List[Entity]
 
 
 RESYNC_EVENT_LISTENER = Callable[[str], Awaitable[List[Dict[Any, Any]]]]

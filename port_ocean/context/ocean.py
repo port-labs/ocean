@@ -7,13 +7,12 @@ from werkzeug.local import LocalProxy, LocalStack
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.config.integration import IntegrationConfiguration
-from port_ocean.core.models import Entity, Blueprint
 from port_ocean.errors import PortOceanContextNotFoundError
 from port_ocean.types import (
     RESYNC_EVENT_LISTENER,
     START_EVENT_LISTENER,
-    RawObjectDiff,
-    ObjectDiff,
+    EntityRawDiff,
+    EntityDiff,
 )
 
 if TYPE_CHECKING:
@@ -62,18 +61,17 @@ class PortOceanContext:
     async def register_raw(
         self,
         kind: str,
-        change: RawObjectDiff,
+        change: EntityRawDiff,
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
         await self.integration.register_raw(kind, change, user_agent_type)
 
     async def register(
         self,
-        entities: ObjectDiff[Entity],
-        blueprints: ObjectDiff[Blueprint],
+        entities: EntityDiff,
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
-        await self.integration.register(entities, blueprints, user_agent_type)
+        await self.integration.register(entities, user_agent_type)
 
     async def sync_raw(self, kind: str, change: List[Dict[Any, Any]]) -> None:
         pass

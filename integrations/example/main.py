@@ -1,22 +1,20 @@
-from port_ocean.context.integration import ocean
-from port_ocean.types import RawObjectDiff
+from typing import List, Dict, Any
+
+from port_ocean.context.ocean import ocean
 
 
 @ocean.on_resync()
-async def on_resync(kind: str) -> RawObjectDiff:
+async def on_resync(kind: str) -> List[Dict[Any, Any]]:
     # Get all data from the source system
     # Return raw data to run manipulation over
-    return {
-        "before": [],
-        "after": [
-            {
-                "id": str(i),
-                "name": "test",
-                "http_url_to_repo": "http://test.com",
-            }
-            for i in range(300)
-        ],
-    }
+    return [
+        {
+            "id": str(i),
+            "name": "test",
+            "http_url_to_repo": "http://test.com",
+        }
+        for i in range(300)
+    ]
 
 
 # Optional
@@ -28,5 +26,5 @@ async def on_start() -> None:
 
 @ocean.router.post("/test")
 async def a():
-    await ocean.register_change([dict(a=1)])
+    await ocean.sync_raw("a", [dict(a=1)])
     return dict(a=1)
