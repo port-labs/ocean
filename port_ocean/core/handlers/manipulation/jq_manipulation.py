@@ -1,15 +1,12 @@
 from functools import lru_cache
-from typing import List, Tuple, Dict, Any
+from typing import List, Dict, Any
 
 import pyjq as jq  # type: ignore
 
-from port_ocean.core.handlers.manipulation.base import (
-    BaseManipulation,
-    Diff,
-)
+from port_ocean.core.handlers.manipulation.base import BaseManipulation
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.models import Entity, Blueprint
-from port_ocean.types import RawObjectDiff, ObjectDiff
+from port_ocean.core.models import Entity
+from port_ocean.types import EntityRawDiff, EntityDiff
 
 
 class JQManipulation(BaseManipulation):
@@ -47,9 +44,8 @@ class JQManipulation(BaseManipulation):
 
     def _parse_items(
         self, mapping: ResourceConfig, raw_data: List[Dict[str, Any]]
-    ) -> Tuple[List[Entity], List[Blueprint]]:
+    ) -> List[Entity]:
         entities = []
-        blueprints = []
         for data in raw_data:
             should_run = self._search_as_bool(data, mapping.selector.query)
 
@@ -60,32 +56,18 @@ class JQManipulation(BaseManipulation):
                             data, mapping.port.entity.mappings.dict()
                         )
                     )
-                if mapping.port.blueprint:
-                    blueprints.append(
-                        self._search_as_object(
-                            data, mapping.port.blueprint.mappings.dict()
-                        )
-                    )
 
-        return (
-            [
-                Entity.parse_obj(entity_data)
-                for entity_data in filter(
-                    lambda entity: entity.get("identifier") and entity.get("blueprint"),
-                    entities,
-                )
-            ],
-            [
-                Blueprint.parse_obj(blueprint_data)
-                for blueprint_data in filter(
-                    lambda blueprint: blueprint.get("identifier"), blueprints
-                )
-            ],
-        )
+        return [
+            Entity.parse_obj(entity_data)
+            for entity_data in filter(
+                lambda entity: entity.get("identifier") and entity.get("blueprint"),
+                entities,
+            )
+        ]
 
     async def parse_items(
-        self, mapping: ResourceConfig, raw_results: List[RawObjectDiff]
-    ) -> Diff:
+        self, mapping: ResourceConfig, raw_results: List[EntityRawDiff]
+    ) -> EntityDiff:
         parsed_results = [
             (
                 *self._parse_items(mapping, result["before"]),
@@ -93,17 +75,13 @@ class JQManipulation(BaseManipulation):
             )
             for result in raw_results
         ]
-        entities_before, blueprints_before, entities_after, blueprints_after = tuple(  # type: ignore
+        entities_before, entities_after = tuple(  # type: ignore
             sum(items, []) for items in zip(*parsed_results)
         )
 
-        entities_diff: ObjectDiff[Entity] = {
+        entities_diff: EntityDiff = {
             "before": entities_before,
             "after": entities_after,
         }
-        blueprints_diff: ObjectDiff[Blueprint] = {
-            "before": blueprints_before,
-            "after": blueprints_after,
-        }
 
-        return entities_diff, blueprints_diff
+        return entities_diff

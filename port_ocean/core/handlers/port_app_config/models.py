@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, TypeVar, Union, Generic
+from typing import List, Optional, Dict
 
 from pydantic import BaseModel, Field
 
@@ -13,22 +13,11 @@ class EntityMapping(BaseModel):
     relations: Dict[str, str] = Field(default_factory=dict)
 
 
-class BlueprintMapping(BaseModel):
-    identifier: str
-    title: str
-    properties: Dict[str, str] = Field(default_factory=dict)
-    relations: Dict[str, str] = Field(default_factory=dict)
-
-
-MappingType = TypeVar("MappingType", bound=Union[EntityMapping, BlueprintMapping])
-
-
 class PortResourceConfig(BaseModel):
-    class MappingsConfig(BaseModel, Generic[MappingType]):
-        mappings: MappingType
+    class MappingsConfig(BaseModel):
+        mappings: EntityMapping
 
-    entity: Optional[MappingsConfig[EntityMapping]]
-    blueprint: Optional[MappingsConfig[BlueprintMapping]]
+    entity: Optional[MappingsConfig]
 
 
 class ResourceConfig(BaseModel):

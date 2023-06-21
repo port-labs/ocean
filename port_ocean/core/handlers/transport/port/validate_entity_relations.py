@@ -2,15 +2,14 @@ import asyncio
 from itertools import groupby
 
 from port_ocean.clients.port.client import PortClient
-from port_ocean.core.handlers.manipulation.base import PortDiff
-from port_ocean.core.models import Entity
+from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.handlers.transport.port.get_required_entities import (
     get_required_entities,
 )
 
 
 async def validate_entity_relations(
-    diff: PortDiff[Entity], port_client: PortClient
+    diff: EntityPortDiff, port_client: PortClient
 ) -> None:
     modified_or_created_entities = diff.modified + diff.created
     entities_with_relations = [

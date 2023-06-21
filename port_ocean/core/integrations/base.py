@@ -17,7 +17,7 @@ from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.integrations.mixins import (
     SyncMixin,
 )
-from port_ocean.core.models import Entity, Blueprint
+from port_ocean.core.models import Entity
 from port_ocean.core.trigger_channel.trigger_channel_factory import (
     TriggerChannelFactory,
 )
@@ -86,12 +86,8 @@ class BaseIntegration(SyncMixin):
             objects_diff = await self._calculate_raw(evaluations)
 
             entities_after: List[Entity] = sum(
-                [entities_change["after"] for entities_change, _ in objects_diff],
-                [],
-            )
-            blueprints_after: List[Blueprint] = sum(
-                [blueprints_change["after"] for _, blueprints_change in objects_diff],
+                [entities_change["after"] for entities_change in objects_diff],
                 [],
             )
 
-            await self.sync(entities_after, blueprints_after, user_agent_type)
+            await self.sync(entities_after, user_agent_type)

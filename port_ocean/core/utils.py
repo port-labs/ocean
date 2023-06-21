@@ -1,8 +1,7 @@
-from typing import List, TypeVar, Callable, Iterable, Union, Any, Dict
+from typing import List, Iterable, Any, Dict
 
-from port_ocean.core.handlers.manipulation.base import PortDiff
-from port_ocean.core.models import Entity, Blueprint
-from port_ocean.types import RawObjectDiff
+from port_ocean.core.handlers.manipulation.base import EntityPortDiff
+from port_ocean.core.models import Entity
 
 
 def is_valid_diff_item(item: Any) -> bool:
@@ -23,49 +22,40 @@ def is_same_entity(firs_entity: Entity, second_entity: Entity) -> bool:
     )
 
 
-def is_same_blueprint(firs_blueprint: Blueprint, second_blueprint: Blueprint) -> bool:
-    return firs_blueprint.identifier == second_blueprint.identifier
-
-
-T = TypeVar("T", bound=Union[Blueprint, Entity])
-
-
-def get_unique(array: List[T], comparator: Callable[[T, T], bool]) -> List[T]:
-    seen: List[T] = []
+def get_unique(array: List[Entity]) -> List[Entity]:
+    seen: List[Entity] = []
     result = []
     for item in array:
-        if all(not comparator(item, seen_item) for seen_item in seen):
+        if all(not is_same_entity(item, seen_item) for seen_item in seen):
             seen.append(item)
             result.append(item)
     return result
 
 
 def get_port_diff(
-    before: Iterable[T], after: Iterable[T], comparator: Callable[[T, T], bool]
-) -> PortDiff[T]:
-    return PortDiff(
+    before: Iterable[Entity],
+    after: Iterable[Entity],
+) -> EntityPortDiff:
+    return EntityPortDiff(
         deleted=get_unique(
             [
                 item
                 for item in before
-                if not any(comparator(item, item_after) for item_after in after)
+                if not any(is_same_entity(item, item_after) for item_after in after)
             ],
-            comparator,
         ),
         created=get_unique(
             [
                 item
                 for item in after
-                if not any(comparator(item, item_before) for item_before in before)
+                if not any(is_same_entity(item, item_before) for item_before in before)
             ],
-            comparator,
         ),
         modified=get_unique(
             [
                 item
                 for item in after
-                if any(comparator(item, entity_before) for entity_before in before)
+                if any(is_same_entity(item, entity_before) for entity_before in before)
             ],
-            comparator,
         ),
     )

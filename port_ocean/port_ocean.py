@@ -11,7 +11,7 @@ from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
-from port_ocean.context.integration import (
+from port_ocean.context.ocean import (
     PortOceanContext,
     ocean,
     initialize_port_ocean_context,
