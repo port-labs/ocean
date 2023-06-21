@@ -11,8 +11,8 @@ class PushHook(HookHandler):
 
     async def _on_hook(self, group_id: str, request: Request):
         body = await request.json()
-        config = event.port_app_config
         context = HookContext(**body)
+        config = event.port_app_config
 
         if generate_ref(config.branch) != context.ref:
             return

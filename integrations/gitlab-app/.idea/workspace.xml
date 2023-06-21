@@ -4,173 +4,40 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8f8bb5b3-f9e8-40a1-8c2c-8707d2c55d64" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.dockerignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/gitlab-app.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Makefile" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example.config.yaml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/bootstrap.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/core/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/core/entities.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/core/utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/events/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/events/event_handler.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/events/hooks/base.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/events/hooks/push.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/exceptions/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/exceptions/api/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/exceptions/api/base.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/models/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/models/gitlab.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/models/hook_origin_data.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/ocean.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/ocean_helper.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/services/gitlab_service.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/gitlabapp/utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/integration.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/poetry.lock" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../port_ocean/clients/port/client.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../port_ocean/clients/port/client.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../port_ocean/core/handlers/transport/port/transport.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../port_ocean/core/handlers/transport/port/transport.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../port_ocean/core/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../port_ocean/core/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../port_ocean/core/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../port_ocean/core/utils.py" afterDir="false" />
+    <list default="true" id="6af8aa36-42d1-406e-87bd-a86f9de7d1b9" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gitlabapp/events/hooks/push.py" beforeDir="false" afterPath="$PROJECT_DIR$/gitlabapp/events/hooks/push.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gitlabapp/ocean.py" beforeDir="false" afterPath="$PROJECT_DIR$/gitlabapp/ocean.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/gitlabapp/integration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../port_ocean/context/event.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../port_ocean/context/event.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../port_ocean/context/integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../port_ocean/context/integration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../port_ocean/core/handlers/port_app_config/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../port_ocean/core/handlers/port_app_config/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../port_ocean/core/integrations/base.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../port_ocean/core/integrations/base.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="Python Script" />
-      </list>
+  <component name="ChangesViewManager">
+    <option name="groupingKeys">
+      <option value="directory" />
     </option>
   </component>
-  <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
-  </component>
-  <component name="HighlightingSettingsPerFile">
-    <setting file="file://$PROJECT_DIR$/gitlabapp/core/entities.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/gitlabapp/core/utils.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/gitlabapp/events/hooks/base.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/gitlabapp/events/hooks/push.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/gitlabapp/services/gitlab_exporter.py" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/gitlabapp/services/gitlab_service.py" root0="FORCE_HIGHLIGHTING" />
-  </component>
-  <component name="MarkdownSettingsMigration">
-    <option name="stateVersion" value="1" />
-  </component>
-  <component name="ProjectId" id="2RNdJ1ThEYryAPWZt45qxBPwELb" />
-  <component name="ProjectViewState">
-    <option name="hideEmptyMiddlePackages" value="true" />
-    <option name="showLibraryContents" value="true" />
-  </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;gitlab-app-POC&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
-  },
-  &quot;keyToStringList&quot;: {
-    &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
-      &quot;JSON&quot;
-    ]
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "git-widget-placeholder": "gitlab-app-POC",
+    "node.js.selected.package.tslint": "(autodetect)"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/gitlabapp" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.main">
-    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="gitlab-app" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="scratch_16" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="gitlab-app" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$APPLICATION_CONFIG_DIR$/scratches" />
-      <option name="IS_MODULE_SDK" value="false" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$APPLICATION_CONFIG_DIR$/scratches/scratch_16.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <recent_temporary>
-      <list>
-        <item itemvalue="Python.main" />
-        <item itemvalue="Python.scratch_16" />
-      </list>
-    </recent_temporary>
-  </component>
-  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
-    <task active="true" id="Default" summary="Default task">
-      <changelist id="8f8bb5b3-f9e8-40a1-8c2c-8707d2c55d64" name="Changes" comment="" />
-      <created>1687094396463</created>
-      <option name="number" value="Default" />
-      <option name="presentableId" value="Default" />
-      <updated>1687094396463</updated>
-      <workItem from="1687094398531" duration="1178000" />
-      <workItem from="1687095586672" duration="144000" />
-      <workItem from="1687095739136" duration="27769000" />
-      <workItem from="1687184815742" duration="6857000" />
-    </task>
     <servers />
-  </component>
-  <component name="TypeScriptGeneratedFilesManager">
-    <option name="version" value="3" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/gitlab_app$scratch_16.coverage" NAME="scratch_16 Coverage Results" MODIFIED="1687188382852" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$APPLICATION_CONFIG_DIR$/scratches" />

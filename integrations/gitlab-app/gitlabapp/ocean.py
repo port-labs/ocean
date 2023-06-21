@@ -10,7 +10,7 @@ from starlette.requests import Request
 @ocean.router.post("/hook/{group_id}")
 async def handle_webhook(group_id: str, request: Request):
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
-    a = await request.json()
+    await request.json()
     async with event_context(event_id):
         await EventHandler().notify(event_id, group_id, request)
     return {"ok": True}

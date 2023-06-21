@@ -1,7 +1,7 @@
 from typing import List, Dict
 
 import uvicorn
-from integration import GitlabIntegration
+from gitlabapp.integration import GitlabIntegration
 from port_ocean.port_ocean import Ocean
 from pydantic import BaseSettings, AnyHttpUrl, Field
 
