@@ -76,7 +76,7 @@ class PortOceanContext:
 
     async def trigger_resync(self) -> None:
         if self.integration:
-            await self.integration.trigger_resync()
+            await self.integration.trigger_resync(trigger_type="manual")
         else:
             raise Exception("Integration not set")
 
