@@ -1,19 +1,22 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import AsyncIterator
+from typing import AsyncIterator, Literal, Any, Dict
 
 from werkzeug.local import LocalStack, LocalProxy
 
-from port_ocean.context.integration import ocean
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
 )
 from port_ocean.errors import EventContextNotFoundError
 
+TriggerType = Literal["manual", "machine"]
+
 
 @dataclass
 class EventContext:
     event_type: str
+    trigger_type: TriggerType = "machine"
+    attributes: dict[str, Any] = field(default_factory=dict)
     _port_app_config: PortAppConfig | None = field(default=None)
 
     @property
@@ -21,6 +24,10 @@ class EventContext:
         if self._port_app_config is None:
             raise ValueError("Port app config is not set")
         return self._port_app_config
+
+    @port_app_config.setter
+    def port_app_config(self, value: PortAppConfig) -> None:
+        self._port_app_config = value
 
 
 _event_context_stack: LocalStack[EventContext] = LocalStack()
@@ -44,13 +51,20 @@ event: EventContext = LocalProxy(lambda: _get_event_context())  # type: ignore
 
 @asynccontextmanager
 async def event_context(
-    kind: str, port_app_config: PortAppConfig | None = None
+    kind: str,
+    trigger_type: TriggerType = "manual",
+    attributes: Dict[str, Any] | None = None,
 ) -> AsyncIterator[EventContext]:
-    if port_app_config is None:
-        port_app_config = (
-            await ocean.integration.port_app_config_handler.get_port_app_config()
+    if attributes is None:
+        attributes = {}
+
+    _event_context_stack.push(
+        EventContext(
+            kind,
+            trigger_type=trigger_type,
+            attributes=attributes,
         )
-    _event_context_stack.push(EventContext(kind, _port_app_config=port_app_config))
+    )
 
     yield event
 

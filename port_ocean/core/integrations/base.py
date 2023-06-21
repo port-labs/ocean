@@ -11,6 +11,7 @@ from loguru import logger
 
 from port_ocean.context.event import (
     event_context,
+    TriggerType,
 )
 from port_ocean.context.integration import PortOceanContext
 from port_ocean.core.handlers.port_app_config.models import (
@@ -142,7 +143,7 @@ class BaseIntegration(HandlerMixin, EventsMixin):
 
         self.started = True
 
-        async with event_context("start"):
+        async with event_context("start", trigger_type="machine"):
             await asyncio.gather(
                 *(listener() for listener in self.event_strategy["start"])
             )
@@ -150,11 +151,14 @@ class BaseIntegration(HandlerMixin, EventsMixin):
     async def trigger_action(self, data: Dict[Any, Any]) -> None:
         raise NotImplementedError("trigger_action is not implemented")
 
-    async def trigger_resync(self, _: Dict[Any, Any] | None = None) -> None:
+    async def trigger_resync(
+        self, _: Dict[Any, Any] | None = None, trigger_type: TriggerType = "machine"
+    ) -> None:
         logger.info("Resync was triggered")
-        app_config = await self.port_app_config_handler.get_port_app_config()
 
-        async with event_context("resync", app_config):
+        async with event_context("resync", trigger_type=trigger_type):
+            app_config = await self.port_app_config_handler.get_port_app_config()
+
             evaluations = await asyncio.gather(
                 *(self._resync_resource(resource) for resource in app_config.resources)
             )
