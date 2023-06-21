@@ -1,12 +1,12 @@
+from enum import Enum
 from typing import TypedDict, NotRequired
 
-Headers = TypedDict(
-    "Headers",
-    {
-        "Authorization": str,
-        "User-Agent": str,
-    },
-)
+
+class UserAgentType(Enum):
+    exporter = "exporter"
+    gitops = "gitops"
+
+
 KafkaCreds = TypedDict(
     "KafkaCreds",
     {

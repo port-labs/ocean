@@ -9,6 +9,7 @@ from port_ocean.clients.port.types import (
     KafkaCreds,
     ChangelogDestination,
     RequestOptions,
+    UserAgentType,
 )
 from port_ocean.core.models import Entity, Blueprint
 
@@ -33,12 +34,12 @@ class TokenResponse(BaseModel):
 
 class PortClient:
     def __init__(
-        self, base_url: str, client_id: str, client_secret: str, user_agent: str
+        self, base_url: str, client_id: str, client_secret: str, user_agent_id: str
     ):
         self.api_url = base_url
         self.client_id = client_id
         self.client_secret = client_secret
-        self.user_agent = user_agent
+        self.user_agent_id = user_agent_id
         self._last_token_object: TokenResponse | None = None
 
     async def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
@@ -52,11 +53,19 @@ class PortClient:
             token_response.raise_for_status()
             return TokenResponse(**token_response.json())
 
-    @property
-    async def headers(self) -> Dict[Any, Any]:
+    def _user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
+        user_agent = f"{self.user_agent_id}"
+        if user_agent_type:
+            user_agent += f"/{user_agent_type.value or UserAgentType.exporter.value}"
+
+        return user_agent
+
+    async def _headers(
+        self, user_agent_type: UserAgentType | None = None
+    ) -> Dict[Any, Any]:
         return {
             "Authorization": await self.token,
-            "User-Agent": self.user_agent,
+            "User-Agent": self._user_agent(user_agent_type),
         }
 
     @property
@@ -72,7 +81,10 @@ class PortClient:
         return self._last_token_object.full_token
 
     async def upsert_entity(
-        self, entity: Entity, request_options: RequestOptions
+        self,
+        entity: Entity,
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
     ) -> None:
         validation_only = request_options.get("validation_only", False)
         logger.info(
@@ -83,7 +95,7 @@ class PortClient:
             response = await client.post(
                 f"{self.api_url}/blueprints/{entity.blueprint}/entities",
                 json=entity.dict(exclude_unset=True),
-                headers=await self.headers,
+                headers=await self._headers(user_agent_type),
                 params={
                     "upsert": "true",
                     "merge": str(request_options.get("merge", False)).lower(),
@@ -103,14 +115,16 @@ class PortClient:
             )
             response.raise_for_status()
 
-    async def delete_entity(self, entity: Entity) -> None:
+    async def delete_entity(
+        self, entity: Entity, user_agent_type: UserAgentType | None = None
+    ) -> None:
         logger.info(
             f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
         )
         async with httpx.AsyncClient() as client:
             response = await client.delete(
                 f"{self.api_url}/blueprints/{entity.blueprint}/entities/{entity.identifier}",
-                headers=await self.headers,
+                headers=await self._headers(user_agent_type),
                 params={"delete_dependents": "true"},
             )
 
@@ -127,7 +141,7 @@ class PortClient:
         logger.info("Fetching organization kafka credentials")
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.api_url}/kafka-credentials", headers=await self.headers
+                f"{self.api_url}/kafka-credentials", headers=await self._headers()
             )
         if not response.status_code < 400:
             logger.error(f"Error getting kafka credentials, error: {response.text}")
@@ -145,7 +159,7 @@ class PortClient:
 
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.api_url}/organization", headers=await self.headers
+                f"{self.api_url}/organization", headers=await self._headers()
             )
         if not response.status_code < 400:
             logger.error(f"Error getting organization id, error: {response.text}")
@@ -159,9 +173,36 @@ class PortClient:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.api_url}/blueprints/{blueprint}/entities/{identifier}",
-                headers=await self.headers,
+                headers=await self._headers(),
             )
         response.raise_for_status()
+
+    async def search_entities(self, user_agent_type: UserAgentType) -> List[Entity]:
+        query = {
+            "combinator": "and",
+            "rules": [
+                {
+                    "property": "$datasource",
+                    "operator": "contains",
+                    "value": self._user_agent(user_agent_type),
+                },
+            ],
+        }
+
+        async with httpx.AsyncClient() as client:
+            search_req = await client.post(
+                f"{self.api_url}/entities/search",
+                json=query,
+                headers=await self._headers(),
+                params={
+                    "exclude_calculated_properties": "true",
+                    "include": ["blueprint", "identifier"],
+                },
+            )
+            search_req.raise_for_status()
+            return [
+                Entity.parse_obj(result) for result in search_req.json()["entities"]
+            ]
 
     async def search_dependent_entities(self, entity: Entity) -> List[Entity]:
         body = {
@@ -180,7 +221,7 @@ class PortClient:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.api_url}/entities/search",
-                headers=await self.headers,
+                headers=await self._headers(),
                 json=body,
             )
         response.raise_for_status()
@@ -206,7 +247,8 @@ class PortClient:
         logger.info(f"Fetching integration with id: {identifier}")
         async with httpx.AsyncClient() as client:
             integration = await client.get(
-                f"{self.api_url}/integration/{identifier}", headers=await self.headers
+                f"{self.api_url}/integration/{identifier}",
+                headers=await self._headers(),
             )
         integration.raise_for_status()
         return integration.json()["integration"]
@@ -218,7 +260,7 @@ class PortClient:
         async with httpx.AsyncClient() as client:
             installation = await client.post(
                 f"{self.api_url}/integration",
-                headers=await self.headers,
+                headers=await self._headers(),
                 json={
                     "installationId": _id,
                     "installationAppType": _type,
@@ -240,7 +282,7 @@ class PortClient:
         logger.info(f"Fetching blueprint with id: {identifier}")
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.api_url}/blueprints/{identifier}", headers=await self.headers
+                f"{self.api_url}/blueprints/{identifier}", headers=await self._headers()
             )
         response.raise_for_status()
         return Blueprint.parse_obj(response.json()["blueprint"])

@@ -2,7 +2,7 @@ import threading
 from typing import Dict, Any, Callable
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
-from port_ocean.context.integration import (
+from port_ocean.context.ocean import (
     PortOceanContext,
     initialize_port_ocean_context,
     ocean,

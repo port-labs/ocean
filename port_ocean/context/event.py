@@ -37,9 +37,9 @@ def _get_event_context() -> EventContext:
     """
     Get the event context from the current thread.
     """
-    event_context = _event_context_stack.top
-    if event_context is not None:
-        return event_context
+    top_event_context = _event_context_stack.top
+    if top_event_context is not None:
+        return top_event_context
 
     raise EventContextNotFoundError(
         "You must be inside an event context in order to use it"

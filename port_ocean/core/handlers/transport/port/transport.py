@@ -1,16 +1,13 @@
 import asyncio
 from itertools import chain
-from typing import List
 
 from loguru import logger
 
+from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
 from port_ocean.core.handlers.manipulation.base import (
     PortDiff,
-    PortObjectDiff,
-    flatten_diff,
 )
-from port_ocean.core.models import Entity, Blueprint
 from port_ocean.core.handlers.transport.base import BaseTransport
 from port_ocean.core.handlers.transport.port.order_by_entities_dependencies import (
     order_by_entities_dependencies,
@@ -18,21 +15,32 @@ from port_ocean.core.handlers.transport.port.order_by_entities_dependencies impo
 from port_ocean.core.handlers.transport.port.validate_entity_relations import (
     validate_entity_relations,
 )
-from port_ocean.core.utils import is_same_entity, get_unique
+from port_ocean.core.models import Entity, Blueprint
+from port_ocean.core.utils import (
+    is_same_entity,
+    get_unique,
+    get_port_diff,
+    is_same_blueprint,
+)
+from port_ocean.types import ObjectDiff
 
 
 class HttpPortTransport(BaseTransport):
-    async def _update_entity_diff(self, diff: PortObjectDiff[Entity]) -> None:
+    async def _update_entity_diff(
+        self, diff: PortDiff[Entity], user_agent_type: UserAgentType
+    ) -> None:
         ordered_deleted_entities = order_by_entities_dependencies(diff.deleted)
         for entity in ordered_deleted_entities:
-            await self.context.port_client.delete_entity(entity)
+            await self.context.port_client.delete_entity(entity, user_agent_type)
 
         ordered_created_entities = reversed(
             order_by_entities_dependencies(diff.created)
         )
         for entity in ordered_created_entities:
             await self.context.port_client.upsert_entity(
-                entity, event.port_app_config.get_port_request_options()
+                entity,
+                event.port_app_config.get_port_request_options(),
+                user_agent_type,
             )
 
         ordered_modified_entities = reversed(
@@ -40,12 +48,12 @@ class HttpPortTransport(BaseTransport):
         )
         for entity in ordered_modified_entities:
             await self.context.port_client.upsert_entity(
-                entity, event.port_app_config.get_port_request_options()
+                entity,
+                event.port_app_config.get_port_request_options(),
+                user_agent_type,
             )
 
-    async def _validate_delete_dependent_entities(
-        self, diff: PortObjectDiff[Entity]
-    ) -> None:
+    async def _validate_delete_dependent_entities(self, diff: PortDiff[Entity]) -> None:
         logger.info("Validated deleted entities")
         if not event.port_app_config.delete_dependent_entities:
             deps = await asyncio.gather(
@@ -69,7 +77,7 @@ class HttpPortTransport(BaseTransport):
                     f" {[(dep.blueprint, dep.identifier) for dep in new_dependent]}"
                 )
 
-    async def _validate_entity_diff(self, diff: PortObjectDiff[Entity]) -> None:
+    async def _validate_entity_diff(self, diff: PortDiff[Entity]) -> None:
         config = event.port_app_config
         await self._validate_delete_dependent_entities(diff)
         modified_or_created_entities = diff.modified + diff.created
@@ -89,18 +97,25 @@ class HttpPortTransport(BaseTransport):
         )
         await validate_entity_relations(diff, self.context.port_client)
 
-    async def update_diff(self, changes: List[PortDiff]) -> None:
-        blueprints: PortObjectDiff[Blueprint] = flatten_diff(
-            [change[1] for change in changes]
+    async def update_diff(
+        self,
+        entities: ObjectDiff[Entity],
+        blueprints: ObjectDiff[Blueprint],
+        user_agent_type: UserAgentType | None = None,
+    ) -> None:
+        entities_diff = get_port_diff(
+            entities["before"], entities["after"], is_same_entity
         )
+        blueprints_diff = get_port_diff(
+            blueprints["before"], blueprints["after"], is_same_blueprint
+        )
+
         # ToDo: update blueprint diff
 
-        entities: PortObjectDiff[Entity] = flatten_diff(
-            [change[0] for change in changes]
-        )
-
         logger.info(
-            f"Registering entity diff (created: {len(entities.created)}, deleted: {len(entities.deleted)}, modified: {len(entities.modified)})"
+            f"Registering entity diff (created: {len(entities_diff.created)}, deleted: {len(entities_diff.deleted)}, modified: {len(entities_diff.modified)})"
         )
-        await self._validate_entity_diff(entities)
-        await self._update_entity_diff(entities)
+        await self._validate_entity_diff(entities_diff)
+        await self._update_entity_diff(
+            entities_diff, user_agent_type or self.DEFAULT_USER_AGENT_TYPE
+        )
