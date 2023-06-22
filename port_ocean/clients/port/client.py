@@ -114,7 +114,7 @@ class PortClient:
                 f"blueprint: {entity.blueprint}, "
                 f"error: {response.text}"
             )
-            response.raise_for_status()
+        response.raise_for_status()
 
     async def delete_entity(
         self, entity: Entity, user_agent_type: UserAgentType | None = None
@@ -175,6 +175,13 @@ class PortClient:
             response = await client.get(
                 f"{self.api_url}/blueprints/{blueprint}/entities/{identifier}",
                 headers=await self._headers(),
+            )
+        if response.status_code >= 400:
+            logger.error(
+                f"Error validating "
+                f"entity: {identifier} of "
+                f"blueprint: {blueprint}, "
+                f"error: {response.text}"
             )
         response.raise_for_status()
 
@@ -275,6 +282,11 @@ class PortClient:
             )
 
             return
+
+        if not installation.status_code >= 400:
+            logger.error(
+                f"Error initiating integration with id: {_id}, error: {installation.text}"
+            )
 
         installation.raise_for_status()
         logger.info(f"Integration with id: {_id} successfully registered")

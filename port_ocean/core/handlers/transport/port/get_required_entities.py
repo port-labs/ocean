@@ -12,7 +12,7 @@ def get_required_entities(
     required_entities = []
     for entity, blueprint in entity_to_blueprint:
         for relation_name, relation in entity.relations.items():
-            relation_blueprint = blueprint.relations[relation_name]
+            relation_blueprint = blueprint.relations[relation_name].target
             target_entity = Entity(identifier=relation, blueprint=relation_blueprint)
 
             if any(is_same_entity(item, target_entity) for item in forbidden_entities):
