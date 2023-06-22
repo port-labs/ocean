@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 from itertools import chain
 from typing import Callable, List, Tuple, Awaitable, Any, Dict
 
@@ -30,15 +31,17 @@ class EventsMixin:
     def __init__(self) -> None:
         self.event_strategy: IntegrationEventsCallbacks = {
             "start": [],
-            "resync": [],
+            "resync": defaultdict(list),
         }
 
     def on_start(self, func: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
         self.event_strategy["start"].append(func)
         return func
 
-    def on_resync(self, func: RESYNC_EVENT_LISTENER) -> RESYNC_EVENT_LISTENER:
-        self.event_strategy["resync"].append(func)
+    def on_resync(
+        self, func: RESYNC_EVENT_LISTENER, kind: str | None = None
+    ) -> RESYNC_EVENT_LISTENER:
+        self.event_strategy["resync"][kind].append(func)
         return func
 
 
@@ -127,7 +130,12 @@ class SyncMixin(HandlerMixin, EventsMixin):
             if self.__class__._on_resync != SyncMixin._on_resync:
                 tasks.append(self._on_resync(resource_config.kind))
 
-            for wrapper in self.event_strategy["resync"]:
+            fns = [
+                *self.event_strategy["resync"][resource_config.kind],
+                *self.event_strategy["resync"][None],
+            ]
+
+            for wrapper in fns:
                 tasks.append(wrapper(resource_config.kind))
 
             logger.info(f"Found {len(tasks)} resync tasks for {resource_config.kind}")
