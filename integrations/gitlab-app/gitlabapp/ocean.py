@@ -22,13 +22,30 @@ async def on_start() -> None:
     setup_application()
 
 
-@ocean.on_resync()
+@ocean.on_resync("project")
 async def on_resync(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
-    return []
-    if kind == "project":
-        projects = get_all_projects(all_tokens_services)
-        return projects
+    projects = get_all_projects(all_tokens_services)
+    return projects
 
-    # ToDo: allow returning None
-    return []
+
+@ocean.on_resync("mergeRequest")
+async def resync_merge_requests(kind: str) -> List[Dict[Any, Any]]:
+    all_tokens_services = get_all_services()
+    root_groups = sum(
+        [service.get_root_groups() for service in all_tokens_services], []
+    )
+    return [
+        merge_request.asdict()
+        for group in root_groups
+        for merge_request in group.mergerequests.list(scope="all")
+    ]
+
+
+@ocean.on_resync("issues")
+async def resync_issues(kind: str) -> List[Dict[Any, Any]]:
+    all_tokens_services = get_all_services()
+    root_groups = sum(
+        [service.get_root_groups() for service in all_tokens_services], []
+    )
+    return [issue.asdict() for group in root_groups for issue in group.issues.list()]

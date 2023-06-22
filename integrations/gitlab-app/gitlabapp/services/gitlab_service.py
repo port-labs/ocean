@@ -38,12 +38,12 @@ class GitlabService:
 
         return group.get_id()
 
-    def _get_root_partial_groups(self) -> List[Group]:
+    def get_root_groups(self) -> List[Group]:
         groups = self.gitlab_client.groups.list(iterator=True)
         return [group for group in groups if group.parent_id is None]
 
     def create_webhooks(self):
-        root_partial_groups = self._get_root_partial_groups()
+        root_partial_groups = self.get_root_groups()
         filtered_partial_groups = [
             group
             for group in root_partial_groups

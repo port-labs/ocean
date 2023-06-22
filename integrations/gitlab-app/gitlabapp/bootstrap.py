@@ -2,13 +2,14 @@ from gitlab import Gitlab
 
 from gitlabapp.events.event_handler import EventHandler
 from gitlabapp.events.hooks.push import PushHook
+from gitlabapp.events.hooks.merge_request import MergeRequest
 from gitlabapp.services.gitlab_service import GitlabService
 from port_ocean.context.ocean import ocean
 
 
 def setup_listeners(gitlab_service, webhook_id: str):
     event_handler = EventHandler()
-    handlers = [PushHook(gitlab_service)]
+    handlers = [PushHook(gitlab_service), MergeRequest(gitlab_service)]
     for handler in handlers:
         event_ids = [f"{event_name}:{webhook_id}" for event_name in handler.events]
         event_handler.on(event_ids, handler.on_hook)
