@@ -3,7 +3,7 @@ from gitlab import Gitlab
 from gitlabapp.events.event_handler import EventHandler
 from gitlabapp.events.hooks.push import PushHook
 from gitlabapp.services.gitlab_service import GitlabService
-from port_ocean.context.integration import ocean
+from port_ocean.context.ocean import ocean
 
 
 def setup_listeners(gitlab_service, webhook_id: str):

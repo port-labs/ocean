@@ -2,7 +2,7 @@ from gitlabapp.core.utils import generate_ref
 from gitlabapp.models.gitlab import HookContext, ScopeType, Scope
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
-from port_ocean.context.integration import ocean
+from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 from gitlabapp.events.hooks.base import HookHandler
 
@@ -26,7 +26,6 @@ class PushHook(HookHandler):
                 "before": entities_before,
                 "after": entities_after,
             },
-            {"before": [], "after": []},
             UserAgentType.gitops,
         )
 

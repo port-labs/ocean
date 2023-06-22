@@ -9,7 +9,7 @@ from pydantic import BaseSettings, AnyHttpUrl, Field
 class LogicSettings(BaseSettings):
     token_mapping: Dict[str, List[str]] = Field(alias="tokenMapping")
     app_host: AnyHttpUrl = Field(alias="appHost")
-    gitlab_host: AnyHttpUrl = Field(alias="gitlabHost")
+    gitlab_host: AnyHttpUrl = Field(alias="gitlabHost", default="https://gitlab.com")
 
     class Config(BaseSettings.Config):
         env_prefix = "LOGIC_"

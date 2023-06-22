@@ -3,7 +3,7 @@ from typing import List
 from gitlab import Gitlab
 from gitlabapp.services.gitlab_service import GitlabService
 from loguru import logger
-from port_ocean.context.integration import ocean
+from port_ocean.context.ocean import ocean
 
 
 def get_all_projects(gitlab_services: List[GitlabService]):
