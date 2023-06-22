@@ -26,4 +26,4 @@ START_EVENT_LISTENER = Callable[[], Awaitable]
 
 class IntegrationEventsCallbacks(TypedDict):
     start: List[START_EVENT_LISTENER]
-    resync: List[RESYNC_EVENT_LISTENER]
+    resync: Dict[str | None, List[RESYNC_EVENT_LISTENER]]

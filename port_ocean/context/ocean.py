@@ -46,9 +46,10 @@ class PortOceanContext:
 
     def on_resync(
         self,
+        kind: str | None = None,
     ) -> Callable[[RESYNC_EVENT_LISTENER], RESYNC_EVENT_LISTENER]:
         def wrapper(function: RESYNC_EVENT_LISTENER) -> RESYNC_EVENT_LISTENER:
-            return self.integration.on_resync(function)
+            return self.integration.on_resync(function, kind)
 
         return wrapper
 
