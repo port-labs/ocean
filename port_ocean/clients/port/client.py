@@ -54,7 +54,7 @@ class PortClient:
             return TokenResponse(**token_response.json())
 
     def _user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
-        user_agent = f"{self.user_agent_id}"
+        user_agent = f"port-ocean/{self.user_agent_id}"
         if user_agent_type:
             user_agent += f"/{user_agent_type.value or UserAgentType.exporter.value}"
 
@@ -90,12 +90,13 @@ class PortClient:
         logger.info(
             f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
         )
+        headers = await self._headers(user_agent_type)
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.api_url}/blueprints/{entity.blueprint}/entities",
                 json=entity.dict(exclude_unset=True),
-                headers=await self._headers(user_agent_type),
+                headers=headers,
                 params={
                     "upsert": "true",
                     "merge": str(request_options.get("merge", False)).lower(),
@@ -183,7 +184,7 @@ class PortClient:
             "rules": [
                 {
                     "property": "$datasource",
-                    "operator": "contains",
+                    "operator": "=",
                     "value": self._user_agent(user_agent_type),
                 },
             ],
