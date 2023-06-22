@@ -28,8 +28,12 @@ class HttpPortTransport(BaseTransport):
         self, diff: EntityPortDiff, user_agent_type: UserAgentType
     ) -> None:
         ordered_deleted_entities = order_by_entities_dependencies(diff.deleted)
-        for entity in ordered_deleted_entities:
-            await self.context.port_client.delete_entity(entity, user_agent_type)
+        await asyncio.gather(
+            *[
+                self.context.port_client.delete_entity(entity, user_agent_type)
+                for entity in ordered_deleted_entities
+            ]
+        )
 
         ordered_created_entities = reversed(
             order_by_entities_dependencies(diff.created)
