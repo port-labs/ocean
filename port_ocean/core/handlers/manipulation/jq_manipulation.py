@@ -21,7 +21,7 @@ class JQManipulation(BaseManipulation):
             return None
 
     def _search_as_bool(self, data: Dict[str, Any], pattern: str) -> bool:
-        value = self._search(data, pattern)
+        value = self._compile(pattern).first(data)
 
         if isinstance(value, bool):
             return value
