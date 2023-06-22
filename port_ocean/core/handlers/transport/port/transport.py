@@ -35,9 +35,7 @@ class HttpPortTransport(BaseTransport):
             ]
         )
 
-        ordered_created_entities = reversed(
-            order_by_entities_dependencies(diff.created)
-        )
+        ordered_created_entities = order_by_entities_dependencies(diff.created)
         for entity in ordered_created_entities:
             await self.context.port_client.upsert_entity(
                 entity,
