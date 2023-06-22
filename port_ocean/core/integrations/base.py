@@ -82,8 +82,12 @@ class BaseIntegration(SyncMixin):
             evaluations = await asyncio.gather(
                 *(self._run_resync(resource) for resource in app_config.resources)
             )
+            evaluation_diff = [
+                (resource, [{"before": [], "after": results}])
+                for resource, results in evaluations
+            ]
 
-            objects_diff = await self._calculate_raw(evaluations)
+            objects_diff = await self._calculate_raw(evaluation_diff)
 
             entities_after: List[Entity] = sum(
                 [entities_change["after"] for entities_change in objects_diff],

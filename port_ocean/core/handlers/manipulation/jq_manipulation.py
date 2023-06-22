@@ -70,14 +70,17 @@ class JQManipulation(BaseManipulation):
     ) -> EntityDiff:
         parsed_results = [
             (
-                *self._parse_items(mapping, result["before"]),
-                *self._parse_items(mapping, result["after"]),
+                self._parse_items(mapping, result["before"]),
+                self._parse_items(mapping, result["after"]),
             )
             for result in raw_results
         ]
-        entities_before, entities_after = tuple(  # type: ignore
-            sum(items, []) for items in zip(*parsed_results)
-        )
+        entities_before, entities_after = [], []
+
+        if parsed_results:
+            entities_before, entities_after = tuple(
+                (sum(items, []) for items in zip(*parsed_results))
+            )
 
         entities_diff: EntityDiff = {
             "before": entities_before,

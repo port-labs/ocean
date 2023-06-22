@@ -50,3 +50,9 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 venv/
+
+# WebStorm
+**/.idea/modules.xml
+**/.idea/vcs.xml
+**/.idea/.gitignore
+**/.idea/workspace.xml
