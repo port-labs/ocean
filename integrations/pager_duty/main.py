@@ -1,34 +1,66 @@
-def fetch_resources():
-    return []
+from typing import Any, Dict, List
+from integrations.pager_duty.clients.pager_duty import PagerDutyClient
 
 
-def init(configuration):
-    # Initialize the integration based on the provided configuration
-    # Example implementation:
-    # - Set up webhooks
-    # - Store configuration
-    pass
+from port_ocean.context.event import event_context
+
+from port_ocean.context.ocean import ocean
+from starlette.requests import Request
 
 
-def sync_incrementally(resource):
-    # Perform incremental synchronization based on the resource
-    # Example implementation:
-    # - Update data based on the resource
-    pass
+pager_duty_client = PagerDutyClient(
+    ocean.integration_config["token"],
+    ocean.integration_config["url"],
+    ocean.integration_config["appUrl"],
+)
 
 
-def on_resync(kind_list):
-    # Handle the on_resync event
-    # Example implementation:
-    # - Fetch all resources of the specified kinds
-    # - Pass the resources to the provided handler function for further processing
-    resources = fetch_resources(kind_list)
-    return resources
+@ocean.on_resync("incidents")
+async def on_resync(kind: str) -> List[Dict[Any, Any]]:
+    url = ocean.integration_config["url"]
+
+    incidents = pager_duty_client.paginate_request_to_pager_duty(
+        f"{url}/incidents", data_key="incidents"
+    )
+
+    return incidents
 
 
-def on_action_invoked(type, configuration_mapping):
-    # Handle the on_action_invoked event
-    # Example implementation:
-    # - Perform actions based on the type and configuration_mapping
-    # - No need to consume Kafka message here
-    pass
+@ocean.on_resync("services")
+async def on_resync(kind: str) -> List[Dict[Any, Any]]:
+    url = ocean.integration_config["url"]
+
+    services = pager_duty_client.paginate_request_to_pager_duty(
+        f"{url}/services", data_key="services"
+    )
+
+    return services
+
+
+@ocean.router.post("/webhook")
+async def upsertIncident(data: Dict, request: Request):
+    if data["event"]["event_type"] in pager_duty_client.service_delete_events:
+        async with event_context("service"):
+            await ocean.register_raw(
+                "services", {"before": [data["event"]["data"]], "after": []}
+            )
+
+    elif data["event"]["event_type"] in pager_duty_client.incident_upsert_events:
+        async with event_context("incident"):
+            await ocean.register_raw(
+                "incidents", {"before": [], "after": [data["event"]["data"]]}
+            )
+
+    elif data["event"]["event_type"] in pager_duty_client.service_upsert_events:
+        service_id = data["event"]["data"]["id"]
+        service = pager_duty_client.get_singular_from_pager_duty(
+            plural="services", singular="service", id=service_id
+        )
+
+        async with event_context("service"):
+            await ocean.register_raw("services", {"before": [], "after": [service]})
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    pager_duty_client.create_webhooks_if_not_exists()
