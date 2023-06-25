@@ -15,7 +15,7 @@ install: venv generate_config
 	$(ACTIVATE) && \
 	pip install --upgrade pip && \
 	pip install poetry && \
-	poetry install --with dev
+	poetry install --with dev --all-extras
 
 mypy:
 	$(ACTIVATE) && mypy ./port_ocean

@@ -1,6 +1,8 @@
 ../../../../.vscode/
 assets/
+venv/
 *.md
 .git
 .gitignore
 .env
+config.yaml
