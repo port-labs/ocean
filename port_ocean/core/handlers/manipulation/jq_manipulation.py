@@ -49,13 +49,10 @@ class JQManipulation(BaseManipulation):
         for data in raw_data:
             should_run = self._search_as_bool(data, mapping.selector.query)
 
-            if should_run:
-                if mapping.port.entity:
-                    entities.append(
-                        self._search_as_object(
-                            data, mapping.port.entity.mappings.dict()
-                        )
-                    )
+            if should_run and mapping.port.entity:
+                entities.append(
+                    self._search_as_object(data, mapping.port.entity.mappings.dict())
+                )
 
         return [
             Entity.parse_obj(entity_data)

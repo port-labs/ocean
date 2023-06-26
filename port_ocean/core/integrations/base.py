@@ -13,7 +13,7 @@ from port_ocean.context.event import (
     TriggerType,
 )
 from port_ocean.context.ocean import PortOceanContext
-
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins import (
     SyncMixin,
 )
@@ -35,6 +35,46 @@ class BaseIntegration(SyncMixin):
             {"on_action": self.trigger_action, "on_resync": self.trigger_resync},
         )
 
+    async def _calculate_and_register(
+        self,
+        resource: ResourceConfig,
+        results: List[Dict[Any, Any]],
+        user_agent_type: UserAgentType,
+    ) -> List[Entity]:
+        objects_diff = await self._calculate_raw(
+            [
+                (
+                    resource,
+                    [
+                        {
+                            "before": [],
+                            "after": results,
+                        }
+                    ],
+                )
+            ]
+        )
+
+        entities_after: List[Entity] = objects_diff[0]["after"]
+
+        await self.transport.upsert(entities_after, user_agent_type)
+        return entities_after
+
+    async def _sync_new_in_batches(
+        self, resource_config: ResourceConfig, user_agent_type: UserAgentType
+    ) -> List[Entity]:
+        resource, results = await self._run_resync(resource_config)
+
+        tasks = []
+
+        batch_size = self.context.config.batch_work_size or len(results)
+        for batch in [
+            results[i : i + batch_size] for i in range(0, len(results), batch_size)
+        ]:
+            tasks.append(self._calculate_and_register(resource, batch, user_agent_type))
+        entities = await asyncio.gather(*tasks)
+        return sum(entities, [])
+
     async def trigger_start(self) -> None:
         logger.info("Starting integration")
         if self.started:
@@ -54,7 +94,6 @@ class BaseIntegration(SyncMixin):
         await self.context.port_client.initiate_integration(
             self.context.config.integration.identifier,
             self.context.config.integration.type,
-            # ToDo support webhook trigger channel (url)
             {"type": self.context.config.trigger_channel.type},
         )
 
@@ -79,19 +118,13 @@ class BaseIntegration(SyncMixin):
         async with event_context("resync", trigger_type=trigger_type):
             app_config = await self.port_app_config_handler.get_port_app_config()
 
-            evaluations = await asyncio.gather(
-                *(self._run_resync(resource) for resource in app_config.resources)
-            )
-            evaluation_diff = [
-                (resource, [{"before": [], "after": results}])
-                for resource, results in evaluations
-            ]
-
-            objects_diff = await self._calculate_raw(evaluation_diff)
-
-            entities_after: List[Entity] = sum(
-                [entities_change["after"] for entities_change in objects_diff],
-                [],
+            created_entities = await asyncio.gather(
+                *(
+                    self._sync_new_in_batches(resource, user_agent_type)
+                    for resource in app_config.resources
+                )
             )
 
-            await self.sync(entities_after, user_agent_type)
+            await self.transport.delete_diff(sum(created_entities, []), user_agent_type)
+
+            logger.info("Resync was finished")

@@ -37,7 +37,7 @@ def cli_start() -> None:
 
 
 @cli_start.command()
-@click.argument("path", default=".")
+@click.argument("path", default="")
 def sail(path: str) -> None:
     from port_ocean.port_ocean import run
 
