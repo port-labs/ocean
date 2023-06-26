@@ -7,12 +7,12 @@ from werkzeug.local import LocalProxy, LocalStack
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.config.integration import IntegrationConfiguration
+from port_ocean.core.models import Entity
 from port_ocean.errors import PortOceanContextNotFoundError
 from port_ocean.types import (
     RESYNC_EVENT_LISTENER,
     START_EVENT_LISTENER,
     EntityRawDiff,
-    EntityDiff,
 )
 
 if TYPE_CHECKING:
@@ -69,19 +69,18 @@ class PortOceanContext:
 
     async def register(
         self,
-        entities: EntityDiff,
+        entities: List[Entity],
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
         await self.integration.register(entities, user_agent_type)
 
-    async def sync_raw(self, kind: str, change: List[Dict[Any, Any]]) -> None:
-        pass
+    async def sync(
+        self, entities: List[Entity], user_agent_type: UserAgentType
+    ) -> None:
+        await self.integration.sync(entities, user_agent_type)
 
     async def trigger_resync(self) -> None:
-        if self.integration:
-            await self.integration.trigger_resync(trigger_type="manual")
-        else:
-            raise Exception("Integration not set")
+        await self.integration.trigger_resync(trigger_type="manual")
 
 
 _port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()

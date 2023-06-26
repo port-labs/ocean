@@ -153,11 +153,17 @@ class SyncMixin(HandlerMixin, EventsMixin):
 
     async def register(
         self,
-        entities: EntityDiff,
+        entities: List[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
-        await self.transport.update_diff(entities, user_agent_type)
+        await self.transport.upsert(entities, user_agent_type)
         logger.info("Finished registering change")
+
+    async def unregister(
+        self, entities: List[Entity], user_agent_type: UserAgentType
+    ) -> None:
+        await self.transport.delete(entities, user_agent_type)
+        logger.info("Finished unregistering change")
 
     async def register_raw(
         self, kind: str, change_state: EntityRawDiff, user_agent_type: UserAgentType
@@ -185,9 +191,8 @@ class SyncMixin(HandlerMixin, EventsMixin):
                 )
             )
 
-            await self.register(
-                {"before": entities_before, "after": entities_after},
-                user_agent_type,
+            await self.transport.update_diff(
+                {"before": entities_before, "after": entities_after}, user_agent_type
             )
 
     async def sync(
@@ -195,12 +200,7 @@ class SyncMixin(HandlerMixin, EventsMixin):
         entities: List[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
-        current_entities = await ocean.port_client.search_entities(user_agent_type)
+        await self.transport.upsert(entities, user_agent_type)
+        await self.transport.delete_diff(entities, user_agent_type)
 
-        entities_diff: EntityDiff = {
-            "before": current_entities,
-            "after": entities,
-        }
-
-        await self.transport.update_diff(entities_diff, user_agent_type)
         logger.info("Finished syncing change")

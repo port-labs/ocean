@@ -19,6 +19,8 @@ from port_ocean.context.ocean import (
 from port_ocean.core.integrations.base import BaseIntegration
 from pydantic import BaseSettings
 
+from port_ocean.middlewares import request_handler
+
 
 def _get_base_integration_class_from_module(
     module: ModuleType,
@@ -77,6 +79,8 @@ class Ocean:
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()
+        self.fast_api_app.middleware("http")(request_handler)
+
         self.config = IntegrationConfiguration(base_path="./")
         if config_class:
             self.config.integration.config = config_class(
@@ -111,14 +115,18 @@ class Ocean:
 
 
 def run(path: str) -> None:
+    sys.path.append(".")
     try:
-        module = _load_module(f"{path}/integration.py")
+        integration_path = f"{path}/integration.py" if path else "integration.py"
+        module = _load_module(integration_path)
         integration_class = _get_base_integration_class_from_module(module)
     except Exception:
         integration_class = None
 
-    app = Ocean(integration_class=integration_class)
+    default_app = Ocean(integration_class=integration_class)
 
-    _load_module(f"{path}/main.py")
+    main_path = f"{path}/main.py" if path else "main.py"
+    app_module = _load_module(main_path)
+    app = {name: item for name, item in getmembers(app_module)}.get("app", default_app)
 
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,5 +1,6 @@
 import asyncio
 from itertools import chain
+from typing import List
 
 from loguru import logger
 
@@ -15,6 +16,7 @@ from port_ocean.core.handlers.transport.port.order_by_entities_dependencies impo
 from port_ocean.core.handlers.transport.port.validate_entity_relations import (
     validate_entity_relations,
 )
+from port_ocean.core.models import Entity
 from port_ocean.core.utils import (
     is_same_entity,
     get_unique,
@@ -24,35 +26,6 @@ from port_ocean.types import EntityDiff
 
 
 class HttpPortTransport(BaseTransport):
-    async def _update_entity_diff(
-        self, diff: EntityPortDiff, user_agent_type: UserAgentType
-    ) -> None:
-        ordered_deleted_entities = order_by_entities_dependencies(diff.deleted)
-        await asyncio.gather(
-            *[
-                self.context.port_client.delete_entity(entity, user_agent_type)
-                for entity in ordered_deleted_entities
-            ]
-        )
-
-        ordered_created_entities = order_by_entities_dependencies(diff.created)
-        for entity in ordered_created_entities:
-            await self.context.port_client.upsert_entity(
-                entity,
-                event.port_app_config.get_port_request_options(),
-                user_agent_type,
-            )
-
-        ordered_modified_entities = reversed(
-            order_by_entities_dependencies(diff.modified)
-        )
-        for entity in ordered_modified_entities:
-            await self.context.port_client.upsert_entity(
-                entity,
-                event.port_app_config.get_port_request_options(),
-                user_agent_type,
-            )
-
     async def _validate_delete_dependent_entities(self, diff: EntityPortDiff) -> None:
         logger.info("Validated deleted entities")
         if not event.port_app_config.delete_dependent_entities:
@@ -107,6 +80,48 @@ class HttpPortTransport(BaseTransport):
             f"Registering entity diff (created: {len(entities_diff.created)}, deleted: {len(entities_diff.deleted)}, modified: {len(entities_diff.modified)})"
         )
         await self._validate_entity_diff(entities_diff)
-        await self._update_entity_diff(
-            entities_diff, user_agent_type or self.DEFAULT_USER_AGENT_TYPE
+
+        user_agent_type = user_agent_type or self.DEFAULT_USER_AGENT_TYPE
+        await self.delete(entities_diff.deleted, user_agent_type)
+        await self.upsert(entities_diff.created, user_agent_type)
+        await self.upsert(entities_diff.modified, user_agent_type)
+
+    async def upsert(
+        self, entities: List[Entity], user_agent_type: UserAgentType
+    ) -> None:
+        ordered_created_entities = reversed(order_by_entities_dependencies(entities))
+        for entity in ordered_created_entities:
+            await self.context.port_client.upsert_entity(
+                entity,
+                event.port_app_config.get_port_request_options(),
+                user_agent_type,
+            )
+
+    async def delete(
+        self, entities: List[Entity], user_agent_type: UserAgentType
+    ) -> None:
+        ordered_deleted_entities = order_by_entities_dependencies(entities)
+
+        await asyncio.gather(
+            *[
+                self.context.port_client.delete_entity(entity, user_agent_type)
+                for entity in ordered_deleted_entities
+            ]
+        )
+
+    async def delete_diff(
+        self, entities: List[Entity], user_agent_type: UserAgentType
+    ) -> None:
+        entities_at_port = await self.context.port_client.search_entities(
+            user_agent_type
+        )
+        diff = get_port_diff(entities_at_port, entities)
+
+        ordered_deleted_entities = order_by_entities_dependencies(diff.deleted)
+
+        await asyncio.gather(
+            *[
+                self.context.port_client.delete_entity(entity, user_agent_type)
+                for entity in ordered_deleted_entities
+            ]
         )
