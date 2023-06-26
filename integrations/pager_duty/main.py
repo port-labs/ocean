@@ -1,5 +1,5 @@
 from typing import Any, Dict, List
-from integrations.pager_duty.clients.pager_duty import PagerDutyClient
+from clients.pager_duty import PagerDutyClient
 
 
 from port_ocean.context.event import event_context

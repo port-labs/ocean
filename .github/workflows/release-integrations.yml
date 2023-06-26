@@ -1,0 +1,35 @@
+name: Release integrations
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Build and push Docker image
+        run: |
+          # Loop through changed folders under integrations/
+          for file in $(git diff --name-only HEAD^ HEAD -- integrations/registry.yaml); do
+            # Get the type from registry.yaml
+            type=$(yq eval '.type' $file)
+            folder=$(dirname $file)
+            # Get the version from registry.yaml
+            version=$(yq eval '.version' $file)
+
+            # Check if the version exists in the registry
+            if docker pull ghcr.io/port-labs/port-ocean-$type:$version; then
+              echo "Image already exists in the registry: port-ocean-$type:$version"
+            else
+              echo "Building and pushing new image: port-ocean-$type:$version"
+              docker build -t ghcr.io/port-labs/port-ocean-$type:$version $folder
+              docker push ghcr.io/port-labs/port-ocean-$type:$version
+            fi
+          done
