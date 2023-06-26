@@ -18,14 +18,12 @@ class PushHook(HookHandler):
         if generate_ref(config.branch) != context.ref:
             return
 
-        entities_before, entities_after = self.gitlab_service.get_entities_diff(
+        # todo: no need for before
+        _, entities_after = self.gitlab_service.get_entities_diff(
             context, config.spec_path, context.before, context.after, config.branch
         )
-        await ocean.register(
-            {
-                "before": entities_before,
-                "after": entities_after,
-            },
+        await ocean.sync(
+            entities_after,
             UserAgentType.gitops,
         )
 

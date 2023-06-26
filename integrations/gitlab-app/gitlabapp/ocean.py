@@ -2,18 +2,18 @@ from typing import Any, Dict, List
 
 from gitlabapp.bootstrap import setup_application
 from gitlabapp.events.event_handler import EventHandler
-from gitlabapp.ocean_helper import get_all_projects, get_all_services
-from port_ocean.context.event import event_context
+from gitlabapp.ocean_helper import get_all_services
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from starlette.requests import Request
+from loguru import logger
 
 
 @ocean.router.post("/hook/{group_id}")
 async def handle_webhook(group_id: str, request: Request):
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
     await request.json()
-    async with event_context(event_id):
-        await EventHandler().notify(event_id, group_id, request)
+    await EventHandler().notify(event_id, group_id, request)
     return {"ok": True}
 
 
@@ -25,7 +25,19 @@ async def on_start() -> None:
 @ocean.on_resync("project")
 async def on_resync(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
-    projects = get_all_projects(all_tokens_services)
+    projects = []
+    project_id_to_service = {}
+
+    for service in all_tokens_services:
+        logger.info(
+            f"fetching projects for token {service.gitlab_client.private_token}"
+        )
+        projects = service.get_all_projects()
+        projects.extend(projects)
+        project_id_to_service.update({project["id"]: service for project in projects})
+
+    event.attributes["project_id_to_service"] = project_id_to_service
+
     return projects
 
 
@@ -38,7 +50,7 @@ async def resync_merge_requests(kind: str) -> List[Dict[Any, Any]]:
     return [
         merge_request.asdict()
         for group in root_groups
-        for merge_request in group.mergerequests.list(scope="all")
+        for merge_request in group.mergerequests.list(scope="all", all=True)
     ]
 
 
@@ -49,3 +61,25 @@ async def resync_issues(kind: str) -> List[Dict[Any, Any]]:
         [service.get_root_groups() for service in all_tokens_services], []
     )
     return [issue.asdict() for group in root_groups for issue in group.issues.list()]
+
+
+@ocean.on_resync("job")
+async def resync_jobs(kind: str) -> List[Dict[Any, Any]]:
+    all_tokens_services = get_all_services()
+    root_groups = sum(
+        [service.get_root_groups() for service in all_tokens_services], []
+    )
+    return [job.asdict() for group in root_groups for job in group.jobs.list()]
+
+
+@ocean.on_resync("pipelines")
+async def resync_pipelines(kind: str) -> List[Dict[Any, Any]]:
+    all_tokens_services = get_all_services()
+    root_groups = sum(
+        [service.get_root_groups() for service in all_tokens_services], []
+    )
+    return [
+        pipeline.asdict()
+        for group in root_groups
+        for pipeline in group.pipelines.list()
+    ]

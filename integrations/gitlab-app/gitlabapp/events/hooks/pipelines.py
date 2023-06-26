@@ -1,22 +1,20 @@
 from gitlabapp.events.hooks.base import HookHandler
-from gitlabapp.models.gitlab import HookContext
+from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 
-from port_ocean.context.ocean import ocean
 
-
-class Issues(HookHandler):
-    events = ["Issue Hook"]
+class Pipelines(HookHandler):
+    events = ["Pipeline Hook"]
 
     async def _on_hook(self, group_id: str, request: Request) -> None:
         body = await request.json()
         project = self.gitlab_service.gitlab_client.projects.get(body["project"]["id"])
 
-        issue = project.issues.get(body["object_attributes"]["iid"])
+        pipeline = project.pipelines.get(body["object_attributes"]["iid"])
         await ocean.register_raw(
-            "issues",
+            "pipelines",
             {
                 "before": [],
-                "after": [issue.asdict()],
+                "after": [pipeline.asdict()],
             },
         )

@@ -6,18 +6,6 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 
 
-def get_all_projects(gitlab_services: List[GitlabService]):
-    projects = []
-
-    for service in gitlab_services:
-        logger.info(
-            f"fetching projects for token {service.gitlab_client.private_token}"
-        )
-        projects.extend(service.get_all_projects())
-
-    return projects
-
-
 def get_all_services() -> List[GitlabService]:
     logic_settings = ocean.integration_config
     all_tokens_services = []
