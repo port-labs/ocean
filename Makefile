@@ -35,7 +35,6 @@ lint/framework:
 
 lint/integrations:
 	$(ACTIVATE) && \
-	exist_on_first_fail=0; \
 	for dir in $(wildcard $(CURDIR)/integrations/*); do \
         echo "Linting $$dir"; \
         $(call run_lint,$$dir) || failed_dirs+=" $$dir"; \
