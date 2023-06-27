@@ -13,12 +13,9 @@ class LogicSettings(BaseSettings):
         alias="gitlabHost", default=parse_obj_as(AnyHttpUrl, "https://gitlab.com")
     )
 
-    class Config(BaseSettings.Config):
-        env_prefix = "LOGIC_"
-
 
 def create_app() -> Ocean:
-    app = Ocean(integration_class=GitlabIntegration, config_factory=LogicSettings)
+    app = Ocean(integration_class=GitlabIntegration, config_class=LogicSettings)
     # noinspection PyUnresolvedReferences
     from gitlabapp import ocean
 
