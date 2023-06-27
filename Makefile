@@ -34,10 +34,14 @@ lint/framework:
 
 lint/integrations:
 	$(ACTIVATE) && \
+	exit_code=0; \
 	for dir in $(wildcard $(CURDIR)/integrations/*); do \
-        echo "Linting $$dir"; \
-        $(call run_lint,$$dir) || exit_code$$?; \
+	    if [ -n "$(find "$$dir" -type f -name '*.py')" ]; then \
+			echo "Linting $$dir"; \
+			$(call run_lint,$$dir) || exit_code$$?; \
+		fi; \
     done; \
+    echo "Exit code: $$exit_code"; \
     exit $$exit_code
 
 lint/all: lint/framework lint/integrations
