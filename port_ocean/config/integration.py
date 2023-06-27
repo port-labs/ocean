@@ -3,7 +3,7 @@ from typing import Dict, Any
 
 from pydantic import BaseModel, Field
 
-from port_ocean.config.base import BaseYamlSettings
+from port_ocean.config.base import BaseOceanSettings
 from pydantic import BaseSettings
 
 
@@ -15,9 +15,6 @@ class PortSettings(BaseSettings):
     client_secret: str = Field(alias="clientSecret")
     base_url: str = Field(alias="baseUrl")
 
-    class Config(BaseSettings.Config):
-        env_prefix = "PORT__"
-
 
 class TriggerChannelSettings(BaseSettings):
     type: str
@@ -28,20 +25,14 @@ class TriggerChannelSettings(BaseSettings):
     )
     kafka_security_enabled: bool = Field(alias="kafkaSecurityEnabled", default=True)
 
-    class Config(BaseSettings.Config):
-        env_prefix = "TRIGGER__"
-
 
 class IntegrationSettings(BaseSettings):
     identifier: str
     type: str
     config: Dict[str, Any]
 
-    class Config(BaseSettings.Config):
-        env_prefix = "INTEGRATION__"
 
-
-class IntegrationConfiguration(BaseYamlSettings):
+class IntegrationConfiguration(BaseOceanSettings):
     port: PortSettings
     trigger_channel: TriggerChannelSettings = Field(alias="triggerChannel")
     batch_work_size: int | None = Field(alias="batchWorkSize", default=None)
