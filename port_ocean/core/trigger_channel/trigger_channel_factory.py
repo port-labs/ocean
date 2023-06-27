@@ -1,14 +1,12 @@
 from typing import Callable, Dict, Any, Awaitable
 
-from port_ocean.consumers.kafka_consumer import KafkaConsumerConfig
+from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.base import BaseWithContext
 from port_ocean.core.trigger_channel.base_trigger_channel import (
     BaseTriggerChannel,
     TriggerEventEvents,
 )
 from port_ocean.core.trigger_channel.kafka_trigger_channel import KafkaTriggerChannel
-
-from port_ocean.context.ocean import PortOceanContext
 
 
 class TriggerChannelFactory(BaseWithContext):
