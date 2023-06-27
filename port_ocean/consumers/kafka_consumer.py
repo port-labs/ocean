@@ -34,7 +34,7 @@ class KafkaConsumer(BaseConsumer):
 
         self.msg_process = msg_process
         if config.kafka_security_enabled:
-            config = {
+            kafka_config = {
                 "bootstrap.servers": config.brokers,
                 "security.protocol": config.security_protocol,
                 "sasl.mechanism": config.authentication_mechanism,
@@ -44,13 +44,13 @@ class KafkaConsumer(BaseConsumer):
                 "enable.auto.commit": "false",
             }
         else:
-            config = {
+            kafka_config = {
                 "bootstrap.servers": config.brokers,
                 "group.id": "no-security",
                 "enable.auto.commit": "false",
             }
 
-        self.consumer = Consumer(config)
+        self.consumer = Consumer(kafka_config)
 
     def _handle_message(self, raw_msg: Message) -> None:
         message = json.loads(raw_msg.value().decode())

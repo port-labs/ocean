@@ -36,7 +36,7 @@ T = TypeVar("T", bound=List[Any])
 
 
 def zip_and_sum(collection: Iterable[Tuple[T, ...]]) -> Tuple[T, ...]:
-    return tuple(sum(items, []) for items in zip(*collection))
+    return tuple(sum(items, []) for items in zip(*collection))  # type: ignore
 
 
 def get_port_diff(
