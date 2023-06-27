@@ -11,8 +11,8 @@ define run_lint
 		echo -e "\033[0;31mOne or more lints failed with exit code $$exit_code\033[0m"; \
 		exit 1; \
 	fi; \
-
-	echo "All lints executed successfully."
+	echo "All lints executed successfully."; \
+	exit 0
 endef
 
 venv:
