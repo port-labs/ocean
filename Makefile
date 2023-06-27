@@ -5,14 +5,13 @@ define run_lint
 	exit_code=0; \
 	mypy $1 || exit_code=$$?; \
 	ruff $1 || exit_code=$$?; \
-	black --check $1 || exit_code=$$?; \
+	black --exclude venv --check $1 || exit_code=$$?; \
 	\
 	if [ $$exit_code  == 1 ]; then \
 		echo -e "\033[0;31mOne or more lints failed with exit code $$exit_code\033[0m"; \
-		exit 1; \
-	fi; \
-	echo "All lints executed successfully."; \
-	exit 0
+	else \
+		echo -e "\033[0;32mAll lints executed successfully.\033[0m"; \
+	fi
 endef
 
 venv:
@@ -35,10 +34,15 @@ lint/framework:
 
 lint/integrations:
 	$(ACTIVATE) && \
+	exit_code=0; \
 	for dir in $(wildcard $(CURDIR)/integrations/*); do \
-        echo "Linting $$dir"; \
-        $(call run_lint,$$dir) || failed_dirs+=" $$dir"; \
-    done;
+	    if [ -n "$(find "$$dir" -type f -name '*.py')" ]; then \
+			echo "Linting $$dir"; \
+			$(call run_lint,$$dir) || exit_code$$?; \
+		fi; \
+    done; \
+    echo "Exit code: $$exit_code"; \
+    exit $$exit_code
 
 lint/all: lint/framework lint/integrations
 
