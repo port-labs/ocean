@@ -15,5 +15,5 @@ class BaseTriggerChannel:
         self.events = events
 
     @abstractmethod
-    def start(self) -> None:
+    async def start(self) -> None:
         pass
