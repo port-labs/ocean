@@ -16,20 +16,27 @@ jobs:
         uses: actions/checkout@v2
       - name: Build and push Docker image
         run: |
-          # Loop through changed folders under integrations/
-          for file in $(git diff --name-only HEAD^ HEAD -- integrations/ocean-spec.yaml); do
+          files=$(find integrations -name "ocean-spec.yaml")
+          registry=ghcr.io/port-labs
+          GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
+          
+          for file in $files; do
             # Get the type from ocean-spec.yaml
-            type=$(yq eval '.type' $file)
-            folder=$(dirname $file)
+            type=$(yq eval '.type' "$file")
+            folder=$(dirname "$file")
             # Get the version from ocean-spec.yaml
-            version=$(yq eval '.version' $file)
+            version=$(yq eval '.version' "$file")
 
             # Check if the version exists in the ghcr.io registry
-            if docker pull ghcr.io/port-labs/port-ocean-$type:$version; then
-              echo "Image already exists in the ghcr.io: port-ocean-$type:$version"
+
+
+            MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/USER/port-ocean-$type/manifests/$version")
+
+            if [ "$MANIFEST" = "200" ]; then            
+              echo "Image already exists in $repository: port-ocean-$type:$version"
             else
               echo "Building and pushing new image: port-ocean-$type:$version"
-              docker build -t ghcr.io/port-labs/port-ocean-$type:$version $folder
-              docker push ghcr.io/port-labs/port-ocean-$type:$version
+              docker build -t "ghcr.io/port-labs/$type:$version" "$folder"
+              docker push "ghcr.io/port-labs$/type:$version"
             fi
           done
