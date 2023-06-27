@@ -17,16 +17,16 @@ jobs:
       - name: Build and push Docker image
         run: |
           # Loop through changed folders under integrations/
-          for file in $(git diff --name-only HEAD^ HEAD -- integrations/registry.yaml); do
-            # Get the type from registry.yaml
+          for file in $(git diff --name-only HEAD^ HEAD -- integrations/ocean-spec.yaml); do
+            # Get the type from ocean-spec.yaml
             type=$(yq eval '.type' $file)
             folder=$(dirname $file)
-            # Get the version from registry.yaml
+            # Get the version from ocean-spec.yaml
             version=$(yq eval '.version' $file)
 
-            # Check if the version exists in the registry
+            # Check if the version exists in the ghcr.io registry
             if docker pull ghcr.io/port-labs/port-ocean-$type:$version; then
-              echo "Image already exists in the registry: port-ocean-$type:$version"
+              echo "Image already exists in the ghcr.io: port-ocean-$type:$version"
             else
               echo "Building and pushing new image: port-ocean-$type:$version"
               docker build -t ghcr.io/port-labs/port-ocean-$type:$version $folder

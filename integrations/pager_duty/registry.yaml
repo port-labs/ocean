@@ -1,6 +1,0 @@
-version: v0.1.0dev
-type: pager-duty
-section: IncidentManagement
-features:
-  exporter: true
-description: Pager duty is cool
