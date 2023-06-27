@@ -1,4 +1,4 @@
-from typing import List, Iterable, Any, Dict
+from typing import List, Iterable, Any, Dict, TypeVar, Tuple
 
 from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.models import Entity
@@ -30,6 +30,13 @@ def get_unique(array: List[Entity]) -> List[Entity]:
             seen.append(item)
             result.append(item)
     return result
+
+
+T = TypeVar("T", bound=List[Any])
+
+
+def zip_and_sum(collection: Iterable[Tuple[T, ...]]) -> Tuple[T, ...]:
+    return tuple(sum(items, []) for items in zip(*collection))
 
 
 def get_port_diff(

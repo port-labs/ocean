@@ -26,7 +26,7 @@ class TriggerChannelSettings(BaseSettings):
     authentication_mechanism: str = Field(
         alias="authenticationMechanism", default="SCRAM-SHA-512"
     )
-    kafka_security_enabled: bool = Field(alias="kafkaSecurityEnabled", default=False)
+    kafka_security_enabled: bool = Field(alias="kafkaSecurityEnabled", default=True)
 
     class Config(BaseSettings.Config):
         env_prefix = "TRIGGER__"

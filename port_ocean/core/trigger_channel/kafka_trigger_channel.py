@@ -1,6 +1,7 @@
 import threading
 from typing import Dict, Any, Callable
 
+from port_ocean.config.integration import TriggerChannelSettings
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.ocean import (
     PortOceanContext,
@@ -17,12 +18,31 @@ class KafkaTriggerChannel(BaseTriggerChannel):
     def __init__(
         self,
         events: TriggerEventEvents,
-        kafka_credentials: KafkaConsumerConfig,
+        trigger_channel_config: TriggerChannelSettings,
         org_id: str,
     ):
         super().__init__(events)
-        self.kafka_credentials = kafka_credentials
         self.org_id = org_id
+        self.trigger_channel_config = trigger_channel_config
+
+    async def _get_kafka_creds(self) -> KafkaConsumerConfig:
+        if self.trigger_channel_config.kafka_security_enabled:
+            creds = await ocean.port_client.get_kafka_creds()
+            return KafkaConsumerConfig(
+                username=creds["username"],
+                password=creds["password"],
+                brokers=self.trigger_channel_config.brokers,
+                security_protocol=self.trigger_channel_config.security_protocol,
+                authentication_mechanism=self.trigger_channel_config.authentication_mechanism,
+                kafka_security_enabled=self.trigger_channel_config.kafka_security_enabled,
+            )
+
+        return KafkaConsumerConfig(
+            brokers=self.trigger_channel_config.brokers,
+            security_protocol=self.trigger_channel_config.security_protocol,
+            authentication_mechanism=self.trigger_channel_config.authentication_mechanism,
+            kafka_security_enabled=self.trigger_channel_config.kafka_security_enabled,
+        )
 
     def should_be_processed(self, msg_value: Dict[Any, Any], topic: str) -> bool:
         if "runs" in topic:
@@ -60,11 +80,11 @@ class KafkaTriggerChannel(BaseTriggerChannel):
 
         return wrapper
 
-    def start(self) -> None:
+    async def start(self) -> None:
         consumer = KafkaConsumer(
             msg_process=self._handle_message,
             org_id=self.org_id,
-            config=self.kafka_credentials,
+            config=await self._get_kafka_creds(),
         )
         threading.Thread(
             name="ocean_kafka_consumer",

@@ -40,24 +40,13 @@ class TriggerChannelFactory(BaseWithContext):
 
     async def create_trigger_channel(self) -> None:
         if self.trigger_channel_type.lower() == "kafka":
-            kafka_creds = {
-                "username": "",
-                "password": "",
-            }  # await self.context.port_client.get_kafka_creds()
             org_id = await self.context.port_client.get_org_id()
             self._trigger_channel = KafkaTriggerChannel(
                 {
                     "on_resync": self.on_event(self.events["on_resync"]),
                     "on_action": self.on_event(self.events["on_action"]),
                 },
-                KafkaConsumerConfig(
-                    username=kafka_creds["username"],
-                    password=kafka_creds["password"],
-                    brokers=self.context.config.trigger_channel.brokers,
-                    security_protocol=self.context.config.trigger_channel.security_protocol,
-                    authentication_mechanism=self.context.config.trigger_channel.authentication_mechanism,
-                    kafka_security_enabled=self.context.config.trigger_channel.kafka_security_enabled,
-                ),
+                self.context.config.trigger_channel,
                 org_id,
             )
         else:
@@ -65,4 +54,4 @@ class TriggerChannelFactory(BaseWithContext):
                 f"Trigger channel {self.trigger_channel_type} not supported"
             )
 
-        self._trigger_channel.start()
+        await self._trigger_channel.start()

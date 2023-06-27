@@ -17,7 +17,7 @@ from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.handlers.transport.port.transport import HttpPortTransport
 from port_ocean.core.models import Entity
-from port_ocean.core.utils import validate_result
+from port_ocean.core.utils import validate_result, zip_and_sum
 from port_ocean.types import (
     START_EVENT_LISTENER,
     RESYNC_EVENT_LISTENER,
@@ -181,13 +181,10 @@ class SyncMixin(HandlerMixin, EventsMixin):
                 [(mapping, [change_state]) for mapping in resource_mappings]
             )
 
-            entities_before, entities_after = tuple(  # type: ignore
-                sum(state, [])
-                for state in zip(
-                    *(
-                        (entities_change["before"], entities_change["after"])
-                        for entities_change in objects_diff
-                    )
+            entities_before, entities_after = zip_and_sum(
+                (
+                    (entities_change["before"], entities_change["after"])
+                    for entities_change in objects_diff
                 )
             )
 
