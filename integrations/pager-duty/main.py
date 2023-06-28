@@ -40,16 +40,10 @@ async def on_resync(kind: str) -> List[Dict[Any, Any]]:
 @ocean.router.post("/webhook")
 async def upsertIncident(data: Dict, request: Request):
     if data["event"]["event_type"] in pager_duty_client.service_delete_events:
-        async with event_context("service"):
-            await ocean.register_raw(
-                "services", {"before": [data["event"]["data"]], "after": []}
-            )
+        await ocean.unregister_raw("service", [data["event"]["data"]])
 
     elif data["event"]["event_type"] in pager_duty_client.incident_upsert_events:
-        async with event_context("incident"):
-            await ocean.register_raw(
-                "incidents", {"before": [], "after": [data["event"]["data"]]}
-            )
+        await ocean.register_raw("incidents", [data["event"]["data"]])
 
     elif data["event"]["event_type"] in pager_duty_client.service_upsert_events:
         service_id = data["event"]["data"]["id"]
@@ -57,8 +51,7 @@ async def upsertIncident(data: Dict, request: Request):
             plural="services", singular="service", id=service_id
         )
 
-        async with event_context("service"):
-            await ocean.register_raw("services", {"before": [], "after": [service]})
+        await ocean.register_raw("services", [service])
 
 
 @ocean.on_start()
