@@ -1,6 +1,7 @@
+from starlette.requests import Request
+
 from gitlabapp.events.hooks.base import HookHandler
 from port_ocean.context.ocean import ocean
-from starlette.requests import Request
 
 
 class Pipelines(HookHandler):
@@ -11,10 +12,4 @@ class Pipelines(HookHandler):
         project = self.gitlab_service.gitlab_client.projects.get(body["project"]["id"])
 
         pipeline = project.pipelines.get(body["object_attributes"]["iid"])
-        await ocean.register_raw(
-            "pipelines",
-            {
-                "before": [],
-                "after": [pipeline.asdict()],
-            },
-        )
+        await ocean.register_raw("pipelines", [pipeline.asdict()])

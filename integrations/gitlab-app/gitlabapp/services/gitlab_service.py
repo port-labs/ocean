@@ -3,10 +3,11 @@ from typing import List, Tuple
 import yaml
 from gitlab import Gitlab
 from gitlab.v4.objects import Group
+from loguru import logger
+
 from gitlabapp.core.entities import generate_entity_from_port_yaml
 from gitlabapp.core.utils import does_pattern_apply
 from gitlabapp.models.gitlab import HookContext, ScopeType, Scope
-from loguru import logger
 from port_ocean.core.models import Entity
 
 
@@ -93,7 +94,7 @@ class GitlabService:
             ],
         ]
 
-    def get_all_projects(self, scope: Scope | None = None):
+    def get_projects_by_scope(self, scope: Scope | None = None):
         if scope and scope.type == ScopeType.Project:
             logger.info(f"fetching project {scope.id}")
             project = self.gitlab_client.projects.get(scope.id)
