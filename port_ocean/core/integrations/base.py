@@ -31,7 +31,6 @@ class BaseIntegration(SyncMixin):
         self.trigger_channel = TriggerChannelFactory(
             context,
             self.context.config.integration.identifier,
-            self.context.config.trigger_channel.type,
             {"on_action": self.trigger_action, "on_resync": self.trigger_resync},
         )
 
@@ -87,15 +86,16 @@ class BaseIntegration(SyncMixin):
             raise NotImplementedError("on_resync is not implemented")
 
         await self.initialize_handlers()
-        logger.info("Initializing trigger channel")
-        await self.trigger_channel.create_trigger_channel()
 
         logger.info("Initializing integration at port")
         await self.context.port_client.initiate_integration(
             self.context.config.integration.identifier,
             self.context.config.integration.type,
-            {"type": self.context.config.trigger_channel.type},
+            self.context.config.trigger_channel.to_request(),
         )
+
+        logger.info("Initializing trigger channel")
+        await self.trigger_channel.create_trigger_channel()
 
         self.started = True
 

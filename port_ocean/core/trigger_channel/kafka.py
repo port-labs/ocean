@@ -1,29 +1,28 @@
 import threading
 from typing import Dict, Any, Callable
 
-from port_ocean.config.integration import TriggerChannelSettings
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.ocean import (
     PortOceanContext,
     initialize_port_ocean_context,
     ocean,
 )
-from port_ocean.core.trigger_channel.base_trigger_channel import (
+from port_ocean.core.trigger_channel.base import (
     BaseTriggerChannel,
-    TriggerEventEvents,
+    TriggerChannelEvents,
 )
+from port_ocean.core.trigger_channel.settings import KafkaTriggerChannelSettings
 
 
-class KafkaTriggerChannel(BaseTriggerChannel):
+class KafkaTriggerChannel(BaseTriggerChannel[KafkaTriggerChannelSettings]):
     def __init__(
         self,
-        events: TriggerEventEvents,
-        trigger_channel_config: TriggerChannelSettings,
+        events: TriggerChannelEvents,
+        trigger_channel_config: KafkaTriggerChannelSettings,
         org_id: str,
     ):
-        super().__init__(events)
+        super().__init__(events, trigger_channel_config)
         self.org_id = org_id
-        self.trigger_channel_config = trigger_channel_config
 
     async def _get_kafka_creds(self) -> KafkaConsumerConfig:
         if self.trigger_channel_config.kafka_security_enabled:

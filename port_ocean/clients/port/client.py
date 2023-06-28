@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.clients.port.types import (
     KafkaCreds,
-    ChangelogDestination,
     RequestOptions,
     UserAgentType,
 )
@@ -262,28 +261,27 @@ class PortClient:
         return integration.json()["integration"]
 
     async def initiate_integration(
-        self, _id: str, _type: str, changelog_destination: ChangelogDestination
+        self, _id: str, _type: str, changelog_destination: dict[str, Any]
     ) -> None:
         logger.info(f"Initiating integration with id: {_id}")
+        headers = await self._headers()
+        json = {
+            "installationId": _id,
+            "installationAppType": _type,
+            "changelogDestination": changelog_destination,
+        }
         async with httpx.AsyncClient() as client:
-            installation = await client.post(
-                f"{self.api_url}/integration",
-                headers=await self._headers(),
-                json={
-                    "installationId": _id,
-                    "installationAppType": _type,
-                    "changelogDestination": changelog_destination,
-                },
+            installation = await client.patch(
+                f"{self.api_url}/integration/{_id}",
+                headers=headers,
+                json=json,
             )
+            if installation.status_code == 404:
+                installation = await client.post(
+                    f"{self.api_url}/integration", headers=headers, json=json
+                )
 
-        if installation.status_code == 409:
-            logger.info(
-                f"Integration with id: {_id} already exists, skipping registration"
-            )
-
-            return
-
-        if not installation.status_code >= 400:
+        if installation.status_code >= 400:
             logger.error(
                 f"Error initiating integration with id: {_id}, error: {installation.text}"
             )
