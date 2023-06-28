@@ -29,8 +29,8 @@ class KafkaTriggerChannel(BaseTriggerChannel):
         if self.trigger_channel_config.kafka_security_enabled:
             creds = await ocean.port_client.get_kafka_creds()
             return KafkaConsumerConfig(
-                username=creds["username"],
-                password=creds["password"],
+                username=creds.get("username"),
+                password=creds.get("password"),
                 brokers=self.trigger_channel_config.brokers,
                 security_protocol=self.trigger_channel_config.security_protocol,
                 authentication_mechanism=self.trigger_channel_config.authentication_mechanism,
