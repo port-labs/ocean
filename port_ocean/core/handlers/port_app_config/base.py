@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Type, Any, Dict
+from typing import Type, Any
 
 from port_ocean.context.event import event
 from port_ocean.core.base import BaseWithContext
@@ -10,7 +10,7 @@ class BasePortAppConfig(BaseWithContext):
     CONFIG_CLASS: Type[PortAppConfig] = PortAppConfig
 
     @abstractmethod
-    async def _get_port_app_config(self) -> Dict[str, Any]:
+    async def _get_port_app_config(self) -> dict[str, Any]:
         pass
 
     async def get_port_app_config(self) -> PortAppConfig:

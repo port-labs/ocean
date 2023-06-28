@@ -1,7 +1,7 @@
 import asyncio
 from collections import defaultdict
 from itertools import chain
-from typing import Callable, List, Tuple, Awaitable, Any, Dict
+from typing import Callable, Awaitable, Any
 
 from loguru import logger
 
@@ -107,12 +107,12 @@ class SyncMixin(HandlerMixin, EventsMixin):
         HandlerMixin.__init__(self)
         EventsMixin.__init__(self)
 
-    async def _on_resync(self, kind: str) -> List[Dict[Any, Any]]:
+    async def _on_resync(self, kind: str) -> list[dict[Any, Any]]:
         raise NotImplementedError("on_resync must be implemented")
 
     async def _calculate_raw(
-        self, raw_diff: List[Tuple[ResourceConfig, List[EntityRawDiff]]]
-    ) -> List[EntityDiff]:
+        self, raw_diff: list[tuple[ResourceConfig, list[EntityRawDiff]]]
+    ) -> list[EntityDiff]:
         logger.info("Calculating diff in entities between states")
         return await asyncio.gather(
             *[
@@ -123,9 +123,9 @@ class SyncMixin(HandlerMixin, EventsMixin):
 
     async def _run_resync(
         self, resource_config: ResourceConfig
-    ) -> Tuple[ResourceConfig, List[Dict[Any, Any]]]:
+    ) -> tuple[ResourceConfig, list[dict[Any, Any]]]:
         logger.info(f"Resyncing {resource_config.kind}")
-        tasks: List[Awaitable[List[Dict[Any, Any]]]] = []
+        tasks: list[Awaitable[list[dict[Any, Any]]]] = []
         with logger.contextualize(kind=resource_config.kind):
             if self.__class__._on_resync != SyncMixin._on_resync:
                 tasks.append(self._on_resync(resource_config.kind))
@@ -139,7 +139,7 @@ class SyncMixin(HandlerMixin, EventsMixin):
                 tasks.append(wrapper(resource_config.kind))
 
             logger.info(f"Found {len(tasks)} resync tasks for {resource_config.kind}")
-            results: List[Dict[Any, Any]] = list(
+            results: list[dict[Any, Any]] = list(
                 chain.from_iterable(
                     [
                         validate_result(task_result)
@@ -153,14 +153,14 @@ class SyncMixin(HandlerMixin, EventsMixin):
 
     async def register(
         self,
-        entities: List[Entity],
+        entities: list[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
         await self.transport.upsert(entities, user_agent_type)
         logger.info("Finished registering change")
 
     async def unregister(
-        self, entities: List[Entity], user_agent_type: UserAgentType
+        self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         await self.transport.delete(entities, user_agent_type)
         logger.info("Finished unregistering change")
@@ -194,7 +194,7 @@ class SyncMixin(HandlerMixin, EventsMixin):
 
     async def sync(
         self,
-        entities: List[Entity],
+        entities: list[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
         await self.transport.upsert(entities, user_agent_type)

@@ -1,5 +1,5 @@
 import warnings
-from typing import Dict, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
 from pydantic import BaseSettings
@@ -22,7 +22,7 @@ class PortSettings(BaseSettings):
 class IntegrationSettings(BaseSettings):
     identifier: str
     type: str
-    config: Dict[str, Any]
+    config: dict[str, Any]
 
 
 class IntegrationConfiguration(BaseOceanSettings):

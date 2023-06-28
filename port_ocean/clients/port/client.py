@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Any
 
 import httpx as httpx
 from loguru import logger
@@ -61,7 +61,7 @@ class PortClient:
 
     async def _headers(
         self, user_agent_type: UserAgentType | None = None
-    ) -> Dict[Any, Any]:
+    ) -> dict[Any, Any]:
         return {
             "Authorization": await self.token,
             "User-Agent": self._user_agent(user_agent_type),
@@ -184,7 +184,7 @@ class PortClient:
             )
         response.raise_for_status()
 
-    async def search_entities(self, user_agent_type: UserAgentType) -> List[Entity]:
+    async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
         query = {
             "combinator": "and",
             "rules": [
@@ -211,7 +211,7 @@ class PortClient:
                 Entity.parse_obj(result) for result in search_req.json()["entities"]
             ]
 
-    async def search_dependent_entities(self, entity: Entity) -> List[Entity]:
+    async def search_dependent_entities(self, entity: Entity) -> list[Entity]:
         body = {
             "combinator": "and",
             "rules": [
@@ -250,7 +250,7 @@ class PortClient:
             },
         )
 
-    async def get_integration(self, identifier: str) -> Dict[str, Any]:
+    async def get_integration(self, identifier: str) -> dict[str, Any]:
         logger.info(f"Fetching integration with id: {identifier}")
         async with httpx.AsyncClient() as client:
             integration = await client.get(

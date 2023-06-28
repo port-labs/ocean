@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import List, Dict, Any
+from typing import Any
 
 import pyjq as jq  # type: ignore
 
@@ -15,13 +15,13 @@ class JQManipulation(BaseManipulation):
     def _compile(self, pattern: str) -> Any:
         return jq.compile(pattern)
 
-    def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
             return self._compile(pattern).first(data) or None
         except Exception:
             return None
 
-    def _search_as_bool(self, data: Dict[str, Any], pattern: str) -> bool:
+    def _search_as_bool(self, data: dict[str, Any], pattern: str) -> bool:
         value = self._compile(pattern).first(data)
 
         if isinstance(value, bool):
@@ -30,9 +30,9 @@ class JQManipulation(BaseManipulation):
         raise Exception(f"Expected boolean value, got {type(value)} instead")
 
     def _search_as_object(
-        self, data: Dict[str, Any], obj: Dict[str, Any]
-    ) -> Dict[str, Any | None]:
-        result: Dict[str, Any | None] = {}
+        self, data: dict[str, Any], obj: dict[str, Any]
+    ) -> dict[str, Any | None]:
+        result: dict[str, Any | None] = {}
         for key, value in obj.items():
             try:
                 if isinstance(value, dict):
@@ -44,8 +44,8 @@ class JQManipulation(BaseManipulation):
         return result
 
     def _parse_items(
-        self, mapping: ResourceConfig, raw_data: List[Dict[str, Any]]
-    ) -> List[Entity]:
+        self, mapping: ResourceConfig, raw_data: list[dict[str, Any]]
+    ) -> list[Entity]:
         entities = []
         for data in raw_data:
             should_run = self._search_as_bool(data, mapping.selector.query)
@@ -64,7 +64,7 @@ class JQManipulation(BaseManipulation):
         ]
 
     async def parse_items(
-        self, mapping: ResourceConfig, raw_results: List[EntityRawDiff]
+        self, mapping: ResourceConfig, raw_results: list[EntityRawDiff]
     ) -> EntityDiff:
         parsed_results = [
             (
@@ -73,8 +73,8 @@ class JQManipulation(BaseManipulation):
             )
             for result in raw_results
         ]
-        entities_before: List[Entity] = []
-        entities_after: List[Entity] = []
+        entities_before: list[Entity] = []
+        entities_after: list[Entity] = []
 
         if parsed_results:
             entities_before, entities_after = zip_and_sum(parsed_results)

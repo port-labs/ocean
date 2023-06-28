@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Any, Awaitable
+from typing import Callable, Any, Awaitable
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.base import BaseWithContext
@@ -9,12 +9,12 @@ from port_ocean.core.trigger_channel.base import (
 from port_ocean.core.trigger_channel.http import (
     HttpTriggerChannel,
 )
+from port_ocean.core.trigger_channel.kafka import (
+    KafkaTriggerChannel,
+)
 from port_ocean.core.trigger_channel.settings import (
     HttpTriggerChannelSettings,
     KafkaTriggerChannelSettings,
-)
-from port_ocean.core.trigger_channel.kafka import (
-    KafkaTriggerChannel,
 )
 
 
@@ -31,9 +31,9 @@ class TriggerChannelFactory(BaseWithContext):
         self.events = events
 
     def on_event(
-        self, callback: Callable[[Dict[Any, Any]], Awaitable[None]]
-    ) -> Callable[[Dict[Any, Any]], Awaitable[None]]:
-        async def wrapper(event: Dict[Any, Any]) -> None:
+        self, callback: Callable[[dict[Any, Any]], Awaitable[None]]
+    ) -> Callable[[dict[Any, Any]], Awaitable[None]]:
+        async def wrapper(event: dict[Any, Any]) -> None:
             integration_identifier = (
                 event.get("diff", {}).get("after", {}).get("identifier")
             )

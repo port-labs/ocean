@@ -1,7 +1,5 @@
 import asyncio
 from typing import (
-    List,
-    Dict,
     Any,
 )
 
@@ -37,9 +35,9 @@ class BaseIntegration(SyncMixin):
     async def _calculate_and_register(
         self,
         resource: ResourceConfig,
-        results: List[Dict[Any, Any]],
+        results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
-    ) -> List[Entity]:
+    ) -> list[Entity]:
         objects_diff = await self._calculate_raw(
             [
                 (
@@ -54,14 +52,14 @@ class BaseIntegration(SyncMixin):
             ]
         )
 
-        entities_after: List[Entity] = objects_diff[0]["after"]
+        entities_after: list[Entity] = objects_diff[0]["after"]
 
         await self.transport.upsert(entities_after, user_agent_type)
         return entities_after
 
     async def _sync_new_in_batches(
         self, resource_config: ResourceConfig, user_agent_type: UserAgentType
-    ) -> List[Entity]:
+    ) -> list[Entity]:
         resource, results = await self._run_resync(resource_config)
 
         tasks = []
@@ -104,12 +102,12 @@ class BaseIntegration(SyncMixin):
                 *(listener() for listener in self.event_strategy["start"])
             )
 
-    async def trigger_action(self, data: Dict[Any, Any]) -> None:
+    async def trigger_action(self, data: dict[Any, Any]) -> None:
         raise NotImplementedError("trigger_action is not implemented")
 
     async def trigger_resync(
         self,
-        _: Dict[Any, Any] | None = None,
+        _: dict[Any, Any] | None = None,
         trigger_type: TriggerType = "machine",
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
