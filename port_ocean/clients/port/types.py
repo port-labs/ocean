@@ -14,10 +14,7 @@ KafkaCreds = TypedDict(
         "password": str,
     },
 )
-ChangelogDestination = TypedDict(
-    "ChangelogDestination",
-    {"type": str, "url": NotRequired[str]},
-)
+
 RequestOptions = TypedDict(
     "RequestOptions",
     {

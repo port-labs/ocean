@@ -1,13 +1,13 @@
 from graphlib import TopologicalSorter
-from typing import List, Dict, Set, Tuple
+from typing import Set
 
 from port_ocean.core.models import Entity
 
-Node = Tuple[str, str]
+Node = tuple[str, str]
 
 
-def order_by_entities_dependencies(entities: List[Entity]) -> List[Entity]:
-    nodes: Dict[Node, Set[Node]] = {}
+def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
+    nodes: dict[Node, Set[Node]] = {}
     entities_map = {}
 
     for entity in entities:

@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Literal, Any, Dict, TYPE_CHECKING, Optional
+from typing import AsyncIterator, Literal, Any, TYPE_CHECKING, Optional
 
 from werkzeug.local import LocalStack, LocalProxy
 
@@ -53,7 +53,7 @@ event: EventContext = LocalProxy(lambda: _get_event_context())  # type: ignore
 async def event_context(
     kind: str,
     trigger_type: TriggerType = "manual",
-    attributes: Dict[str, Any] | None = None,
+    attributes: dict[str, Any] | None = None,
 ) -> AsyncIterator[EventContext]:
     if attributes is None:
         attributes = {}

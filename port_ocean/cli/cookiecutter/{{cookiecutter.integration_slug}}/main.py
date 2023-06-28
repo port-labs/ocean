@@ -1,10 +1,10 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from port_ocean.context.ocean import ocean
 
 
 @ocean.on_resync()
-async def on_resync(kind: str) -> List[Dict[Any, Any]]:
+async def on_resync(kind: str) -> list[dict[Any, Any]]:
     # Get all data from the source system
     # Return raw data to run manipulation over
     return []

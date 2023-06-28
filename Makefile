@@ -2,18 +2,16 @@ SHELL := /bin/bash
 ACTIVATE := . venv/bin/activate
 
 define run_lint
+	exit_code=0; \
 	mypy $1 || exit_code=$$?; \
 	ruff $1 || exit_code=$$?; \
-	black --check $1 || exit_code=$$?; \
+	black --exclude venv --check $1 || exit_code=$$?; \
 	\
-	if [ -n "$$exit_code " ]; then \
+	if [ $$exit_code  == 1 ]; then \
 		echo -e "\033[0;31mOne or more lints failed with exit code $$exit_code\033[0m"; \
-	fi; \
-	if [ -n "$$exit_code " ] && [ "$2" = 1 ]; then \
-		exit 1; \
-	fi; \
-
-	echo "All lints executed successfully."
+	else \
+		echo -e "\033[0;32mAll lints executed successfully.\033[0m"; \
+	fi
 endef
 
 venv:
@@ -26,28 +24,25 @@ install: venv
 	$(ACTIVATE) && \
 	pip install --upgrade pip && \
 	pip install poetry && \
-	poetry install --with dev
-
-install/all: venv
-	$(ACTIVATE) && \
-	pip install --upgrade pip && \
-	pip install poetry && \
 	poetry install --with dev --all-extras
-
 
 # Linting
 lint/framework:
 	$(ACTIVATE) && \
 	exist_on_first_fail=1; \
-	$(call run_lint,./port_ocean,$$exist_on_first_fail)
+	$(call run_lint,./port_ocean)
 
 lint/integrations:
 	$(ACTIVATE) && \
-	exist_on_first_fail=0; \
+	exit_code=0; \
 	for dir in $(wildcard $(CURDIR)/integrations/*); do \
-        echo "Linting $$dir"; \
-        $(call run_lint,$$dir,$$exist_on_first_fail) || failed_dirs+=" $$dir"; \
-    done;
+	    if [ -n "$(find "$$dir" -type f -name '*.py')" ]; then \
+			echo "Linting $$dir"; \
+			$(call run_lint,$$dir) || exit_code$$?; \
+		fi; \
+    done; \
+    echo "Exit code: $$exit_code"; \
+    exit $$exit_code
 
 lint/all: lint/framework lint/integrations
 

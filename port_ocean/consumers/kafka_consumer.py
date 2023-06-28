@@ -1,7 +1,7 @@
 import asyncio
 import json
 import signal
-from typing import Any, Callable, Awaitable, Dict
+from typing import Any, Callable, Awaitable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
 from loguru import logger
@@ -12,8 +12,8 @@ from port_ocean.consumers.base_consumer import BaseConsumer
 
 class KafkaConsumerConfig(BaseModel):
     brokers: str
-    username: str
-    password: str
+    username: str | None
+    password: str | None
     security_protocol: str
     authentication_mechanism: str
     kafka_security_enabled: bool
@@ -22,7 +22,7 @@ class KafkaConsumerConfig(BaseModel):
 class KafkaConsumer(BaseConsumer):
     def __init__(
         self,
-        msg_process: Callable[[Dict[Any, Any], str], Awaitable[None]],
+        msg_process: Callable[[dict[Any, Any], str], Awaitable[None]],
         config: KafkaConsumerConfig,
         org_id: str | None = None,
     ) -> None:
@@ -34,7 +34,7 @@ class KafkaConsumer(BaseConsumer):
 
         self.msg_process = msg_process
         if config.kafka_security_enabled:
-            config = {
+            kafka_config = {
                 "bootstrap.servers": config.brokers,
                 "security.protocol": config.security_protocol,
                 "sasl.mechanism": config.authentication_mechanism,
@@ -44,13 +44,13 @@ class KafkaConsumer(BaseConsumer):
                 "enable.auto.commit": "false",
             }
         else:
-            config = {
+            kafka_config = {
                 "bootstrap.servers": config.brokers,
                 "group.id": "no-security",
                 "enable.auto.commit": "false",
             }
 
-        self.consumer = Consumer(config)
+        self.consumer = Consumer(kafka_config)
 
     def _handle_message(self, raw_msg: Message) -> None:
         message = json.loads(raw_msg.value().decode())

@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Any
 
 from pydantic import BaseModel
 from pydantic.fields import Field
@@ -8,9 +8,9 @@ class Entity(BaseModel):
     identifier: str
     blueprint: str
     title: str | None
-    team: str | List[str] = []
-    properties: Dict[str, Any] = {}
-    relations: Dict[str, str] = {}
+    team: str | list[str] = []
+    properties: dict[str, Any] = {}
+    relations: dict[str, str] = {}
 
 
 class BlueprintRelation(BaseModel):
@@ -24,5 +24,5 @@ class Blueprint(BaseModel):
     identifier: str
     title: str | None
     team: str | None
-    properties_schema: Dict[str, Any] = Field(alias="schema")
-    relations: Dict[str, BlueprintRelation]
+    properties_schema: dict[str, Any] = Field(alias="schema")
+    relations: dict[str, BlueprintRelation]
