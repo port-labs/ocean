@@ -5,9 +5,7 @@ from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
-from port_ocean.core.handlers.manipulation.base import (
-    EntityPortDiff,
-)
+from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.handlers.transport.base import BaseTransport
 from port_ocean.core.handlers.transport.port.order_by_entities_dependencies import (
     order_by_entities_dependencies,
@@ -16,11 +14,7 @@ from port_ocean.core.handlers.transport.port.validate_entity_relations import (
     validate_entity_relations,
 )
 from port_ocean.core.models import Entity
-from port_ocean.core.utils import (
-    is_same_entity,
-    get_unique,
-    get_port_diff,
-)
+from port_ocean.core.utils import is_same_entity, get_unique, get_port_diff
 from port_ocean.types import EntityDiff
 
 

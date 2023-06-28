@@ -5,11 +5,7 @@ import httpx as httpx
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
-from port_ocean.clients.port.types import (
-    KafkaCreds,
-    RequestOptions,
-    UserAgentType,
-)
+from port_ocean.clients.port.types import KafkaCreds, RequestOptions, UserAgentType
 from port_ocean.core.models import Entity, Blueprint
 
 

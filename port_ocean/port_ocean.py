@@ -7,6 +7,7 @@ from typing import Type, Callable
 import uvicorn
 from fastapi import FastAPI, APIRouter
 from loguru import logger
+from pydantic import BaseSettings
 from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
@@ -17,8 +18,6 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from pydantic import BaseSettings
-
 from port_ocean.middlewares import request_handler
 
 

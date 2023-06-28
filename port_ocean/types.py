@@ -1,9 +1,4 @@
-from typing import (
-    Awaitable,
-    Callable,
-    TypedDict,
-    Any,
-)
+from typing import Awaitable, Callable, TypedDict, Any
 
 from port_ocean.core.models import Entity
 

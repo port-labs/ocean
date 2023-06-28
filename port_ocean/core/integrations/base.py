@@ -1,24 +1,15 @@
 import asyncio
-from typing import (
-    Any,
-)
+from typing import Any
 
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.event import (
-    event_context,
-    TriggerType,
-)
+from port_ocean.context.event import event_context, TriggerType
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.integrations.mixins import (
-    SyncMixin,
-)
+from port_ocean.core.integrations.mixins import SyncMixin
 from port_ocean.core.models import Entity
-from port_ocean.core.trigger_channel.factory import (
-    TriggerChannelFactory,
-)
+from port_ocean.core.trigger_channel.factory import TriggerChannelFactory
 
 
 class BaseIntegration(SyncMixin):
