@@ -6,8 +6,7 @@ import pyjq as jq  # type: ignore
 from port_ocean.core.handlers.manipulation.base import BaseManipulation
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
-from port_ocean.core.utils import zip_and_sum
-from port_ocean.types import EntityRawDiff, EntityDiff
+from port_ocean.types import RawEntityDiff, EntityDiff
 
 
 class JQManipulation(BaseManipulation):
@@ -64,24 +63,14 @@ class JQManipulation(BaseManipulation):
         ]
 
     async def parse_items(
-        self, mapping: ResourceConfig, raw_results: list[EntityRawDiff]
+        self, mapping: ResourceConfig, raw_results: RawEntityDiff
     ) -> EntityDiff:
-        parsed_results = [
-            (
-                self._parse_items(mapping, result["before"]),
-                self._parse_items(mapping, result["after"]),
-            )
-            for result in raw_results
-        ]
-        entities_before: list[Entity] = []
-        entities_after: list[Entity] = []
+        entities_before: list[Entity] = self._parse_items(
+            mapping, raw_results["before"]
+        )
+        entities_after: list[Entity] = self._parse_items(mapping, raw_results["after"])
 
-        if parsed_results:
-            entities_before, entities_after = zip_and_sum(parsed_results)
-
-        entities_diff: EntityDiff = {
+        return {
             "before": entities_before,
             "after": entities_after,
         }
-
-        return entities_diff
