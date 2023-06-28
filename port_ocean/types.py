@@ -3,7 +3,7 @@ from typing import Awaitable, Callable, TypedDict, Any
 from port_ocean.core.models import Entity
 
 
-class EntityRawDiff(TypedDict):
+class RawEntityDiff(TypedDict):
     before: list[dict[Any, Any]]
     after: list[dict[Any, Any]]
 

@@ -30,7 +30,7 @@ class BaseTransport(BaseWithContext):
         pass
 
     @abstractmethod
-    async def delete_diff(
+    async def delete_non_existing(
         self, entities: list[Entity], user_agent: UserAgentType
     ) -> None:
         pass

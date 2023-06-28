@@ -63,7 +63,7 @@ def _include_target_channel_router(app: FastAPI, _ocean: PortOceanContext) -> No
         if _ocean.integration is None:
             raise Exception("Integration not set")
 
-        await _ocean.integration.trigger_resync()
+        await _ocean.integration.sync_all()
 
     app.include_router(target_channel_router)
 
@@ -105,7 +105,7 @@ class Ocean:
         @self.fast_api_app.on_event("startup")
         async def startup() -> None:
             try:
-                await self.integration.trigger_start()
+                await self.integration.start()
             except Exception as e:
                 logger.error(f"Failed to start integration with error: {e}")
                 sys.exit("Server stopped")

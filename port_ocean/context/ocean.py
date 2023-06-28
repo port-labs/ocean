@@ -9,7 +9,7 @@ from port_ocean.clients.port.types import UserAgentType
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.core.models import Entity
 from port_ocean.errors import PortOceanContextNotFoundError
-from port_ocean.types import RESYNC_EVENT_LISTENER, START_EVENT_LISTENER, EntityRawDiff
+from port_ocean.types import RESYNC_EVENT_LISTENER, START_EVENT_LISTENER, RawEntityDiff
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
@@ -55,13 +55,29 @@ class PortOceanContext:
 
         return wrapper
 
+    async def update_raw_diff(
+        self,
+        kind: str,
+        raw_diff: RawEntityDiff,
+        user_agent_type: UserAgentType = UserAgentType.exporter,
+    ) -> None:
+        await self.integration.update_raw_diff(kind, raw_diff, user_agent_type)
+
     async def register_raw(
         self,
         kind: str,
-        change: EntityRawDiff,
+        change: list[dict[str, Any]],
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
         await self.integration.register_raw(kind, change, user_agent_type)
+
+    async def unregister_raw(
+        self,
+        kind: str,
+        change: list[dict[str, Any]],
+        user_agent_type: UserAgentType = UserAgentType.exporter,
+    ) -> None:
+        await self.integration.unregister_raw(kind, change, user_agent_type)
 
     async def register(
         self,
@@ -70,13 +86,20 @@ class PortOceanContext:
     ) -> None:
         await self.integration.register(entities, user_agent_type)
 
+    async def unregister(
+        self,
+        entities: list[Entity],
+        user_agent_type: UserAgentType = UserAgentType.exporter,
+    ) -> None:
+        await self.integration.unregister(entities, user_agent_type)
+
     async def sync(
         self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         await self.integration.sync(entities, user_agent_type)
 
-    async def trigger_resync(self) -> None:
-        await self.integration.trigger_resync(trigger_type="manual")
+    async def sync_all(self) -> None:
+        await self.integration.sync_all(trigger_type="manual")
 
 
 _port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()
