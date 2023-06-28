@@ -68,11 +68,7 @@ class TriggerChannelFactory(BaseWithContext):
                 assert isinstance(
                     config, HttpTriggerChannelSettings
                 ), assert_message.format(type(config))
-                self._trigger_channel = HttpTriggerChannel(
-                    wrapped_events,
-                    config,
-                    self.installation_id,
-                )
+                self._trigger_channel = HttpTriggerChannel(wrapped_events, config)
 
             case _:
                 raise Exception(f"Trigger channel {_type} not supported")

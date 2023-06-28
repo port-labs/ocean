@@ -18,7 +18,7 @@ from port_ocean.core.integrations.mixins import (
     SyncMixin,
 )
 from port_ocean.core.models import Entity
-from port_ocean.core.trigger_channel.trigger_channel_factory import (
+from port_ocean.core.trigger_channel.factory import (
     TriggerChannelFactory,
 )
 

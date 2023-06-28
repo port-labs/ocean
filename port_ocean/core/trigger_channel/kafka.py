@@ -14,14 +14,15 @@ from port_ocean.core.trigger_channel.base import (
 from port_ocean.core.trigger_channel.settings import KafkaTriggerChannelSettings
 
 
-class KafkaTriggerChannel(BaseTriggerChannel[KafkaTriggerChannelSettings]):
+class KafkaTriggerChannel(BaseTriggerChannel):
     def __init__(
         self,
         events: TriggerChannelEvents,
         trigger_channel_config: KafkaTriggerChannelSettings,
         org_id: str,
     ):
-        super().__init__(events, trigger_channel_config)
+        super().__init__(events)
+        self.trigger_channel_config = trigger_channel_config
         self.org_id = org_id
 
     async def _get_kafka_creds(self) -> KafkaConsumerConfig:

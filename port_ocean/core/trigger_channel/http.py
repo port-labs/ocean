@@ -8,15 +8,14 @@ from port_ocean.core.trigger_channel.base import (
 from port_ocean.core.trigger_channel.settings import HttpTriggerChannelSettings
 
 
-class HttpTriggerChannel(BaseTriggerChannel[HttpTriggerChannelSettings]):
+class HttpTriggerChannel(BaseTriggerChannel):
     def __init__(
         self,
         events: TriggerChannelEvents,
         trigger_channel_config: HttpTriggerChannelSettings,
-        org_id: str,
     ):
-        super().__init__(events, trigger_channel_config)
-        self.org_id = org_id
+        super().__init__(events)
+        self.trigger_channel_config = trigger_channel_config
 
     async def start(self) -> None:
         target_channel_router = APIRouter()
