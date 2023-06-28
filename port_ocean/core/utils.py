@@ -1,4 +1,4 @@
-from typing import List, Iterable, Any, Dict, TypeVar, Tuple
+from typing import Iterable, Any, TypeVar
 
 from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.models import Entity
@@ -8,7 +8,7 @@ def is_valid_diff_item(item: Any) -> bool:
     return isinstance(item, list) and all([isinstance(i, dict) for i in item] or [True])
 
 
-def validate_result(result: Any) -> List[Dict[Any, Any]]:
+def validate_result(result: Any) -> list[dict[Any, Any]]:
     if isinstance(result, list):
         if is_valid_diff_item(result):
             return result
@@ -22,8 +22,8 @@ def is_same_entity(firs_entity: Entity, second_entity: Entity) -> bool:
     )
 
 
-def get_unique(array: List[Entity]) -> List[Entity]:
-    seen: List[Entity] = []
+def get_unique(array: list[Entity]) -> list[Entity]:
+    seen: list[Entity] = []
     result = []
     for item in array:
         if all(not is_same_entity(item, seen_item) for seen_item in seen):
@@ -32,10 +32,10 @@ def get_unique(array: List[Entity]) -> List[Entity]:
     return result
 
 
-T = TypeVar("T", bound=List[Any])
+T = TypeVar("T", bound=list[Any])
 
 
-def zip_and_sum(collection: Iterable[Tuple[T, ...]]) -> Tuple[T, ...]:
+def zip_and_sum(collection: Iterable[tuple[T, ...]]) -> tuple[T, ...]:
     return tuple(sum(items, []) for items in zip(*collection))  # type: ignore
 
 

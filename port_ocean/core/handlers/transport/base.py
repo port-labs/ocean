@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from typing import List
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.base import BaseWithContext
@@ -20,18 +19,18 @@ class BaseTransport(BaseWithContext):
 
     @abstractmethod
     async def upsert(
-        self, entities: List[Entity], user_agent_type: UserAgentType
+        self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         pass
 
     @abstractmethod
     async def delete(
-        self, entities: List[Entity], user_agent_type: UserAgentType
+        self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         pass
 
     @abstractmethod
     async def delete_diff(
-        self, entities: List[Entity], user_agent: UserAgentType
+        self, entities: list[Entity], user_agent: UserAgentType
     ) -> None:
         pass

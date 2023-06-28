@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, TYPE_CHECKING, Any, Dict, List
+from typing import Callable, TYPE_CHECKING, Any
 
 from fastapi import APIRouter
 from werkzeug.local import LocalProxy, LocalStack
@@ -37,7 +37,7 @@ class PortOceanContext:
         return self.app.integration
 
     @property
-    def integration_config(self) -> Dict[str, Any]:
+    def integration_config(self) -> dict[str, Any]:
         return self.app.config.integration.config
 
     @property
@@ -69,13 +69,13 @@ class PortOceanContext:
 
     async def register(
         self,
-        entities: List[Entity],
+        entities: list[Entity],
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
         await self.integration.register(entities, user_agent_type)
 
     async def sync(
-        self, entities: List[Entity], user_agent_type: UserAgentType
+        self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         await self.integration.sync(entities, user_agent_type)
 

@@ -1,6 +1,5 @@
 import asyncio
 from itertools import chain
-from typing import List
 
 from loguru import logger
 
@@ -87,7 +86,7 @@ class HttpPortTransport(BaseTransport):
         await self.upsert(entities_diff.modified, user_agent_type)
 
     async def upsert(
-        self, entities: List[Entity], user_agent_type: UserAgentType
+        self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         ordered_created_entities = reversed(order_by_entities_dependencies(entities))
         for entity in ordered_created_entities:
@@ -98,7 +97,7 @@ class HttpPortTransport(BaseTransport):
             )
 
     async def delete(
-        self, entities: List[Entity], user_agent_type: UserAgentType
+        self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         ordered_deleted_entities = order_by_entities_dependencies(entities)
 
@@ -110,7 +109,7 @@ class HttpPortTransport(BaseTransport):
         )
 
     async def delete_diff(
-        self, entities: List[Entity], user_agent_type: UserAgentType
+        self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         entities_at_port = await self.context.port_client.search_entities(
             user_agent_type

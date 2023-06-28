@@ -1,14 +1,12 @@
-from typing import List, Tuple
-
 from port_ocean.core.models import Entity, Blueprint
 from port_ocean.core.utils import is_same_entity
 
 
 def get_required_entities(
-    entity_to_blueprint: List[Tuple[Entity, Blueprint]],
-    forbidden_entities: List[Entity],
-    excluded_entities: List[Entity],
-) -> List[Entity]:
+    entity_to_blueprint: list[tuple[Entity, Blueprint]],
+    forbidden_entities: list[Entity],
+    excluded_entities: list[Entity],
+) -> list[Entity]:
     required_entities = []
     for entity, blueprint in entity_to_blueprint:
         for relation_name, relation in entity.relations.items():

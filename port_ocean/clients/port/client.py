@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Any
 
 import httpx as httpx
 from loguru import logger
@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.clients.port.types import (
     KafkaCreds,
-    ChangelogDestination,
     RequestOptions,
     UserAgentType,
 )
@@ -62,7 +61,7 @@ class PortClient:
 
     async def _headers(
         self, user_agent_type: UserAgentType | None = None
-    ) -> Dict[Any, Any]:
+    ) -> dict[Any, Any]:
         return {
             "Authorization": await self.token,
             "User-Agent": self._user_agent(user_agent_type),
@@ -185,7 +184,7 @@ class PortClient:
             )
         response.raise_for_status()
 
-    async def search_entities(self, user_agent_type: UserAgentType) -> List[Entity]:
+    async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
         query = {
             "combinator": "and",
             "rules": [
@@ -212,7 +211,7 @@ class PortClient:
                 Entity.parse_obj(result) for result in search_req.json()["entities"]
             ]
 
-    async def search_dependent_entities(self, entity: Entity) -> List[Entity]:
+    async def search_dependent_entities(self, entity: Entity) -> list[Entity]:
         body = {
             "combinator": "and",
             "rules": [
@@ -251,7 +250,7 @@ class PortClient:
             },
         )
 
-    async def get_integration(self, identifier: str) -> Dict[str, Any]:
+    async def get_integration(self, identifier: str) -> dict[str, Any]:
         logger.info(f"Fetching integration with id: {identifier}")
         async with httpx.AsyncClient() as client:
             integration = await client.get(
@@ -262,28 +261,27 @@ class PortClient:
         return integration.json()["integration"]
 
     async def initiate_integration(
-        self, _id: str, _type: str, changelog_destination: ChangelogDestination
+        self, _id: str, _type: str, changelog_destination: dict[str, Any]
     ) -> None:
         logger.info(f"Initiating integration with id: {_id}")
+        headers = await self._headers()
+        json = {
+            "installationId": _id,
+            "installationAppType": _type,
+            "changelogDestination": changelog_destination,
+        }
         async with httpx.AsyncClient() as client:
-            installation = await client.post(
-                f"{self.api_url}/integration",
-                headers=await self._headers(),
-                json={
-                    "installationId": _id,
-                    "installationAppType": _type,
-                    "changelogDestination": changelog_destination,
-                },
+            installation = await client.patch(
+                f"{self.api_url}/integration/{_id}",
+                headers=headers,
+                json=json,
             )
+            if installation.status_code == 404:
+                installation = await client.post(
+                    f"{self.api_url}/integration", headers=headers, json=json
+                )
 
-        if installation.status_code == 409:
-            logger.info(
-                f"Integration with id: {_id} already exists, skipping registration"
-            )
-
-            return
-
-        if not installation.status_code >= 400:
+        if installation.status_code >= 400:
             logger.error(
                 f"Error initiating integration with id: {_id}, error: {installation.text}"
             )

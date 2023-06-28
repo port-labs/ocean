@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -9,8 +9,8 @@ class EntityMapping(BaseModel):
     identifier: str
     title: str
     blueprint: str
-    properties: Dict[str, str] = Field(default_factory=dict)
-    relations: Dict[str, str] = Field(default_factory=dict)
+    properties: dict[str, str] = Field(default_factory=dict)
+    relations: dict[str, str] = Field(default_factory=dict)
 
 
 class PortResourceConfig(BaseModel):
@@ -37,7 +37,7 @@ class PortAppConfig(BaseModel):
     create_missing_related_entities: bool = Field(
         alias="createMissingRelatedEntities", default=False
     )
-    resources: List[ResourceConfig] = Field(default_factory=list)
+    resources: list[ResourceConfig] = Field(default_factory=list)
 
     def get_port_request_options(self) -> RequestOptions:
         return {

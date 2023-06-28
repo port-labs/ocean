@@ -1,29 +1,29 @@
 import threading
-from typing import Dict, Any, Callable
+from typing import Any, Callable
 
-from port_ocean.config.integration import TriggerChannelSettings
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.ocean import (
     PortOceanContext,
     initialize_port_ocean_context,
     ocean,
 )
-from port_ocean.core.trigger_channel.base_trigger_channel import (
+from port_ocean.core.trigger_channel.base import (
     BaseTriggerChannel,
-    TriggerEventEvents,
+    TriggerChannelEvents,
 )
+from port_ocean.core.trigger_channel.settings import KafkaTriggerChannelSettings
 
 
 class KafkaTriggerChannel(BaseTriggerChannel):
     def __init__(
         self,
-        events: TriggerEventEvents,
-        trigger_channel_config: TriggerChannelSettings,
+        events: TriggerChannelEvents,
+        trigger_channel_config: KafkaTriggerChannelSettings,
         org_id: str,
     ):
         super().__init__(events)
-        self.org_id = org_id
         self.trigger_channel_config = trigger_channel_config
+        self.org_id = org_id
 
     async def _get_kafka_creds(self) -> KafkaConsumerConfig:
         if self.trigger_channel_config.kafka_security_enabled:
@@ -44,7 +44,7 @@ class KafkaTriggerChannel(BaseTriggerChannel):
             kafka_security_enabled=self.trigger_channel_config.kafka_security_enabled,
         )
 
-    def should_be_processed(self, msg_value: Dict[Any, Any], topic: str) -> bool:
+    def should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
         if "runs" in topic:
             return (
                 msg_value.get("payload", {})
@@ -59,7 +59,7 @@ class KafkaTriggerChannel(BaseTriggerChannel):
 
         return False
 
-    async def _handle_message(self, message: Dict[Any, Any], topic: str) -> None:
+    async def _handle_message(self, message: dict[Any, Any], topic: str) -> None:
         if not self.should_be_processed(message, topic):
             return
 

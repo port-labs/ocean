@@ -1,7 +1,7 @@
 import asyncio
 import json
 import signal
-from typing import Any, Callable, Awaitable, Dict
+from typing import Any, Callable, Awaitable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
 from loguru import logger
@@ -22,7 +22,7 @@ class KafkaConsumerConfig(BaseModel):
 class KafkaConsumer(BaseConsumer):
     def __init__(
         self,
-        msg_process: Callable[[Dict[Any, Any], str], Awaitable[None]],
+        msg_process: Callable[[dict[Any, Any], str], Awaitable[None]],
         config: KafkaConsumerConfig,
         org_id: str | None = None,
     ) -> None:
