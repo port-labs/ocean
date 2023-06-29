@@ -1,6 +1,6 @@
-# pager_duty
+# pager-duty
 
-Pager duty integration for port
+A short description of the project
 
 ## Development Requirements
 

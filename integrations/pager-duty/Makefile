@@ -1,36 +1,62 @@
 SHELL := /bin/bash
-ACTIVATE := . venv/bin/activate
+ACTIVATE := . .venv/bin/activate
 
-venv:
-	@if [ ! -d "./venv" ]; then \
-		python3 -m venv "venv"; \
+define run_lint
+	exit_code=0; \
+	cd $1; \
+	mypy . --exclude '/venv/' || exit_code=$$?; \
+	ruff . || exit_code=$$?; \
+	black --exclude venv --check . || exit_code=$$?; \
+	if [ $$exit_code  == 1 ]; then \
+		echo -e "\033[0;31mOne or more lints failed with exit code $$exit_code\033[0m"; \
+	else \
+		echo -e "\033[0;32mAll lints executed successfully.\033[0m"; \
+	fi; \
+	exit $$exit_code
+endef
+
+define install_poetry
+	if ! command -v poetry &> /dev/null; then \
+    	echo "Poetry is not installed. Installing..."; \
+    	curl -sSL https://install.python-poetry.org | python3 -; \
+	else \
+    	echo "Poetry is already installed."; \
 	fi
+endef
 
-generate_config:
-	@if [[ ! -e .env ]]; then \
-		cp example.config.yaml config.yaml; \
-	fi
+define deactivate_virtualenv
+    if [ -n "$$VIRTUAL_ENV" ]; then \
+        unset VIRTUAL_ENV; \
+        unset PYTHONHOME; \
+        unset -f pydoc >/dev/null 2>&1; \
+        OLD_PATH="$$PATH"; \
+        PATH=$$(echo -n "$$PATH" | awk -v RS=: -v ORS=: '/\/virtualenv\/bin$$/ {next} {print}'); \
+        export PATH; \
+        hash -r; \
+        echo "Deactivated the virtual environment."; \
+    fi
+endef
 
-install: venv generate_config
+.SILENT: install lint run test clean
+
+
+install:
+	$(call deactivate_virtualenv) && \
+	$(call install_poetry) && \
+	poetry install --with dev
+
+lint:
 	$(ACTIVATE) && \
-	pip install --upgrade pip && \
-	pip install poetry && \
-	poetry install --with dev --all-extras
+	$(call run_lint,.)
 
-install-release:
-	pip install --upgrade pip && \
-	pip install poetry && \
-	poetry install --with dev --all-extras
-	
-mypy:
-	$(ACTIVATE) && mypy ./port_ocean
+run:
+	$(ACTIVATE) && ocean sail
 
-run: mypy
-	$(ACTIVATE) && poetry run main.py
-
-test: mypy
+test: lint
+	$(ACTIVATE) && poetry run pytest
 
 clean:
+	@find . -name '.venv' -type d -exec rm -rf {} \;
 	@find . -name '*.pyc' -exec rm -rf {} \;
 	@find . -name '__pycache__' -exec rm -rf {} \;
 	@find . -name 'Thumbs.db' -exec rm -rf {} \;
@@ -42,4 +68,4 @@ clean:
 	rm -rf htmlcov
 	rm -rf .tox/
 	rm -rf docs/_build
-	rm -rf venv/
+	rm -rf dist/

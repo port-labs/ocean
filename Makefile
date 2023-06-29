@@ -42,7 +42,6 @@ endef
 
 # Install dependencies
 install:
-	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
 	poetry install --with dev --all-extras
 

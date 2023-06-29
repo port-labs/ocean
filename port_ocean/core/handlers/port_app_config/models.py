@@ -7,7 +7,7 @@ from port_ocean.clients.port.types import RequestOptions
 
 class EntityMapping(BaseModel):
     identifier: str
-    title: str
+    title: str | None
     blueprint: str
     properties: dict[str, str] = Field(default_factory=dict)
     relations: dict[str, str] = Field(default_factory=dict)
