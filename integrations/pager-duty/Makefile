@@ -42,7 +42,7 @@ endef
 
 install:
 	$(call deactivate_virtualenv) && \
-	$(call install_poetry) && \
+	pip install poetry && \
 	poetry install --with dev
 
 lint:
