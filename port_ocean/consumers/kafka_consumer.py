@@ -12,8 +12,8 @@ from port_ocean.consumers.base_consumer import BaseConsumer
 
 class KafkaConsumerConfig(BaseModel):
     brokers: str
-    username: str | None
-    password: str | None
+    username: str | None = None
+    password: str | None = None
     security_protocol: str
     authentication_mechanism: str
     kafka_security_enabled: bool

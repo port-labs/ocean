@@ -14,8 +14,8 @@ from port_ocean.core.handlers.transport.port.validate_entity_relations import (
     validate_entity_relations,
 )
 from port_ocean.core.models import Entity
+from port_ocean.core.types import EntityDiff
 from port_ocean.core.utils import is_same_entity, get_unique, get_port_diff
-from port_ocean.types import EntityDiff
 
 
 class HttpPortTransport(BaseTransport):

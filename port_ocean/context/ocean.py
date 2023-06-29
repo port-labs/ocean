@@ -8,8 +8,12 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.core.models import Entity
+from port_ocean.core.types import (
+    RESYNC_EVENT_LISTENER,
+    START_EVENT_LISTENER,
+    RawEntityDiff,
+)
 from port_ocean.errors import PortOceanContextNotFoundError
-from port_ocean.types import RESYNC_EVENT_LISTENER, START_EVENT_LISTENER, RawEntityDiff
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration

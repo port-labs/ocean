@@ -6,7 +6,7 @@ import pyjq as jq  # type: ignore
 from port_ocean.core.handlers.manipulation.base import BaseManipulation
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
-from port_ocean.types import RawEntityDiff, EntityDiff
+from port_ocean.core.types import RawEntityDiff, EntityDiff
 
 
 class JQManipulation(BaseManipulation):
