@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-ACTIVATE := . venv/bin/activate
+ACTIVATE := . .venv/bin/activate
 
 define run_lint
 	exit_code=0; \
