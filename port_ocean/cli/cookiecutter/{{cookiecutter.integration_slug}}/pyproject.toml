@@ -55,6 +55,7 @@ exclude = '''
   |\.sh
   |\.git
   |\.ini
+  |\.venv
   |Dockerfile
 )/
 '''
