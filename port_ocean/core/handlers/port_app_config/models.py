@@ -1,8 +1,7 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
-
 from port_ocean.clients.port.types import RequestOptions
+from pydantic import BaseModel, Field
 
 
 class EntityMapping(BaseModel):
