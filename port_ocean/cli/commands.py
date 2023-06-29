@@ -5,11 +5,10 @@ import os
 
 import click
 from cookiecutter.main import cookiecutter  # type: ignore
-from rich import print
-from rich.console import Console
-
 from port_ocean.cli.download_git_folder import download_folder
 from port_ocean.cli.list_integrations import list_git_folders
+from rich import print
+from rich.console import Console
 
 
 def print_logo() -> None:
@@ -67,7 +66,7 @@ def new(path: str) -> None:
     console.print("Here are your next steps: \n", style="bold")
     console.print(
         "⚓️ Install necessary packages: Run [bold][blue]make install[/blue][/bold] to install all required packages for your project.\n"
-        f"▶️ [bold][blue]cd {path}/{name} && make install && . venv/bin/activate[/blue][/bold]\n"
+        f"▶️ [bold][blue]cd {path}/{name} && make install && . .venv/bin/activate[/blue][/bold]\n"
     )
     console.print(
         "⚓️ Set sail with [blue]Ocean[/blue]: Run [bold][blue]ocean sail[/blue] <path_to_integration>[/bold] to run the project using Ocean.\n"

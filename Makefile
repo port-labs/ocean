@@ -24,12 +24,26 @@ define install_poetry
 	fi
 endef
 
+define deactivate_virtualenv
+    if [ -n "$$VIRTUAL_ENV" ]; then \
+        unset VIRTUAL_ENV; \
+        unset PYTHONHOME; \
+        unset -f pydoc >/dev/null 2>&1; \
+        OLD_PATH="$$PATH"; \
+        PATH=$$(echo -n "$$PATH" | awk -v RS=: -v ORS=: '/\/virtualenv\/bin$$/ {next} {print}'); \
+        export PATH; \
+        hash -r; \
+        echo "Deactivated the virtual environment."; \
+    fi
+endef
+
 .SILENT: install install/all lint lint/integrations lint/all build run new test clean
 
 
 # Install dependencies
 install:
-	$(call install_poetry)
+	$(call deactivate_virtualenv) && \
+	$(call install_poetry) && \
 	poetry install --with dev --all-extras
 
 

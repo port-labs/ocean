@@ -7,8 +7,6 @@ from typing import Type, Callable
 import uvicorn
 from fastapi import FastAPI, APIRouter
 from loguru import logger
-from pydantic import BaseSettings
-from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
@@ -19,6 +17,8 @@ from port_ocean.context.ocean import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.middlewares import request_handler
+from pydantic import BaseSettings
+from starlette.types import Scope, Receive, Send
 
 
 def _get_base_integration_class_from_module(
@@ -46,10 +46,6 @@ def _load_module(file_path: str) -> ModuleType:
     try:
         spec.loader.exec_module(module)
     except Exception as e:
-        logger.error(
-            f"Failed to load integration with error: {e}, "
-            f"please validate the integration type exists"
-        )
         raise e
 
     return module
