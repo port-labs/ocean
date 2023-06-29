@@ -1,8 +1,8 @@
-from typing import List, Tuple
+from typing import List, Tuple, Any, Union
 
 import yaml
-from gitlab import Gitlab
-from gitlab.v4.objects import Group
+from gitlab import Gitlab, GitlabList
+from gitlab.base import RESTObject
 from loguru import logger
 
 from gitlabapp.core.entities import generate_entity_from_port_yaml
@@ -22,13 +22,13 @@ class GitlabService:
         self.app_host = app_host
         self.group_mapping = group_mapping
 
-    def _is_exists(self, group: Group) -> bool:
+    def _is_exists(self, group: RESTObject) -> bool:
         for hook in group.hooks.list(iterator=True):
             if hook.url == f"{self.app_host}/integration/hook/{group.get_id()}":
                 return True
         return False
 
-    def _create_group_webhook(self, group: Group):
+    def _create_group_webhook(self, group: RESTObject) -> None:
         group.hooks.create(
             {
                 "url": f"{self.app_host}/integration/hook/{group.get_id()}",
@@ -37,13 +37,11 @@ class GitlabService:
             }
         )
 
-        return group.get_id()
-
-    def get_root_groups(self) -> List[Group]:
+    def get_root_groups(self) -> List[RESTObject]:
         groups = self.gitlab_client.groups.list(iterator=True)
         return [group for group in groups if group.parent_id is None]
 
-    def create_webhooks(self):
+    def create_webhooks(self) -> list[int | str]:
         root_partial_groups = self.get_root_groups()
         filtered_partial_groups = [
             group
@@ -56,17 +54,23 @@ class GitlabService:
 
         webhook_ids = []
         for partial_group in filtered_partial_groups:
-            if self._is_exists(partial_group):
+            group_id = partial_group.get_id()
+            if group_id is None:
                 logger.info(
-                    f"Webhook already exists for group {partial_group.get_id()}"
+                    f"Group {partial_group.attributes['full_path']} has no id. skipping..."
                 )
             else:
-                self._create_group_webhook(partial_group)
-            webhook_ids.append(partial_group.get_id())
+                if self._is_exists(partial_group):
+                    logger.info(
+                        f"Webhook already exists for group {partial_group.get_id()}"
+                    )
+                else:
+                    self._create_group_webhook(partial_group)
+                webhook_ids.append(group_id)
 
         return webhook_ids
 
-    def _filter_mappings(self, projects):
+    def _filter_mappings(self, projects: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return [
             project
             for project in projects
@@ -76,7 +80,7 @@ class GitlabService:
             )
         ]
 
-    def get_group_projects(self, group_id: int | None = None):
+    def get_group_projects(self, group_id: int | None = None) -> list[dict[str, Any]]:
         if group_id is None:
             return [
                 project
@@ -86,15 +90,17 @@ class GitlabService:
                 ]
             ]
         group = self.gitlab_client.groups.get(group_id)
+        projects: list[dict[str, Any]] = group.attributes["projects"]
         return [
-            *group.attributes["projects"],
+            *projects,
             *[
-                self.get_group_projects(sub_group.id)
+                project
                 for sub_group in group.subgroups.list()
+                for project in self.get_group_projects(sub_group.id)
             ],
         ]
 
-    def get_projects_by_scope(self, scope: Scope | None = None):
+    def get_projects_by_scope(self, scope: Scope | None = None) -> list[dict[str, Any]]:
         if scope and scope.type == ScopeType.Project:
             logger.info(f"fetching project {scope.id}")
             project = self.gitlab_client.projects.get(scope.id)
@@ -109,11 +115,13 @@ class GitlabService:
 
         return self._filter_mappings(projects)
 
-    def _get_changed_files_between_commits(self, project_id: int, head: str):
+    def _get_changed_files_between_commits(
+        self, project_id: int, head: str
+    ) -> Union[GitlabList, list[dict[str, Any]]]:
         project = self.gitlab_client.projects.get(project_id)
         return project.commits.get(head).diff()
 
-    def validate_config_changed(self, context: HookContext):
+    def validate_config_changed(self, context: HookContext) -> tuple[bool, Scope]:
         changed_files = self._get_changed_files_between_commits(
             context.project.id, context.after
         )
@@ -132,7 +140,7 @@ class GitlabService:
 
     def _get_file_paths(
         self, context: HookContext, path: str | List[str], commit_sha: str
-    ):
+    ) -> list[str]:
         project = self.gitlab_client.projects.get(context.project.id)
         if not isinstance(path, list):
             path = [path]

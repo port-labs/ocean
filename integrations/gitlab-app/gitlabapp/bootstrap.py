@@ -2,15 +2,15 @@ from gitlab import Gitlab
 
 from gitlabapp.events.event_handler import EventHandler
 from gitlabapp.events.hooks.issues import Issues
+from gitlabapp.events.hooks.jobs import Job
+from gitlabapp.events.hooks.merge_request import MergeRequest
 from gitlabapp.events.hooks.pipelines import Pipelines
 from gitlabapp.events.hooks.push import PushHook
-from gitlabapp.events.hooks.merge_request import MergeRequest
-from gitlabapp.events.hooks.jobs import Job
 from gitlabapp.services.gitlab_service import GitlabService
 from port_ocean.context.ocean import ocean
 
 
-def setup_listeners(gitlab_service, webhook_id: str):
+def setup_listeners(gitlab_service: GitlabService, webhook_id: str | int) -> None:
     event_handler = EventHandler()
     handlers = [
         PushHook(gitlab_service),
@@ -24,7 +24,7 @@ def setup_listeners(gitlab_service, webhook_id: str):
         event_handler.on(event_ids, handler.on_hook)
 
 
-def setup_application():
+def setup_application() -> None:
     logic_settings = ocean.integration_config
     for token, group_mapping in logic_settings["token_mapping"].items():
         gitlab_client = Gitlab(logic_settings["gitlab_host"], token)

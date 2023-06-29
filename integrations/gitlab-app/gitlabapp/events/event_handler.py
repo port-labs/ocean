@@ -1,6 +1,7 @@
 import asyncio
-from collections import defaultdict
-from typing import List, Dict, Awaitable, Callable
+from typing import Awaitable, Callable, Any
+
+from starlette.requests import Request
 
 
 class SingletonMeta(type):
@@ -10,9 +11,9 @@ class SingletonMeta(type):
     metaclass because it is best suited for this purpose.
     """
 
-    _instances = {}
+    _instances: dict["SingletonMeta", "SingletonMeta"] = {}
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: list[Any], **kwargs: dict[str, Any]) -> "SingletonMeta":
         """
         Possible changes to the value of the `__init__` argument do not affect
         the returned instance.
@@ -23,17 +24,20 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-class EventHandler(metaclass=SingletonMeta):
-    def __init__(self):
-        self._observers: Dict[
-            str, List[Callable[[str, str, dict], Awaitable]]
-        ] = defaultdict(list)
+Observer = Callable[[str, str, Request], Awaitable[Any]]
 
-    def on(self, events: List[str], observer):
+
+class EventHandler(metaclass=SingletonMeta):
+    def __init__(self) -> None:
+        self._observers: dict[str, list[Observer]] = {}
+
+    def on(self, events: list[str], observer: Observer) -> None:
         for event in events:
             self._observers[event].append(observer)
 
-    async def notify(self, event: str, group_id: str, data):
+    async def notify(
+        self, event: str, group_id: str, request: Request
+    ) -> Awaitable[Any]:
         return asyncio.gather(
-            *[observer(event, group_id, data) for observer in self._observers[event]]
+            *[observer(event, group_id, request) for observer in self._observers[event]]
         )

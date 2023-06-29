@@ -19,14 +19,10 @@ class PushHook(HookHandler):
         if generate_ref(config.branch) != context.ref:
             return
 
-        # todo: no need for before
         _, entities_after = self.gitlab_service.get_entities_diff(
             context, config.spec_path, context.before, context.after, config.branch
         )
-        await ocean.sync(
-            entities_after,
-            UserAgentType.gitops,
-        )
+        await ocean.sync(entities_after, UserAgentType.gitops)
 
         has_changed, scope = self.gitlab_service.validate_config_changed(context)
         if has_changed:

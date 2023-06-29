@@ -1,7 +1,7 @@
 import fnmatch
 
 
-def _match(pattern_parts, string_parts):
+def _match(pattern_parts: list[str], string_parts: list[str]) -> bool:
     if not pattern_parts:  # Reached the end of the pattern
         return not string_parts
     if not string_parts:  # Reached the end of the string
@@ -19,7 +19,7 @@ def _match(pattern_parts, string_parts):
     return False
 
 
-def does_pattern_apply(pattern: str | list, string: str) -> bool:
+def does_pattern_apply(pattern: str | list[str], string: str) -> bool:
     if isinstance(pattern, list):
         return any(
             does_pattern_apply(single_pattern, string) for single_pattern in pattern
@@ -30,5 +30,5 @@ def does_pattern_apply(pattern: str | list, string: str) -> bool:
     return _match(pattern_parts, string_parts)
 
 
-def generate_ref(branch_name: str):
+def generate_ref(branch_name: str) -> str:
     return f"refs/heads/{branch_name}"

@@ -1,6 +1,8 @@
+from functools import lru_cache
 from typing import Any, Dict, Tuple
 
-from black.strings import lru_cache
+from loguru import logger
+
 from config import GitlabPortAppConfig
 from gitlabapp.core.entities import FILE_PROPERTY_PREFIX
 from gitlabapp.services.gitlab_service import GitlabService
@@ -8,7 +10,6 @@ from port_ocean.context.event import event
 from port_ocean.core.handlers.manipulation.jq_manipulation import JQManipulation
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
-from loguru import logger
 
 
 class GitAppConfigHandler(APIPortAppConfig):
@@ -19,7 +20,7 @@ class GitManipulationHandler(JQManipulation):
     @lru_cache()
     def _get_file_content(
         self, gitlab_service: GitlabService, project_id: int, file_path: str, ref: str
-    ):
+    ) -> str:
         return (
             gitlab_service.gitlab_client.projects.get(project_id)
             .files.get(file_path=file_path, ref=ref)

@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 
+from gitlab.base import RESTObject
 from loguru import logger
 from starlette.requests import Request
 
@@ -11,7 +12,7 @@ from port_ocean.context.ocean import ocean
 
 
 @ocean.router.post("/hook/{group_id}")
-async def handle_webhook(group_id: str, request: Request):
+async def handle_webhook(group_id: str, request: Request) -> Dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
     await request.json()
     await EventHandler().notify(event_id, group_id, request)
@@ -45,7 +46,7 @@ async def on_resync(kind: str) -> List[Dict[Any, Any]]:
 @ocean.on_resync("mergeRequest")
 async def resync_merge_requests(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
-    root_groups = sum(
+    root_groups: list[RESTObject] = sum(
         [service.get_root_groups() for service in all_tokens_services], []
     )
     return [
@@ -58,7 +59,7 @@ async def resync_merge_requests(kind: str) -> List[Dict[Any, Any]]:
 @ocean.on_resync("issues")
 async def resync_issues(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
-    root_groups = sum(
+    root_groups: list[RESTObject] = sum(
         [service.get_root_groups() for service in all_tokens_services], []
     )
     return [issue.asdict() for group in root_groups for issue in group.issues.list()]
@@ -67,7 +68,7 @@ async def resync_issues(kind: str) -> List[Dict[Any, Any]]:
 @ocean.on_resync("job")
 async def resync_jobs(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
-    root_groups = sum(
+    root_groups: list[RESTObject] = sum(
         [service.get_root_groups() for service in all_tokens_services], []
     )
     return [job.asdict() for group in root_groups for job in group.jobs.list()]
@@ -76,7 +77,7 @@ async def resync_jobs(kind: str) -> List[Dict[Any, Any]]:
 @ocean.on_resync("pipelines")
 async def resync_pipelines(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
-    root_groups = sum(
+    root_groups: list[RESTObject] = sum(
         [service.get_root_groups() for service in all_tokens_services], []
     )
     return [
