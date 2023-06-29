@@ -4,7 +4,6 @@ from typing import (
 )
 
 from loguru import logger
-
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import (
     event_context,
@@ -38,7 +37,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         tasks = []
 
-        batch_size = self.context.config.batch_work_size or len(results)
+        batch_size = self.context.config.batch_work_size or len(results) or 1
         for batch in [
             results[i : i + batch_size] for i in range(0, len(results), batch_size)
         ]:
