@@ -39,11 +39,12 @@ target-version = ['py39', 'py310', 'py311']
 include = '\.pyi?$'
 exclude = '''
 /(
+  \scripts
   \.toml
   |\.sh
   |\.git
   |\.ini
+  |\.venv
   |Dockerfile
-  |Jenkinfile
 )/
 '''
