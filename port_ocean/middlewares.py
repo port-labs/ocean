@@ -3,9 +3,7 @@ from typing import Callable, Awaitable
 from uuid import uuid4
 
 from fastapi import Request, Response
-
 from loguru import logger
-
 from .context.event import event_context
 from .context.ocean import ocean
 
@@ -38,8 +36,8 @@ async def request_handler(
     with logger.contextualize(request_id=request_id):
         logger.bind(url=str(request.url), method=request.method).info("Request started")
         response: Response
-
-        if request.url.path.startswith("integration"):
+        print(request.url.path)
+        if request.url.path.startswith("/integration"):
             async with event_context(""):
                 await ocean.integration.port_app_config_handler.get_port_app_config()
                 response = await call_next(request)
