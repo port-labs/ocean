@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 from typing import Awaitable, Callable, Any
 
 from starlette.requests import Request
@@ -29,7 +30,7 @@ Observer = Callable[[str, str, Request], Awaitable[Any]]
 
 class EventHandler(metaclass=SingletonMeta):
     def __init__(self) -> None:
-        self._observers: dict[str, list[Observer]] = {}
+        self._observers: dict[str, list[Observer]] = defaultdict(list)
 
     def on(self, events: list[str], observer: Observer) -> None:
         for event in events:

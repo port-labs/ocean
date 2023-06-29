@@ -10,18 +10,9 @@ aiofiles = "^0.6.0"
 python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
 jsonschema = "^4.17.3"
+port-ocean = {version = "^0.1.0.dev2", extras = ["cli"]}
 
-# Ocean
-pydantic = "^1.10.8"
-requests = "^2.31.0"
-loguru = "^0.7.0"
-pyyaml = "^6.0"
-werkzeug = "^2.3.4"
-fastapi = "^0.96.0"
-uvicorn = "^0.22.0"
-confluent-kafka = "^2.1.1"
-httpx = "^0.24.1"
-pyjq = "^2.6.0"
+
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
