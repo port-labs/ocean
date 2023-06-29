@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from port_ocean.types import (
+from port_ocean.core.types import (
     IntegrationEventsCallbacks,
     START_EVENT_LISTENER,
     RESYNC_EVENT_LISTENER,

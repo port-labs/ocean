@@ -51,7 +51,9 @@ ruff = "^0.0.272"
 
 [tool.mypy]
 exclude = [
-    'port_ocean/cli/cookiecutter'
+    'port_ocean/cli/cookiecutter',
+    'venv',
+    'integrations'
 ]
 plugins = [
     "pydantic.mypy"
@@ -71,6 +73,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
+exclude = ['venv', 'integrations']
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -90,5 +93,7 @@ exclude = '''
   |\.git
   |\.ini
   |Dockerfile
+  |\.venv
+  |integrations
 )/
 '''
