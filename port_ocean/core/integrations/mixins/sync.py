@@ -9,8 +9,8 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.models import Entity
+from port_ocean.core.types import RawEntityDiff, EntityDiff
 from port_ocean.core.utils import validate_result, zip_and_sum
-from port_ocean.types import RawEntityDiff, EntityDiff
 
 
 class SyncMixin(HandlerMixin, EventsMixin):
