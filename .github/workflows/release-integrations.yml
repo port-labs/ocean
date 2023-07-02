@@ -71,7 +71,8 @@ jobs:
 
           # Concatenate the YAML files into a temporary file
           while IFS= read -r file; do
-              echo "- $(cat "$file")" >> "$temp_file"
+              echo "- " >> "$temp_file"
+              sed 's/^/  /' "$file" >> "$temp_file"
           done < file_list.txt
 
           yq -j . < "$temp_file" > "$output_file"
