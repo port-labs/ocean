@@ -75,6 +75,5 @@ jobs:
               echo "---" >> "$temp_file"
           done < file_list.txt
 
-          # Convert the concatenated YAML file to JSON using yq (install it first if not already installed)
-          yq -y . < "$temp_file" > "$output_file"
+          yq -j . < "$temp_file" > "$output_file"
           aws s3 cp "$output_file" "s3://$aws_s3_bucket/$output_file" 
