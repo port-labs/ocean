@@ -6,7 +6,7 @@ from uuid import uuid4
 from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
-from port_ocean.errors import EventContextNotFoundError
+from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.utils import get_time
 
 if TYPE_CHECKING:

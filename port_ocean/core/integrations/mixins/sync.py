@@ -13,7 +13,7 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.models import Entity
 from port_ocean.core.types import RawEntityDiff, EntityDiff, RESYNC_EVENT_LISTENER
 from port_ocean.core.utils import validate_result, zip_and_sum
-from port_ocean.exceptions.base import RawObjectValidationException
+from port_ocean.exceptions.core import RawObjectValidationException
 from port_ocean.utils import get_function_location
 
 
