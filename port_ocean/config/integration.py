@@ -1,4 +1,3 @@
-import warnings
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -9,8 +8,6 @@ from port_ocean.core.trigger_channel.settings import (
     HttpTriggerChannelSettings,
     KafkaTriggerChannelSettings,
 )
-
-warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 class PortSettings(BaseSettings):
