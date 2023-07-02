@@ -1,4 +1,7 @@
+import warnings
 from importlib.util import find_spec
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 try:
     find_spec("click")

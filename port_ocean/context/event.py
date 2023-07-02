@@ -96,12 +96,19 @@ async def event_context(
         event_id=event.id,
     ):
         logger.info("Event started")
-        yield event
-
-        end_time = get_time(seconds_precision=False)
-        time_elapsed = round(end_time - start_time, 5)
-        logger.bind(
-            time_elapsed=time_elapsed,
-        ).info("Event finished")
+        try:
+            yield event
+        except:
+            success = False
+            raise
+        else:
+            success = True
+        finally:
+            end_time = get_time(seconds_precision=False)
+            time_elapsed = round(end_time - start_time, 5)
+            logger.bind(
+                success=success,
+                time_elapsed=time_elapsed,
+            ).info("Event finished")
 
     _event_context_stack.pop()

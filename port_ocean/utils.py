@@ -1,4 +1,6 @@
+import inspect
 from time import time
+from typing import Callable, Any
 from uuid import uuid4
 
 
@@ -13,3 +15,9 @@ def get_time(seconds_precision: bool = True) -> float:
 def get_uuid() -> str:
     """Return a UUID4 as string"""
     return str(uuid4())
+
+
+def get_function_location(func: Callable[..., Any]) -> str:
+    file_path = inspect.getsourcefile(func)
+    line_number = inspect.getsourcelines(func)[1]
+    return f"{file_path}:{line_number}"
