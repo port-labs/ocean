@@ -13,7 +13,7 @@ from port_ocean.core.integrations.mixins.sync import SyncRawMixin, SyncMixin
 from port_ocean.core.trigger_channel.factory import (
     TriggerChannelFactory,
 )
-from port_ocean.exceptions.base import IntegrationAlreadyStartedException
+from port_ocean.exceptions.core import IntegrationAlreadyStartedException
 
 
 class BaseIntegration(SyncRawMixin, SyncMixin):

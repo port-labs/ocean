@@ -3,9 +3,9 @@ from typing import Callable, Awaitable
 from fastapi import Request, Response
 from loguru import logger
 
+from port_ocean.exceptions.api import BaseAPIException, InternalServerException
 from .context.event import event_context
 from .context.ocean import ocean
-from .exceptions.api.base import BaseAPIException, InternalServerException
 from .utils import get_time, get_uuid
 
 

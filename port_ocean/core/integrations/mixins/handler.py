@@ -1,12 +1,13 @@
 from typing import Callable
 
 from loguru import logger
+
 from port_ocean.context.ocean import PortOceanContext, ocean
 from port_ocean.core.handlers import BaseManipulation, BasePortAppConfig, BaseTransport
 from port_ocean.core.handlers.manipulation.jq_manipulation import JQManipulation
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.transport.port.transport import HttpPortTransport
-from port_ocean.exceptions.base import IntegrationNotStartedException
+from port_ocean.exceptions.core import IntegrationNotStartedException
 
 
 class HandlerMixin:

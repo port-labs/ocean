@@ -13,7 +13,7 @@ from port_ocean.core.types import (
     START_EVENT_LISTENER,
     RawEntityDiff,
 )
-from port_ocean.errors import PortOceanContextNotFoundError
+from port_ocean.exceptions.context import PortOceanContextNotFoundError
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration

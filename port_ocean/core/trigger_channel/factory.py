@@ -18,7 +18,7 @@ from port_ocean.core.trigger_channel.settings import (
     HttpTriggerChannelSettings,
     KafkaTriggerChannelSettings,
 )
-from port_ocean.exceptions.base import UnsupportedTriggerChannelException
+from port_ocean.exceptions.core import UnsupportedTriggerChannelException
 
 
 class TriggerChannelFactory(BaseWithContext):

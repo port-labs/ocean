@@ -2,7 +2,7 @@ from typing import Iterable, Any, TypeVar
 
 from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.models import Entity
-from port_ocean.exceptions.base import RawObjectValidationException
+from port_ocean.exceptions.core import RawObjectValidationException
 
 
 def is_valid_diff_item(item: Any) -> bool:
