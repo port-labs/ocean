@@ -1,8 +1,26 @@
 <img align="right" width="100" height="74" src="https://user-images.githubusercontent.com/8277210/183290025-d7b24277-dfb4-4ce1-bece-7fe0ecd5efd4.svg" />
 
-# Integration Framework
+# Ocean
+[![Lint](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
 
-Integration Framework is a solution developed by Port to address the challenges faced while integrating various third-party systems with our developer portal product. This framework provides a standardized approach for implementing integrations, simplifying the process and allowing platform engineers to focus on the core functionality of the third-party system.
+Ocean is a solution developed by Port to address the challenges faced while integrating various third-party systems with our developer portal product. This framework provides a standardized approach for implementing integrations, simplifying the process and allowing platform engineers to focus on the core functionality of the third-party system.
+
+## Installation
+`pip install port-ocean[cli]` or `poetry add port-ocean[cli]`
+
+## Run Integration
+`ocean sail ./path/to/integration`
+
+## Local Development (Framework)
+1. Clone the repository
+2. Install dependencies: `make install` or `make install/all` for installing integrations dependencies as well
+
+
+## Local Development (Integration)
+1. Clone the repository
+2. For new integration run `make new` and follow the instructions
+3. Install dependencies: `cd DESIRED_INTEGRATION_FOLDER && make install`
+4. Run integration: `make run`
  
 ## Export Architecture
 ![image](./assets/IntegrationFrameworkExportArchitecture.svg)
@@ -17,15 +35,16 @@ Integration Framework is a solution developed by Port to address the challenges 
 The Integration Framework follows a specific folder structure within the mono repository. This structure ensures proper organization and easy identification of integration modules. The suggested folder structure is as follows:
 
 ```
-integration-framework/
-├── framework/
-│ ├── main.py
-│ └── requirements.txt
+port-ocean/
+├── port_ocean (framework)/
+│ ├── ocean.py
+│ ├── core/
 | └── ...
 └── integrations/
-├────integration_name/
-│ ├──── main.py
-│ └──── requirements.txt
+│  ├───integration_name/
+│  ├──── main.py
+│  ├──── pyproject.toml
+│  └──── Dockerfile
 ├── ...
 └── ...
 ```
