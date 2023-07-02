@@ -1,9 +1,11 @@
 from typing import List, Dict
 
-from gitlabapp.integration import GitlabIntegration
-from port_ocean.port_ocean import Ocean
 from pydantic import BaseSettings, AnyHttpUrl, Field
 from pydantic.tools import parse_obj_as
+
+from gitlabapp.integration import GitlabIntegration
+from port_ocean.logger_setup import setup_logger
+from port_ocean.ocean import Ocean
 
 
 class LogicSettings(BaseSettings):
@@ -15,6 +17,7 @@ class LogicSettings(BaseSettings):
 
 
 def create_app() -> Ocean:
+    setup_logger()
     app = Ocean(integration_class=GitlabIntegration, config_class=LogicSettings)
     # noinspection PyUnresolvedReferences
     from gitlabapp import ocean
