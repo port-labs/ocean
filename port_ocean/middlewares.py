@@ -1,24 +1,42 @@
-from time import time
 from typing import Callable, Awaitable
-from uuid import uuid4
 
 from fastapi import Request, Response
 from loguru import logger
+
 from .context.event import event_context
 from .context.ocean import ocean
+from .exceptions.api.base import BaseAPIException, InternalServerException
+from .utils import get_time, get_uuid
 
 
-def get_time(seconds_precision: bool = True) -> float:
-    """Return current time as Unix/Epoch timestamp, in seconds.
-    :param seconds_precision: if True, return with seconds precision as integer (default).
-                              If False, return with milliseconds precision as floating point number of seconds.
-    """
-    return time() if not seconds_precision else int(time())
+async def _handle_silently(
+    call_next: Callable[[Request], Awaitable[Response]], request: Request
+) -> Response:
+    response: Response
+    try:
+        if request.url.path.startswith("/integration"):
+            async with event_context("", trigger_type="request"):
+                await ocean.integration.port_app_config_handler.get_port_app_config()
+                response = await call_next(request)
+        else:
+            response = await call_next(request)
 
+    except BaseAPIException as ex:
+        response = ex.response()
+        if response.status_code < 500:
+            logger.bind(exception=str(ex)).info(
+                "Request did not succeed due to client-side error"
+            )
+        else:
+            logger.opt(exception=True).warning(
+                "Request did not succeed due to server-side error"
+            )
 
-def get_uuid() -> str:
-    """Return a UUID4 as string"""
-    return str(uuid4())
+    except Exception:
+        logger.opt(exception=True).error("Request failed due to unexpected error")
+        response = InternalServerException().response()
+
+    return response
 
 
 async def request_handler(
@@ -35,14 +53,7 @@ async def request_handler(
 
     with logger.contextualize(request_id=request_id):
         logger.bind(url=str(request.url), method=request.method).info("Request started")
-        response: Response
-        print(request.url.path)
-        if request.url.path.startswith("/integration"):
-            async with event_context(""):
-                await ocean.integration.port_app_config_handler.get_port_app_config()
-                response = await call_next(request)
-        else:
-            response = await call_next(request)
+        response = await _handle_silently(call_next, request)
 
         end_time = get_time(seconds_precision=False)
         time_elapsed = round(end_time - start_time, 5)

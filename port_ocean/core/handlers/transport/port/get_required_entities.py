@@ -1,5 +1,6 @@
 from port_ocean.core.models import Entity, Blueprint
 from port_ocean.core.utils import is_same_entity
+from port_ocean.exceptions.base import RelationValidationException
 
 
 def get_required_entities(
@@ -14,7 +15,7 @@ def get_required_entities(
             target_entity = Entity(identifier=relation, blueprint=relation_blueprint)
 
             if any(is_same_entity(item, target_entity) for item in forbidden_entities):
-                raise Exception(
+                raise RelationValidationException(
                     f"Cant delete entity {target_entity} of blueprint {target_entity.blueprint} "
                     f"because it was specified as relation target of entity {entity} "
                     f"of blueprint {entity.blueprint}"

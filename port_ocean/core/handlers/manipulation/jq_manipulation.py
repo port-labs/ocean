@@ -2,11 +2,11 @@ from functools import lru_cache
 from typing import Any
 
 import pyjq as jq  # type: ignore
-
 from port_ocean.core.handlers.manipulation.base import BaseManipulation
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.types import RawEntityDiff, EntityDiff
+from port_ocean.exceptions.base import ManipulationHandlerException
 
 
 class JQManipulation(BaseManipulation):
@@ -26,7 +26,9 @@ class JQManipulation(BaseManipulation):
         if isinstance(value, bool):
             return value
 
-        raise Exception(f"Expected boolean value, got {type(value)} instead")
+        raise ManipulationHandlerException(
+            f"Expected boolean value, got {type(value)} instead"
+        )
 
     def _search_as_object(
         self, data: dict[str, Any], obj: dict[str, Any]

@@ -65,7 +65,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _get_resource_raw_results(
         self, resource_config: ResourceConfig
     ) -> tuple[ResourceConfig, list[dict[Any, Any]]]:
-        logger.info(f"Resyncing {resource_config.kind}")
+        logger.info(f"Fetching {resource_config.kind} resync results")
         tasks: list[Awaitable[list[dict[Any, Any]]]] = []
         with logger.contextualize(kind=resource_config.kind):
             if self.__class__._on_resync != SyncRawMixin._on_resync:
@@ -182,7 +182,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         raw_desired_state: RawEntityDiff,
         user_agent_type: UserAgentType,
     ) -> None:
-        logger.info(f"Registering state for {kind}")
+        logger.info(f"Updating state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
         resource_mappings = [
             resource for resource in config.resources if resource.kind == kind
