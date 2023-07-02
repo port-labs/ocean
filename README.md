@@ -9,18 +9,21 @@ Ocean is a solution developed by Port to address the challenges faced while inte
 `pip install port-ocean[cli]` or `poetry add port-ocean[cli]`
 
 ## Run Integration
-`ocean sail ./path/to/integration`
+1. source the integration venv `. .venv/bin/activate`
+2. `ocean sail ./path/to/integration`
 
 ## Local Development (Framework)
 1. Clone the repository
 2. Install dependencies: `make install` or `make install/all` for installing integrations dependencies as well
+3. source the integration venv `. .venv/bin/activate`
 
 
 ## Local Development (Integration)
 1. Clone the repository
 2. For new integration run `make new` and follow the instructions
 3. Install dependencies: `cd DESIRED_INTEGRATION_FOLDER && make install`
-4. Run integration: `make run`
+4. source the integration venv `. .venv/bin/activate`
+5. Run integration: `make run`
  
 ## Export Architecture
 ![image](./assets/IntegrationFrameworkExportArchitecture.svg)
