@@ -1,15 +1,23 @@
 import asyncio
-from typing import Any
+from typing import (
+    Any,
+)
 
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.event import event_context, TriggerType
+from port_ocean.context.event import (
+    event_context,
+    TriggerType,
+)
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.sync import SyncRawMixin, SyncMixin
 from port_ocean.core.models import Entity
-from port_ocean.core.trigger_channel.factory import TriggerChannelFactory
+from port_ocean.core.trigger_channel.factory import (
+    TriggerChannelFactory,
+)
+from port_ocean.exceptions.base import IntegrationAlreadyStartedException
 
 
 class BaseIntegration(SyncRawMixin, SyncMixin):
@@ -24,17 +32,18 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             {"on_action": self.trigger_action, "on_resync": self.sync_all},
         )
 
-    async def _sync_new_in_batches(
+    async def _register_in_batches(
         self, resource_config: ResourceConfig, user_agent_type: UserAgentType
     ) -> list[Entity]:
         resource, results = await self._get_resource_raw_results(resource_config)
 
         tasks = []
 
-        batch_size = self.context.config.batch_work_size or len(results)
+        batch_size = self.context.config.batch_work_size or len(results) or 1
         for batch in [
             results[i : i + batch_size] for i in range(0, len(results), batch_size)
         ]:
+            logger.info(f"Creating task for registering batch of {len(batch)} entities")
             tasks.append(self._register_resource_raw(resource, batch, user_agent_type))
         entities = await asyncio.gather(*tasks)
         return sum(entities, [])
@@ -42,7 +51,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
     async def start(self) -> None:
         logger.info("Starting integration")
         if self.started:
-            raise Exception("Integration already started")
+            raise IntegrationAlreadyStartedException("Integration already started")
 
         if (
             not self.event_strategy["resync"]
@@ -85,7 +94,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
             created_entities = await asyncio.gather(
                 *(
-                    self._sync_new_in_batches(resource, user_agent_type)
+                    self._register_in_batches(resource, user_agent_type)
                     for resource in app_config.resources
                 )
             )
@@ -93,5 +102,3 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             await self.transport.delete_non_existing(
                 sum(created_entities, []), user_agent_type
             )
-
-            logger.info("Resync was finished")

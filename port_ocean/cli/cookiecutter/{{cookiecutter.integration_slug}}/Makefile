@@ -37,14 +37,9 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: generate_config install lint run test clean
+.SILENT: install lint run test clean
 
-generate_config:
-	@if [[ ! -e .env ]]; then \
-		cp example.config.yaml config.yaml; \
-	fi
-
-install: generate_config
+install:
 	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
 	poetry install --with dev

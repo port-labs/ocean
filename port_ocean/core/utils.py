@@ -2,6 +2,7 @@ from typing import Iterable, Any, TypeVar
 
 from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.models import Entity
+from port_ocean.exceptions.base import RawObjectValidationException
 
 
 def is_valid_diff_item(item: Any) -> bool:
@@ -12,7 +13,7 @@ def validate_result(result: Any) -> list[dict[Any, Any]]:
     if isinstance(result, list):
         if is_valid_diff_item(result):
             return result
-    raise Exception(f"Expected dict, got {type(result)} instead")
+    raise RawObjectValidationException(f"Expected dict, got {type(result)} instead")
 
 
 def is_same_entity(firs_entity: Entity, second_entity: Entity) -> bool:

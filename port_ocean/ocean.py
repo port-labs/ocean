@@ -7,7 +7,6 @@ from typing import Type, Callable
 import uvicorn
 from fastapi import FastAPI, APIRouter
 from loguru import logger
-
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.context.ocean import (
@@ -56,9 +55,6 @@ def _include_target_channel_router(app: FastAPI, _ocean: PortOceanContext) -> No
 
     @target_channel_router.post("/resync")
     async def resync() -> None:
-        if _ocean.integration is None:
-            raise Exception("Integration not set")
-
         await _ocean.integration.sync_all()
 
     app.include_router(target_channel_router)

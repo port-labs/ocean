@@ -1,6 +1,8 @@
 import threading
 from typing import Any, Callable
 
+from loguru import logger
+
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.ocean import (
     PortOceanContext,
@@ -86,6 +88,7 @@ class KafkaTriggerChannel(BaseTriggerChannel):
             org_id=self.org_id,
             config=await self._get_kafka_creds(),
         )
+        logger.info("Starting Kafka consumer")
         threading.Thread(
             name="ocean_kafka_consumer",
             target=self.wrapped_start(ocean, consumer.start),

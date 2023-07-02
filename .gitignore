@@ -57,3 +57,5 @@ venv/
 **/.idea/vcs.xml
 **/.idea/.gitignore
 **/.idea/workspace.xml
+**/.idea/inspectionProfiles
+**/.idea/misc.xml

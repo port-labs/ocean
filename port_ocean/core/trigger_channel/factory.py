@@ -1,5 +1,7 @@
 from typing import Callable, Any, Awaitable
 
+from loguru import logger
+
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.base import BaseWithContext
 from port_ocean.core.trigger_channel.base import (
@@ -12,6 +14,7 @@ from port_ocean.core.trigger_channel.settings import (
     HttpTriggerChannelSettings,
     KafkaTriggerChannelSettings,
 )
+from port_ocean.exceptions.base import UnsupportedTriggerChannelException
 
 
 class TriggerChannelFactory(BaseWithContext):
@@ -47,6 +50,7 @@ class TriggerChannelFactory(BaseWithContext):
         config = self.context.config.trigger_channel
         _type = config.type.lower()
         assert_message = "Invalid trigger channel config, expected KafkaTriggerChannelSettings and got {0}"
+        logger.info(f"Found trigger channel type: {_type}")
 
         match _type:
             case "kafka":
@@ -67,6 +71,8 @@ class TriggerChannelFactory(BaseWithContext):
                 self._trigger_channel = HttpTriggerChannel(wrapped_events, config)
 
             case _:
-                raise Exception(f"Trigger channel {_type} not supported")
+                raise UnsupportedTriggerChannelException(
+                    f"Trigger channel {_type} not supported"
+                )
 
         await self._trigger_channel.start()
