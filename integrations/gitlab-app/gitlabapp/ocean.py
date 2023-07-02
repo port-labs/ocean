@@ -7,7 +7,6 @@ from starlette.requests import Request
 from gitlabapp.bootstrap import setup_application
 from gitlabapp.events.event_handler import EventHandler
 from gitlabapp.ocean_helper import get_all_services
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 
@@ -28,17 +27,12 @@ async def on_start() -> None:
 async def on_resync(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
     projects = []
-    project_id_to_service = {}
 
     for service in all_tokens_services:
         logger.info(
             f"fetching projects for token {service.gitlab_client.private_token}"
         )
-        projects = service.get_projects_by_scope()
-        projects.extend(projects)
-        project_id_to_service.update({project["id"]: service for project in projects})
-
-    event.attributes["project_id_to_service"] = project_id_to_service
+        projects.extend(service.get_projects_by_scope())
 
     return projects
 

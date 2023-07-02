@@ -26,7 +26,7 @@ class PushHook(HookHandler):
 
         has_changed, scope = self.gitlab_service.validate_config_changed(context)
         if has_changed:
-            await ocean.sync_all()
+            await ocean.sync_raw_all()
 
         scope = Scope(ScopeType.Project, context.project.id)
         projects = self.gitlab_service.get_projects_by_scope(scope)
