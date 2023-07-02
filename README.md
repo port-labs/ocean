@@ -66,20 +66,26 @@ The Integration Framework utilizes a `config.yaml` file for configuration. This 
 
 Example `config.yaml`:
 ```yaml
+# This is an example configuration file for the integration service.
+# Please copy this file to config.yaml file in the integration folder and edit it to your needs.
+
 port:
   clientId: PORT_CLIENT_ID # Can be loaded via environment variable: PORT_CLIENT_ID
   clientSecret: PORT_CLIENT_SECRET # Can be loaded via environment variable: PORT_CLIENT_SECRET
   baseUrl: https://api.getport.io/v1
-triggerChannel: 
+# The trigger channel to use for the integration service.
+triggerChannel:
   type: KAFKA
-integrations:
+  brokers: "localhost:9092"
+  kafkaSecurityEnabled: false
+integration:
   # The name of the integration.
-  - identifier: "my_kafka_integration"
-    # The type of the integration.
-    type: "kafka"
-    # The configuration of the integration.
-    config:
-      bootstrap_servers: "localhost:9092"
+  identifier: "my_integration"
+  # The type of the integration.
+  type: "Git"
+  config:
+    my_git_token: "random"
+    some_other_integration_config: "Very important information"
 ```
 
 ## Contributing
