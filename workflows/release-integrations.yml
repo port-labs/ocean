@@ -1,0 +1,47 @@
+name: Release integrations
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.DOCKER_MACHINE_USER }}
+          password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+      - name: Build and push Docker image
+        run: |
+          GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
+          
+          files=$(find integrations -name "ocean-spec.yaml")
+          for file in $files; do
+            # Get the type from ocean-spec.yaml
+            type=$(yq eval '.type' "$file")
+            folder=$(dirname "$file")
+
+            # Get the version from ocean-spec.yaml
+            version=$(yq eval '.version' "$file")
+
+            # Check if the version exists in the ghcr.io registry
+
+            MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
+
+            if [ "$MANIFEST" = "200" ]; then            
+              echo "Image already exists in $repository: port-ocean-$type:$version"
+            else
+              echo "Building and pushing new image: port-ocean-$type:$version"
+              docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" "$folder"
+              docker push "ghcr.io/port-labs/port-ocean-$type:$version"
+            fi
+          done
