@@ -60,7 +60,7 @@ class KafkaConsumer(BaseConsumer):
             try:
                 await self.msg_process(message, topic)
             except Exception as e:
-                logger.exception(f"Failed to process message: {str(e)}")
+                logger.error(f"Failed to process message: {str(e)}")
 
         asyncio.run(try_wrapper())
 
