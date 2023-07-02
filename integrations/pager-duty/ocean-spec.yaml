@@ -1,6 +1,24 @@
 version: v0.1.6dev
 type: pager-duty
 section: IncidentManagement
+description: Pager duty integration for Port Ocean
 features:
-  exporter: true
-description: Pager duty is cool
+  exporter:
+    resources:
+      - kind: incidents
+      - kind: services
+configurations:
+  - name: token
+    description: Pager duty token
+    required: true
+    sensitive: true
+    type: string
+  - name: url
+    description: Pager duty api url (https://api.pagerduty.com)
+    required: true
+    type: string
+  - name: appUrl
+    description: Pager duty app url (https://app.pagerduty.com)
+    required: true
+    type: string
+ingressRequired: true
