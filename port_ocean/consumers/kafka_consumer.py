@@ -1,6 +1,7 @@
 import asyncio
 import json
 import signal
+import sys
 from typing import Any, Callable, Awaitable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
@@ -60,7 +61,10 @@ class KafkaConsumer(BaseConsumer):
             try:
                 await self.msg_process(message, topic)
             except Exception as e:
-                logger.error(f"Failed to process message: {str(e)}")
+                _type, _, tb = sys.exc_info()
+                logger.opt(exception=(_type, None, tb)).error(
+                    f"Failed to process message: {str(e)}"
+                )
 
         asyncio.run(try_wrapper())
 

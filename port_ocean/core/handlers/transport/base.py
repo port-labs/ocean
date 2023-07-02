@@ -7,13 +7,19 @@ from port_ocean.core.types import EntityDiff
 
 
 class BaseTransport(BaseWithContext):
-    DEFAULT_USER_AGENT_TYPE = UserAgentType.exporter
-
     @abstractmethod
-    async def update_diff(
+    async def apply_diff(
         self,
         entities: EntityDiff,
-        user_agent: UserAgentType | None = None,
+        user_agent: UserAgentType,
+    ) -> None:
+        pass
+
+    @abstractmethod
+    async def delete_diff(
+        self,
+        entities: EntityDiff,
+        user_agent: UserAgentType,
     ) -> None:
         pass
 
@@ -26,11 +32,5 @@ class BaseTransport(BaseWithContext):
     @abstractmethod
     async def delete(
         self, entities: list[Entity], user_agent_type: UserAgentType
-    ) -> None:
-        pass
-
-    @abstractmethod
-    async def delete_non_existing(
-        self, entities: list[Entity], user_agent: UserAgentType
     ) -> None:
         pass

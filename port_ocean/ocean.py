@@ -57,7 +57,7 @@ def _include_target_channel_router(app: FastAPI, _ocean: PortOceanContext) -> No
 
     @target_channel_router.post("/resync")
     async def resync() -> None:
-        await _ocean.integration.sync_all()
+        await _ocean.integration.sync_raw_all()
 
     app.include_router(target_channel_router)
 

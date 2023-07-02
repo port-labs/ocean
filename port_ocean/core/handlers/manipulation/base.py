@@ -1,6 +1,8 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 
+from loguru import logger
+
 from port_ocean.core.base import BaseWithContext
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
@@ -16,7 +18,13 @@ class EntityPortDiff:
 
 class BaseManipulation(BaseWithContext):
     @abstractmethod
-    async def parse_items(
+    async def _parse_items(
         self, mapping: ResourceConfig, raw_data: RawEntityDiff
     ) -> EntityDiff:
         pass
+
+    async def parse_items(
+        self, mapping: ResourceConfig, raw_data: RawEntityDiff
+    ) -> EntityDiff:
+        with logger.contextualize(kind=mapping.kind):
+            return await self._parse_items(mapping, raw_data)

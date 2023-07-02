@@ -68,15 +68,16 @@ class PortClient:
             "User-Agent": self._user_agent(user_agent_type),
         }
 
+    def _handle_status_code(self, silent: bool, response: httpx.Response) -> None:
+        if not silent:
+            response.raise_for_status()
+
     @property
     async def token(self) -> str:
-        logger.info("Fetching access token")
         if not self._last_token_object or self._last_token_object.expired:
             self._last_token_object = await self._get_token(
                 self.client_id, self.client_secret
             )
-        else:
-            logger.info("Access token found in cache")
 
         return self._last_token_object.full_token
 
@@ -85,6 +86,7 @@ class PortClient:
         entity: Entity,
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
+        silent: bool = False,
     ) -> None:
         validation_only = request_options.get("validation_only", False)
         logger.info(
@@ -109,18 +111,19 @@ class PortClient:
 
         if not response.status_code < 400:
             logger.error(
-                f"Error upserting "
+                f"Error {'Validating' if validation_only else 'Upserting'} "
                 f"entity: {entity.identifier} of "
                 f"blueprint: {entity.blueprint}, "
                 f"error: {response.text}"
             )
-        response.raise_for_status()
+        self._handle_status_code(silent, response)
 
     async def delete_entity(
         self,
         entity: Entity,
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
+        silent: bool = False,
     ) -> None:
         logger.info(
             f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
@@ -142,9 +145,10 @@ class PortClient:
                 f"blueprint: {entity.blueprint}, "
                 f"error: {response.text}"
             )
-            response.raise_for_status()
 
-    async def get_kafka_creds(self) -> KafkaCreds:
+        self._handle_status_code(silent, response)
+
+    async def get_kafka_creds(self, silent: bool = False) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")
         async with httpx.AsyncClient() as client:
             response = await client.get(
@@ -152,7 +156,7 @@ class PortClient:
             )
         if not response.status_code < 400:
             logger.error(f"Error getting kafka credentials, error: {response.text}")
-            response.raise_for_status()
+        self._handle_status_code(silent, response)
 
         credentials = response.json()["credentials"]
 
