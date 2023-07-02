@@ -58,3 +58,5 @@ venv/
 **/.idea/.gitignore
 **/.idea/workspace.xml
 .DS_Store
+**/.idea/inspectionProfiles
+**/.idea/misc.xml

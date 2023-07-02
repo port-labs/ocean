@@ -7,6 +7,8 @@ from typing import Type, Callable
 import uvicorn
 from fastapi import FastAPI, APIRouter
 from loguru import logger
+from pydantic import BaseSettings
+from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
@@ -16,9 +18,8 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.logger_setup import setup_logger
 from port_ocean.middlewares import request_handler
-from pydantic import BaseSettings
-from starlette.types import Scope, Receive, Send
 
 
 def _get_base_integration_class_from_module(
@@ -56,9 +57,6 @@ def _include_target_channel_router(app: FastAPI, _ocean: PortOceanContext) -> No
 
     @target_channel_router.post("/resync")
     async def resync() -> None:
-        if _ocean.integration is None:
-            raise Exception("Integration not set")
-
         await _ocean.integration.sync_all()
 
     app.include_router(target_channel_router)
@@ -110,6 +108,7 @@ class Ocean:
 
 
 def run(path: str) -> None:
+    setup_logger()
     sys.path.append(".")
     try:
         integration_path = f"{path}/integration.py" if path else "integration.py"

@@ -9,8 +9,10 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.models import Entity
-from port_ocean.core.types import RawEntityDiff, EntityDiff
+from port_ocean.core.types import RawEntityDiff, EntityDiff, RESYNC_EVENT_LISTENER
 from port_ocean.core.utils import validate_result, zip_and_sum
+from port_ocean.exceptions.base import RawObjectValidationException
+from port_ocean.utils import get_function_location
 
 
 class SyncMixin(HandlerMixin, EventsMixin):
@@ -62,10 +64,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ]
         )
 
+    async def _validate_raw_data_wrapper(
+        self, fn: RESYNC_EVENT_LISTENER, kind: str
+    ) -> Any:
+        results = await fn(kind)
+        try:
+            return validate_result(results)
+        except RawObjectValidationException as error:
+            raise RawObjectValidationException(
+                f"Failed to validate raw data for returned data from {get_function_location(fn)}, error: {error}"
+            ) from error
+
     async def _get_resource_raw_results(
         self, resource_config: ResourceConfig
     ) -> tuple[ResourceConfig, list[dict[Any, Any]]]:
-        logger.info(f"Resyncing {resource_config.kind}")
+        logger.info(f"Fetching {resource_config.kind} resync results")
         tasks: list[Awaitable[list[dict[Any, Any]]]] = []
         with logger.contextualize(kind=resource_config.kind):
             if self.__class__._on_resync != SyncRawMixin._on_resync:
@@ -76,8 +89,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 *self.event_strategy["resync"][None],
             ]
 
-            for wrapper in fns:
-                tasks.append(wrapper(resource_config.kind))
+            for resync_function in fns:
+                tasks.append(
+                    self._validate_raw_data_wrapper(
+                        resync_function, resource_config.kind
+                    )
+                )
 
             logger.info(f"Found {len(tasks)} resync tasks for {resource_config.kind}")
             results: list[dict[Any, Any]] = list(
@@ -182,7 +199,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         raw_desired_state: RawEntityDiff,
         user_agent_type: UserAgentType,
     ) -> None:
-        logger.info(f"Registering state for {kind}")
+        logger.info(f"Updating state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
         resource_mappings = [
             resource for resource in config.resources if resource.kind == kind

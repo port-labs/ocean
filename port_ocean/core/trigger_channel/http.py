@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.trigger_channel.base import (
@@ -18,6 +19,7 @@ class HttpTriggerChannel(BaseTriggerChannel):
         self.trigger_channel_config = trigger_channel_config
 
     async def start(self) -> None:
+        logger.info("Setting up HTTP trigger channel")
         target_channel_router = APIRouter()
 
         @target_channel_router.post("/resync")

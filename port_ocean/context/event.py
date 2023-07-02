@@ -1,15 +1,18 @@
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import AsyncIterator, Literal, Any, TYPE_CHECKING, Optional
+from uuid import uuid4
 
+from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.errors import EventContextNotFoundError
+from port_ocean.utils import get_time
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
-TriggerType = Literal["manual", "machine"]
+TriggerType = Literal["manual", "machine", "request"]
 
 
 @dataclass
@@ -17,7 +20,21 @@ class EventContext:
     event_type: str
     trigger_type: TriggerType = "machine"
     attributes: dict[str, Any] = field(default_factory=dict)
-    _port_app_config: Optional["PortAppConfig"] = field(default=None)
+    _port_app_config: Optional["PortAppConfig"] = None
+    _parent_event: Optional["EventContext"] = None
+    _event_id: str = field(default_factory=lambda: str(uuid4()))
+
+    @property
+    def id(self) -> str:
+        return self._event_id
+
+    @property
+    def parent(self) -> Optional["EventContext"]:
+        return self._parent_event
+
+    @property
+    def parent_id(self) -> Optional[str]:
+        return self._parent_event.id if self._parent_event else None
 
     @property
     def port_app_config(self) -> "PortAppConfig":
@@ -51,21 +68,47 @@ event: EventContext = LocalProxy(lambda: _get_event_context())  # type: ignore
 
 @asynccontextmanager
 async def event_context(
-    kind: str,
+    event_type: str,
     trigger_type: TriggerType = "manual",
     attributes: dict[str, Any] | None = None,
 ) -> AsyncIterator[EventContext]:
     if attributes is None:
         attributes = {}
 
+    parent = _event_context_stack.top
+
     _event_context_stack.push(
         EventContext(
-            kind,
+            event_type,
             trigger_type=trigger_type,
             attributes=attributes,
+            _parent_event=parent,
         )
     )
 
-    yield event
+    start_time = get_time(seconds_precision=False)
+    logger.bind(
+        event_id=event.id, event_type=event.event_type, parent_id=event.parent_id
+    ).info("Event started")
+    with logger.contextualize(
+        event_trigger_type=event.trigger_type,
+        event_kind=event.event_type,
+        event_id=event.id,
+    ):
+        logger.info("Event started")
+        try:
+            yield event
+        except:
+            success = False
+            raise
+        else:
+            success = True
+        finally:
+            end_time = get_time(seconds_precision=False)
+            time_elapsed = round(end_time - start_time, 5)
+            logger.bind(
+                success=success,
+                time_elapsed=time_elapsed,
+            ).info("Event finished")
 
     _event_context_stack.pop()

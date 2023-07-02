@@ -1,12 +1,12 @@
 from typing import Callable
 
 from loguru import logger
-
 from port_ocean.context.ocean import PortOceanContext, ocean
 from port_ocean.core.handlers import BaseManipulation, BasePortAppConfig, BaseTransport
 from port_ocean.core.handlers.manipulation.jq_manipulation import JQManipulation
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.transport.port.transport import HttpPortTransport
+from port_ocean.exceptions.base import IntegrationNotStartedException
 
 
 class HandlerMixin:
@@ -30,19 +30,19 @@ class HandlerMixin:
     @property
     def manipulation(self) -> BaseManipulation:
         if not self._manipulation:
-            raise Exception("Integration not started")
+            raise IntegrationNotStartedException("Manipulation class not initialized")
         return self._manipulation
 
     @property
     def port_app_config_handler(self) -> BasePortAppConfig:
         if self._port_app_config_handler is None:
-            raise Exception("Integration not started")
+            raise IntegrationNotStartedException("PortAppConfig class not initialized")
         return self._port_app_config_handler
 
     @property
     def transport(self) -> BaseTransport:
         if not self._transport:
-            raise Exception("Integration not started")
+            raise IntegrationNotStartedException("Transport class not initialized")
         return self._transport
 
     async def _init_manipulation_instance(self) -> BaseManipulation:

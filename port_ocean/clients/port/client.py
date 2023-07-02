@@ -11,6 +11,7 @@ from port_ocean.clients.port.types import (
     UserAgentType,
 )
 from port_ocean.core.models import Entity, Blueprint
+from port_ocean.exceptions.clients import KafkaCredentialsNotFound
 
 
 class TokenResponse(BaseModel):
@@ -116,7 +117,10 @@ class PortClient:
         response.raise_for_status()
 
     async def delete_entity(
-        self, entity: Entity, user_agent_type: UserAgentType | None = None
+        self,
+        entity: Entity,
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
     ) -> None:
         logger.info(
             f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
@@ -125,7 +129,10 @@ class PortClient:
             response = await client.delete(
                 f"{self.api_url}/blueprints/{entity.blueprint}/entities/{entity.identifier}",
                 headers=await self._headers(user_agent_type),
-                params={"delete_dependents": "true"},
+                params={
+                    "delete_dependents": request_options["delete_dependent_entities"]
+                    or False
+                },
             )
 
         if not response.status_code < 400:
@@ -150,7 +157,7 @@ class PortClient:
         credentials = response.json()["credentials"]
 
         if credentials is None:
-            raise Exception("No kafka credentials found")
+            raise KafkaCredentialsNotFound("No kafka credentials found")
 
         return credentials
 
@@ -196,6 +203,7 @@ class PortClient:
             ],
         }
 
+        logger.info(f"Searching entities with query {query}")
         async with httpx.AsyncClient() as client:
             search_req = await client.post(
                 f"{self.api_url}/entities/search",
@@ -206,10 +214,8 @@ class PortClient:
                     "include": ["blueprint", "identifier"],
                 },
             )
-            search_req.raise_for_status()
-            return [
-                Entity.parse_obj(result) for result in search_req.json()["entities"]
-            ]
+        search_req.raise_for_status()
+        return [Entity.parse_obj(result) for result in search_req.json()["entities"]]
 
     async def search_dependent_entities(self, entity: Entity) -> list[Entity]:
         body = {
@@ -224,7 +230,7 @@ class PortClient:
             ],
         }
 
-        logger.info(f"Search dependent entity with body {body}")
+        logger.info(f"Searching dependent entity with body {body}")
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.api_url}/entities/search",
@@ -277,6 +283,7 @@ class PortClient:
                 json=json,
             )
             if installation.status_code == 404:
+                logger.info(f"Integration with id: {_id} not found, creating it")
                 installation = await client.post(
                     f"{self.api_url}/integration", headers=headers, json=json
                 )
