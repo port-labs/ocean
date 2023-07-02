@@ -43,8 +43,8 @@ class PagerDutyClient:
     @property
     def all_events(self) -> List[str]:
         return (
-            self.incidents_events_to_listen
-            + self.services_events_to_listen
+            self.incident_upsert_events
+            + self.service_upsert_events
             + self.service_delete_events
         )
 
