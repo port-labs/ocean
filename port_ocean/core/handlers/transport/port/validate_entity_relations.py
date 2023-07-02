@@ -6,7 +6,7 @@ from port_ocean.core.handlers.transport.port.get_related_entities import (
     get_related_entities,
 )
 from port_ocean.core.utils import is_same_entity
-from port_ocean.exceptions.base import RelationValidationException
+from port_ocean.exceptions.core import RelationValidationException
 
 
 async def validate_entity_relations(

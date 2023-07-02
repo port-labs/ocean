@@ -7,7 +7,7 @@ from port_ocean.core.handlers.manipulation.base import BaseManipulation
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.types import RawEntityDiff, EntityDiff
-from port_ocean.exceptions.base import ManipulationHandlerException
+from port_ocean.exceptions.core import ManipulationHandlerException
 
 
 class JQManipulation(BaseManipulation):
