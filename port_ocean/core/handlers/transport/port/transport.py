@@ -80,9 +80,9 @@ class HttpPortTransport(BaseTransport):
 
         user_agent_type = user_agent_type or self.DEFAULT_USER_AGENT_TYPE
         await self.delete(diff.deleted, user_agent_type)
-        logger.info(f"Upserting new entities")
+        logger.info("Upserting new entities")
         await self.upsert(diff.created, user_agent_type)
-        logger.info(f"Upserting modified entities")
+        logger.info("Upserting modified entities")
         await self.upsert(diff.modified, user_agent_type)
 
     async def upsert(
