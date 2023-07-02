@@ -8,8 +8,12 @@ from port_ocean.core.trigger_channel.base import (
     BaseTriggerChannel,
     TriggerChannelEvents,
 )
-from port_ocean.core.trigger_channel.http import HttpTriggerChannel
-from port_ocean.core.trigger_channel.kafka import KafkaTriggerChannel
+from port_ocean.core.trigger_channel.http import (
+    HttpTriggerChannel,
+)
+from port_ocean.core.trigger_channel.kafka import (
+    KafkaTriggerChannel,
+)
 from port_ocean.core.trigger_channel.settings import (
     HttpTriggerChannelSettings,
     KafkaTriggerChannelSettings,
