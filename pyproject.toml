@@ -48,12 +48,14 @@ pylint = "^2.17.4"
 types-requests = "^2.31.0.1"
 types-pyyaml = "^6.0.12.10"
 ruff = "^0.0.272"
+types-toml = "^0.10.8.6"
 
 
 [tool.mypy]
 exclude = [
     'port_ocean/cli/cookiecutter',
     'venv',
+    '.venv',
     'integrations'
 ]
 plugins = [
@@ -74,7 +76,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
-exclude = ['venv', 'integrations']
+exclude = ['venv', '.venv', 'integrations']
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
