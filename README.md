@@ -4,6 +4,14 @@
 
 Ocean is a solution created by Port to tackle the difficulties encountered when merging different third-party systems with our developer portal product. This framework offers a uniform method for executing integrations, streamlining the process and enabling platform engineers to prioritize the essential features of the third-party system.
 
+
+
+## Prerequisites
+
+- Python 3.11
+
+
+
 ## Installation
 ```
 pip install port-ocean[cli]
