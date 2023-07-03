@@ -18,7 +18,7 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.logger_setup import setup_logger
+from port_ocean.logger_setup import setup_logger, LogLevelType
 from port_ocean.middlewares import request_handler
 
 
@@ -107,8 +107,8 @@ class Ocean:
         await self.fast_api_app(scope, receive, send)
 
 
-def run(path: str) -> None:
-    setup_logger()
+def run(path: str, log_level: LogLevelType = "DEBUG") -> None:
+    setup_logger(log_level)
     sys.path.append(".")
     try:
         integration_path = f"{path}/integration.py" if path else "integration.py"

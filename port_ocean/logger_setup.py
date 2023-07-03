@@ -1,12 +1,15 @@
 import sys
+from typing import Literal
 
 from loguru import logger
 
 from port_ocean.config.integration import LoggerConfiguration
 
+LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
-def setup_logger() -> None:
-    settings = LoggerConfiguration()
+
+def setup_logger(level: LogLevelType) -> None:
+    settings = LoggerConfiguration(level=level)
     logger_format = (
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "

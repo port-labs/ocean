@@ -10,6 +10,7 @@ from rich.console import Console
 
 from port_ocean.cli.download_git_folder import download_folder
 from port_ocean.cli.list_integrations import list_git_folders
+from port_ocean.logger_setup import LogLevelType
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -39,8 +40,19 @@ def cli_start() -> None:
 
 
 @cli_start.command()
-@click.option("-s", "--short", "short", default=False, is_flag=True, required=False)
+@click.option(
+    "-s",
+    "--short",
+    "short",
+    default=False,
+    is_flag=True,
+    required=False,
+    help="Display only the short version number.",
+)
 def version(short: bool) -> None:
+    """
+    Displays the version of the Ocean package.
+    """
     app_version = toml.load("pyproject.toml")["tool"]["poetry"]["version"]
     if short:
         print(f"{app_version}")
@@ -49,19 +61,40 @@ def version(short: bool) -> None:
 
 
 @cli_start.command()
-@click.argument("path", default="")
-def sail(path: str) -> None:
+@click.argument("path", default="", type=click.Path(exists=True))
+@click.option(
+    "-l",
+    "--log-level",
+    "log_level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
+    default="DEBUG",
+    help="""Set the logging level for the integration.
+Supported levels are DEBUG, INFO, WARNING, ERROR,
+and CRITICAL. If not specified, the default level
+is DEBUG.""",
+)
+def sail(path: str, log_level: LogLevelType) -> None:
+    """
+    Runs the integration in the given PATH.
+
+    PATH: Path to the integration.
+    """
     from port_ocean.ocean import run
 
     print_logo()
 
     print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
-    run(path)
+    run(path, log_level)
 
 
 @cli_start.command()
-@click.argument("path", default=".")
+@click.argument("path", default=".", type=click.Path(exists=True))
 def new(path: str) -> None:
+    """
+    Scaffold a new integration in the given PATH.
+
+    PATH: Path to the integration. If not provided, the current directory will be used.
+    """
     print_logo()
 
     console = Console()
@@ -93,6 +126,9 @@ def new(path: str) -> None:
 
 @cli_start.command(name="list")
 def list_integrations() -> None:
+    """
+    List all available public integrations.
+    """
     console = Console()
     console.print("🌊 Here are the integrations available to you:", style="bold")
     options = list_git_folders("https://github.com/port-labs/pulumi", "examples")
@@ -102,8 +138,21 @@ def list_integrations() -> None:
 
 
 @cli_start.command()
-@click.argument("name")
-def pull(name: str) -> None:
+@click.argument("name", type=str)
+@click.option(
+    "-p",
+    "--path",
+    "path",
+    default=None,
+    type=click.Path(exists=True),
+    help="Desired path to pull the integration to. defaults to ./NAME",
+)
+def pull(name: str, path: str) -> None:
+    """
+    Pull an integration bt the NAME from the list of available public integrations.
+
+    NAME: Name of the integration to pull.
+    """
     download_folder(
-        "https://github.com/port-labs/pulumi", f"examples/{name}", f"./{name}"
+        "https://github.com/port-labs/pulumi", f"examples/{name}", path or f"./{name}"
     )
