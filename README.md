@@ -1,4 +1,4 @@
-<div style="text-align: center;"><img src="./assets/OceanLogo.svg" alt="Ocean" width="300" height="100" align="middle"></div>
+# <img src="./assets/OceanSymbol.svg" alt="Ocean" width="100" height="100">Ocean
 
 [![Lint](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
 
