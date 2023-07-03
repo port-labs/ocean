@@ -3,7 +3,7 @@ type: pager-duty
 description: Pager duty integration for Port Ocean
 icon: pagerLogo.svg
 features:
-  exporter:
+  - type: exporter
     section: Incident Management
     resources:
       - kind: incidents
