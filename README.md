@@ -88,13 +88,10 @@ Ocean is a solution developed by Port to address the challenges faced while inte
 
 # Export Architecture
 
-![image](./assets/Untitled-2023-07-03-1246.png)
+![image](./assets/ExportArchitecture.svg)
 
 ## Real-Time updates Architecture
-![image](./assets/IntergationFrameworkRealTimeUpdatesArchitecture.svg)
-
-## Self Service Architecture
-![image](./assets/IntegrationFrameworkSelfServiceArchitecture.svg)
+![image](./assets/RealTimeUpdatesArchitecture.svg)
 
 ## Folder Structure
 The Integration Framework follows a specific folder structure within the mono repository. This structure ensures proper organization and easy identification of integration modules. The suggested folder structure is as follows:
@@ -121,7 +118,7 @@ port-ocean/
 
 ## Integration Lifecycle
 
-![image](./assets/IntegrationFrameworkLifecycleOfIntegration.svg)
+![image](./assets/LifecycleOfIntegration.svg)
 
 ## Configuration
 The Integration Framework utilizes a `config.yaml` file for configuration. This file specifies the integrations to be used within an array. Each integration has a type and unique identifier, which are used during initialization to update Port accordingly.
