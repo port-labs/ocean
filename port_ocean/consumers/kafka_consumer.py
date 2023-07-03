@@ -104,7 +104,7 @@ class KafkaConsumer(BaseConsumer):
                 except Exception as message_error:
                     logger.error(str(message_error))
         finally:
-            self.consumer.close()
+            self.exit_gracefully()
 
     def exit_gracefully(self, *_: Any) -> None:
         logger.info("Exiting gracefully...")
