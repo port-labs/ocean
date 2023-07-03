@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 # ruff: noqa: E501
-
 import os
 
 import click
+import toml
 from cookiecutter.main import cookiecutter  # type: ignore
-from port_ocean.cli.download_git_folder import download_folder
-from port_ocean.cli.list_integrations import list_git_folders
 from rich import print
 from rich.console import Console
+
+from port_ocean.cli.download_git_folder import download_folder
+from port_ocean.cli.list_integrations import list_git_folders
+
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 def print_logo() -> None:
@@ -29,10 +32,21 @@ By: Port.io
     Console().print(ascii_art)
 
 
-@click.group()
+@click.group(context_settings=CONTEXT_SETTINGS)
+@click.help_option("-h", "--help")
 def cli_start() -> None:
     # Ocean root command
     pass
+
+
+@cli_start.command()
+@click.option("-s", "--short", "short", default=False, is_flag=True, required=False)
+def version(short: bool) -> None:
+    app_version = toml.load("pyproject.toml")["tool"]["poetry"]["version"]
+    if short:
+        print(f"{app_version}")
+    else:
+        print(f"🌊 Ocean version: {app_version}")
 
 
 @cli_start.command()
