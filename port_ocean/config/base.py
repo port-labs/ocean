@@ -74,7 +74,6 @@ class BaseOceanSettings(BaseSettings):
     base_path: str
 
     class Config:
-        secrets_dir = "./secrets.yml"
         yaml_file = "./config.yaml"
 
         @classmethod
