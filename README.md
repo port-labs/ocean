@@ -1,9 +1,8 @@
-<img align="right" width="100" height="74" src="https://user-images.githubusercontent.com/8277210/183290025-d7b24277-dfb4-4ce1-bece-7fe0ecd5efd4.svg" />
+<div style="text-align: center;"><img src="./assets/OceanLogo.svg" alt="Ocean" width="300" height="100" align="middle"></div>
 
-# Ocean
 [![Lint](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
 
-Ocean is a solution developed by Port to address the challenges faced while integrating various third-party systems with our developer portal product. This framework provides a standardized approach for implementing integrations, simplifying the process and allowing platform engineers to focus on the core functionality of the third-party system.
+Ocean is a solution created by Port to tackle the difficulties encountered when merging different third-party systems with our developer portal product. This framework offers a uniform method for executing integrations, streamlining the process and enabling platform engineers to prioritize the essential features of the third-party system.
 
 ## Installation
 `pip install port-ocean[cli]` or `poetry add port-ocean[cli]`
@@ -121,7 +120,7 @@ port-ocean/
 ![image](./assets/LifecycleOfIntegration.svg)
 
 ## Configuration
-The Integration Framework utilizes a `config.yaml` file for configuration. This file specifies the integrations to be used within an array. Each integration has a type and unique identifier, which are used during initialization to update Port accordingly.
+The Integration Framework utilizes a `config.yaml` file for its configuration. This file defines both the framework configuration and the integration configuration within it. Each integration is identified by its type and unique identifier, which are utilized during initialization to appropriately update Port.
 
 Example `config.yaml`:
 ```yaml
