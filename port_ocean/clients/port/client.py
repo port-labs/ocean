@@ -270,10 +270,26 @@ class PortClient:
         integration.raise_for_status()
         return integration.json()["integration"]
 
-    async def initiate_integration(
+    async def create_integration(
         self, _id: str, _type: str, changelog_destination: dict[str, Any]
     ) -> None:
-        logger.info(f"Initiating integration with id: {_id}")
+        logger.info(f"Creating integration with id: {_id}")
+        headers = await self._headers()
+        json = {
+            "installationId": _id,
+            "installationAppType": _type,
+            "changelogDestination": changelog_destination,
+        }
+        async with httpx.AsyncClient() as client:
+            installation = await client.post(
+                f"{self.api_url}/integration", headers=headers, json=json
+            )
+        installation.raise_for_status()
+
+    async def patch_integration(
+        self, _id: str, _type: str, changelog_destination: dict[str, Any]
+    ) -> None:
+        logger.info(f"Updating integration with id: {_id}")
         headers = await self._headers()
         json = {
             "installationId": _id,
@@ -286,18 +302,31 @@ class PortClient:
                 headers=headers,
                 json=json,
             )
-            if installation.status_code == 404:
-                logger.info(f"Integration with id: {_id} not found, creating it")
-                installation = await client.post(
-                    f"{self.api_url}/integration", headers=headers, json=json
-                )
-
-        if installation.status_code >= 400:
-            logger.error(
-                f"Error initiating integration with id: {_id}, error: {installation.text}"
-            )
-
         installation.raise_for_status()
+
+    async def initiate_integration(
+        self, _id: str, _type: str, changelog_destination: dict[str, Any]
+    ) -> None:
+        logger.info(f"Initiating integration with id: {_id}")
+        try:
+            integration = await self.get_integration(_id)
+
+            logger.info("Checking for diff in integration configuration")
+            if (
+                integration["changelogDestination"] != changelog_destination
+                and integration["installationAppType"] == _type
+            ):
+                await self.patch_integration(_id, _type, changelog_destination)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                await self.create_integration(_id, _type, changelog_destination)
+                return
+
+            logger.error(
+                f"Error initiating integration with id: {_id}, error: {e.response.text}"
+            )
+            raise
+
         logger.info(f"Integration with id: {_id} successfully registered")
 
     async def get_blueprint(self, identifier: str) -> Blueprint:
