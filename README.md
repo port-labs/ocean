@@ -8,25 +8,87 @@ Ocean is a solution developed by Port to address the challenges faced while inte
 ## Installation
 `pip install port-ocean[cli]` or `poetry add port-ocean[cli]`
 
+
+
 ## Run Integration
-1. source the integration venv `. .venv/bin/activate`
-2. `ocean sail ./path/to/integration`
+1. source the integration venv 
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+2. Run
+
+   ```sh
+   ocean sail ./path/to/integration
+   ```
+
+   
 
 ## Local Development (Framework)
 1. Clone the repository
-2. Install dependencies: `make install` or `make install/all` for installing integrations dependencies as well
-3. source the integration venv `. .venv/bin/activate`
+
+2. Install dependencies:
+
+   ```sh
+   make install
+   ```
+
+   Or (For installing integrations dependencies as well)
+
+   ```sh
+   make install/all
+   ```
+
+3. source the integration venv
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+   
 
 
 ## Local Development (Integration)
 1. Clone the repository
-2. For new integration run `make new` and follow the instructions
-3. Install dependencies: `cd DESIRED_INTEGRATION_FOLDER && make install`
-4. source the integration venv `. .venv/bin/activate`
-5. Run integration: `make run`
- 
-## Export Architecture
-![image](./assets/IntegrationFrameworkExportArchitecture.svg)
+
+2. For new integration run
+
+   ```sh
+   make new
+   ```
+
+   and follow the instructions
+
+3. Install dependencies
+
+4. ```sh
+   cd DESIRED_INTEGRATION_FOLDER && make install
+   ```
+
+5. source the integration venv
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+6. Run the integration
+
+   ```sh
+   make run
+   ```
+
+   Or
+
+   ```sh
+   ocean sail
+   ```
+
+   
+
+# Export Architecture
+
+![image](./assets/Untitled-2023-07-03-1246.png)
 
 ## Real-Time updates Architecture
 ![image](./assets/IntergationFrameworkRealTimeUpdatesArchitecture.svg)
@@ -55,14 +117,14 @@ port-ocean/
 - The `framework` folder contains the core logic for managing the integration lifecycle.
 - Each integration is represented by a separate folder inside the `integrations` directory.
 - Inside each integration folder, you'll find a `main.py` file that implements the core functionality of the integration for the specific third-party system.
-- The `requirements.txt` file inside each integration folder lists the required dependencies for that integration.
+- The `pyproject.toml` file inside each integration folder lists the required dependencies for that integration.
 
 ## Integration Lifecycle
 
 ![image](./assets/IntegrationFrameworkLifecycleOfIntegration.svg)
 
 ## Configuration
-The Integration Framework utilizes a `config.yaml` file for configuration. This file specifies the integrations to be used within an array. Each integration has a unique identifier and type, which are used during initialization to update Port accordingly.
+The Integration Framework utilizes a `config.yaml` file for configuration. This file specifies the integrations to be used within an array. Each integration has a type and unique identifier, which are used during initialization to update Port accordingly.
 
 Example `config.yaml`:
 ```yaml
@@ -75,14 +137,12 @@ port:
   baseUrl: https://api.getport.io/v1
 # The trigger channel to use for the integration service.
 triggerChannel:
-  type: KAFKA
-  brokers: "localhost:9092"
-  kafkaSecurityEnabled: false
+  type: KAFKA / WEBHOOK
 integration:
   # The name of the integration.
   identifier: "my_integration"
   # The type of the integration.
-  type: "Git"
+  type: "PagerDuty"
   config:
     my_git_token: "random"
     some_other_integration_config: "Very important information"
