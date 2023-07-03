@@ -5,11 +5,20 @@
 Ocean is a solution created by Port to tackle the difficulties encountered when merging different third-party systems with our developer portal product. This framework offers a uniform method for executing integrations, streamlining the process and enabling platform engineers to prioritize the essential features of the third-party system.
 
 ## Installation
-`pip install port-ocean[cli]` or `poetry add port-ocean[cli]`
+```
+pip install port-ocean[cli]
+```
 
+Or
 
+```sh
+poetry add port-ocean[cli]
+```
+
+[]()
 
 ## Run Integration
+
 1. source the integration venv 
 
    ```sh
