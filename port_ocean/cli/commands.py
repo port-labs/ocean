@@ -33,7 +33,6 @@ By: Port.io
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.help_option("-h", "--help")
 def cli_start() -> None:
     # Ocean root command
     pass
