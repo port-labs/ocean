@@ -15,11 +15,20 @@ from port_ocean.exceptions.clients import KafkaCredentialsNotFound
 
 class PortClient(EntityClientMixin, IntegrationClientMixin):
     def __init__(
-        self, base_url: str, client_id: str, client_secret: str, user_agent_id: str
+        self,
+        base_url: str,
+        client_id: str,
+        client_secret: str,
+        integration_identifier: str,
+        integration_type: str,
     ):
         self.api_url = f"{base_url}/api/v1"
         self.auth = PortAuthentication(
-            client_id, client_secret, self.api_url, user_agent_id
+            client_id,
+            client_secret,
+            self.api_url,
+            integration_identifier,
+            integration_type,
         )
         EntityClientMixin.__init__(self, self.auth)
         IntegrationClientMixin.__init__(self, self.auth)

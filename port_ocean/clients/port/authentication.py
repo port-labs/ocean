@@ -28,12 +28,18 @@ class TokenResponse(BaseModel):
 
 class PortAuthentication:
     def __init__(
-        self, client_id: str, client_secret: str, api_url: str, user_agent_id: str
+        self,
+        client_id: str,
+        client_secret: str,
+        api_url: str,
+        integration_identifier: str,
+        integration_type: str,
     ):
         self.api_url = api_url
         self.client_id = client_id
         self.client_secret = client_secret
-        self.user_agent_id = user_agent_id
+        self.integration_identifier = integration_type
+        self.integration_type = integration_identifier
         self._last_token_object: TokenResponse | None = None
 
     async def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
@@ -48,7 +54,7 @@ class PortAuthentication:
             return TokenResponse(**token_response.json())
 
     def user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
-        user_agent = f"port-ocean/{self.user_agent_id}"
+        user_agent = f"port-ocean/{self.integration_type}/{self.integration_identifier}"
         if user_agent_type:
             user_agent += f"/{user_agent_type.value or UserAgentType.exporter.value}"
 
