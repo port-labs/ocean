@@ -91,8 +91,8 @@ class KafkaConsumer(BaseConsumer):
                     else:
                         try:
                             logger.info(
-                                "Process message"
-                                f" from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}"
+                                "Process message "
+                                f"from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}"
                             )
                             self._handle_message(msg)
                         except Exception as process_error:
