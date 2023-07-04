@@ -66,6 +66,8 @@ class TriggerChannelFactory(BaseWithContext):
                     wrapped_events,
                     config,
                     org_id,
+                    self.context.config.integration.identifier,
+                    self.context.config.integration.type,
                 )
 
             case "webhook":
