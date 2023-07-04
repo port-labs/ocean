@@ -2,6 +2,7 @@ from typing import Any
 
 import httpx
 from loguru import logger
+from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 
@@ -68,7 +69,7 @@ class IntegrationClientMixin:
             ):
                 await self.patch_integration(_id, _type, changelog_destination)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
+            if e.response.status_code == status.HTTP_400_BAD_REQUEST:
                 await self.create_integration(_id, _type, changelog_destination)
                 return
 
