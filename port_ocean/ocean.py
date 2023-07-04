@@ -43,11 +43,7 @@ def _load_module(file_path: str) -> ModuleType:
         raise Exception(f"Failed to load integration from path: {file_path}")
 
     module = module_from_spec(spec)
-
-    try:
-        spec.loader.exec_module(module)
-    except Exception as e:
-        raise e
+    spec.loader.exec_module(module)
 
     return module
 
