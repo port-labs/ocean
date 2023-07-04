@@ -42,7 +42,7 @@ class HttpPortTransport(BaseTransport):
 
             if new_dependent:
                 raise RelationValidationException(
-                    f"Must enable delete_dependent_entities flag or delete also dependent entities:"
+                    f"Must enable delete_dependent_entities flag or delete all dependent entities: "
                     f" {[(dep.blueprint, dep.identifier) for dep in new_dependent]}"
                 )
 
@@ -96,7 +96,8 @@ class HttpPortTransport(BaseTransport):
             if is_part_of_related:
                 if event.port_app_config.create_missing_related_entities:
                     logger.info(
-                        "Skipping entity because it is related to created entities and create_missing_related_entities is enabled"
+                        f"Skipping entity {(entity_to_delete.identifier, entity_to_delete.blueprint)} because it is "
+                        f"related to created entities and create_missing_related_entities is enabled"
                     )
                 else:
                     allowed_entities_to_delete.append(entity_to_delete)
