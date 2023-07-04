@@ -61,7 +61,7 @@ def version(short: bool) -> None:
 
 
 @cli_start.command()
-@click.argument("path", default="", type=click.Path(exists=True))
+@click.argument("path", default=".", type=click.Path(exists=True))
 @click.option(
     "-l",
     "--log-level",
@@ -75,7 +75,7 @@ is DEBUG.""",
 )
 def sail(path: str, log_level: LogLevelType) -> None:
     """
-    Runs the integration in the given PATH.
+    Runs the integration in the given PATH. if no PATH is provided, the current directory will be used.
 
     PATH: Path to the integration.
     """
