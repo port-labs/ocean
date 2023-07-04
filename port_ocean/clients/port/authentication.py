@@ -38,8 +38,8 @@ class PortAuthentication:
         self.api_url = api_url
         self.client_id = client_id
         self.client_secret = client_secret
-        self.integration_identifier = integration_type
-        self.integration_type = integration_identifier
+        self.integration_identifier = integration_identifier
+        self.integration_type = integration_type
         self._last_token_object: TokenResponse | None = None
 
     async def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
