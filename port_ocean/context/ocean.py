@@ -111,7 +111,7 @@ _port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()
 
 def initialize_port_ocean_context(ocean_app: "Ocean") -> None:
     """
-    This Function initiates the PortOcean context and pushes it into the LocalStack().
+    This Function initializes the PortOcean context and pushes it into the LocalStack().
     """
     _port_ocean_context_stack.push(PortOceanContext(app=ocean_app))
 
@@ -121,12 +121,12 @@ def _get_port_ocean_context() -> PortOceanContext:
     Get the PortOcean context from the current thread.
     """
     port_ocean_context = _port_ocean_context_stack.top
-    if port_ocean_context is not None:
-        return port_ocean_context
+    if port_ocean_context is None:
+        raise PortOceanContextNotFoundError(
+            "You must first initialize PortOcean in order to use it"
+        )
 
-    raise PortOceanContextNotFoundError(
-        "You must first initialize PortOcean in order to use it"
-    )
+    return port_ocean_context
 
 
 ocean: PortOceanContext = LocalProxy(lambda: _get_port_ocean_context())  # type: ignore
