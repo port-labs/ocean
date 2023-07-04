@@ -108,7 +108,7 @@ class Ocean:
         await self.fast_api_app(scope, receive, send)
 
 
-def run(path: str, log_level: LogLevelType = "DEBUG") -> None:
+def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
     setup_logger(log_level)
     sys.path.append(".")
     try:

@@ -5,7 +5,6 @@ import os
 import click
 import toml
 from cookiecutter.main import cookiecutter  # type: ignore
-from rich import print
 from rich.console import Console
 
 from port_ocean.cli.download_git_folder import download_folder
@@ -13,6 +12,7 @@ from port_ocean.cli.list_integrations import list_git_folders
 from port_ocean.logger_setup import LogLevelType
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+console = Console()
 
 
 def print_logo() -> None:
@@ -55,13 +55,13 @@ def version(short: bool) -> None:
     """
     app_version = toml.load("pyproject.toml")["tool"]["poetry"]["version"]
     if short:
-        print(f"{app_version}")
+        console.print(f"{app_version}")
     else:
-        print(f"🌊 Ocean version: {app_version}")
+        console.print(f"🌊 Ocean version: {app_version}")
 
 
 @cli_start.command()
-@click.argument("path", default="", type=click.Path(exists=True))
+@click.argument("path", default=".", type=click.Path(exists=True))
 @click.option(
     "-l",
     "--log-level",
@@ -75,7 +75,7 @@ is DEBUG.""",
 )
 def sail(path: str, log_level: LogLevelType) -> None:
     """
-    Runs the integration in the given PATH.
+    Runs the integration in the given PATH. if no PATH is provided, the current directory will be used.
 
     PATH: Path to the integration.
     """
@@ -83,7 +83,7 @@ def sail(path: str, log_level: LogLevelType) -> None:
 
     print_logo()
 
-    print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
+    console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
     run(path, log_level)
 
 
@@ -97,19 +97,18 @@ def new(path: str) -> None:
     """
     print_logo()
 
-    console = Console()
     console.print(
-        "🚢 Unloading cargo... Setting up your integration at the port.", style="bold"
+        "🚢 Unloading cargo... Setting up your integration at the dock.", style="bold"
     )
 
     result = cookiecutter(f"{os.path.dirname(__file__)}/cookiecutter", output_dir=path)
     name = result.split("/")[-1]
 
     console.print(
-        "\n🌊 Ahoy, Captain! Your project has set sail into the vast ocean of possibilities!",
+        "\n🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!",
         style="bold",
     )
-    console.print("Here are your next steps: \n", style="bold")
+    console.print("Here are your next steps:\n", style="bold")
     console.print(
         "⚓️ Install necessary packages: Run [bold][blue]make install[/blue][/bold] to install all required packages for your project.\n"
         f"▶️ [bold][blue]cd {path}/{name} && make install && . .venv/bin/activate[/blue][/bold]\n"
@@ -129,7 +128,6 @@ def list_integrations() -> None:
     """
     List all available public integrations.
     """
-    console = Console()
     console.print("🌊 Here are the integrations available to you:", style="bold")
     options = list_git_folders("https://github.com/port-labs/pulumi", "examples")
 

@@ -22,7 +22,7 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
         integration_identifier: str,
         integration_type: str,
     ):
-        self.api_url = f"{base_url}/api/v1"
+        self.api_url = f"{base_url}/v1"
         self.auth = PortAuthentication(
             client_id,
             client_secret,
