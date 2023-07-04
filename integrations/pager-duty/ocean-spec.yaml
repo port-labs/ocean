@@ -1,4 +1,4 @@
-version: v0.1.6dev
+version: v0.1.7dev
 type: pager-duty
 description: Pager duty integration for Port Ocean
 icon: pagerduty
