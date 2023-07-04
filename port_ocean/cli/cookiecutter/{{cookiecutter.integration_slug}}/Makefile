@@ -1,4 +1,3 @@
-SHELL := /bin/bash
 ACTIVATE := . .venv/bin/activate
 
 define run_lint
