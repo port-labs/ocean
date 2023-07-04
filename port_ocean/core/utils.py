@@ -7,6 +7,13 @@ from port_ocean.core.models import Entity
 from port_ocean.exceptions.core import RawObjectValidationException
 
 
+T = TypeVar("T", bound=list[Any])
+
+
+def zip_and_sum(collection: Iterable[tuple[T, ...]]) -> tuple[T, ...]:
+    return tuple(sum(items, []) for items in zip(*collection))  # type: ignore
+
+
 def validate_result(result: Any) -> list[dict[str, Any]]:
     try:
         return parse_obj_as(list[dict[str, Any]], result)
@@ -29,13 +36,6 @@ def get_unique(array: list[Entity]) -> list[Entity]:
             seen.append(item)
             result.append(item)
     return result
-
-
-T = TypeVar("T", bound=list[Any])
-
-
-def zip_and_sum(collection: Iterable[tuple[T, ...]]) -> tuple[T, ...]:
-    return tuple(sum(items, []) for items in zip(*collection))  # type: ignore
 
 
 def get_port_diff(
