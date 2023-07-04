@@ -1,9 +1,13 @@
+import warnings
 from importlib.util import find_spec
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 try:
     find_spec("click")
     find_spec("cookiecutter")
     find_spec("rich")
+    find_spec("toml")
 
     cli_included = True
 except ImportError:

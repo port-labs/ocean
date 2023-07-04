@@ -1,6 +1,7 @@
 import asyncio
 import json
 import signal
+import sys
 from typing import Any, Callable, Awaitable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
@@ -14,6 +15,7 @@ class KafkaConsumerConfig(BaseModel):
     brokers: str
     username: str | None = None
     password: str | None = None
+    group_name: str | None = None
     security_protocol: str
     authentication_mechanism: str
     kafka_security_enabled: bool
@@ -24,7 +26,7 @@ class KafkaConsumer(BaseConsumer):
         self,
         msg_process: Callable[[dict[Any, Any], str], Awaitable[None]],
         config: KafkaConsumerConfig,
-        org_id: str | None = None,
+        org_id: str,
     ) -> None:
         self.running = False
         self.org_id = org_id
@@ -40,7 +42,7 @@ class KafkaConsumer(BaseConsumer):
                 "sasl.mechanism": config.authentication_mechanism,
                 "sasl.username": config.username,
                 "sasl.password": config.password,
-                "group.id": config.username,
+                "group.id": f"{self.org_id}.{config.group_name}",
                 "enable.auto.commit": "false",
             }
         else:
@@ -60,7 +62,10 @@ class KafkaConsumer(BaseConsumer):
             try:
                 await self.msg_process(message, topic)
             except Exception as e:
-                logger.error(f"Failed to process message: {str(e)}")
+                _type, _, tb = sys.exc_info()
+                logger.opt(exception=(_type, None, tb)).error(
+                    f"Failed to process message: {str(e)}"
+                )
 
         asyncio.run(try_wrapper())
 
@@ -100,7 +105,7 @@ class KafkaConsumer(BaseConsumer):
                 except Exception as message_error:
                     logger.error(str(message_error))
         finally:
-            self.consumer.close()
+            self.exit_gracefully()
 
     def exit_gracefully(self, *_: Any) -> None:
         logger.info("Exiting gracefully...")

@@ -18,7 +18,7 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.logger_setup import setup_logger
+from port_ocean.logger_setup import setup_logger, LogLevelType
 from port_ocean.middlewares import request_handler
 
 
@@ -57,7 +57,7 @@ def _include_target_channel_router(app: FastAPI, _ocean: PortOceanContext) -> No
 
     @target_channel_router.post("/resync")
     async def resync() -> None:
-        await _ocean.integration.sync_all()
+        await _ocean.integration.sync_raw_all()
 
     app.include_router(target_channel_router)
 
@@ -85,7 +85,8 @@ class Ocean:
             base_url=self.config.port.base_url,
             client_id=self.config.port.client_id,
             client_secret=self.config.port.client_secret,
-            user_agent_id=self.config.integration.identifier,
+            integration_identifier=self.config.integration.identifier,
+            integration_type=self.config.integration.type,
         )
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
@@ -107,8 +108,8 @@ class Ocean:
         await self.fast_api_app(scope, receive, send)
 
 
-def run(path: str) -> None:
-    setup_logger()
+def run(path: str, log_level: LogLevelType = "DEBUG") -> None:
+    setup_logger(log_level)
     sys.path.append(".")
     try:
         integration_path = f"{path}/integration.py" if path else "integration.py"

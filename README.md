@@ -1,38 +1,113 @@
-<img align="right" width="100" height="74" src="https://user-images.githubusercontent.com/8277210/183290025-d7b24277-dfb4-4ce1-bece-7fe0ecd5efd4.svg" />
+# Ocean <img src="./assets/OceanSymbol.svg" alt="Ocean" width="100" height="100" align="right">
 
-# Ocean
 [![Lint](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
 
-Ocean is a solution developed by Port to address the challenges faced while integrating various third-party systems with our developer portal product. This framework provides a standardized approach for implementing integrations, simplifying the process and allowing platform engineers to focus on the core functionality of the third-party system.
+Ocean is a solution created by Port to tackle the difficulties encountered when merging different third-party systems with our developer portal product. This framework offers a uniform method for executing integrations, streamlining the process and enabling platform engineers to prioritize the essential features of the third-party system.
+
+
+
+## Prerequisites
+
+- Python 3.11
+
+
 
 ## Installation
-`pip install port-ocean[cli]` or `poetry add port-ocean[cli]`
+```
+pip install port-ocean[cli]
+```
+
+Or
+
+```sh
+poetry add port-ocean[cli]
+```
+
+[]()
 
 ## Run Integration
-1. source the integration venv `. .venv/bin/activate`
-2. `ocean sail ./path/to/integration`
+
+1. source the integration venv 
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+2. Run
+
+   ```sh
+   ocean sail ./path/to/integration
+   ```
+
+   
 
 ## Local Development (Framework)
 1. Clone the repository
-2. Install dependencies: `make install` or `make install/all` for installing integrations dependencies as well
-3. source the integration venv `. .venv/bin/activate`
+
+2. Install dependencies:
+
+   ```sh
+   make install
+   ```
+
+   Or (For installing integrations dependencies as well)
+
+   ```sh
+   make install/all
+   ```
+
+3. source the integration venv
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+   
 
 
 ## Local Development (Integration)
 1. Clone the repository
-2. For new integration run `make new` and follow the instructions
-3. Install dependencies: `cd DESIRED_INTEGRATION_FOLDER && make install`
-4. source the integration venv `. .venv/bin/activate`
-5. Run integration: `make run`
- 
-## Export Architecture
-![image](./assets/IntegrationFrameworkExportArchitecture.svg)
+
+2. For new integration run
+
+   ```sh
+   make new
+   ```
+
+   and follow the instructions
+
+3. Install dependencies
+
+4. ```sh
+   cd DESIRED_INTEGRATION_FOLDER && make install
+   ```
+
+5. source the integration venv
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+6. Run the integration
+
+   ```sh
+   make run
+   ```
+
+   Or
+
+   ```sh
+   ocean sail
+   ```
+
+   
+
+# Export Architecture
+
+![image](./assets/ExportArchitecture.svg)
 
 ## Real-Time updates Architecture
-![image](./assets/IntergationFrameworkRealTimeUpdatesArchitecture.svg)
-
-## Self Service Architecture
-![image](./assets/IntegrationFrameworkSelfServiceArchitecture.svg)
+![image](./assets/RealTimeUpdatesArchitecture.svg)
 
 ## Folder Structure
 The Integration Framework follows a specific folder structure within the mono repository. This structure ensures proper organization and easy identification of integration modules. The suggested folder structure is as follows:
@@ -55,14 +130,14 @@ port-ocean/
 - The `framework` folder contains the core logic for managing the integration lifecycle.
 - Each integration is represented by a separate folder inside the `integrations` directory.
 - Inside each integration folder, you'll find a `main.py` file that implements the core functionality of the integration for the specific third-party system.
-- The `requirements.txt` file inside each integration folder lists the required dependencies for that integration.
+- The `pyproject.toml` file inside each integration folder lists the required dependencies for that integration.
 
 ## Integration Lifecycle
 
-![image](./assets/IntegrationFrameworkLifecycleOfIntegration.svg)
+![image](./assets/LifecycleOfIntegration.svg)
 
 ## Configuration
-The Integration Framework utilizes a `config.yaml` file for configuration. This file specifies the integrations to be used within an array. Each integration has a unique identifier and type, which are used during initialization to update Port accordingly.
+The Integration Framework utilizes a `config.yaml` file for its configuration. This file defines both the framework configuration and the integration configuration within it. Each integration is identified by its type and unique identifier, which are utilized during initialization to appropriately update Port.
 
 Example `config.yaml`:
 ```yaml
@@ -75,14 +150,12 @@ port:
   baseUrl: https://api.getport.io/v1
 # The trigger channel to use for the integration service.
 triggerChannel:
-  type: KAFKA
-  brokers: "localhost:9092"
-  kafkaSecurityEnabled: false
+  type: KAFKA / WEBHOOK
 integration:
   # The name of the integration.
   identifier: "my_integration"
   # The type of the integration.
-  type: "Git"
+  type: "PagerDuty"
   config:
     my_git_token: "random"
     some_other_integration_config: "Very important information"

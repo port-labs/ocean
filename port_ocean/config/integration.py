@@ -1,4 +1,3 @@
-import warnings
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -10,13 +9,11 @@ from port_ocean.core.trigger_channel.settings import (
     KafkaTriggerChannelSettings,
 )
 
-warnings.filterwarnings("ignore", category=FutureWarning)
-
 
 class PortSettings(BaseSettings):
     client_id: str = Field(alias="clientId")
     client_secret: str = Field(alias="clientSecret")
-    base_url: str = Field(alias="baseUrl")
+    base_url: str = Field(alias="baseUrl", default="https://api.getport.io/v1")
 
 
 class IntegrationSettings(BaseSettings):

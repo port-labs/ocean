@@ -5,13 +5,15 @@ from typing import Any, Awaitable
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
+from port_ocean.context.event import TriggerType, event_context
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.models import Entity
 from port_ocean.core.types import RawEntityDiff, EntityDiff, RESYNC_EVENT_LISTENER
 from port_ocean.core.utils import validate_result, zip_and_sum
-from port_ocean.exceptions.base import RawObjectValidationException
+from port_ocean.exceptions.core import RawObjectValidationException
 from port_ocean.utils import get_function_location
 
 
@@ -39,8 +41,12 @@ class SyncMixin(HandlerMixin, EventsMixin):
         entities: list[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
+        entities_at_port = await ocean.port_client.search_entities(user_agent_type)
+
         await self.transport.upsert(entities, user_agent_type)
-        await self.transport.delete_non_existing(entities, user_agent_type)
+        await self.transport.delete_diff(
+            {"before": entities_at_port, "after": entities}, user_agent_type
+        )
 
         logger.info("Finished syncing change")
 
@@ -64,7 +70,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ]
         )
 
-    async def _validate_raw_data_wrapper(
+    async def _resync_function_wrapper(
         self, fn: RESYNC_EVENT_LISTENER, kind: str
     ) -> Any:
         results = await fn(kind)
@@ -82,28 +88,26 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         tasks: list[Awaitable[list[dict[Any, Any]]]] = []
         with logger.contextualize(kind=resource_config.kind):
             if self.__class__._on_resync != SyncRawMixin._on_resync:
-                tasks.append(self._on_resync(resource_config.kind))
+                tasks.append(
+                    self._resync_function_wrapper(self._on_resync, resource_config.kind)
+                )
 
             fns = [
                 *self.event_strategy["resync"][resource_config.kind],
                 *self.event_strategy["resync"][None],
             ]
 
-            for resync_function in fns:
-                tasks.append(
-                    self._validate_raw_data_wrapper(
-                        resync_function, resource_config.kind
-                    )
-                )
+            tasks.extend(
+                [
+                    self._resync_function_wrapper(resync_function, resource_config.kind)
+                    for resync_function in fns
+                ]
+            )
 
             logger.info(f"Found {len(tasks)} resync tasks for {resource_config.kind}")
+
             results: list[dict[Any, Any]] = list(
-                chain.from_iterable(
-                    [
-                        validate_result(task_result)
-                        for task_result in await asyncio.gather(*tasks)
-                    ]
-                )
+                chain.from_iterable(await asyncio.gather(*tasks))
             )
 
             logger.info(f"Triggered {len(tasks)} tasks for {resource_config.kind}")
@@ -129,7 +133,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         entities_after: list[Entity] = objects_diff[0]["after"]
         await self.transport.upsert(entities_after, user_agent_type)
-        logger.info("Finished registering change")
         return entities_after
 
     async def _unregister_resource_raw(
@@ -154,6 +157,31 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         await self.transport.delete(entities_after, user_agent_type)
         logger.info("Finished unregistering change")
         return entities_after
+
+    async def _register_in_batches(
+        self,
+        resource_config: ResourceConfig,
+        user_agent_type: UserAgentType,
+        batch_work_size: int | None,
+    ) -> list[Entity]:
+        resource, results = await self._get_resource_raw_results(resource_config)
+
+        tasks = []
+
+        batch_size = batch_work_size or len(results) or 1
+        batches = [
+            results[i : i + batch_size] for i in range(0, len(results), batch_size)
+        ]
+        for batch in batches:
+            logger.info(f"Creating task for registering batch of {len(batch)} entities")
+            tasks.append(self._register_resource_raw(resource, batch, user_agent_type))
+
+        registered_entities_results = await asyncio.gather(*tasks)
+        entities: list[Entity] = sum(registered_entities_results, [])
+        logger.info(
+            f"Finished registering change for {len(results)} raw results for kind: {resource_config.kind}"
+        )
+        return entities
 
     async def register_raw(
         self,
@@ -219,6 +247,33 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
             )
 
-            await self.transport.update_diff(
+            await self.transport.apply_diff(
                 {"before": entities_before, "after": entities_after}, user_agent_type
+            )
+
+    async def sync_raw_all(
+        self,
+        _: dict[Any, Any] | None = None,
+        trigger_type: TriggerType = "machine",
+        user_agent_type: UserAgentType = UserAgentType.exporter,
+    ) -> None:
+        logger.info("Resync was triggered")
+
+        async with event_context("resync", trigger_type=trigger_type):
+            app_config = await self.port_app_config_handler.get_port_app_config()
+
+            entities_at_port = await ocean.port_client.search_entities(user_agent_type)
+
+            created_entities = await asyncio.gather(
+                *(
+                    self._register_in_batches(
+                        resource, user_agent_type, ocean.config.batch_work_size
+                    )
+                    for resource in app_config.resources
+                )
+            )
+            flat_created_entities: list[Entity] = sum(created_entities, [])
+            await self.transport.delete_diff(
+                {"before": entities_at_port, "after": flat_created_entities},
+                user_agent_type,
             )

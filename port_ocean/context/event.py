@@ -6,7 +6,7 @@ from uuid import uuid4
 from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
-from port_ocean.errors import EventContextNotFoundError
+from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.utils import get_time
 
 if TYPE_CHECKING:
@@ -87,9 +87,6 @@ async def event_context(
     )
 
     start_time = get_time(seconds_precision=False)
-    logger.bind(
-        event_id=event.id, event_type=event.event_type, parent_id=event.parent_id
-    ).info("Event started")
     with logger.contextualize(
         event_trigger_type=event.trigger_type,
         event_kind=event.event_type,

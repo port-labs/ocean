@@ -2,11 +2,12 @@ from functools import lru_cache
 from typing import Any
 
 import pyjq as jq  # type: ignore
+
 from port_ocean.core.handlers.manipulation.base import BaseManipulation
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.types import RawEntityDiff, EntityDiff
-from port_ocean.exceptions.base import ManipulationHandlerException
+from port_ocean.exceptions.core import ManipulationHandlerException
 
 
 class JQManipulation(BaseManipulation):
@@ -44,7 +45,7 @@ class JQManipulation(BaseManipulation):
                 result[key] = None
         return result
 
-    def _parse_items(
+    def _calculate_entities(
         self, mapping: ResourceConfig, raw_data: list[dict[str, Any]]
     ) -> list[Entity]:
         entities = []
@@ -64,13 +65,15 @@ class JQManipulation(BaseManipulation):
             )
         ]
 
-    async def parse_items(
+    async def _parse_items(
         self, mapping: ResourceConfig, raw_results: RawEntityDiff
     ) -> EntityDiff:
-        entities_before: list[Entity] = self._parse_items(
+        entities_before: list[Entity] = self._calculate_entities(
             mapping, raw_results["before"]
         )
-        entities_after: list[Entity] = self._parse_items(mapping, raw_results["after"])
+        entities_after: list[Entity] = self._calculate_entities(
+            mapping, raw_results["after"]
+        )
 
         return {
             "before": entities_before,

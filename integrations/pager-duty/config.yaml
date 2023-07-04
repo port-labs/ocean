@@ -1,0 +1,15 @@
+port:
+  baseUrl: http://localhost:3000/v1
+  clientId: {{ from env PORT_CLIENT_ID }}
+  clientSecret: {{ from env PORT_CLIENT_SECRET }}
+triggerChannel:
+  brokers: localhost:9092
+  kafkaSecurityEnabled: false
+  type: KAFKA
+integration:
+  identifier: pager-duty-exporter
+  type: pager-duty
+  config:
+    appUrl: https://pager-duty-sinai2.loca.lt
+    token: {{ from env PAGER_DUTY_TOKEN }}
+    url: https://api.pagerduty.com

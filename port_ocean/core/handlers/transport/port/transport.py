@@ -7,6 +7,9 @@ from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
 from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.handlers.transport.base import BaseTransport
+from port_ocean.core.handlers.transport.port.get_related_entities import (
+    get_related_entities,
+)
 from port_ocean.core.handlers.transport.port.order_by_entities_dependencies import (
     order_by_entities_dependencies,
 )
@@ -16,7 +19,7 @@ from port_ocean.core.handlers.transport.port.validate_entity_relations import (
 from port_ocean.core.models import Entity
 from port_ocean.core.types import EntityDiff
 from port_ocean.core.utils import is_same_entity, get_unique, get_port_diff
-from port_ocean.exceptions.base import RelationValidationException
+from port_ocean.exceptions.core import RelationValidationException
 
 
 class HttpPortTransport(BaseTransport):
@@ -63,13 +66,49 @@ class HttpPortTransport(BaseTransport):
                     for entity in modified_or_created_entities
                 ]
             )
-        logger.info("Validating no relation blocks the operation")
-        await validate_entity_relations(diff, self.context.port_client)
 
-    async def update_diff(
+        if not event.port_app_config.delete_dependent_entities:
+            logger.info("Validating no relation blocks the operation")
+            await validate_entity_relations(diff, self.context.port_client)
+
+    async def _delete_diff(
+        self,
+        entities_to_delete: list[Entity],
+        created_entities: list[Entity],
+        user_agent_type: UserAgentType,
+    ) -> None:
+        if not entities_to_delete:
+            return
+
+        related_entities = await get_related_entities(
+            created_entities, self.context.port_client
+        )
+
+        allowed_entities_to_delete = []
+
+        for entity_to_delete in entities_to_delete:
+            is_part_of_related = any(
+                is_same_entity(entity, entity_to_delete) for entity in related_entities
+            )
+            is_part_of_created = any(
+                is_same_entity(entity, entity_to_delete) for entity in created_entities
+            )
+            if is_part_of_related:
+                if event.port_app_config.create_missing_related_entities:
+                    logger.info(
+                        "Skipping entity because it is related to created entities and create_missing_related_entities is enabled"
+                    )
+                else:
+                    allowed_entities_to_delete.append(entity_to_delete)
+            elif not is_part_of_created:
+                allowed_entities_to_delete.append(entity_to_delete)
+
+        await self.delete(allowed_entities_to_delete, user_agent_type)
+
+    async def apply_diff(
         self,
         entities: EntityDiff,
-        user_agent_type: UserAgentType | None = None,
+        user_agent_type: UserAgentType,
     ) -> None:
         diff = get_port_diff(entities["before"], entities["after"])
 
@@ -78,49 +117,86 @@ class HttpPortTransport(BaseTransport):
         )
         await self._validate_entity_diff(diff)
 
-        user_agent_type = user_agent_type or self.DEFAULT_USER_AGENT_TYPE
-        await self.delete(diff.deleted, user_agent_type)
         logger.info("Upserting new entities")
         await self.upsert(diff.created, user_agent_type)
         logger.info("Upserting modified entities")
         await self.upsert(diff.modified, user_agent_type)
 
+        await self._delete_diff(
+            diff.deleted, diff.created + diff.modified, user_agent_type
+        )
+
+    async def delete_diff(
+        self,
+        entities: EntityDiff,
+        user_agent_type: UserAgentType,
+    ) -> None:
+        diff = get_port_diff(entities["before"], entities["after"])
+
+        if not diff.deleted:
+            return
+
+        logger.info(
+            f"Updating entity diff (created: {len(diff.created)}, deleted: {len(diff.deleted)}, modified: {len(diff.modified)})"
+        )
+        await self._validate_entity_diff(diff)
+
+        await self._delete_diff(
+            diff.deleted, diff.created + diff.modified, user_agent_type
+        )
+
     async def upsert(
         self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         logger.info(f"Upserting {len(entities)} entities")
-        ordered_created_entities = reversed(order_by_entities_dependencies(entities))
-        for entity in ordered_created_entities:
-            await self.context.port_client.upsert_entity(
-                entity,
-                event.port_app_config.get_port_request_options(),
-                user_agent_type,
+        if event.port_app_config.create_missing_related_entities:
+            await asyncio.gather(
+                *[
+                    self.context.port_client.upsert_entity(
+                        entity,
+                        event.port_app_config.get_port_request_options(),
+                        user_agent_type,
+                        silent=True,
+                    )
+                    for entity in entities
+                ]
             )
+        else:
+            ordered_created_entities = reversed(
+                order_by_entities_dependencies(entities)
+            )
+
+            for entity in ordered_created_entities:
+                await self.context.port_client.upsert_entity(
+                    entity,
+                    event.port_app_config.get_port_request_options(),
+                    user_agent_type,
+                    silent=True,
+                )
 
     async def delete(
         self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
         logger.info(f"Deleting {len(entities)} entities")
-        ordered_deleted_entities = order_by_entities_dependencies(entities)
-
-        for entity in ordered_deleted_entities:
-            await self.context.port_client.delete_entity(
-                entity,
-                event.port_app_config.get_port_request_options(),
-                user_agent_type,
+        if event.port_app_config.delete_dependent_entities:
+            await asyncio.gather(
+                *[
+                    self.context.port_client.delete_entity(
+                        entity,
+                        event.port_app_config.get_port_request_options(),
+                        user_agent_type,
+                        silent=True,
+                    )
+                    for entity in entities
+                ]
             )
+        else:
+            ordered_deleted_entities = order_by_entities_dependencies(entities)
 
-    async def delete_non_existing(
-        self, excluded_entities: list[Entity], user_agent_type: UserAgentType
-    ) -> None:
-        logger.info("Deleting entities that should no longer exists")
-        entities_at_port = await self.context.port_client.search_entities(
-            user_agent_type
-        )
-
-        logger.info(
-            "Checking the diff between the state in the integration to the state in port"
-        )
-        diff = get_port_diff(entities_at_port, excluded_entities)
-        await self._validate_entity_diff(diff)
-        await self.delete(diff.deleted, user_agent_type)
+            for entity in ordered_deleted_entities:
+                await self.context.port_client.delete_entity(
+                    entity,
+                    event.port_app_config.get_port_request_options(),
+                    user_agent_type,
+                    silent=True,
+                )

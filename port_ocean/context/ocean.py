@@ -13,7 +13,7 @@ from port_ocean.core.types import (
     START_EVENT_LISTENER,
     RawEntityDiff,
 )
-from port_ocean.errors import PortOceanContextNotFoundError
+from port_ocean.exceptions.context import PortOceanContextNotFoundError
 
 if TYPE_CHECKING:
     from port_ocean.core.integrations.base import BaseIntegration
@@ -102,8 +102,8 @@ class PortOceanContext:
     ) -> None:
         await self.integration.sync(entities, user_agent_type)
 
-    async def sync_all(self) -> None:
-        await self.integration.sync_all(trigger_type="manual")
+    async def sync_raw_all(self) -> None:
+        await self.integration.sync_raw_all(trigger_type="manual")
 
 
 _port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()
