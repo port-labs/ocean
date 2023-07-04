@@ -43,7 +43,7 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
             logger.error(f"Error getting kafka credentials, error: {response.text}")
         handle_status_code(silent, response)
 
-        credentials = response.json()["credentials"]
+        credentials = response.json().get("credentials")
 
         if credentials is None:
             raise KafkaCredentialsNotFound("No kafka credentials found")
