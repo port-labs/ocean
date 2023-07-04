@@ -6,7 +6,6 @@ from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.models import Entity
 from port_ocean.exceptions.core import RawObjectValidationException
 
-
 T = TypeVar("T", bound=list[Any])
 
 
@@ -61,7 +60,7 @@ def get_port_diff(
             [
                 item
                 for item in after
-                if any(is_same_entity(item, entity_before) for entity_before in before)
+                if any(is_same_entity(item, item_before) for item_before in before)
             ],
         ),
     )
