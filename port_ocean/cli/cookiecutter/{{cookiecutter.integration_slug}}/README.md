@@ -27,6 +27,6 @@ make install
 
 > <http://localhost:8080/docs>
 
-## Access Redocs Documentation
+## Access Redoc Documentation
 
 > <http://localhost:8080/redoc>
