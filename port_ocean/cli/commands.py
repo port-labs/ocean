@@ -98,17 +98,17 @@ def new(path: str) -> None:
     print_logo()
 
     console.print(
-        "🚢 Unloading cargo... Setting up your integration at the port.", style="bold"
+        "🚢 Unloading cargo... Setting up your integration at the dock.", style="bold"
     )
 
     result = cookiecutter(f"{os.path.dirname(__file__)}/cookiecutter", output_dir=path)
     name = result.split("/")[-1]
 
     console.print(
-        "\n🌊 Ahoy, Captain! Your project has set sail into the vast ocean of possibilities!",
+        "\n🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!",
         style="bold",
     )
-    console.print("Here are your next steps: \n", style="bold")
+    console.print("Here are your next steps:\n", style="bold")
     console.print(
         "⚓️ Install necessary packages: Run [bold][blue]make install[/blue][/bold] to install all required packages for your project.\n"
         f"▶️ [bold][blue]cd {path}/{name} && make install && . .venv/bin/activate[/blue][/bold]\n"
