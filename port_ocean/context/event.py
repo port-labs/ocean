@@ -55,12 +55,12 @@ def _get_event_context() -> EventContext:
     Get the event context from the current thread.
     """
     top_event_context = _event_context_stack.top
-    if top_event_context is not None:
-        return top_event_context
+    if top_event_context is None:
+        raise EventContextNotFoundError(
+            "You must be inside an event context in order to use it"
+        )
 
-    raise EventContextNotFoundError(
-        "You must be inside an event context in order to use it"
-    )
+    return top_event_context
 
 
 event: EventContext = LocalProxy(lambda: _get_event_context())  # type: ignore
@@ -72,8 +72,7 @@ async def event_context(
     trigger_type: TriggerType = "manual",
     attributes: dict[str, Any] | None = None,
 ) -> AsyncIterator[EventContext]:
-    if attributes is None:
-        attributes = {}
+    attributes = attributes or {}
 
     parent = _event_context_stack.top
 
