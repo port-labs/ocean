@@ -6,7 +6,7 @@ from loguru import logger
 from port_ocean.exceptions.api import BaseAPIException, InternalServerException
 from .context.event import event_context
 from .context.ocean import ocean
-from .utils import get_time, get_uuid
+from .utils import get_time, generate_uuid
 
 
 async def _handle_silently(
@@ -49,7 +49,7 @@ async def request_handler(
       or treat (and log) unexpected exceptions.
     """
     start_time = get_time(seconds_precision=False)
-    request_id = get_uuid()
+    request_id = generate_uuid()
 
     with logger.contextualize(request_id=request_id):
         logger.bind(url=str(request.url), method=request.method).info("Request started")
