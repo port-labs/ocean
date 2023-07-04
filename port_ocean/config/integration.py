@@ -1,7 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
-from pydantic import BaseSettings
+from pydantic import BaseModel, Field, BaseSettings
 
 from port_ocean.config.base import BaseOceanSettings
 from port_ocean.core.trigger_channel.settings import (
