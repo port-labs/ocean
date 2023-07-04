@@ -1,9 +1,9 @@
 version: v0.1.6dev
 type: pager-duty
 description: Pager duty integration for Port Ocean
-icon: pagerLogo.svg
+icon: pagerduty
 features:
-  exporter:
+  - type: exporter
     section: Incident Management
     resources:
       - kind: incidents
