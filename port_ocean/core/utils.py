@@ -14,10 +14,10 @@ def validate_result(result: Any) -> list[dict[str, Any]]:
         raise RawObjectValidationException(f"Expected list[dict[str, Any]], Error: {e}")
 
 
-def is_same_entity(firs_entity: Entity, second_entity: Entity) -> bool:
+def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
     return (
-        firs_entity.identifier == second_entity.identifier
-        and firs_entity.blueprint == second_entity.blueprint
+        first_entity.identifier == second_entity.identifier
+        and first_entity.blueprint == second_entity.blueprint
     )
 
 
