@@ -1,19 +1,17 @@
 from typing import Iterable, Any, TypeVar
 
+from pydantic import parse_obj_as, ValidationError
+
 from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.models import Entity
 from port_ocean.exceptions.core import RawObjectValidationException
 
 
-def is_valid_diff_item(item: Any) -> bool:
-    return isinstance(item, list) and all([isinstance(i, dict) for i in item] or [True])
-
-
-def validate_result(result: Any) -> list[dict[Any, Any]]:
-    if isinstance(result, list):
-        if is_valid_diff_item(result):
-            return result
-    raise RawObjectValidationException(f"Expected dict, got {type(result)} instead")
+def validate_result(result: Any) -> list[dict[str, Any]]:
+    try:
+        return parse_obj_as(list[dict[str, Any]], result)
+    except ValidationError as e:
+        raise RawObjectValidationException(f"Expected list[dict[str, Any]], Error: {e}")
 
 
 def is_same_entity(firs_entity: Entity, second_entity: Entity) -> bool:
