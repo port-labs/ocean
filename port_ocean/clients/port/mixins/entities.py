@@ -70,7 +70,7 @@ class EntityClientMixin:
                 },
             )
 
-        if not response.status_code < status.HTTP_400_BAD_REQUEST:
+        if response.status_code >= status.HTTP_400_BAD_REQUEST:
             logger.error(
                 f"Error deleting "
                 f"entity: {entity.identifier} of "
