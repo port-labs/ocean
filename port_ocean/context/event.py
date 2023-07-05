@@ -15,6 +15,12 @@ if TYPE_CHECKING:
 TriggerType = Literal["manual", "machine", "request"]
 
 
+class EventTypes:
+    START = "start"
+    RESYNC = "resync"
+    HTTP_REQUEST = "http_request"
+
+
 @dataclass
 class EventContext:
     event_type: str

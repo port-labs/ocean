@@ -4,7 +4,7 @@ from fastapi import Request, Response
 from loguru import logger
 
 from port_ocean.exceptions.api import BaseAPIException, InternalServerException
-from .context.event import event_context
+from .context.event import event_context, EventTypes
 from .context.ocean import ocean
 from .utils import get_time, generate_uuid
 
@@ -15,7 +15,7 @@ async def _handle_silently(
     response: Response
     try:
         if request.url.path.startswith("/integration"):
-            async with event_context("HttpRequestEvent", trigger_type="request"):
+            async with event_context(EventTypes.HTTP_REQUEST, trigger_type="request"):
                 await ocean.integration.port_app_config_handler.get_port_app_config()
                 response = await call_next(request)
         else:

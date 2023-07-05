@@ -7,6 +7,7 @@ from loguru import logger
 
 from port_ocean.context.event import (
     event_context,
+    EventTypes,
 )
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.integrations.mixins.sync import SyncRawMixin, SyncMixin
@@ -50,7 +51,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         self.started = True
 
-        async with event_context("start", trigger_type="machine"):
+        async with event_context(EventTypes.START, trigger_type="machine"):
             await asyncio.gather(
                 *(listener() for listener in self.event_strategy["start"])
             )

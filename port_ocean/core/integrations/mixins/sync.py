@@ -5,7 +5,7 @@ from typing import Any, Awaitable
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.event import TriggerType, event_context
+from port_ocean.context.event import TriggerType, event_context, EventTypes
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
@@ -259,7 +259,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> None:
         logger.info("Resync was triggered")
 
-        async with event_context("resync", trigger_type=trigger_type):
+        async with event_context(EventTypes.RESYNC, trigger_type=trigger_type):
             app_config = await self.port_app_config_handler.get_port_app_config()
 
             entities_at_port = await ocean.port_client.search_entities(user_agent_type)
