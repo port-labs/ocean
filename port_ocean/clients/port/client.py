@@ -1,6 +1,5 @@
 import httpx as httpx
 from loguru import logger
-from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
@@ -39,7 +38,7 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
             response = await client.get(
                 f"{self.api_url}/kafka-credentials", headers=await self.auth.headers()
             )
-        if response.status_code >= status.HTTP_400_BAD_REQUEST:
+        if response.is_error:
             logger.error(f"Error getting kafka credentials, error: {response.text}")
         handle_status_code(silent, response)
 
@@ -57,7 +56,7 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
             response = await client.get(
                 f"{self.api_url}/organization", headers=await self.auth.headers()
             )
-        if response.status_code >= status.HTTP_400_BAD_REQUEST:
+        if response.is_error:
             logger.error(f"Error getting organization id, error: {response.text}")
             response.raise_for_status()
 

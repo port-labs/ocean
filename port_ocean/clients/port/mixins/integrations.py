@@ -69,7 +69,7 @@ class IntegrationClientMixin:
             ):
                 await self.patch_integration(identifier, _type, changelog_destination)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == status.HTTP_400_BAD_REQUEST:
+            if e.response.status_code == status.HTTP_404_NOT_FOUND:
                 await self.create_integration(identifier, _type, changelog_destination)
                 return
 

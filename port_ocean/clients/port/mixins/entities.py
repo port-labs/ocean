@@ -1,6 +1,5 @@
 import httpx
 from loguru import logger
-from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
@@ -40,7 +39,7 @@ class EntityClientMixin:
                 },
             )
 
-        if response.status_code >= status.HTTP_400_BAD_REQUEST:
+        if response.is_error:
             logger.error(
                 f"Error {'Validating' if validation_only else 'Upserting'} "
                 f"entity: {entity.identifier} of "
@@ -70,7 +69,7 @@ class EntityClientMixin:
                 },
             )
 
-        if response.status_code >= status.HTTP_400_BAD_REQUEST:
+        if response.is_error:
             logger.error(
                 f"Error deleting "
                 f"entity: {entity.identifier} of "
@@ -88,7 +87,7 @@ class EntityClientMixin:
                 f"{self.auth.api_url}/blueprints/{blueprint}/entities/{identifier}",
                 headers=await self.auth.headers(),
             )
-        if response.status_code >= status.HTTP_400_BAD_REQUEST:
+        if response.is_error:
             logger.error(
                 f"Error validating "
                 f"entity: {identifier} of "
