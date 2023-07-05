@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 TriggerType = Literal["manual", "machine", "request"]
 
 
-class EventTypes:
+class EventType:
     START = "start"
     RESYNC = "resync"
     HTTP_REQUEST = "http_request"
