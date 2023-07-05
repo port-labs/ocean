@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Any
 
 import httpx
@@ -6,20 +5,18 @@ from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.clients.port.types import UserAgentType
+from port_ocean.utils import get_time
 
 
 class TokenResponse(BaseModel):
     access_token: str = Field(alias="accessToken")
     expires_in: int = Field(alias="expiresIn")
     token_type: str = Field(alias="tokenType")
-    _retrieved_time: datetime = PrivateAttr(datetime.now())
+    _retrieved_time: int = PrivateAttr(get_time())
 
     @property
     def expired(self) -> bool:
-        return (
-            self._retrieved_time.timestamp() + self.expires_in
-            < datetime.now().timestamp()
-        )
+        return self._retrieved_time + self.expires_in < get_time()
 
     @property
     def full_token(self) -> str:
