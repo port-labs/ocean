@@ -63,9 +63,9 @@ class EntityClientMixin:
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{entity.identifier}",
                 headers=await self.auth.headers(user_agent_type),
                 params={
-                    "delete_dependents": request_options.get(
-                        "delete_dependent_entities", False
-                    )
+                    "delete_dependents": str(
+                        request_options.get("delete_dependent_entities", False)
+                    ).lower()
                 },
             )
 
