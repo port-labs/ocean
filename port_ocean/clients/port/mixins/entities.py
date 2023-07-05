@@ -111,7 +111,7 @@ class EntityClientMixin:
 
         logger.info(f"Searching entities with query {query}")
         async with httpx.AsyncClient() as client:
-            search_req = await client.post(
+            response = await client.post(
                 f"{self.auth.api_url}/entities/search",
                 json=query,
                 headers=await self.auth.headers(user_agent_type),
@@ -120,8 +120,8 @@ class EntityClientMixin:
                     "include": ["blueprint", "identifier"],
                 },
             )
-        search_req.raise_for_status()
-        return [Entity.parse_obj(result) for result in search_req.json()["entities"]]
+        response.raise_for_status()
+        return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
     async def search_dependent_entities(self, entity: Entity) -> list[Entity]:
         body = {
