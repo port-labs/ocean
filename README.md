@@ -162,7 +162,10 @@ integration:
 ```
 
 ## Contributing
-We welcome contributions to the Integration Framework project. If you have any suggestions, bug reports, or would like to contribute new features, please follow our guidelines outlined in the `CONTRIBUTING.md` file.
+
+The reason Ocean is open source is that we aim for the Port integration library to offer numerous useful out-of-the-box integrations. We have confidence that developers and DevOps professionals who rely on Port in their everyday work will be inclined to contribute and assist in making it a comprehensive tool.
+
+In order to learn how you can contribute to Ocean, read our [contributing guide](./CONTRIBUTING.md)
 
 ## License
 The Integration Framework is open-source software licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0). See the `LICENSE` file for more details.
