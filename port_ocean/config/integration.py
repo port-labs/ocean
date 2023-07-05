@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, BaseSettings
 
@@ -30,6 +30,9 @@ class IntegrationConfiguration(BaseOceanSettings):
     integration: IntegrationSettings
 
 
+LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
+
+
 class LoggerConfiguration(BaseModel):
-    level: str = "DEBUG"
+    level: LogLevelType = "DEBUG"
     serialize: bool = False

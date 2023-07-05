@@ -1,11 +1,8 @@
 import sys
-from typing import Literal
 
 from loguru import logger
 
-from port_ocean.config.integration import LoggerConfiguration
-
-LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
+from port_ocean.config.integration import LoggerConfiguration, LogLevelType
 
 
 def setup_logger(level: LogLevelType) -> None:
@@ -18,7 +15,7 @@ def setup_logger(level: LogLevelType) -> None:
 
     logger.remove()
     logger.add(
-        sys.stderr,
+        sys.stdout,
         level=settings.level.upper(),
         format=logger_format,
         serialize=settings.serialize,
