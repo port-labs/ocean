@@ -41,7 +41,9 @@ class SyncMixin(HandlerMixin, EventsMixin):
         entities: list[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
-        entities_at_port = await ocean.port_client.search_entities(user_agent_type)
+        entities_at_port = await ocean.port_client.search_entities_by_datasource(
+            user_agent_type
+        )
 
         await self.transport.upsert(entities, user_agent_type)
         await self.transport.delete_diff(
@@ -262,7 +264,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         async with event_context(EventType.RESYNC, trigger_type=trigger_type):
             app_config = await self.port_app_config_handler.get_port_app_config()
 
-            entities_at_port = await ocean.port_client.search_entities(user_agent_type)
+            entities_at_port = await ocean.port_client.search_entities_by_datasource(
+                user_agent_type
+            )
 
             created_entities = await asyncio.gather(
                 *(
