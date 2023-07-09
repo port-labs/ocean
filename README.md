@@ -14,7 +14,9 @@ empowering engineers to effortlessly prioritize key features and streamline the 
 
 
 ## Installation
-```
+In order to install the Ocean Framework, run the following command:
+
+```sh
 pip install port-ocean[cli]
 ```
 
@@ -23,8 +25,6 @@ Or
 ```sh
 poetry add port-ocean[cli]
 ```
-
-[]()
 
 ## Run Integration
 
