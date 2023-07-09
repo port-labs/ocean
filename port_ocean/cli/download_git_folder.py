@@ -47,4 +47,4 @@ def download_github_folder(
                     )
                     exit(1)
 
-    console.print("Folder downloaded successfully!")
+    console.print(f"Folder `{folder_path}` downloaded successfully!")
