@@ -2,7 +2,8 @@
 
 [![Lint](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
 
-Ocean is a solution created by Port to tackle the difficulties encountered when merging different third-party systems with our developer portal product. This framework offers a uniform method for executing integrations, streamlining the process and enabling platform engineers to prioritize the essential features of the third-party system.
+Ocean is an innovative solution developed by Port to seamlessly integrate various third-party systems with our developer portal product,
+empowering engineers to effortlessly prioritize key features and streamline the integration process.
 
 
 
