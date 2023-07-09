@@ -28,11 +28,9 @@ def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
 
 
 def get_unique(array: list[Entity]) -> list[Entity]:
-    seen: list[Entity] = []
-    result = []
+    result: list[Entity] = []
     for item in array:
-        if all(not is_same_entity(item, seen_item) for seen_item in seen):
-            seen.append(item)
+        if all(not is_same_entity(item, seen_item) for seen_item in result):
             result.append(item)
     return result
 
