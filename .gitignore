@@ -153,10 +153,9 @@ dmypy.json
 cython_debug/
 
 # Pycharm
-.idea/**.iml
-.idea/modules.xml
-.idea/vcs.xml
-.idea/.gitignore
-.idea/workspace.xml
-.idea/inspectionProfiles
-.idea/misc.xml
+.idea
+!.idea/watcherTasks.xml
+
+# VSCode
+.vscode/
+!.vscode/launch.json
