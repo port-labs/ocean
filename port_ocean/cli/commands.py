@@ -7,7 +7,7 @@ import toml
 from cookiecutter.main import cookiecutter  # type: ignore
 from rich.console import Console
 
-from port_ocean.cli.download_git_folder import download_folder
+from port_ocean.cli.download_git_folder import download_github_folder
 from port_ocean.cli.list_integrations import list_git_folders
 from port_ocean.config.integration import LogLevelType
 
@@ -151,6 +151,6 @@ def pull(name: str, path: str) -> None:
 
     NAME: Name of the integration to pull.
     """
-    download_folder(
+    download_github_folder(
         "https://github.com/port-labs/pulumi", f"examples/{name}", path or f"./{name}"
     )

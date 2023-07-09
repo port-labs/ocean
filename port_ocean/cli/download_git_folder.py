@@ -1,15 +1,17 @@
 import os
 import shutil
+from io import BytesIO
 
 import httpx
+from httpx import Response
+from rich.console import Console
+
+console = Console()
 
 
-def download_folder(repo_url: str, folder_path: str, destination_path: str) -> None:
-    # Parse the repository URL to extract the owner and repository name
-    parts = repo_url.split("/")
-    owner = parts[-2]
-    repo_name = parts[-1].split(".")[0]
-
+def download_github_folder(
+    owner: str, repo_name: str, folder_path: str, destination_path: str
+) -> None:
     # Construct the API URL to get the contents of the folder
     api_url = f"https://api.github.com/repos/{owner}/{repo_name}/contents/{folder_path}"
 
@@ -17,8 +19,8 @@ def download_folder(repo_url: str, folder_path: str, destination_path: str) -> N
     response = httpx.get(api_url)
 
     # Check if the request was successful
-    if not response.is_success:
-        print(
+    if response.is_error:
+        console.print(
             f"Failed to download the folder. Status Code: {response.status_code}, Error: {response.text}"
         )
         exit(1)
@@ -35,8 +37,14 @@ def download_folder(repo_url: str, folder_path: str, destination_path: str) -> N
             file_name = os.path.join(destination_path, content["name"])
 
             # Download the file
-            with requests.get(file_url, stream=True) as response_file:
-                with open(file_name, "wb") as system_file:
-                    shutil.copyfileobj(response_file.raw, system_file)
+            with httpx.stream("GET", file_url) as file_response:  # type: Response
+                if file_response.status_code == 200:
+                    with open(file_name, "wb") as file:
+                        shutil.copyfileobj(BytesIO(file_response.content), file)
+                else:
+                    console.print(
+                        f"Failed to download file. Status code: {file_response.status_code}"
+                    )
+                    exit(1)
 
-    print("Folder downloaded successfully!")
+    console.print("Folder downloaded successfully!")
