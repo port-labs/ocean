@@ -1,5 +1,5 @@
 port:
-  baseUrl: http://localhost:3000/v1
+  baseUrl: http://localhost:3000
   clientId: {{ from env PORT_CLIENT_ID }}
   clientSecret: {{ from env PORT_CLIENT_SECRET }}
 triggerChannel:
