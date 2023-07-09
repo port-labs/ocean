@@ -23,11 +23,11 @@ def download_folder(repo_url: str, folder_path: str, destination_path: str) -> N
             os.makedirs(destination_path)
 
         # Iterate over the files and download them
-        files = response.json()
-        for file in files:
-            if file["type"] == "file":
-                file_url = file["download_url"]
-                file_name = os.path.join(destination_path, file["name"])
+        repo_contents = response.json()
+        for content in repo_contents:
+            if content["type"] == "file":
+                file_url = content["download_url"]
+                file_name = os.path.join(destination_path, content["name"])
 
                 # Download the file
                 with requests.get(file_url, stream=True) as response_file:
