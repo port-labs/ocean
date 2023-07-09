@@ -9,7 +9,7 @@ from rich.console import Console
 
 from port_ocean.cli.download_git_folder import download_folder
 from port_ocean.cli.list_integrations import list_git_folders
-from port_ocean.logger_setup import LogLevelType
+from port_ocean.config.integration import LogLevelType
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 console = Console()
