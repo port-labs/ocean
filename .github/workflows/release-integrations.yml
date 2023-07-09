@@ -67,7 +67,7 @@ jobs:
           aws_s3_bucket="ocean-registry"
 
           # Find all ocean-spec.yaml files under the specified directory
-          find "$directory/.port" -type f -name "spec.yaml" > file_list.txt
+          find "$directory/*/.port" -type f -name "spec.yaml" > file_list.txt
 
           # Concatenate the YAML files into a temporary file
           while IFS= read -r file; do
