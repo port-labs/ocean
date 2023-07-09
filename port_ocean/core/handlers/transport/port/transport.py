@@ -27,10 +27,10 @@ class HttpPortTransport(BaseTransport):
         logger.info("Validated deleted entities")
         if not event.port_app_config.delete_dependent_entities:
             deps = await asyncio.gather(
-                *[
+                *(
                     self.context.port_client.search_dependent_entities(entity)
                     for entity in entities
-                ]
+                )
             )
             new_dependent = get_unique(
                 [
@@ -55,7 +55,7 @@ class HttpPortTransport(BaseTransport):
             logger.info("Validating modified or created entities")
 
             await asyncio.gather(
-                *[
+                *(
                     self.context.port_client.validate_entity_payload(
                         entity,
                         {
@@ -64,7 +64,7 @@ class HttpPortTransport(BaseTransport):
                         },
                     )
                     for entity in modified_or_created_entities
-                ]
+                )
             )
 
         if not event.port_app_config.delete_dependent_entities:
@@ -152,7 +152,7 @@ class HttpPortTransport(BaseTransport):
         logger.info(f"Upserting {len(entities)} entities")
         if event.port_app_config.create_missing_related_entities:
             await asyncio.gather(
-                *[
+                *(
                     self.context.port_client.upsert_entity(
                         entity,
                         event.port_app_config.get_port_request_options(),
@@ -160,7 +160,7 @@ class HttpPortTransport(BaseTransport):
                         silent=True,
                     )
                     for entity in entities
-                ]
+                )
             )
         else:
             ordered_created_entities = reversed(
@@ -181,7 +181,7 @@ class HttpPortTransport(BaseTransport):
         logger.info(f"Deleting {len(entities)} entities")
         if event.port_app_config.delete_dependent_entities:
             await asyncio.gather(
-                *[
+                *(
                     self.context.port_client.delete_entity(
                         entity,
                         event.port_app_config.get_port_request_options(),
@@ -189,7 +189,7 @@ class HttpPortTransport(BaseTransport):
                         silent=True,
                     )
                     for entity in entities
-                ]
+                )
             )
         else:
             ordered_deleted_entities = order_by_entities_dependencies(entities)
