@@ -9,7 +9,7 @@ from port_ocean.context.ocean import ocean
 @ocean.on_resync()
 async def on_resync(kind: str) -> list[dict[Any, Any]]:
     # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state
+    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
     # Example:
     # if kind == "project":
     #     return [{"some_project_key": "someProjectValue", ...}]
