@@ -24,7 +24,7 @@ jobs:
         run: |
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           
-          files=$(find integrations -name "ocean-spec.yaml")
+          files=$(find integrations/*/.port -name "spec.yaml")
           for file in $files; do
             # Get the type from ocean-spec.yaml
             type=$(yq eval '.type' "$file")
