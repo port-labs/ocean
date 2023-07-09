@@ -49,14 +49,15 @@ def load_from_config_provider(provider_type: str, value: str) -> Any:
 
 
 def load_providers(settings: "BaseOceanSettings", base_path: str) -> dict[str, Any]:
-    value = read_yaml_config_settings_source(settings, base_path)
-    matches = re.finditer(PROVIDER_WRAPPER_PATTERN, value)
+    yaml_content = read_yaml_config_settings_source(settings, base_path)
+    matches = re.finditer(PROVIDER_WRAPPER_PATTERN, yaml_content)
     for match in matches:
         provider_type, provider_value = parse_config_provider(match.group(1))
         data = load_from_config_provider(provider_type, provider_value)
-        value = re.sub(re.escape(match.group()), data, value, count=1)
+        # Replace the provider wrapper with the actual value
+        yaml_content = re.sub(re.escape(match.group()), data, yaml_content, count=1)
 
-    return yaml.safe_load(value)
+    return yaml.safe_load(yaml_content)
 
 
 class BaseOceanSettings(BaseSettings):
