@@ -48,8 +48,7 @@ class TriggerChannelFactory(BaseWithContext):
 
     async def create_trigger_channel(self) -> None:
         wrapped_events: TriggerChannelEvents = {
-            "on_resync": self.on_event(self.events["on_resync"]),
-            "on_action": self.on_event(self.events["on_action"]),
+            "on_resync": self.on_event(self.events["on_resync"])
         }
         config = self.context.config.trigger_channel
         _type = config.type.lower()

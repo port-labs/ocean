@@ -1,7 +1,4 @@
 import asyncio
-from typing import (
-    Any,
-)
 
 from loguru import logger
 
@@ -26,7 +23,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         self.trigger_channel = TriggerChannelFactory(
             context,
             self.context.config.integration.identifier,
-            {"on_action": self.trigger_action, "on_resync": self.sync_raw_all},
+            {"on_resync": self.sync_raw_all},
         )
 
     async def start(self) -> None:
@@ -58,6 +55,3 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         logger.info("Initializing trigger channel")
         await self.trigger_channel.create_trigger_channel()
-
-    async def trigger_action(self, data: dict[Any, Any]) -> None:
-        raise NotImplementedError("trigger_action is not implemented")
