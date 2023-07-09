@@ -30,7 +30,7 @@ By: Port.io
 """
 
     # Display ASCII art
-    Console().print(ascii_art)
+    Console().print(ascii_art.strip())
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
