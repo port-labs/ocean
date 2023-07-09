@@ -1,6 +1,7 @@
-import requests
 import os
 import shutil
+
+import requests
 
 
 def download_folder(repo_url: str, folder_path: str, destination_path: str) -> None:
@@ -29,9 +30,9 @@ def download_folder(repo_url: str, folder_path: str, destination_path: str) -> N
                 file_name = os.path.join(destination_path, file["name"])
 
                 # Download the file
-                with requests.get(file_url, stream=True) as r:
-                    with open(file_name, "wb") as f:
-                        shutil.copyfileobj(r.raw, f)
+                with requests.get(file_url, stream=True) as response_file:
+                    with open(file_name, "wb") as system_file:
+                        shutil.copyfileobj(response_file.raw, system_file)
 
         print("Folder downloaded successfully!")
     else:
