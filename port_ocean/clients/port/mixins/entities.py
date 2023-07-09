@@ -1,6 +1,5 @@
 import httpx
 from loguru import logger
-from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
@@ -40,7 +39,7 @@ class EntityClientMixin:
                 },
             )
 
-        if not response.status_code < status.HTTP_400_BAD_REQUEST:
+        if response.is_error:
             logger.error(
                 f"Error {'Validating' if validation_only else 'Upserting'} "
                 f"entity: {entity.identifier} of "
@@ -64,12 +63,13 @@ class EntityClientMixin:
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{entity.identifier}",
                 headers=await self.auth.headers(user_agent_type),
                 params={
-                    "delete_dependents": request_options["delete_dependent_entities"]
-                    or False
+                    "delete_dependents": str(
+                        request_options.get("delete_dependent_entities", False)
+                    ).lower()
                 },
             )
 
-        if not response.status_code < status.HTTP_400_BAD_REQUEST:
+        if response.is_error:
             logger.error(
                 f"Error deleting "
                 f"entity: {entity.identifier} of "
@@ -87,7 +87,7 @@ class EntityClientMixin:
                 f"{self.auth.api_url}/blueprints/{blueprint}/entities/{identifier}",
                 headers=await self.auth.headers(),
             )
-        if response.status_code >= status.HTTP_400_BAD_REQUEST:
+        if response.is_error:
             logger.error(
                 f"Error validating "
                 f"entity: {identifier} of "
@@ -110,7 +110,7 @@ class EntityClientMixin:
 
         logger.info(f"Searching entities with query {query}")
         async with httpx.AsyncClient() as client:
-            search_req = await client.post(
+            response = await client.post(
                 f"{self.auth.api_url}/entities/search",
                 json=query,
                 headers=await self.auth.headers(user_agent_type),
@@ -119,8 +119,8 @@ class EntityClientMixin:
                     "include": ["blueprint", "identifier"],
                 },
             )
-        search_req.raise_for_status()
-        return [Entity.parse_obj(result) for result in search_req.json()["entities"]]
+        response.raise_for_status()
+        return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
     async def search_dependent_entities(self, entity: Entity) -> list[Entity]:
         body = {

@@ -16,10 +16,10 @@ async def get_related_entities(
         )
     )
     blueprints = await asyncio.gather(
-        *[
+        *(
             port_client.get_blueprint(blueprint_identifier)
             for blueprint_identifier in blueprint_identifier_to_entity.keys()
-        ]
+        )
     )
     entity_to_blueprint = [
         (

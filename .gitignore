@@ -152,11 +152,9 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# WebStorm
-**/.idea/**.iml
-**/.idea/modules.xml
-**/.idea/vcs.xml
-**/.idea/.gitignore
-**/.idea/workspace.xml
-**/.idea/inspectionProfiles
-**/.idea/misc.xml
+# Pycharm
+.idea
+!.idea/watcherTasks.xml
+
+# VSCode
+.vscode/

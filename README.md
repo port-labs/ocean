@@ -2,9 +2,8 @@
 
 [![Lint](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
 
-Ocean is a solution created by Port to tackle the difficulties encountered when merging different third-party systems with our developer portal product. This framework offers a uniform method for executing integrations, streamlining the process and enabling platform engineers to prioritize the essential features of the third-party system.
-
-
+Ocean is an innovative solution developed by Port to seamlessly integrate various third-party systems with our developer portal product,
+empowering engineers to effortlessly prioritize key features and streamline the integration process.
 
 ## Prerequisites
 
@@ -13,7 +12,9 @@ Ocean is a solution created by Port to tackle the difficulties encountered when 
 
 
 ## Installation
-```
+In order to install the Ocean Framework, run the following command:
+
+```sh
 pip install port-ocean[cli]
 ```
 
@@ -22,8 +23,6 @@ Or
 ```sh
 poetry add port-ocean[cli]
 ```
-
-[]()
 
 ## Run Integration
 
@@ -38,69 +37,6 @@ poetry add port-ocean[cli]
    ```sh
    ocean sail ./path/to/integration
    ```
-
-   
-
-## Local Development (Framework)
-1. Clone the repository
-
-2. Install dependencies:
-
-   ```sh
-   make install
-   ```
-
-   Or (For installing integrations dependencies as well)
-
-   ```sh
-   make install/all
-   ```
-
-3. source the integration venv
-
-   ```sh
-   . .venv/bin/activate
-   ```
-
-   
-
-
-## Local Development (Integration)
-1. Clone the repository
-
-2. For new integration run
-
-   ```sh
-   make new
-   ```
-
-   and follow the instructions
-
-3. Install dependencies
-
-4. ```sh
-   cd DESIRED_INTEGRATION_FOLDER && make install
-   ```
-
-5. source the integration venv
-
-   ```sh
-   . .venv/bin/activate
-   ```
-
-6. Run the integration
-
-   ```sh
-   make run
-   ```
-
-   Or
-
-   ```sh
-   ocean sail
-   ```
-
-   
 
 # Export Architecture
 
@@ -162,7 +98,66 @@ integration:
 ```
 
 ## Contributing
-We welcome contributions to the Integration Framework project. If you have any suggestions, bug reports, or would like to contribute new features, please follow our guidelines outlined in the `CONTRIBUTING.md` file.
+
+The reason Ocean is open source is that we aim for the Port integration library to offer numerous useful out-of-the-box integrations. We have confidence that developers and DevOps professionals who rely on Port in their everyday work will be inclined to contribute and assist in making it a comprehensive tool.
+
+In order to learn how you can contribute to Ocean, read our [contributing guide](./CONTRIBUTING.md)
+
+### Local Development (Framework)
+1. Clone the repository
+
+2. Install dependencies:
+
+   ```sh
+   make install
+   ```
+
+   Or (For installing integrations dependencies as well)
+
+   ```sh
+   make install/all
+   ```
+
+3. source the integration venv
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+### Local Development (Integration)
+1. Clone the repository
+
+2. For new integration run
+
+   ```sh
+   make new
+   ```
+
+   and follow the instructions
+
+3. Install dependencies
+
+4. ```sh
+   cd DESIRED_INTEGRATION_FOLDER && make install
+   ```
+
+5. source the integration venv
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+6. Run the integration
+
+   ```sh
+   make run
+   ```
+
+   Or
+
+   ```sh
+   ocean sail
+   ```
 
 ## License
 The Integration Framework is open-source software licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0). See the `LICENSE` file for more details.

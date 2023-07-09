@@ -52,15 +52,6 @@ class KafkaTriggerChannel(BaseTriggerChannel):
         )
 
     def should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
-        if "runs" in topic:
-            return (
-                msg_value.get("payload", {})
-                .get("action", {})
-                .get("invocationMethod", {})
-                .get("type", "")
-                == "KAFKA"
-            )
-
         if "change.log" in topic:
             return msg_value.get("changelogDestination", {}).get("type", "") == "KAFKA"
 
@@ -72,9 +63,6 @@ class KafkaTriggerChannel(BaseTriggerChannel):
 
         if "change.log" in topic:
             await self.events["on_resync"](message)
-
-        if "runs" in topic:
-            await self.events["on_action"](message)
 
     def wrapped_start(
         self, context: PortOceanContext, func: Callable[[], None]

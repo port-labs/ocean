@@ -30,7 +30,6 @@ class TriggerChannelFactory(BaseWithContext):
     ):
         super().__init__(context)
         self.installation_id = installation_id
-        self._trigger_channel: BaseTriggerChannel | None = None
         self.events = events
 
     def on_event(
@@ -46,11 +45,11 @@ class TriggerChannelFactory(BaseWithContext):
 
         return wrapper
 
-    async def create_trigger_channel(self) -> None:
+    async def create_trigger_channel(self) -> BaseTriggerChannel:
         wrapped_events: TriggerChannelEvents = {
-            "on_resync": self.on_event(self.events["on_resync"]),
-            "on_action": self.on_event(self.events["on_action"]),
+            "on_resync": self.on_event(self.events["on_resync"])
         }
+        trigger_channel: BaseTriggerChannel
         config = self.context.config.trigger_channel
         _type = config.type.lower()
         assert_message = "Invalid trigger channel config, expected KafkaTriggerChannelSettings and got {0}"
@@ -62,7 +61,7 @@ class TriggerChannelFactory(BaseWithContext):
                     config, KafkaTriggerChannelSettings
                 ), assert_message.format(type(config))
                 org_id = await self.context.port_client.get_org_id()
-                self._trigger_channel = KafkaTriggerChannel(
+                trigger_channel = KafkaTriggerChannel(
                     wrapped_events,
                     config,
                     org_id,
@@ -74,11 +73,11 @@ class TriggerChannelFactory(BaseWithContext):
                 assert isinstance(
                     config, HttpTriggerChannelSettings
                 ), assert_message.format(type(config))
-                self._trigger_channel = HttpTriggerChannel(wrapped_events, config)
+                trigger_channel = HttpTriggerChannel(wrapped_events, config)
 
             case _:
                 raise UnsupportedTriggerChannelException(
                     f"Trigger channel {_type} not supported"
                 )
 
-        await self._trigger_channel.start()
+        return trigger_channel

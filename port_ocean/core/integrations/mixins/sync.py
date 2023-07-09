@@ -5,7 +5,7 @@ from typing import Any, Awaitable
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.event import TriggerType, event_context
+from port_ocean.context.event import TriggerType, event_context, EventType
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
@@ -64,15 +64,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> list[EntityDiff]:
         logger.info("Calculating diff in entities between states")
         return await asyncio.gather(
-            *[
+            *(
                 self.manipulation.parse_items(mapping, results)
                 for mapping, results in raw_diff
-            ]
+            )
         )
 
     async def _resync_function_wrapper(
         self, fn: RESYNC_EVENT_LISTENER, kind: str
-    ) -> Any:
+    ) -> list[dict[str, Any]]:
         results = await fn(kind)
         try:
             return validate_result(results)
@@ -83,7 +83,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     async def _get_resource_raw_results(
         self, resource_config: ResourceConfig
-    ) -> tuple[ResourceConfig, list[dict[Any, Any]]]:
+    ) -> list[dict[str, Any]]:
         logger.info(f"Fetching {resource_config.kind} resync results")
         tasks: list[Awaitable[list[dict[Any, Any]]]] = []
         with logger.contextualize(kind=resource_config.kind):
@@ -111,7 +111,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
             logger.info(f"Triggered {len(tasks)} tasks for {resource_config.kind}")
-            return resource_config, results
+            return results
 
     async def _register_resource_raw(
         self,
@@ -164,7 +164,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
         batch_work_size: int | None,
     ) -> list[Entity]:
-        resource, results = await self._get_resource_raw_results(resource_config)
+        results = await self._get_resource_raw_results(resource_config)
 
         tasks = []
 
@@ -174,7 +174,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         ]
         for batch in batches:
             logger.info(f"Creating task for registering batch of {len(batch)} entities")
-            tasks.append(self._register_resource_raw(resource, batch, user_agent_type))
+            tasks.append(
+                self._register_resource_raw(resource_config, batch, user_agent_type)
+            )
 
         registered_entities_results = await asyncio.gather(*tasks)
         entities: list[Entity] = sum(registered_entities_results, [])
@@ -259,7 +261,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> None:
         logger.info("Resync was triggered")
 
-        async with event_context("resync", trigger_type=trigger_type):
+        async with event_context(EventType.RESYNC, trigger_type=trigger_type):
             app_config = await self.port_app_config_handler.get_port_app_config()
 
             entities_at_port = await ocean.port_client.search_entities(user_agent_type)

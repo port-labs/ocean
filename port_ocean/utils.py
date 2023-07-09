@@ -12,7 +12,7 @@ def get_time(seconds_precision: bool = True) -> float:
     return time() if not seconds_precision else int(time())
 
 
-def get_uuid() -> str:
+def generate_uuid() -> str:
     """Return a UUID4 as string"""
     return str(uuid4())
 

@@ -14,12 +14,12 @@ class IntegrationClientMixin:
     async def get_integration(self, identifier: str) -> dict[str, Any]:
         logger.info(f"Fetching integration with id: {identifier}")
         async with httpx.AsyncClient() as client:
-            integration = await client.get(
+            response = await client.get(
                 f"{self.auth.api_url}/integration/{identifier}",
                 headers=await self.auth.headers(),
             )
-        integration.raise_for_status()
-        return integration.json()["integration"]
+        response.raise_for_status()
+        return response.json()["integration"]
 
     async def create_integration(
         self, _id: str, _type: str, changelog_destination: dict[str, Any]
@@ -32,10 +32,10 @@ class IntegrationClientMixin:
             "changelogDestination": changelog_destination,
         }
         async with httpx.AsyncClient() as client:
-            installation = await client.post(
+            response = await client.post(
                 f"{self.auth.api_url}/integration", headers=headers, json=json
             )
-        installation.raise_for_status()
+        response.raise_for_status()
 
     async def patch_integration(
         self, _id: str, _type: str, changelog_destination: dict[str, Any]
@@ -48,34 +48,34 @@ class IntegrationClientMixin:
             "changelogDestination": changelog_destination,
         }
         async with httpx.AsyncClient() as client:
-            installation = await client.patch(
+            response = await client.patch(
                 f"{self.auth.api_url}/integration/{_id}",
                 headers=headers,
                 json=json,
             )
-        installation.raise_for_status()
+        response.raise_for_status()
 
     async def initiate_integration(
-        self, _id: str, _type: str, changelog_destination: dict[str, Any]
+        self, identifier: str, _type: str, changelog_destination: dict[str, Any]
     ) -> None:
-        logger.info(f"Initiating integration with id: {_id}")
+        logger.info(f"Initiating integration with id: {identifier}")
         try:
-            integration = await self.get_integration(_id)
+            integration = await self.get_integration(identifier)
 
             logger.info("Checking for diff in integration configuration")
             if (
                 integration["changelogDestination"] != changelog_destination
                 and integration["installationAppType"] == _type
             ):
-                await self.patch_integration(_id, _type, changelog_destination)
+                await self.patch_integration(identifier, _type, changelog_destination)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == status.HTTP_400_BAD_REQUEST:
-                await self.create_integration(_id, _type, changelog_destination)
+            if e.response.status_code == status.HTTP_404_NOT_FOUND:
+                await self.create_integration(identifier, _type, changelog_destination)
                 return
 
             logger.error(
-                f"Error initiating integration with id: {_id}, error: {e.response.text}"
+                f"Error initiating integration with id: {identifier}, error: {e.response.text}"
             )
             raise
 
-        logger.info(f"Integration with id: {_id} successfully registered")
+        logger.info(f"Integration with id: {identifier} successfully registered")

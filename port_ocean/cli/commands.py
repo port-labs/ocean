@@ -7,9 +7,9 @@ import toml
 from cookiecutter.main import cookiecutter  # type: ignore
 from rich.console import Console
 
-from port_ocean.cli.download_git_folder import download_folder
+from port_ocean.cli.download_git_folder import download_github_folder
 from port_ocean.cli.list_integrations import list_git_folders
-from port_ocean.logger_setup import LogLevelType
+from port_ocean.config.integration import LogLevelType
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 console = Console()
@@ -30,7 +30,7 @@ By: Port.io
 """
 
     # Display ASCII art
-    Console().print(ascii_art)
+    Console().print(ascii_art.strip())
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
@@ -129,7 +129,7 @@ def list_integrations() -> None:
     List all available public integrations.
     """
     console.print("🌊 Here are the integrations available to you:", style="bold")
-    options = list_git_folders("https://github.com/port-labs/pulumi", "examples")
+    options = list_git_folders("port-labs", "pulumi", "examples")
 
     for option in options:
         console.print(f"⚓️ [bold][blue]{option}[/blue][/bold]")
@@ -151,6 +151,6 @@ def pull(name: str, path: str) -> None:
 
     NAME: Name of the integration to pull.
     """
-    download_folder(
-        "https://github.com/port-labs/pulumi", f"examples/{name}", path or f"./{name}"
+    download_github_folder(
+        "port-labs", "pulumi", f"examples/{name}", path or f"./{name}"
     )
