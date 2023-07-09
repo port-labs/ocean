@@ -19,7 +19,7 @@ def list_git_folders(repo_url: str, path: str) -> list[str]:
     # Check if the request was successful
     if response.is_error:
         console.print(
-            f"Failed to list folders. Status Code: {response.status_code}, Error: {response.text}"
+            f"[bold red]Failed to list folders.[/bold red] Status Code: {response.status_code}, Error: {response.text}"
         )
         exit(1)
 

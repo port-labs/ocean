@@ -21,7 +21,7 @@ def download_github_folder(
     # Check if the request was successful
     if response.is_error:
         console.print(
-            f"Failed to download the folder `{folder_path}`. Status Code: {response.status_code}, Error: {response.text}"
+            f"[bold red]Failed to download the folder `{folder_path}`.[/bold red] Status Code: {response.status_code}, Error: {response.text}"
         )
         exit(1)
 
@@ -43,7 +43,7 @@ def download_github_folder(
                         shutil.copyfileobj(BytesIO(file_response.content), file)
                 else:
                     console.print(
-                        f"Failed to download file `{content['name']}`. Status code: {file_response.status_code}"
+                        f"[bold red]Failed to download file `{content['name']}`.[/bold red] Status code: {file_response.status_code}, Error: {file_response.text}"
                     )
                     exit(1)
 
