@@ -3,7 +3,6 @@ import shutil
 from io import BytesIO
 
 import httpx
-from httpx import Response
 from rich.console import Console
 
 console = Console()
@@ -37,7 +36,7 @@ def download_github_folder(
             file_name = os.path.join(destination_path, content["name"])
 
             # Download the file
-            with httpx.stream("GET", file_url) as file_response:  # type: Response
+            with httpx.stream("GET", file_url) as file_response:
                 if file_response.status_code == 200:
                     with open(file_name, "wb") as file:
                         shutil.copyfileobj(BytesIO(file_response.content), file)
