@@ -20,7 +20,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         SyncMixin.__init__(self)
         self.started = False
         self.context = context
-        self.trigger_channel = TriggerChannelFactory(
+        self.trigger_channel_factory = TriggerChannelFactory(
             context,
             self.context.config.integration.identifier,
             {"on_resync": self.sync_raw_all},
@@ -54,4 +54,5 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             )
 
         logger.info("Initializing trigger channel")
-        await self.trigger_channel.create_trigger_channel()
+        trigger_channel = await self.trigger_channel_factory.create_trigger_channel()
+        await trigger_channel.start()
