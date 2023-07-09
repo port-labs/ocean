@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.1.0.dev7"
+version = "0.1.0.dev8"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>"]
