@@ -4,12 +4,7 @@ from rich.console import Console
 console = Console()
 
 
-def list_git_folders(repo_url: str, path: str) -> list[str]:
-    # Parse the repository URL to extract the owner and repository name
-    parts = repo_url.split("/")
-    owner = parts[-2]
-    repo_name = parts[-1].split(".")[0]
-
+def list_git_folders(owner: str, repo_name: str, path: str) -> list[str]:
     # Construct the API URL to get the contents of the folder
     api_url = f"https://api.github.com/repos/{owner}/{repo_name}/contents/{path}"
 

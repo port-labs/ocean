@@ -11,14 +11,14 @@ from pydantic import BaseSettings
 from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
-from port_ocean.config.integration import IntegrationConfiguration
+from port_ocean.config.integration import IntegrationConfiguration, LogLevelType
 from port_ocean.context.ocean import (
     PortOceanContext,
     ocean,
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.logger_setup import setup_logger, LogLevelType
+from port_ocean.logger_setup import setup_logger
 from port_ocean.middlewares import request_handler
 
 
