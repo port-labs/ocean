@@ -18,7 +18,9 @@ def download_folder(repo_url: str, folder_path: str, destination_path: str) -> N
 
     # Check if the request was successful
     if not response.is_success:
-        print("Failed to download the folder.")
+        print(
+            f"Failed to download the folder. Status Code: {response.status_code}, Error: {response.text}"
+        )
         exit(1)
 
     # Create the destination folder if it doesn't exist
