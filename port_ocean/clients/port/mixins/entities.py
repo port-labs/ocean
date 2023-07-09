@@ -96,9 +96,7 @@ class EntityClientMixin:
             )
         response.raise_for_status()
 
-    async def search_entities_by_datasource(
-        self, user_agent_type: UserAgentType
-    ) -> list[Entity]:
+    async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
         query = {
             "combinator": "and",
             "rules": [
