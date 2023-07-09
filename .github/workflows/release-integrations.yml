@@ -54,9 +54,6 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}          
       - name: Upload specifications to s3
         run: |
-          # Directory to search for spec.yaml files
-          directory="integrations"
-
           # Temporary file to store the concatenated YAML content
           temp_file="temp.yaml"
 
@@ -67,7 +64,7 @@ jobs:
           aws_s3_bucket="ocean-registry"
 
           # Find all ocean-spec.yaml files under the specified directory
-          find "$directory/*/.port" -type f -name "spec.yaml" > file_list.txt
+          find integrations/*/.port -type f -name "spec.yaml" > file_list.txt
 
           # Concatenate the YAML files into a temporary file
           while IFS= read -r file; do
