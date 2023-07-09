@@ -5,8 +5,6 @@
 Ocean is an innovative solution developed by Port to seamlessly integrate various third-party systems with our developer portal product,
 empowering engineers to effortlessly prioritize key features and streamline the integration process.
 
-
-
 ## Prerequisites
 
 - Python 3.11
@@ -39,69 +37,6 @@ poetry add port-ocean[cli]
    ```sh
    ocean sail ./path/to/integration
    ```
-
-   
-
-## Local Development (Framework)
-1. Clone the repository
-
-2. Install dependencies:
-
-   ```sh
-   make install
-   ```
-
-   Or (For installing integrations dependencies as well)
-
-   ```sh
-   make install/all
-   ```
-
-3. source the integration venv
-
-   ```sh
-   . .venv/bin/activate
-   ```
-
-   
-
-
-## Local Development (Integration)
-1. Clone the repository
-
-2. For new integration run
-
-   ```sh
-   make new
-   ```
-
-   and follow the instructions
-
-3. Install dependencies
-
-4. ```sh
-   cd DESIRED_INTEGRATION_FOLDER && make install
-   ```
-
-5. source the integration venv
-
-   ```sh
-   . .venv/bin/activate
-   ```
-
-6. Run the integration
-
-   ```sh
-   make run
-   ```
-
-   Or
-
-   ```sh
-   ocean sail
-   ```
-
-   
 
 # Export Architecture
 
@@ -167,6 +102,62 @@ integration:
 The reason Ocean is open source is that we aim for the Port integration library to offer numerous useful out-of-the-box integrations. We have confidence that developers and DevOps professionals who rely on Port in their everyday work will be inclined to contribute and assist in making it a comprehensive tool.
 
 In order to learn how you can contribute to Ocean, read our [contributing guide](./CONTRIBUTING.md)
+
+### Local Development (Framework)
+1. Clone the repository
+
+2. Install dependencies:
+
+   ```sh
+   make install
+   ```
+
+   Or (For installing integrations dependencies as well)
+
+   ```sh
+   make install/all
+   ```
+
+3. source the integration venv
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+### Local Development (Integration)
+1. Clone the repository
+
+2. For new integration run
+
+   ```sh
+   make new
+   ```
+
+   and follow the instructions
+
+3. Install dependencies
+
+4. ```sh
+   cd DESIRED_INTEGRATION_FOLDER && make install
+   ```
+
+5. source the integration venv
+
+   ```sh
+   . .venv/bin/activate
+   ```
+
+6. Run the integration
+
+   ```sh
+   make run
+   ```
+
+   Or
+
+   ```sh
+   ocean sail
+   ```
 
 ## License
 The Integration Framework is open-source software licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0). See the `LICENSE` file for more details.
