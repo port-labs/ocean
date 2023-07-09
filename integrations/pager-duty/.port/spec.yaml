@@ -12,7 +12,8 @@ configurations:
   - name: token
     description: Pager duty token
     required: true
-    type: secret
+    type: string
+    sensitive: true
   - name: url
     description: Pager duty api url (https://api.pagerduty.com)
     required: true
