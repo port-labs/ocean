@@ -26,24 +26,24 @@ class HttpPortTransport(BaseTransport):
     async def _validate_delete_dependent_entities(self, entities: list[Entity]) -> None:
         logger.info("Validated deleted entities")
         if not event.port_app_config.delete_dependent_entities:
-            deps = await asyncio.gather(
+            dependent_entities = await asyncio.gather(
                 *(
                     self.context.port_client.search_dependent_entities(entity)
                     for entity in entities
                 )
             )
-            new_dependent = get_unique(
+            new_dependent_entities = get_unique(
                 [
                     entity
-                    for entity in chain.from_iterable(deps)
-                    if not any([is_same_entity(item, entity) for item in entities])
+                    for entity in chain.from_iterable(dependent_entities)
+                    if not any(is_same_entity(item, entity) for item in entities)
                 ]
             )
 
-            if new_dependent:
+            if new_dependent_entities:
                 raise RelationValidationException(
                     f"Must enable delete_dependent_entities flag or delete all dependent entities: "
-                    f" {[(dep.blueprint, dep.identifier) for dep in new_dependent]}"
+                    f" {[(dep.blueprint, dep.identifier) for dep in new_dependent_entities]}"
                 )
 
     async def _validate_entity_diff(self, diff: EntityPortDiff) -> None:
