@@ -3,10 +3,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, BaseSettings
 
 from port_ocean.config.base import BaseOceanSettings
-from port_ocean.core.trigger_channel.settings import (
-    HttpTriggerChannelSettings,
-    KafkaTriggerChannelSettings,
-)
+from port_ocean.core.trigger_channel import TriggerChannelSettingsType
 
 
 class PortSettings(BaseSettings):
@@ -23,9 +20,7 @@ class IntegrationSettings(BaseSettings):
 
 class IntegrationConfiguration(BaseOceanSettings):
     port: PortSettings
-    trigger_channel: KafkaTriggerChannelSettings | HttpTriggerChannelSettings = Field(
-        alias="triggerChannel"
-    )
+    trigger_channel: TriggerChannelSettingsType = Field(alias="triggerChannel")
     batch_work_size: int | None = Field(alias="batchWorkSize", default=None)
     integration: IntegrationSettings
 

@@ -4,19 +4,19 @@ from loguru import logger
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.base import BaseWithContext
+from port_ocean.core.trigger_channel import (
+    HttpTriggerChannel,
+    KafkaTriggerChannel,
+    SampleTriggerChannel,
+)
+from port_ocean.core.trigger_channel import (
+    HttpTriggerChannelSettings,
+    KafkaTriggerChannelSettings,
+    SampleTriggerChannelSettings,
+)
 from port_ocean.core.trigger_channel.base import (
     BaseTriggerChannel,
     TriggerChannelEvents,
-)
-from port_ocean.core.trigger_channel.http import (
-    HttpTriggerChannel,
-)
-from port_ocean.core.trigger_channel.kafka import (
-    KafkaTriggerChannel,
-)
-from port_ocean.core.trigger_channel.settings import (
-    HttpTriggerChannelSettings,
-    KafkaTriggerChannelSettings,
 )
 from port_ocean.exceptions.core import UnsupportedTriggerChannelException
 
@@ -74,6 +74,12 @@ class TriggerChannelFactory(BaseWithContext):
                     config, HttpTriggerChannelSettings
                 ), assert_message.format(type(config))
                 trigger_channel = HttpTriggerChannel(wrapped_events, config)
+
+            case "sample":
+                assert isinstance(
+                    config, SampleTriggerChannelSettings
+                ), assert_message.format(type(config))
+                trigger_channel = SampleTriggerChannel(wrapped_events, config)
 
             case _:
                 raise UnsupportedTriggerChannelException(

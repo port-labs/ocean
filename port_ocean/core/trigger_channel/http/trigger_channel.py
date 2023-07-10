@@ -1,12 +1,26 @@
+from typing import Literal, Any
+
 from fastapi import APIRouter
 from loguru import logger
+from pydantic import AnyHttpUrl, Field
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.trigger_channel.base import (
     BaseTriggerChannel,
     TriggerChannelEvents,
+    TriggerChannelSettings,
 )
-from port_ocean.core.trigger_channel.settings import HttpTriggerChannelSettings
+
+
+class HttpTriggerChannelSettings(TriggerChannelSettings):
+    type: Literal["WEBHOOK"]
+    app_host: AnyHttpUrl = Field(alias="appHost")
+
+    def to_request(self) -> dict[str, Any]:
+        return {
+            **super().to_request(),
+            "url": self.app_host + "/resync",
+        }
 
 
 class HttpTriggerChannel(BaseTriggerChannel):
