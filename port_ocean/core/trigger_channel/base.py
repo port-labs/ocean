@@ -1,6 +1,8 @@
 from abc import abstractmethod
 from typing import TypedDict, Callable, Any, Awaitable
 
+from pydantic import BaseSettings
+
 
 class TriggerChannelEvents(TypedDict):
     on_resync: Callable[[dict[Any, Any]], Awaitable[None]]
@@ -16,3 +18,10 @@ class BaseTriggerChannel:
     @abstractmethod
     async def start(self) -> None:
         pass
+
+
+class TriggerChannelSettings(BaseSettings):
+    type: str
+
+    def to_request(self) -> dict[str, Any]:
+        return {"type": self.type}

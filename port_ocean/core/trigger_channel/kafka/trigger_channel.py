@@ -1,7 +1,8 @@
 import threading
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from loguru import logger
+from pydantic import Field
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.ocean import (
@@ -12,8 +13,18 @@ from port_ocean.context.ocean import (
 from port_ocean.core.trigger_channel.base import (
     BaseTriggerChannel,
     TriggerChannelEvents,
+    TriggerChannelSettings,
 )
-from port_ocean.core.trigger_channel.settings import KafkaTriggerChannelSettings
+
+
+class KafkaTriggerChannelSettings(TriggerChannelSettings):
+    type: Literal["KAFKA"]
+    brokers: str = ""
+    security_protocol: str = Field(alias="securityProtocol", default="SASL_SSL")
+    authentication_mechanism: str = Field(
+        alias="authenticationMechanism", default="SCRAM-SHA-512"
+    )
+    kafka_security_enabled: bool = Field(alias="kafkaSecurityEnabled", default=True)
 
 
 class KafkaTriggerChannel(BaseTriggerChannel):
