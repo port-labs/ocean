@@ -1,0 +1,20 @@
+version: v0.1.0dev
+type: gitlab
+description: Gitlab integration for Port Ocean
+icon: gitlab
+features:
+  - type: gitops
+    section: GitOps
+  - type: exporter
+    section: Incident Management
+    resources:
+      - kind: projects
+configurations:
+  - name: token_mapping
+    required: true
+    type: object
+    sensitive: true
+  - name: app_host
+    required: true
+    type: string
+ingressRequired: true
