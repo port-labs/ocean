@@ -29,3 +29,4 @@ class KafkaTriggerChannelSettings(TriggerChannelSettings):
         alias="authenticationMechanism", default="SCRAM-SHA-512"
     )
     kafka_security_enabled: bool = Field(alias="kafkaSecurityEnabled", default=True)
+    consumer_poll_timeout: int = Field(alias="consumerPollTimeout", default=1)
