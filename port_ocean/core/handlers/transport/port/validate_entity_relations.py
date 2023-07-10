@@ -33,8 +33,8 @@ async def validate_entity_relations(
             required_entities.append(entity)
 
     await asyncio.gather(
-        *[
+        *(
             port_client.validate_entity_exist(item.identifier, item.blueprint)
             for item in required_entities
-        ]
+        )
     )

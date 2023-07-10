@@ -15,6 +15,7 @@ class KafkaConsumerConfig(BaseModel):
     brokers: str
     username: str | None = None
     password: str | None = None
+    group_name: str | None = None
     security_protocol: str
     authentication_mechanism: str
     kafka_security_enabled: bool
@@ -25,7 +26,7 @@ class KafkaConsumer(BaseConsumer):
         self,
         msg_process: Callable[[dict[Any, Any], str], Awaitable[None]],
         config: KafkaConsumerConfig,
-        org_id: str | None = None,
+        org_id: str,
     ) -> None:
         self.running = False
         self.org_id = org_id
@@ -41,7 +42,7 @@ class KafkaConsumer(BaseConsumer):
                 "sasl.mechanism": config.authentication_mechanism,
                 "sasl.username": config.username,
                 "sasl.password": config.password,
-                "group.id": config.username,
+                "group.id": f"{self.org_id}.{config.group_name}",
                 "enable.auto.commit": "false",
             }
         else:
@@ -90,8 +91,8 @@ class KafkaConsumer(BaseConsumer):
                     else:
                         try:
                             logger.info(
-                                "Process message"
-                                f" from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}"
+                                "Process message "
+                                f"from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}"
                             )
                             self._handle_message(msg)
                         except Exception as process_error:
@@ -104,7 +105,7 @@ class KafkaConsumer(BaseConsumer):
                 except Exception as message_error:
                     logger.error(str(message_error))
         finally:
-            self.consumer.close()
+            self.exit_gracefully()
 
     def exit_gracefully(self, *_: Any) -> None:
         logger.info("Exiting gracefully...")

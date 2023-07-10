@@ -4,7 +4,6 @@ from typing import TypedDict, Callable, Any, Awaitable
 
 class TriggerChannelEvents(TypedDict):
     on_resync: Callable[[dict[Any, Any]], Awaitable[None]]
-    on_action: Callable[[dict[Any, Any]], Awaitable[None]]
 
 
 class BaseTriggerChannel:

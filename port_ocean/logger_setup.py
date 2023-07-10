@@ -2,11 +2,11 @@ import sys
 
 from loguru import logger
 
-from port_ocean.config.integration import LoggerConfiguration
+from port_ocean.config.integration import LoggerConfiguration, LogLevelType
 
 
-def setup_logger() -> None:
-    settings = LoggerConfiguration()
+def setup_logger(level: LogLevelType) -> None:
+    settings = LoggerConfiguration(level=level)
     logger_format = (
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "
@@ -15,7 +15,7 @@ def setup_logger() -> None:
 
     logger.remove()
     logger.add(
-        sys.stderr,
+        sys.stdout,
         level=settings.level.upper(),
         format=logger_format,
         serialize=settings.serialize,

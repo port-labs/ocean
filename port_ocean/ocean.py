@@ -11,7 +11,7 @@ from pydantic import BaseSettings
 from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
-from port_ocean.config.integration import IntegrationConfiguration
+from port_ocean.config.integration import IntegrationConfiguration, LogLevelType
 from port_ocean.context.ocean import (
     PortOceanContext,
     ocean,
@@ -43,11 +43,7 @@ def _load_module(file_path: str) -> ModuleType:
         raise Exception(f"Failed to load integration from path: {file_path}")
 
     module = module_from_spec(spec)
-
-    try:
-        spec.loader.exec_module(module)
-    except Exception as e:
-        raise e
+    spec.loader.exec_module(module)
 
     return module
 
@@ -85,7 +81,8 @@ class Ocean:
             base_url=self.config.port.base_url,
             client_id=self.config.port.client_id,
             client_secret=self.config.port.client_secret,
-            user_agent_id=self.config.integration.identifier,
+            integration_identifier=self.config.integration.identifier,
+            integration_type=self.config.integration.type,
         )
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
@@ -107,8 +104,8 @@ class Ocean:
         await self.fast_api_app(scope, receive, send)
 
 
-def run(path: str) -> None:
-    setup_logger()
+def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
+    setup_logger(log_level)
     sys.path.append(".")
     try:
         integration_path = f"{path}/integration.py" if path else "integration.py"

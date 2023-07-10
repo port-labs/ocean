@@ -7,6 +7,7 @@ try:
     find_spec("click")
     find_spec("cookiecutter")
     find_spec("rich")
+    find_spec("toml")
 
     cli_included = True
 except ImportError:

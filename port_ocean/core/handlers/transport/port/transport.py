@@ -26,24 +26,24 @@ class HttpPortTransport(BaseTransport):
     async def _validate_delete_dependent_entities(self, entities: list[Entity]) -> None:
         logger.info("Validated deleted entities")
         if not event.port_app_config.delete_dependent_entities:
-            deps = await asyncio.gather(
-                *[
+            dependent_entities = await asyncio.gather(
+                *(
                     self.context.port_client.search_dependent_entities(entity)
                     for entity in entities
-                ]
+                )
             )
-            new_dependent = get_unique(
+            new_dependent_entities = get_unique(
                 [
                     entity
-                    for entity in chain.from_iterable(deps)
-                    if not any([is_same_entity(item, entity) for item in entities])
+                    for entity in chain.from_iterable(dependent_entities)
+                    if not any(is_same_entity(item, entity) for item in entities)
                 ]
             )
 
-            if new_dependent:
+            if new_dependent_entities:
                 raise RelationValidationException(
-                    f"Must enable delete_dependent_entities flag or delete also dependent entities:"
-                    f" {[(dep.blueprint, dep.identifier) for dep in new_dependent]}"
+                    f"Must enable delete_dependent_entities flag or delete all dependent entities: "
+                    f" {[(dep.blueprint, dep.identifier) for dep in new_dependent_entities]}"
                 )
 
     async def _validate_entity_diff(self, diff: EntityPortDiff) -> None:
@@ -55,7 +55,7 @@ class HttpPortTransport(BaseTransport):
             logger.info("Validating modified or created entities")
 
             await asyncio.gather(
-                *[
+                *(
                     self.context.port_client.validate_entity_payload(
                         entity,
                         {
@@ -64,7 +64,7 @@ class HttpPortTransport(BaseTransport):
                         },
                     )
                     for entity in modified_or_created_entities
-                ]
+                )
             )
 
         if not event.port_app_config.delete_dependent_entities:
@@ -96,7 +96,8 @@ class HttpPortTransport(BaseTransport):
             if is_part_of_related:
                 if event.port_app_config.create_missing_related_entities:
                     logger.info(
-                        "Skipping entity because it is related to created entities and create_missing_related_entities is enabled"
+                        f"Skipping entity {(entity_to_delete.identifier, entity_to_delete.blueprint)} because it is "
+                        f"related to created entities and create_missing_related_entities is enabled"
                     )
                 else:
                     allowed_entities_to_delete.append(entity_to_delete)
@@ -151,7 +152,7 @@ class HttpPortTransport(BaseTransport):
         logger.info(f"Upserting {len(entities)} entities")
         if event.port_app_config.create_missing_related_entities:
             await asyncio.gather(
-                *[
+                *(
                     self.context.port_client.upsert_entity(
                         entity,
                         event.port_app_config.get_port_request_options(),
@@ -159,7 +160,7 @@ class HttpPortTransport(BaseTransport):
                         silent=True,
                     )
                     for entity in entities
-                ]
+                )
             )
         else:
             ordered_created_entities = reversed(
@@ -180,7 +181,7 @@ class HttpPortTransport(BaseTransport):
         logger.info(f"Deleting {len(entities)} entities")
         if event.port_app_config.delete_dependent_entities:
             await asyncio.gather(
-                *[
+                *(
                     self.context.port_client.delete_entity(
                         entity,
                         event.port_app_config.get_port_request_options(),
@@ -188,7 +189,7 @@ class HttpPortTransport(BaseTransport):
                         silent=True,
                     )
                     for entity in entities
-                ]
+                )
             )
         else:
             ordered_deleted_entities = order_by_entities_dependencies(entities)

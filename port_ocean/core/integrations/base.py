@@ -1,12 +1,10 @@
 import asyncio
-from typing import (
-    Any,
-)
 
 from loguru import logger
 
 from port_ocean.context.event import (
     event_context,
+    EventType,
 )
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.integrations.mixins.sync import SyncRawMixin, SyncMixin
@@ -22,10 +20,10 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         SyncMixin.__init__(self)
         self.started = False
         self.context = context
-        self.trigger_channel = TriggerChannelFactory(
+        self.trigger_channel_factory = TriggerChannelFactory(
             context,
             self.context.config.integration.identifier,
-            {"on_action": self.trigger_action, "on_resync": self.sync_raw_all},
+            {"on_resync": self.sync_raw_all},
         )
 
     async def start(self) -> None:
@@ -50,13 +48,11 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         self.started = True
 
-        async with event_context("start", trigger_type="machine"):
+        async with event_context(EventType.START, trigger_type="machine"):
             await asyncio.gather(
                 *(listener() for listener in self.event_strategy["start"])
             )
 
         logger.info("Initializing trigger channel")
-        await self.trigger_channel.create_trigger_channel()
-
-    async def trigger_action(self, data: dict[Any, Any]) -> None:
-        raise NotImplementedError("trigger_action is not implemented")
+        trigger_channel = await self.trigger_channel_factory.create_trigger_channel()
+        await trigger_channel.start()

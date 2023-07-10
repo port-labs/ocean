@@ -1,7 +1,6 @@
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
-from pydantic import BaseSettings
+from pydantic import BaseModel, Field, BaseSettings
 
 from port_ocean.config.base import BaseOceanSettings
 from port_ocean.core.trigger_channel.settings import (
@@ -13,7 +12,7 @@ from port_ocean.core.trigger_channel.settings import (
 class PortSettings(BaseSettings):
     client_id: str = Field(alias="clientId")
     client_secret: str = Field(alias="clientSecret")
-    base_url: str = Field(alias="baseUrl")
+    base_url: str = Field(alias="baseUrl", default="https://api.getport.io")
 
 
 class IntegrationSettings(BaseSettings):
@@ -31,6 +30,9 @@ class IntegrationConfiguration(BaseOceanSettings):
     integration: IntegrationSettings
 
 
+LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
+
+
 class LoggerConfiguration(BaseModel):
-    level: str = "DEBUG"
+    level: LogLevelType = "DEBUG"
     serialize: bool = False

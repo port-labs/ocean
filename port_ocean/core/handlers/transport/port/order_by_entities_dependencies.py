@@ -6,13 +6,17 @@ from port_ocean.core.models import Entity
 Node = tuple[str, str]
 
 
+def node(entity: Entity) -> Node:
+    return entity.identifier, entity.blueprint
+
+
 def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
     nodes: dict[Node, Set[Node]] = {}
     entities_map = {}
 
     for entity in entities:
-        nodes[(entity.identifier, entity.blueprint)] = set()
-        entities_map[(entity.identifier, entity.blueprint)] = entity
+        nodes[node(entity)] = set()
+        entities_map[node(entity)] = entity
 
     for entity in entities:
         relation_target_ids = [
@@ -25,9 +29,7 @@ def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
         ]
 
         for related_entity in related_entities:
-            nodes[(entity.identifier, entity.blueprint)].add(
-                (related_entity.identifier, related_entity.blueprint)
-            )
+            nodes[node(entity)].add(node(related_entity))
 
     sort_op = TopologicalSorter(nodes)
     return [entities_map[item] for item in sort_op.static_order()]

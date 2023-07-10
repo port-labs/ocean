@@ -22,12 +22,16 @@ class KafkaTriggerChannel(BaseTriggerChannel):
         events: TriggerChannelEvents,
         trigger_channel_config: KafkaTriggerChannelSettings,
         org_id: str,
+        integration_identifier: str,
+        integration_type: str,
     ):
         super().__init__(events)
         self.trigger_channel_config = trigger_channel_config
         self.org_id = org_id
+        self.integration_identifier = integration_identifier
+        self.integration_type = integration_type
 
-    async def _get_kafka_creds(self) -> KafkaConsumerConfig:
+    async def _get_kafka_config(self) -> KafkaConsumerConfig:
         if self.trigger_channel_config.kafka_security_enabled:
             creds = await ocean.port_client.get_kafka_creds()
             return KafkaConsumerConfig(
@@ -37,6 +41,7 @@ class KafkaTriggerChannel(BaseTriggerChannel):
                 security_protocol=self.trigger_channel_config.security_protocol,
                 authentication_mechanism=self.trigger_channel_config.authentication_mechanism,
                 kafka_security_enabled=self.trigger_channel_config.kafka_security_enabled,
+                group_name=f"{self.integration_type}.{self.integration_identifier}",
             )
 
         return KafkaConsumerConfig(
@@ -47,15 +52,6 @@ class KafkaTriggerChannel(BaseTriggerChannel):
         )
 
     def should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
-        if "runs" in topic:
-            return (
-                msg_value.get("payload", {})
-                .get("action", {})
-                .get("invocationMethod", {})
-                .get("type", "")
-                == "KAFKA"
-            )
-
         if "change.log" in topic:
             return msg_value.get("changelogDestination", {}).get("type", "") == "KAFKA"
 
@@ -67,9 +63,6 @@ class KafkaTriggerChannel(BaseTriggerChannel):
 
         if "change.log" in topic:
             await self.events["on_resync"](message)
-
-        if "runs" in topic:
-            await self.events["on_action"](message)
 
     def wrapped_start(
         self, context: PortOceanContext, func: Callable[[], None]
@@ -85,8 +78,8 @@ class KafkaTriggerChannel(BaseTriggerChannel):
     async def start(self) -> None:
         consumer = KafkaConsumer(
             msg_process=self._handle_message,
+            config=await self._get_kafka_config(),
             org_id=self.org_id,
-            config=await self._get_kafka_creds(),
         )
         logger.info("Starting Kafka consumer")
         threading.Thread(
