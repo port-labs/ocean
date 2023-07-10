@@ -38,6 +38,9 @@ class SampleTriggerChannel(BaseTriggerChannel):
         @ocean.app.fast_api_app.on_event("startup")
         @repeat_every(seconds=self.trigger_channel_config.interval)
         async def resync() -> None:
+            logger.info(
+                f"Sample trigger channel iteration after {self.trigger_channel_config.interval}. Checking for changes"
+            )
             integration = await ocean.app.port_client.get_integration(
                 ocean.config.integration.identifier
             )
