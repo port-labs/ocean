@@ -1,12 +1,12 @@
 version: v0.1.0dev
-type: gitlab
+type: Gitlab
 description: Gitlab integration for Port Ocean
-icon: gitlab
+icon: GitLab
 features:
   - type: gitops
     section: GitOps
   - type: exporter
-    section: Incident Management
+    section: Git Providers
     resources:
       - kind: projects
 configurations:
