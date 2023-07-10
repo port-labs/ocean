@@ -40,8 +40,11 @@ By contributing a new integration, you enable users of the framework to seamless
 
 1. Ensure any install or build dependencies are removed before the end of the layer when doing a
    build.
-2. Update the README.md with details of changes to the interface, this includes new environment
-   variables, exposed ports, useful file locations and container parameters.
+2. Create a new change fragment using towncrier. See [here](https://towncrier.readthedocs.io/en/latest/tutorial.html#creating-news-fragments) for more information.
+   ```bash
+    towncrier create --content 'My very important changelog message' <Issue Id / title>.<type (feature / bugfix / etc...)>
+    ```
+
 3. You may merge the Pull Request in once you have the sign-off of one of Port developers.
 
 ## Code of Conduct
