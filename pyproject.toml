@@ -3,9 +3,35 @@ name = "port-ocean"
 version = "0.1.0.dev3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
+homepage = "https://app.getport.io"
+repository = "https://github.com/port-labs/port-ocean"
+
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>"]
 packages = [
     { include = "port_ocean", from = "." }
+]
+
+keywords = ["ocean", "port-ocean", "port"]
+classifiers = [
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Devops Engineers",
+    "Intended Audience :: Devex Engineers",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Frameowrk :: Port",
+    "Topic :: Developer Portal :: Utilities",
+    "Topic :: Developer Experience :: Utilities",
+    "Topic :: Devops :: Utilities",
+    "Topic :: Devex :: Utilities",
+    "Topic :: Developer Portal :: Framerok",
 ]
 
 [tool.poetry.scripts]
