@@ -15,15 +15,6 @@ define run_lint
 	exit $$exit_code
 endef
 
-define install_poetry
-	if ! command -v poetry &> /dev/null; then \
-    	echo "Poetry is not installed. Installing..."; \
-    	curl -sSL https://install.python-poetry.org | python3 -; \
-	else \
-    	echo "Poetry is already installed."; \
-	fi
-endef
-
 define deactivate_virtualenv
     if [ -n "$$VIRTUAL_ENV" ]; then \
         unset VIRTUAL_ENV; \
@@ -37,16 +28,11 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: generate_config install lint run test clean
+.SILENT: install lint run test clean
 
-generate_config:
-	@if [[ ! -e .env ]]; then \
-		cp example.config.yaml config.yaml; \
-	fi
-
-install: generate_config
+install:
 	$(call deactivate_virtualenv) && \
-	$(call install_poetry) && \
+	pip install poetry && \
 	poetry install --with dev
 
 lint:
