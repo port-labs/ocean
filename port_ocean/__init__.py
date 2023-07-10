@@ -1,7 +1,11 @@
 import warnings
+from importlib.metadata import version
 from importlib.util import find_spec
 
+__version__ = version("port-ocean")
+
 warnings.filterwarnings("ignore", category=FutureWarning)
+
 
 try:
     find_spec("click")

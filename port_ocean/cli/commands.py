@@ -3,10 +3,10 @@
 import os
 
 import click
-import toml
 from cookiecutter.main import cookiecutter  # type: ignore
 from rich.console import Console
 
+from port_ocean import __version__
 from port_ocean.cli.download_git_folder import download_github_folder
 from port_ocean.cli.list_integrations import list_git_folders
 from port_ocean.config.integration import LogLevelType
@@ -53,11 +53,10 @@ def version(short: bool) -> None:
     """
     Displays the version of the Ocean package.
     """
-    app_version = toml.load("pyproject.toml")["tool"]["poetry"]["version"]
     if short:
-        console.print(f"{app_version}")
+        console.print(__version__)
     else:
-        console.print(f"🌊 Ocean version: {app_version}")
+        console.print(f"🌊 Ocean version: {__version__}")
 
 
 @cli_start.command()
