@@ -41,7 +41,7 @@ class SampleTriggerChannel(BaseTriggerChannel):
             integration = await ocean.app.port_client.get_integration(
                 ocean.config.integration.identifier
             )
-            last_updated_at = integration["lastUpdatedAt"]
+            last_updated_at = integration["updatedAt"]
 
             should_resync = (
                 self._last_updated_at is not None
@@ -49,5 +49,6 @@ class SampleTriggerChannel(BaseTriggerChannel):
             ) and self._last_updated_at != last_updated_at
 
             if should_resync:
+                logger.info("Detected change in integration, resyncing")
                 self._last_updated_at = last_updated_at
-                await self.events["on_resync"]({})
+                await ocean.sync_raw_all()
