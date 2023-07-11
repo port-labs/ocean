@@ -27,13 +27,13 @@ class SyncMixin(HandlerMixin, EventsMixin):
         entities: list[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
-        await self.transport.upsert(entities, user_agent_type)
+        await self.entities_state_applier.upsert(entities, user_agent_type)
         logger.info("Finished registering change")
 
     async def unregister(
         self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
-        await self.transport.delete(entities, user_agent_type)
+        await self.entities_state_applier.delete(entities, user_agent_type)
         logger.info("Finished unregistering change")
 
     async def sync(
@@ -43,8 +43,8 @@ class SyncMixin(HandlerMixin, EventsMixin):
     ) -> None:
         entities_at_port = await ocean.port_client.search_entities(user_agent_type)
 
-        await self.transport.upsert(entities, user_agent_type)
-        await self.transport.delete_diff(
+        await self.entities_state_applier.upsert(entities, user_agent_type)
+        await self.entities_state_applier.delete_diff(
             {"before": entities_at_port, "after": entities}, user_agent_type
         )
 
@@ -132,7 +132,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         entities_after: list[Entity] = objects_diff[0]["after"]
-        await self.transport.upsert(entities_after, user_agent_type)
+        await self.entities_state_applier.upsert(entities_after, user_agent_type)
         return entities_after
 
     async def _unregister_resource_raw(
@@ -154,7 +154,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         entities_after: list[Entity] = objects_diff[0]["before"]
-        await self.transport.delete(entities_after, user_agent_type)
+        await self.entities_state_applier.delete(entities_after, user_agent_type)
         logger.info("Finished unregistering change")
         return entities_after
 
@@ -249,7 +249,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
             )
 
-            await self.transport.apply_diff(
+            await self.entities_state_applier.apply_diff(
                 {"before": entities_before, "after": entities_after}, user_agent_type
             )
 
@@ -275,7 +275,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
             )
             flat_created_entities: list[Entity] = sum(created_entities, [])
-            await self.transport.delete_diff(
+            await self.entities_state_applier.delete_diff(
                 {"before": entities_at_port, "after": flat_created_entities},
                 user_agent_type,
             )

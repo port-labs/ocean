@@ -1,10 +1,10 @@
 import asyncio
 
 from port_ocean.clients.port.client import PortClient
-from port_ocean.core.handlers.manipulation.base import EntityPortDiff
-from port_ocean.core.handlers.transport.port.get_related_entities import (
+from port_ocean.core.handlers.entities_state_applier.port.get_related_entities import (
     get_related_entities,
 )
+from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.utils import is_same_entity
 from port_ocean.exceptions.core import RelationValidationException
 

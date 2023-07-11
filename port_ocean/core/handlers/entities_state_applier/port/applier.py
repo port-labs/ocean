@@ -5,24 +5,26 @@ from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
-from port_ocean.core.handlers.manipulation.base import EntityPortDiff
-from port_ocean.core.handlers.transport.base import BaseTransport
-from port_ocean.core.handlers.transport.port.get_related_entities import (
+from port_ocean.core.handlers.entities_state_applier.base import (
+    BaseEntitiesStateApplier,
+)
+from port_ocean.core.handlers.entities_state_applier.port.get_related_entities import (
     get_related_entities,
 )
-from port_ocean.core.handlers.transport.port.order_by_entities_dependencies import (
+from port_ocean.core.handlers.entities_state_applier.port.order_by_entities_dependencies import (
     order_by_entities_dependencies,
 )
-from port_ocean.core.handlers.transport.port.validate_entity_relations import (
+from port_ocean.core.handlers.entities_state_applier.port.validate_entity_relations import (
     validate_entity_relations,
 )
+from port_ocean.core.handlers.manipulation.base import EntityPortDiff
 from port_ocean.core.models import Entity
 from port_ocean.core.types import EntityDiff
 from port_ocean.core.utils import is_same_entity, get_unique, get_port_diff
 from port_ocean.exceptions.core import RelationValidationException
 
 
-class HttpPortTransport(BaseTransport):
+class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     async def _validate_delete_dependent_entities(self, entities: list[Entity]) -> None:
         logger.info("Validated deleted entities")
         if not event.port_app_config.delete_dependent_entities:
