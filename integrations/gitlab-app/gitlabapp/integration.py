@@ -7,7 +7,7 @@ from config import GitlabPortAppConfig
 from gitlabapp.core.entities import FILE_PROPERTY_PREFIX
 from gitlabapp.services.gitlab_service import GitlabService
 from port_ocean.context.event import event
-from port_ocean.core.handlers.manipulation.jq_manipulation import JQManipulation
+from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -16,7 +16,7 @@ class GitAppConfigHandler(APIPortAppConfig):
     CONFIG_CLASS = GitlabPortAppConfig
 
 
-class GitManipulationHandler(JQManipulation):
+class GitManipulationHandler(JQEntityProcessor):
     @lru_cache()
     def _get_file_content(
         self, gitlab_service: GitlabService, project_id: int, file_path: str, ref: str
