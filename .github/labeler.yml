@@ -1,0 +1,11 @@
+integration:
+- any: ['integrations/**']
+
+framework:
+- any: ['port_ocean/**']
+
+tests:
+- any: ['**/tests/**']
+
+infra:
+- any: ['.github/**']
