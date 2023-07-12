@@ -296,18 +296,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     for resource in app_config.resources
                 )
             )
-            flat_created_entities, all_errors = zip_and_sum(creation_results)
+            flat_created_entities, errors = zip_and_sum(creation_results)
 
-            if not all_errors:
+            if not errors:
                 await self.entities_state_applier.delete_diff(
                     {"before": entities_at_port, "after": flat_created_entities},
                     user_agent_type,
                 )
 
-            message = f"Resync failed with {len(all_errors)}. Skipping delete phase due to incomplete state"
+            message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
             error_group = ExceptionGroup(
-                f"Resync failed with {len(all_errors)}. Skipping delete phase due to incomplete state",
-                all_errors,
+                f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state",
+                errors,
             )
             if not silent:
                 raise error_group
