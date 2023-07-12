@@ -32,7 +32,9 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
             integration_type,
         )
         EntityClientMixin.__init__(self, self.auth, self.client)
-        IntegrationClientMixin.__init__(self, self.auth, self.client)
+        IntegrationClientMixin.__init__(
+            self, integration_identifier, self.auth, self.client
+        )
 
     async def get_kafka_creds(self, silent: bool = False) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")

@@ -35,15 +35,12 @@ class SampleTriggerChannel(BaseTriggerChannel):
             f"Setting up Sample trigger channel with interval: {self.trigger_channel_config.interval}"
         )
 
-        @ocean.app.fast_api_app.on_event("startup")
         @repeat_every(seconds=self.trigger_channel_config.interval)
         async def resync() -> None:
             logger.info(
                 f"Sample trigger channel iteration after {self.trigger_channel_config.interval}. Checking for changes"
             )
-            integration = await ocean.app.port_client.get_integration(
-                ocean.config.integration.identifier
-            )
+            integration = await ocean.app.port_client.get_current_integration()
             last_updated_at = integration["updatedAt"]
 
             should_resync = (
@@ -55,3 +52,6 @@ class SampleTriggerChannel(BaseTriggerChannel):
                 logger.info("Detected change in integration, resyncing")
                 self._last_updated_at = last_updated_at
                 await ocean.sync_raw_all()
+
+        # Execute resync repeatedly task
+        await resync()
