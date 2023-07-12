@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 from asyncio import ensure_future
 from functools import wraps
@@ -17,11 +15,9 @@ NoArgsNoReturnDecorator = Callable[
 
 
 def repeat_every(
-    *,
     seconds: float,
     wait_first: bool = False,
     raise_exceptions: bool = False,
-    max_repetitions: int | None = None,
 ) -> NoArgsNoReturnDecorator:
     """
     This function returns a decorator that modifies a function so it is periodically re-executed after its first call.
@@ -40,8 +36,6 @@ def repeat_every(
         Note that if an error is raised, the repeated execution will stop.
         Otherwise, exceptions are just logged and the execution continues to repeat.
         See https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.set_exception_handler for more info.
-    max_repetitions: Optional[int] (default None)
-        The maximum number of times to call the repeated function. If `None`, the function is repeated forever.
     """
 
     def decorator(
@@ -54,19 +48,15 @@ def repeat_every(
 
         @wraps(func)
         async def wrapped() -> None:
-            repetitions = 0
-
             async def loop() -> None:
-                nonlocal repetitions
                 if wait_first:
                     await asyncio.sleep(seconds)
-                while max_repetitions is None or repetitions < max_repetitions:
+                while True:
                     try:
                         if is_coroutine:
                             await func()  # type: ignore
                         else:
                             await run_in_threadpool(func)
-                        repetitions += 1
                     except Exception as exc:
                         formatted_exception = "".join(
                             format_exception(type(exc), exc, exc.__traceback__)
