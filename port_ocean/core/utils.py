@@ -6,10 +6,10 @@ from port_ocean.core.handlers.entity_processor.base import EntityPortDiff
 from port_ocean.core.models import Entity
 from port_ocean.exceptions.core import RawObjectValidationException
 
-T = TypeVar("T", bound=list[Any])
+T = TypeVar("T", bound=tuple[list[Any], ...])
 
 
-def zip_and_sum(collection: Iterable[tuple[T, ...]]) -> tuple[T, ...]:
+def zip_and_sum(collection: Iterable[T]) -> T:
     return tuple(sum(items, []) for items in zip(*collection))  # type: ignore
 
 
