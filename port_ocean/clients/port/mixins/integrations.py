@@ -8,16 +8,16 @@ from port_ocean.clients.port.authentication import PortAuthentication
 
 
 class IntegrationClientMixin:
-    def __init__(self, auth: PortAuthentication):
+    def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
         self.auth = auth
+        self.client = client
 
     async def get_integration(self, identifier: str) -> dict[str, Any]:
         logger.info(f"Fetching integration with id: {identifier}")
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.auth.api_url}/integration/{identifier}",
-                headers=await self.auth.headers(),
-            )
+        response = await self.client.get(
+            f"{self.auth.api_url}/integration/{identifier}",
+            headers=await self.auth.headers(),
+        )
         response.raise_for_status()
         return response.json()["integration"]
 
@@ -31,10 +31,9 @@ class IntegrationClientMixin:
             "installationAppType": _type,
             "changelogDestination": changelog_destination,
         }
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.auth.api_url}/integration", headers=headers, json=json
-            )
+        response = await self.client.post(
+            f"{self.auth.api_url}/integration", headers=headers, json=json
+        )
         response.raise_for_status()
 
     async def patch_integration(
@@ -47,12 +46,11 @@ class IntegrationClientMixin:
             "installationAppType": _type,
             "changelogDestination": changelog_destination,
         }
-        async with httpx.AsyncClient() as client:
-            response = await client.patch(
-                f"{self.auth.api_url}/integration/{_id}",
-                headers=headers,
-                json=json,
-            )
+        response = await self.client.patch(
+            f"{self.auth.api_url}/integration/{_id}",
+            headers=headers,
+            json=json,
+        )
         response.raise_for_status()
 
     async def initiate_integration(

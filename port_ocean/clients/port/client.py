@@ -22,22 +22,23 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
         integration_type: str,
     ):
         self.api_url = f"{base_url}/v1"
+        self.client = httpx.AsyncClient()
         self.auth = PortAuthentication(
+            self.client,
             client_id,
             client_secret,
             self.api_url,
             integration_identifier,
             integration_type,
         )
-        EntityClientMixin.__init__(self, self.auth)
-        IntegrationClientMixin.__init__(self, self.auth)
+        EntityClientMixin.__init__(self, self.auth, self.client)
+        IntegrationClientMixin.__init__(self, self.auth, self.client)
 
     async def get_kafka_creds(self, silent: bool = False) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.api_url}/kafka-credentials", headers=await self.auth.headers()
-            )
+        response = await self.client.get(
+            f"{self.api_url}/kafka-credentials", headers=await self.auth.headers()
+        )
         if response.is_error:
             logger.error(f"Error getting kafka credentials, error: {response.text}")
         handle_status_code(silent, response)
@@ -52,10 +53,9 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
     async def get_org_id(self) -> str:
         logger.info("Fetching organization id")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.api_url}/organization", headers=await self.auth.headers()
-            )
+        response = await self.client.get(
+            f"{self.api_url}/organization", headers=await self.auth.headers()
+        )
         if response.is_error:
             logger.error(f"Error getting organization id, error: {response.text}")
             response.raise_for_status()
@@ -64,10 +64,9 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
 
     async def get_blueprint(self, identifier: str) -> Blueprint:
         logger.info(f"Fetching blueprint with id: {identifier}")
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.api_url}/blueprints/{identifier}",
-                headers=await self.auth.headers(),
-            )
+        response = await self.client.get(
+            f"{self.api_url}/blueprints/{identifier}",
+            headers=await self.auth.headers(),
+        )
         response.raise_for_status()
         return Blueprint.parse_obj(response.json()["blueprint"])
