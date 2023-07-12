@@ -5,8 +5,8 @@ A short description of the project
 ## Development Requirements
 
 - Python3.11.0
-- Pip
 - Poetry (Python Package Manager)
+- Port-Ocean
 
 ## Installation
 
@@ -15,9 +15,13 @@ make install
 ```
 
 ## Runnning Localhost
-
-`make run`
-
+```sh
+make run
+```
+or
+```sh
+ocean sail
+```
 
 ## Running Tests
 
@@ -27,6 +31,17 @@ make install
 
 > <http://localhost:8080/docs>
 
-## Access Redocs Documentation
+## Access Redoc Documentation
 
 > <http://localhost:8080/redoc>
+
+
+## Folder Structure
+The gitlab integration suggested folder structure is as follows:
+
+```
+gitlab/
+└─ main.py
+└─ pyproject.toml
+└─ Dockerfile
+```
