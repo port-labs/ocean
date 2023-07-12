@@ -35,9 +35,6 @@ def repeat_every(
         The number of seconds to wait between repeated calls
     wait_first: bool (default False)
         If True, the function will wait for a single period before the first call
-    logger: Optional[logging.Logger] (default None)
-        The logger to use to log any exceptions raised by calls to the decorated function.
-        If not provided, exceptions will not be logged by this function (though they may be handled by the event loop).
     raise_exceptions: bool (default False)
         If True, errors raised by the decorated function will be raised to the event loop's exception handler.
         Note that if an error is raised, the repeated execution will stop.
