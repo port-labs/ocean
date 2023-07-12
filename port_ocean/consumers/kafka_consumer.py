@@ -76,7 +76,7 @@ class KafkaConsumer(BaseConsumer):
             logger.info("Start consumer...")
 
             self.consumer.subscribe(
-                [f"{self.org_id}.runs", f"{self.org_id}.change.log"],
+                [f"{self.org_id}.change.log"],
                 on_assign=lambda _, partitions: logger.info(
                     f"Assignment: {partitions}"
                 ),
