@@ -158,9 +158,6 @@ class GitlabService:
             file_content = self.gitlab_client.projects.get(
                 context.project.id
             ).files.get(file_path=file_name, ref=sha)
-            # ToDo: add validation for port yml
-            # validate_port_yml()
-            # todo: log on failed yml loading
             entities = yaml.safe_load(file_content.decode())
             raw_entities = [
                 Entity(**entity_data)
