@@ -1,0 +1,114 @@
+ACTIVATE := . .venv/bin/activate
+
+define run_lint
+	exit_code=0; \
+	cd $1; \
+	mypy . || exit_code=$$?; \
+	ruff . || exit_code=$$?; \
+	black --check . || exit_code=$$?; \
+	if [ $$exit_code  == 1 ]; then \
+		echo -e "\033[0;31mOne or more lints failed with exit code $$exit_code\033[0m"; \
+	else \
+		echo -e "\033[0;32mAll lints executed successfully.\033[0m"; \
+	fi; \
+	exit $$exit_code
+endef
+
+
+define install_poetry
+	if ! command -v poetry &> /dev/null; then \
+    	echo "Poetry is not installed. Installing..."; \
+    	curl -sSL https://install.python-poetry.org | python3 -; \
+	else \
+    	echo "Poetry is already installed."; \
+	fi
+endef
+
+define deactivate_virtualenv
+    if [ -n "$$VIRTUAL_ENV" ]; then \
+        unset VIRTUAL_ENV; \
+        unset PYTHONHOME; \
+        unset -f pydoc >/dev/null 2>&1; \
+        OLD_PATH="$$PATH"; \
+        PATH=$$(echo -n "$$PATH" | awk -v RS=: -v ORS=: '/\/virtualenv\/bin$$/ {next} {print}'); \
+        export PATH; \
+        hash -r; \
+        echo "Deactivated the virtual environment."; \
+    fi
+endef
+
+.SILENT: install install/all lint lint/integrations lint/all build run new test clean
+
+
+# Install dependencies
+install:
+	$(call deactivate_virtualenv) && \
+	$(call install_poetry) && \
+	poetry install --with dev --all-extras
+
+
+install/all: install
+	exit_code=0; \
+	for dir in $(wildcard $(CURDIR)/integrations/*); do \
+		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
+		if [ $$count -ne 0 ]; then \
+			echo "Installing $$dir"; \
+		  	cd $$dir; \
+			$(MAKE) install || exit_code=$$?; \
+			cd ../..; \
+		fi; \
+    done; \
+    if [ $$exit_code -ne 0 ]; then \
+        exit 1; \
+    fi
+
+# Linting
+lint:
+	$(ACTIVATE) && \
+	$(call run_lint,.)
+
+lint/integrations:
+	$(ACTIVATE) && \
+	exit_code=0; \
+	for dir in $(wildcard $(CURDIR)/integrations/*); do \
+		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
+		if [ $$count -ne 0 ]; then \
+			echo "Linting $$dir"; \
+		  	cd $$dir; \
+			$(MAKE) lint || exit_code=$$?; \
+			cd ../..; \
+		fi; \
+    done; \
+    if [ $$exit_code -ne 0 ]; then \
+        exit 1; \
+    fi
+
+lint/all: lint lint/integrations
+
+# Development commands
+build: 
+	$(ACTIVATE) && poetry build
+
+run: lint
+	$(ACTIVATE) && poetry run ocean sail ./integrations/example
+
+new:
+	$(ACTIVATE) && poetry run ocean new ./integrations
+
+test: lint
+	$(ACTIVATE) && pytest
+
+clean:
+	@find . -name '.venv' -type d -exec rm -rf {} \;
+	@find . -name '*.pyc' -exec rm -rf {} \;
+	@find . -name '__pycache__' -exec rm -rf {} \;
+	@find . -name 'Thumbs.db' -exec rm -rf {} \;
+	@find . -name '*~' -exec rm -rf {} \;
+	rm -rf .cache
+	rm -rf build
+	rm -rf dist
+	rm -rf *.egg-info
+	rm -rf htmlcov
+	rm -rf .tox/
+	rm -rf docs/_build
+	rm -rf dist/

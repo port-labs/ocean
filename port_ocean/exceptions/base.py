@@ -1,0 +1,2 @@
+class BaseOceanException(Exception):
+    pass
