@@ -16,7 +16,7 @@ configurations:
     sensitive: true
   - name: appHost
     required: true
-    type: string
+    type: url
   - name: gitlabHost
     required: false
     type: string
