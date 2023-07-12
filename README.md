@@ -160,7 +160,7 @@ In order to learn how you can contribute to Ocean, read our [contributing guide]
    ```
 
 ## License
-The Integration Framework is open-source software licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0). See the `LICENSE` file for more details.
+The Ocean Framework is open-source software licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0). See the [LICENSE](./LICENSE) file for more information.
 
 ## Contact
 For any questions or inquiries, please reach out to our team at support@getport.io
