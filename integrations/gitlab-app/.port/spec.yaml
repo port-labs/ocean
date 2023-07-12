@@ -10,11 +10,14 @@ features:
     resources:
       - kind: projects
 configurations:
-  - name: token_mapping
+  - name: tokenMapping
     required: true
     type: object
     sensitive: true
-  - name: app_host
+  - name: appHost
     required: true
+    type: string
+  - name: gitlabHost
+    required: false
     type: string
 ingressRequired: true
