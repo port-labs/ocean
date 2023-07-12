@@ -128,7 +128,7 @@ def list_integrations() -> None:
     List all available public integrations.
     """
     console.print("🌊 Here are the integrations available to you:", style="bold")
-    options = list_git_folders("port-labs", "pulumi", "examples")
+    options = list_git_folders("port-labs", "port-ocean", "integrations")
 
     for option in options:
         console.print(f"⚓️ [bold][blue]{option}[/blue][/bold]")
@@ -151,5 +151,5 @@ def pull(name: str, path: str) -> None:
     NAME: Name of the integration to pull.
     """
     download_github_folder(
-        "port-labs", "pulumi", f"examples/{name}", path or f"./{name}"
+        "port-labs", "port-ocean", f"integrations/{name}", path or f"./{name}"
     )
