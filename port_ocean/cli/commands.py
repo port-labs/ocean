@@ -151,5 +151,5 @@ def pull(name: str, path: str) -> None:
     NAME: Name of the integration to pull.
     """
     download_github_folder(
-        "port-labs", "port-ocean", f"integrations/{name}", path or f"./{name}"
+        "port-labs", "Port-Ocean", f"integrations/{name}", path or f"./{name}"
     )

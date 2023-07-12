@@ -1,6 +1,6 @@
 # Ocean <img src="./assets/OceanSymbol.svg" alt="Ocean" width="100" height="100" align="right">
 
-[![Lint](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
+[![Lint](https://github.com/port-labs/Port-Ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
 
 Ocean is an innovative solution developed by Port to seamlessly integrate various third-party systems with our developer portal product,
 empowering engineers to effortlessly prioritize key features and streamline the integration process.
@@ -160,7 +160,7 @@ In order to learn how you can contribute to Ocean, read our [contributing guide]
    ```
 
 ## License
-The Integration Framework is open-source software licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0). See the `LICENSE` file for more details.
+The Ocean Framework is open-source software licensed under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0). See the [LICENSE](./LICENSE) file for more information.
 
 ## Contact
 For any questions or inquiries, please reach out to our team at support@getport.io
