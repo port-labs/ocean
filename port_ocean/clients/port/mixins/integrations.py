@@ -8,14 +8,20 @@ from port_ocean.clients.port.authentication import PortAuthentication
 
 
 class IntegrationClientMixin:
-    def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
+    def __init__(
+        self,
+        integration_identifier: str,
+        auth: PortAuthentication,
+        client: httpx.AsyncClient,
+    ):
+        self.integration_identifier = integration_identifier
         self.auth = auth
         self.client = client
 
-    async def get_integration(self, identifier: str) -> dict[str, Any]:
-        logger.info(f"Fetching integration with id: {identifier}")
+    async def get_current_integration(self) -> dict[str, Any]:
+        logger.info(f"Fetching integration with id: {self.integration_identifier}")
         response = await self.client.get(
-            f"{self.auth.api_url}/integration/{identifier}",
+            f"{self.auth.api_url}/integration/{self.integration_identifier}",
             headers=await self.auth.headers(),
         )
         response.raise_for_status()
@@ -58,7 +64,7 @@ class IntegrationClientMixin:
     ) -> None:
         logger.info(f"Initiating integration with id: {identifier}")
         try:
-            integration = await self.get_integration(identifier)
+            integration = await self.get_current_integration(identifier)
 
             logger.info("Checking for diff in integration configuration")
             if (

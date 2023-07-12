@@ -29,19 +29,23 @@ jobs:
             # Get the type from ocean-spec.yaml
             type=$(yq eval '.type' "$file")
             folder=$(dirname "$file")
+
             # Get the version from ocean-spec.yaml
             version=$(yq eval '.version' "$file")
+
             # Check if the version exists in the ghcr.io registry
+
             MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
+
             if [ "$MANIFEST" = "200" ]; then            
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
               echo "Building and pushing new image: port-ocean-$type:$version"
-              docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder/.."
+              docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder"
               docker push "ghcr.io/port-labs/port-ocean-$type" --all-tags
             fi
           done
-      - name: Configure AWS Credentials ?
+      - name: Configure AWS Credentials 🔒
         id: aws-credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -52,16 +56,21 @@ jobs:
         run: |
           # Temporary file to store the concatenated YAML content
           temp_file="temp.yaml"
+
           # Output file name
           output_file="index.json"
+
           # AWS S3 bucket details
           aws_s3_bucket="ocean-registry"
+
           # Find all ocean-spec.yaml files under the specified directory
           find integrations/*/.port -type f -name "spec.yaml" > file_list.txt
+
           # Concatenate the YAML files into a temporary file
           while IFS= read -r file; do
               echo "- " >> "$temp_file"
               sed 's/^/  /' "$file" >> "$temp_file"
           done < file_list.txt
+
           yq -j . < "$temp_file" > "$output_file"
           aws s3 cp "$output_file" "s3://$aws_s3_bucket/$output_file"
