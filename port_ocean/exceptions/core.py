@@ -17,7 +17,7 @@ class RawObjectValidationException(BaseOceanException):
     pass
 
 
-class ManipulationHandlerException(BaseOceanException):
+class EntityProcessorException(BaseOceanException):
     pass
 
 

@@ -4,22 +4,24 @@ from loguru import logger
 
 from port_ocean.context.ocean import PortOceanContext, ocean
 from port_ocean.core.handlers import (
-    BaseManipulation,
+    BaseEntityProcessor,
     BasePortAppConfig,
     BaseEntitiesStateApplier,
 )
 from port_ocean.core.handlers.entities_state_applier.port.applier import (
     HttpEntitiesStateApplier,
 )
-from port_ocean.core.handlers.manipulation.jq_manipulation import JQManipulation
+from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
+    JQEntityProcessor,
+)
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.exceptions.core import IntegrationNotStartedException
 
 
 class HandlerMixin:
-    ManipulationHandlerClass: Callable[
-        [PortOceanContext], BaseManipulation
-    ] = JQManipulation
+    EntityProcessorClass: Callable[
+        [PortOceanContext], BaseEntityProcessor
+    ] = JQEntityProcessor
 
     AppConfigHandlerClass: Callable[
         [PortOceanContext], BasePortAppConfig
@@ -30,15 +32,17 @@ class HandlerMixin:
     ] = HttpEntitiesStateApplier
 
     def __init__(self) -> None:
-        self._manipulation: BaseManipulation | None = None
+        self._entity_processor: BaseEntityProcessor | None = None
         self._port_app_config_handler: BasePortAppConfig | None = None
         self._entities_state_applier: BaseEntitiesStateApplier | None = None
 
     @property
-    def manipulation(self) -> BaseManipulation:
-        if not self._manipulation:
-            raise IntegrationNotStartedException("Manipulation class not initialized")
-        return self._manipulation
+    def entity_processor(self) -> BaseEntityProcessor:
+        if not self._entity_processor:
+            raise IntegrationNotStartedException(
+                "Entity Processor class not initialized"
+            )
+        return self._entity_processor
 
     @property
     def port_app_config_handler(self) -> BasePortAppConfig:
@@ -54,9 +58,9 @@ class HandlerMixin:
             )
         return self._entities_state_applier
 
-    async def _init_manipulation_instance(self) -> BaseManipulation:
-        self._manipulation = self.ManipulationHandlerClass(ocean)
-        return self._manipulation
+    async def _init_entity_processor_instance(self) -> BaseEntityProcessor:
+        self._entity_processor = self.EntityProcessorClass(ocean)
+        return self._entity_processor
 
     async def _init_port_app_config_handler_instance(
         self,
@@ -70,6 +74,6 @@ class HandlerMixin:
 
     async def initialize_handlers(self) -> None:
         logger.info("Initializing integration components")
-        await self._init_manipulation_instance()
+        await self._init_entity_processor_instance()
         await self._init_port_app_config_handler_instance()
         await self._init_entities_state_applier_instance()

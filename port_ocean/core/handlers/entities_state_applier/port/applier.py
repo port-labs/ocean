@@ -17,7 +17,7 @@ from port_ocean.core.handlers.entities_state_applier.port.order_by_entities_depe
 from port_ocean.core.handlers.entities_state_applier.port.validate_entity_relations import (
     validate_entity_relations,
 )
-from port_ocean.core.handlers.manipulation.base import EntityPortDiff
+from port_ocean.core.handlers.entity_processor.base import EntityPortDiff
 from port_ocean.core.models import Entity
 from port_ocean.core.types import EntityDiff
 from port_ocean.core.utils import is_same_entity, get_unique, get_port_diff

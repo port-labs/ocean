@@ -3,14 +3,14 @@ from typing import Any
 
 import pyjq as jq  # type: ignore
 
-from port_ocean.core.handlers.manipulation.base import BaseManipulation
+from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.types import RawEntityDiff, EntityDiff
-from port_ocean.exceptions.core import ManipulationHandlerException
+from port_ocean.exceptions.core import EntityProcessorException
 
 
-class JQManipulation(BaseManipulation):
+class JQEntityProcessor(BaseEntityProcessor):
     @lru_cache
     def _compile(self, pattern: str) -> Any:
         return jq.compile(pattern)
@@ -27,7 +27,7 @@ class JQManipulation(BaseManipulation):
         if isinstance(value, bool):
             return value
 
-        raise ManipulationHandlerException(
+        raise EntityProcessorException(
             f"Expected boolean value, got {type(value)} instead"
         )
 

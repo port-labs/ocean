@@ -2,7 +2,7 @@ from typing import Iterable, Any, TypeVar
 
 from pydantic import parse_obj_as, ValidationError
 
-from port_ocean.core.handlers.manipulation.base import EntityPortDiff
+from port_ocean.core.handlers.entity_processor.base import EntityPortDiff
 from port_ocean.core.models import Entity
 from port_ocean.exceptions.core import RawObjectValidationException
 

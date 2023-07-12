@@ -65,7 +65,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info("Calculating diff in entities between states")
         return await asyncio.gather(
             *(
-                self.manipulation.parse_items(mapping, results)
+                self.entity_processor.parse_items(mapping, results)
                 for mapping, results in raw_diff
             )
         )
