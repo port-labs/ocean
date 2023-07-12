@@ -13,7 +13,7 @@ from port_ocean.core.integrations.mixins.handler import HandlerMixin
 from port_ocean.core.models import Entity
 from port_ocean.core.types import RawEntityDiff, EntityDiff, RESYNC_EVENT_LISTENER
 from port_ocean.core.utils import validate_result, zip_and_sum
-from port_ocean.exceptions.core import RawObjectValidationException
+from port_ocean.exceptions.core import RawObjectValidationException, OceanAbortException
 from port_ocean.utils import get_function_location
 
 
@@ -27,13 +27,13 @@ class SyncMixin(HandlerMixin, EventsMixin):
         entities: list[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
-        await self.transport.upsert(entities, user_agent_type)
+        await self.entities_state_applier.upsert(entities, user_agent_type)
         logger.info("Finished registering change")
 
     async def unregister(
         self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
-        await self.transport.delete(entities, user_agent_type)
+        await self.entities_state_applier.delete(entities, user_agent_type)
         logger.info("Finished unregistering change")
 
     async def sync(
@@ -43,8 +43,8 @@ class SyncMixin(HandlerMixin, EventsMixin):
     ) -> None:
         entities_at_port = await ocean.port_client.search_entities(user_agent_type)
 
-        await self.transport.upsert(entities, user_agent_type)
-        await self.transport.delete_diff(
+        await self.entities_state_applier.upsert(entities, user_agent_type)
+        await self.entities_state_applier.delete_diff(
             {"before": entities_at_port, "after": entities}, user_agent_type
         )
 
@@ -65,7 +65,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info("Calculating diff in entities between states")
         return await asyncio.gather(
             *(
-                self.manipulation.parse_items(mapping, results)
+                self.entity_processor.parse_items(mapping, results)
                 for mapping, results in raw_diff
             )
         )
@@ -73,17 +73,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _resync_function_wrapper(
         self, fn: RESYNC_EVENT_LISTENER, kind: str
     ) -> list[dict[str, Any]]:
-        results = await fn(kind)
         try:
+            results = await fn(kind)
             return validate_result(results)
         except RawObjectValidationException as error:
-            raise RawObjectValidationException(
+            raise OceanAbortException(
                 f"Failed to validate raw data for returned data from {get_function_location(fn)}, error: {error}"
+            ) from error
+        except Exception as error:
+            raise OceanAbortException(
+                f"Failed to execute {get_function_location(fn)}, error: {error}"
             ) from error
 
     async def _get_resource_raw_results(
         self, resource_config: ResourceConfig
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], list[Exception]]:
         logger.info(f"Fetching {resource_config.kind} resync results")
         tasks: list[Awaitable[list[dict[Any, Any]]]] = []
         with logger.contextualize(kind=resource_config.kind):
@@ -106,12 +110,27 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             logger.info(f"Found {len(tasks)} resync tasks for {resource_config.kind}")
 
+            results_with_error: list[
+                tuple[list[dict[Any, Any]], Exception]
+            ] = await asyncio.gather(*tasks, return_exceptions=True)
             results: list[dict[Any, Any]] = list(
-                chain.from_iterable(await asyncio.gather(*tasks))
+                chain.from_iterable(
+                    [
+                        result
+                        for result, _ in results_with_error
+                        if not isinstance(result, Exception)
+                    ]
+                )
             )
 
-            logger.info(f"Triggered {len(tasks)} tasks for {resource_config.kind}")
-            return results
+            errors = [
+                error for _, error in results_with_error if isinstance(error, Exception)
+            ]
+
+            logger.info(
+                f"Triggered {len(tasks)} tasks for {resource_config.kind}, failed: {len(errors)}"
+            )
+            return results, errors
 
     async def _register_resource_raw(
         self,
@@ -132,7 +151,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         entities_after: list[Entity] = objects_diff[0]["after"]
-        await self.transport.upsert(entities_after, user_agent_type)
+        await self.entities_state_applier.upsert(entities_after, user_agent_type)
         return entities_after
 
     async def _unregister_resource_raw(
@@ -154,7 +173,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         entities_after: list[Entity] = objects_diff[0]["before"]
-        await self.transport.delete(entities_after, user_agent_type)
+        await self.entities_state_applier.delete(entities_after, user_agent_type)
         logger.info("Finished unregistering change")
         return entities_after
 
@@ -163,8 +182,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         resource_config: ResourceConfig,
         user_agent_type: UserAgentType,
         batch_work_size: int | None,
-    ) -> list[Entity]:
-        results = await self._get_resource_raw_results(resource_config)
+    ) -> tuple[list[Entity], list[Exception]]:
+        results, errors = await self._get_resource_raw_results(resource_config)
 
         tasks = []
 
@@ -183,7 +202,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         logger.info(
             f"Finished registering change for {len(results)} raw results for kind: {resource_config.kind}"
         )
-        return entities
+        return entities, errors
 
     async def register_raw(
         self,
@@ -249,7 +268,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
             )
 
-            await self.transport.apply_diff(
+            await self.entities_state_applier.apply_diff(
                 {"before": entities_before, "after": entities_after}, user_agent_type
             )
 
@@ -258,6 +277,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         _: dict[Any, Any] | None = None,
         trigger_type: TriggerType = "machine",
         user_agent_type: UserAgentType = UserAgentType.exporter,
+        silent: bool = True,
     ) -> None:
         logger.info("Resync was triggered")
 
@@ -266,7 +286,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             entities_at_port = await ocean.port_client.search_entities(user_agent_type)
 
-            created_entities = await asyncio.gather(
+            creation_results: list[
+                tuple[list[Entity], list[Exception]]
+            ] = await asyncio.gather(
                 *(
                     self._register_in_batches(
                         resource, user_agent_type, ocean.config.batch_work_size
@@ -274,8 +296,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     for resource in app_config.resources
                 )
             )
-            flat_created_entities: list[Entity] = sum(created_entities, [])
-            await self.transport.delete_diff(
-                {"before": entities_at_port, "after": flat_created_entities},
-                user_agent_type,
+            flat_created_entities, errors = zip_and_sum(creation_results)
+
+            if not errors:
+                await self.entities_state_applier.delete_diff(
+                    {"before": entities_at_port, "after": flat_created_entities},
+                    user_agent_type,
+                )
+
+            message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
+            error_group = ExceptionGroup(
+                f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state",
+                errors,
             )
+            if not silent:
+                raise error_group
+
+            logger.error(message, exc_info=error_group)

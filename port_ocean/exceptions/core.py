@@ -1,6 +1,22 @@
 from port_ocean.exceptions.base import BaseOceanException
 
 
+class OceanAbortException(BaseOceanException):
+    pass
+
+
+class RawObjectValidationException(OceanAbortException):
+    pass
+
+
+class EntityProcessorException(BaseOceanException):
+    pass
+
+
+class RelationValidationException(OceanAbortException):
+    pass
+
+
 class UnsupportedTriggerChannelException(BaseOceanException):
     pass
 
@@ -10,16 +26,4 @@ class IntegrationAlreadyStartedException(BaseOceanException):
 
 
 class IntegrationNotStartedException(BaseOceanException):
-    pass
-
-
-class RawObjectValidationException(BaseOceanException):
-    pass
-
-
-class ManipulationHandlerException(BaseOceanException):
-    pass
-
-
-class RelationValidationException(BaseOceanException):
     pass

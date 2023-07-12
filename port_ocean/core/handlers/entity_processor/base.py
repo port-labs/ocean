@@ -16,7 +16,7 @@ class EntityPortDiff:
     created: list[Entity] = field(default_factory=list)
 
 
-class BaseManipulation(BaseWithContext):
+class BaseEntityProcessor(BaseWithContext):
     @abstractmethod
     async def _parse_items(
         self, mapping: ResourceConfig, raw_data: RawEntityDiff

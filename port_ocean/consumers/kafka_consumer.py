@@ -19,6 +19,7 @@ class KafkaConsumerConfig(BaseModel):
     security_protocol: str
     authentication_mechanism: str
     kafka_security_enabled: bool
+    consumer_poll_timeout: int
 
 
 class KafkaConsumer(BaseConsumer):
@@ -30,6 +31,7 @@ class KafkaConsumer(BaseConsumer):
     ) -> None:
         self.running = False
         self.org_id = org_id
+        self.config = config
 
         signal.signal(signal.SIGINT, self.exit_gracefully)
         signal.signal(signal.SIGTERM, self.exit_gracefully)
@@ -74,7 +76,7 @@ class KafkaConsumer(BaseConsumer):
             logger.info("Start consumer...")
 
             self.consumer.subscribe(
-                [f"{self.org_id}.runs", f"{self.org_id}.change.log"],
+                [f"{self.org_id}.change.log"],
                 on_assign=lambda _, partitions: logger.info(
                     f"Assignment: {partitions}"
                 ),
@@ -83,7 +85,7 @@ class KafkaConsumer(BaseConsumer):
             self.running = True
             while self.running:
                 try:
-                    msg = self.consumer.poll(timeout=1.0)
+                    msg = self.consumer.poll(timeout=self.config.consumer_poll_timeout)
                     if msg is None:
                         continue
                     if msg.error():

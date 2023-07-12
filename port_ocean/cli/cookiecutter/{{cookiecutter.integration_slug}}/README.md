@@ -5,8 +5,8 @@
 ## Development Requirements
 
 - Python3.11.0
-- Pip
 - Poetry (Python Package Manager)
+- Port-Ocean
 
 ## Installation
 
@@ -15,9 +15,13 @@ make install
 ```
 
 ## Runnning Localhost
-
-`make run`
-
+```sh
+make run
+```
+or
+```sh
+ocean sail
+```
 
 ## Running Tests
 
@@ -30,3 +34,14 @@ make install
 ## Access Redoc Documentation
 
 > <http://localhost:8080/redoc>
+
+
+## Folder Structure
+The {{cookiecutter.integration_name}} integration suggested folder structure is as follows:
+
+```
+{{cookiecutter.integration_name}}/
+????? main.py
+????? pyproject.toml
+????? Dockerfile
+```

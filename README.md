@@ -46,7 +46,7 @@ poetry add port-ocean[cli]
 ![image](./assets/RealTimeUpdatesArchitecture.svg)
 
 ## Folder Structure
-The Integration Framework follows a specific folder structure within the mono repository. This structure ensures proper organization and easy identification of integration modules. The suggested folder structure is as follows:
+The Ocean Integration Framework follows a specific folder structure within this mono repository. This structure ensures proper organization and easy identification of integration modules. The suggested folder structure is as follows:
 
 ```
 port-ocean/
@@ -55,10 +55,10 @@ port-ocean/
 │ ├── core/
 | └── ...
 └── integrations/
-│  ├───integration_name/
-│  ├──── main.py
-│  ├──── pyproject.toml
-│  └──── Dockerfile
+│  └─── integration_name/
+│     ├──── main.py
+│     ├──── pyproject.toml
+│     └──── Dockerfile
 ├── ...
 └── ...
 ```

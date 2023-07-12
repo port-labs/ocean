@@ -3,9 +3,35 @@ name = "port-ocean"
 version = "0.1.0.dev3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
+homepage = "https://app.getport.io"
+repository = "https://github.com/port-labs/port-ocean"
+
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>"]
 packages = [
     { include = "port_ocean", from = "." }
+]
+
+keywords = ["ocean", "port-ocean", "port"]
+classifiers = [
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Devops Engineers",
+    "Intended Audience :: Devex Engineers",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Frameowrk :: Port",
+    "Topic :: Developer Portal :: Utilities",
+    "Topic :: Developer Experience :: Utilities",
+    "Topic :: Devops :: Utilities",
+    "Topic :: Devex :: Utilities",
+    "Topic :: Developer Portal :: Framerok",
 ]
 
 [tool.poetry.scripts]
@@ -18,7 +44,6 @@ build-backend = "poetry.masonry.api"
 [tool.poetry.dependencies]
 python = "^3.11"
 pydantic = "^1.10.8"
-requests = "^2.31.0"
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = "^2.3.4"
@@ -34,7 +59,6 @@ six = "^1.16.0"
 click = { version = "^8.1.3", optional = true }
 rich = { version = "^13.4.1", optional = true }
 cookiecutter = { version = "^2.1.1", optional = true }
-toml = { version = "^0.10.2", optional = true }
 
 [tool.poetry.extras]
 cli = ["click", "rich", "cookiecutter", "toml"]
@@ -45,11 +69,15 @@ pytest = "^7.2"
 black = "^23.3.0"
 mypy = "^1.3.0"
 pylint = "^2.17.4"
-types-requests = "^2.31.0.1"
 types-pyyaml = "^6.0.12.10"
 ruff = "^0.0.272"
 types-toml = "^0.10.8.6"
+towncrier = "^23.6.0"
 
+[tool.towncrier]
+directory = "changelog_fragments"
+filename = "CHANGELOG.md"
+package = "port_ocean"
 
 [tool.mypy]
 exclude = [
