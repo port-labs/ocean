@@ -65,7 +65,7 @@ class IntegrationClientMixin:
             logger.info("Checking for diff in integration configuration")
             if (
                 integration["changelogDestination"] != changelog_destination
-                and integration["installationAppType"] == _type
+                or integration["installationAppType"] != _type
             ):
                 await self.patch_integration(identifier, _type, changelog_destination)
         except httpx.HTTPStatusError as e:

@@ -6,7 +6,7 @@ from port_ocean.core.models import Entity
 from port_ocean.core.types import EntityDiff
 
 
-class BaseTransport(BaseWithContext):
+class BaseEntitiesStateApplier(BaseWithContext):
     @abstractmethod
     async def apply_diff(
         self,

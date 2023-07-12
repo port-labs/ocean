@@ -32,8 +32,7 @@ def parse_config_provider(value: str) -> tuple[str, str]:
             f"Invalid pattern: {value}. Pattern should match: {PROVIDER_CONFIG_PATTERN}"
         )
 
-    index = value.find(" ")
-    provider_type, provider_value = value[:index], value[index + 1 :]
+    provider_type, provider_value = value.split(" ", 1)
 
     return provider_type, provider_value
 
