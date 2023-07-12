@@ -26,12 +26,14 @@ class TokenResponse(BaseModel):
 class PortAuthentication:
     def __init__(
         self,
+        client: httpx.AsyncClient,
         client_id: str,
         client_secret: str,
         api_url: str,
         integration_identifier: str,
         integration_type: str,
     ):
+        self.client = client
         self.api_url = api_url
         self.client_id = client_id
         self.client_secret = client_secret
@@ -40,15 +42,14 @@ class PortAuthentication:
         self._last_token_object: TokenResponse | None = None
 
     async def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
-        async with httpx.AsyncClient() as client:
-            logger.info(f"Fetching access token for clientId: {client_id}")
+        logger.info(f"Fetching access token for clientId: {client_id}")
 
-            credentials = {"clientId": client_id, "clientSecret": client_secret}
-            token_response = await client.post(
-                f"{self.api_url}/auth/access_token", json=credentials
-            )
-            token_response.raise_for_status()
-            return TokenResponse(**token_response.json())
+        credentials = {"clientId": client_id, "clientSecret": client_secret}
+        token_response = await self.client.post(
+            f"{self.api_url}/auth/access_token", json=credentials
+        )
+        token_response.raise_for_status()
+        return TokenResponse(**token_response.json())
 
     def user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
         user_agent = f"port-ocean/{self.integration_type}/{self.integration_identifier}"

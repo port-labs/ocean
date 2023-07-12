@@ -8,8 +8,9 @@ from port_ocean.core.models import Entity
 
 
 class EntityClientMixin:
-    def __init__(self, auth: PortAuthentication):
+    def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
         self.auth = auth
+        self.client = client
 
     async def upsert_entity(
         self,
@@ -24,20 +25,19 @@ class EntityClientMixin:
         )
         headers = await self.auth.headers(user_agent_type)
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
-                json=entity.dict(exclude_unset=True),
-                headers=headers,
-                params={
-                    "upsert": "true",
-                    "merge": str(request_options.get("merge", False)).lower(),
-                    "create_missing_related_entities": str(
-                        request_options.get("create_missing_related_entities", False)
-                    ).lower(),
-                    "validation_only": str(validation_only).lower(),
-                },
-            )
+        response = await self.client.post(
+            f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
+            json=entity.dict(exclude_unset=True),
+            headers=headers,
+            params={
+                "upsert": "true",
+                "merge": str(request_options.get("merge", False)).lower(),
+                "create_missing_related_entities": str(
+                    request_options.get("create_missing_related_entities", False)
+                ).lower(),
+                "validation_only": str(validation_only).lower(),
+            },
+        )
 
         if response.is_error:
             logger.error(
@@ -58,16 +58,15 @@ class EntityClientMixin:
         logger.info(
             f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
         )
-        async with httpx.AsyncClient() as client:
-            response = await client.delete(
-                f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{entity.identifier}",
-                headers=await self.auth.headers(user_agent_type),
-                params={
-                    "delete_dependents": str(
-                        request_options.get("delete_dependent_entities", False)
-                    ).lower()
-                },
-            )
+        response = await self.client.delete(
+            f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{entity.identifier}",
+            headers=await self.auth.headers(user_agent_type),
+            params={
+                "delete_dependents": str(
+                    request_options.get("delete_dependent_entities", False)
+                ).lower()
+            },
+        )
 
         if response.is_error:
             logger.error(
@@ -82,11 +81,10 @@ class EntityClientMixin:
     async def validate_entity_exist(self, identifier: str, blueprint: str) -> None:
         logger.info(f"Validating entity {identifier} of blueprint {blueprint} exists")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.auth.api_url}/blueprints/{blueprint}/entities/{identifier}",
-                headers=await self.auth.headers(),
-            )
+        response = await self.client.get(
+            f"{self.auth.api_url}/blueprints/{blueprint}/entities/{identifier}",
+            headers=await self.auth.headers(),
+        )
         if response.is_error:
             logger.error(
                 f"Error validating "
@@ -109,16 +107,15 @@ class EntityClientMixin:
         }
 
         logger.info(f"Searching entities with query {query}")
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.auth.api_url}/entities/search",
-                json=query,
-                headers=await self.auth.headers(user_agent_type),
-                params={
-                    "exclude_calculated_properties": "true",
-                    "include": ["blueprint", "identifier"],
-                },
-            )
+        response = await self.client.post(
+            f"{self.auth.api_url}/entities/search",
+            json=query,
+            headers=await self.auth.headers(user_agent_type),
+            params={
+                "exclude_calculated_properties": "true",
+                "include": ["blueprint", "identifier"],
+            },
+        )
         response.raise_for_status()
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
@@ -136,12 +133,11 @@ class EntityClientMixin:
         }
 
         logger.info(f"Searching dependent entity with body {body}")
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.auth.api_url}/entities/search",
-                headers=await self.auth.headers(),
-                json=body,
-            )
+        response = await self.client.post(
+            f"{self.auth.api_url}/entities/search",
+            headers=await self.auth.headers(),
+            json=body,
+        )
         response.raise_for_status()
 
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
