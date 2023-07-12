@@ -1,4 +1,3 @@
-SHELL := /bin/bash
 ACTIVATE := . .venv/bin/activate
 
 define run_lint
@@ -13,6 +12,15 @@ define run_lint
 		echo -e "\033[0;32mAll lints executed successfully.\033[0m"; \
 	fi; \
 	exit $$exit_code
+endef
+
+define install_poetry
+	if ! command -v poetry &> /dev/null; then \
+    	echo "Poetry is not installed. Installing..."; \
+    	curl -sSL https://install.python-poetry.org | python3 -; \
+	else \
+    	echo "Poetry is already installed."; \
+	fi
 endef
 
 define deactivate_virtualenv
@@ -32,12 +40,7 @@ endef
 
 install:
 	$(call deactivate_virtualenv) && \
-	pip install poetry && \
-	poetry install
-
-install/dev:
-	$(call deactivate_virtualenv) && \
-	pip install poetry && \
+	$(call install_poetry) && \
 	poetry install --with dev
 
 lint:
