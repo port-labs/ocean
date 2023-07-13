@@ -1,0 +1,1 @@
+Added spec.yaml to the scaffolding

@@ -1,7 +1,10 @@
 import inspect
+from pathlib import Path
 from time import time
 from typing import Callable, Any
 from uuid import uuid4
+
+import yaml
 
 
 def get_time(seconds_precision: bool = True) -> float:
@@ -21,3 +24,10 @@ def get_function_location(func: Callable[..., Any]) -> str:
     file_path = inspect.getsourcefile(func)
     line_number = inspect.getsourcelines(func)[1]
     return f"{file_path}:{line_number}"
+
+
+def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
+    try:
+        return yaml.safe_load((path / ".port/spec.yaml").read_text())
+    except FileNotFoundError:
+        return None
