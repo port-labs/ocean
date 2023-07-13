@@ -1,0 +1,189 @@
+import asyncio
+import json
+from pathlib import Path
+from typing import Type, Any, TypedDict, Optional
+
+import httpx
+import yaml
+from loguru import logger
+from pydantic import BaseModel, Extra
+from starlette import status
+
+from port_ocean.clients.port.client import PortClient
+from port_ocean.config.integration import IntegrationConfiguration
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from port_ocean.exceptions.port_defaults import AbortDefaultCreationError
+
+
+class Preset(TypedDict):
+    blueprint: str
+    data: list[dict[str, Any]]
+
+
+class Defaults(BaseModel, extra=Extra.allow):
+    blueprints: list[dict[str, Any]] = []
+    actions: list[Preset] = []
+    scorecards: list[Preset] = []
+    port_app_config: Optional[PortAppConfig] = None
+
+
+async def _is_integration_exists(port_client: PortClient) -> bool:
+    try:
+        await port_client.get_current_integration()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code != status.HTTP_404_NOT_FOUND:
+            raise e
+
+        return False
+
+    return True
+
+
+def deconstruct_blueprints(
+    raw_blueprints: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], ...]:
+    all_blueprints, all_relations, all_mirror, all_calculated = [], [], [], []
+
+    for blueprint in raw_blueprints.copy():
+        all_calculated.append(blueprint.copy())
+        blueprint.pop("calculated", [])
+
+        all_mirror.append(blueprint.copy())
+        blueprint.pop("mirror", [])
+
+        all_relations.append(blueprint.copy())
+        blueprint.pop("relations", [])
+
+        all_blueprints.append(blueprint)
+
+    return all_blueprints, all_relations, all_mirror, all_calculated
+
+
+async def _create_resources(
+    port_client: PortClient,
+    defaults: Defaults,
+    integration_config: IntegrationConfiguration,
+) -> None:
+    creation_stage, *blueprint_patches = deconstruct_blueprints(defaults.blueprints)
+
+    create_results = await asyncio.gather(
+        *[port_client.create_blueprint(blueprint) for blueprint in creation_stage],
+        return_exceptions=True,
+    )
+
+    errors = [error for error in create_results if isinstance(error, Exception)]
+    created_blueprints = [
+        blueprint["identifier"]
+        for blueprint in create_results
+        if not isinstance(blueprint, Exception)
+    ]
+
+    if errors:
+        for error in errors:
+            if isinstance(error, httpx.HTTPStatusError):
+                logger.warning(
+                    f"Failed to create resources: {error.response.text}. Rolling back changes..."
+                )
+
+        raise AbortDefaultCreationError(created_blueprints, errors)
+
+    try:
+        for patch_stage in blueprint_patches:
+            await asyncio.gather(
+                *[
+                    port_client.patch_blueprint(blueprint["identifier"], blueprint)
+                    for blueprint in patch_stage
+                ]
+            )
+
+        await asyncio.gather(
+            *[
+                port_client.create_action(blueprint_actions["blueprint"], action)
+                for blueprint_actions in defaults.actions
+                for action in blueprint_actions["data"]
+            ]
+        )
+
+        await asyncio.gather(
+            *[
+                port_client.create_scorecard(blueprint_scorecards["blueprint"], action)
+                for blueprint_scorecards in defaults.scorecards
+                for action in blueprint_scorecards["data"]
+            ]
+        )
+
+        await port_client.initiate_integration(
+            integration_config.integration.type,
+            integration_config.event_listener.to_request(),
+            port_app_config=defaults.port_app_config,
+        )
+    except httpx.HTTPStatusError as e:
+        logger.exception(
+            f"Failed to create resources: {e.response.text}. Rolling back changes..."
+        )
+        raise AbortDefaultCreationError(created_blueprints, [e])
+
+
+async def initialize_defaults(
+    config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
+) -> None:
+    port_client = PortClient(
+        base_url=integration_config.port.base_url,
+        client_id=integration_config.port.client_id,
+        client_secret=integration_config.port.client_secret,
+        integration_identifier=integration_config.integration.identifier,
+        integration_type=integration_config.integration.type,
+    )
+    is_exists = await _is_integration_exists(port_client)
+    if is_exists:
+        return None
+    defaults = get_port_defaults(config_class)
+    if not defaults:
+        return None
+
+    try:
+        await _create_resources(port_client, defaults, integration_config)
+    except AbortDefaultCreationError as e:
+        logger.warning(
+            f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"
+        )
+        await asyncio.gather(
+            *[
+                port_client.delete_blueprint(blueprint["identifier"], silent=True)
+                for blueprint in defaults.blueprints
+            ]
+        )
+
+        raise ExceptionGroup(str(e), e.errors)
+
+
+def get_port_defaults(
+    port_app_config_class: Type[PortAppConfig], base_path: Path = Path(".")
+) -> Defaults | None:
+    defaults_dir = base_path / ".port/defaults"
+    if not defaults_dir.exists():
+        return None
+
+    if not defaults_dir.is_dir():
+        raise Exception(f"Defaults directory is not a directory: {defaults_dir}")
+
+    default_jsons = {}
+    for path in defaults_dir.iterdir():
+        if not path.is_file() or (path.suffix != ".json" and path.suffix != ".yaml"):
+            raise Exception(
+                f"Defaults directory should contain only json files. Found: {path}"
+            )
+
+        if path.stem in Defaults.__fields__:
+            if path.suffix == ".yaml":
+                default_jsons[path.stem] = yaml.safe_load(path.read_text())
+            default_jsons[path.stem] = json.loads(path.read_text())
+
+    return Defaults(
+        blueprints=default_jsons.get("blueprints", []),
+        actions=default_jsons.get("actions", []),
+        scorecards=default_jsons.get("scorecards", []),
+        port_app_config=port_app_config_class(
+            **default_jsons.get("port_app_config", {})
+        ),
+    )

@@ -20,9 +20,9 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.deafults import initialize_defaults
 from port_ocean.logger_setup import setup_logger
 from port_ocean.middlewares import request_handler
+from port_ocean.port_defaults import initialize_defaults
 from port_ocean.utils import get_spec_file
 
 
@@ -121,8 +121,8 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
     )
 
     defaults_task = initialize_defaults(
-        app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.port_client
+        app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config
     )
-    asyncio.get_event_loop().run_until_complete(defaults_task)
+    asyncio.new_event_loop().run_until_complete(defaults_task)
 
     uvicorn.run(app, host="0.0.0.0", port=8000)

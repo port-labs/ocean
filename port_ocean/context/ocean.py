@@ -4,7 +4,6 @@ from typing import Callable, TYPE_CHECKING, Any
 from fastapi import APIRouter
 from werkzeug.local import LocalProxy, LocalStack
 
-from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.models import Entity
 from port_ocean.core.types import (
@@ -18,6 +17,7 @@ if TYPE_CHECKING:
     from port_ocean.config.integration import IntegrationConfiguration
     from port_ocean.core.integrations.base import BaseIntegration
     from port_ocean.ocean import Ocean
+    from port_ocean.clients.port.client import PortClient
 
 
 @dataclass
@@ -41,7 +41,7 @@ class PortOceanContext:
         return self.app.config.integration.config
 
     @property
-    def port_client(self) -> PortClient:
+    def port_client(self) -> "PortClient":
         return self.app.port_client
 
     def on_resync(
