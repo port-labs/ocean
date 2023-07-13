@@ -124,7 +124,7 @@ async def _create_resources(
         raise AbortDefaultCreationError(created_blueprints, [e])
 
 
-async def initialize_defaults(
+async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     port_client = PortClient(
@@ -155,6 +155,14 @@ async def initialize_defaults(
         )
 
         raise ExceptionGroup(str(e), e.errors)
+
+
+def initialize_defaults(
+    config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
+) -> None:
+    asyncio.new_event_loop().run_until_complete(
+        _initialize_defaults(config_class, integration_config)
+    )
 
 
 def get_port_defaults(

@@ -1,4 +1,3 @@
-import asyncio
 import sys
 from importlib.util import spec_from_file_location, module_from_spec
 from inspect import getmembers, isclass
@@ -120,9 +119,9 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
         "app", default_app
     )
 
-    defaults_task = initialize_defaults(
-        app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config
-    )
-    asyncio.new_event_loop().run_until_complete(defaults_task)
+    if app.config.create_default_resources_on_install:
+        initialize_defaults(
+            app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config
+        )
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
