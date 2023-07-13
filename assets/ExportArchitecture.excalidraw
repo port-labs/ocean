@@ -419,11 +419,11 @@
       "locked": false,
       "fontSize": 16,
       "fontFamily": 1,
-      "text": "Trigger channel",
+      "text": "Event listener",
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "Trigger channel",
+      "originalText": "Event listener",
       "lineHeight": 1.25,
       "baseline": 14
     },

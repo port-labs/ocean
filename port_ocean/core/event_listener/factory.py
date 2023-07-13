@@ -4,29 +4,29 @@ from loguru import logger
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.base import BaseWithContext
-from port_ocean.core.trigger_channel import (
-    HttpTriggerChannel,
-    KafkaTriggerChannel,
-    SampleTriggerChannel,
+from port_ocean.core.event_listener import (
+    HttpEventListener,
+    KafkaEventListener,
+    SampleEventListener,
 )
-from port_ocean.core.trigger_channel import (
-    HttpTriggerChannelSettings,
-    KafkaTriggerChannelSettings,
-    SampleTriggerChannelSettings,
+from port_ocean.core.event_listener import (
+    HttpEventListenerSettings,
+    KafkaEventListenerSettings,
+    SampleEventListenerSettings,
 )
-from port_ocean.core.trigger_channel.base import (
-    BaseTriggerChannel,
-    TriggerChannelEvents,
+from port_ocean.core.event_listener.base import (
+    BaseEventListener,
+    EventListenerEvents,
 )
-from port_ocean.exceptions.core import UnsupportedTriggerChannelException
+from port_ocean.exceptions.core import UnsupportedEventListenerTypeException
 
 
-class TriggerChannelFactory(BaseWithContext):
+class EventListenerFactory(BaseWithContext):
     def __init__(
         self,
         context: PortOceanContext,
         installation_id: str,
-        events: TriggerChannelEvents,
+        events: EventListenerEvents,
     ):
         super().__init__(context)
         self.installation_id = installation_id
@@ -45,23 +45,23 @@ class TriggerChannelFactory(BaseWithContext):
 
         return wrapper
 
-    async def create_trigger_channel(self) -> BaseTriggerChannel:
-        wrapped_events: TriggerChannelEvents = {
+    async def create_event_listener(self) -> BaseEventListener:
+        wrapped_events: EventListenerEvents = {
             "on_resync": self.on_event(self.events["on_resync"])
         }
-        trigger_channel: BaseTriggerChannel
-        config = self.context.config.trigger_channel
+        event_listener: BaseEventListener
+        config = self.context.config.event_listener
         _type = config.type.lower()
-        assert_message = "Invalid trigger channel config, expected KafkaTriggerChannelSettings and got {0}"
-        logger.info(f"Found trigger channel type: {_type}")
+        assert_message = "Invalid event listener config, expected KafkaEventListenerSettings and got {0}"
+        logger.info(f"Found event listener type: {_type}")
 
         match _type:
             case "kafka":
                 assert isinstance(
-                    config, KafkaTriggerChannelSettings
+                    config, KafkaEventListenerSettings
                 ), assert_message.format(type(config))
                 org_id = await self.context.port_client.get_org_id()
-                trigger_channel = KafkaTriggerChannel(
+                event_listener = KafkaEventListener(
                     wrapped_events,
                     config,
                     org_id,
@@ -71,19 +71,19 @@ class TriggerChannelFactory(BaseWithContext):
 
             case "webhook":
                 assert isinstance(
-                    config, HttpTriggerChannelSettings
+                    config, HttpEventListenerSettings
                 ), assert_message.format(type(config))
-                trigger_channel = HttpTriggerChannel(wrapped_events, config)
+                event_listener = HttpEventListener(wrapped_events, config)
 
             case "sample":
                 assert isinstance(
-                    config, SampleTriggerChannelSettings
+                    config, SampleEventListenerSettings
                 ), assert_message.format(type(config))
-                trigger_channel = SampleTriggerChannel(wrapped_events, config)
+                event_listener = SampleEventListener(wrapped_events, config)
 
             case _:
-                raise UnsupportedTriggerChannelException(
-                    f"Trigger channel {_type} not supported"
+                raise UnsupportedEventListenerTypeException(
+                    f"Event listener {_type} not supported"
                 )
 
-        return trigger_channel
+        return event_listener
