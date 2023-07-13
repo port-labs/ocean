@@ -1,8 +1,9 @@
 from typing import List
 
 from gitlab import Gitlab
-from gitlabapp.services.gitlab_service import GitlabService
 from loguru import logger
+
+from gitlab_integration.services.gitlab_service import GitlabService
 from port_ocean.context.ocean import ocean
 
 

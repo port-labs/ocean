@@ -1,12 +1,12 @@
 from gitlab import Gitlab
 
-from gitlabapp.events.event_handler import EventHandler
-from gitlabapp.events.hooks.issues import Issues
-from gitlabapp.events.hooks.jobs import Job
-from gitlabapp.events.hooks.merge_request import MergeRequest
-from gitlabapp.events.hooks.pipelines import Pipelines
-from gitlabapp.events.hooks.push import PushHook
-from gitlabapp.services.gitlab_service import GitlabService
+from gitlab_integration.events.event_handler import EventHandler
+from gitlab_integration.events.hooks.issues import Issues
+from gitlab_integration.events.hooks.jobs import Job
+from gitlab_integration.events.hooks.merge_request import MergeRequest
+from gitlab_integration.events.hooks.pipelines import Pipelines
+from gitlab_integration.events.hooks.push import PushHook
+from gitlab_integration.services.gitlab_service import GitlabService
 from port_ocean.context.ocean import ocean
 
 

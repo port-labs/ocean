@@ -3,7 +3,7 @@ from pathlib import Path
 
 from gitlab import Gitlab
 
-from gitlabapp.models.gitlab import HookContext
+from gitlab_integration.models.gitlab import HookContext
 from port_ocean.core.models import Entity
 
 FILE_PROPERTY_PREFIX = "file://"

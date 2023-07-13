@@ -3,11 +3,11 @@ from typing import List, Tuple, Any, Union
 import yaml
 from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
+from gitlab.core.entities import generate_entity_from_port_yaml
 from loguru import logger
 
-from gitlabapp.core.entities import generate_entity_from_port_yaml
-from gitlabapp.core.utils import does_pattern_apply
-from gitlabapp.models.gitlab import HookContext, ScopeType, Scope
+from gitlab_integration.core.utils import does_pattern_apply
+from gitlab_integration.models.gitlab import HookContext, ScopeType, Scope
 from port_ocean.core.models import Entity
 
 

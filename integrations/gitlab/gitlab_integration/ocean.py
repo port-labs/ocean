@@ -4,9 +4,9 @@ from gitlab.base import RESTObject
 from loguru import logger
 from starlette.requests import Request
 
-from gitlabapp.bootstrap import setup_application
-from gitlabapp.events.event_handler import EventHandler
-from gitlabapp.ocean_helper import get_all_services
+from gitlab_integration.bootstrap import setup_application
+from gitlab_integration.events.event_handler import EventHandler
+from gitlab_integration.ocean_helper import get_all_services
 from port_ocean.context.ocean import ocean
 
 

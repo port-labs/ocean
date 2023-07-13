@@ -4,7 +4,7 @@ from typing import List
 from loguru import logger
 from starlette.requests import Request
 
-from gitlabapp.services.gitlab_service import GitlabService
+from gitlab_integration.services.gitlab_service import GitlabService
 
 
 class HookHandler(ABC):

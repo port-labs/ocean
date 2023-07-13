@@ -1,4 +1,4 @@
-# gitlab-app
+# gitlab
 
 A short description of the project
 
