@@ -50,16 +50,6 @@ def _load_module(file_path: str) -> ModuleType:
     return module
 
 
-def _include_target_channel_router(app: FastAPI, _ocean: PortOceanContext) -> None:
-    target_channel_router = APIRouter()
-
-    @target_channel_router.post("/resync")
-    async def resync() -> None:
-        await _ocean.integration.sync_raw_all()
-
-    app.include_router(target_channel_router)
-
-
 class Ocean:
     def __init__(
         self,
@@ -92,8 +82,6 @@ class Ocean:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
-        if self.config.trigger_channel.type == "http":
-            _include_target_channel_router(self.fast_api_app, ocean)
 
         @self.fast_api_app.on_event("startup")
         async def startup() -> None:

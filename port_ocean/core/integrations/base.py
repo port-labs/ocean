@@ -7,10 +7,10 @@ from port_ocean.context.event import (
     EventType,
 )
 from port_ocean.context.ocean import PortOceanContext
-from port_ocean.core.integrations.mixins.sync import SyncRawMixin, SyncMixin
-from port_ocean.core.trigger_channel.factory import (
-    TriggerChannelFactory,
+from port_ocean.core.event_listener.factory import (
+    EventListenerFactory,
 )
+from port_ocean.core.integrations.mixins.sync import SyncRawMixin, SyncMixin
 from port_ocean.exceptions.core import IntegrationAlreadyStartedException
 
 
@@ -20,7 +20,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         SyncMixin.__init__(self)
         self.started = False
         self.context = context
-        self.trigger_channel_factory = TriggerChannelFactory(
+        self.event_listener_factory = EventListenerFactory(
             context,
             self.context.config.integration.identifier,
             {"on_resync": self.sync_raw_all},
@@ -43,7 +43,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         await self.context.port_client.initiate_integration(
             self.context.config.integration.identifier,
             self.context.config.integration.type,
-            self.context.config.trigger_channel.to_request(),
+            self.context.config.event_listener.to_request(),
         )
 
         self.started = True
@@ -53,6 +53,6 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
                 *(listener() for listener in self.event_strategy["start"])
             )
 
-        logger.info("Initializing trigger channel")
-        trigger_channel = await self.trigger_channel_factory.create_trigger_channel()
-        await trigger_channel.start()
+        logger.info("Initializing event listener")
+        event_listener = await self.event_listener_factory.create_event_listener()
+        await event_listener.start()
