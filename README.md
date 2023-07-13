@@ -84,8 +84,8 @@ port:
   clientId: PORT_CLIENT_ID # Can be loaded via environment variable: PORT_CLIENT_ID
   clientSecret: PORT_CLIENT_SECRET # Can be loaded via environment variable: PORT_CLIENT_SECRET
   baseUrl: https://api.getport.io/v1
-# The trigger channel to use for the integration service.
-triggerChannel:
+# The event listener to use for the integration service.
+eventListener:
   type: KAFKA / WEBHOOK
 integration:
   # The name of the integration.

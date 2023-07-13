@@ -3,15 +3,15 @@ from typing import Literal, Any
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
-from port_ocean.core.trigger_channel.base import (
-    BaseTriggerChannel,
-    TriggerChannelEvents,
-    TriggerChannelSettings,
+from port_ocean.core.event_listener.base import (
+    BaseEventListener,
+    EventListenerEvents,
+    EventListenerSettings,
 )
-from port_ocean.core.trigger_channel.sample.utils import repeat_every
+from port_ocean.core.event_listener.sample.utils import repeat_every
 
 
-class SampleTriggerChannelSettings(TriggerChannelSettings):
+class SampleEventListenerSettings(EventListenerSettings):
     type: Literal["SAMPLE"]
     resync_on_start: bool = True
     interval: int = 60
@@ -20,32 +20,32 @@ class SampleTriggerChannelSettings(TriggerChannelSettings):
         return {}
 
 
-class SampleTriggerChannel(BaseTriggerChannel):
+class SampleEventListener(BaseEventListener):
     def __init__(
         self,
-        events: TriggerChannelEvents,
-        trigger_channel_config: SampleTriggerChannelSettings,
+        events: EventListenerEvents,
+        event_listener_config: SampleEventListenerSettings,
     ):
         super().__init__(events)
-        self.trigger_channel_config = trigger_channel_config
+        self.event_listener_config = event_listener_config
         self._last_updated_at = None
 
     async def start(self) -> None:
         logger.info(
-            f"Setting up Sample trigger channel with interval: {self.trigger_channel_config.interval}"
+            f"Setting up Sample event listener with interval: {self.event_listener_config.interval}"
         )
 
-        @repeat_every(seconds=self.trigger_channel_config.interval)
+        @repeat_every(seconds=self.event_listener_config.interval)
         async def resync() -> None:
             logger.info(
-                f"Sample trigger channel iteration after {self.trigger_channel_config.interval}. Checking for changes"
+                f"Sample event listener iteration after {self.event_listener_config.interval}. Checking for changes"
             )
             integration = await ocean.app.port_client.get_current_integration()
             last_updated_at = integration["updatedAt"]
 
             should_resync = (
                 self._last_updated_at is not None
-                or self.trigger_channel_config.resync_on_start
+                or self.event_listener_config.resync_on_start
             ) and self._last_updated_at != last_updated_at
 
             if should_resync:

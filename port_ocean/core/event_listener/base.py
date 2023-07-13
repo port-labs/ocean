@@ -4,14 +4,14 @@ from typing import TypedDict, Callable, Any, Awaitable
 from pydantic import BaseSettings
 
 
-class TriggerChannelEvents(TypedDict):
+class EventListenerEvents(TypedDict):
     on_resync: Callable[[dict[Any, Any]], Awaitable[None]]
 
 
-class BaseTriggerChannel:
+class BaseEventListener:
     def __init__(
         self,
-        events: TriggerChannelEvents,
+        events: EventListenerEvents,
     ):
         self.events = events
 
@@ -20,7 +20,7 @@ class BaseTriggerChannel:
         pass
 
 
-class TriggerChannelSettings(BaseSettings):
+class EventListenerSettings(BaseSettings):
     type: str
 
     def to_request(self) -> dict[str, Any]:

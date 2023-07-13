@@ -3,7 +3,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, BaseSettings
 
 from port_ocean.config.base import BaseOceanSettings
-from port_ocean.core.trigger_channel import TriggerChannelSettingsType
+from port_ocean.core.event_listener import EventListenerSettingsType
 
 
 class PortSettings(BaseSettings):
@@ -20,7 +20,7 @@ class IntegrationSettings(BaseSettings):
 
 class IntegrationConfiguration(BaseOceanSettings):
     port: PortSettings
-    trigger_channel: TriggerChannelSettingsType = Field(alias="triggerChannel")
+    event_listener: EventListenerSettingsType = Field(alias="eventListener")
     batch_work_size: int | None = Field(alias="batchWorkSize", default=None)
     integration: IntegrationSettings
 

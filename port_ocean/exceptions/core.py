@@ -17,7 +17,7 @@ class RelationValidationException(OceanAbortException):
     pass
 
 
-class UnsupportedTriggerChannelException(BaseOceanException):
+class UnsupportedEventListenerTypeException(BaseOceanException):
     pass
 
 

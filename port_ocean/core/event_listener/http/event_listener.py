@@ -5,14 +5,14 @@ from loguru import logger
 from pydantic import AnyHttpUrl, Field
 
 from port_ocean.context.ocean import ocean
-from port_ocean.core.trigger_channel.base import (
-    BaseTriggerChannel,
-    TriggerChannelEvents,
-    TriggerChannelSettings,
+from port_ocean.core.event_listener.base import (
+    BaseEventListener,
+    EventListenerEvents,
+    EventListenerSettings,
 )
 
 
-class HttpTriggerChannelSettings(TriggerChannelSettings):
+class HttpEventListenerSettings(EventListenerSettings):
     type: Literal["WEBHOOK"]
     app_host: AnyHttpUrl = Field(alias="appHost")
 
@@ -23,17 +23,17 @@ class HttpTriggerChannelSettings(TriggerChannelSettings):
         }
 
 
-class HttpTriggerChannel(BaseTriggerChannel):
+class HttpEventListener(BaseEventListener):
     def __init__(
         self,
-        events: TriggerChannelEvents,
-        trigger_channel_config: HttpTriggerChannelSettings,
+        events: EventListenerEvents,
+        event_listener_config: HttpEventListenerSettings,
     ):
         super().__init__(events)
-        self.trigger_channel_config = trigger_channel_config
+        self.event_listener_config = event_listener_config
 
     async def start(self) -> None:
-        logger.info("Setting up HTTP trigger channel")
+        logger.info("Setting up HTTP Event Listener")
         target_channel_router = APIRouter()
 
         @target_channel_router.post("/resync")
