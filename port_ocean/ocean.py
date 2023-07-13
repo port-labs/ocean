@@ -107,7 +107,7 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
     spec = get_spec_file()
     config_factory = None
     if spec is not None:
-        config_factory = default_config_factory(spec)
+        config_factory = default_config_factory(spec.get("configurations", []))
     default_app = Ocean(
         integration_class=integration_class, config_factory=config_factory
     )

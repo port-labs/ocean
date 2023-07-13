@@ -1,23 +1,19 @@
 from typing import Type, Any
 
-from pydantic import BaseModel, AnyUrl, create_model, Extra
+from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as
 
 
-class Spec(BaseModel):
-    class Configurations(BaseModel, extra=Extra.allow):
-        name: str
-        type: str
-        required: bool = False
-
-    configurations: list[Configurations] = []
+class Configuration(BaseModel, extra=Extra.allow):
+    name: str
+    type: str
+    required: bool = False
 
 
 def default_config_factory(configurations: Any) -> Type[BaseModel]:
-    spec: Spec = Spec.parse_obj(configurations)
-
+    configurations = parse_obj_as(list[Configuration], configurations)
     fields: dict[str, tuple[Any, Any]] = {}
 
-    for config in spec.configurations:
+    for config in configurations:
         field_type: Type[Any]
 
         match config.type:
