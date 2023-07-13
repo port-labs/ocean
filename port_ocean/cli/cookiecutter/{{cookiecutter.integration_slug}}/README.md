@@ -41,7 +41,7 @@ The {{cookiecutter.integration_name}} integration suggested folder structure is 
 
 ```
 {{cookiecutter.integration_name}}/
-└─ main.py
-└─ pyproject.toml
+├─ main.py
+├─ pyproject.toml
 └─ Dockerfile
 ```

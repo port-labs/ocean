@@ -41,7 +41,7 @@ The gitlab integration suggested folder structure is as follows:
 
 ```
 gitlab/
-└─ main.py
-└─ pyproject.toml
+├─ main.py
+├─ pyproject.toml
 └─ Dockerfile
 ```
