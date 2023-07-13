@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from importlib.util import spec_from_file_location, module_from_spec
 from inspect import getmembers, isclass
@@ -19,6 +20,7 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.deafults import initialize_defaults
 from port_ocean.logger_setup import setup_logger
 from port_ocean.middlewares import request_handler
 from port_ocean.utils import get_spec_file
@@ -114,6 +116,13 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
 
     main_path = f"{path}/main.py" if path else "main.py"
     app_module = _load_module(main_path)
-    app = {name: item for name, item in getmembers(app_module)}.get("app", default_app)
+    app: Ocean = {name: item for name, item in getmembers(app_module)}.get(
+        "app", default_app
+    )
+
+    defaults_task = initialize_defaults(
+        app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.port_client
+    )
+    asyncio.get_event_loop().run_until_complete(defaults_task)
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
