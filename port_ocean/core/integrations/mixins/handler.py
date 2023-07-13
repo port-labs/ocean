@@ -1,8 +1,8 @@
-from typing import Callable
+from typing import Type
 
 from loguru import logger
 
-from port_ocean.context.ocean import PortOceanContext, ocean
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers import (
     BaseEntityProcessor,
     BasePortAppConfig,
@@ -11,22 +11,15 @@ from port_ocean.core.handlers import (
     JQEntityProcessor,
     APIPortAppConfig,
 )
-
 from port_ocean.exceptions.core import IntegrationNotStartedException
 
 
 class HandlerMixin:
-    EntityProcessorClass: Callable[
-        [PortOceanContext], BaseEntityProcessor
-    ] = JQEntityProcessor
+    EntityProcessorClass: Type[BaseEntityProcessor] = JQEntityProcessor
 
-    AppConfigHandlerClass: Callable[
-        [PortOceanContext], BasePortAppConfig
-    ] = APIPortAppConfig
+    AppConfigHandlerClass: Type[BasePortAppConfig] = APIPortAppConfig
 
-    EntitiesStateApplierClass: Callable[
-        [PortOceanContext], BaseEntitiesStateApplier
-    ] = HttpEntitiesStateApplier
+    EntitiesStateApplierClass: Type[BaseEntitiesStateApplier] = HttpEntitiesStateApplier
 
     def __init__(self) -> None:
         self._entity_processor: BaseEntityProcessor | None = None
