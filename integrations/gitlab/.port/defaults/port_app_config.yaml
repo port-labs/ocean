@@ -1,0 +1,54 @@
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .namespace.full_path
+          title: .name
+          blueprint: '"microservice"'
+          properties:
+            url: .web_link
+            description: .description
+            namespace: .namespace.name
+            full_path: .namespace.full_path
+  - kind: mergeRequest
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"mergeRequest"'
+          properties:
+            creator: .author.name
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            description: .description
+            link: .web_url
+          relations:
+            microservice: .references.full
+  - kind: issues
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"issue"'
+          properties:
+            creator: .author.name
+            status: .state
+            createdAt: .created_at
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            description: .description
+            link: .web_url
+            labels: '[.labels[]]'
+            object: .
+        relations:
+          microservice: .references.full

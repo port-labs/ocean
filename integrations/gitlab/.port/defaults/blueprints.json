@@ -1,0 +1,158 @@
+[
+  {
+    "identifier": "microservice",
+    "title": "Microservice",
+    "icon": "Service",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "namespace": {
+          "title": "Namespace",
+          "type": "string"
+        },
+        "full_path": {
+          "title": "Full Path",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "mergeRequest",
+    "title": "Merge Request",
+    "icon": "GitVersion",
+    "schema": {
+      "properties": {
+        "creator": {
+          "title": "Creator",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "opened",
+            "closed",
+            "merged",
+            "locked"
+          ],
+          "enumColors": {
+            "opened": "yellow",
+            "closed": "red",
+            "merged": "green",
+            "locked": "blue"
+          }
+        },
+        "createdAt": {
+          "title": "Create At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "format": "markdown"
+        },
+        "link": {
+          "title": "Link",
+          "format": "url",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "microservice": {
+        "target": "microservice",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "issue",
+    "title": "Issue",
+    "icon": "GitLab",
+    "schema": {
+      "properties": {
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "format": "markdown"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "title": "Closed At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "creator": {
+          "title": "Creator",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "enum": [
+            "opened",
+            "closed"
+          ],
+          "enumColors": {
+            "opened": "green",
+            "closed": "purple"
+          }
+        },
+        "labels": {
+          "title": "Labels",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "microservice": {
+        "target": "microservice",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
