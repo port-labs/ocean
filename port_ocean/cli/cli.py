@@ -1,4 +1,3 @@
-try:
-    from .commands import cli_start  # ruff: noqa: F401
-except ImportError:
-    print("Failed to import commands.")
+from .commands import cli_start
+
+__all__ = ["cli_start"]
