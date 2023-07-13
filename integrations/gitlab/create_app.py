@@ -18,7 +18,7 @@ class LogicSettings(BaseSettings):
 
 def create_app() -> Ocean:
     setup_logger("DEBUG")
-    app = Ocean(integration_class=GitlabIntegration, config_class=LogicSettings)
+    app = Ocean(integration_class=GitlabIntegration, config_factory=LogicSettings)
     # noinspection PyUnresolvedReferences
     from gitlab_integration import ocean
 
