@@ -7,10 +7,11 @@ from typing import Type, Callable
 import uvicorn
 from fastapi import FastAPI, APIRouter
 from loguru import logger
-from pydantic import BaseSettings
+from pydantic import BaseModel
 from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
+from port_ocean.config.dynamic import default_config_factory
 from port_ocean.config.integration import IntegrationConfiguration, LogLevelType
 from port_ocean.context.ocean import (
     PortOceanContext,
@@ -20,6 +21,7 @@ from port_ocean.context.ocean import (
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.logger_setup import setup_logger
 from port_ocean.middlewares import request_handler
+from port_ocean.utils import get_spec_file
 
 
 def _get_base_integration_class_from_module(
@@ -54,15 +56,15 @@ class Ocean:
         app: FastAPI | None = None,
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
         integration_router: APIRouter | None = None,
-        config_class: Type[BaseSettings] | None = None,
+        config_factory: Callable[..., BaseModel] | None = None,
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()
         self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(base_path="./")
-        if config_class:
-            self.config.integration.config = config_class(
+        if config_factory:
+            self.config.integration.config = config_factory(
                 **self.config.integration.config
             ).dict()
         self.integration_router = integration_router or APIRouter()
@@ -102,7 +104,13 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
     except Exception:
         integration_class = None
 
-    default_app = Ocean(integration_class=integration_class)
+    spec = get_spec_file()
+    config_factory = None
+    if spec is not None:
+        config_factory = default_config_factory(spec.get("configurations", []))
+    default_app = Ocean(
+        integration_class=integration_class, config_factory=config_factory
+    )
 
     main_path = f"{path}/main.py" if path else "main.py"
     app_module = _load_module(main_path)

@@ -1,0 +1,17 @@
+version: v0.1.0
+type: gitlab
+description: {{cookiecutter.integration_name}} integration for Port Ocean
+icon: Cookiecutter
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: <ResourceName1>
+      - kind: <ResourceName2>
+configurations:
+  - name: myGitToken
+    required: true
+    type: string
+    sensitive: true
+  - name: someApplicationUrl
+    type: url
