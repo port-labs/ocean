@@ -17,8 +17,8 @@ endef
 
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
-    	echo "Poetry is not installed. Installing..."; \
-    	curl -sSL https://install.python-poetry.org | python3 -; \
+    	pip install --upgrade pip; \
+		pip install poetry; \
 	else \
     	echo "Poetry is already installed."; \
 	fi

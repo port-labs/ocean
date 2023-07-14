@@ -3,7 +3,7 @@ ACTIVATE := . .venv/bin/activate
 define run_lint
 	exit_code=0; \
 	cd $1; \
-	mypy . --exclude '/venv/' || exit_code=$$?; \
+	mypy . || exit_code=$$?; \
 	ruff . || exit_code=$$?; \
 	black --exclude venv --check . || exit_code=$$?; \
 	if [ $$exit_code  == 1 ]; then \
@@ -16,8 +16,8 @@ endef
 
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
-    	echo "Poetry is not installed. Installing..."; \
-    	curl -sSL https://install.python-poetry.org | python3 -; \
+    	pip install --upgrade pip; \
+		pip install poetry; \
 	else \
     	echo "Poetry is already installed."; \
 	fi
