@@ -171,7 +171,7 @@ class GitlabService:
                 )
                 for entity_data in raw_entities
             ]
-        except Exception as e:
+        except Exception:
             return []
 
     def _get_entities_by_commit(

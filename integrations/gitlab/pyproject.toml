@@ -22,6 +22,15 @@ pylint = "^2.17.4"
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
 
+[tool.mypy]
+exclude = [
+    'venv',
+    '.venv',
+]
+plugins = [
+    "pydantic.mypy"
+]
+
 [tool.black]
 line-length = 88
 target-version = ['py39', 'py310', 'py311']
