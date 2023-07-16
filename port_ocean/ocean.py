@@ -99,7 +99,12 @@ class Ocean:
         await self.fast_api_app(scope, receive, send)
 
 
-def run(path: str = ".", log_level: LogLevelType = "DEBUG", port: int = 8000) -> None:
+def run(
+    path: str = ".",
+    log_level: LogLevelType = "DEBUG",
+    port: int = 8000,
+    init_port_resources: bool = False,
+) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
 
     setup_logger(application_settings.log_level)
@@ -125,11 +130,11 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG", port: int = 8000) ->
         "app", default_app
     )
 
-    if app.config.create_default_resources_on_install:
+    # Override config with arguments
+    app.config.init_port_resources = init_port_resources
+    if app.config.init_port_resources:
         initialize_defaults(
             app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config
         )
-
-    app.config.port.application_port = app.config.port.application_port or port
 
     uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
