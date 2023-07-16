@@ -38,7 +38,6 @@ async def _is_integration_exists(port_client: PortClient) -> bool:
     return False
 
 
-
 def deconstruct_blueprints(
     raw_blueprints: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], ...]:
@@ -67,7 +66,7 @@ async def _create_resources(
     creation_stage, *blueprint_patches = deconstruct_blueprints(defaults.blueprints)
 
     create_results = await asyncio.gather(
-        *[port_client.create_blueprint(blueprint) for blueprint in creation_stage],
+        *(port_client.create_blueprint(blueprint) for blueprint in creation_stage),
         return_exceptions=True,
     )
 
@@ -90,26 +89,26 @@ async def _create_resources(
     try:
         for patch_stage in blueprint_patches:
             await asyncio.gather(
-                *[
+                *(
                     port_client.patch_blueprint(blueprint["identifier"], blueprint)
                     for blueprint in patch_stage
-                ]
+                )
             )
 
         await asyncio.gather(
-            *[
+            *(
                 port_client.create_action(blueprint_actions["blueprint"], action)
                 for blueprint_actions in defaults.actions
                 for action in blueprint_actions["data"]
-            ]
+            )
         )
 
         await asyncio.gather(
-            *[
+            *(
                 port_client.create_scorecard(blueprint_scorecards["blueprint"], action)
                 for blueprint_scorecards in defaults.scorecards
                 for action in blueprint_scorecards["data"]
-            ]
+            )
         )
 
         await port_client.initiate_integration(
@@ -148,10 +147,10 @@ async def _initialize_defaults(
             f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"
         )
         await asyncio.gather(
-            *[
+            *(
                 port_client.delete_blueprint(blueprint["identifier"], silent=True)
                 for blueprint in defaults.blueprints
-            ]
+            )
         )
 
         raise ExceptionGroup(str(e), e.errors)
