@@ -119,7 +119,7 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
         "app", default_app
     )
 
-    if app.config.create_default_resources_on_install:
+    if app.config.init_port_resources:
         initialize_defaults(
             app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config
         )
