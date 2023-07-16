@@ -41,24 +41,24 @@ async def _is_integration_exists(port_client: PortClient) -> bool:
     return False
 
 
-def deconstruct_blueprints(
+def deconstruct_blueprints_to_creation_steps(
     raw_blueprints: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], ...]:
-    all_blueprints, all_relations, all_mirror, all_calculated = [], [], [], []
+    bare_blueprint, with_relations, with_mirrored, full_blueprint = [], [], [], []
 
     for blueprint in raw_blueprints.copy():
-        all_calculated.append(blueprint.copy())
-        blueprint.pop("calculated", [])
+        full_blueprint.append(blueprint.copy())
 
-        all_mirror.append(blueprint.copy())
-        blueprint.pop("mirror", [])
+        blueprint.pop("calculationProperties")
+        with_mirrored.append(blueprint.copy())
 
-        all_relations.append(blueprint.copy())
-        blueprint.pop("relations", [])
+        blueprint.pop("mirrorProperties")
+        with_relations.append(blueprint.copy())
 
-        all_blueprints.append(blueprint)
+        blueprint.pop("relations")
+        bare_blueprint.append(blueprint)
 
-    return all_blueprints, all_relations, all_mirror, all_calculated
+    return bare_blueprint, with_relations, with_mirrored, full_blueprint
 
 
 async def _create_resources(
@@ -66,14 +66,16 @@ async def _create_resources(
     defaults: Defaults,
     integration_config: IntegrationConfiguration,
 ) -> None:
-    creation_stage, *blueprint_patches = deconstruct_blueprints(defaults.blueprints)
+    creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
+        defaults.blueprints
+    )
 
     create_results = await asyncio.gather(
         *(port_client.create_blueprint(blueprint) for blueprint in creation_stage),
         return_exceptions=True,
     )
 
-    errors = [error for error in create_results if isinstance(error, Exception)]
+    errors = [result for result in create_results if isinstance(result, Exception)]
     created_blueprints = [
         blueprint["identifier"]
         for blueprint in create_results
