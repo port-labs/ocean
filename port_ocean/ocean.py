@@ -12,7 +12,11 @@ from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.dynamic import default_config_factory
-from port_ocean.config.integration import IntegrationConfiguration, LogLevelType
+from port_ocean.config.integration import (
+    IntegrationConfiguration,
+    LogLevelType,
+    ApplicationSettings,
+)
 from port_ocean.context.ocean import (
     PortOceanContext,
     ocean,
@@ -95,7 +99,9 @@ class Ocean:
 
 
 def run(path: str = ".", log_level: LogLevelType = "DEBUG", port: int = 8000) -> None:
-    setup_logger(log_level)
+    application_settings = ApplicationSettings(log_level=log_level, port=port)
+
+    setup_logger(application_settings.log_level)
     sys.path.append(".")
     try:
         integration_path = f"{path}/integration.py" if path else "integration.py"
@@ -116,4 +122,6 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG", port: int = 8000) ->
     app_module = _load_module(main_path)
     app = {name: item for name, item in getmembers(app_module)}.get("app", default_app)
 
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    app.config.port.application_port = app.config.port.application_port or port
+
+    uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
