@@ -14,6 +14,9 @@ from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.exceptions.port_defaults import AbortDefaultCreationError
 
+YAML_EXTENSIONS = [".yaml", ".yml"]
+ALLOWED_FILES = [".json", *YAML_EXTENSIONS]
+
 
 class Preset(TypedDict):
     blueprint: str
@@ -176,13 +179,13 @@ def get_port_defaults(
 
     default_jsons = {}
     for path in defaults_dir.iterdir():
-        if not path.is_file() or (path.suffix != ".json" and path.suffix != ".yaml"):
+        if not path.is_file() or path.suffix not in ALLOWED_FILES:
             raise Exception(
-                f"Defaults directory should contain only json files. Found: {path}"
+                f"Defaults directory should contain only json and yaml files. Found: {path}"
             )
 
         if path.stem in Defaults.__fields__:
-            if path.suffix == ".yaml":
+            if path.suffix in YAML_EXTENSIONS:
                 default_jsons[path.stem] = yaml.safe_load(path.read_text())
             default_jsons[path.stem] = json.loads(path.read_text())
 
