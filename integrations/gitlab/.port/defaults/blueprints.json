@@ -22,12 +22,8 @@
           "title": "Full Path",
           "type": "string"
         }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {}
+      }
+    }
   },
   {
     "identifier": "mergeRequest",
@@ -75,11 +71,8 @@
           "format": "url",
           "type": "string"
         }
-      },
-      "required": []
+      }
     },
-    "mirrorProperties": {},
-    "calculationProperties": {},
     "relations": {
       "microservice": {
         "target": "microservice",
@@ -142,11 +135,8 @@
             "type": "string"
           }
         }
-      },
-      "required": []
+      }
     },
-    "mirrorProperties": {},
-    "calculationProperties": {},
     "relations": {
       "microservice": {
         "target": "microservice",
