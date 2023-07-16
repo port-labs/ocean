@@ -68,11 +68,20 @@ def version(short: bool) -> None:
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
     default="DEBUG",
     help="""Set the logging level for the integration.
-Supported levels are DEBUG, INFO, WARNING, ERROR,
-and CRITICAL. If not specified, the default level
-is DEBUG.""",
+            Supported levels are DEBUG, INFO, WARNING, ERROR,
+            and CRITICAL. If not specified, the default level
+            is DEBUG.""",
 )
-def sail(path: str, log_level: LogLevelType) -> None:
+@click.option(
+    "-p",
+    "--port",
+    "port",
+    type=int,
+    default=8000,
+    help="""Set the port for the integration to run on.
+            If not specified, the default port is 8000.""",
+)
+def sail(path: str, log_level: LogLevelType, port: int) -> None:
     """
     Runs the integration in the given PATH. if no PATH is provided, the current directory will be used.
 
@@ -83,7 +92,7 @@ def sail(path: str, log_level: LogLevelType) -> None:
     print_logo()
 
     console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
-    run(path, log_level)
+    run(path, log_level, port)
 
 
 @cli_start.command()

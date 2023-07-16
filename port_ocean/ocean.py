@@ -94,7 +94,7 @@ class Ocean:
         await self.fast_api_app(scope, receive, send)
 
 
-def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
+def run(path: str = ".", log_level: LogLevelType = "DEBUG", port: int = 8000) -> None:
     setup_logger(log_level)
     sys.path.append(".")
     try:
@@ -116,4 +116,4 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
     app_module = _load_module(main_path)
     app = {name: item for name, item in getmembers(app_module)}.get("app", default_app)
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=port)
