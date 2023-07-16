@@ -27,7 +27,7 @@ class EntityClientMixin:
 
         response = await self.client.post(
             f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
-            json=entity.dict(exclude_unset=True),
+            json=entity.dict(exclude_unset=True, by_alias=True),
             headers=headers,
             params={
                 "upsert": "true",

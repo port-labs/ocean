@@ -1,0 +1,1 @@
+Integration can specify default resources to be created on installation

@@ -25,6 +25,7 @@ from port_ocean.context.ocean import (
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.logger_setup import setup_logger
 from port_ocean.middlewares import request_handler
+from port_ocean.port_defaults import initialize_defaults
 from port_ocean.utils import get_spec_file
 
 
@@ -120,7 +121,14 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG", port: int = 8000) ->
 
     main_path = f"{path}/main.py" if path else "main.py"
     app_module = _load_module(main_path)
-    app = {name: item for name, item in getmembers(app_module)}.get("app", default_app)
+    app: Ocean = {name: item for name, item in getmembers(app_module)}.get(
+        "app", default_app
+    )
+
+    if app.config.create_default_resources_on_install:
+        initialize_defaults(
+            app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config
+        )
 
     app.config.port.application_port = app.config.port.application_port or port
 
