@@ -11,7 +11,6 @@ from port_ocean.cli.download_git_folder import download_github_folder
 from port_ocean.cli.list_integrations import list_git_folders
 from port_ocean.config.integration import LogLevelType
 
-CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 console = Console()
 
 
@@ -33,7 +32,7 @@ By: Port.io
     Console().print(ascii_art.strip())
 
 
-@click.group(context_settings=CONTEXT_SETTINGS)
+@click.group
 def cli_start() -> None:
     # Ocean root command
     pass
