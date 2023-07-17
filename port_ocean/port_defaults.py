@@ -80,9 +80,9 @@ async def _create_resources(
 
     errors = [result for result in create_results if isinstance(result, Exception)]
     created_blueprints = [
-        blueprint["identifier"]
-        for blueprint in create_results
-        if not isinstance(blueprint, Exception)
+        result["identifier"]
+        for result in create_results
+        if not isinstance(result, Exception)
     ]
 
     if errors:
