@@ -119,7 +119,7 @@ async def _create_resources(
             )
         )
 
-        await port_client.initiate_integration(
+        await port_client.initialize_integration(
             integration_config.integration.type,
             integration_config.event_listener.to_request(),
             port_app_config=defaults.port_app_config,

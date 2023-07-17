@@ -73,7 +73,7 @@ class IntegrationClientMixin:
         )
         response.raise_for_status()
 
-    async def initiate_integration(
+    async def initialize_integration(
         self,
         _type: str,
         changelog_destination: dict[str, Any],
