@@ -12,7 +12,10 @@ from starlette import status
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-from port_ocean.exceptions.port_defaults import AbortDefaultCreationError
+from port_ocean.exceptions.port_defaults import (
+    AbortDefaultCreationError,
+    UnsupportedDefaultFileType,
+)
 
 YAML_EXTENSIONS = [".yaml", ".yml"]
 ALLOWED_FILES = [".json", *YAML_EXTENSIONS]
@@ -77,9 +80,9 @@ async def _create_resources(
 
     errors = [result for result in create_results if isinstance(result, Exception)]
     created_blueprints = [
-        blueprint["identifier"]
-        for blueprint in create_results
-        if not isinstance(blueprint, Exception)
+        result["identifier"]
+        for result in create_results
+        if not isinstance(result, Exception)
     ]
 
     if errors:
@@ -116,7 +119,7 @@ async def _create_resources(
             )
         )
 
-        await port_client.initiate_integration(
+        await port_client.initialize_integration(
             integration_config.integration.type,
             integration_config.event_listener.to_request(),
             port_app_config=defaults.port_app_config,
@@ -141,7 +144,7 @@ async def _initialize_defaults(
     is_exists = await _is_integration_exists(port_client)
     if is_exists:
         return None
-    defaults = get_port_defaults(config_class)
+    defaults = get_port_integration_defaults(config_class)
     if not defaults:
         return None
 
@@ -169,7 +172,7 @@ def initialize_defaults(
     )
 
 
-def get_port_defaults(
+def get_port_integration_defaults(
     port_app_config_class: Type[PortAppConfig], base_path: Path = Path(".")
 ) -> Defaults | None:
     defaults_dir = base_path / ".port/defaults"
@@ -177,7 +180,9 @@ def get_port_defaults(
         return None
 
     if not defaults_dir.is_dir():
-        raise Exception(f"Defaults directory is not a directory: {defaults_dir}")
+        raise UnsupportedDefaultFileType(
+            f"Defaults directory is not a directory: {defaults_dir}"
+        )
 
     default_jsons = {}
     for path in defaults_dir.iterdir():
