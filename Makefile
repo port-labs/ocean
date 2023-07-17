@@ -8,10 +8,10 @@ define run_lint
 	mypy . || exit_code=$$?; \
 	ruff . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
-	if [ $$exit_code  == 1 ]; then \
-		echo -e "\033[0;31mOne or more lints failed with exit code $$exit_code\033[0m"; \
+	if [ $$exit_code -eq 1 ]; then \
+		echo "\033[0;31mOne or more lints failed with exit code $$exit_code\033[0m"; \
 	else \
-		echo -e "\033[0;32mAll lints executed successfully.\033[0m"; \
+		echo "\033[0;32mAll lints executed successfully.\033[0m"; \
 	fi; \
 	exit $$exit_code
 endef
