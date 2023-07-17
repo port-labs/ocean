@@ -15,8 +15,6 @@ keywords = ["ocean", "port-ocean", "port"]
 classifiers = [
     "Framework :: FastAPI",
     "Intended Audience :: Developers",
-    "Intended Audience :: Devops Engineers",
-    "Intended Audience :: Devex Engineers",
     "License :: OSI Approved :: Apache Software License",
     "Natural Language :: English",
     "Operating System :: POSIX",
@@ -26,12 +24,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "Topic :: Frameowrk :: Port",
-    "Topic :: Developer Portal :: Utilities",
-    "Topic :: Developer Experience :: Utilities",
-    "Topic :: Devops :: Utilities",
-    "Topic :: Devex :: Utilities",
-    "Topic :: Developer Portal :: Framerok",
+    "Topic :: Utilities",
 ]
 
 [tool.poetry.scripts]
