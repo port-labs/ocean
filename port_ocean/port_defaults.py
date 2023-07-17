@@ -12,7 +12,10 @@ from starlette import status
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-from port_ocean.exceptions.port_defaults import AbortDefaultCreationError
+from port_ocean.exceptions.port_defaults import (
+    AbortDefaultCreationError,
+    UnsupportedDefaultFileType,
+)
 
 YAML_EXTENSIONS = [".yaml", ".yml"]
 ALLOWED_FILES = [".json", *YAML_EXTENSIONS]
@@ -177,7 +180,9 @@ def get_port_integration_defaults(
         return None
 
     if not defaults_dir.is_dir():
-        raise Exception(f"Defaults directory is not a directory: {defaults_dir}")
+        raise UnsupportedDefaultFileType(
+            f"Defaults directory is not a directory: {defaults_dir}"
+        )
 
     default_jsons = {}
     for path in defaults_dir.iterdir():
