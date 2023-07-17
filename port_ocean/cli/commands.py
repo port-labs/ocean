@@ -98,7 +98,7 @@ def sail(
 
     PATH: Path to the integration.
     """
-    from port_ocean.ocean import run
+    from port_ocean import run
 
     print_logo()
 
