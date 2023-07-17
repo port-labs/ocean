@@ -141,7 +141,7 @@ async def _initialize_defaults(
     is_exists = await _is_integration_exists(port_client)
     if is_exists:
         return None
-    defaults = get_port_defaults(config_class)
+    defaults = get_port_integration_defaults(config_class)
     if not defaults:
         return None
 
@@ -169,7 +169,7 @@ def initialize_defaults(
     )
 
 
-def get_port_defaults(
+def get_port_integration_defaults(
     port_app_config_class: Type[PortAppConfig], base_path: Path = Path(".")
 ) -> Defaults | None:
     defaults_dir = base_path / ".port/defaults"
