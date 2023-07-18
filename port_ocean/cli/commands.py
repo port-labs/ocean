@@ -82,7 +82,7 @@ def version(short: bool) -> None:
 )
 @click.option(
     "-i",
-    "--initialize_port_resources",
+    "--initialize-port-resources",
     "initialize_port_resources",
     type=bool,
     default=False,
