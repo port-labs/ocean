@@ -175,7 +175,7 @@ def initialize_defaults(
 def get_port_integration_defaults(
     port_app_config_class: Type[PortAppConfig], base_path: Path = Path(".")
 ) -> Defaults | None:
-    defaults_dir = base_path / ".port/defaults"
+    defaults_dir = base_path / ".port/resources"
     if not defaults_dir.exists():
         return None
 
