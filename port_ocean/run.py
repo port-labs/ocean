@@ -61,7 +61,7 @@ def run(
     path: str = ".",
     log_level: LogLevelType = "DEBUG",
     port: int = 8000,
-    init_port_resources: bool = False,
+    initialize_port_resources: bool = False,
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
 
@@ -75,8 +75,8 @@ def run(
     )
 
     # Override config with arguments
-    app.config.init_port_resources = init_port_resources
-    if app.config.init_port_resources:
+    app.config.initialize_port_resources = initialize_port_resources
+    if app.config.initialize_port_resources:
         initialize_defaults(
             app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config
         )

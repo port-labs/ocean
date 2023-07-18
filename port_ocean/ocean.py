@@ -1,6 +1,7 @@
 import sys
 from typing import Callable
 
+import uvicorn
 from fastapi import FastAPI, APIRouter
 from loguru import logger
 from pydantic import BaseModel

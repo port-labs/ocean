@@ -11,7 +11,6 @@ from port_ocean.cli.download_git_folder import download_github_folder
 from port_ocean.cli.list_integrations import list_git_folders
 from port_ocean.config.integration import LogLevelType
 
-CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 console = Console()
 
 
@@ -33,7 +32,7 @@ By: Port.io
     Console().print(ascii_art.strip())
 
 
-@click.group(context_settings=CONTEXT_SETTINGS)
+@click.group
 def cli_start() -> None:
     # Ocean root command
     pass
@@ -83,15 +82,15 @@ def version(short: bool) -> None:
 )
 @click.option(
     "-i",
-    "--init-port-resources",
-    "init_port_resources",
+    "--initialize-port-resources",
+    "initialize_port_resources",
     type=bool,
     default=False,
-    help="""Set to true to create default resources on install.
+    help="""Set to true to create default resources on installation.
             If not specified, the default value is false.""",
 )
 def sail(
-    path: str, log_level: LogLevelType, port: int, init_port_resources: bool
+    path: str, log_level: LogLevelType, port: int, initialize_port_resources: bool
 ) -> None:
     """
     Runs the integration in the given PATH. if no PATH is provided, the current directory will be used.
@@ -103,7 +102,7 @@ def sail(
     print_logo()
 
     console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
-    run(path, log_level, port, init_port_resources)
+    run(path, log_level, port, initialize_port_resources)
 
 
 @cli_start.command()
