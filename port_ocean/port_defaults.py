@@ -6,7 +6,7 @@ from typing import Type, Any, TypedDict, Optional
 import httpx
 import yaml
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette import status
 
 from port_ocean.clients.port.client import PortClient
@@ -18,7 +18,7 @@ from port_ocean.exceptions.port_defaults import (
 )
 
 YAML_EXTENSIONS = [".yaml", ".yml"]
-ALLOWED_FILES = [".json", *YAML_EXTENSIONS]
+ALLOWED_FILE_TYPES = [".json", *YAML_EXTENSIONS]
 
 
 class Preset(TypedDict):
@@ -30,7 +30,9 @@ class Defaults(BaseModel):
     blueprints: list[dict[str, Any]] = []
     actions: list[Preset] = []
     scorecards: list[Preset] = []
-    port_app_config: Optional[PortAppConfig] = None
+    port_app_config: Optional[PortAppConfig] = Field(
+        default=None, alias="port-app-config"
+    )
 
 
 async def _is_integration_exists(port_client: PortClient) -> bool:
@@ -200,7 +202,7 @@ def get_port_integration_defaults(
         field_model.alias for _, field_model in Defaults.__fields__.items()
     ]
     for path in defaults_dir.iterdir():
-        if not path.is_file() or path.suffix not in ALLOWED_FILES:
+        if not path.is_file() or path.suffix not in ALLOWED_FILE_TYPES:
             raise Exception(
                 f"Defaults directory should contain only json and yaml files. Found: {path}"
             )
