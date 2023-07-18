@@ -6,7 +6,7 @@ from typing import Type, Any, TypedDict, Optional
 import httpx
 import yaml
 from loguru import logger
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, Field
 from starlette import status
 
 from port_ocean.clients.port.client import PortClient
@@ -18,7 +18,7 @@ from port_ocean.exceptions.port_defaults import (
 )
 
 YAML_EXTENSIONS = [".yaml", ".yml"]
-ALLOWED_FILES = [".json", *YAML_EXTENSIONS]
+ALLOWED_FILE_TYPES = [".json", *YAML_EXTENSIONS]
 
 
 class Preset(TypedDict):
@@ -26,11 +26,16 @@ class Preset(TypedDict):
     data: list[dict[str, Any]]
 
 
-class Defaults(BaseModel, extra=Extra.allow):
+class Defaults(BaseModel):
     blueprints: list[dict[str, Any]] = []
     actions: list[Preset] = []
     scorecards: list[Preset] = []
-    port_app_config: Optional[PortAppConfig] = None
+    port_app_config: Optional[PortAppConfig] = Field(
+        default=None, alias="port-app-config"
+    )
+
+    class Config:
+        allow_population_by_field_name = True
 
 
 async def _is_integration_exists(port_client: PortClient) -> bool:
@@ -47,21 +52,32 @@ async def _is_integration_exists(port_client: PortClient) -> bool:
 def deconstruct_blueprints_to_creation_steps(
     raw_blueprints: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], ...]:
-    bare_blueprint, with_relations, with_mirrored, full_blueprint = [], [], [], []
+    (
+        bare_blueprint,
+        with_relations,
+        with_mirrored_and_team_inheritance,
+        full_blueprint,
+    ) = ([], [], [], [])
 
     for blueprint in raw_blueprints.copy():
         full_blueprint.append(blueprint.copy())
 
         blueprint.pop("calculationProperties")
-        with_mirrored.append(blueprint.copy())
+        with_mirrored_and_team_inheritance.append(blueprint.copy())
 
         blueprint.pop("mirrorProperties")
         with_relations.append(blueprint.copy())
 
+        blueprint.pop("teamInheritance")
         blueprint.pop("relations")
         bare_blueprint.append(blueprint)
 
-    return bare_blueprint, with_relations, with_mirrored, full_blueprint
+    return (
+        bare_blueprint,
+        with_relations,
+        with_mirrored_and_team_inheritance,
+        full_blueprint,
+    )
 
 
 async def _create_resources(
@@ -175,7 +191,7 @@ def initialize_defaults(
 def get_port_integration_defaults(
     port_app_config_class: Type[PortAppConfig], base_path: Path = Path(".")
 ) -> Defaults | None:
-    defaults_dir = base_path / ".port/defaults"
+    defaults_dir = base_path / ".port/resources"
     if not defaults_dir.exists():
         return None
 
@@ -185,13 +201,16 @@ def get_port_integration_defaults(
         )
 
     default_jsons = {}
+    allowed_file_names = [
+        field_model.alias for _, field_model in Defaults.__fields__.items()
+    ]
     for path in defaults_dir.iterdir():
-        if not path.is_file() or path.suffix not in ALLOWED_FILES:
-            raise Exception(
-                f"Defaults directory should contain only json and yaml files. Found: {path}"
+        if not path.is_file() or path.suffix not in ALLOWED_FILE_TYPES:
+            raise UnsupportedDefaultFileType(
+                f"Defaults directory should contain only one of the next types: {ALLOWED_FILE_TYPES}. Found: {path}"
             )
 
-        if path.stem in Defaults.__fields__:
+        if path.stem in allowed_file_names:
             if path.suffix in YAML_EXTENSIONS:
                 default_jsons[path.stem] = yaml.safe_load(path.read_text())
             default_jsons[path.stem] = json.loads(path.read_text())
