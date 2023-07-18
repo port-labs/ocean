@@ -12,7 +12,11 @@ from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.dynamic import default_config_factory
-from port_ocean.config.integration import IntegrationConfiguration, LogLevelType
+from port_ocean.config.integration import (
+    IntegrationConfiguration,
+    LogLevelType,
+    ApplicationSettings,
+)
 from port_ocean.context.ocean import (
     PortOceanContext,
     ocean,
@@ -95,8 +99,15 @@ class Ocean:
         await self.fast_api_app(scope, receive, send)
 
 
-def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
-    setup_logger(log_level)
+def run(
+    path: str = ".",
+    log_level: LogLevelType = "DEBUG",
+    port: int = 8000,
+    initialize_port_resources: bool = False,
+) -> None:
+    application_settings = ApplicationSettings(log_level=log_level, port=port)
+
+    setup_logger(application_settings.log_level)
     sys.path.append(".")
     try:
         integration_path = f"{path}/integration.py" if path else "integration.py"
@@ -119,9 +130,11 @@ def run(path: str = ".", log_level: LogLevelType = "DEBUG") -> None:
         "app", default_app
     )
 
+    # Override config with arguments
+    app.config.initialize_port_resources = initialize_port_resources
     if app.config.initialize_port_resources:
         initialize_defaults(
             app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config
         )
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=application_settings.port)

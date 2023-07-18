@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, BaseSettings
+from pydantic import Field, BaseSettings
 
 from port_ocean.config.base import BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
@@ -31,6 +31,9 @@ class IntegrationConfiguration(BaseOceanSettings):
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
 
-class LoggerConfiguration(BaseModel):
-    level: LogLevelType = "DEBUG"
-    serialize: bool = False
+class ApplicationSettings(BaseSettings):
+    log_level: LogLevelType = "DEBUG"
+    port: int = 8000
+
+    class Config:
+        env_prefix = "APPLICATION_"
