@@ -45,6 +45,5 @@ exclude = '''
   |\.ini
   |Dockerfile
   |\.venv
-  |integrations
 )/
 '''
