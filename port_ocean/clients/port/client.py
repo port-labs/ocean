@@ -2,17 +2,17 @@ import httpx as httpx
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.clients.port.mixins.blueprints import BlueprintClientMixin
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.clients.port.types import (
     KafkaCreds,
 )
 from port_ocean.clients.port.utils import handle_status_code
-from port_ocean.core.models import Blueprint
 from port_ocean.exceptions.clients import KafkaCredentialsNotFound
 
 
-class PortClient(EntityClientMixin, IntegrationClientMixin):
+class PortClient(EntityClientMixin, IntegrationClientMixin, BlueprintClientMixin):
     def __init__(
         self,
         base_url: str,
@@ -35,6 +35,7 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
         IntegrationClientMixin.__init__(
             self, integration_identifier, self.auth, self.client
         )
+        BlueprintClientMixin.__init__(self, self.auth, self.client)
 
     async def get_kafka_creds(self, silent: bool = False) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")
@@ -63,12 +64,3 @@ class PortClient(EntityClientMixin, IntegrationClientMixin):
             response.raise_for_status()
 
         return response.json()["organization"]["id"]
-
-    async def get_blueprint(self, identifier: str) -> Blueprint:
-        logger.info(f"Fetching blueprint with id: {identifier}")
-        response = await self.client.get(
-            f"{self.api_url}/blueprints/{identifier}",
-            headers=await self.auth.headers(),
-        )
-        response.raise_for_status()
-        return Blueprint.parse_obj(response.json()["blueprint"])

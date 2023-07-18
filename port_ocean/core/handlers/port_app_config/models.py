@@ -1,7 +1,8 @@
-from typing import Optional
+from typing import Optional, Any
+
+from pydantic import BaseModel, Field
 
 from port_ocean.clients.port.types import RequestOptions
-from pydantic import BaseModel, Field
 
 
 class EntityMapping(BaseModel):
@@ -43,6 +44,14 @@ class PortAppConfig(BaseModel):
             "delete_dependent_entities": self.delete_dependent_entities,
             "create_missing_related_entities": self.create_missing_related_entities,
             "merge": self.enable_merge_entity,
+        }
+
+    def to_request(self) -> dict[str, Any]:
+        return {
+            "deleteDependentEntities": self.delete_dependent_entities,
+            "createMissingRelatedEntities": self.create_missing_related_entities,
+            "enableMergeEntity": self.enable_merge_entity,
+            "resources": [resource.dict(by_alias=True) for resource in self.resources],
         }
 
     class Config:
