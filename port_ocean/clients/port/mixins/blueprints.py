@@ -4,6 +4,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.clients.port.utils import handle_status_code
 from port_ocean.core.models import Blueprint
 
 
@@ -12,25 +13,29 @@ class BlueprintClientMixin:
         self.auth = auth
         self.client = client
 
-    async def get_blueprint(self, identifier: str) -> Blueprint:
+    async def get_blueprint(self, identifier: str, silent: bool = False) -> Blueprint:
         logger.info(f"Fetching blueprint with id: {identifier}")
         response = await self.client.get(
             f"{self.auth.api_url}/blueprints/{identifier}",
             headers=await self.auth.headers(),
         )
-        response.raise_for_status()
+        handle_status_code(silent, response)
         return Blueprint.parse_obj(response.json()["blueprint"])
 
-    async def create_blueprint(self, raw_blueprint: dict[str, Any]) -> None:
+    async def create_blueprint(
+        self, raw_blueprint: dict[str, Any], silent: bool = False
+    ) -> None:
         logger.info(f"Creating blueprint with id: {raw_blueprint.get('identifier')}")
         headers = await self.auth.headers()
         response = await self.client.post(
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
-        response.raise_for_status()
+        handle_status_code(silent, response)
+        if response.is_success:
+            return response.json()["blueprint"]
 
     async def patch_blueprint(
-        self, identifier: str, raw_blueprint: dict[str, Any]
+        self, identifier: str, raw_blueprint: dict[str, Any], silent: bool = False
     ) -> None:
         logger.info(f"Patching blueprint with id: {identifier}")
         headers = await self.auth.headers()
@@ -39,10 +44,19 @@ class BlueprintClientMixin:
             headers=headers,
             json=raw_blueprint,
         )
-        response.raise_for_status()
+        handle_status_code(silent, response)
+
+    async def delete_blueprint(self, identifier: str, silent: bool = False) -> None:
+        logger.info(f"Deleting blueprint with id: {identifier}")
+        headers = await self.auth.headers()
+        response = await self.client.delete(
+            f"{self.auth.api_url}/blueprints/{identifier}",
+            headers=headers,
+        )
+        handle_status_code(silent, response)
 
     async def create_action(
-        self, blueprint_identifier: str, action: dict[str, Any]
+        self, blueprint_identifier: str, action: dict[str, Any], silent: bool = False
     ) -> None:
         logger.info(f"Creating action: {action}")
         response = await self.client.post(
@@ -51,10 +65,10 @@ class BlueprintClientMixin:
             headers=await self.auth.headers(),
         )
 
-        response.raise_for_status()
+        handle_status_code(silent, response)
 
     async def create_scorecard(
-        self, blueprint_identifier: str, scorecard: dict[str, Any]
+        self, blueprint_identifier: str, scorecard: dict[str, Any], silent: bool = False
     ) -> None:
         logger.info(f"Creating scorecard: {scorecard}")
         response = await self.client.post(
@@ -63,4 +77,4 @@ class BlueprintClientMixin:
             headers=await self.auth.headers(),
         )
 
-        response.raise_for_status()
+        handle_status_code(silent, response)
