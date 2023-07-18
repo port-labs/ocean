@@ -47,21 +47,32 @@ async def _is_integration_exists(port_client: PortClient) -> bool:
 def deconstruct_blueprints_to_creation_steps(
     raw_blueprints: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], ...]:
-    bare_blueprint, with_relations, with_mirrored, full_blueprint = [], [], [], []
+    (
+        bare_blueprint,
+        with_relations,
+        with_mirrored_and_team_inheritance,
+        full_blueprint,
+    ) = ([], [], [], [])
 
     for blueprint in raw_blueprints.copy():
         full_blueprint.append(blueprint.copy())
 
         blueprint.pop("calculationProperties")
-        with_mirrored.append(blueprint.copy())
+        with_mirrored_and_team_inheritance.append(blueprint.copy())
 
         blueprint.pop("mirrorProperties")
         with_relations.append(blueprint.copy())
 
+        blueprint.pop("teamInheritance")
         blueprint.pop("relations")
         bare_blueprint.append(blueprint)
 
-    return bare_blueprint, with_relations, with_mirrored, full_blueprint
+    return (
+        bare_blueprint,
+        with_relations,
+        with_mirrored_and_team_inheritance,
+        full_blueprint,
+    )
 
 
 async def _create_resources(
