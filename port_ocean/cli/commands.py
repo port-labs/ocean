@@ -85,12 +85,14 @@ def version(short: bool) -> None:
     "--initialize-port-resources",
     "initialize_port_resources",
     type=bool,
-    default=False,
     help="""Set to true to create default resources on installation.
             If not specified, the default value is false.""",
 )
 def sail(
-    path: str, log_level: LogLevelType, port: int, initialize_port_resources: bool
+    path: str,
+    log_level: LogLevelType,
+    port: int,
+    initialize_port_resources: bool | None,
 ) -> None:
     """
     Runs the integration in the given PATH. if no PATH is provided, the current directory will be used.
