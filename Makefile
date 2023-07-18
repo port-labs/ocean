@@ -1,6 +1,6 @@
 ACTIVATE := . .venv/bin/activate
 
-define run_lint
+define run_checks
 	exit_code=0; \
 	cd $1; \
 	poetry check || exit_code=$$?;\
@@ -9,9 +9,9 @@ define run_lint
 	ruff . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
-		echo "\033[0;31mOne or more lints failed with exit code $$exit_code\033[0m"; \
+		echo "\033[0;31mOne or more checks failed with exit code $$exit_code\033[0m"; \
 	else \
-		echo "\033[0;32mAll lints executed successfully.\033[0m"; \
+		echo "\033[0;32mAll checks executed successfully.\033[0m"; \
 	fi; \
 	exit $$exit_code
 endef
@@ -19,8 +19,8 @@ endef
 
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
-    	echo "Poetry is not installed. Installing..."; \
-    	curl -sSL https://install.python-poetry.org | python3 -; \
+    	pip install --upgrade pip; \
+		pip install poetry; \
 	else \
     	echo "Poetry is already installed."; \
 	fi
@@ -67,7 +67,7 @@ install/all: install
 # Linting
 lint:
 	$(ACTIVATE) && \
-	$(call run_lint,.)
+	$(call run_checks,.)
 
 lint/integrations:
 	$(ACTIVATE) && \
