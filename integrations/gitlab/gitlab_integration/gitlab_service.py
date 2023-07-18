@@ -7,7 +7,7 @@ from loguru import logger
 
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
-from gitlab_integration.models.gitlab import HookContext, ScopeType, Scope
+from gitlab_integration.models import HookContext, ScopeType, Scope
 from port_ocean.core.models import Entity
 
 

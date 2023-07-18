@@ -5,7 +5,7 @@ from loguru import logger
 from pydantic import Field
 
 from gitlab_integration.core.entities import FILE_PROPERTY_PREFIX
-from gitlab_integration.services.gitlab_service import GitlabService
+from gitlab_integration.gitlab_service import GitlabService
 from port_ocean.context.event import event
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig

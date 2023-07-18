@@ -6,7 +6,7 @@ from gitlab_integration.events.hooks.jobs import Job
 from gitlab_integration.events.hooks.merge_request import MergeRequest
 from gitlab_integration.events.hooks.pipelines import Pipelines
 from gitlab_integration.events.hooks.push import PushHook
-from gitlab_integration.services.gitlab_service import GitlabService
+from gitlab_integration.gitlab_service import GitlabService
 from port_ocean.context.ocean import ocean
 
 

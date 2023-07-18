@@ -3,9 +3,9 @@ import typing
 from starlette.requests import Request
 
 from gitlab_integration.core.utils import generate_ref
+from gitlab_integration.custom_integration import GitlabPortAppConfig
 from gitlab_integration.events.hooks.base import HookHandler
-from gitlab_integration.integration import GitlabPortAppConfig
-from gitlab_integration.models.gitlab import HookContext, ScopeType, Scope
+from gitlab_integration.models import HookContext, ScopeType, Scope
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean

@@ -3,7 +3,7 @@ from typing import List
 from gitlab import Gitlab
 from loguru import logger
 
-from gitlab_integration.services.gitlab_service import GitlabService
+from gitlab_integration.gitlab_service import GitlabService
 from port_ocean.context.ocean import ocean
 
 

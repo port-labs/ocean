@@ -6,7 +6,7 @@ from starlette.requests import Request
 
 from gitlab_integration.bootstrap import setup_application
 from gitlab_integration.events.event_handler import EventHandler
-from gitlab_integration.ocean_helper import get_all_services
+from gitlab_integration.utils import get_all_services
 from port_ocean.context.ocean import ocean
 
 

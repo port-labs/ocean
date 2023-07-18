@@ -3,7 +3,7 @@ from typing import List, Dict
 from pydantic import BaseSettings, AnyHttpUrl, Field
 from pydantic.tools import parse_obj_as
 
-from gitlab_integration.integration import GitlabIntegration
+from gitlab_integration.custom_integration import GitlabIntegration
 from port_ocean.ocean import Ocean
 
 
