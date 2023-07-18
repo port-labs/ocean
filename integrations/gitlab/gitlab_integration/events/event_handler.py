@@ -40,5 +40,5 @@ class EventHandler(metaclass=SingletonMeta):
         self, event: str, group_id: str, request: Request
     ) -> Awaitable[Any]:
         return asyncio.gather(
-            *[observer(event, group_id, request) for observer in self._observers[event]]
+            *(observer(event, group_id, request) for observer in self._observers[event])
         )
