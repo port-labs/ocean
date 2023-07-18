@@ -1287,4 +1287,4 @@ cli = ["click", "cookiecutter", "rich"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "83aadd1310a42b3e8fec95816d1a58df45ff3ae7b02309ad15eeb49a7200fdcd"
+content-hash = "3205766dd86633d563b313bbd8ce841464da83db8423e03333b3a9c7aeaf0d85"
