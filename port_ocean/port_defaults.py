@@ -204,7 +204,7 @@ def get_port_integration_defaults(
     for path in defaults_dir.iterdir():
         if not path.is_file() or path.suffix not in ALLOWED_FILE_TYPES:
             raise Exception(
-                f"Defaults directory should contain only json and yaml files. Found: {path}"
+                f"Defaults directory should contain only one of the next types: {ALLOWED_FILE_TYPES}. Found: {path}"
             )
 
         if path.stem in allowed_file_names:
