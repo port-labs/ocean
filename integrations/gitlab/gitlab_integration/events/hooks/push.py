@@ -1,5 +1,8 @@
+import typing
+
 from starlette.requests import Request
 
+from config import GitlabPortAppConfig
 from gitlab_integration.core.utils import generate_ref
 from gitlab_integration.events.hooks.base import HookHandler
 from gitlab_integration.models.gitlab import HookContext, ScopeType, Scope
@@ -14,7 +17,9 @@ class PushHook(HookHandler):
     async def _on_hook(self, group_id: str, request: Request) -> None:
         body = await request.json()
         context = HookContext(**body)
-        config = event.port_app_config
+        config: GitlabPortAppConfig = typing.cast(
+            GitlabPortAppConfig, event.port_app_config
+        )
 
         if generate_ref(config.branch) != context.ref:
             return
