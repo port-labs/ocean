@@ -40,6 +40,7 @@ async def on_resync(kind: str) -> List[Dict[Any, Any]]:
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def resync_merge_requests(kind: str) -> List[Dict[Any, Any]]:
+    # ToDo: filter by mapping
     root_groups: list[RESTObject] = sum(
         [service.get_root_groups() for service in all_tokens_services], []
     )
