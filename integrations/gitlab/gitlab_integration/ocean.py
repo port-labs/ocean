@@ -60,7 +60,7 @@ async def resync_issues(kind: str) -> List[Dict[Any, Any]]:
     return [issue.asdict() for group in root_groups for issue in group.issues.list()]
 
 
-@ocean.on_resync(ObjectKind.ISSUE)
+@ocean.on_resync(ObjectKind.JOB)
 async def resync_jobs(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
     root_groups: list[RESTObject] = sum(
