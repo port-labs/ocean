@@ -7,7 +7,7 @@ from loguru import logger
 
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
-from gitlab_integration.models import HookContext, ScopeType, Scope
+from gitlab_integration.models import HookContext
 from port_ocean.core.models import Entity
 
 
@@ -100,18 +100,16 @@ class GitlabService:
             ],
         ]
 
-    def get_projects_by_scope(self, scope: Scope | None = None) -> list[dict[str, Any]]:
-        if scope and scope.type == ScopeType.Project:
-            logger.info(f"fetching project {scope.id}")
-            project = self.gitlab_client.projects.get(scope.id)
-            return self._filter_mappings([project.asdict()])
+    def get_project(self, project_id: int) -> list[dict[str, Any]]:
+        logger.info(f"fetching project {project_id}")
+        project = self.gitlab_client.projects.get(project_id)
+        projects = [project.asdict()]
 
-        if scope and scope.type == ScopeType.Group:
-            logger.info(f"fetching all projects for group {scope.id}")
-            projects = self.get_group_projects(scope.id)
-        else:
-            logger.info("fetching all projects for the token")
-            projects = self.get_group_projects()
+        return self._filter_mappings(projects)
+
+    def get_all_projects(self) -> list[dict[str, Any]]:
+        logger.info("fetching all projects for the token")
+        projects = self.get_group_projects()
 
         return self._filter_mappings(projects)
 
@@ -120,23 +118,6 @@ class GitlabService:
     ) -> Union[GitlabList, list[dict[str, Any]]]:
         project = self.gitlab_client.projects.get(project_id)
         return project.commits.get(head).diff()
-
-    def validate_config_changed(self, context: HookContext) -> tuple[bool, Scope]:
-        changed_files = self._get_changed_files_between_commits(
-            context.project.id, context.after
-        )
-        has_changed = bool(
-            [
-                file["new_path"]
-                for file in changed_files
-                if file["new_path"] == ".gitlab/port-app-config.yml"
-            ]
-        )
-        scope = Scope(ScopeType.Project, context.project.id)
-        if context.project.name == "gitlab-private":
-            project = self.gitlab_client.projects.get(context.project.id)
-            scope = Scope(ScopeType.Group, project.namespace["id"])
-        return has_changed, scope
 
     def _get_file_paths(
         self, context: HookContext, path: str | List[str], commit_sha: str

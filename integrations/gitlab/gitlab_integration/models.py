@@ -1,6 +1,3 @@
-from dataclasses import dataclass
-from enum import Enum
-
 from pydantic import BaseModel, Extra
 
 
@@ -15,17 +12,6 @@ class HookContext(BaseModel, extra=Extra.allow):
     project: ContextProject
     before: str
     after: str
-
-
-class ScopeType(Enum):
-    Project = "project"
-    Group = "group"
-
-
-@dataclass
-class Scope:
-    type: ScopeType
-    id: int
 
 
 class ObjectKind:

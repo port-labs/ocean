@@ -4,7 +4,7 @@ from typing import Any
 from gitlab_integration.core.utils import generate_ref
 from gitlab_integration.custom_integration import GitlabPortAppConfig
 from gitlab_integration.events.hooks.base import HookHandler
-from gitlab_integration.models import HookContext, ScopeType, Scope, ObjectKind
+from gitlab_integration.models import HookContext, ObjectKind
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -27,10 +27,5 @@ class PushHook(HookHandler):
         )
         await ocean.sync(entities_after, UserAgentType.gitops)
 
-        has_changed, scope = self.gitlab_service.validate_config_changed(context)
-        if has_changed:
-            await ocean.sync_raw_all()
-
-        scope = Scope(ScopeType.Project, context.project.id)
-        projects = self.gitlab_service.get_projects_by_scope(scope)
+        projects = self.gitlab_service.get_project(context.project.id)
         await ocean.register_raw(ObjectKind.PROJECT, projects)

@@ -33,7 +33,7 @@ async def on_resync(kind: str) -> List[Dict[Any, Any]]:
         logger.info(
             f"fetching projects for token {service.gitlab_client.private_token}"
         )
-        projects.extend(service.get_projects_by_scope())
+        projects.extend(service.get_all_projects())
 
     return projects
 
