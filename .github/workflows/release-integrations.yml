@@ -41,7 +41,7 @@ jobs:
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
               echo "Building and pushing new image: port-ocean-$type:$version"
-              docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder"
+              docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder/.."
               docker push "ghcr.io/port-labs/port-ocean-$type" --all-tags
             fi
           done
