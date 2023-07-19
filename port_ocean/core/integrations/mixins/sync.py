@@ -111,20 +111,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             logger.info(f"Found {len(tasks)} resync tasks for {resource_config.kind}")
 
             results_with_error: list[
-                tuple[list[dict[Any, Any]], Exception]
+                list[dict[Any, Any]] | Exception
             ] = await asyncio.gather(*tasks, return_exceptions=True)
             results: list[dict[Any, Any]] = list(
                 chain.from_iterable(
                     [
                         result
-                        for result, _ in results_with_error
+                        for result in results_with_error
                         if not isinstance(result, Exception)
                     ]
                 )
             )
 
             errors = [
-                error for _, error in results_with_error if isinstance(error, Exception)
+                error for error in results_with_error if isinstance(error, Exception)
             ]
 
             logger.info(
