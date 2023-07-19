@@ -1,12 +1,11 @@
 # gitlab
 
-A short description of the project
+Gitlab integration for Port using Port-Ocean Framework
 
 ## Development Requirements
 
 - Python3.11.0
 - Poetry (Python Package Manager)
-- Port-Ocean
 
 ## Installation
 
@@ -41,7 +40,13 @@ The gitlab integration suggested folder structure is as follows:
 
 ```
 gitlab/
-├─ main.py
-├─ pyproject.toml
-└─ Dockerfile
+├─ gitlab_integration/      # The integration logic
+│  ├─ core/                 # The core logic of the integration
+│  ├─ events/               # All the event listeners to the different types of objects in gitlab
+│  ├─ ocean.py              # All the ocean implementations with all the @ocean.on_resync implementations
+│  ├─ custom_integration.py # Custom implementation of the port integration with git related logic
+│  ├─ bootstrap.py          # The bootstrap file that will be used to start the integration and install all the webhooks
+│  └─ ...
+├─ main.py                  # The main exports the custom Ocean logic to the ocean sail command
+└─ ...
 ```
