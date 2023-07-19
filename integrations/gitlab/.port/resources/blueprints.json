@@ -76,7 +76,6 @@
     "relations": {
       "microservice": {
         "target": "microservice",
-        "required": true,
         "many": false
       }
     }
