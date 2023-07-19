@@ -6,6 +6,7 @@ from starlette.requests import Request
 
 from gitlab_integration.bootstrap import setup_application
 from gitlab_integration.events.event_handler import EventHandler
+from gitlab_integration.models import ObjectKind
 from gitlab_integration.utils import get_all_services
 from port_ocean.context.ocean import ocean
 
@@ -23,7 +24,7 @@ async def on_start() -> None:
     setup_application()
 
 
-@ocean.on_resync("project")
+@ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
     projects = []
@@ -37,7 +38,7 @@ async def on_resync(kind: str) -> List[Dict[Any, Any]]:
     return projects
 
 
-@ocean.on_resync("mergeRequest")
+@ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def resync_merge_requests(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
     root_groups: list[RESTObject] = sum(
@@ -50,7 +51,7 @@ async def resync_merge_requests(kind: str) -> List[Dict[Any, Any]]:
     ]
 
 
-@ocean.on_resync("issues")
+@ocean.on_resync(ObjectKind.ISSUE)
 async def resync_issues(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
     root_groups: list[RESTObject] = sum(
@@ -59,7 +60,7 @@ async def resync_issues(kind: str) -> List[Dict[Any, Any]]:
     return [issue.asdict() for group in root_groups for issue in group.issues.list()]
 
 
-@ocean.on_resync("job")
+@ocean.on_resync(ObjectKind.ISSUE)
 async def resync_jobs(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
     root_groups: list[RESTObject] = sum(
@@ -68,7 +69,7 @@ async def resync_jobs(kind: str) -> List[Dict[Any, Any]]:
     return [job.asdict() for group in root_groups for job in group.jobs.list()]
 
 
-@ocean.on_resync("pipelines")
+@ocean.on_resync(ObjectKind.PIPELINE)
 async def resync_pipelines(kind: str) -> List[Dict[Any, Any]]:
     all_tokens_services = get_all_services()
     root_groups: list[RESTObject] = sum(

@@ -1,6 +1,7 @@
 from starlette.requests import Request
 
 from gitlab_integration.events.hooks.base import HookHandler
+from gitlab_integration.models import ObjectKind
 from port_ocean.context.ocean import ocean
 
 
@@ -12,4 +13,4 @@ class Job(HookHandler):
         project = self.gitlab_service.gitlab_client.projects.get(body["project"]["id"])
 
         job = project.jobs.get(body["object_attributes"]["iid"])
-        await ocean.register_raw("jobs", [job.asdict()])
+        await ocean.register_raw(ObjectKind.JOB, [job.asdict()])

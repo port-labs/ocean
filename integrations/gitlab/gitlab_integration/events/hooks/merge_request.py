@@ -1,6 +1,7 @@
 from starlette.requests import Request
 
 from gitlab_integration.events.hooks.base import HookHandler
+from gitlab_integration.models import ObjectKind
 from port_ocean.context.ocean import ocean
 
 
@@ -12,4 +13,4 @@ class MergeRequest(HookHandler):
         project = self.gitlab_service.gitlab_client.projects.get(body["project"]["id"])
 
         merge_requests = project.mergerequests.get(body["object_attributes"]["iid"])
-        await ocean.register_raw("mergeRequest", [merge_requests.asdict()])
+        await ocean.register_raw(ObjectKind.MERGE_REQUEST, [merge_requests.asdict()])

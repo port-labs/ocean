@@ -26,3 +26,11 @@ class ScopeType(Enum):
 class Scope:
     type: ScopeType
     id: int
+
+
+class ObjectKind:
+    ISSUE = "issue"
+    JOB = "job"
+    MERGE_REQUEST = "merge request"
+    PIPELINE = "pipeline"
+    PROJECT = "project"
