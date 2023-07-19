@@ -2,8 +2,6 @@ import asyncio
 from collections import defaultdict
 from typing import Awaitable, Callable, Any
 
-from starlette.requests import Request
-
 
 class SingletonMeta(type):
     """
@@ -25,7 +23,7 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
-Observer = Callable[[str, str, Request], Awaitable[Any]]
+Observer = Callable[[str, str, dict[str, Any]], Awaitable[Any]]
 
 
 class EventHandler(metaclass=SingletonMeta):
@@ -37,8 +35,8 @@ class EventHandler(metaclass=SingletonMeta):
             self._observers[event].append(observer)
 
     async def notify(
-        self, event: str, group_id: str, request: Request
+        self, event: str, group_id: str, body: dict[str, Any]
     ) -> Awaitable[Any]:
         return asyncio.gather(
-            *(observer(event, group_id, request) for observer in self._observers[event])
+            *(observer(event, group_id, body) for observer in self._observers[event])
         )

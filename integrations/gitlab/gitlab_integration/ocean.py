@@ -14,8 +14,8 @@ from port_ocean.context.ocean import ocean
 @ocean.router.post("/hook/{group_id}")
 async def handle_webhook(group_id: str, request: Request) -> Dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
-    await request.json()
-    await EventHandler().notify(event_id, group_id, request)
+    body = await request.json()
+    await EventHandler().notify(event_id, group_id, body)
     return {"ok": True}
 
 

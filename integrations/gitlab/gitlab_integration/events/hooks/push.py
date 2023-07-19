@@ -1,6 +1,5 @@
 import typing
-
-from starlette.requests import Request
+from typing import Any
 
 from gitlab_integration.core.utils import generate_ref
 from gitlab_integration.custom_integration import GitlabPortAppConfig
@@ -14,8 +13,7 @@ from port_ocean.context.ocean import ocean
 class PushHook(HookHandler):
     events = ["Push Hook"]
 
-    async def _on_hook(self, group_id: str, request: Request) -> None:
-        body = await request.json()
+    async def _on_hook(self, group_id: str, body: dict[str, Any]) -> None:
         context = HookContext(**body)
         config: GitlabPortAppConfig = typing.cast(
             GitlabPortAppConfig, event.port_app_config
