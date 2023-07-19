@@ -37,39 +37,6 @@ class GitlabService:
             }
         )
 
-    def get_root_groups(self) -> List[RESTObject]:
-        groups = self.gitlab_client.groups.list(iterator=True)
-        return [group for group in groups if group.parent_id is None]
-
-    def create_webhooks(self) -> list[int | str]:
-        root_partial_groups = self.get_root_groups()
-        filtered_partial_groups = [
-            group
-            for group in root_partial_groups
-            if any(
-                does_pattern_apply(mapping.split("/")[0], group.attributes["full_path"])
-                for mapping in self.group_mapping
-            )
-        ]
-
-        webhook_ids = []
-        for partial_group in filtered_partial_groups:
-            group_id = partial_group.get_id()
-            if group_id is None:
-                logger.info(
-                    f"Group {partial_group.attributes['full_path']} has no id. skipping..."
-                )
-            else:
-                if self._is_exists(partial_group):
-                    logger.info(
-                        f"Webhook already exists for group {partial_group.get_id()}"
-                    )
-                else:
-                    self._create_group_webhook(partial_group)
-                webhook_ids.append(group_id)
-
-        return webhook_ids
-
     def _filter_mappings(self, projects: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return [
             project
@@ -79,42 +46,6 @@ class GitlabService:
                 for mapping in self.group_mapping
             )
         ]
-
-    def get_group_projects(self, group_id: int | None = None) -> list[dict[str, Any]]:
-        if group_id is None:
-            return [
-                project
-                for group in self.gitlab_client.groups.list()
-                for project in self.gitlab_client.groups.get(group.id).attributes[
-                    "projects"
-                ]
-            ]
-        group = self.gitlab_client.groups.get(group_id)
-        projects: list[dict[str, Any]] = group.attributes["projects"]
-        return [
-            *projects,
-            *[
-                project
-                for sub_group in group.subgroups.list()
-                for project in self.get_group_projects(sub_group.id)
-            ],
-        ]
-
-    def get_project(self, project_id: int) -> Project | None:
-        logger.info(f"fetching project {project_id}")
-        project = self.gitlab_client.projects.get(project_id)
-        if all(
-            does_pattern_apply(mapping, project.path_with_namespace)
-            for mapping in self.group_mapping
-        ):
-            return project
-        return None
-
-    def get_all_projects(self) -> list[dict[str, Any]]:
-        logger.info("fetching all projects for the token")
-        projects = self.get_group_projects()
-
-        return self._filter_mappings(projects)
 
     def _get_changed_files_between_commits(
         self, project_id: int, head: str
@@ -162,6 +93,75 @@ class GitlabService:
             for path in spec_paths
             for entity in self._get_entities_from_git(project, path, commit, ref)
         ]
+
+    def get_root_groups(self) -> List[RESTObject]:
+        groups = self.gitlab_client.groups.list(iterator=True)
+        return [group for group in groups if group.parent_id is None]
+
+    def create_webhooks(self) -> list[int | str]:
+        root_partial_groups = self.get_root_groups()
+        filtered_partial_groups = [
+            group
+            for group in root_partial_groups
+            if any(
+                does_pattern_apply(mapping.split("/")[0], group.attributes["full_path"])
+                for mapping in self.group_mapping
+            )
+        ]
+
+        webhook_ids = []
+        for partial_group in filtered_partial_groups:
+            group_id = partial_group.get_id()
+            if group_id is None:
+                logger.info(
+                    f"Group {partial_group.attributes['full_path']} has no id. skipping..."
+                )
+            else:
+                if self._is_exists(partial_group):
+                    logger.info(
+                        f"Webhook already exists for group {partial_group.get_id()}"
+                    )
+                else:
+                    self._create_group_webhook(partial_group)
+                webhook_ids.append(group_id)
+
+        return webhook_ids
+
+    def get_group_projects(self, group_id: int | None = None) -> list[dict[str, Any]]:
+        if group_id is None:
+            return [
+                project
+                for group in self.gitlab_client.groups.list()
+                for project in self.gitlab_client.groups.get(group.id).attributes[
+                    "projects"
+                ]
+            ]
+        group = self.gitlab_client.groups.get(group_id)
+        projects: list[dict[str, Any]] = group.attributes["projects"]
+        return [
+            *projects,
+            *[
+                project
+                for sub_group in group.subgroups.list()
+                for project in self.get_group_projects(sub_group.id)
+            ],
+        ]
+
+    def get_project(self, project_id: int) -> Project | None:
+        logger.info(f"fetching project {project_id}")
+        project = self.gitlab_client.projects.get(project_id)
+        if all(
+            does_pattern_apply(mapping, project.path_with_namespace)
+            for mapping in self.group_mapping
+        ):
+            return project
+        return None
+
+    def get_all_projects(self) -> list[dict[str, Any]]:
+        logger.info("fetching all projects for the token")
+        projects = self.get_group_projects()
+
+        return self._filter_mappings(projects)
 
     def get_entities_diff(
         self,
