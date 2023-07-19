@@ -1,9 +1,8 @@
 import json
 from pathlib import Path
 
-from gitlab import Gitlab
+from gitlab.v4.objects import Project
 
-from gitlab_integration.models import HookContext
 from port_ocean.core.models import Entity
 
 FILE_PROPERTY_PREFIX = "file://"
@@ -11,15 +10,13 @@ JSON_SUFFIX = ".json"
 
 
 def generate_entity_from_port_yaml(
-    raw_entity: Entity, context: HookContext, gitlab_client: Gitlab, ref: str
+    raw_entity: Entity, project: Project, ref: str
 ) -> Entity:
     properties = {}
     for key, value in raw_entity.properties.items():
         if isinstance(value, str) and value.startswith(FILE_PROPERTY_PREFIX):
             file_meta = Path(value.replace(FILE_PROPERTY_PREFIX, ""))
-            gitlab_file = gitlab_client.projects.get(context.project.id).files.get(
-                file_path=str(file_meta), ref=ref
-            )
+            gitlab_file = project.files.get(file_path=str(file_meta), ref=ref)
 
             if file_meta.suffix == JSON_SUFFIX:
                 properties[key] = json.loads(gitlab_file.decode())

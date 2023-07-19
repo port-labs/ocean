@@ -22,3 +22,11 @@ def get_all_services() -> List[GitlabService]:
         all_tokens_services.append(gitlab_service)
 
     return all_tokens_services
+
+
+class ObjectKind:
+    ISSUE = "issue"
+    JOB = "job"
+    MERGE_REQUEST = "merge request"
+    PIPELINE = "pipeline"
+    PROJECT = "project"

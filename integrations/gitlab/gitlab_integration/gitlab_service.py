@@ -3,11 +3,11 @@ from typing import List, Tuple, Any, Union
 import yaml
 from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
+from gitlab.v4.objects import Project
 from loguru import logger
 
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
-from gitlab_integration.models import HookContext
 from port_ocean.core.models import Entity
 
 
@@ -100,12 +100,15 @@ class GitlabService:
             ],
         ]
 
-    def get_project(self, project_id: int) -> list[dict[str, Any]]:
+    def get_project(self, project_id: int) -> Project | None:
         logger.info(f"fetching project {project_id}")
         project = self.gitlab_client.projects.get(project_id)
-        projects = [project.asdict()]
-
-        return self._filter_mappings(projects)
+        if all(
+            does_pattern_apply(mapping, project.path_with_namespace)
+            for mapping in self.group_mapping
+        ):
+            return project
+        return None
 
     def get_all_projects(self) -> list[dict[str, Any]]:
         logger.info("fetching all projects for the token")
@@ -120,9 +123,8 @@ class GitlabService:
         return project.commits.get(head).diff()
 
     def _get_file_paths(
-        self, context: HookContext, path: str | List[str], commit_sha: str
+        self, project: Project, path: str | List[str], commit_sha: str
     ) -> list[str]:
-        project = self.gitlab_client.projects.get(context.project.id)
         if not isinstance(path, list):
             path = [path]
         files = project.repository_tree(ref=commit_sha, all=True)
@@ -133,12 +135,10 @@ class GitlabService:
         ]
 
     def _get_entities_from_git(
-        self, context: HookContext, file_name: str, sha: str, ref: str
+        self, project: Project, file_name: str, sha: str, ref: str
     ) -> List[Entity]:
         try:
-            file_content = self.gitlab_client.projects.get(
-                context.project.id
-            ).files.get(file_path=file_name, ref=sha)
+            file_content = project.files.get(file_path=file_name, ref=sha)
             entities = yaml.safe_load(file_content.decode())
             raw_entities = [
                 Entity(**entity_data)
@@ -147,33 +147,31 @@ class GitlabService:
                 )
             ]
             return [
-                generate_entity_from_port_yaml(
-                    entity_data, context, self.gitlab_client, ref
-                )
+                generate_entity_from_port_yaml(entity_data, project, ref)
                 for entity_data in raw_entities
             ]
         except Exception:
             return []
 
     def _get_entities_by_commit(
-        self, context: HookContext, spec: str | List["str"], commit: str, ref: str
+        self, project: Project, spec: str | List["str"], commit: str, ref: str
     ) -> List[Entity]:
-        spec_paths = self._get_file_paths(context, spec, commit)
+        spec_paths = self._get_file_paths(project, spec, commit)
         return [
             entity
             for path in spec_paths
-            for entity in self._get_entities_from_git(context, path, commit, ref)
+            for entity in self._get_entities_from_git(project, path, commit, ref)
         ]
 
     def get_entities_diff(
         self,
-        context: HookContext,
+        project: Project,
         spec_path: str | List[str],
         before: str,
         after: str,
         ref: str,
     ) -> Tuple[List[Entity], List[Entity]]:
-        entities_before = self._get_entities_by_commit(context, spec_path, before, ref)
-        entities_after = self._get_entities_by_commit(context, spec_path, after, ref)
+        entities_before = self._get_entities_by_commit(project, spec_path, before, ref)
+        entities_after = self._get_entities_by_commit(project, spec_path, after, ref)
 
         return entities_before, entities_after
