@@ -13,7 +13,7 @@ configurations:
   - name: tokenMapping
     required: true
     type: object
-    description: Mapping of Gitlab tokens to Port Ocean tokens. example: {"THE_GROUP_TOKEN":["getport-labs/**", "GROUP/PROJECT PATTERN TO RUN FOR"]}
+    description: "Mapping of Gitlab tokens to Port Ocean tokens. example: {\"THE_GROUP_TOKEN\":[\"getport-labs/**\", \"GROUP/PROJECT PATTERN TO RUN FOR\"]}"
     sensitive: true
   - name: appHost
     required: true
