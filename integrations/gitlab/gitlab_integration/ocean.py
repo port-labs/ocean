@@ -9,6 +9,8 @@ from gitlab_integration.events.event_handler import EventHandler
 from gitlab_integration.utils import get_all_services, ObjectKind
 from port_ocean.context.ocean import ocean
 
+all_tokens_services = get_all_services()
+
 
 @ocean.router.post("/hook/{group_id}")
 async def handle_webhook(group_id: str, request: Request) -> Dict[str, Any]:
@@ -25,7 +27,6 @@ async def on_start() -> None:
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync(kind: str) -> List[Dict[Any, Any]]:
-    all_tokens_services = get_all_services()
     projects = []
 
     for service in all_tokens_services:
@@ -39,7 +40,6 @@ async def on_resync(kind: str) -> List[Dict[Any, Any]]:
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def resync_merge_requests(kind: str) -> List[Dict[Any, Any]]:
-    all_tokens_services = get_all_services()
     root_groups: list[RESTObject] = sum(
         [service.get_root_groups() for service in all_tokens_services], []
     )
@@ -52,7 +52,6 @@ async def resync_merge_requests(kind: str) -> List[Dict[Any, Any]]:
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def resync_issues(kind: str) -> List[Dict[Any, Any]]:
-    all_tokens_services = get_all_services()
     root_groups: list[RESTObject] = sum(
         [service.get_root_groups() for service in all_tokens_services], []
     )
@@ -61,7 +60,6 @@ async def resync_issues(kind: str) -> List[Dict[Any, Any]]:
 
 @ocean.on_resync(ObjectKind.JOB)
 async def resync_jobs(kind: str) -> List[Dict[Any, Any]]:
-    all_tokens_services = get_all_services()
     root_groups: list[RESTObject] = sum(
         [service.get_root_groups() for service in all_tokens_services], []
     )
@@ -70,7 +68,6 @@ async def resync_jobs(kind: str) -> List[Dict[Any, Any]]:
 
 @ocean.on_resync(ObjectKind.PIPELINE)
 async def resync_pipelines(kind: str) -> List[Dict[Any, Any]]:
-    all_tokens_services = get_all_services()
     root_groups: list[RESTObject] = sum(
         [service.get_root_groups() for service in all_tokens_services], []
     )
