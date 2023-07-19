@@ -124,7 +124,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
             errors = [
-                error for error in results_with_error if isinstance(error, Exception)
+                result for result in results_with_error if isinstance(result, Exception)
             ]
 
             logger.info(
