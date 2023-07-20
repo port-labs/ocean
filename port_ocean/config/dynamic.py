@@ -1,4 +1,4 @@
-from typing import Type, Any
+from typing import Type, Any, Optional, TypeVar
 
 from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as
 
@@ -7,6 +7,10 @@ class Configuration(BaseModel, extra=Extra.allow):
     name: str
     type: str
     required: bool = False
+    default: Optional[Any]
+
+
+T = TypeVar("T")
 
 
 def default_config_factory(configurations: Any) -> Type[BaseModel]:
@@ -14,7 +18,7 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
     fields: dict[str, tuple[Any, Any]] = {}
 
     for config in configurations:
-        field_type: Type[Any]
+        field_type: Type[T]
 
         match config.type:
             case "object":
@@ -30,9 +34,12 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
             case _:
                 raise ValueError(f"Unknown type: {config.type}")
 
+        default = ... if config.required else None
+        if config.default is not None:
+            default = parse_obj_as(field_type, config.default)
         fields[config.name] = (
             field_type,
-            ... if config.required else None,
+            default,
         )
 
     return create_model("Config", **fields)  # type: ignore
