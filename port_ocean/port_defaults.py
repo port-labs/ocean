@@ -183,9 +183,12 @@ async def _initialize_defaults(
 def initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
-    asyncio.new_event_loop().run_until_complete(
-        _initialize_defaults(config_class, integration_config)
-    )
+    try:
+        asyncio.new_event_loop().run_until_complete(
+            _initialize_defaults(config_class, integration_config)
+        )
+    except Exception as e:
+        logger.debug(f"Failed to initialize defaults, skipping... Error: {e}")
 
 
 def get_port_integration_defaults(
@@ -221,6 +224,6 @@ def get_port_integration_defaults(
         actions=default_jsons.get("actions", []),
         scorecards=default_jsons.get("scorecards", []),
         port_app_config=port_app_config_class(
-            **default_jsons.get("port_app_config", {})
+            **default_jsons.get("port-app-config", {})
         ),
     )

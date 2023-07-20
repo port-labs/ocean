@@ -1,3 +1,5 @@
+from urllib.parse import quote_plus
+
 import httpx
 from loguru import logger
 
@@ -59,7 +61,7 @@ class EntityClientMixin:
             f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
         )
         response = await self.client.delete(
-            f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{entity.identifier}",
+            f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
             headers=await self.auth.headers(user_agent_type),
             params={
                 "delete_dependents": str(
