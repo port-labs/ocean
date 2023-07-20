@@ -65,7 +65,7 @@ class KafkaEventListener(BaseEventListener):
         if not self.should_be_processed(message, topic):
             return
 
-        if "change.log" in topic:
+        if "change.log" in topic and message is not None:
             await self.events["on_resync"](message)
 
     def wrapped_start(

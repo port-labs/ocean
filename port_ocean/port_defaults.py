@@ -1,11 +1,11 @@
 import asyncio
 import json
-from pathlib import Path
 from typing import Type, Any, TypedDict, Optional
 
 import httpx
 import yaml
 from loguru import logger
+from pathlib import Path
 from pydantic import BaseModel, Field
 from starlette import status
 
@@ -213,7 +213,8 @@ def get_port_integration_defaults(
         if path.stem in allowed_file_names:
             if path.suffix in YAML_EXTENSIONS:
                 default_jsons[path.stem] = yaml.safe_load(path.read_text())
-            default_jsons[path.stem] = json.loads(path.read_text())
+            else:
+                default_jsons[path.stem] = json.loads(path.read_text())
 
     return Defaults(
         blueprints=default_jsons.get("blueprints", []),
