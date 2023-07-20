@@ -1,0 +1,27 @@
+version: v0.1.0
+type: gitlab
+description: Gitlab integration for Port Ocean
+icon: GitLab
+features:
+  - type: gitops
+    section: GitOps
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: projects
+configurations:
+  - name: tokenMapping
+    required: true
+    type: object
+    description: "Mapping of Gitlab tokens to Port Ocean tokens. example: {\"THE_GROUP_TOKEN\":[\"getport-labs/**\", \"GROUP/PROJECT PATTERN TO RUN FOR\"]}"
+    sensitive: true
+  - name: appHost
+    required: true
+    type: url
+    description: The host of the Port Ocean app. Used for setting up the webhooks against the Gitlab.
+  - name: gitlabHost
+    required: false
+    type: url
+    default: https://gitlab.com
+    description: The host of the Gitlab instance. If not specified, the default will be https://gitlab.com.
+ingressRequired: true
