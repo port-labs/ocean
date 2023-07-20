@@ -98,6 +98,8 @@ class GitlabService:
 
     def create_webhooks(self) -> list[int | str]:
         root_partial_groups = self.get_root_groups()
+        logger.debug("Getting all the root groups to create webhooks for")
+        # Filter out root groups that are not in the group mapping and creating webhooks for the rest
         filtered_partial_groups = [
             group
             for group in root_partial_groups
@@ -106,17 +108,19 @@ class GitlabService:
                 for mapping in self.group_mapping
             )
         ]
-
+        logger.debug(
+            f"Creating webhooks for the root groups. Groups: {[group.attributes['full_path'] for group in filtered_partial_groups]}"
+        )
         webhook_ids = []
         for partial_group in filtered_partial_groups:
             group_id = partial_group.get_id()
             if group_id is None:
-                logger.info(
+                logger.debug(
                     f"Group {partial_group.attributes['full_path']} has no id. skipping..."
                 )
             else:
                 if self._is_exists(partial_group):
-                    logger.info(
+                    logger.debug(
                         f"Webhook already exists for group {partial_group.get_id()}"
                     )
                 else:
@@ -140,12 +144,16 @@ class GitlabService:
                     include_subgroups=True, owned=True, all=True
                 ),
             )
+            logger.debug(f"Found {len(projects)} projects")
 
             filtered_projects = [
                 project
                 for project in projects
                 if self.should_run_for_project(project.path_with_namespace)
             ]
+            logger.debug(
+                f"Found {len(filtered_projects)} projects after filtering. Projects: {[proj.path_with_namespace for proj in filtered_projects]}"
+            )
             event.attributes[cache_key] = filtered_projects
 
         return filtered_projects

@@ -7,13 +7,14 @@ def _match(pattern_parts: list[str], string_parts: list[str]) -> bool:
     if not string_parts:  # Reached the end of the string
         return False
 
-    if pattern_parts[0] == "**" and len(pattern_parts) == 1:
-        return True
+    if pattern_parts[0] == "**":
+        if len(pattern_parts) == 1:
+            return True
+        else:  # Recursive matching
+            return _match(pattern_parts[1:], string_parts) or _match(
+                pattern_parts, string_parts[1:]
+            )
 
-    if pattern_parts[0] == "**":  # Recursive matching
-        return _match(pattern_parts[1:], string_parts) or _match(
-            pattern_parts, string_parts[1:]
-        )
     if fnmatch.fnmatch(string_parts[0], pattern_parts[0]):  # Regular matching
         return _match(pattern_parts[1:], string_parts[1:])
     return False
