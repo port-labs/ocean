@@ -76,6 +76,7 @@
     "relations": {
       "microservice": {
         "target": "microservice",
+        "required": true,
         "many": false
       }
     }
@@ -139,7 +140,7 @@
     "relations": {
       "microservice": {
         "target": "microservice",
-        "required": false,
+        "required": true,
         "many": false
       }
     }
