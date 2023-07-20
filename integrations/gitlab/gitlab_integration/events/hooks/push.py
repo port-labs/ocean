@@ -37,8 +37,9 @@ class PushHook(HookHandler):
                 after,
                 config.branch,
             )
-            # Todo: implement update_diff, the sync method will not serve the purpose of updating the diff. it will delete unrelated entities2
-            # await ocean.update_raw_diff()
-            await ocean.sync(entities_after, UserAgentType.gitops)
+            await ocean.update_diff(
+                {"before": entities_before, "after": entities_after},
+                UserAgentType.gitops,
+            )
 
         await ocean.register_raw(ObjectKind.PROJECT, [gitlab_project.asdict()])
