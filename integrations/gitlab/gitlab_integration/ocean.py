@@ -1,11 +1,11 @@
 from typing import Any, Dict
 
+from gitlab_integration.bootstrap import event_handler
 from gitlab_integration.bootstrap import setup_application
 from gitlab_integration.utils import get_all_services, ObjectKind
 from loguru import logger
 from starlette.requests import Request
 
-from integrations.gitlab.gitlab_integration.bootstrap import event_handler
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import RAW_RESULT, ASYNC_GENERATOR_RESYNC_TYPE
 

@@ -4,9 +4,9 @@ from typing import Any
 from gitlab.v4.objects import Project
 from gitlab_integration.core.utils import generate_ref
 from gitlab_integration.events.hooks.base import HookHandler
+from gitlab_integration.git_integration import GitlabPortAppConfig
 from gitlab_integration.utils import ObjectKind
 
-from integrations.gitlab.gitlab_integration.git_integration import GitlabPortAppConfig
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
