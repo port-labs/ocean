@@ -7,7 +7,7 @@ Model = TypeVar("Model", bound="BaseModel")
 
 
 class Entity(BaseModel):
-    identifier: str = Field(strict=False)
+    identifier: str
     blueprint: str
     title: str | None
     team: str | list[str] = []
