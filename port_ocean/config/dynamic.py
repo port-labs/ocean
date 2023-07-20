@@ -1,4 +1,4 @@
-from typing import Type, Any, Optional, TypeVar
+from typing import Type, Any, Optional
 
 from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as
 
@@ -10,15 +10,12 @@ class Configuration(BaseModel, extra=Extra.allow):
     default: Optional[Any]
 
 
-T = TypeVar("T")
-
-
 def default_config_factory(configurations: Any) -> Type[BaseModel]:
     configurations = parse_obj_as(list[Configuration], configurations)
     fields: dict[str, tuple[Any, Any]] = {}
 
     for config in configurations:
-        field_type: Type[T]
+        field_type: Type[Any]
 
         match config.type:
             case "object":
