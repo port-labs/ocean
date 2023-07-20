@@ -7,6 +7,29 @@ Gitlab integration for Port using Port-Ocean Framework
 - Python3.11.0
 - Poetry (Python Package Manager)
 
+## Installation
+For more information about the installation visit the [Port Ocean helm chart](https://github.com/port-labs/helm-charts/tree/main/charts/port-ocean)
+
+```bash
+# The following script will install an Ocean integration at your K8s cluster using helm
+# integration.identifier: Change the identifier to describe your integration
+# integration.secrets.tokenMapping: Mapping of Gitlab tokens to Port Ocean tokens. example: {"THE_GROUP_TOKEN":["getport-labs/**", "GROUP/PROJECT PATTERN TO RUN FOR"]}
+# integration.config.appHost: The host of the Port Ocean app. Used for setting up the webhooks against the Gitlab.
+# ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target": Change the annotation value and key to match your ingress controller
+
+helm upgrade --install my-gitlab-integration port-labs/port-ocean \
+	--set port.clientId="CLIENT_ID"  \
+	--set port.clientSecret="CLIENT_SECRET"  \
+	--set initializePortResources=true  \
+	--set integration.identifier="my-gitlab-integration"  \
+	--set integration.type="gitlab"  \
+	--set integration.triggerChannel.type="SAMPLE"  \
+	--set integration.secrets.tokenMapping="\{\"TOKEN\": [\"GROUP_NAME/**\"]\}"  \
+	--set integration.config.appHost="https://example.com"  \
+	--set ingress.enabled=true  \
+	--set ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target"= / 
+```
+
 ## Supported Kinds
 ### Project 
 
