@@ -6,7 +6,7 @@ from loguru import logger
 from port_ocean.core.base import BaseWithContext
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
-from port_ocean.core.types import RawEntityDiff, EntityDiff
+from port_ocean.core.ocean_types import RawEntityDiff, EntityDiff
 
 
 @dataclass
