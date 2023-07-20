@@ -22,6 +22,16 @@ class SyncMixin(HandlerMixin, EventsMixin):
         HandlerMixin.__init__(self)
         EventsMixin.__init__(self)
 
+    async def update_diff(
+        self,
+        desired_state: EntityDiff,
+        user_agent_type: UserAgentType,
+    ) -> None:
+        await self.entities_state_applier.apply_diff(
+            {"before": desired_state["before"], "after": desired_state["after"]},
+            user_agent_type,
+        )
+
     async def register(
         self,
         entities: list[Entity],
