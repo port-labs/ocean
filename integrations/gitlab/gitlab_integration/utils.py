@@ -1,9 +1,9 @@
 from typing import List
 
 from gitlab import Gitlab
+from gitlab_integration.gitlab_service import GitlabService
 from loguru import logger
 
-from gitlab_integration.gitlab_service import GitlabService
 from port_ocean.context.ocean import ocean
 
 
@@ -12,12 +12,12 @@ def get_all_services() -> List[GitlabService]:
     all_tokens_services = []
 
     logger.info(
-        f"Creating gitlab clients for {len(logic_settings['token_mapping'])} tokens"
+        f"Creating gitlab clients for {len(logic_settings['tokenMapping'])} tokens"
     )
-    for token, group_mapping in logic_settings["token_mapping"].items():
-        gitlab_client = Gitlab(logic_settings["gitlab_host"], token)
+    for token, group_mapping in logic_settings["tokenMapping"].items():
+        gitlab_client = Gitlab(logic_settings["gitlabHost"], token)
         gitlab_service = GitlabService(
-            gitlab_client, logic_settings["app_host"], group_mapping
+            gitlab_client, logic_settings["appHost"], group_mapping
         )
         all_tokens_services.append(gitlab_service)
 
@@ -27,6 +27,6 @@ def get_all_services() -> List[GitlabService]:
 class ObjectKind:
     ISSUE = "issue"
     JOB = "job"
-    MERGE_REQUEST = "merge request"
+    MERGE_REQUEST = "mergeRequest"
     PIPELINE = "pipeline"
     PROJECT = "project"

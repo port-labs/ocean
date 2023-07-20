@@ -1,3 +1,3 @@
-from create_app import create_app
-
-app = create_app()
+# noinspection PyUnresolvedReferences
+# ruff: noqa: F401
+from gitlab_integration import ocean

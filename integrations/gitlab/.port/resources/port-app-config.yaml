@@ -5,7 +5,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .namespace.full_path
+          identifier: .name_with_namespace |= gsub(" "; "")
           title: .name
           blueprint: '"microservice"'
           properties:
