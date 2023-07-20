@@ -10,7 +10,7 @@ aiofiles = "^0.6.0"
 python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
 jsonschema = "^4.17.3"
-port-ocean = {version = "0.1.0.rc3", extras = ["cli"]}
+port-ocean = {version = "0.1.0.rc4", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
