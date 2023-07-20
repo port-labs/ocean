@@ -76,7 +76,7 @@ package = "port_ocean"
 exclude = [
     'port_ocean/cli/cookiecutter',
     'venv',
-    '.venv',
+    '\.venv',
     'integrations'
 ]
 plugins = [

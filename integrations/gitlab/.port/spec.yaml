@@ -22,5 +22,6 @@ configurations:
   - name: gitlabHost
     required: false
     type: url
+    default: https://gitlab.com
     description: The host of the Gitlab instance. If not specified, the default will be https://gitlab.com.
 ingressRequired: true

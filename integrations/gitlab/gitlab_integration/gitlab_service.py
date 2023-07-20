@@ -1,13 +1,15 @@
+import typing
 from typing import List, Tuple, Any, Union
 
 import yaml
 from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
 from gitlab.v4.objects import Project
-from loguru import logger
-
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
+from loguru import logger
+
+from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 
 
@@ -36,16 +38,6 @@ class GitlabService:
                 "merge_requests_events": True,
             }
         )
-
-    def _filter_mappings(self, projects: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return [
-            project
-            for project in projects
-            if all(
-                does_pattern_apply(mapping, project["path_with_namespace"])
-                for mapping in self.group_mapping
-            )
-        ]
 
     def _get_changed_files_between_commits(
         self, project_id: int, head: str
@@ -94,6 +86,12 @@ class GitlabService:
             for entity in self._get_entities_from_git(project, path, commit, ref)
         ]
 
+    def should_run_for_project(self, path_with_namespace: str) -> bool:
+        return any(
+            does_pattern_apply(mapping, path_with_namespace)
+            for mapping in self.group_mapping
+        )
+
     def get_root_groups(self) -> List[RESTObject]:
         groups = self.gitlab_client.groups.list(iterator=True)
         return [group for group in groups if group.parent_id is None]
@@ -127,41 +125,30 @@ class GitlabService:
 
         return webhook_ids
 
-    def get_group_projects(self, group_id: int | None = None) -> list[dict[str, Any]]:
-        if group_id is None:
-            return [
-                project
-                for group in self.gitlab_client.groups.list()
-                for project in self.gitlab_client.groups.get(group.id).attributes[
-                    "projects"
-                ]
-            ]
-        group = self.gitlab_client.groups.get(group_id)
-        projects: list[dict[str, Any]] = group.attributes["projects"]
-        return [
-            *projects,
-            *[
-                project
-                for sub_group in group.subgroups.list()
-                for project in self.get_group_projects(sub_group.id)
-            ],
-        ]
-
-    def get_project(self, project_id: int) -> Project | None:
+    def get_project(self, project_id: int) -> Project:
         logger.info(f"fetching project {project_id}")
-        project = self.gitlab_client.projects.get(project_id)
-        if all(
-            does_pattern_apply(mapping, project.path_with_namespace)
-            for mapping in self.group_mapping
-        ):
-            return project
-        return None
+        return self.gitlab_client.projects.get(project_id)
 
-    def get_all_projects(self) -> list[dict[str, Any]]:
-        logger.info("fetching all projects for the token")
-        projects = self.get_group_projects()
+    def get_all_projects(self) -> list[Project]:
+        cache_key = "__cache_all_projects"
+        filtered_projects = event.attributes.get(cache_key)
+        if filtered_projects is None:
+            logger.info("fetching all projects for the token")
+            projects: list[Project] = typing.cast(
+                list[Project],
+                self.gitlab_client.projects.list(
+                    include_subgroups=True, owned=True, all=True
+                ),
+            )
 
-        return self._filter_mappings(projects)
+            filtered_projects = [
+                project
+                for project in projects
+                if self.should_run_for_project(project.path_with_namespace)
+            ]
+            event.attributes[cache_key] = filtered_projects
+
+        return filtered_projects
 
     def get_entities_diff(
         self,

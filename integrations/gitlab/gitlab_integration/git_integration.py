@@ -1,16 +1,14 @@
 from functools import lru_cache
-from typing import Any, Dict, Tuple, List
-
-from loguru import logger
-from pydantic import Field
+from typing import Dict, Any, Tuple, List
 
 from gitlab_integration.core.entities import FILE_PROPERTY_PREFIX
 from gitlab_integration.gitlab_service import GitlabService
+from loguru import logger
+from pydantic import Field
+
 from port_ocean.context.event import event
 from port_ocean.core.handlers import JQEntityProcessor
-from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-from port_ocean.core.integrations.base import BaseIntegration
 
 
 class GitManipulationHandler(JQEntityProcessor):
@@ -49,10 +47,3 @@ class GitManipulationHandler(JQEntityProcessor):
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str = "main"
-
-
-class GitlabIntegration(BaseIntegration):
-    ManipulationHandlerClass = GitManipulationHandler
-
-    class AppConfigHandlerClass(APIPortAppConfig):
-        CONFIG_CLASS = GitlabPortAppConfig
