@@ -21,7 +21,7 @@ class IntegrationSettings(BaseSettings):
 class IntegrationConfiguration(BaseOceanSettings):
     port: PortSettings
     event_listener: EventListenerSettingsType = Field(alias="eventListener")
-    batch_work_size: int | None = Field(alias="batchWorkSize", default=None)
+    batch_work_size: int = Field(alias="batchWorkSize", default=20)
     initialize_port_resources: bool = Field(
         alias="initializePortResources", default=False
     )

@@ -6,7 +6,7 @@ from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.models import Entity
-from port_ocean.core.types import (
+from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
     START_EVENT_LISTENER,
     RawEntityDiff,
