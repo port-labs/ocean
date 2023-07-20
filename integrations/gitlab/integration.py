@@ -1,4 +1,4 @@
-from integrations.gitlab.gitlab_integration.git_integration import (
+from gitlab_integration.git_integration import (
     GitManipulationHandler,
     GitlabPortAppConfig,
 )
