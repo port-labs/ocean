@@ -1,0 +1,24 @@
+# This is an example configuration file for the integration service.
+# Please copy this file to conf/config.yaml and edit it to your needs.
+
+# The integrations list to load into the integration port_ocean.
+# You can add as many integrations as you want, and you can use the same type of integration multiple times.
+port:
+  clientId: {{ from env PORT_CLIENT_ID }} # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.
+  clientSecret: {{ from env PORT_CLIENT_SECRET }} # Can be loaded via environment variable: PORT_CLIENT_SECRET, if both are set, the environment variable will be used.
+  baseUrl: http://localhost:3000 # Can be loaded via environment variable: PORT_BASE_URL, if both are set, the environment variable will be used.
+# The trigger channel to use for the integration service.
+eventListener:
+  type: KAFKA
+  brokers: "localhost:9092"
+  kafkaSecurityEnabled: false
+integration:
+  # The name of the integration.
+  identifier: "my_integration_2asdfasdfasdfasdfaasdsdfasdfasfd"
+  # The type of the integration.
+  type: "gitlab"
+  # The configuration of the integration.
+  # resyncOnStartup: true
+  config:
+    tokenMapping: {{ from env GITLAB_TOKEN_MAPPING }}
+    appHost: https://c0d5-81-199-132-66.ngrok-free.app
