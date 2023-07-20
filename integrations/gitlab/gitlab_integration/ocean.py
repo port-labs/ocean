@@ -85,4 +85,7 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             pipelines = project.pipelines.list(all=True)
             logger.info(f"Found {len(pipelines)} pipelines for project {project.id}")
             for pipeline in pipelines:
-                yield pipeline.asdict()
+                yield {
+                    **pipeline.asdict(),
+                    "__project": project.asdict(),
+                }
