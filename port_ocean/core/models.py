@@ -10,7 +10,7 @@ class Entity(BaseModel):
     title: str | None
     team: str | list[str] = []
     properties: dict[str, Any] = {}
-    relations: dict[str, str] = {}
+    relations: dict[str, Any] = {}
 
 
 class BlueprintRelation(BaseModel):

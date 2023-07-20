@@ -19,7 +19,7 @@ from port_ocean.core.handlers.entities_state_applier.port.validate_entity_relati
 )
 from port_ocean.core.handlers.entity_processor.base import EntityPortDiff
 from port_ocean.core.models import Entity
-from port_ocean.core.types import EntityDiff
+from port_ocean.core.ocean_types import EntityDiff
 from port_ocean.core.utils import is_same_entity, get_unique, get_port_diff
 from port_ocean.exceptions.core import RelationValidationException
 
@@ -53,7 +53,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         await self._validate_delete_dependent_entities(diff.deleted)
         modified_or_created_entities = diff.modified + diff.created
 
-        if modified_or_created_entities:
+        if modified_or_created_entities and not config.create_missing_related_entities:
             logger.info("Validating modified or created entities")
 
             await asyncio.gather(
@@ -162,7 +162,8 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                         silent=True,
                     )
                     for entity in entities
-                )
+                ),
+                return_exceptions=True,
             )
         else:
             ordered_created_entities = reversed(

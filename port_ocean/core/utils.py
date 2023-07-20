@@ -4,6 +4,7 @@ from pydantic import parse_obj_as, ValidationError
 
 from port_ocean.core.handlers.entity_processor.base import EntityPortDiff
 from port_ocean.core.models import Entity
+from port_ocean.core.ocean_types import RAW_RESULT
 from port_ocean.exceptions.core import RawObjectValidationException
 
 T = TypeVar("T", bound=tuple[list[Any], ...])
@@ -13,7 +14,7 @@ def zip_and_sum(collection: Iterable[T]) -> T:
     return tuple(sum(items, []) for items in zip(*collection))  # type: ignore
 
 
-def validate_result(result: Any) -> list[dict[str, Any]]:
+def validate_result(result: Any) -> RAW_RESULT:
     try:
         return parse_obj_as(list[dict[str, Any]], result)
     except ValidationError as e:
