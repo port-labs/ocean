@@ -1,3 +1,6 @@
+<img src="./assets/Thumbnail.jpg" alt="Ocean">
+
+
 # Ocean <img src="./assets/OceanSymbol.svg" alt="Ocean" width="100" height="100" align="right">
 
 [![Lint](https://github.com/port-labs/Port-Ocean/actions/workflows/lint.yml/badge.svg)](https://github.com/port-labs/port-ocean/actions/workflows/lint.yml)
@@ -35,7 +38,8 @@ poetry add port-ocean[cli]
 2. Run
 
    ```sh
-   ocean sail ./path/to/integration
+   ocean sail ./path/to/
+   integration
    ```
 
 # Export Architecture
@@ -44,6 +48,11 @@ poetry add port-ocean[cli]
 
 ## Real-Time updates Architecture
 ![image](./assets/RealTimeUpdatesArchitecture.svg)
+
+## Integration Lifecycle
+
+![image](./assets/LifecycleOfIntegration.svg)
+
 
 ## Folder Structure
 The Ocean Integration Framework follows a specific folder structure within this mono repository. This structure ensures proper organization and easy identification of integration modules. The suggested folder structure is as follows:
@@ -67,10 +76,6 @@ port-ocean/
 - Each integration is represented by a separate folder inside the `integrations` directory.
 - Inside each integration folder, you'll find a `main.py` file that implements the core functionality of the integration for the specific third-party system.
 - The `pyproject.toml` file inside each integration folder lists the required dependencies for that integration.
-
-## Integration Lifecycle
-
-![image](./assets/LifecycleOfIntegration.svg)
 
 ## Configuration
 The Integration Framework utilizes a `config.yaml` file for its configuration. This file defines both the framework configuration and the integration configuration within it. Each integration is identified by its type and unique identifier, which are utilized during initialization to appropriately update Port.
