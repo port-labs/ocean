@@ -25,11 +25,22 @@ from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
 )
 from port_ocean.core.utils import zip_and_sum
+from port_ocean.exceptions.core import OceanAbortException
 
 
 class SyncMixin(HandlerMixin):
     def __init__(self) -> None:
         HandlerMixin.__init__(self)
+
+    async def update_diff(
+        self,
+        desired_state: EntityDiff,
+        user_agent_type: UserAgentType,
+    ) -> None:
+        await self.entities_state_applier.apply_diff(
+            {"before": desired_state["before"], "after": desired_state["after"]},
+            user_agent_type,
+        )
 
     async def register(
         self,
@@ -201,12 +212,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
         for generator in async_generators:
-            async for item in generator:
-                registered_entities_results.append(
-                    await self._register_resource_raw(
-                        resource_config, [item], user_agent_type
+            try:
+                async for item in generator:
+                    registered_entities_results.append(
+                        await self._register_resource_raw(
+                            resource_config, [item], user_agent_type
+                        )
                     )
-                )
+            except* OceanAbortException as error:
+                errors.append(error)
 
         entities: list[Entity] = sum(registered_entities_results, [])
         logger.info(

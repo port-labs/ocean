@@ -10,6 +10,7 @@ from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
     START_EVENT_LISTENER,
     RawEntityDiff,
+    EntityDiff,
 )
 from port_ocean.exceptions.context import PortOceanContextNotFoundError
 
@@ -66,6 +67,13 @@ class PortOceanContext:
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
         await self.integration.update_raw_diff(kind, raw_diff, user_agent_type)
+
+    async def update_diff(
+        self,
+        diff: EntityDiff,
+        user_agent_type: UserAgentType = UserAgentType.exporter,
+    ) -> None:
+        await self.integration.update_diff(diff, user_agent_type)
 
     async def register_raw(
         self,

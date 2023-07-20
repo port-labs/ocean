@@ -37,10 +37,17 @@ async def resync_generator_wrapper(
     fn: Callable[[str], ASYNC_GENERATOR_RESYNC_TYPE], kind: str
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     generator = fn(kind)
+    errors = []
     try:
         while True:
-            with resync_error_handling():
-                result = await anext(generator)
-                yield validate_result([result])[0]
+            try:
+                with resync_error_handling():
+                    result = await anext(generator)
+                    yield validate_result([result])[0]
+            except OceanAbortException as error:
+                errors.append(error)
     except StopAsyncIteration:
-        pass
+        if errors:
+            raise ExceptionGroup(
+                "At least one of the resync generator iterations failed", errors
+            )
