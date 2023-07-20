@@ -69,7 +69,9 @@ class KafkaConsumer(BaseConsumer):
                     f"Failed to process message: {str(e)}"
                 )
 
-        asyncio.run(try_wrapper())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(try_wrapper())
 
     def start(self) -> None:
         try:

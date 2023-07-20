@@ -3,7 +3,7 @@ from abc import abstractmethod
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.base import BaseWithContext
 from port_ocean.core.models import Entity
-from port_ocean.core.types import EntityDiff
+from port_ocean.core.ocean_types import EntityDiff
 
 
 class BaseEntitiesStateApplier(BaseWithContext):
