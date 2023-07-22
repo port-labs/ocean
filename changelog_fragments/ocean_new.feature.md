@@ -1,0 +1,1 @@
+Added new command to the ocean cli for scaffolding a `ocean new` project in path & `make new` for scaffolding in the repo

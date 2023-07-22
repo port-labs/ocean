@@ -1,0 +1,1 @@
+Added `ocean pull` for pulling one of the public integrations in port-ocean repo
