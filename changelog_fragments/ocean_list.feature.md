@@ -1,1 +1,0 @@
-Added `ocean list` for listing all public integrations in port-ocean repo 

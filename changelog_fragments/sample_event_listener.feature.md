@@ -1,1 +1,0 @@
-Added SAMPLE event listener
