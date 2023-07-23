@@ -14,22 +14,26 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - ### First version changelog
 
   #### Added
+  - Handlers
+    - Added entities state applier first port HTTP implementation.
+    - Added entity processor first jq implementation.
+    - Added port app config first port HTTP implementation.
+  
+  - Event Listeners
+    - Added KAFKA event listener.
+    - Added SAMPLE event listener.
+  - Core
+    - Added ocean contexts & contexts global variables.
+    - Added validation to the integration config according to its spec.yaml.
+    - Integration can specify default resources to be created on installation.
+    - Added a new way to return data from the resync using generators.
+    - Added provider-based injection for the config yaml.
+  
+  - CLI
+    - Added ocean list for listing all public integrations in the port-ocean repo.
+    - Added new command to the ocean CLI for scaffolding an ocean new project in a specific path.
+    - Added make new for scaffolding in the repository.
+    - Added ocean pull for pulling one of the public integrations from the port-ocean repo.
+    - Introducing ocean sail command for running the integration.
 
-  - Added entities state applier first port HTTP implementation.
-  - Added entity processor first jq implementation.
-  - Integration can specify default resources to be created on installation.
-  - Added validation to the integration config according to its spec.yaml.
-  - Added KAFKA event listener.
-  - Added ocean contexts & contexts global variables.
-  - Added ocean list for listing all public integrations in the port-ocean repo.
-  - Added new command to the ocean CLI for scaffolding an ocean new project in a specific path.
-  - Added make new for scaffolding in the repository.
-  - Added ocean pull for pulling one of the public integrations from the port-ocean repo.
-  - Introducing ocean sail command for running the integration.
-  - Added port app config first port HTTP implementation.
-  - Added a new way to return data from the resync using generators.
-  - Added SAMPLE event listener.
-  - Added spec.yaml to the scaffolding.
-  - Added provider-based injection for the config yaml.
-
-  (PORT-4307)
+    (PORT-4307)
