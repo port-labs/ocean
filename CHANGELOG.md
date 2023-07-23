@@ -32,10 +32,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     - Added provider-based injection for the config yaml.
   
   - CLI
-    - Added `ocean list` for listing all public integrations in the port-ocean repo.
-    - Added new command to the ocean CLI for scaffolding an `ocean new` project in a specific path.
-    - Added `make new` for scaffolding in the repository.
-    - Added `ocean pull` for pulling one of the public integrations from the port-ocean repo.
-    - Added `ocean sail` command for running the integration.
+    - Added `ocean list` to list all public integrations in the port-ocean repo.
+    - Added `ocean new` to scaffold an ocean project.
+    - Added `ocean pull` to pull one of the public integrations from the port-ocean repo.
+    - Added `ocean sail` to run the integration.
+    - Added `ocean version` to get the framework version.
+    - Added `make new` to scaffold in the Ocean repository.
 
   (PORT-4307)
