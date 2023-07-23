@@ -26,7 +26,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
   - Core
     - Added ocean contexts & contexts global variables.
-    - Added validation to the integration config according to its spec.yaml.
+    - Added validation to the integration config according to its `spec.yaml`.
     - Added a way to specify default resources to be created on installation.
     - Added a new way to return data from the resync using generators.
     - Added provider-based injection for the config yaml.
