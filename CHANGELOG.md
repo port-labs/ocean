@@ -36,4 +36,4 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     - Added ocean pull for pulling one of the public integrations from the port-ocean repo.
     - Introducing ocean sail command for running the integration.
 
-    (PORT-4307)
+  (PORT-4307)
