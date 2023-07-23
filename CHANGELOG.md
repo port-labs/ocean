@@ -22,10 +22,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Event Listeners
     - Added KAFKA event listener.
     - Added SAMPLE event listener.
+
   - Core
     - Added ocean contexts & contexts global variables.
     - Added validation to the integration config according to its spec.yaml.
-    - Integration can specify default resources to be created on installation.
+    - Added a way to specify default resources to be created on installation.
     - Added a new way to return data from the resync using generators.
     - Added provider-based injection for the config yaml.
   
@@ -34,6 +35,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     - Added new command to the ocean CLI for scaffolding an ocean new project in a specific path.
     - Added make new for scaffolding in the repository.
     - Added ocean pull for pulling one of the public integrations from the port-ocean repo.
-    - Introducing ocean sail command for running the integration.
+    - Added `ocean sail` command for running the integration.
 
   (PORT-4307)
