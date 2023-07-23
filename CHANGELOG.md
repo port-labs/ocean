@@ -25,7 +25,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     - Added WEBHOOK event listener.
 
   - Core
-    - Added ocean contexts & contexts global variables.
+    - Added Ocean contexts & contexts global variables.
     - Added validation to the integration config according to its `.port/spec.yaml`.
     - Added a way to specify default resources to be created on installation.
     - Added a new way to return data from the resync using generators.
@@ -33,7 +33,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   
   - CLI
     - Added `ocean list` to list all public integrations in the port-ocean repo.
-    - Added `ocean new` to scaffold an ocean project.
+    - Added `ocean new` to scaffold an Ocean project.
     - Added `ocean pull` to pull one of the public integrations from the port-ocean repo.
     - Added `ocean sail` to run the integration.
     - Added `ocean version` to get the framework version.
