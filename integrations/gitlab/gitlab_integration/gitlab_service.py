@@ -31,7 +31,6 @@ class GitlabService:
         return False
 
     def _create_group_webhook(self, group: RESTObject) -> None:
-        # Creating the gitlab webhook with more event triggers (job_events, pipeline_events, etc...)
         group.hooks.create(
             {
                 "url": f"{self.app_host}/integration/hook/{group.get_id()}",
