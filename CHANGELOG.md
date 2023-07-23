@@ -22,6 +22,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Event Listeners
     - Added KAFKA event listener.
     - Added SAMPLE event listener.
+    - Added WEBHOOK event listener.
 
   - Core
     - Added ocean contexts & contexts global variables.
@@ -31,10 +32,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
     - Added provider-based injection for the config yaml.
   
   - CLI
-    - Added ocean list for listing all public integrations in the port-ocean repo.
-    - Added new command to the ocean CLI for scaffolding an ocean new project in a specific path.
-    - Added make new for scaffolding in the repository.
-    - Added ocean pull for pulling one of the public integrations from the port-ocean repo.
+    - Added `ocean list` for listing all public integrations in the port-ocean repo.
+    - Added new command to the ocean CLI for scaffolding an `ocean new` project in a specific path.
+    - Added `make new` for scaffolding in the repository.
+    - Added `ocean pull` for pulling one of the public integrations from the port-ocean repo.
     - Added `ocean sail` command for running the integration.
 
   (PORT-4307)
