@@ -1,1 +1,0 @@
-Added validation to the integration config according to its spec.yaml
