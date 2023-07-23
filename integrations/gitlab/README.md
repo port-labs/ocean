@@ -246,7 +246,7 @@ The mapping should refer to on of the merge requests from the example response: 
 
 ```yaml
 resources:
-  - kind: mergeRequest
+  - kind: merge-request
     selector:
       query: 'true'
     port:

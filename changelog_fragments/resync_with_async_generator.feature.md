@@ -1,1 +1,0 @@
-Added a new way to return data from the resync using generators

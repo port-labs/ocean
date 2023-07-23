@@ -27,6 +27,6 @@ def get_all_services() -> List[GitlabService]:
 class ObjectKind:
     ISSUE = "issue"
     JOB = "job"
-    MERGE_REQUEST = "mergeRequest"
+    MERGE_REQUEST = "merge-request"
     PIPELINE = "pipeline"
     PROJECT = "project"

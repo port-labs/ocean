@@ -13,7 +13,7 @@ resources:
             description: .description
             namespace: .namespace.name
             full_path: .namespace.full_path
-  - kind: mergeRequest
+  - kind: merge-request
     selector:
       query: 'true'
     port:
