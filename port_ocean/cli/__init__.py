@@ -2,9 +2,9 @@ from importlib.util import find_spec
 
 try:
     find_spec("click")
-    find_spec("cookiecutter")
     find_spec("rich")
-    find_spec("toml")
+    find_spec("cookiecutter")
+    find_spec("jinja2-time")
 
     cli_included = True
 except ImportError:

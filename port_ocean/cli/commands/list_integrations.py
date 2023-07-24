@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
 import httpx
-from rich.console import Console
 
-console = Console()
+from port_ocean.cli.commands.main import cli_start, console
 
 
 def list_git_folders(owner: str, repo_name: str, path: str) -> list[str]:
@@ -21,3 +21,15 @@ def list_git_folders(owner: str, repo_name: str, path: str) -> list[str]:
     contents = response.json()
     folders = [item["name"] for item in contents if item["type"] == "dir"]
     return folders
+
+
+@cli_start.command(name="list")
+def list_integrations() -> None:
+    """
+    List all available public integrations.
+    """
+    console.print("🌊 Here are the integrations available to you:", style="bold")
+    options = list_git_folders("port-labs", "port-ocean", "integrations")
+
+    for option in options:
+        console.print(f"⚓️ [bold][blue]{option}[/blue][/bold]")
