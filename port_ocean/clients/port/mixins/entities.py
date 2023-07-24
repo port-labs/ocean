@@ -19,7 +19,7 @@ class EntityClientMixin:
         entity: Entity,
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
-        silent: bool = False,
+        should_raise: bool = True,
     ) -> None:
         validation_only = request_options.get("validation_only", False)
         logger.info(
@@ -45,17 +45,16 @@ class EntityClientMixin:
             logger.error(
                 f"Error {'Validating' if validation_only else 'Upserting'} "
                 f"entity: {entity.identifier} of "
-                f"blueprint: {entity.blueprint}, "
-                f"error: {response.text}"
+                f"blueprint: {entity.blueprint}"
             )
-        handle_status_code(silent, response)
+        handle_status_code(response, should_raise)
 
     async def delete_entity(
         self,
         entity: Entity,
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
-        silent: bool = False,
+        should_raise: bool = True,
     ) -> None:
         logger.info(
             f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
@@ -74,11 +73,10 @@ class EntityClientMixin:
             logger.error(
                 f"Error deleting "
                 f"entity: {entity.identifier} of "
-                f"blueprint: {entity.blueprint}, "
-                f"error: {response.text}"
+                f"blueprint: {entity.blueprint}"
             )
 
-        handle_status_code(silent, response)
+        handle_status_code(response, should_raise)
 
     async def validate_entity_exist(self, identifier: str, blueprint: str) -> None:
         logger.info(f"Validating entity {identifier} of blueprint {blueprint} exists")
@@ -91,10 +89,9 @@ class EntityClientMixin:
             logger.error(
                 f"Error validating "
                 f"entity: {identifier} of "
-                f"blueprint: {blueprint}, "
-                f"error: {response.text}"
+                f"blueprint: {blueprint}"
             )
-        response.raise_for_status()
+        handle_status_code(response)
 
     async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
         query = {
@@ -118,7 +115,7 @@ class EntityClientMixin:
                 "include": ["blueprint", "identifier"],
             },
         )
-        response.raise_for_status()
+        handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
     async def search_dependent_entities(self, entity: Entity) -> list[Entity]:
@@ -140,7 +137,7 @@ class EntityClientMixin:
             headers=await self.auth.headers(),
             json=body,
         )
-        response.raise_for_status()
+        handle_status_code(response)
 
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 

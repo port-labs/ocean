@@ -37,14 +37,14 @@ class PortClient(EntityClientMixin, IntegrationClientMixin, BlueprintClientMixin
         )
         BlueprintClientMixin.__init__(self, self.auth, self.client)
 
-    async def get_kafka_creds(self, silent: bool = False) -> KafkaCreds:
+    async def get_kafka_creds(self) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")
         response = await self.client.get(
             f"{self.api_url}/kafka-credentials", headers=await self.auth.headers()
         )
         if response.is_error:
-            logger.error(f"Error getting kafka credentials, error: {response.text}")
-        handle_status_code(silent, response)
+            logger.error(f"Error getting kafka credentials")
+        handle_status_code(response)
 
         credentials = response.json().get("credentials")
 
@@ -61,6 +61,6 @@ class PortClient(EntityClientMixin, IntegrationClientMixin, BlueprintClientMixin
         )
         if response.is_error:
             logger.error(f"Error getting organization id, error: {response.text}")
-            response.raise_for_status()
+        handle_status_code(response)
 
         return response.json()["organization"]["id"]
