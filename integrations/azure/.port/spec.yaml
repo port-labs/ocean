@@ -1,0 +1,15 @@
+version: v0.1.0
+type: gitlab
+description: azure integration for Port Ocean
+icon: Cookiecutter
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: <ResourceName1>
+      - kind: <ResourceName2>
+configurations:
+  - name: subscriptionId
+    required: true
+    type: string
+    sensitive: true
