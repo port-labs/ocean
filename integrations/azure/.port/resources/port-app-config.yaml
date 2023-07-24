@@ -1,0 +1,19 @@
+resources:
+  - kind: Microsoft.App/containerApps
+    selector:
+      # azure resource api version to query
+      api_version: '2023-07-01'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"containerapp"'
+          properties:
+            location: .location
+            provisioning_state: .properties.provisioningState
+            outbound_ip_addresses: .properties.outboundIpAddresses
+            external_ingress: .properties.configuration.ingress.external
+            host_name: .properties.configuration.ingress.fqdn
+            min_replicas: .properties.template.scale.minReplicas
+            max_replicas: .properties.template.scale.maxReplicas

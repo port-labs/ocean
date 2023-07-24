@@ -1,0 +1,40 @@
+[
+  {
+    "identifier": "containerapp",
+    "description": "This blueprint represents an Azure Container App in our software catalog",
+    "title": "Container APP",
+    "icon": "Azure",
+    "schema": {
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "provisioning_state": {
+          "title": "Provisioning State",
+          "type": "string"
+        },
+        "outbound_ip_addresses": {
+          "title": "Outbound IP Addresses",
+          "type": "array"
+        },
+        "external_ingress": {
+          "title": "External Ingress",
+          "type": "boolean"
+        },
+        "host_name": {
+          "title": "Host Name",
+          "type": "string"
+        },
+        "min_replicas": {
+          "title": "Min Replicas",
+          "type": "integer"
+        },
+        "max_replicas": {
+          "title": "Max Replicas",
+          "type": "integer"
+        }
+      }
+    }
+  }
+]
