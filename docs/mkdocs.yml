@@ -1,0 +1,68 @@
+site_name: Ocean
+site_url: https://app.getport.io
+theme:
+  name: material
+  logo: assets/OceanSymbol.svg
+  favicon: assets/OceanSymbol.svg
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+
+repo_name: port-labs/Port-Ocean
+repo_url: https://github.com/port-labs/Port-Ocean
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [../port_ocean]
+
+
+
+nav:
+  - 🏠 Home: index.md
+  - Getting Started:
+    - Installation: ./getting-started/installation.md
+    - Quickstart: ./getting-started/quickstart.md
+    - Deployment: ./getting-started/deployment.md
+    - Publishing: ./getting-started/publishing.md
+  - Cli: ./cli.md
+  - Guides: ./guides/index.md
+  - Development: ./development/index.md
+  - Contributing:
+      - Suggesting a Feature: ./contributing/suggesting-feature.md
+      - Reporting a Bug: ./contributing/reporting-bug.md
+      - Suggesting a Docs change: ./contributing/suggesting-docs-change.md
+      - Asking a Question: ./contributing/asking-question.md
+  - References:
+      - core:
+          - integrations: ./references/core/integrations.md
+          - handlers: ./references/core/handlers.md
+          - event listener: ./references/core/event-listener.md
+          - models: ./references/core/models.md
+          - types: ./references/core/types.md
+      - clients: ./references/clients.md
+      - config: ./references/config.md
+      - consumers: ./references/consumers.md
+      - context: ./references/context.md
+      - middleware: ./references/middleware.md
+      - ocean: ./references/ocean.md
+      - run: ./references/run.md
+      - utils: ./references/utils.md
+  - License: ./license.md
+  - Release Notes: ../../CHANGELOG.md
+  - FAQ: ./faq.md
