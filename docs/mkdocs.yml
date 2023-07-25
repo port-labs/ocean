@@ -1,21 +1,38 @@
-site_name: Ocean
+site_name: Ocean Documentation
 site_url: https://app.getport.io
 theme:
   name: material
-  logo: assets/OceanSymbol.svg
-  favicon: assets/OceanSymbol.svg
+  logo: ./assets/OceanSymbol.svg
+  favicon: ./assets/OceanSymbol.svg
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tooltips
+    - navigation.indexes
+    - navigation.top
+    - navigation.tracking
+    - navigation.instant
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+
   palette:
     - scheme: default
+      media: "(prefers-color-scheme: light)"
       primary: indigo
       accent: indigo
       toggle:
-        icon: material/brightness-7
+        icon: material/lightbulb
         name: Switch to dark mode
     - scheme: slate
+      media: "(prefers-color-scheme: dark)"
       primary: indigo
       accent: indigo
       toggle:
-        icon: material/brightness-4
+        icon: material/lightbulb-outline
         name: Switch to light mode
 
 
@@ -35,20 +52,20 @@ plugins:
 
 nav:
   - 🏠 Home: index.md
-  - Getting Started:
-    - Installation: ./getting-started/installation.md
-    - Quickstart: ./getting-started/quickstart.md
-    - Deployment: ./getting-started/deployment.md
-    - Publishing: ./getting-started/publishing.md
-  - Cli: ./cli.md
-  - Guides: ./guides/index.md
-  - Development: ./development/index.md
-  - Contributing:
-      - Suggesting a Feature: ./contributing/suggesting-feature.md
-      - Reporting a Bug: ./contributing/reporting-bug.md
-      - Suggesting a Docs change: ./contributing/suggesting-docs-change.md
-      - Asking a Question: ./contributing/asking-question.md
-  - References:
+  - 🎉 Getting Started:
+    - 🛠️ Installation: ./getting-started/installation.md
+    - ⚡️ Quickstart: ./getting-started/quickstart.md
+    - 🚀 Deployment: ./getting-started/deployment.md
+    - 📦 Publishing: ./getting-started/publishing.md
+  - 💻 Cli: ./cli.md
+  - 📚 Guides: ./guides/index.md
+  - 🔧 Development: ./development/index.md
+  - 🤝 Contributing:
+      - 💡 Suggesting a Feature: ./contributing/suggesting-feature.md
+      - 🐞 Reporting a Bug: ./contributing/reporting-bug.md
+      - 📝 Suggesting a Docs change: ./contributing/suggesting-docs-change.md
+      - ⁉️ Asking a Question: ./contributing/asking-question.md
+  - 🔍 References:
       - core:
           - integrations: ./references/core/integrations.md
           - handlers: ./references/core/handlers.md
@@ -63,6 +80,6 @@ nav:
       - ocean: ./references/ocean.md
       - run: ./references/run.md
       - utils: ./references/utils.md
-  - License: ./license.md
-  - Release Notes: ../../CHANGELOG.md
-  - FAQ: ./faq.md
+  - 📜 License: ./license.md
+  - 📅 Release Notes: ../../CHANGELOG.md
+  - 🤔 FAQ: ./faq.md
