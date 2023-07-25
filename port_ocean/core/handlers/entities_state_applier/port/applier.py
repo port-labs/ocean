@@ -159,7 +159,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                         entity,
                         event.port_app_config.get_port_request_options(),
                         user_agent_type,
-                        silent=True,
+                        should_raise=False,
                     )
                     for entity in entities
                 ),
@@ -175,7 +175,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                     entity,
                     event.port_app_config.get_port_request_options(),
                     user_agent_type,
-                    silent=True,
+                    should_raise=False,
                 )
 
     async def delete(
@@ -189,7 +189,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                         entity,
                         event.port_app_config.get_port_request_options(),
                         user_agent_type,
-                        silent=True,
+                        should_raise=False,
                     )
                     for entity in entities
                 )
@@ -202,5 +202,5 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                     entity,
                     event.port_app_config.get_port_request_options(),
                     user_agent_type,
-                    silent=True,
+                    should_raise=False,
                 )

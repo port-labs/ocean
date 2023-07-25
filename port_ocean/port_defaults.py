@@ -1,11 +1,11 @@
 import asyncio
 import json
+from pathlib import Path
 from typing import Type, Any, TypedDict, Optional
 
 import httpx
 import yaml
 from loguru import logger
-from pathlib import Path
 from pydantic import BaseModel, Field
 from starlette import status
 
@@ -172,7 +172,9 @@ async def _initialize_defaults(
         )
         await asyncio.gather(
             *(
-                port_client.delete_blueprint(blueprint["identifier"], silent=True)
+                port_client.delete_blueprint(
+                    blueprint["identifier"], should_raise=False
+                )
                 for blueprint in defaults.blueprints
             )
         )
