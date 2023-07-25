@@ -167,7 +167,9 @@ async def _initialize_defaults(
         )
         await asyncio.gather(
             *(
-                port_client.delete_blueprint(blueprint["identifier"], silent=True)
+                port_client.delete_blueprint(
+                    blueprint["identifier"], should_raise=False
+                )
                 for blueprint in defaults.blueprints
             )
         )

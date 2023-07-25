@@ -5,6 +5,7 @@ from loguru import logger
 from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.clients.port.utils import handle_status_code
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -21,13 +22,17 @@ class IntegrationClientMixin:
         self.auth = auth
         self.client = client
 
-    async def get_current_integration(self) -> dict[str, Any]:
+    async def _get_current_integration(self) -> httpx.Response:
         logger.info(f"Fetching integration with id: {self.integration_identifier}")
         response = await self.client.get(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
             headers=await self.auth.headers(),
         )
-        response.raise_for_status()
+        return response
+
+    async def get_current_integration(self) -> dict[str, Any]:
+        response = await self._get_current_integration()
+        handle_status_code(response)
         return response.json()["integration"]
 
     async def create_integration(
@@ -42,13 +47,14 @@ class IntegrationClientMixin:
             "installationId": self.integration_identifier,
             "installationAppType": _type,
             "changelogDestination": changelog_destination,
+            "config": {},
         }
         if port_app_config:
             json["config"] = port_app_config.to_request()
         response = await self.client.post(
             f"{self.auth.api_url}/integration", headers=headers, json=json
         )
-        response.raise_for_status()
+        handle_status_code(response)
 
     async def patch_integration(
         self,
@@ -71,7 +77,7 @@ class IntegrationClientMixin:
             headers=headers,
             json=json,
         )
-        response.raise_for_status()
+        handle_status_code(response)
 
     async def initialize_integration(
         self,
@@ -80,9 +86,13 @@ class IntegrationClientMixin:
         port_app_config: Optional["PortAppConfig"] = None,
     ) -> None:
         logger.info(f"Initiating integration with id: {self.integration_identifier}")
-        try:
-            integration = await self.get_current_integration()
+        response = await self._get_current_integration()
+        if response.status_code == status.HTTP_404_NOT_FOUND:
+            await self.create_integration(_type, changelog_destination, port_app_config)
+        else:
+            handle_status_code(response)
 
+            integration = response.json()["integration"]
             logger.info("Checking for diff in integration configuration")
             if (
                 integration["changelogDestination"] != changelog_destination
@@ -91,17 +101,6 @@ class IntegrationClientMixin:
                 await self.patch_integration(
                     _type, changelog_destination, port_app_config
                 )
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == status.HTTP_404_NOT_FOUND:
-                await self.create_integration(
-                    _type, changelog_destination, port_app_config
-                )
-                return
-
-            logger.error(
-                f"Error initiating integration with id: {self.integration_identifier}, error: {e.response.text}"
-            )
-            raise
 
         logger.info(
             f"Integration with id: {self.integration_identifier} successfully registered"
