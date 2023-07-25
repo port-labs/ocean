@@ -5,12 +5,12 @@ from port_ocean.core.base import BaseWithContext
 from port_ocean.core.event_listener import (
     HttpEventListener,
     KafkaEventListener,
-    SampleEventListener,
+    PollingEventListener,
 )
 from port_ocean.core.event_listener import (
     HttpEventListenerSettings,
     KafkaEventListenerSettings,
-    SampleEventListenerSettings,
+    PollingEventListenerSettings,
 )
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
@@ -58,11 +58,11 @@ class EventListenerFactory(BaseWithContext):
                 ), assert_message.format(type(config))
                 event_listener = HttpEventListener(wrapped_events, config)
 
-            case "sample":
+            case "polling":
                 assert isinstance(
-                    config, SampleEventListenerSettings
+                    config, PollingEventListenerSettings
                 ), assert_message.format(type(config))
-                event_listener = SampleEventListener(wrapped_events, config)
+                event_listener = PollingEventListener(wrapped_events, config)
 
             case _:
                 raise UnsupportedEventListenerTypeException(
