@@ -18,6 +18,23 @@ from port_ocean.core.event_listener.base import (
 
 
 class KafkaEventListenerSettings(EventListenerSettings):
+    """
+    This class inherits from `EventListenerSettings`, which provides a foundation for defining event listener configurations.
+    The `KafkaEventListenerSettings` specifically includes settings related to the Kafka event listener.
+
+    Attributes:
+        type (Literal["KAFKA"]): A literal indicating the type of the event listener, which is set to "KAFKA" for this class.
+        brokers (str): The comma-separated list of Kafka broker URLs to connect to.
+        security_protocol (str): The security protocol used for communication with Kafka brokers.
+                                 The default value is "SASL_SSL".
+        authentication_mechanism (str): The authentication mechanism used for secure access to Kafka brokers.
+                                        The default value is "SCRAM-SHA-512".
+        kafka_security_enabled (bool): A flag indicating whether Kafka security is enabled.
+                                       If True, credentials and security settings are used to connect to Kafka.
+                                       The default value is True.
+        consumer_poll_timeout (int): The maximum time in seconds to wait for messages during a poll.
+                                     The default value is 1 second.
+    """
     type: Literal["KAFKA"]
     brokers: str = ""
     security_protocol: str = Field(alias="securityProtocol", default="SASL_SSL")
@@ -29,6 +46,16 @@ class KafkaEventListenerSettings(EventListenerSettings):
 
 
 class KafkaEventListener(BaseEventListener):
+    """
+    The `KafkaEventListener` specifically listens for messages from a Kafka consumer related to changes in an integration.
+
+    Parameters:
+        events (EventListenerEvents): A dictionary containing event types and their corresponding event handlers.
+        event_listener_config (KafkaEventListenerSettings): Configuration settings for the Kafka event listener.
+        org_id (str): The identifier of the organization associated with the integration.
+        integration_identifier (str): The identifier of the integration being monitored.
+        integration_type (str): The type of the integration being monitored.
+    """
     def __init__(
         self,
         events: EventListenerEvents,
@@ -44,6 +71,11 @@ class KafkaEventListener(BaseEventListener):
         self.integration_type = integration_type
 
     async def _get_kafka_config(self) -> KafkaConsumerConfig:
+        """
+        A private method that returns the Kafka consumer configuration based on the provided settings.
+        If Kafka security is enabled, it fetches Kafka credentials using the ocean.port_client.get_kafka_creds() method.
+        Otherwise, it returns the KafkaConsumerConfig object parsed from the event_listener_config.
+        """
         if self.event_listener_config.kafka_security_enabled:
             creds = await ocean.port_client.get_kafka_creds()
             return KafkaConsumerConfig(
@@ -55,7 +87,11 @@ class KafkaEventListener(BaseEventListener):
 
         return KafkaConsumerConfig.parse_obj(self.event_listener_config.dict())
 
-    def should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
+    def _should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
+        """
+        Determines if a given message should be processed based on the integration identifier and topic.
+        Returns True if the message should be processed, False otherwise.
+        """
         integration_identifier = (
             msg_value.get("diff", {}).get("after", {}).get("identifier")
         )
@@ -67,15 +103,22 @@ class KafkaEventListener(BaseEventListener):
         return False
 
     async def _handle_message(self, message: dict[Any, Any], topic: str) -> None:
-        if not self.should_be_processed(message, topic):
+        """
+        A private method that handles incoming Kafka messages.
+        If the message should be processed (determined by `_should_be_processed`), it triggers the corresponding event handler.
+        """
+        if not self._should_be_processed(message, topic):
             return
 
         if "change.log" in topic and message is not None:
             await self.events["on_resync"](message)
 
-    def wrapped_start(
+    def _wrapped_start(
         self, context: PortOceanContext, func: Callable[[], None]
     ) -> Callable[[], None]:
+        """
+        A method that wraps the `start` method, initializing the PortOceanContext and invoking the given function.
+        """
         ocean_app = context.app
 
         def wrapper() -> None:
@@ -85,6 +128,10 @@ class KafkaEventListener(BaseEventListener):
         return wrapper
 
     async def start(self) -> None:
+        """
+        The main method that starts the Kafka consumer.
+        It creates a KafkaConsumer instance with the given configuration and starts it in a separate thread.
+        """
         consumer = KafkaConsumer(
             msg_process=self._handle_message,
             config=await self._get_kafka_config(),
@@ -93,5 +140,5 @@ class KafkaEventListener(BaseEventListener):
         logger.info("Starting Kafka consumer")
         threading.Thread(
             name="ocean_kafka_consumer",
-            target=self.wrapped_start(ocean, consumer.start),
+            target=self._wrapped_start(ocean, consumer.start),
         ).start()

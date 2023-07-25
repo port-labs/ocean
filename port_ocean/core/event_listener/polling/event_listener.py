@@ -12,6 +12,14 @@ from port_ocean.core.event_listener.polling.utils import repeat_every
 
 
 class PollingEventListenerSettings(EventListenerSettings):
+    """
+    Attributes:
+        type (Literal["POLLING"]): A literal indicating the type of the event listener, which is set to "POLLING" for this class.
+        resync_on_start (bool): A flag indicating whether to trigger a resync event on the start of the polling event listener.
+                                If True, the "on_resync" event will be triggered immediately when the polling listener starts.
+        interval (int): The interval in seconds at which the polling event listener checks for changes in the integration.
+                        The default interval is set to 60 seconds.
+    """
     type: Literal["POLLING"]
     resync_on_start: bool = True
     interval: int = 60
@@ -21,6 +29,15 @@ class PollingEventListenerSettings(EventListenerSettings):
 
 
 class PollingEventListener(BaseEventListener):
+    """
+    Polling event listener that checks for changes in the integration every `interval` seconds.
+
+    The `PollingEventListener` periodically checks for changes in the integration and triggers the "on_resync" event if changes are detected.
+
+    Parameters:
+        events (EventListenerEvents): A dictionary containing event types and their corresponding event handlers.
+        event_listener_config (PollingEventListenerSettings): Configuration settings for the Polling event listener.
+    """
     def __init__(
         self,
         events: EventListenerEvents,
@@ -31,6 +48,11 @@ class PollingEventListener(BaseEventListener):
         self._last_updated_at = None
 
     async def start(self) -> None:
+        """
+        Starts the polling event listener.
+        It registers the "on_resync" event to be called every `interval` seconds specified in the `event_listener_config`.
+        The `on_resync` event is triggered if the integration has changed since the last update.
+        """
         logger.info(
             f"Setting up Polling event listener with interval: {self.event_listener_config.interval}"
         )

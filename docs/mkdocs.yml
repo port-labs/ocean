@@ -47,6 +47,12 @@ plugins:
       handlers:
         python:
           paths: [../port_ocean]
+          options:
+            show_root_heading: true
+            heading_level: 2
+            show_category_heading: true
+            show_source: false
+            show_bases: false
 
 
 

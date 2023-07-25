@@ -20,6 +20,16 @@ from port_ocean.exceptions.core import UnsupportedEventListenerTypeException
 
 
 class EventListenerFactory(BaseWithContext):
+    """
+    This class is responsible for creating different types of event listeners based on the provided configuration.
+    The factory takes a PortOceanContext, installation_id, and events dictionary as parameters.
+
+    Parameters:
+        context (PortOceanContext): The PortOceanContext object containing information about the current application context.
+        installation_id (str): The identifier of the installation associated with the event listener.
+        events (EventListenerEvents): A dictionary containing event types and their corresponding event handlers.
+
+    """
     def __init__(
         self,
         context: PortOceanContext,
@@ -31,6 +41,13 @@ class EventListenerFactory(BaseWithContext):
         self.events = events
 
     async def create_event_listener(self) -> BaseEventListener:
+        """
+        Creates and returns a specific event listener based on the provided configuration.
+        The event listener is wrapped with the events provided in the factory's initialization.
+        
+        Raises:
+            UnsupportedEventListenerTypeException: If the event listener type is not supported.
+        """
         wrapped_events: EventListenerEvents = {"on_resync": self.events["on_resync"]}
         event_listener: BaseEventListener
         config = self.context.config.event_listener
