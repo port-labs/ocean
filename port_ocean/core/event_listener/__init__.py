@@ -1,9 +1,11 @@
 from .http.event_listener import HttpEventListener, HttpEventListenerSettings
 from .kafka.event_listener import KafkaEventListener, KafkaEventListenerSettings
-from .sample.event_listener import SampleEventListener, SampleEventListenerSettings
+from .polling.event_listener import PollingEventListener, PollingEventListenerSettings
 
 EventListenerSettingsType = (
-    HttpEventListenerSettings | KafkaEventListenerSettings | SampleEventListenerSettings
+    HttpEventListenerSettings
+    | KafkaEventListenerSettings
+    | PollingEventListenerSettings
 )
 
 __all__ = [
@@ -12,6 +14,6 @@ __all__ = [
     "HttpEventListenerSettings",
     "KafkaEventListener",
     "KafkaEventListenerSettings",
-    "SampleEventListener",
-    "SampleEventListenerSettings",
+    "PollingEventListener",
+    "PollingEventListenerSettings",
 ]
