@@ -10,6 +10,7 @@ mkdocs = "^1.4.3"
 mkdocs-material = "^9.1.19"
 mkdocstrings = { extras = ["python"], version = "^0.22.0" }
 port-ocean = {extras = ["cli"], version = "^0.1.0"}
+pymdown-extensions = "^10.1"
 
 
 [build-system]

@@ -54,10 +54,14 @@ plugins:
             show_source: false
             show_bases: false
 
+markdown_extensions:
+  - attr_list
+  - pymdownx.snippets:
+      base_path: ../
 
 
 nav:
-  - 🏠 Home: index.md
+  - 🌊 Ocean Overview: ocean-overview.md
   - 🎉 Getting Started:
     - 🛠️ Installation: ./getting-started/installation.md
     - ⚡️ Quickstart: ./getting-started/quickstart.md
@@ -87,5 +91,5 @@ nav:
       - run: ./references/run.md
       - utils: ./references/utils.md
   - 📜 License: ./license.md
-  - 📅 Release Notes: ../../CHANGELOG.md
+  - 📅 Release Notes: ./release-notes.md
   - 🤔 FAQ: ./faq.md

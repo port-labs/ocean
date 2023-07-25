@@ -33,7 +33,7 @@ install:
 
 run:
 	$(ACTIVATE) && \
-	mkdocs serve -w ../port_ocean
+	mkdocs serve -w ../
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
