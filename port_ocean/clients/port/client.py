@@ -43,7 +43,7 @@ class PortClient(EntityClientMixin, IntegrationClientMixin, BlueprintClientMixin
             f"{self.api_url}/kafka-credentials", headers=await self.auth.headers()
         )
         if response.is_error:
-            logger.error(f"Error getting kafka credentials")
+            logger.error("Error getting kafka credentials")
         handle_status_code(response)
 
         credentials = response.json().get("credentials")
