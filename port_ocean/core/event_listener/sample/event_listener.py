@@ -51,7 +51,7 @@ class SampleEventListener(BaseEventListener):
             if should_resync:
                 logger.info("Detected change in integration, resyncing")
                 self._last_updated_at = last_updated_at
-                await ocean.sync_raw_all()
+                await self.events["on_resync"]({})
 
         # Execute resync repeatedly task
         await resync()
