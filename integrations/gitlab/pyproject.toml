@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "gitlab"
-version = "0.1.1"
+name = "gitlab_integration"
+version = "0.1.2"
 description = "Gitlab integration for Port using Port-Ocean Framework"
 authors = ["Yair Siman-Tov <yair@getport.io>"]
 
@@ -10,7 +10,7 @@ aiofiles = "^0.6.0"
 python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
 jsonschema = "^4.17.3"
-port-ocean = {version = "0.1.0", extras = ["cli"]}
+port-ocean = {version = "0.1.1", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
@@ -23,6 +23,7 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
+title_format = "{version} ({project_date})"
 
   [[tool.towncrier.type]]
   directory = "breaking"
@@ -52,6 +53,11 @@ filename = "CHANGELOG.md"
   [[tool.towncrier.type]]
   directory = "doc"
   name = "Improved Documentation"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "bump"
+  name = "Package Version Bump"
   showcontent = true
 
 [build-system]
