@@ -46,7 +46,7 @@ jobs:
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
               echo "Building and pushing new image: port-ocean-$type:$version"
-              if [[ ${{ inputs.LATEST }} ]]; then
+              if [[ "${{ inputs.LATEST }}" == "true" ]]; then
                 # If true, build the Docker image with both "latest" and version tags
                 docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder/.."
               else
