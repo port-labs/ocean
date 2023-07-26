@@ -12,11 +12,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Breaking Changes
 
-- Changed SAMPLE event listener to POLLING. (Make sure to update your eventListener.type field in your config.yaml for the integration) (PORT-4346)
+- Changed SAMPLE event listener to POLLING. (Make sure to update your `eventListener.type` field in your `config.yaml` for the integration) (PORT-4346)
 
 ### Improvements
 
-- Seperated the cli commands to multiple files under the `port_ocean/cli/commands folder` (PORT-4303)
+- Seperated the cli commands to multiple files under the `port_ocean/cli/commands` folder (PORT-4303)
 - Improved error messages from the PortClient (PORT-4337)
 
 ### Bug Fixes
@@ -27,7 +27,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   (PORT-4306)
 - Fixed `ocean new` jinja crash for the config.yaml in the scaffold (PORT-4328)
 - Fixed issue where the integration did not create the integration config on creation (PORT-4341)
-- Fixed an issue with initializePortResources that caused failure for unknown file nmaes on init (PORT-4343)
+- Fixed an issue with initializePortResources that caused failure for unknown file names on init (PORT-4343)
 
 
 0.1.0 (2023-07-20)
