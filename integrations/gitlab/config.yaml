@@ -12,5 +12,5 @@ integration:
   type: "gitlab"
   # The configuration of the integration.
   config:
-    tokenMapping:  {{ from env TOKEN_MAPPING }}
-    appHost:  {{ from env APP_HOST }}
+    tokenMapping: {{ from env TOKEN_MAPPING }}
+    appHost: {{ from env APP_HOST }}
