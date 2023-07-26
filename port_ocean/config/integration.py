@@ -1,24 +1,24 @@
 from typing import Any, Literal
 
-from pydantic import BaseSettings, BaseModel
+from pydantic import BaseSettings, BaseModel, Extra
 
 from port_ocean.config.base import BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
 
 
-class PortSettings(BaseModel):
+class PortSettings(BaseModel, extra=Extra.allow):
     client_id: str
     client_secret: str
     base_url: str = "https://api.getport.io"
 
 
-class IntegrationSettings(BaseModel):
+class IntegrationSettings(BaseModel, extra=Extra.allow):
     identifier: str
     type: str
     config: dict[str, Any]
 
 
-class IntegrationConfiguration(BaseOceanSettings):
+class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     port: PortSettings
     event_listener: EventListenerSettingsType
     batch_work_size: int = 20
