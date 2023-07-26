@@ -460,6 +460,21 @@ MarkupSafe = ">=2.0"
 i18n = ["Babel (>=2.7)"]
 
 [[package]]
+name = "jinja2-time"
+version = "0.2.0"
+description = "Jinja2 Extension for Dates and Times"
+optional = false
+python-versions = "*"
+files = [
+    {file = "jinja2-time-0.2.0.tar.gz", hash = "sha256:d14eaa4d315e7688daa4969f616f226614350c48730bfa1692d2caebd8c90d40"},
+    {file = "jinja2_time-0.2.0-py2.py3-none-any.whl", hash = "sha256:d3eab6605e3ec8b7a0863df09cc1d23714908fa61aa6986a845c20ba488b4efa"},
+]
+
+[package.dependencies]
+arrow = "*"
+jinja2 = "*"
+
+[[package]]
 name = "jsonschema"
 version = "4.18.4"
 description = "An implementation of JSON Schema validation for Python"
@@ -727,13 +742,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.1.0"
+version = "0.1.1"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "port_ocean-0.1.0-py3-none-any.whl", hash = "sha256:cbbac3a1caa2700ab0fe05c0d2cb8575825f740152b992a44b8126e9a2f49720"},
-    {file = "port_ocean-0.1.0.tar.gz", hash = "sha256:688d97988a452eac981855bc0e41029f758084e4f3061f7bd50808a172964e87"},
+    {file = "port_ocean-0.1.1-py3-none-any.whl", hash = "sha256:be798394721fde820b44e01fcb94fcaded376c751d5f0676ac746c9a38b69f19"},
+    {file = "port_ocean-0.1.1.tar.gz", hash = "sha256:bf24e7b21f49aa27c7f8bd98905d89297bd545cf704b556140116175ef964e4b"},
 ]
 
 [package.dependencies]
@@ -742,6 +757,7 @@ confluent-kafka = ">=2.1.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
 fastapi = ">=0.100.0,<0.101.0"
 httpx = ">=0.24.1,<0.25.0"
+jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
 pydantic = ">=1.10.8,<2.0.0"
 pyjq = ">=2.6.0,<3.0.0"
@@ -753,7 +769,7 @@ uvicorn = ">=0.22.0,<0.23.0"
 werkzeug = ">=2.3.4,<3.0.0"
 
 [package.extras]
-cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "rich (>=13.4.1,<14.0.0)"]
+cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-time (>=0.2.0,<0.3.0)", "rich (>=13.4.1,<14.0.0)"]
 
 [[package]]
 name = "pydantic"
@@ -1311,4 +1327,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "2f61f7cd4840a98858597ca751496e3b3531be5e4fda0113a81aea7035eb2e2a"
+content-hash = "3feffa23d4cd37eeeb0ba766a33d31745103e828ebd592e83271209b4de5a3cb"

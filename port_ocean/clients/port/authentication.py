@@ -5,6 +5,7 @@ from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.clients.port.types import UserAgentType
+from port_ocean.clients.port.utils import handle_status_code
 from port_ocean.utils import get_time
 
 
@@ -45,11 +46,11 @@ class PortAuthentication:
         logger.info(f"Fetching access token for clientId: {client_id}")
 
         credentials = {"clientId": client_id, "clientSecret": client_secret}
-        token_response = await self.client.post(
+        response = await self.client.post(
             f"{self.api_url}/auth/access_token", json=credentials
         )
-        token_response.raise_for_status()
-        return TokenResponse(**token_response.json())
+        handle_status_code(response)
+        return TokenResponse(**response.json())
 
     def user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
         user_agent = f"port-ocean/{self.integration_type}/{self.integration_identifier}"

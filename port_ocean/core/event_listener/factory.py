@@ -1,5 +1,3 @@
-from typing import Callable, Any, Awaitable
-
 from loguru import logger
 
 from port_ocean.context.ocean import PortOceanContext
@@ -7,12 +5,12 @@ from port_ocean.core.base import BaseWithContext
 from port_ocean.core.event_listener import (
     HttpEventListener,
     KafkaEventListener,
-    SampleEventListener,
+    PollingEventListener,
 )
 from port_ocean.core.event_listener import (
     HttpEventListenerSettings,
     KafkaEventListenerSettings,
-    SampleEventListenerSettings,
+    PollingEventListenerSettings,
 )
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
@@ -32,23 +30,8 @@ class EventListenerFactory(BaseWithContext):
         self.installation_id = installation_id
         self.events = events
 
-    def on_event(
-        self, callback: Callable[[dict[Any, Any]], Awaitable[None]]
-    ) -> Callable[[dict[Any, Any]], Awaitable[None]]:
-        async def wrapper(event: dict[Any, Any]) -> None:
-            integration_identifier = (
-                event.get("diff", {}).get("after", {}).get("identifier")
-            )
-
-            if integration_identifier == self.installation_id:
-                await callback(event)
-
-        return wrapper
-
     async def create_event_listener(self) -> BaseEventListener:
-        wrapped_events: EventListenerEvents = {
-            "on_resync": self.on_event(self.events["on_resync"])
-        }
+        wrapped_events: EventListenerEvents = {"on_resync": self.events["on_resync"]}
         event_listener: BaseEventListener
         config = self.context.config.event_listener
         _type = config.type.lower()
@@ -75,11 +58,11 @@ class EventListenerFactory(BaseWithContext):
                 ), assert_message.format(type(config))
                 event_listener = HttpEventListener(wrapped_events, config)
 
-            case "sample":
+            case "polling":
                 assert isinstance(
-                    config, SampleEventListenerSettings
+                    config, PollingEventListenerSettings
                 ), assert_message.format(type(config))
-                event_listener = SampleEventListener(wrapped_events, config)
+                event_listener = PollingEventListener(wrapped_events, config)
 
             case _:
                 raise UnsupportedEventListenerTypeException(

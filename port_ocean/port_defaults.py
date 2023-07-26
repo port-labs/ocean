@@ -1,16 +1,17 @@
 import asyncio
 import json
+from pathlib import Path
 from typing import Type, Any, TypedDict, Optional
 
 import httpx
 import yaml
 from loguru import logger
-from pathlib import Path
 from pydantic import BaseModel, Field
 from starlette import status
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.integration import IntegrationConfiguration
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
@@ -150,13 +151,7 @@ async def _create_resources(
 async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
-    port_client = PortClient(
-        base_url=integration_config.port.base_url,
-        client_id=integration_config.port.client_id,
-        client_secret=integration_config.port.client_secret,
-        integration_identifier=integration_config.integration.identifier,
-        integration_type=integration_config.integration.type,
-    )
+    port_client = ocean.port_client
     is_exists = await _is_integration_exists(port_client)
     if is_exists:
         return None
@@ -172,7 +167,9 @@ async def _initialize_defaults(
         )
         await asyncio.gather(
             *(
-                port_client.delete_blueprint(blueprint["identifier"], silent=True)
+                port_client.delete_blueprint(
+                    blueprint["identifier"], should_raise=False
+                )
                 for blueprint in defaults.blueprints
             )
         )
@@ -208,12 +205,12 @@ def get_port_integration_defaults(
         field_model.alias for _, field_model in Defaults.__fields__.items()
     ]
     for path in defaults_dir.iterdir():
-        if not path.is_file() or path.suffix not in ALLOWED_FILE_TYPES:
-            raise UnsupportedDefaultFileType(
-                f"Defaults directory should contain only one of the next types: {ALLOWED_FILE_TYPES}. Found: {path}"
-            )
-
         if path.stem in allowed_file_names:
+            if not path.is_file() or path.suffix not in ALLOWED_FILE_TYPES:
+                raise UnsupportedDefaultFileType(
+                    f"Defaults directory should contain only one of the next types: {ALLOWED_FILE_TYPES}. Found: {path}"
+                )
+
             if path.suffix in YAML_EXTENSIONS:
                 default_jsons[path.stem] = yaml.safe_load(path.read_text())
             else:

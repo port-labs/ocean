@@ -8,11 +8,11 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
-from port_ocean.core.event_listener.sample.utils import repeat_every
+from port_ocean.core.event_listener.polling.utils import repeat_every
 
 
-class SampleEventListenerSettings(EventListenerSettings):
-    type: Literal["SAMPLE"]
+class PollingEventListenerSettings(EventListenerSettings):
+    type: Literal["POLLING"]
     resync_on_start: bool = True
     interval: int = 60
 
@@ -20,11 +20,11 @@ class SampleEventListenerSettings(EventListenerSettings):
         return {}
 
 
-class SampleEventListener(BaseEventListener):
+class PollingEventListener(BaseEventListener):
     def __init__(
         self,
         events: EventListenerEvents,
-        event_listener_config: SampleEventListenerSettings,
+        event_listener_config: PollingEventListenerSettings,
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
@@ -32,13 +32,13 @@ class SampleEventListener(BaseEventListener):
 
     async def start(self) -> None:
         logger.info(
-            f"Setting up Sample event listener with interval: {self.event_listener_config.interval}"
+            f"Setting up Polling event listener with interval: {self.event_listener_config.interval}"
         )
 
         @repeat_every(seconds=self.event_listener_config.interval)
         async def resync() -> None:
             logger.info(
-                f"Sample event listener iteration after {self.event_listener_config.interval}. Checking for changes"
+                f"Polling event listener iteration after {self.event_listener_config.interval}. Checking for changes"
             )
             integration = await ocean.app.port_client.get_current_integration()
             last_updated_at = integration["updatedAt"]
@@ -51,7 +51,7 @@ class SampleEventListener(BaseEventListener):
             if should_resync:
                 logger.info("Detected change in integration, resyncing")
                 self._last_updated_at = last_updated_at
-                await ocean.sync_raw_all()
+                await self.events["on_resync"]({})
 
         # Execute resync repeatedly task
         await resync()

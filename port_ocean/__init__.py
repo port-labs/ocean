@@ -9,4 +9,4 @@ from .run import run  # noqa: E402
 __version__ = version("port-ocean")
 
 
-__all__ = ["Ocean", "run"]
+__all__ = ["Ocean", "run", "__version__"]
