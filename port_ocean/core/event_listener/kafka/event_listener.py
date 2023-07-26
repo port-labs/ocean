@@ -2,7 +2,6 @@ import threading
 from typing import Any, Callable, Literal
 
 from loguru import logger
-from pydantic import Field
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.ocean import (
@@ -20,12 +19,10 @@ from port_ocean.core.event_listener.base import (
 class KafkaEventListenerSettings(EventListenerSettings):
     type: Literal["KAFKA"]
     brokers: str = ""
-    security_protocol: str = Field(alias="securityProtocol", default="SASL_SSL")
-    authentication_mechanism: str = Field(
-        alias="authenticationMechanism", default="SCRAM-SHA-512"
-    )
-    kafka_security_enabled: bool = Field(alias="kafkaSecurityEnabled", default=True)
-    consumer_poll_timeout: int = Field(alias="consumerPollTimeout", default=1)
+    security_protocol: str = "SASL_SSL"
+    authentication_mechanism: str = "SCRAM-SHA-512"
+    kafka_security_enabled: bool = True
+    consumer_poll_timeout: int = 1
 
 
 class KafkaEventListener(BaseEventListener):

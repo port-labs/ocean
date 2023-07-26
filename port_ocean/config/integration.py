@@ -7,9 +7,9 @@ from port_ocean.core.event_listener import EventListenerSettingsType
 
 
 class PortSettings(BaseSettings):
-    client_id: str = Field(alias="clientId")
-    client_secret: str = Field(alias="clientSecret")
-    base_url: str = Field(alias="baseUrl", default="https://api.getport.io")
+    client_id: str
+    client_secret: str
+    base_url: str = Field(default="https://api.getport.io")
 
 
 class IntegrationSettings(BaseSettings):
@@ -20,12 +20,14 @@ class IntegrationSettings(BaseSettings):
 
 class IntegrationConfiguration(BaseOceanSettings):
     port: PortSettings
-    event_listener: EventListenerSettingsType = Field(alias="eventListener")
-    batch_work_size: int = Field(alias="batchWorkSize", default=20)
-    initialize_port_resources: bool = Field(
-        alias="initializePortResources", default=False
-    )
+    event_listener: EventListenerSettingsType
+    batch_work_size: int = 20
+    initialize_port_resources: bool = False
     integration: IntegrationSettings
+
+    class Config:
+        env_prefix = "OCEAN__"
+        env_nested_delimiter = "__"
 
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
@@ -37,7 +39,7 @@ class ApplicationSettings(BaseSettings):
     config_path: str | None = "./config.yaml"
 
     class Config:
-        env_prefix = "APPLICATION_"
+        env_prefix = "APPLICATION__"
 
         @classmethod
         def customise_sources(cls, init_settings, env_settings, *_, **__):  # type: ignore

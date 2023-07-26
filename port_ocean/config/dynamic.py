@@ -1,5 +1,6 @@
 from typing import Type, Any, Optional
 
+from humps import decamelize
 from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as
 
 
@@ -34,7 +35,7 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
         default = ... if config.required else None
         if config.default is not None:
             default = parse_obj_as(field_type, config.default)
-        fields[config.name] = (
+        fields[decamelize(config.name)] = (
             field_type,
             default,
         )
