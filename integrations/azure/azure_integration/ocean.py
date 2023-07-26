@@ -1,11 +1,11 @@
-from requests import Request
-
+from fastapi import Request
+from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from azure.identity import DefaultAzureCredential
+from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
-from utils import (
+from azure_integration.utils import (
     get_integration_subscription_id,
     get_port_resource_configuration_by_kind,
     resolve_resource_type_from_cloud_event,
@@ -14,32 +14,75 @@ from utils import (
 
 @ocean.on_resync()
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    resource_client = ResourceManagementClient(
+    logger.debug("Resyncing", kind=kind)
+    async with ResourceManagementClient(
         credential=DefaultAzureCredential(),
         subscription_id=get_integration_subscription_id(),
-    )
-    async for base_resource in resource_client.resources.list(
-        filter=f"resourceType eq '{kind}'",
-    ):
-        resource_config = get_port_resource_configuration_by_kind(kind)
-        resource = await resource_client.resources.get_by_id(
-            resource_id=base_resource.id,
-            api_version=resource_config["selector"]["api_version"],
-        )
-        yield resource.as_dict()
+    ) as client:
+        async for base_resource in client.resources.list(
+            filter=f"resourceType eq '{kind}'",
+        ):
+            logger.debug("Found resource", resource_id=base_resource.id)
+            resource_config = await get_port_resource_configuration_by_kind(kind)
+            api_version = resource_config["selector"]["api_version"]
+            logger.debug(
+                "Querying full resource",
+                id=base_resource.id,
+                kind=kind,
+                api_version=api_version,
+            )
+            resource = await client.resources.get_by_id(
+                resource_id=base_resource.id,
+                api_version=api_version,
+            )
+
+            logger.debug("Yielding resource", resource_id=resource.id)
+            yield resource.as_dict()
 
 
 @ocean.router.post("/azure/events")
 async def handle_events(request: Request):
+    """
+    Handles System events from Azure Event Grid by the Azure subscription resource and registers them in Port
+    The event payload is a CloudEvent
+    https://learn.microsoft.com/en-us/azure/event-grid/event-schema-subscriptions?tabs=event-grid-event-schema
+    https://learn.microsoft.com/en-us/azure/event-grid/cloud-event-schema
+    """
     event = await request.json()
+    logger.debug(
+        "Received azure cloud event",
+        event_id=event["id"],
+        event_type=event["type"],
+        resource_provider=event["data"]["resourceProvider"],
+        operation_name=event["data"]["operationName"],
+    )
     resource_type = resolve_resource_type_from_cloud_event(event)
-    resource_config = get_port_resource_configuration_by_kind(resource_type)
-    resource_client = ResourceManagementClient(
+    if not resource_type:
+        logger.warning(
+            "Weren't able to resolve resource type from cloud event",
+            resource_uri=event["data"]["resourceUri"],
+        )
+        return {"ok": False}
+    resource_config = await get_port_resource_configuration_by_kind(resource_type)
+    if not resource_config:
+        logger.warning(
+            "Resource type not found in port app config",
+            resource_type=resource_type,
+        )
+        return {"ok": False}
+    async with ResourceManagementClient(
         credential=DefaultAzureCredential(),
         subscription_id=get_integration_subscription_id(),
-    )
-    resource = await resource_client.resources.get_by_id(
-        resource_id=event["resourceId"],
-        api_version=resource_config["selector"]["api_version"],
-    )
-    await ocean.register_raw(resource_type, [resource.as_dict()])
+    ) as client:
+        logger.debug(
+            "Querying full resource",
+            id=event["data"]["resourceUri"],
+            kind=resource_type,
+            api_version=resource_config["selector"]["api_version"],
+        )
+        resource = await client.resources.get_by_id(
+            resource_id=event["data"]["resourceUri"],
+            api_version=resource_config["selector"]["api_version"],
+        )
+        await ocean.register_raw(resource_type, [resource.as_dict()])
+    return {"ok": True}
