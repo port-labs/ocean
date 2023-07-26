@@ -5,9 +5,11 @@ from pydantic import BaseSettings, BaseModel, Extra, AnyHttpUrl, parse_obj_as
 from port_ocean.config.base import BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
 
+LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
+
 
 class ApplicationSettings(BaseSettings):
-    log_level: Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"] = "DEBUG"
+    log_level: LogLevelType = "DEBUG"
     port: int = 8000
 
     class Config:

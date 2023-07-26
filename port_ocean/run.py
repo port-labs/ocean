@@ -7,7 +7,7 @@ from typing import Type
 import uvicorn
 
 from port_ocean.config.dynamic import default_config_factory
-from port_ocean.config.integration import LogLevelType, ApplicationSettings
+from port_ocean.config.settings import LogLevelType, ApplicationSettings
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.logger_setup import setup_logger
 from port_ocean.ocean import Ocean

@@ -2,7 +2,7 @@ import sys
 
 from loguru import logger
 
-from port_ocean.config.integration import LogLevelType
+from port_ocean.config.settings import LogLevelType
 
 
 def setup_logger(level: LogLevelType) -> None:
