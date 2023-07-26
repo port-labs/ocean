@@ -1,6 +1,7 @@
 resources:
   - kind: Microsoft.App/containerApps
     selector:
+      query: "true"
       # azure resource api version to query
       api_version: '2023-07-01'
     port:

@@ -42,6 +42,7 @@ class IntegrationClientMixin:
             "installationId": self.integration_identifier,
             "installationAppType": _type,
             "changelogDestination": changelog_destination,
+            "config": {},
         }
         if port_app_config:
             json["config"] = port_app_config.to_request()
