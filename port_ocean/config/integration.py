@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from pydantic import Field, BaseSettings
+from pydantic import BaseSettings
 
 from port_ocean.config.base import BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
@@ -9,7 +9,7 @@ from port_ocean.core.event_listener import EventListenerSettingsType
 class PortSettings(BaseSettings):
     client_id: str
     client_secret: str
-    base_url: str = Field(default="https://api.getport.io")
+    base_url: str = "https://api.getport.io"
 
 
 class IntegrationSettings(BaseSettings):
@@ -36,7 +36,6 @@ LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 class ApplicationSettings(BaseSettings):
     log_level: LogLevelType = "DEBUG"
     port: int = 8000
-    config_path: str | None = "./config.yaml"
 
     class Config:
         env_prefix = "APPLICATION__"

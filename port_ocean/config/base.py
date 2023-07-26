@@ -2,9 +2,7 @@ import os
 import re
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
-import httpx
 import yaml
 from humps import decamelize
 from pydantic import BaseSettings
@@ -12,24 +10,21 @@ from pydantic.env_settings import EnvSettingsSource
 
 PROVIDER_WRAPPER_PATTERN = r"\{\{ from (.*) \}\}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
-DEFAULT_CONFIG_PATH = "./config.yaml"
 
 
-def read_yaml_config_settings_source(config_path: str) -> str:
-    parsed_url = urlparse(config_path)
-    if parsed_url.scheme == "file" or not parsed_url.scheme:
-        path = Path(config_path)
+def read_yaml_config_settings_source(
+    settings: "BaseOceanSettings", base_path: str
+) -> str:
+    yaml_file = getattr(settings.__config__, "yaml_file", "")
 
-        if not path.exists():
-            raise FileNotFoundError(f"Could not open yaml settings file at: {path}")
+    assert yaml_file, "Settings.yaml_file not properly configured"
 
-        return path.read_text("utf-8")
-    elif parsed_url.scheme in ["http", "https"]:
-        config_response = httpx.get(config_path)
-        config_response.raise_for_status()
-        return config_response.text
-    else:
-        raise ValueError(f"Invalid config path: {config_path}")
+    path = Path(base_path, yaml_file)
+
+    if not path.exists():
+        raise FileNotFoundError(f"Could not open yaml settings file at: {path}")
+
+    return path.read_text("utf-8")
 
 
 def parse_config_provider(value: str) -> tuple[str, str]:
@@ -63,8 +58,8 @@ def decamelize_object(obj: Any) -> Any:
         return obj
 
 
-def load_providers(config_path: str) -> dict[str, Any]:
-    yaml_content = read_yaml_config_settings_source(config_path)
+def load_providers(settings: "BaseOceanSettings", base_path: str) -> dict[str, Any]:
+    yaml_content = read_yaml_config_settings_source(settings, base_path)
     matches = re.finditer(PROVIDER_WRAPPER_PATTERN, yaml_content)
     for match in matches:
         provider_type, provider_value = parse_config_provider(match.group(1))
@@ -76,15 +71,15 @@ def load_providers(config_path: str) -> dict[str, Any]:
 
 
 class BaseOceanSettings(BaseSettings):
-    config_path: str | None = DEFAULT_CONFIG_PATH
+    base_path: str
 
     class Config:
+        yaml_file = "./config.yaml"
+
         @classmethod
         def customise_sources(cls, init_settings, env_settings: EnvSettingsSource, *_, **__):  # type: ignore
             return (
                 env_settings,
                 init_settings,
-                lambda s: load_providers(
-                    init_settings.init_kwargs["config_path"] or DEFAULT_CONFIG_PATH
-                ),
+                lambda s: load_providers(s, init_settings.init_kwargs["base_path"]),
             )

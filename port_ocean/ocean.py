@@ -26,13 +26,12 @@ class Ocean:
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
         integration_router: APIRouter | None = None,
         config_factory: Callable[..., BaseModel] | None = None,
-        config_path: str | None = None,
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()
         self.fast_api_app.middleware("http")(request_handler)
 
-        self.config = IntegrationConfiguration(config_path=config_path)
+        self.config = IntegrationConfiguration(base_path="./")
         if config_factory:
             self.config.integration.config = config_factory(
                 **self.config.integration.config
