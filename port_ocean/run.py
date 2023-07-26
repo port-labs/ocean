@@ -41,7 +41,9 @@ def _load_module(file_path: str) -> ModuleType:
     return module
 
 
-def _create_default_app(path: str | None = None) -> Ocean:
+def _create_default_app(
+    path: str | None = None, config_path: str | None = None
+) -> Ocean:
     sys.path.append(".")
     try:
         integration_path = f"{path}/integration.py" if path else "integration.py"
@@ -54,7 +56,11 @@ def _create_default_app(path: str | None = None) -> Ocean:
     config_factory = None
     if spec is not None:
         config_factory = default_config_factory(spec.get("configurations", []))
-    return Ocean(integration_class=integration_class, config_factory=config_factory)
+    return Ocean(
+        integration_class=integration_class,
+        config_factory=config_factory,
+        config_path=config_path or "./config.yaml",
+    )
 
 
 def run(
@@ -62,11 +68,14 @@ def run(
     log_level: LogLevelType = "DEBUG",
     port: int = 8000,
     initialize_port_resources: bool | None = None,
+    config_path: str | None = None,
 ) -> None:
-    application_settings = ApplicationSettings(log_level=log_level, port=port)
+    application_settings = ApplicationSettings(
+        log_level=log_level, port=port, config_path=config_path
+    )
 
     setup_logger(application_settings.log_level)
-    default_app = _create_default_app(path)
+    default_app = _create_default_app(path, application_settings.config_path)
 
     main_path = f"{path}/main.py" if path else "main.py"
     app_module = _load_module(main_path)

@@ -34,6 +34,11 @@ LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 class ApplicationSettings(BaseSettings):
     log_level: LogLevelType = "DEBUG"
     port: int = 8000
+    config_path: str | None = "./config.yaml"
 
     class Config:
         env_prefix = "APPLICATION_"
+
+        @classmethod
+        def customise_sources(cls, init_settings, env_settings, *_, **__):  # type: ignore
+            return env_settings, init_settings

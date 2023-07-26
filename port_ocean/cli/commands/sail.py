@@ -36,11 +36,21 @@ from port_ocean.config.integration import LogLevelType
     help="""Set to true to create default resources on installation.
             If not specified, the default value is false.""",
 )
+@click.option(
+    "-c",
+    "--config-path",
+    "config_path",
+    type=str,
+    default="./config.yml",
+    help="""Set the path to the configuration file.
+            If not specified, the default path is ./config.yml.""",
+)
 def sail(
     path: str,
     log_level: LogLevelType,
     port: int,
     initialize_port_resources: bool | None,
+    config_path: str | None,
 ) -> None:
     """
     Runs the integration in the given PATH. if no PATH is provided, the current directory will be used.
@@ -52,4 +62,4 @@ def sail(
     print_logo()
 
     console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
-    run(path, log_level, port, initialize_port_resources)
+    run(path, log_level, port, initialize_port_resources, config_path)
