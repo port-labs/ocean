@@ -742,13 +742,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.1.2rc1"
+version = "0.1.2rc2"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "port_ocean-0.1.2rc1-py3-none-any.whl", hash = "sha256:e160dd3caa42aa69a079f886772acbf5b80b43e4030b384477f43b6b24f7d95f"},
-    {file = "port_ocean-0.1.2rc1.tar.gz", hash = "sha256:fcfdaf3c640f9291fcff99c8135fb877bb98f5cf37665fa31b9affb52df454be"},
+    {file = "port_ocean-0.1.2rc2-py3-none-any.whl", hash = "sha256:a80b99e9ed021d29e1f6906bae52c99a4e02f5020a4013393a5f8323a878f54f"},
+    {file = "port_ocean-0.1.2rc2.tar.gz", hash = "sha256:faf63de737359314a1da2baea7d0323c9b989086f8f07e7af6af26b9e3288d39"},
 ]
 
 [package.dependencies]
@@ -760,6 +760,7 @@ httpx = ">=0.24.1,<0.25.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
 pydantic = ">=1.10.8,<2.0.0"
+pyhumps = ">=3.8.0,<4.0.0"
 pyjq = ">=2.6.0,<3.0.0"
 pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
@@ -836,6 +837,17 @@ files = [
 
 [package.extras]
 plugins = ["importlib-metadata"]
+
+[[package]]
+name = "pyhumps"
+version = "3.8.0"
+description = "🐫  Convert strings (and dictionary keys) between snake case, camel case and pascal case in Python. Inspired by Humps for Node"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pyhumps-3.8.0-py3-none-any.whl", hash = "sha256:060e1954d9069f428232a1adda165db0b9d8dfdce1d265d36df7fbff540acfd6"},
+    {file = "pyhumps-3.8.0.tar.gz", hash = "sha256:498026258f7ee1a8e447c2e28526c0bea9407f9a59c03260aee4bd6c04d681a3"},
+]
 
 [[package]]
 name = "pyjq"
@@ -1327,4 +1339,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "850bec93a45f823619f3620860630acb84292fc86c3df3a58cc1b875e9a1946c"
+content-hash = "45956b1f0531fd9ac2e89b2e0ce5d4f598e407ee92076338e961359b032d3a40"
