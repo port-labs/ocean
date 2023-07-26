@@ -13,5 +13,5 @@ class Pipelines(HookHandler):
     async def _on_hook(
         self, group_id: str, body: dict[str, Any], gitlab_project: Project
     ) -> None:
-        pipeline = gitlab_project.pipelines.get(body["object_attributes"]["iid"])
+        pipeline = gitlab_project.pipelines.get(body["object_attributes"]["id"])
         await ocean.register_raw(ObjectKind.PIPELINE, [pipeline.asdict()])
