@@ -1,4 +1,4 @@
-version: v0.1.4.dev1
+version: v0.1.4.dev2
 type: gitlab
 description: Gitlab integration for Port Ocean
 icon: GitLab
