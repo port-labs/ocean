@@ -1,18 +1,18 @@
 from typing import Any, Literal
 
-from pydantic import BaseSettings
+from pydantic import BaseSettings, BaseModel
 
 from port_ocean.config.base import BaseOceanSettings
 from port_ocean.core.event_listener import EventListenerSettingsType
 
 
-class PortSettings(BaseSettings):
+class PortSettings(BaseModel):
     client_id: str
     client_secret: str
     base_url: str = "https://api.getport.io"
 
 
-class IntegrationSettings(BaseSettings):
+class IntegrationSettings(BaseModel):
     identifier: str
     type: str
     config: dict[str, Any]
