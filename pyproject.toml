@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.1.0"
+version = "0.1.1"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -71,6 +71,8 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
+title_format = "{version} ({project_date})"
+package_dir = "."
 package = "port_ocean"
 
   [[tool.towncrier.type]]
