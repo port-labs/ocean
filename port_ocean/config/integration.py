@@ -35,6 +35,8 @@ class ApplicationSettings(BaseSettings):
 
     class Config:
         env_prefix = "APPLICATION__"
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
         @classmethod
         def customise_sources(cls, init_settings, env_settings, *_, **__):  # type: ignore

@@ -77,6 +77,8 @@ class BaseOceanSettings(BaseSettings):
         yaml_file = "./config.yaml"
         env_prefix = "OCEAN__"
         env_nested_delimiter = "__"
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
         @classmethod
         def customise_sources(cls, init_settings: InitSettingsSource, env_settings: EnvSettingsSource, *_, **__):  # type: ignore
