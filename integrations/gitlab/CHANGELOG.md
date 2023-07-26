@@ -7,7 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.2 (2023-07-26)
+==================
+
+### Package Version Bump
+
+- Bump ocean framework to v0.1.1
+
+
 0.1.1 (2023-07-23)
+==================
 
 ### Breaking Changes
 
