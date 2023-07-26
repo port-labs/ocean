@@ -6,7 +6,7 @@ from typing import Any
 import yaml
 from humps import decamelize
 from pydantic import BaseSettings
-from pydantic.env_settings import EnvSettingsSource
+from pydantic.env_settings import EnvSettingsSource, InitSettingsSource
 
 PROVIDER_WRAPPER_PATTERN = r"\{\{ from (.*) \}\}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
@@ -77,7 +77,7 @@ class BaseOceanSettings(BaseSettings):
         yaml_file = "./config.yaml"
 
         @classmethod
-        def customise_sources(cls, init_settings, env_settings: EnvSettingsSource, *_, **__):  # type: ignore
+        def customise_sources(cls, init_settings: InitSettingsSource, env_settings: EnvSettingsSource, *_, **__):  # type: ignore
             return (
                 env_settings,
                 init_settings,
