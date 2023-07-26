@@ -28,11 +28,11 @@
         },
         "min_replicas": {
           "title": "Min Replicas",
-          "type": "integer"
+          "type": "number"
         },
         "max_replicas": {
           "title": "Max Replicas",
-          "type": "integer"
+          "type": "number"
         }
       }
     }
