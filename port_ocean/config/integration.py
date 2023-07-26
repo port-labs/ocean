@@ -25,10 +25,6 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     initialize_port_resources: bool = False
     integration: IntegrationSettings
 
-    class Config:
-        env_prefix = "OCEAN__"
-        env_nested_delimiter = "__"
-
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
