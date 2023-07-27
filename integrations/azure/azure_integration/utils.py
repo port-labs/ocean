@@ -8,7 +8,11 @@ from azure_integration.overrides import AzurePortAppConfig
 
 def get_integration_subscription_id() -> str:
     logic_settings = ocean.integration_config
-    return logic_settings["subscription_id"]
+    # TODO: change once main branch is released as 0.1.3
+    subscription_id = logic_settings.get("subscription_id", "") or logic_settings.get(
+        "subscriptionId", ""
+    )
+    return subscription_id
 
 
 async def get_port_resource_configuration_by_kind(kind: str) -> dict:
