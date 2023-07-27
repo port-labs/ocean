@@ -22,7 +22,7 @@ async def cloud_event_validation_middleware_handler(
     """
     response = await call_next(request)
     if request.method == "OPTIONS" and request.url.path.startswith("/integration"):
-        logger.info("Detected cloud event validation request", request=request)
+        logger.info("Detected cloud event validation request")
         response.headers["WebHook-Allowed-Rate"] = "1000"
         response.headers["WebHook-Allowed-Origin"] = "*"
     return response
