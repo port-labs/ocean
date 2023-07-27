@@ -1,0 +1,1 @@
+changed the usage of the config according to ocean 0.1.2
