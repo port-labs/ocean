@@ -3,6 +3,7 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from azure.identity.aio import DefaultAzureCredential
+from azure.core.exceptions import ResourceNotFoundError
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
 from azure_integration.utils import (
@@ -10,34 +11,22 @@ from azure_integration.utils import (
     get_port_resource_configuration_by_kind,
     resolve_resource_type_from_cloud_event,
 )
+from azure_integration.azure_patch import list_resources
 
 
 @ocean.on_resync()
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.debug("Resyncing", kind=kind)
-    async with ResourceManagementClient(
-        credential=DefaultAzureCredential(),
-        subscription_id=get_integration_subscription_id(),
-    ) as client:
-        async for base_resource in client.resources.list(
-            filter=f"resourceType eq '{kind}'",
-        ):
-            logger.debug("Found resource", resource_id=base_resource.id)
-            resource_config = await get_port_resource_configuration_by_kind(kind)
-            api_version = resource_config["selector"]["api_version"]
-            logger.debug(
-                "Querying full resource",
-                id=base_resource.id,
-                kind=kind,
-                api_version=api_version,
-            )
-            resource = await client.resources.get_by_id(
-                resource_id=base_resource.id,
-                api_version=api_version,
-            )
 
-            logger.debug("Yielding resource", resource_id=resource.id)
-            yield resource.as_dict()
+    resource_config = await get_port_resource_configuration_by_kind(kind)
+    api_version = resource_config["selector"]["api_version"]
+    async with DefaultAzureCredential() as credential:
+        async with ResourceManagementClient(
+            credential=credential, subscription_id=get_integration_subscription_id()
+        ) as client:
+            logger.debug("Listing resources", kind=kind, api_version=api_version)
+            async for resource in list_resources(client, kind, api_version):
+                yield resource.as_dict()
 
 
 @ocean.router.post("/azure/events")
@@ -70,19 +59,30 @@ async def handle_events(request: Request):
             resource_type=resource_type,
         )
         return {"ok": False}
-    async with ResourceManagementClient(
-        credential=DefaultAzureCredential(),
-        subscription_id=get_integration_subscription_id(),
-    ) as client:
-        logger.debug(
-            "Querying full resource",
-            id=event["data"]["resourceUri"],
-            kind=resource_type,
-            api_version=resource_config["selector"]["api_version"],
-        )
-        resource = await client.resources.get_by_id(
-            resource_id=event["data"]["resourceUri"],
-            api_version=resource_config["selector"]["api_version"],
-        )
-        await ocean.register_raw(resource_type, [resource.as_dict()])
+
+    async with DefaultAzureCredential() as credential:
+        async with ResourceManagementClient(
+            credential=credential, subscription_id=get_integration_subscription_id()
+        ) as client:
+            logger.debug(
+                "Querying full resource",
+                id=event["data"]["resourceUri"],
+                kind=resource_type,
+                api_version=resource_config["selector"]["api_version"],
+            )
+            try:
+                resource = await client.resources.get_by_id(
+                    resource_id=event["data"]["resourceUri"],
+                    api_version=resource_config["selector"]["api_version"],
+                )
+            except ResourceNotFoundError:
+                # TODO: delete from port once ocean adds support to delete per identifier
+                logger.warning(
+                    "Resource not found",
+                    id=event["data"]["resourceUri"],
+                    kind=resource_type,
+                    api_version=resource_config["selector"]["api_version"],
+                )
+                return {"ok": False}
+    await ocean.register_raw(resource_type, [resource.as_dict()])
     return {"ok": True}
