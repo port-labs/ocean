@@ -1,1 +1,0 @@
-All the settings can nnow be set using environment variables with prefix of OCEAN__{The name of the field} and __ between nested fields

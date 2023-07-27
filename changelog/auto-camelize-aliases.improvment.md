@@ -1,1 +1,0 @@
-Using pyhumps to automatically camelize the aliases of the settings

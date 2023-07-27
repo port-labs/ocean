@@ -1,1 +1,0 @@
-Fixed a crash when there are no resources in the port-app-config
