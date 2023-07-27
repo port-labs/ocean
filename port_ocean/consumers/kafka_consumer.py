@@ -53,7 +53,7 @@ class KafkaConsumer(BaseConsumer):
                 "group.id": "no-security",
                 "enable.auto.commit": "false",
             }
-
+        logger.debug(f"Kafka config", kafka_config=kafka_config)
         self.consumer = Consumer(kafka_config)
 
     def _handle_message(self, raw_msg: Message) -> None:
