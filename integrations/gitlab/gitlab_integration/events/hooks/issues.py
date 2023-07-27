@@ -13,5 +13,5 @@ class Issues(HookHandler):
     async def _on_hook(
         self, group_id: str, body: dict[str, Any], gitlab_project: Project
     ) -> None:
-        issue = gitlab_project.issues.get(body["object_attributes"]["iid"])
+        issue = gitlab_project.issues.get(body["object_attributes"]["id"])
         await ocean.register_raw(ObjectKind.ISSUE, [issue.asdict()])

@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 from typing import List, Any
 
 from gitlab.v4.objects import Project
-from gitlab_integration.gitlab_service import GitlabService
 from loguru import logger
+
+from gitlab_integration.gitlab_service import GitlabService
 
 
 class HookHandler(ABC):
@@ -26,7 +27,11 @@ class HookHandler(ABC):
 
     async def on_hook(self, event: str, group_id: str, body: dict[str, Any]) -> None:
         logger.info(f"Handling {event}")
-        project = self.gitlab_service.get_project(body["project"]["id"])
+
+        project_id = (
+            body["project_id"] if "project_id" in body else body["project"]["id"]
+        )
+        project = self.gitlab_service.get_project(project_id)
 
         if self.gitlab_service.should_run_for_project(project.path_with_namespace):
             await self._on_hook(group_id, body, project)

@@ -2,7 +2,7 @@ from typing import Literal, Any
 
 from fastapi import APIRouter
 from loguru import logger
-from pydantic import AnyHttpUrl, Field
+from pydantic import AnyHttpUrl
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.event_listener.base import (
@@ -14,7 +14,7 @@ from port_ocean.core.event_listener.base import (
 
 class HttpEventListenerSettings(EventListenerSettings):
     type: Literal["WEBHOOK"]
-    app_host: AnyHttpUrl = Field(alias="appHost")
+    app_host: AnyHttpUrl
 
     def to_request(self) -> dict[str, Any]:
         return {

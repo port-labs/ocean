@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
-from port_ocean.config.integration import (
+from port_ocean.config.settings import (
     IntegrationConfiguration,
 )
 from port_ocean.context.ocean import (
