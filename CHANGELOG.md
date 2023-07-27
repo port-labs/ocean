@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Breaking Changes
 
-- All integration config is now decamelize and used as snake case inside the integration
+- All integration configuration variables are now passed to the integration code in snake_case format
 - Renamed `port_ocean.config.integration` -> `port_ocean.config.settings`
 
 ### Features
