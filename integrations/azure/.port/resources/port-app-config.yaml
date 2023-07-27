@@ -3,7 +3,7 @@ resources:
     selector:
       query: "true"
       # azure resource api version to query
-      api_version: '2023-07-01'
+      api_version: '2022-03-01'
     port:
       entity:
         mappings:
