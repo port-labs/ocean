@@ -18,7 +18,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Features
 
 - All the settings can now be set using environment variables with prefix of `OCEAN__{The name of the field}` and `__` between nested fields
-- The broker field in the kafka settings has now the default of port production brokers
+- The broker field in the kafka settings now has the Port production brokers as the default value
 
 ### Improvements
 
