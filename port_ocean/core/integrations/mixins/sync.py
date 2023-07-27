@@ -317,7 +317,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resource, user_agent_type, ocean.config.batch_work_size
                     )
                 )
-            flat_created_entities, errors = zip_and_sum(creation_results)
+            flat_created_entities, errors = zip_and_sum(creation_results) or [[], []]
 
             if errors:
                 message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"

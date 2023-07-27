@@ -1,0 +1,1 @@
+All integration config is now decamelized and used as snake case inside the integration
