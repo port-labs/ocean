@@ -1,0 +1,24 @@
+version: v0.1.0
+type: gitlab
+description: pagerduty integration for Port Ocean
+icon: Cookiecutter
+features:
+  - type: exporter
+    section: Incident Management
+    resources:
+      - kind: incidents
+      - kind: services
+configurations:
+  - name: token
+    required: true
+    type: string
+    sensitive: true
+    description: PagerDuty API token
+  - name: url
+    description: Pager duty api url (https://api.pagerduty.com)
+    required: true
+    type: string
+  - name: app_url
+    description: Pager duty app url (https://app.pagerduty.com)
+    required: true
+    type: string
