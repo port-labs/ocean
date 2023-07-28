@@ -53,6 +53,7 @@ class KafkaConsumer(BaseConsumer):
                 "group.id": "no-security",
                 "enable.auto.commit": "false",
             }
+        # TODO: remove debug
         logger.debug(f"Kafka config", kafka_config=kafka_config)
         self.consumer = Consumer(kafka_config)
 

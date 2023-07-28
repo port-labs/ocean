@@ -1,9 +1,10 @@
 from requests import Request, Response
 from typing import Awaitable, Callable
 
+import fastapi
+from loguru import logger
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
-from loguru import logger
 
 from azure_integration.overrides import AzurePortAppConfig
 
@@ -20,9 +21,13 @@ async def cloud_event_validation_middleware_handler(
     Middleware used to handle cloud event validation requests
     https://github.com/cloudevents/spec/blob/v1.0/http-webhook.md#42-validation-response
     """
-    response = await call_next(request)
     if request.method == "OPTIONS" and request.url.path.startswith("/integration"):
         logger.info("Detected cloud event validation request")
-        response.headers["WebHook-Allowed-Rate"] = "1000"
-        response.headers["WebHook-Allowed-Origin"] = "*"
-    return response
+        headers = {
+            "WebHook-Allowed-Rate": "1000",
+            "WebHook-Allowed-Origin": "*",
+        }
+        response = fastapi.Response(status_code=200, headers=headers)
+        return response
+
+    return await call_next(request)
