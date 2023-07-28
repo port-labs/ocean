@@ -8,7 +8,7 @@ from humps import decamelize
 from pydantic import BaseSettings
 from pydantic.env_settings import EnvSettingsSource, InitSettingsSource
 
-PROVIDER_WRAPPER_PATTERN = r"\{\{ from (.*) \}\}"
+PROVIDER_WRAPPER_PATTERN = r"\\{\\{ from (.*) \\}\\}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
 
 
@@ -39,7 +39,8 @@ def parse_config_provider(value: str) -> tuple[str, str]:
     return provider_type, provider_value
 
 
-def load_from_config_provider(provider_type: str, value: str) -> Any:
+def load_from_config_provider(config_provider: str) -> Any:
+    provider_type, value = parse_config_provider(config_provider)
     if provider_type == "env":
         result = os.environ.get(value)
         if result is None:
@@ -58,16 +59,35 @@ def decamelize_object(obj: Any) -> Any:
         return obj
 
 
-def load_providers(settings: "BaseOceanSettings", base_path: str) -> dict[str, Any]:
-    yaml_content = read_yaml_config_settings_source(settings, base_path)
-    matches = re.finditer(PROVIDER_WRAPPER_PATTERN, yaml_content)
-    for match in matches:
-        provider_type, provider_value = parse_config_provider(match.group(1))
-        data = load_from_config_provider(provider_type, provider_value)
-        # Replace the provider wrapper with the actual value
-        yaml_content = re.sub(re.escape(match.group()), data, yaml_content, count=1)
+def parse_config(
+    config: dict[str, Any], existing_data: dict[str, Any]
+) -> dict[str, Any]:
+    result = {}
+    for key, value in config.items():
+        decamelize_key = decamelize(key)
+        if isinstance(value, dict):
+            result[decamelize_key] = parse_config(
+                value, existing_data.get(decamelize_key, {})
+            )
+        elif isinstance(value, str) and decamelize_key not in existing_data:
+            if provider_match := re.match(PROVIDER_WRAPPER_PATTERN, value):
+                try:
+                    result[decamelize_key] = load_from_config_provider(
+                        provider_match.group(1)
+                    )
+                except ValueError:
+                    pass
+        else:
+            result[decamelize_key] = value
+    return result
 
-    return decamelize_object(yaml.safe_load(yaml_content))
+
+def load_providers(
+    settings: "BaseOceanSettings", existing_values: dict[str, Any], base_path: str
+) -> dict[str, Any]:
+    yaml_content = read_yaml_config_settings_source(settings, base_path)
+    data = yaml.safe_load(yaml_content)
+    return parse_config(data, existing_values)
 
 
 class BaseOceanSettings(BaseSettings):
@@ -81,9 +101,17 @@ class BaseOceanSettings(BaseSettings):
         env_file_encoding = "utf-8"
 
         @classmethod
-        def customise_sources(cls, init_settings: InitSettingsSource, env_settings: EnvSettingsSource, *_, **__):  # type: ignore
+        def customise_sources(  # type: ignore
+            cls,
+            init_settings: InitSettingsSource,
+            env_settings: EnvSettingsSource,
+            *_,
+            **__,
+        ):
             return (
                 env_settings,
+                lambda s: load_providers(
+                    s, env_settings(s), init_settings.init_kwargs["base_path"]
+                ),
                 init_settings,
-                lambda s: load_providers(s, init_settings.init_kwargs["base_path"]),
             )
