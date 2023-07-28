@@ -62,6 +62,9 @@ def decamelize_object(obj: Any) -> Any:
 def parse_config(
     config: dict[str, Any], existing_data: dict[str, Any]
 ) -> dict[str, Any]:
+    """
+    Normalizing the config yaml file to work with snake_case and getting only the data that is missing for the settings
+    """
     for key, value in config.items():
         decamelize_key = decamelize(key)
         if isinstance(value, dict):
