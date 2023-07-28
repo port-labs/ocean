@@ -67,7 +67,7 @@ class PagerDutyClient:
 
     def get_singular_from_pager_duty(
         self, plural: str, singular: str, id: str = "data"
-    ) -> List[Any]:
+    ) -> Dict[str, Any]:
         url = f"{self.url}/{plural}/{id}"
 
         pager_headers = {"Authorization": f"Token token={self.token}"}

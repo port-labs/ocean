@@ -14,5 +14,5 @@ integration:
   type: "pagerduty"
   config:
     token: {{ from env PAGERDUTY_TOKEN }}
-    app_url: https://yourappurl.com
+    app_url: https://your_app_url.com
     url: https://api.pagerduty.com
