@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 
 class AzureResourceConfig(ResourceConfig):
     class Selector(BaseModel):
-        query: str = None
+        query: str
         api_version: str
 
     selector: Selector
