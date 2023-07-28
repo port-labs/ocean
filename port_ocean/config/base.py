@@ -62,24 +62,26 @@ def decamelize_object(obj: Any) -> Any:
 def parse_config(
     config: dict[str, Any], existing_data: dict[str, Any]
 ) -> dict[str, Any]:
-    result = {}
     for key, value in config.items():
         decamelize_key = decamelize(key)
         if isinstance(value, dict):
-            result[decamelize_key] = parse_config(
+            existing_data[decamelize_key] = parse_config(
                 value, existing_data.get(decamelize_key, {})
             )
-        elif isinstance(value, str) and decamelize_key not in existing_data:
+        elif isinstance(value, str):
             if provider_match := re.match(PROVIDER_WRAPPER_PATTERN, value):
-                try:
-                    result[decamelize_key] = load_from_config_provider(
-                        provider_match.group(1)
-                    )
-                except ValueError:
-                    pass
+                if decamelize_key not in existing_data:
+                    try:
+                        existing_data[decamelize_key] = load_from_config_provider(
+                            provider_match.group(1)
+                        )
+                    except ValueError:
+                        pass
+            else:
+                existing_data[decamelize_key] = value
         else:
-            result[decamelize_key] = value
-    return result
+            existing_data[decamelize_key] = value
+    return existing_data
 
 
 def load_providers(
