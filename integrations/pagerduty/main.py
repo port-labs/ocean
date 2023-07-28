@@ -1,9 +1,6 @@
 from typing import Any, Dict, List
 from clients.pagerduty import PagerDutyClient
 from clients.utils import ObjectKind
-
-from port_ocean.context.event import event_context
-
 from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 
@@ -16,30 +13,26 @@ pager_duty_client = PagerDutyClient(
 
 @ocean.on_resync(ObjectKind.INCIDENTS)
 async def on_incidents_resync(kind: str) -> List[Dict[Any, Any]]:
-
     incidents = pager_duty_client.paginate_request_to_pager_duty(data_key="incidents")
-
     return incidents
 
 
 @ocean.on_resync(ObjectKind.SERVICES)
 async def on_services_resync(kind: str) -> List[Dict[Any, Any]]:
-
     services = pager_duty_client.paginate_request_to_pager_duty(data_key="services")
-
     return services
 
 
 @ocean.router.post("/webhook")
-async def upsert_incident_webhook_handler(data: Dict[str, Any], request: Request) -> None:
+async def upsert_incident_webhook_handler(
+    data: Dict[str, Any], request: Request
+) -> None:
     if data["event"]["event_type"] in pager_duty_client.service_delete_events:
         await ocean.unregister_raw("services", [data["event"]["data"]])
 
     elif data["event"]["event_type"] in pager_duty_client.incident_upsert_events:
         event_data = data["event"]["data"]
-        event_data["assignments"] = [{
-                    "assignee": event_data["assignees"][0]
-                }]
+        event_data["assignments"] = [{"assignee": event_data["assignees"][0]}]
         await ocean.register_raw("incidents", [event_data])
 
     elif data["event"]["event_type"] in pager_duty_client.service_upsert_events:
