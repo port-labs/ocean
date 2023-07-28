@@ -1,4 +1,4 @@
-version: v0.1.0rc5
+version: v0.1.0rc6
 type: azure
 description: azure integration for Port Ocean
 icon: Cookiecutter
