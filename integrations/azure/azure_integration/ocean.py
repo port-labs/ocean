@@ -54,8 +54,8 @@ async def handle_events(request: Request):
         return {"ok": False}
     resource_config = await get_port_resource_configuration_by_kind(resource_type)
     if not resource_config:
-        logger.warning(
-            "Resource type not found in port app config",
+        logger.debug(
+            "Resource type not found in port app config, update port app config to include the resource type",
             resource_type=resource_type,
         )
         return {"ok": False}
