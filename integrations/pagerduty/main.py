@@ -15,7 +15,7 @@ pager_duty_client = PagerDutyClient(
 
 
 @ocean.on_resync(ObjectKind.INCIDENTS)
-async def on_resync(kind: str) -> List[Dict[Any, Any]]:
+async def on_incidents_resync(kind: str) -> List[Dict[Any, Any]]:
 
     incidents = pager_duty_client.paginate_request_to_pager_duty(data_key="incidents")
 
@@ -23,7 +23,7 @@ async def on_resync(kind: str) -> List[Dict[Any, Any]]:
 
 
 @ocean.on_resync(ObjectKind.SERVICES)
-async def on_resync(kind: str) -> List[Dict[Any, Any]]:
+async def on_services_resync(kind: str) -> List[Dict[Any, Any]]:
 
     services = pager_duty_client.paginate_request_to_pager_duty(data_key="services")
 
@@ -31,7 +31,7 @@ async def on_resync(kind: str) -> List[Dict[Any, Any]]:
 
 
 @ocean.router.post("/webhook")
-async def upsertIncident(data: Dict, request: Request):
+async def upsert_incident_webhook_handler(data: Dict[str, Any], request: Request) -> None:
     if data["event"]["event_type"] in pager_duty_client.service_delete_events:
         await ocean.unregister_raw("services", [data["event"]["data"]])
 

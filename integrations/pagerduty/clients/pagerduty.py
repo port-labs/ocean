@@ -49,7 +49,7 @@ class PagerDutyClient:
         )
 
     def paginate_request_to_pager_duty(
-        self, offset=0, data_key: str = "data"
+        self, offset: int = 0, data_key: str = "data"
     ) -> List[Any]:
         url = f"{self.url}/{data_key}"
 
@@ -77,7 +77,7 @@ class PagerDutyClient:
 
         return data
 
-    def create_webhooks_if_not_exists(self):
+    def create_webhooks_if_not_exists(self) -> None:
         pager_headers = {"Authorization": f"Token token={self.token}"}
 
         webhooks_subscription = self.paginate_request_to_pager_duty(
