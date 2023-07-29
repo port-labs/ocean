@@ -4,9 +4,11 @@ from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 from loguru import logger
 
+
 class ObjectKind:
     SERVICES = "services"
     INCIDENTS = "incidents"
+
 
 pager_duty_client = PagerDutyClient(
     ocean.integration_config["token"],
@@ -21,17 +23,21 @@ async def on_incidents_resync(kind: str) -> List[Dict[Any, Any]]:
 
     return pager_duty_client.paginate_request_to_pager_duty(data_key="incidents")
 
+
 @ocean.on_resync(ObjectKind.SERVICES)
 async def on_services_resync(kind: str) -> List[Dict[Any, Any]]:
     logger.info(f"Listing Pagerduty resource: {ObjectKind.SERVICES}")
 
     return pager_duty_client.paginate_request_to_pager_duty(data_key="services")
 
+
 @ocean.router.post("/webhook")
 async def upsert_incident_webhook_handler(
     data: Dict[str, Any], request: Request
 ) -> None:
-    logger.info(f"Processing Pagerduty webhook for eventy type: {data['event']['event_type']}")
+    logger.info(
+        f"Processing Pagerduty webhook for event type: {data['event']['event_type']}"
+    )
     if data["event"]["event_type"] in pager_duty_client.service_delete_events:
         await ocean.unregister_raw("services", [data["event"]["data"]])
 
@@ -51,5 +57,5 @@ async def upsert_incident_webhook_handler(
 
 @ocean.on_start()
 async def on_start() -> None:
-    logger.info(f"Subscribing to Pagerduty webhooks")
+    logger.info("Subscribing to Pagerduty webhooks")
     pager_duty_client.create_webhooks_if_not_exists()

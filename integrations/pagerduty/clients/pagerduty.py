@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 import requests
 
 
@@ -48,14 +48,14 @@ class PagerDutyClient:
         )
 
     @property
-    def api_auth_header(self) -> dict:
+    def api_auth_header(self) -> dict[str, Any]:
         return {"Authorization": f"Token token={self.token}"}
-    
+
     def paginate_request_to_pager_duty(
         self, offset: int = 0, data_key: str = "data"
     ) -> list[Any]:
         url = f"{self.api_url}/{data_key}"
-        
+
         response = requests.get(url, headers=self.api_auth_header).json()
         data = response[data_key]
 
@@ -77,7 +77,6 @@ class PagerDutyClient:
         return data
 
     def create_webhooks_if_not_exists(self) -> None:
-
         all_subscriptions = self.paginate_request_to_pager_duty(
             data_key="webhook_subscriptions"
         )
