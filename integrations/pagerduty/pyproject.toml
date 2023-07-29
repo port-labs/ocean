@@ -2,11 +2,12 @@
 name = "pagerduty"
 version = "0.1.0"
 description = "Pagerduty Integration"
-authors = ["Isaac <Your address email <you@example.com>>"]
+authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
 port_ocean = {version = "0.1.2", extras = ["cli"]}
+httpx = "^0.24.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"

@@ -1,16 +1,15 @@
 from typing import Any, Dict, List
-
 import requests
 
 
 class PagerDutyClient:
-    def __init__(self, token: str, url: str, app_url: str):
+    def __init__(self, token: str, api_url: str, app_host: str):
         self.token = token
-        self.url = url
-        self.app_url = app_url
+        self.api_url = api_url
+        self.app_host = app_host
 
     @property
-    def incident_upsert_events(self) -> List[str]:
+    def incident_upsert_events(self) -> list[str]:
         return [
             "incident.acknowledged",
             "incident.annotated",
@@ -28,34 +27,36 @@ class PagerDutyClient:
         ]
 
     @property
-    def service_upsert_events(self) -> List[str]:
+    def service_upsert_events(self) -> list[str]:
         return [
             "service.created",
             "service.updated",
         ]
 
     @property
-    def service_delete_events(self) -> List[str]:
+    def service_delete_events(self) -> list[str]:
         return [
             "service.deleted",
         ]
 
     @property
-    def all_events(self) -> List[str]:
+    def all_events(self) -> list[str]:
         return (
             self.incident_upsert_events
             + self.service_upsert_events
             + self.service_delete_events
         )
 
+    @property
+    def api_auth_header(self) -> dict:
+        return {"Authorization": f"Token token={self.token}"}
+    
     def paginate_request_to_pager_duty(
         self, offset: int = 0, data_key: str = "data"
-    ) -> List[Any]:
-        url = f"{self.url}/{data_key}"
-
-        pager_headers = {"Authorization": f"Token token={self.token}"}
-
-        response = requests.get(url, headers=pager_headers).json()
+    ) -> list[Any]:
+        url = f"{self.api_url}/{data_key}"
+        
+        response = requests.get(url, headers=self.api_auth_header).json()
         data = response[data_key]
 
         if response["more"]:
@@ -67,26 +68,23 @@ class PagerDutyClient:
 
     def get_singular_from_pager_duty(
         self, plural: str, singular: str, id: str = "data"
-    ) -> Dict[str, Any]:
-        url = f"{self.url}/{plural}/{id}"
+    ) -> dict[str, Any]:
+        url = f"{self.api_url}/{plural}/{id}"
 
-        pager_headers = {"Authorization": f"Token token={self.token}"}
-
-        response = requests.get(url, headers=pager_headers).json()
+        response = requests.get(url, headers=self.api_auth_header).json()
         data = response[singular]
 
         return data
 
     def create_webhooks_if_not_exists(self) -> None:
-        pager_headers = {"Authorization": f"Token token={self.token}"}
 
-        webhooks_subscription = self.paginate_request_to_pager_duty(
+        all_subscriptions = self.paginate_request_to_pager_duty(
             data_key="webhook_subscriptions"
         )
 
-        invoke_url = f"{self.app_url}/integration/webhook"
+        invoke_url = f"{self.app_host}/integration/webhook"
 
-        for webhook in webhooks_subscription:
+        for webhook in all_subscriptions:
             if webhook["delivery_method"]["url"] == invoke_url:
                 return
 
@@ -104,7 +102,7 @@ class PagerDutyClient:
         }
 
         requests.post(
-            f"{self.url}/webhook_subscriptions",
+            f"{self.api_url}/webhook_subscriptions",
             json=body,
-            headers=pager_headers,
+            headers=self.api_auth_header,
         )

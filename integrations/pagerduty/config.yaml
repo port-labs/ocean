@@ -9,10 +9,10 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: pagerduty-exporter
+  identifier: "my-pagerduty-integration"
   # The type of the integration.
   type: "pagerduty"
   config:
     token: {{ from env PAGERDUTY_TOKEN }}
-    app_url: https://your_app_url.com
-    url: https://api.pagerduty.com
+    app_host: {{ from env APP_HOST }}
+    api_url: {{ from env API_URL }}
