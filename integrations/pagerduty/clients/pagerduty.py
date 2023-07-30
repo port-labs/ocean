@@ -64,7 +64,9 @@ class PagerDutyClient:
             async with httpx.AsyncClient() as client:
                 try:
                     logger.info(f"Fetching resource: {data_key}")
-                    response = await client.get(url, headers=self.api_auth_header, params=params)
+                    response = await client.get(
+                        url, headers=self.api_auth_header, params=params
+                    )
                     response.raise_for_status()  # Raise an exception for 4xx/5xx status codes
                     data = response.json()
                     all_data.extend(data[data_key])
@@ -74,11 +76,12 @@ class PagerDutyClient:
 
                     offset += data["limit"]
                 except httpx.RequestError as e:
-                    logger.info(f"An error occurred while fetching resource: {data_key} error: {e}")
+                    logger.info(
+                        f"An error occurred while fetching resource: {data_key} error: {e}"
+                    )
                     break
 
         return all_data
-    
 
     async def get_singular_from_pager_duty(
         self, plural: str, singular: str, id: str = "data"
@@ -92,7 +95,9 @@ class PagerDutyClient:
                 data = response.json()
                 return data[singular]
             except httpx.RequestError as e:
-                logger.info(f"An error occurred while fetching resource: {plural} error: {e}")
+                logger.info(
+                    f"An error occurred while fetching resource: {plural} error: {e}"
+                )
                 return {}
 
     async def create_webhooks_if_not_exists(self) -> None:
@@ -127,4 +132,6 @@ class PagerDutyClient:
                     headers=self.api_auth_header,
                 )
             except httpx.RequestError as e:
-                logger.info(f"An error occurred while subscribing to integration webhook: {e}")
+                logger.info(
+                    f"An error occurred while subscribing to integration webhook: {e}"
+                )
