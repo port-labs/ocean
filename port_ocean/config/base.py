@@ -72,7 +72,10 @@ def parse_config(
                 value, existing_data.get(decamelize_key, {})
             )
         elif isinstance(value, str):
+            # If the value is a provider, we try to load it from the provider
             if provider_match := re.match(PROVIDER_WRAPPER_PATTERN, value):
+                # If the there is already value for that field, we ignore it
+                # If the provider failed to load, we ignore it
                 if decamelize_key not in existing_data:
                     try:
                         existing_data[decamelize_key] = load_from_config_provider(
