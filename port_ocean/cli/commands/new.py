@@ -3,6 +3,7 @@
 import click
 from cookiecutter.main import cookiecutter  # type: ignore
 
+from port_ocean import __version__
 from port_ocean.cli.commands.main import cli_start, print_logo, console
 from port_ocean.cli.utils import cli_root_path
 
@@ -21,7 +22,11 @@ def new(path: str) -> None:
         "🚢 Unloading cargo... Setting up your integration at the dock.", style="bold"
     )
 
-    result = cookiecutter(f"{cli_root_path}/cookiecutter", output_dir=path)
+    result = cookiecutter(
+        f"{cli_root_path}/cookiecutter",
+        output_dir=path,
+        extra_context={"version": __version__},
+    )
     name = result.split("/")[-1]
 
     console.print(
