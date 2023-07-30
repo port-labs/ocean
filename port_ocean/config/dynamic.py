@@ -14,9 +14,10 @@ class Configuration(BaseModel, extra=Extra.allow):
 
 
 def dynamic_parse(value: Any, field: ModelField) -> Any:
-    if isinstance(value, str) and (
-        issubclass(field.annotation, dict) or issubclass(field.annotation, list)
-    ):
+    should_json_load = issubclass(field.annotation, dict) or issubclass(
+        field.annotation, list
+    )
+    if isinstance(value, str) and should_json_load:
         try:
             return json.loads(value)
         except json.JSONDecodeError:
