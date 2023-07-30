@@ -21,14 +21,14 @@ pager_duty_client = PagerDutyClient(
 async def on_incidents_resync(kind: str) -> List[Dict[Any, Any]]:
     logger.info(f"Listing Pagerduty resource: {ObjectKind.INCIDENTS}")
 
-    return pager_duty_client.paginate_request_to_pager_duty(data_key="incidents")
+    return await pager_duty_client.paginate_request_to_pager_duty(data_key="incidents")
 
 
 @ocean.on_resync(ObjectKind.SERVICES)
 async def on_services_resync(kind: str) -> List[Dict[Any, Any]]:
     logger.info(f"Listing Pagerduty resource: {ObjectKind.SERVICES}")
 
-    return pager_duty_client.paginate_request_to_pager_duty(data_key="services")
+    return await pager_duty_client.paginate_request_to_pager_duty(data_key="services")
 
 
 @ocean.router.post("/webhook")
@@ -42,13 +42,15 @@ async def upsert_incident_webhook_handler(
         await ocean.unregister_raw("services", [data["event"]["data"]])
 
     elif data["event"]["event_type"] in pager_duty_client.incident_upsert_events:
-        event_data = data["event"]["data"]
-        event_data["assignments"] = [{"assignee": event_data["assignees"][0]}]
-        await ocean.register_raw("incidents", [event_data])
+        incident_id = data["event"]["data"]["id"]
+        incident = await pager_duty_client.get_singular_from_pager_duty(
+            plural="incidents", singular="incident", id=incident_id
+        )
+        await ocean.register_raw("incidents", [incident])
 
     elif data["event"]["event_type"] in pager_duty_client.service_upsert_events:
         service_id = data["event"]["data"]["id"]
-        service = pager_duty_client.get_singular_from_pager_duty(
+        service = await pager_duty_client.get_singular_from_pager_duty(
             plural="services", singular="service", id=service_id
         )
 
@@ -58,4 +60,4 @@ async def upsert_incident_webhook_handler(
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Subscribing to Pagerduty webhooks")
-    pager_duty_client.create_webhooks_if_not_exists()
+    await pager_duty_client.create_webhooks_if_not_exists()

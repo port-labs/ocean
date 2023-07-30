@@ -1,5 +1,6 @@
 from typing import Any
-import requests
+import httpx
+from loguru import logger
 
 
 class PagerDutyClient:
@@ -51,33 +52,51 @@ class PagerDutyClient:
     def api_auth_header(self) -> dict[str, Any]:
         return {"Authorization": f"Token token={self.token}"}
 
-    def paginate_request_to_pager_duty(
+    async def paginate_request_to_pager_duty(
         self, offset: int = 0, data_key: str = "data"
     ) -> list[Any]:
         url = f"{self.api_url}/{data_key}"
 
-        response = requests.get(url, headers=self.api_auth_header).json()
-        data = response[data_key]
+        all_data = []
 
-        if response["more"]:
-            data += self.paginate_request_to_pager_duty(
-                offset=offset + response["limit"], data_key=data_key
-            )
+        while True:
+            params = {"offset": offset}
+            async with httpx.AsyncClient() as client:
+                try:
+                    logger.info(f"Fetching resource: {data_key}")
+                    response = await client.get(url, headers=self.api_auth_header, params=params)
+                    response.raise_for_status()  # Raise an exception for 4xx/5xx status codes
+                    data = response.json()
+                    all_data.extend(data[data_key])
 
-        return data
+                    if not data["more"]:
+                        break
 
-    def get_singular_from_pager_duty(
+                    offset += data["limit"]
+                except httpx.RequestError as e:
+                    logger.info(f"An error occurred while fetching resource: {data_key} error: {e}")
+                    break
+
+        return all_data
+    
+
+    async def get_singular_from_pager_duty(
         self, plural: str, singular: str, id: str = "data"
     ) -> dict[str, Any]:
         url = f"{self.api_url}/{plural}/{id}"
 
-        response = requests.get(url, headers=self.api_auth_header).json()
-        data = response[singular]
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, headers=self.api_auth_header)
+                response.raise_for_status()  # Raise an exception for 4xx/5xx status codes
+                data = response.json()
+                return data[singular]
+            except httpx.RequestError as e:
+                logger.info(f"An error occurred while fetching resource: {plural} error: {e}")
+                return {}
 
-        return data
-
-    def create_webhooks_if_not_exists(self) -> None:
-        all_subscriptions = self.paginate_request_to_pager_duty(
+    async def create_webhooks_if_not_exists(self) -> None:
+        all_subscriptions = await self.paginate_request_to_pager_duty(
             data_key="webhook_subscriptions"
         )
 
@@ -100,8 +119,12 @@ class PagerDutyClient:
             }
         }
 
-        requests.post(
-            f"{self.api_url}/webhook_subscriptions",
-            json=body,
-            headers=self.api_auth_header,
-        )
+        async with httpx.AsyncClient() as client:
+            try:
+                await client.post(
+                    f"{self.api_url}/webhook_subscriptions",
+                    json=body,
+                    headers=self.api_auth_header,
+                )
+            except httpx.RequestError as e:
+                logger.info(f"An error occurred while subscribing to integration webhook: {e}")
