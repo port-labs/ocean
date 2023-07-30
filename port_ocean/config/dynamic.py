@@ -1,7 +1,9 @@
+import json
 from typing import Type, Any, Optional
 
 from humps import decamelize
-from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as
+from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as, validator
+from pydantic.fields import ModelField
 
 
 class Configuration(BaseModel, extra=Extra.allow):
@@ -9,6 +11,17 @@ class Configuration(BaseModel, extra=Extra.allow):
     type: str
     required: bool = False
     default: Optional[Any]
+
+
+def dynamic_parse(value: Any, field: ModelField) -> Any:
+    if isinstance(value, str) and (
+        issubclass(field.annotation, dict) or issubclass(field.annotation, list)
+    ):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            pass
+    return value
 
 
 def default_config_factory(configurations: Any) -> Type[BaseModel]:
@@ -40,4 +53,9 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
             default,
         )
 
-    return create_model("Config", **fields)  # type: ignore
+    dynamic_model = create_model(  # type: ignore
+        __model_name="Config",
+        **fields,
+        __validators__={"dynamic_parse": validator("*", pre=True)(dynamic_parse)},
+    )
+    return dynamic_model
