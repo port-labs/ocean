@@ -6,12 +6,13 @@ locals {
   ], var.egress_ports, var.container_port) : concat(var.egress_ports, var.container_port)
 }
 
-data "aws_acm_certificate" "my-domain" {
+data "aws_acm_certificate" "acm_certificate" {
   count  = var.certificate_domain_name != "" ? 1 : 0
   domain = var.certificate_domain_name
 }
 
-resource "aws_security_group" "default-ocean_sg" {
+resource "aws_security_group" "default_ocean_sg" {
+  name   = "${var.name}-default-ocean-sg"
   count  = var.create_default_sg ? 1 : 0
   vpc_id = var.vpc_id
 
@@ -40,15 +41,17 @@ resource "aws_security_group" "default-ocean_sg" {
 }
 
 resource "aws_lb" "ocean_lb" {
+  name               = "${var.name}-ocean-lb"
   internal           = var.is_internal
   load_balancer_type = "application"
   security_groups    = var.create_default_sg ? concat(
-    var.security_groups, [aws_security_group.default-ocean_sg[0].id]
+    var.security_groups, [aws_security_group.default_ocean_sg[0].id]
   ) : var.security_groups
   subnets = var.subnets
 }
 
 resource "aws_lb_target_group" "ocean_tg" {
+  name        = "${var.name}-ocean-tg"
   port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -70,6 +73,7 @@ resource "aws_lb_target_group" "ocean_tg" {
 }
 
 resource "aws_lb_listener" "lb_listener" {
+  name = "${var.name}-ocean-lb-listener"
   default_action {
     order            = "1"
     type             = "forward"
@@ -78,5 +82,5 @@ resource "aws_lb_listener" "lb_listener" {
   load_balancer_arn = aws_lb.ocean_lb.arn
   port              = local.lb_port
   protocol          = local.lb_protocol
-  certificate_arn   = var.certificate_domain_name != ""? data.aws_acm_certificate.my-domain[0].arn : null
+  certificate_arn   = var.certificate_domain_name != ""? data.aws_acm_certificate.acm_certificate[0].arn : null
 }
