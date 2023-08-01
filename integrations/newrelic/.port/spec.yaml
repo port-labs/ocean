@@ -1,0 +1,24 @@
+version: v0.1.0-rc1
+type: newrelic
+description: newrelic integration for Port Ocean
+icon: NewRelic
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: <ResourceName1>
+      - kind: <ResourceName2>
+configurations:
+  - name: newRelicAPIURL
+    required: true
+    type: string
+  - name: newRelicAPIKey
+    required: true
+    type: string
+  - name: newRelicAccountID
+    required: true
+    type: string
+  - name: newRelicGraphqlAPIURL
+    required: true
+    type: string
+    default: https://api.newrelic.com/graphql
