@@ -2,33 +2,32 @@ resource "aws_ssm_parameter" "ocean_gitlab_token_mapping" {
   name  = "ocean_gitlab_token_mapping"
   type  = "SecureString"
   value = jsonencode({
-    "<GITLAB_GROUP_TOKEN>" = ["<GITLAB_PATH_TO_RUN_FOR_TOKEN>"] # e.g "glpat-jQNe7NYypFHNcaZo_ybA" = ["getport-labs/**"]
+    "glpat-jQNe7NYypFHNcaZo_ybA" = ["getport-labs/**"]
   })
 }
 
 module "port_ocean_ecs_lb" {
   source  = "../../../modules/aws/ecs_lb"
-  vpc_id  = "<VPC_ID>"
+  vpc_id  = "vpc-0123456789abcdef0"  # Example VPC ID
   subnets = [
-    "<SUBNET_ID_1>",
-    "<SUBNET_ID_2>",
-    "<SUBNET_ID_3>"
+    "subnet-0123456789abcdef0",     # Example Subnet ID 1
+    "subnet-abcdef0123456789",      # Example Subnet ID 2
   ]
-  certificate_domain_name = "<CERTIFICATE_DOMAIN_NAME>" # optional
+  certificate_domain_name = "example.com"  # optional, example certificate domain name
 }
 
 module "port_ocean_ecs" {
   source = "../../../modules/aws/ecs_service"
 
   subnets      = module.port_ocean_ecs_lb.subnets
-  cluster_name = "<ECS_CLUSTEr_NAME>"
+  cluster_name = "my-ecs-cluster"
 
   lb_targ_group_arn = module.port_ocean_ecs_lb.target_group_arn
   security_groups   = module.port_ocean_ecs_lb.security_groups
 
   port = {
-    client_id     = "<CLIENT_ID>"
-    client_secret = "<CLIENT_SECRET>"
+    client_id     = "8u9vLK45sT3QwY2X"
+    client_secret = "3ebF1Wd9g7fAtJKc0r4zM2sR8lnyX5NQ"
   }
 
   initialize_port_resources = true
