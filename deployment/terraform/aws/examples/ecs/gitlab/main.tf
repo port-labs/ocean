@@ -1,5 +1,5 @@
 module "gitlab_integration" {
-  source = "../../../modules/integrations/gitlab"
+  source = "../../../modules/integrations/gitlab/ecs"
 
   cluster_name            = "Port-ECS-Stg-01"
   certificate_domain_name = "gitlab-integ.test.getport.io"

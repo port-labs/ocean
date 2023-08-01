@@ -23,8 +23,10 @@ module "port_ocean_ecs" {
   integration_version = var.integration_version
   port                = var.port
 
+  event_listener = var.event_listener
+
   integration = {
-    type       = "type"
+    type       = "gitlab"
     identifier = var.integration_identifier
     config     = {
       app_host = module.port_ocean_ecs_lb.dns_name

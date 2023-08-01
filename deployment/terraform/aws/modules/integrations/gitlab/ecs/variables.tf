@@ -12,6 +12,23 @@ variable "vpc_id" {
 variable "subnets" {
   type = list(string)
 }
+
+variable "event_listener" {
+  type = object({
+    type = string
+
+    # WEBHOOK
+    app_host = optional(string)
+
+    # KAFKA
+    brokers = optional(list(string))
+  })
+
+  default = {
+    type = "POLLING"
+  }
+}
+
 variable "cluster_name" {
   type = string
 }
