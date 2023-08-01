@@ -1,22 +1,21 @@
 module "gitlab_integration" {
   source = "../../../modules/integrations/gitlab/ecs"
 
-  cluster_name            = "Port-ECS-Stg-01"
-  certificate_domain_name = "gitlab-integ.test.getport.io"
-  vpc_id                  = "vpc-0cf3be0bc1019dcf6"
+  cluster_name            = "<ECS_CLUSTEr_NAME>"
+  certificate_domain_name = "<CERTIFICATE_DOMAIN_NAME>" # optional
+  vpc_id                  = "<VPC_ID>"
   subnets                 = [
-    "subnet-0b1803e4cd66ad875",
-    "subnet-0d42598347053f40e"
+    "<SUBNET_ID_1>",
+    "<SUBNET_ID_2>",
+    "<SUBNET_ID_3>"
   ]
 
   port = {
-    client_id     = "cktkrMVbS5mGlD7eqh9pqdNj1l998NxC"
-    client_secret = "bUb1YRRONSp0z0ZeMvd3Gy3aLYDOMwHkpPh1ooTCd3T6QiLujGaoGkkqjS4AwCGR"
+    client_id     = "<CLIENT_ID>"
+    client_secret = "<CLIENT_SECRET>"
   }
-  integration_version    = "v0.1.5dev4"
-  integration_identifier = "my-gitlab-integration"
 
   token_mapping = {
-    "glpat-jQNe7NYypFHNcaZo_ybA" = ["getport-labs/**"]
+    "<GitLab token>" = ["<GITLAB_PATH_TO_RUN_FOR_TOKEN>"] # e.g "glpat-jQNe7NYypFHNcaZo_ybA" = ["getport-labs/**"]
   }
 }

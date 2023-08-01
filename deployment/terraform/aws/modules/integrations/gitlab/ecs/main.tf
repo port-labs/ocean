@@ -23,6 +23,7 @@ module "port_ocean_ecs" {
   integration_version = var.integration_version
   port                = var.port
 
+  initialize_port_resources = var.initialize_port_resources
   event_listener = var.event_listener
 
   integration = {

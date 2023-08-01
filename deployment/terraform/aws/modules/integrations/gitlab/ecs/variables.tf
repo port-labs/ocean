@@ -13,6 +13,11 @@ variable "subnets" {
   type = list(string)
 }
 
+variable "initialize_port_resources" {
+  type    = bool
+  default = false
+}
+
 variable "event_listener" {
   type = object({
     type = string

@@ -76,5 +76,5 @@ resource "aws_lb_listener" "lb_listener" {
   load_balancer_arn = aws_lb.ocean_lb.arn
   port              = local.port
   protocol          = local.protocol
-  certificate_arn   = var.certificate_domain_name != ""? data.aws_acm_certificate.my-domain[0].arn : ""
+  certificate_arn   = var.certificate_domain_name != ""? data.aws_acm_certificate.my-domain[0].arn : null
 }
