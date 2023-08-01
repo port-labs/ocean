@@ -3,7 +3,7 @@ output "subnets" {
 }
 
 output "dns_name" {
-  value = "${lower(local.protocol)}://${var.certificate_domain_name == ""? aws_lb.ocean_lb.dns_name: var.certificate_domain_name}"
+  value = "${lower(local.lb_protocol)}://${var.certificate_domain_name == ""? aws_lb.ocean_lb.dns_name: var.certificate_domain_name}"
 }
 
 output "target_group_arn" {

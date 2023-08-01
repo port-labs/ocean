@@ -2,7 +2,7 @@ variable "vpc_id" {
   type = string
 }
 
-variable "port" {
+variable "container_port" {
   default = 8000
 }
 
