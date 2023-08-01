@@ -1,0 +1,39 @@
+resources:
+  - kind: newRelicAlert
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"newRelicAlert"'
+          identifier: .issueId
+          title: .title[0]
+          properties:
+              priority: .priority
+              state: .state
+              sources: .sources
+              ConditionName: .conditionName
+              alertPolicyNames: .policyName
+              activatedAt: .activatedAt
+          relations:
+              newRelicService: .newRelicService.entity_guids
+  - kind: newRelicService
+    selector:
+      query: 'true'
+      newrelic_type: 'SERVICE'
+      relation_identifier: 'newRelicService'
+      entity_query_filter: "type in ('SERVICE','APPLICATION')"
+    port:
+      entity:
+        mappings:
+          blueprint: '"newRelicService"'
+          identifier: .guid
+          title: .name
+          properties:
+            has_apm: 'if .domain | contains("APM") then "true" else "false" end'
+            link: .permalink
+            open_issues_count: .open_issues_count
+            reporting: .reporting
+            tags: .tags
+            domain: .domain
+            type: .type
