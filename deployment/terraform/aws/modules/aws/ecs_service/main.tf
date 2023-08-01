@@ -38,7 +38,7 @@ resource "aws_ssm_parameter" "ocean_port_credentials" {
 }
 
 
-resource "aws_cloudwatch_log_group" "main" {
+resource "aws_cloudwatch_log_group" "log_group" {
   name              = local.awslogs_group
   retention_in_days = var.logs_cloudwatch_retention
 
@@ -89,7 +89,7 @@ data "aws_iam_policy_document" "task_execution_role_policy" {
     ]
 
     resources = [
-      "${aws_cloudwatch_log_group.main.arn}:*"
+      "${aws_cloudwatch_log_group.log_group.arn}:*"
     ]
   }
 
@@ -109,7 +109,8 @@ resource "aws_iam_role" "task_role" {
   assume_role_policy = data.aws_iam_policy_document.ecs_assume_role_policy.json
 }
 
-resource "aws_iam_policy" "policy" {
+resource "aws_iam_policy" "execution-policy" {
+  name   = "ecs-task-execution-policy-${local.service_name}"
   policy = data.aws_iam_policy_document.task_execution_role_policy.json
 }
 
@@ -119,11 +120,14 @@ resource "aws_iam_role" "task_execution_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "attachment" {
+  name       = "ecs-task-execution-policy-attachment-${local.service_name}"
   role       = aws_iam_role.task_execution_role.name
-  policy_arn = aws_iam_policy.policy.arn
+  policy_arn = aws_iam_policy.execution-policy.arn
 }
 
-resource "aws_ecs_task_definition" "service_task_def" {
+resource "aws_ecs_task_definition" "service_task_definition" {
+  name = "${local.service_name}-task-definition"
+
   family       = local.service_name
   network_mode = var.network_mode
 
@@ -183,7 +187,7 @@ resource "aws_ecs_service" "ecs_service" {
   }
 
   name                               = local.service_name
-  task_definition                    = aws_ecs_task_definition.service_task_def.arn
+  task_definition                    = aws_ecs_task_definition.service_task_definition.arn
   deployment_maximum_percent         = "200"
   deployment_minimum_healthy_percent = "100"
   desired_count                      = 1
