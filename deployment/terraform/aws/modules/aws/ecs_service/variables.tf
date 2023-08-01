@@ -14,12 +14,6 @@ variable "logs_cloudwatch_retention" {
   type        = number
 }
 
-variable "ec2_create_task_execution_role" {
-  description = "Set to true to create ecs task execution role to ECS EC2 Tasks."
-  type        = bool
-  default     = false
-}
-
 variable "logs_cloudwatch_group" {
   type    = string
   default = ""
