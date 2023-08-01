@@ -20,7 +20,6 @@ locals {
     {
       name  = upper("OCEAN__INTEGRATION")
       value = jsonencode(var.integration)
-
     }
   ]
   secrets = concat(local.port_credentials, var.additional_secrets)
