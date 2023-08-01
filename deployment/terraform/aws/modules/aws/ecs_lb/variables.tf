@@ -25,6 +25,11 @@ variable "subnets" {
   type = list(string)
 }
 
+variable "is_internal" {
+  type    = bool
+  default = false
+}
+
 variable "create_egress_default_sg" {
   type    = bool
   default = true

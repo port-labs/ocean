@@ -40,7 +40,7 @@ resource "aws_security_group" "default-ocean_sg" {
 }
 
 resource "aws_lb" "ocean_lb" {
-  internal           = false
+  internal           = var.is_internal
   load_balancer_type = "application"
   security_groups    = var.create_default_sg ? concat(
     var.security_groups, [aws_security_group.default-ocean_sg[0].id]
