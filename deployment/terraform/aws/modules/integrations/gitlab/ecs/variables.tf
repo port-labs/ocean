@@ -22,11 +22,20 @@ variable "event_listener" {
   type = object({
     type = string
 
+    # POLLING
+    resync_on_start = optional(bool)
+    interval        = optional(number)
+
     # WEBHOOK
     app_host = optional(string)
 
+
     # KAFKA
-    brokers = optional(list(string))
+    brokers                  = optional(list(string))
+    security_protocol        = optional(list(string))
+    authentication_mechanism = optional(list(string))
+    kafka_security_enabled   = optional(list(bool))
+    consumer_poll_timeout    = optional(list(number))
   })
 
   default = {
