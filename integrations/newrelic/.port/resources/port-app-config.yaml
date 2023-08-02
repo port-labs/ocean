@@ -2,6 +2,7 @@ resources:
   - kind: newRelicAlert
     selector:
       query: 'true'
+      NewRelicTypes: ['ISSUE']
     port:
       entity:
         mappings:
