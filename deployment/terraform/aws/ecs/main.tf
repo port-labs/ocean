@@ -1,3 +1,8 @@
+data "jsonschema_validator" "event_listener_validation" {
+  document = jsonencode(var.event_listener)
+  schema   = "${path.module}/defaults/event_listener.json"
+}
+
 module "port_ocean_ecs_lb" {
   count                   = var.allow_incoming_requests ? 1 : 0
   source                  = "./modules/ecs_lb"

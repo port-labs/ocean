@@ -8,6 +8,10 @@ terraform {
       source  = "tchupp/env"
       version = "0.0.2"
     }
+    jsonschema = {
+      source  = "bpedman/jsonschema"
+      version = "0.2.1"
+    }
   }
 }
 
