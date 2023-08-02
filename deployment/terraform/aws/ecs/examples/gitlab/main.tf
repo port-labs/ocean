@@ -1,5 +1,5 @@
 module "ocean_integration" {
-  source       = "../../ecs"
+  source       = "../.."
   cluster_name = "my-ecs-cluster"
   vpc_id       = "vpc-12345678"
   subnets      = [
