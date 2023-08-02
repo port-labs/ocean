@@ -4,10 +4,10 @@ description: newrelic integration for Port Ocean
 icon: NewRelic
 features:
   - type: exporter
-    section: Git Providers
+    section: APM & Alerting
     resources:
-      - kind: <ResourceName1>
-      - kind: <ResourceName2>
+      - kind: newRelicService
+      - kind: newRelicService
 configurations:
   - name: NewRelicAPIKey
     required: true
