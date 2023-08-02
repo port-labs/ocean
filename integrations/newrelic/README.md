@@ -1,4 +1,4 @@
-# newrelic
+# New Relic
 
 New Relic Integration
 
