@@ -1,15 +1,15 @@
 module "ocean_integration" {
   source       = "../../ecs"
-  cluster_name = "Port-ECS-Stg-01"
-  vpc_id       = "vpc-0cf3be0bc1019dcf6"
+  cluster_name = "my-ecs-cluster"
+  vpc_id       = "vpc-12345678"
   subnets      = [
-    "subnet-0b1803e4cd66ad875",
-    "subnet-0d42598347053f40e"
+    "subnet-12345678",
+    "subnet-87654321"
   ]
 
   port = {
-    client_id     = "cktkrMVbS5mGlD7eqh9pqdNj1l998NxC"
-    client_secret = "bUb1YRRONSp0z0ZeMvd3Gy3aLYDOMwHkpPh1ooTCd3T6QiLujGaoGkkqjS4AwCGR"
+    client_id     = "2r8d5egc56njs34d"
+    client_secret = "e5f98sdh78b5n69ws4r3t0p1l2k9h8s7a6v5d4f"
   }
 
   integration = {
@@ -19,10 +19,9 @@ module "ocean_integration" {
     }
   }
 
-  integration_version = "v0.1.5dev4"
   secrets             = {
     OCEAN__INTEGRATION__CONFIG__TOKEN_MAPPING = jsonencode({
-      "glpat-jQNe7NYypFHNcaZo_ybA" = ["getport-labs/**"]
+      "glpat-jQNe7NYypFHefeaZo_ybA" = ["my-group/**"]
     })
   }
 }
