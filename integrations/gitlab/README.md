@@ -23,7 +23,7 @@ helm upgrade --install my-gitlab-integration port-labs/port-ocean \
 	--set initializePortResources=true  \
 	--set integration.identifier="my-gitlab-integration"  \
 	--set integration.type="gitlab"  \
-	--set integration.triggerChannel.type="POLLING"  \
+	--set integration.eventListener.type="POLLING"  \
 	--set integration.secrets.tokenMapping="\{\"TOKEN\": [\"GROUP_NAME/**\"]\}"  \
 	--set integration.config.appHost="https://example.com"  \
 	--set ingress.enabled=true  \
