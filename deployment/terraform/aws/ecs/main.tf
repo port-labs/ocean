@@ -7,7 +7,7 @@ resource "aws_ssm_parameter" "ocean_gitlab_token_mapping" {
 }
 
 module "port_ocean_ecs_lb" {
-  source  = "../../../modules/aws/ecs_lb"
+  source  = "./modules/ecs_lb"
   vpc_id  = "vpc-0123456789abcdef0"  # Example VPC ID
   subnets = [
     "subnet-0123456789abcdef0",     # Example Subnet ID 1
@@ -17,7 +17,7 @@ module "port_ocean_ecs_lb" {
 }
 
 module "port_ocean_ecs" {
-  source = "../../../modules/aws/ecs_service"
+  source = "./modules/ecs_service"
 
   subnets      = module.port_ocean_ecs_lb.subnets
   cluster_name = "my-ecs-cluster"

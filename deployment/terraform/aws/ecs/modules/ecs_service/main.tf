@@ -119,14 +119,11 @@ resource "aws_iam_role" "task_execution_role" {
 }
 
 resource "aws_iam_role_policy_attachment" "attachment" {
-  name       = "ecs-task-execution-policy-attachment-${local.service_name}"
   role       = aws_iam_role.task_execution_role.name
   policy_arn = aws_iam_policy.execution-policy.arn
 }
 
 resource "aws_ecs_task_definition" "service_task_definition" {
-  name = "${local.service_name}-task-definition"
-
   family       = local.service_name
   network_mode = var.network_mode
 
