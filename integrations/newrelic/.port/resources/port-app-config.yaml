@@ -13,7 +13,7 @@ resources:
               priority: .priority
               state: .state
               sources: .sources
-              ConditionName: .conditionName
+              conditionName: .conditionName
               alertPolicyNames: .policyName
               activatedAt: .activatedAt
           relations:
