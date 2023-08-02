@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Optional
 
+import httpx
 from port_ocean.context.ocean import ocean
 from pydantic import BaseModel, Field
 
@@ -31,7 +32,10 @@ class IssueState(Enum):
 class IssuesHandler:
     @classmethod
     async def get_number_of_issues_by_entity_guid(
-        cls, entity_guid: str, issue_state: IssueState = IssueState.ACTIVATED
+        cls,
+        http_client: httpx.AsyncClient,
+        entity_guid: str,
+        issue_state: IssueState = IssueState.ACTIVATED,
     ) -> int:
         # specifying the minimal fields to reduce the response size
         query_template = """
@@ -55,6 +59,7 @@ class IssuesHandler:
         """
         counter = 0
         async for issue in send_paginated_graph_api_request(
+            http_client,
             query_template,
             request_type="get_number_of_issues_by_entity_guid",
             extract_data=cls._extract_issues,
@@ -66,7 +71,9 @@ class IssuesHandler:
         return counter
 
     @classmethod
-    async def list_issues(cls, state: IssueState = None):
+    async def list_issues(
+        cls, http_client: httpx.AsyncClient, state: IssueState = None
+    ):
         # TODO: filter by state once the API supports it
         # https://forum.newrelic.com/s/hubtopic/aAX8W00000005U2WAI/nerdgraph-api-issues-query-state-filter-does-not-seem-to-be-working
         query_template = """
@@ -103,6 +110,7 @@ class IssuesHandler:
         # the same entity guid for different issues
         queried_issues = {}
         async for issue in send_paginated_graph_api_request(
+            http_client,
             query_template,
             request_type="list_issues",
             extract_data=cls._extract_issues,
@@ -117,7 +125,9 @@ class IssuesHandler:
                     if entity_guid in queried_issues.keys():
                         relation_identifier = queried_issues[entity_guid]
                     else:
-                        entity = await EntitiesHandler.get_entity(entity_guid)
+                        entity = await EntitiesHandler.get_entity(
+                            http_client, entity_guid
+                        )
                         resource_configuration = await get_port_resource_configuration_by_newrelic_entity_type(
                             entity["type"]
                         )

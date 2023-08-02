@@ -1,8 +1,16 @@
-from typing import (Any, AsyncIterable, AsyncIterator, Awaitable, Callable,
-                    Iterable, Optional, Tuple, TypeVar)
-
-from newrelic_integration.core.utils import (render_query,
-                                             send_graph_api_request)
+from typing import (
+    Any,
+    AsyncIterable,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Iterable,
+    Optional,
+    Tuple,
+    TypeVar,
+)
+import httpx
+from newrelic_integration.core.utils import render_query, send_graph_api_request
 
 ReturnType = TypeVar("ReturnType")
 ResponseType = TypeVar("ResponseType")
@@ -110,12 +118,14 @@ class AsyncItemPaged(AsyncIterator[ReturnType]):
 
 
 def send_paginated_graph_api_request(
+    http_client: httpx.AsyncClient,
     query_template: str,
     request_type: str,
     extract_data: Callable[[Any, Any], Awaitable[Any]],
     **kwargs,
 ) -> AsyncIterable[dict]:
     """Send a paginated GraphQL request.
+    :param http_client: The http client to use
     :param query_template: The GraphQL query template
     :param request_type: The type of the request, used for logging
     :param extract_data: A coroutine that take a GraphQL response and return a tuple of
@@ -138,7 +148,10 @@ def send_paginated_graph_api_request(
     async def get_next(next_cursor=None):
         query = await prepare_query(next_cursor)
         return await send_graph_api_request(
-            query, request_type=request_type, next_cursor=next_cursor
+            async_client=http_client,
+            query=query,
+            request_type=request_type,
+            next_cursor=next_cursor,
         )
 
     return AsyncItemPaged(get_next, extract_data)

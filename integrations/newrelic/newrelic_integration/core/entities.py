@@ -1,5 +1,6 @@
 from typing import Optional
 
+import httpx
 from loguru import logger
 
 from newrelic_integration.core.paging import send_paginated_graph_api_request
@@ -12,7 +13,7 @@ from newrelic_integration.utils import (
 
 class EntitiesHandler:
     @classmethod
-    async def get_entity(cls, entity_guid: str) -> dict:
+    async def get_entity(cls, http_client: httpx.AsyncClient, entity_guid: str) -> dict:
         query_template = """
 {
   actor {
@@ -35,14 +36,16 @@ class EntitiesHandler:
 
         query = await render_query(query_template, entity_guid=entity_guid)
         response = await send_graph_api_request(
-            query=query, request_type="get_entity", entity_guid=entity_guid
+            http_client, query=query, request_type="get_entity", entity_guid=entity_guid
         )
         entity = response.get("data", {}).get("actor", {}).get("entity", {})
         cls._format_tags(entity)
         return entity
 
     @classmethod
-    async def list_entities_by_resource_kind(cls, resource_kind: str):
+    async def list_entities_by_resource_kind(
+        cls, http_client: httpx.AsyncClient, resource_kind: str
+    ):
         query_template = """
 {
   actor {
@@ -93,6 +96,7 @@ class EntitiesHandler:
             return results.get("nextCursor"), results.get("entities", [])
 
         async for entity in send_paginated_graph_api_request(
+            http_client,
             query_template,
             request_type="list_entities_by_resource_kind",
             extract_data=extract_entities,
@@ -102,7 +106,9 @@ class EntitiesHandler:
             yield entity
 
     @classmethod
-    async def list_entities_by_guids(cls, entity_guids: list[str]):
+    async def list_entities_by_guids(
+        cls, http_client: httpx.AsyncClient, entity_guids: list[str]
+    ):
         # entities api doesn't support pagination
         query = """
 {
@@ -128,7 +134,10 @@ class EntitiesHandler:
     """
         query = await render_query(query, entity_guids=entity_guids)
         response = await send_graph_api_request(
-            query, request_type="list_entities_by_guids", entity_guids=entity_guids
+            http_client,
+            query,
+            request_type="list_entities_by_guids",
+            entity_guids=entity_guids,
         )
         entities = response.get("data", {}).get("actor", {}).get("entities", [])
         for entity in entities:
