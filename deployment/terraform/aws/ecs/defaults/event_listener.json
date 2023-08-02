@@ -1,0 +1,33 @@
+{
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "KAFKA" },
+        "brokers": { "type": ["string", "null"] },
+        "security_protocol": { "type": ["string", "null"] },
+        "authentication_mechanism": { "type": ["string", "null"] },
+        "kafka_security_enabled": { "type": ["boolean", "null"] },
+        "consumer_poll_timeout": { "type": ["integer", "null"] }
+      },
+      "required": ["type"]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "WEBHOOK" },
+        "app_host": { "type":[ "string", "null"], "format": "uri" }
+      },
+      "required": ["type", "app_host"]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "type": { "const": "POLLING" },
+        "resync_on_start": { "type": ["boolean", "null"] },
+        "interval": { "type": ["integer", "null"] }
+      },
+      "required": ["type"]
+    }
+  ]
+}
