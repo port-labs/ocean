@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.3 (2023-08-02)
+==================
+
+### Bug Fixes
+
+- Fixed an issue with passing the config in environment vars inorder to deploy using aws ecs with terraform (PORT-4379)
+
+
 0.1.2 (2023-07-27)
 ==================
 

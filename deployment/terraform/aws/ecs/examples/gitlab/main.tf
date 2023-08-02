@@ -1,5 +1,5 @@
 module "ocean_integration" {
-  source       = "../.."
+  source       = "github.com/port-labs/Port-Ocean/deployment/terraform/aws/ecs"
   cluster_name = "my-ecs-cluster"
   vpc_id       = "vpc-12345678"
   subnets      = [

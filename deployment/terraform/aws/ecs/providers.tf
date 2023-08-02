@@ -14,6 +14,3 @@ terraform {
     }
   }
 }
-
-provider "env" {
-}
