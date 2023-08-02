@@ -3,11 +3,11 @@ from typing import Optional
 
 from port_ocean.context.ocean import ocean
 
+from newrelic_integration.core.entities import EntitiesHandler
+from newrelic_integration.core.paging import send_paginated_graph_api_request
 from newrelic_integration.utils import (
     get_port_resource_configuration_by_newrelic_entity_type,
 )
-from newrelic_integration.core.paging import send_paginated_graph_api_request
-from newrelic_integration.core.entities import EntitiesHandler
 
 
 class IssueState(Enum):
@@ -20,7 +20,7 @@ class IssueState(Enum):
 class IssuesHandler:
     async def get_number_of_issues_by_entity_guid(
         self, entity_guid: str, issue_state: IssueState = IssueState.ACTIVATED
-    ):
+    ) -> int:
         # specifying the minimal fields to reduce the response size
         query_template = """
 {
@@ -44,6 +44,7 @@ class IssuesHandler:
         counter = 0
         async for issue in send_paginated_graph_api_request(
             query_template,
+            request_type="get_number_of_issues_by_entity_guid",
             extract_data=self._extract_issues,
             account_id=ocean.integration_config.get("new_relic_account_id"),
             entity_guid=entity_guid,
@@ -84,28 +85,40 @@ class IssuesHandler:
 }
 """
         matching_issues = []
+        # key is entity guid and value is the relation identifier
+        # used for caching the relation identifier for each entity guid and avoid querying it multiple times for
+        # the same entity guid for different issues
+        queried_issues = {}
         async for issue in send_paginated_graph_api_request(
             query_template,
+            request_type="list_issues",
             extract_data=self._extract_issues,
             account_id=ocean.integration_config.get("new_relic_account_id"),
         ):
             if state is None or issue["state"] == state.value:
+                # for each related entity we need to get the entity type and then find the corresponding
+                # resource configuration to get the relation identifier so that we will be able to map the
+                # relevant entity id to correct relation identifier
                 for entity_guid in issue["entityGuids"]:
-                    # for each related entity we need to get the entity type and then find the corresponding
-                    # resource configuration to get the relation identifier so that we will be able to map the
-                    # relevant entity id to correct relation identifier
-                    entity = await EntitiesHandler().get_entity(entity_guid)
-                    resource_configuration = (
-                        await get_port_resource_configuration_by_newrelic_entity_type(
+                    # if we already queried this entity guid before, we can use the cached relation identifier
+                    if entity_guid in queried_issues.keys():
+                        relation_identifier = queried_issues[entity_guid]
+                    else:
+                        entity = await EntitiesHandler().get_entity(entity_guid)
+                        resource_configuration = await get_port_resource_configuration_by_newrelic_entity_type(
                             entity["type"]
                         )
-                    )
+                        relation_identifier = resource_configuration.get(
+                            "selector", {}
+                        ).get("relation_identifier")
+                        queried_issues[entity_guid] = relation_identifier
+
                     issue.setdefault(
-                        resource_configuration.get("selector", {}).get(
-                            "relation_identifier"
-                        ),
+                        relation_identifier,
                         {},
-                    ).setdefault("entity_guids", []).append(entity_guid)
+                    ).setdefault(
+                        "entity_guids", []
+                    ).append(entity_guid)
 
                 matching_issues.append(issue)
         return matching_issues
