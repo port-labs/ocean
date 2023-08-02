@@ -2,8 +2,8 @@ locals {
   lb_protocol  = var.certificate_domain_name == "" ? "HTTP" : "HTTPS"
   lb_port      = var.certificate_domain_name == "" ? "80" : "443"
   egress_ports = var.create_egress_default_sg ? concat([
-    443, 9196
-  ], var.egress_ports, var.container_port) : concat(var.egress_ports, var.container_port)
+    443, 9196, var.container_port
+  ], var.egress_ports) : concat(var.egress_ports, [var.container_port])
 }
 
 data "aws_acm_certificate" "acm_certificate" {

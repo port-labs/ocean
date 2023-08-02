@@ -11,21 +11,29 @@ locals {
   env = [
     {
       name  = upper("OCEAN__INITIALIZE_PORT_RESOURCES"),
-      value = var.initialize_port_resources
+      value = var.initialize_port_resources ? "true" : "false"
     },
     {
       name  = upper("OCEAN__EVENT_LISTENER")
-      value = jsonencode(var.event_listener)
+      value = jsonencode({
+        for key, value in var.event_listener : key => value if value != null
+      })
     },
     {
       name  = upper("OCEAN__INTEGRATION")
       value = jsonencode(var.integration)
     }
   ]
-  secrets = concat(local.port_credentials, var.additional_secrets)
 }
 
 data "aws_region" "current" {}
+
+resource "aws_ssm_parameter" "additional_secrets" {
+  for_each = var.secrets
+  name     = "ocean.${var.integration.type}.${var.integration.identifier}.${lower(each.key)}"
+  type     = "SecureString"
+  value    = each.value
+}
 
 resource "aws_ssm_parameter" "ocean_port_credentials" {
   name  = "ocean.${var.integration.type}.${var.integration.identifier}.port_credentials"
@@ -76,9 +84,11 @@ data "aws_iam_policy_document" "task_execution_role_policy" {
       "ssm:GetParameters"
     ]
 
-    resources = [
+    resources = concat([
       aws_ssm_parameter.ocean_port_credentials.arn
-    ]
+    ], [
+      for secret in aws_ssm_parameter.additional_secrets : secret.arn
+    ])
   }
 
   statement {
@@ -143,13 +153,18 @@ resource "aws_ecs_task_definition" "service_task_definition" {
   container_definitions = jsonencode(
     [
       {
-        image            = "${var.ecr_repo_url}/port-ocean-${var.integration.type}:${var.integration_version}",
-        cpu              = var.cpu,
-        memory           = var.memory,
-        name             = local.service_name,
-        networkMode      = var.network_mode,
-        environment      = local.env,
-        secrets          = local.secrets,
+        image       = "${var.ecr_repo_url}/port-ocean-${var.integration.type}:${var.integration_version}",
+        cpu         = var.cpu,
+        memory      = var.memory,
+        name        = local.service_name,
+        networkMode = var.network_mode,
+        environment = local.env,
+        secrets     = concat(local.port_credentials, [
+          for secret in keys(var.secrets) : {
+            name      = secret
+            valueFrom = aws_ssm_parameter.additional_secrets[secret].name
+          }
+        ])
         logConfiguration = {
           logDriver = "awslogs",
           options   = {
@@ -215,4 +230,3 @@ resource "aws_ecs_service" "ecs_service" {
     delete = "20m"
   }
 }
-

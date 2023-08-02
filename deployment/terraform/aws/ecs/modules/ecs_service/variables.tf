@@ -76,7 +76,6 @@ variable "event_listener" {
     # WEBHOOK
     app_host = optional(string)
 
-
     # KAFKA
     brokers                  = optional(list(string))
     security_protocol        = optional(list(string))
@@ -84,10 +83,10 @@ variable "event_listener" {
     kafka_security_enabled   = optional(list(bool))
     consumer_poll_timeout    = optional(list(number))
   })
+}
 
-  default = {
-    type = "POLLING"
-  }
+variable "secrets" {
+  type = map(string)
 }
 
 variable "initialize_port_resources" {
@@ -103,14 +102,6 @@ variable "integration" {
   })
 }
 
-variable "additional_secrets" {
-  type = list(object({
-    name      = string
-    valueFrom = string
-  }))
-  default = []
-}
-
 variable "lb_targ_group_arn" {
   type    = string
   default = ""
@@ -121,4 +112,9 @@ variable "additional_policy_statements" {
     resources = list(string)
   }))
   default = []
+}
+
+variable "allow_incoming_requests" {
+  type = bool
+  default = true
 }

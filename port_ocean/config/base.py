@@ -8,7 +8,7 @@ from humps import decamelize
 from pydantic import BaseSettings
 from pydantic.env_settings import EnvSettingsSource, InitSettingsSource
 
-PROVIDER_WRAPPER_PATTERN = r"\\{\\{ from (.*) \\}\\}"
+PROVIDER_WRAPPER_PATTERN = r"{{ from (.*) }}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
 
 
