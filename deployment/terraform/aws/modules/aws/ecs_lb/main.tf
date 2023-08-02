@@ -12,7 +12,6 @@ data "aws_acm_certificate" "acm_certificate" {
 }
 
 resource "aws_security_group" "default_ocean_sg" {
-  name   = "${var.name}-default-ocean-sg"
   count  = var.create_default_sg ? 1 : 0
   vpc_id = var.vpc_id
 
@@ -41,7 +40,6 @@ resource "aws_security_group" "default_ocean_sg" {
 }
 
 resource "aws_lb" "ocean_lb" {
-  name               = "${var.name}-ocean-lb"
   internal           = var.is_internal
   load_balancer_type = "application"
   security_groups    = var.create_default_sg ? concat(
@@ -51,7 +49,6 @@ resource "aws_lb" "ocean_lb" {
 }
 
 resource "aws_lb_target_group" "ocean_tg" {
-  name        = "${var.name}-ocean-tg"
   port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
@@ -73,7 +70,6 @@ resource "aws_lb_target_group" "ocean_tg" {
 }
 
 resource "aws_lb_listener" "lb_listener" {
-  name = "${var.name}-ocean-lb-listener"
   default_action {
     order            = "1"
     type             = "forward"
