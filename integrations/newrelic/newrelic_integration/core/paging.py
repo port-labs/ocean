@@ -1,16 +1,15 @@
 from typing import (
-    Callable,
-    Optional,
-    TypeVar,
-    Iterable,
-    Tuple,
     Any,
-    List,
-    AsyncIterator,
     AsyncIterable,
+    AsyncIterator,
     Awaitable,
-    Dict,
+    Iterable,
+    Optional,
+    Tuple,
+    TypeVar,
+    Callable,
 )
+
 from newrelic_integration.core.utils import render_query, send_graph_api_request
 
 ReturnType = TypeVar("ReturnType")
@@ -99,6 +98,11 @@ class AsyncItemPaged(AsyncIterator[ReturnType]):
         return self._page_iterator_class(*self._args, **self._kwargs)
 
     async def __anext__(self) -> ReturnType:
+        """
+        :returns: The next item
+        :rtype: ReturnType
+        :raises StopAsyncIteration: When there is no more item
+        """
         if self._page_iterator is None:
             self._page_iterator = self.by_page()
             return await self.__anext__()
@@ -114,8 +118,20 @@ class AsyncItemPaged(AsyncIterator[ReturnType]):
 
 
 def send_paginated_graph_api_request(
-    query_template: str, extract_data: Callable[[Dict], List[Dict]], **kwargs
+    query_template: str,
+    request_type: str,
+    extract_data: Callable[[Any, Any], Awaitable[Any]],
+    **kwargs,
 ) -> AsyncIterable[dict]:
+    """Send a paginated GraphQL request.
+    :param query_template: The GraphQL query template
+    :param request_type: The type of the request, used for logging
+    :param extract_data: A coroutine that take a GraphQL response and return a tuple of
+        continuation token and list of ReturnType
+    :param kwargs: The kwargs to pass to the query template
+    :returns: An async iterator of ReturnType
+    """
+
     async def prepare_query(next_cursor: str):
         if not next_cursor:
             query = await render_query(query_template, next_cursor_request="", **kwargs)
@@ -129,6 +145,8 @@ def send_paginated_graph_api_request(
 
     async def get_next(next_cursor=None):
         query = await prepare_query(next_cursor)
-        return await send_graph_api_request(query, next_cursor=next_cursor)
+        return await send_graph_api_request(
+            query, request_type=request_type, next_cursor=next_cursor
+        )
 
     return AsyncItemPaged(get_next, extract_data)

@@ -1,12 +1,14 @@
 import typing
-import jinja2
 
+import jinja2
 from port_ocean.context.event import event
 
 from newrelic_integration.overrides import NewRelicPortAppConfig
 
 
-async def get_port_resource_configuration_by_port_kind(kind: str) -> dict:
+async def get_port_resource_configuration_by_port_kind(
+    kind: str,
+) -> typing.Dict[str, dict]:
     app_config = typing.cast(NewRelicPortAppConfig, event.port_app_config)
     for resource in app_config.resources:
         if resource.kind == kind:

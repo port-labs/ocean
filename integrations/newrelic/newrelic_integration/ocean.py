@@ -3,12 +3,11 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from newrelic_integration.utils import (
-    get_port_resource_configuration_by_port_kind,
-    get_port_resource_configuration_by_newrelic_entity_type,
-)
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.issues import IssuesHandler, IssueState
+from newrelic_integration.utils import (
+    get_port_resource_configuration_by_newrelic_entity_type,
+    get_port_resource_configuration_by_port_kind)
 
 
 @ocean.on_resync()

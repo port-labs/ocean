@@ -1,8 +1,7 @@
-import jinja2
 import httpx
-
-from port_ocean.context.ocean import ocean
+import jinja2
 from loguru import logger
+from port_ocean.context.ocean import ocean
 
 
 async def render_query(query_template: str, **kwargs) -> str:

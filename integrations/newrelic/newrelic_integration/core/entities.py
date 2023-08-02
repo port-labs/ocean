@@ -1,12 +1,13 @@
 from typing import Optional
+
 from loguru import logger
 
+from newrelic_integration.core.paging import send_paginated_graph_api_request
+from newrelic_integration.core.utils import send_graph_api_request
 from newrelic_integration.utils import (
     get_port_resource_configuration_by_port_kind,
     render_query,
 )
-from newrelic_integration.core.paging import send_paginated_graph_api_request
-from newrelic_integration.core.utils import send_graph_api_request
 
 
 class EntitiesHandler:
@@ -91,6 +92,7 @@ class EntitiesHandler:
 
         async for entity in send_paginated_graph_api_request(
             query_template,
+            request_type="list_entities_by_resource_kind",
             extract_data=extract_entities,
             entity_query_filter=entity_query_filter,
         ):
