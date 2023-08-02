@@ -2,12 +2,23 @@ from enum import Enum
 from typing import Optional
 
 from port_ocean.context.ocean import ocean
+from pydantic import BaseModel, Field
 
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.paging import send_paginated_graph_api_request
 from newrelic_integration.utils import (
     get_port_resource_configuration_by_newrelic_entity_type,
 )
+
+
+class IssueEvent(BaseModel):
+    id: str = Field(..., alias="issueId")
+    title: list[str]
+    state: str
+    entity_guids: list[str] = Field(..., alias="entityGuids")
+
+    class Config:
+        extra = "allow"
 
 
 class IssueState(Enum):
