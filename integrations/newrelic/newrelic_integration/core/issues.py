@@ -18,8 +18,9 @@ class IssueState(Enum):
 
 
 class IssuesHandler:
+    @classmethod
     async def get_number_of_issues_by_entity_guid(
-        self, entity_guid: str, issue_state: IssueState = IssueState.ACTIVATED
+        cls, entity_guid: str, issue_state: IssueState = IssueState.ACTIVATED
     ) -> int:
         # specifying the minimal fields to reduce the response size
         query_template = """
@@ -45,7 +46,7 @@ class IssuesHandler:
         async for issue in send_paginated_graph_api_request(
             query_template,
             request_type="get_number_of_issues_by_entity_guid",
-            extract_data=self._extract_issues,
+            extract_data=cls._extract_issues,
             account_id=ocean.integration_config.get("new_relic_account_id"),
             entity_guid=entity_guid,
         ):
@@ -53,7 +54,8 @@ class IssuesHandler:
                 counter += 1
         return counter
 
-    async def list_issues(self, state: IssueState = None):
+    @classmethod
+    async def list_issues(cls, state: IssueState = None):
         # TODO: filter by state once the API supports it
         # https://forum.newrelic.com/s/hubtopic/aAX8W00000005U2WAI/nerdgraph-api-issues-query-state-filter-does-not-seem-to-be-working
         query_template = """
@@ -92,7 +94,7 @@ class IssuesHandler:
         async for issue in send_paginated_graph_api_request(
             query_template,
             request_type="list_issues",
-            extract_data=self._extract_issues,
+            extract_data=cls._extract_issues,
             account_id=ocean.integration_config.get("new_relic_account_id"),
         ):
             if state is None or issue["state"] == state.value:
@@ -104,7 +106,7 @@ class IssuesHandler:
                     if entity_guid in queried_issues.keys():
                         relation_identifier = queried_issues[entity_guid]
                     else:
-                        entity = await EntitiesHandler().get_entity(entity_guid)
+                        entity = await EntitiesHandler.get_entity(entity_guid)
                         resource_configuration = await get_port_resource_configuration_by_newrelic_entity_type(
                             entity["type"]
                         )

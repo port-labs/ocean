@@ -12,9 +12,8 @@ integration:
   # The identifier of this integration instance.
   identifier: {{ from env INTEGRATION_IDENTIFIER }}
   # The type of the integration.
-  type: "NEWRELIC"
+  type: "newrelic"
   config:
-    newRelicAPIKey: {{ from env NEWRELIC_API_KEY }}
-    newRelicAPIURL: {{ from env NEWRELIC_API_URL }}
-    newRelicGraphqlAPIURL: {{ from env NEWRELIC_GRAPHQL_API_URL }}
-    newRelicAccountID: {{ from env NEWRELIC_ACCOUNT_ID }}
+    NewRelicAPIKey: {{ from env NEWRELIC_API_KEY }}
+    NewRelicGraphqlAPIURL: {{ from env NEWRELIC_GRAPHQL_API_URL }}
+    NewRelicAccountID: {{ from env NEWRELIC_ACCOUNT_ID }}

@@ -11,7 +11,8 @@ from newrelic_integration.utils import (
 
 
 class EntitiesHandler:
-    async def get_entity(self, entity_guid: str) -> dict:
+    @classmethod
+    async def get_entity(cls, entity_guid: str) -> dict:
         query_template = """
 {
   actor {
@@ -37,10 +38,11 @@ class EntitiesHandler:
             query=query, request_type="get_entity", entity_guid=entity_guid
         )
         entity = response.get("data", {}).get("actor", {}).get("entity", {})
-        self._format_tags(entity)
+        cls._format_tags(entity)
         return entity
 
-    async def list_entities_by_resource_kind(self, resource_kind: str):
+    @classmethod
+    async def list_entities_by_resource_kind(cls, resource_kind: str):
         query_template = """
 {
   actor {
@@ -96,10 +98,11 @@ class EntitiesHandler:
             extract_data=extract_entities,
             entity_query_filter=entity_query_filter,
         ):
-            self._format_tags(entity)
+            cls._format_tags(entity)
             yield entity
 
-    async def list_entities_by_guids(self, entity_guids: list[str]):
+    @classmethod
+    async def list_entities_by_guids(cls, entity_guids: list[str]):
         # entities api doesn't support pagination
         query = """
 {
@@ -129,7 +132,7 @@ class EntitiesHandler:
         )
         entities = response.get("data", {}).get("actor", {}).get("entities", [])
         for entity in entities:
-            self._format_tags(entity)
+            cls._format_tags(entity)
         return entities
 
     @staticmethod

@@ -1,4 +1,5 @@
 from typing import Any, cast
+
 import httpx
 import jinja2
 from loguru import logger

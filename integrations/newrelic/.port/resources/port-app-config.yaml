@@ -20,9 +20,9 @@ resources:
   - kind: newRelicService
     selector:
       query: 'true'
-      newrelic_type: 'SERVICE'
-      relation_identifier: 'newRelicService'
-      entity_query_filter: "type in ('SERVICE','APPLICATION')"
+      NewRelicTypes: ['SERVICE', 'APPLICATION']
+      RelationIdentifier: 'newRelicService'
+      EntityQueryFilter: "type in ('SERVICE','APPLICATION')"
     port:
       entity:
         mappings:

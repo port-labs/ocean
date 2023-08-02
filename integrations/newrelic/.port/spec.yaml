@@ -9,16 +9,13 @@ features:
       - kind: <ResourceName1>
       - kind: <ResourceName2>
 configurations:
-  - name: newRelicAPIURL
+  - name: NewRelicAPIKey
     required: true
     type: string
-  - name: newRelicAPIKey
+  - name: NewRelicAccountID
     required: true
     type: string
-  - name: newRelicAccountID
-    required: true
-    type: string
-  - name: newRelicGraphqlAPIURL
-    required: true
+  - name: NewRelicGraphqlAPIURL
+    required: false
     type: string
     default: https://api.newrelic.com/graphql

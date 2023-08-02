@@ -1,16 +1,8 @@
-from typing import (
-    Any,
-    AsyncIterable,
-    AsyncIterator,
-    Awaitable,
-    Iterable,
-    Optional,
-    Tuple,
-    TypeVar,
-    Callable,
-)
+from typing import (Any, AsyncIterable, AsyncIterator, Awaitable, Callable,
+                    Iterable, Optional, Tuple, TypeVar)
 
-from newrelic_integration.core.utils import render_query, send_graph_api_request
+from newrelic_integration.core.utils import (render_query,
+                                             send_graph_api_request)
 
 ReturnType = TypeVar("ReturnType")
 ResponseType = TypeVar("ResponseType")
