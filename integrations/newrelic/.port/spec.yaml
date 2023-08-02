@@ -1,4 +1,4 @@
-version: v0.1.0rc6
+version: v0.1.0rc7
 type: newrelic
 description: newrelic integration for Port Ocean
 icon: NewRelic
@@ -12,9 +12,11 @@ configurations:
   - name: NewRelicAPIKey
     required: true
     type: string
+    sensitive: true
   - name: NewRelicAccountID
     required: true
     type: string
+    sensitive: true
   - name: NewRelicGraphqlAPIURL
     required: false
     type: string
