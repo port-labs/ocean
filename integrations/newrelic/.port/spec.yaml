@@ -1,4 +1,4 @@
-version: v0.1.0rc7
+version: v0.1.0
 type: newrelic
 description: newrelic integration for Port Ocean
 icon: NewRelic
