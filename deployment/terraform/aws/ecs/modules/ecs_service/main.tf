@@ -29,7 +29,7 @@ locals {
 data "aws_region" "current" {}
 
 resource "aws_ssm_parameter" "additional_secrets" {
-  for_each = var.secrets
+  for_each = var.additional_secrets
   name     = "ocean.${var.integration.type}.${var.integration.identifier}.${lower(each.key)}"
   type     = "SecureString"
   value    = each.value
@@ -160,7 +160,7 @@ resource "aws_ecs_task_definition" "service_task_definition" {
         networkMode = var.network_mode,
         environment = local.env,
         secrets     = concat(local.port_credentials, [
-          for secret in keys(var.secrets) : {
+          for secret in keys(var.additional_secrets) : {
             name      = secret
             valueFrom = aws_ssm_parameter.additional_secrets[secret].name
           }
@@ -218,7 +218,7 @@ resource "aws_ecs_service" "ecs_service" {
 
   network_configuration {
     assign_public_ip = var.assign_public_ip
-    security_groups  = var.security_groups
+    security_groups  = var.additional_security_groups
     subnets          = var.subnets
   }
   platform_version    = "LATEST"

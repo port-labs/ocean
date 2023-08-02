@@ -19,7 +19,7 @@ module "port_ocean_ecs" {
 
 
   lb_targ_group_arn = var.allow_incoming_requests ? module.port_ocean_ecs_lb[0].target_group_arn : ""
-  security_groups   = var.security_groups
+  additional_security_groups   = var.additional_security_groups
 
   port = {
     client_id     = var.port.client_id
@@ -38,5 +38,5 @@ module "port_ocean_ecs" {
     }, var.integration.config) : var.integration.config
   }
 
-  secrets = var.secrets
+  additional_secrets = var.additional_secrets
 }

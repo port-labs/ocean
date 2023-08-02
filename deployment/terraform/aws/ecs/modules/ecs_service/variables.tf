@@ -35,7 +35,7 @@ variable "network_mode" {
   default = "awsvpc"
 }
 
-variable "security_groups" {
+variable "additional_security_groups" {
   type    = list(string)
   default = []
 }
@@ -85,7 +85,7 @@ variable "event_listener" {
   })
 }
 
-variable "secrets" {
+variable "additional_secrets" {
   type = map(string)
 }
 

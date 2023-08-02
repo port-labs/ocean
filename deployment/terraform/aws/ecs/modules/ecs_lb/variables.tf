@@ -11,7 +11,7 @@ variable "create_default_sg" {
   default = true
 }
 
-variable "security_groups" {
+variable "additional_security_groups" {
   type    = list(string)
   default = []
 }

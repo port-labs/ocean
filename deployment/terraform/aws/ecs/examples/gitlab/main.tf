@@ -19,7 +19,7 @@ module "ocean_integration" {
     }
   }
 
-  secrets             = {
+  additional_secrets             = {
     OCEAN__INTEGRATION__CONFIG__TOKEN_MAPPING = jsonencode({
       "glpat-jQNe7NYypFHefeaZo_ybA" = ["my-group/**"]
     })
