@@ -7,7 +7,7 @@ features:
     section: APM & Alerting
     resources:
       - kind: newRelicService
-      - kind: newRelicService
+      - kind: newRelicAlert
 configurations:
   - name: NewRelicAPIKey
     required: true
