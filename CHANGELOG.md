@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Fixed an issue with passing the config in environment vars inorder to deploy using aws ecs with terraform (PORT-4379)
+- Fixed an issue preventing the setup of an integration with config values passed exclusively as environment variables. This fix also enables the option to deploy an integration to AWS ECS using Terraform (PORT-4379)
 
 
 0.1.2 (2023-07-27)
