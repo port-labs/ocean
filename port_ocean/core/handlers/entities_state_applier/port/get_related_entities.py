@@ -37,8 +37,8 @@ async def get_related_entities(
     for entity, blueprint in entity_to_blueprint:
         for relation_name, relation in entity.relations.items():
             relation_blueprint = blueprint.relations[relation_name].target
-            related_entities.append(
-                Entity(identifier=relation, blueprint=relation_blueprint)
-            )
-
+            for rel in relation if isinstance(relation, list) else [relation]:
+                related_entities.append(
+                    Entity(identifier=rel, blueprint=relation_blueprint)
+                )
     return related_entities
