@@ -47,7 +47,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.router.post("/events")
-async def handle_issues_events(issue: IssueEvent):
+async def handle_issues_events(issue: IssueEvent) -> dict[str, bool]:
     logger.info(
         "Received issue event",
         issue_id=issue.id,

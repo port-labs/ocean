@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any, AsyncIterable, Tuple
 
 import httpx
 from loguru import logger
@@ -13,7 +13,9 @@ from newrelic_integration.utils import (
 
 class EntitiesHandler:
     @classmethod
-    async def get_entity(cls, http_client: httpx.AsyncClient, entity_guid: str) -> dict:
+    async def get_entity(
+        cls, http_client: httpx.AsyncClient, entity_guid: str
+    ) -> dict[Any, Any]:
         query_template = """
 {
   actor {
@@ -45,7 +47,7 @@ class EntitiesHandler:
     @classmethod
     async def list_entities_by_resource_kind(
         cls, http_client: httpx.AsyncClient, resource_kind: str
-    ):
+    ) -> AsyncIterable[dict[str, Any]]:
         query_template = """
 {
   actor {
@@ -85,8 +87,8 @@ class EntitiesHandler:
             )
 
         async def extract_entities(
-            response: dict,
-        ) -> (Optional[str], list[Optional[dict]]):
+            response: dict[Any, Any]
+        ) -> Tuple[Optional[str], list[dict[Any, Any]]]:
             results = (
                 response.get("data", {})
                 .get("actor", {})
@@ -108,7 +110,7 @@ class EntitiesHandler:
     @classmethod
     async def list_entities_by_guids(
         cls, http_client: httpx.AsyncClient, entity_guids: list[str]
-    ):
+    ) -> list[dict[Any, Any]]:
         # entities api doesn't support pagination
         query = """
 {
@@ -145,6 +147,6 @@ class EntitiesHandler:
         return entities
 
     @staticmethod
-    def _format_tags(entity: dict) -> dict:
+    def _format_tags(entity: dict[Any, Any]) -> dict[Any, Any]:
         entity["tags"] = {tag["key"]: tag["values"] for tag in entity.get("tags", [])}
         return entity

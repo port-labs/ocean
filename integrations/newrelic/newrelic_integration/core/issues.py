@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Any, Tuple
 
 import httpx
 from port_ocean.context.ocean import ocean
@@ -72,8 +72,8 @@ class IssuesHandler:
 
     @classmethod
     async def list_issues(
-        cls, http_client: httpx.AsyncClient, state: IssueState = None
-    ):
+        cls, http_client: httpx.AsyncClient, state: IssueState | None = None
+    ) -> list[dict[Any, Any]]:
         # TODO: filter by state once the API supports it
         # https://forum.newrelic.com/s/hubtopic/aAX8W00000005U2WAI/nerdgraph-api-issues-query-state-filter-does-not-seem-to-be-working
         query_template = """
@@ -108,7 +108,7 @@ class IssuesHandler:
         # key is entity guid and value is the relation identifier
         # used for caching the relation identifier for each entity guid and avoid querying it multiple times for
         # the same entity guid for different issues
-        queried_issues = {}
+        queried_issues: dict[str, str] = {}
         async for issue in send_paginated_graph_api_request(
             http_client,
             query_template,
@@ -122,6 +122,7 @@ class IssuesHandler:
                 # relevant entity id to correct relation identifier
                 for entity_guid in issue["entityGuids"]:
                     # if we already queried this entity guid before, we can use the cached relation identifier
+                    relation_identifier: str
                     if entity_guid in queried_issues.keys():
                         relation_identifier = queried_issues[entity_guid]
                     else:
@@ -147,7 +148,9 @@ class IssuesHandler:
         return matching_issues
 
     @staticmethod
-    async def _extract_issues(response: dict) -> (Optional[str], list[Optional[dict]]):
+    async def _extract_issues(
+        response: dict[Any, Any]
+    ) -> Tuple[Optional[str], list[dict[Any, Any]]]:
         """Extract issues from the response. used by send_paginated_graph_api_request"""
         results = (
             response.get("data", {})

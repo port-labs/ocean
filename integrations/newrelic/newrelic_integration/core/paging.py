@@ -4,6 +4,7 @@ from typing import (
     AsyncIterator,
     Awaitable,
     Callable,
+    Coroutine,
     Iterable,
     Optional,
     Tuple,
@@ -69,7 +70,7 @@ class AsyncPageIterator(AsyncIterator[AsyncIterator[ReturnType]]):
         self._did_a_call_already = True
 
         self.next_cursor, current_page = await self._extract_data(self._response)
-        self._current_page = AsyncList(current_page)
+        self._current_page = AsyncList(current_page)  # type: ignore
 
         return self._current_page
 
@@ -121,9 +122,11 @@ def send_paginated_graph_api_request(
     http_client: httpx.AsyncClient,
     query_template: str,
     request_type: str,
-    extract_data: Callable[[Any, Any], Awaitable[Any]],
-    **kwargs,
-) -> AsyncIterable[dict]:
+    extract_data: Callable[
+        [dict[Any, Any]], Coroutine[Any, Any, tuple[str | None, list[dict[Any, Any]]]]
+    ],
+    **kwargs: Any,
+) -> AsyncIterable[dict[str, Any]]:
     """Send a paginated GraphQL request.
     :param http_client: The http client to use
     :param query_template: The GraphQL query template
@@ -134,7 +137,7 @@ def send_paginated_graph_api_request(
     :returns: An async iterator of ReturnType
     """
 
-    async def prepare_query(next_cursor: str):
+    async def prepare_query(next_cursor: str | None) -> str:
         if not next_cursor:
             query = await render_query(query_template, next_cursor_request="", **kwargs)
         else:
@@ -145,7 +148,7 @@ def send_paginated_graph_api_request(
             )
         return query
 
-    async def get_next(next_cursor=None):
+    async def get_next(next_cursor: str | None) -> AsyncIterator[dict[str, Any]]:
         query = await prepare_query(next_cursor)
         return await send_graph_api_request(
             async_client=http_client,

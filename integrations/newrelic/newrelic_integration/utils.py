@@ -8,7 +8,7 @@ from newrelic_integration.overrides import NewRelicPortAppConfig
 
 async def get_port_resource_configuration_by_port_kind(
     kind: str,
-) -> typing.Dict[str, dict]:
+) -> typing.Dict[str, typing.Any]:
     """
     This function is used to get the port resource configuration by the given kind.
     """
@@ -21,7 +21,7 @@ async def get_port_resource_configuration_by_port_kind(
 
 async def get_port_resource_configuration_by_newrelic_entity_type(
     entity_type: str,
-) -> dict:
+) -> typing.Dict[str, typing.Any]:
     app_config = typing.cast(NewRelicPortAppConfig, event.port_app_config)
     for resource in app_config.resources:
         if (
@@ -32,7 +32,7 @@ async def get_port_resource_configuration_by_newrelic_entity_type(
     return {}
 
 
-async def render_query(query_template: str, **kwargs) -> str:
+async def render_query(query_template: str, **kwargs: typing.Any) -> str:
     template = jinja2.Template(query_template, enable_async=True)
     return await template.render_async(
         **kwargs,
