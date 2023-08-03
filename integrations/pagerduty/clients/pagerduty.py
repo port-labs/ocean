@@ -71,7 +71,7 @@ class PagerDutyClient:
                     has_more_data = data["more"]
                     if has_more_data:
                         offset += data["limit"]
-                except httpx.HTTPStatusError as e:
+                except httpx.HTTPError as e:
                     logger.error(
                         f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                     )
@@ -90,7 +90,7 @@ class PagerDutyClient:
                 response.raise_for_status()
                 data = response.json()
                 return data
-            except httpx.HTTPStatusError as e:
+            except httpx.HTTPError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
@@ -127,7 +127,7 @@ class PagerDutyClient:
                     json=body,
                     headers=self.api_auth_header,
                 )
-            except httpx.HTTPStatusError as e:
+            except httpx.HTTPError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
