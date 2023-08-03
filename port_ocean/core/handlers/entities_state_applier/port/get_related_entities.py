@@ -45,5 +45,7 @@ async def get_related_entities(
     return [
         Entity(identifier=relation, blueprint=blueprint)
         for blueprint, relations in blueprints_to_relations.items()
-        for relation in relations
+        # multiple entities can point to the same relation in the same blueprint, for performance reasons
+        # we want to avoid fetching the same relation multiple times
+        for relation in set(relations)
     ]
