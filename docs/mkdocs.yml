@@ -38,6 +38,7 @@ theme:
 
 repo_name: port-labs/Port-Ocean
 repo_url: https://github.com/port-labs/Port-Ocean
+docs_dir: src
 
 # Plugins
 plugins:
