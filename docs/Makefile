@@ -35,6 +35,10 @@ run:
 	$(ACTIVATE) && \
 	mkdocs serve -w ../
 
+build:
+	$(ACTIVATE) && \
+	mkdocs build
+
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
 	@find . -name '*.pyc' -exec rm -rf {} \;
