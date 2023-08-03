@@ -44,7 +44,7 @@ variable "egress_ports" {
   default = []
 }
 
-variable "ecr_repo_url" {
+variable "image_registry" {
   type    = string
   default = "ghcr.io/port-labs"
 }

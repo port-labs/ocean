@@ -64,7 +64,10 @@ data "aws_iam_policy_document" "ecs_assume_role_policy" {
 
     principals {
       type        = "Service"
-      identifiers = ["ecs-tasks.amazonaws.com"]
+      identifiers = [
+        "ecs-tasks.amazonaws.com",
+        "ecs.amazonaws.com"
+      ]
     }
   }
 }
@@ -153,7 +156,7 @@ resource "aws_ecs_task_definition" "service_task_definition" {
   container_definitions = jsonencode(
     [
       {
-        image       = "${var.ecr_repo_url}/port-ocean-${var.integration.type}:${var.integration_version}",
+        image       = "${var.image_registry}/port-ocean-${var.integration.type}:${var.integration_version}",
         cpu         = var.cpu,
         memory      = var.memory,
         name        = local.service_name,
