@@ -62,7 +62,7 @@ markdown_extensions:
 
 
 nav:
-  - 🌊 Ocean Overview: ocean-overview.md
+  - 🌊 Ocean Overview: index.md
   - 🎉 Getting Started:
     - 🛠️ Installation: ./getting-started/installation.md
     - ⚡️ Quickstart: ./getting-started/quickstart.md
