@@ -72,7 +72,7 @@ class PagerDutyClient:
                     if has_more_data:
                         offset += data["limit"]
                 except httpx.HTTPError as e:
-                    logger.info(
+                    logger.error(
                         f"An error occurred while fetching resource: {data_key} error: {e}"
                     )
                     raise
@@ -91,7 +91,7 @@ class PagerDutyClient:
                 data = response.json()
                 return data
             except httpx.HTTPError as e:
-                logger.info(
+                logger.error(
                     f"An error occurred while fetching resource: {object_type} error: {e}"
                 )
                 raise
@@ -128,6 +128,6 @@ class PagerDutyClient:
                     headers=self.api_auth_header,
                 )
             except httpx.HTTPError as e:
-                logger.info(
+                logger.error(
                     f"An error occurred while subscribing to integration webhook: {e}"
                 )
