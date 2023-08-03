@@ -290,6 +290,7 @@ The following arguments needs to be set in the helm chart values so that the int
 
 #### New Relic
 - Create a workflow in New Relic that will send the events to the integration endpoint.
+  - the url should be `https://<INTEGRATION_URL>/integration/events`
 - The notification message must contain the following properties:
 ```
 {
@@ -326,14 +327,3 @@ ocean sail
 ## Access Redoc Documentation
 
 > <http://localhost:8080/redoc>
-
-
-## Folder Structure
-The newrelic integration suggested folder structure is as follows:
-
-```
-newrelic/
-├─ main.py
-├─ pyproject.toml
-└─ Dockerfile
-```
