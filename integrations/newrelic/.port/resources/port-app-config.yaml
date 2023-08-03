@@ -23,7 +23,7 @@ resources:
     selector:
       query: 'true'
       NewRelicTypes: ['SERVICE', 'APPLICATION']
-      CalculateIssueCount: true
+      CalculateOpenIssueCount: true
       EntityQueryFilter: "type in ('SERVICE','APPLICATION')"
     port:
       entity:

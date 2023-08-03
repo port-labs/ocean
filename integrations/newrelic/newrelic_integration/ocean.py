@@ -32,7 +32,7 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     http_client, kind
                 ):
                     if port_resource_configuration.get("selector", {}).get(
-                        "calculate_issue_count"
+                        "calculate_open_issue_count"
                     ):
                         number_of_open_issues = (
                             await IssuesHandler.get_number_of_issues_by_entity_guid(
@@ -79,7 +79,7 @@ async def handle_issues_events(issue: IssueEvent) -> dict[str, bool]:
                     )
                 else:
                     if resource_configuration.get("selector", {}).get(
-                        "calculate_issue_count"
+                        "calculate_open_issue_count"
                     ):
                         number_of_open_issues = (
                             await IssuesHandler().get_number_of_issues_by_entity_guid(
