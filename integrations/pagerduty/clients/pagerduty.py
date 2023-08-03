@@ -73,7 +73,7 @@ class PagerDutyClient:
                         offset += data["limit"]
                 except httpx.HTTPError as e:
                     logger.error(
-                        f"An error occurred while fetching resource: {data_key} error: {e}"
+                        f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                     )
                     raise
 
@@ -92,7 +92,7 @@ class PagerDutyClient:
                 return data
             except httpx.HTTPError as e:
                 logger.error(
-                    f"An error occurred while fetching resource: {object_type} error: {e}"
+                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
                 raise
 
@@ -129,5 +129,5 @@ class PagerDutyClient:
                 )
             except httpx.HTTPError as e:
                 logger.error(
-                    f"An error occurred while subscribing to integration webhook: {e}"
+                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )

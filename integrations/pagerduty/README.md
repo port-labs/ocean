@@ -15,8 +15,8 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 # The following script will install an Ocean integration at your K8s cluster using helm
 # integration.identifier: Change the identifier to describe your integration
 # integration.secrets.token: The Pagerduty API token
-# integration.config.app_host: The Pagerduty app host
-# integration.config.api_url: The Pagerduty api url. If not specified, the default will be https://api.pagerduty.com
+# integration.config.appHost: The Pagerduty app host
+# integration.config.apiUrl: The Pagerduty api url. If not specified, the default will be https://api.pagerduty.com
 
 helm upgrade --install my-pagerduty-integration port-labs/port-ocean \
 	--set port.clientId="CLIENT_ID"  \
