@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "docs1"
+name = "docs"
 version = "0.1.0"
 description = ""
 authors = []
