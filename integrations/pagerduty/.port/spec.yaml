@@ -14,12 +14,12 @@ configurations:
     type: string
     sensitive: true
     description: PagerDuty API token
-  - name: api_url
+  - name: apiUrl
     description: Pagerduty api url. If not specified, the default will be https://api.pagerduty.com
     required: true
     type: string
     default: https://api.pagerduty.com
-  - name: app_host
+  - name: appHost
     description: Pagerduty app host (https://app.pagerduty.com)
     required: true
     type: string

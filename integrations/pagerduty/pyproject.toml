@@ -16,7 +16,6 @@ mypy = "^1.3.0"
 ruff = "^0.0.278"
 pylint = "^2.17.4"
 towncrier = "^23.6.0"
-types-requests = "^2.31.0.2"
 
 [tool.towncrier]
 directory = "changelog"
