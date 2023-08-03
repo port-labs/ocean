@@ -11,5 +11,7 @@ output "target_group_arn" {
 }
 
 output "security_groups" {
-  value = aws_lb.ocean_lb.security_groups
+  value = var.create_default_sg ? concat(
+    var.additional_security_groups, [aws_security_group.default_ocean_sg[0].id]
+  ) : var.additional_security_groups
 }
