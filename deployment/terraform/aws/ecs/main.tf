@@ -1,3 +1,10 @@
+locals {
+  security_groups = concat(
+    var.additional_security_groups,
+    var.allow_incoming_requests ? module.port_ocean_ecs_lb[0].security_groups : []
+  )
+}
+
 data "jsonschema_validator" "event_listener_validation" {
   document = jsonencode(var.event_listener)
   schema   = "${path.module}/defaults/event_listener.json"
@@ -18,8 +25,8 @@ module "port_ocean_ecs" {
   cluster_name = var.cluster_name
 
 
-  lb_targ_group_arn = var.allow_incoming_requests ? module.port_ocean_ecs_lb[0].target_group_arn : ""
-  additional_security_groups   = concat(var.additional_security_groups, module.port_ocean_ecs_lb[0].security_groups)
+  lb_targ_group_arn          = var.allow_incoming_requests ? module.port_ocean_ecs_lb[0].target_group_arn : ""
+  additional_security_groups = local.security_groups
 
   image_registry = var.image_registry
 
