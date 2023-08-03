@@ -9,9 +9,7 @@ class NewRelicResourceConfig(ResourceConfig):
     class Selector(BaseModel):
         query: str
         newrelic_types: list[str] | None = Field(default=None, alias="NewRelicTypes")
-        relation_identifier: str | None = Field(
-            default=None, alias="RelationIdentifier"
-        )
+        calculate_issue_count: bool = Field(default=False, alias="CalculateIssueCount")
         entity_query_filter: str | None = Field(default=None, alias="EntityQueryFilter")
 
     selector: Selector  # type: ignore
