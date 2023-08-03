@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 from itertools import groupby
 
 from port_ocean.clients.port.client import PortClient
@@ -33,12 +34,16 @@ async def get_related_entities(
         for entity in entities_with_relations
     ]
 
-    related_entities = []
+    blueprints_to_relations = defaultdict(list)
     for entity, blueprint in entity_to_blueprint:
         for relation_name, relation in entity.relations.items():
             relation_blueprint = blueprint.relations[relation_name].target
-            for rel in relation if isinstance(relation, list) else [relation]:
-                related_entities.append(
-                    Entity(identifier=rel, blueprint=relation_blueprint)
-                )
-    return related_entities
+            blueprints_to_relations[relation_blueprint].extend(
+                relation if isinstance(relation, list) else [relation]
+            )
+
+    return [
+        Entity(identifier=relation, blueprint=blueprint)
+        for blueprint, relations in blueprints_to_relations.items()
+        for relation in relations
+    ]
