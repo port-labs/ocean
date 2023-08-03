@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from typing import Awaitable, Generator, Callable
 
+from loguru import logger
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -20,6 +21,8 @@ def resync_error_handling() -> Generator[None, None, None]:
     except StopAsyncIteration:
         raise
     except Exception as error:
+        # logger.exception is used to log the exception with the traceback
+        logger.exception("Failed to execute resync function")
         raise OceanAbortException(
             f"Failed to execute resync function, error: {error}"
         ) from error
