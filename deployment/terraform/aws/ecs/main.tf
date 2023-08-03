@@ -21,6 +21,8 @@ module "port_ocean_ecs" {
   lb_targ_group_arn = var.allow_incoming_requests ? module.port_ocean_ecs_lb[0].target_group_arn : ""
   additional_security_groups   = concat(var.additional_security_groups, module.port_ocean_ecs_lb[0].security_groups)
 
+  ecr_repo_url = var.ecr_repo_url
+
   port = {
     client_id     = var.port.client_id
     client_secret = var.port.client_secret
