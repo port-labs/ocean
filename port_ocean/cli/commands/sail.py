@@ -3,7 +3,7 @@
 import click
 
 from port_ocean.cli.commands.main import cli_start, print_logo, console
-from port_ocean.config.integration import LogLevelType
+from port_ocean.config.settings import LogLevelType
 
 
 @cli_start.command()

@@ -742,13 +742,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.1.1"
+version = "0.1.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "port_ocean-0.1.1-py3-none-any.whl", hash = "sha256:be798394721fde820b44e01fcb94fcaded376c751d5f0676ac746c9a38b69f19"},
-    {file = "port_ocean-0.1.1.tar.gz", hash = "sha256:bf24e7b21f49aa27c7f8bd98905d89297bd545cf704b556140116175ef964e4b"},
+    {file = "port_ocean-0.1.3-py3-none-any.whl", hash = "sha256:c4a02ab9b3e867c53b615aaeff02068ac06a3e8b449cffc962a4a38bba694a8f"},
+    {file = "port_ocean-0.1.3.tar.gz", hash = "sha256:3ae6bd92a0da31f678b6f6157ce8a9364daebf24a0d7e683adffa338adba7330"},
 ]
 
 [package.dependencies]
@@ -760,6 +760,7 @@ httpx = ">=0.24.1,<0.25.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
 pydantic = ">=1.10.8,<2.0.0"
+pyhumps = ">=3.8.0,<4.0.0"
 pyjq = ">=2.6.0,<3.0.0"
 pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
@@ -836,6 +837,17 @@ files = [
 
 [package.extras]
 plugins = ["importlib-metadata"]
+
+[[package]]
+name = "pyhumps"
+version = "3.8.0"
+description = "🐫  Convert strings (and dictionary keys) between snake case, camel case and pascal case in Python. Inspired by Humps for Node"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pyhumps-3.8.0-py3-none-any.whl", hash = "sha256:060e1954d9069f428232a1adda165db0b9d8dfdce1d265d36df7fbff540acfd6"},
+    {file = "pyhumps-3.8.0.tar.gz", hash = "sha256:498026258f7ee1a8e447c2e28526c0bea9407f9a59c03260aee4bd6c04d681a3"},
+]
 
 [[package]]
 name = "pyjq"
@@ -1327,4 +1339,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "3feffa23d4cd37eeeb0ba766a33d31745103e828ebd592e83271209b4de5a3cb"
+content-hash = "b71d68e42830ee363fbca90ade37c03ed0b6274c5270ad30af3dbc657094c86e"

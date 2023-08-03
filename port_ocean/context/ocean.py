@@ -15,7 +15,7 @@ from port_ocean.core.ocean_types import (
 from port_ocean.exceptions.context import PortOceanContextNotFoundError
 
 if TYPE_CHECKING:
-    from port_ocean.config.integration import IntegrationConfiguration
+    from port_ocean.config.settings import IntegrationConfiguration
     from port_ocean.core.integrations.base import BaseIntegration
     from port_ocean.ocean import Ocean
     from port_ocean.clients.port.client import PortClient

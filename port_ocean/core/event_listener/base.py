@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import TypedDict, Callable, Any, Awaitable
 
-from pydantic import BaseSettings
+from pydantic import BaseModel, Extra
 
 
 class EventListenerEvents(TypedDict):
@@ -23,7 +23,7 @@ class BaseEventListener:
         pass
 
 
-class EventListenerSettings(BaseSettings):
+class EventListenerSettings(BaseModel, extra=Extra.allow):
     type: str
 
     def to_request(self) -> dict[str, Any]:

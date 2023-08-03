@@ -1,0 +1,23 @@
+version: v0.1.0
+type: newrelic
+description: newrelic integration for Port Ocean
+icon: NewRelic
+features:
+  - type: exporter
+    section: APM & Alerting
+    resources:
+      - kind: newRelicService
+      - kind: newRelicAlert
+configurations:
+  - name: NewRelicAPIKey
+    required: true
+    type: string
+    sensitive: true
+  - name: NewRelicAccountID
+    required: true
+    type: string
+    sensitive: true
+  - name: NewRelicGraphqlAPIURL
+    required: false
+    type: string
+    default: https://api.newrelic.com/graphql

@@ -4,6 +4,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      LATEST:
+        type: boolean
+        default: true
+        description: "If true, build the Docker image with both 'latest' and version tags. If false, build the Docker image with only the version tag."
 
 jobs:
   release-all:
@@ -41,7 +46,13 @@ jobs:
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
               echo "Building and pushing new image: port-ocean-$type:$version"
-              docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder/.."
+              if [[ "${{ inputs.LATEST }}" == "true" ]]; then
+                # If true, build the Docker image with both "latest" and version tags
+                docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder/.."
+              else
+                  # If false, build the Docker image with only the version tag
+                  docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" "$folder/.."
+              fi
               docker push "ghcr.io/port-labs/port-ocean-$type" --all-tags
             fi
           done

@@ -1,0 +1,58 @@
+[
+  {
+    "blueprint": "newRelicService",
+    "data": [
+      {
+        "identifier": "prod-readiness",
+        "title": "Production Readiness",
+        "rules": [
+          {
+            "identifier": "has_reporting",
+            "title": "Has Reporting Enabled",
+            "level": "Bronze",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "operator": "=",
+                  "property": "reporting",
+                  "value": true
+                }
+              ]
+            }
+          },
+          {
+            "identifier": "has_apm",
+            "title": "Has APM",
+            "level": "Silver",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "operator": "=",
+                  "property": "has_apm",
+                  "value": true
+                }
+              ]
+            }
+          },
+          {
+            "identifier": "has_open_issues",
+            "title": "Has Open Issues",
+            "level": "Gold",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "operator": "=",
+                  "property": "open_issues_count",
+                  "value": 0
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
