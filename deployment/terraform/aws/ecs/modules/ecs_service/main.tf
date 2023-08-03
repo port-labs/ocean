@@ -156,7 +156,7 @@ resource "aws_ecs_task_definition" "service_task_definition" {
   container_definitions = jsonencode(
     [
       {
-        image       = "${var.image_registry_repo}/port-ocean-${var.integration.type}:${var.integration_version}",
+        image       = "${var.image_registry}/port-ocean-${var.integration.type}:${var.integration_version}",
         cpu         = var.cpu,
         memory      = var.memory,
         name        = local.service_name,
