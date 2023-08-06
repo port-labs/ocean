@@ -1,0 +1,1 @@
+Fixed an issue that caused the jq None values for relations to become a string of None

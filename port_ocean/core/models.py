@@ -1,4 +1,4 @@
-from typing import Any, Type, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 from pydantic.fields import Field
@@ -7,18 +7,12 @@ Model = TypeVar("Model", bound="BaseModel")
 
 
 class Entity(BaseModel):
-    identifier: str
-    blueprint: str
-    title: str | None
-    team: str | None | list[str | None] = []
+    identifier: Any
+    blueprint: Any
+    title: Any
+    team: str | None | list[Any] = []
     properties: dict[str, Any] = {}
     relations: dict[str, Any] = {}
-
-    @classmethod
-    def parse_obj(cls: Type["Model"], obj: dict[Any, Any]) -> "Model":
-        obj["identifier"] = str(obj.get("identifier"))
-        obj["blueprint"] = str(obj.get("blueprint"))
-        return super(Entity, cls).parse_obj(obj)
 
 
 class BlueprintRelation(BaseModel):
