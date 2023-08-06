@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 from itertools import groupby
 
 from port_ocean.clients.port.client import PortClient
@@ -33,12 +34,18 @@ async def get_related_entities(
         for entity in entities_with_relations
     ]
 
-    related_entities = []
+    blueprints_to_relations = defaultdict(list)
     for entity, blueprint in entity_to_blueprint:
         for relation_name, relation in entity.relations.items():
             relation_blueprint = blueprint.relations[relation_name].target
-            related_entities.append(
-                Entity(identifier=relation, blueprint=relation_blueprint)
+            blueprints_to_relations[relation_blueprint].extend(
+                relation if isinstance(relation, list) else [relation]
             )
 
-    return related_entities
+    return [
+        Entity(identifier=relation, blueprint=blueprint)
+        for blueprint, relations in blueprints_to_relations.items()
+        # multiple entities can point to the same relation in the same blueprint, for performance reasons
+        # we want to avoid fetching the same relation multiple times
+        for relation in set(relations)
+    ]
