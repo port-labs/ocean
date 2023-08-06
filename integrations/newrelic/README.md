@@ -122,10 +122,10 @@ Let's take a look at the following example:
   - kind: newRelicService
     selector:
       query: 'true'
-      NewRelicTypes: ['SERVICE', 'APPLICATION']
-      CalculateOpenIssueCount: true
-      EntityQueryFilter: "type in ('SERVICE','APPLICATION')"
-      EntityExtraPropertiesQuery: |
+      newRelicTypes: ['SERVICE', 'APPLICATION']
+      calculateOpenIssueCount: true
+      entityQueryFilter: "type in ('SERVICE','APPLICATION')"
+      entityExtraPropertiesQuery: |
         ... on ApmApplicationEntityOutline {
           guid
           name
@@ -170,15 +170,15 @@ Let's take a look at the following example:
 
 #### Selector
 - **query** - A query to filter the entities that will be fetched from New Relic. Default value is `true` which means that all entities will be fetched.
-- **NewRelicTypes** - An array of New Relic entity types that will be fetched. Default value is `['SERVICE', 'APPLICATION']`. This is related to the `type` field in the New Relic entity.
-- **CalculateOpenIssueCount** - 
+- **newRelicTypes** - An array of New Relic entity types that will be fetched. Default value is `['SERVICE', 'APPLICATION']`. This is related to the `type` field in the New Relic entity.
+- **calculateOpenIssueCount** - 
   - A boolean value that indicates if the integration should calculate the number of open issues for each entity. Default value is `false`. Here we override the default value to `true` because we want to calculate the number of open issues for each service entity.
   - **Note** - This can cause a performance degradation as it will have to calculate the number of open issues for each entity which unfortunately is not supported by New Relic API and so the integration will have to fetch all the issues and then calculate the number of open issues for each entity.
-- **EntityQueryFilter** - 
+- **entityQueryFilter** - 
   - A filter that will be applied to the New Relic API query. This will be places inside the `query` field of the `entitySearch` query in the New Relic GraphQL API. For examples of query filters see [here](https://docs.newrelic.com/docs/apis/nerdgraph/examples/nerdgraph-entities-api-tutorial/#search-query)
   - **Note** - Not specifying this field will cause the integration to fetch all the entities and map them to the blueprint defined in the kind.
   - **Rule of thumb** - Most of the time the EntityQueryFilter will be the same as the NewRelicTypes. For example, if we want to fetch all the services and applications we will set the EntityQueryFilter to `type in ('SERVICE','APPLICATION')` and the NewRelicTypes to `['SERVICE', 'APPLICATION']`.
-- **EntityExtraPropertiesQuery** -
+- **entityExtraPropertiesQuery** -
   - An optional property that allows defining extra properties to fetch for each New Relic Entity. This will be concatenated with the default query properties we are requesting under the `entities` section in `entitySearch` query in the New Relic GraphQL API. For examples of additional query properties [here](https://docs.newrelic.com/docs/apis/nerdgraph/examples/nerdgraph-entities-api-tutorial/#apm-summary)
 
 #### Port

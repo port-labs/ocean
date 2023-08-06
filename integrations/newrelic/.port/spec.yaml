@@ -9,15 +9,15 @@ features:
       - kind: newRelicService
       - kind: newRelicAlert
 configurations:
-  - name: NewRelicAPIKey
+  - name: newRelicAPIKey
     required: true
     type: string
     sensitive: true
-  - name: NewRelicAccountID
+  - name: newRelicAccountID
     required: true
     type: string
     sensitive: true
-  - name: NewRelicGraphqlAPIURL
+  - name: newRelicGraphqlAPIURL
     required: false
     type: string
     default: https://api.newrelic.com/graphql
