@@ -78,11 +78,9 @@ class IssuesHandler:
                     # add the entity guid to the right relation key in the issue
                     # by the format of .__<type>.entity_guids.[<entity_guid>...]
                     issue.setdefault(
-                        queried_issues[entity_guid],
+                        f"__{queried_issues[entity_guid]}",
                         {},
-                    ).setdefault(
-                        "entity_guids", []
-                    ).append(entity_guid)
+                    ).setdefault("entity_guids", []).append(entity_guid)
 
                 matching_issues.append(issue)
         return matching_issues

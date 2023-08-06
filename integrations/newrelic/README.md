@@ -309,7 +309,7 @@ Let's take a look at a configuration example for issues:
               alertPolicyNames: .policyName
               activatedAt: .activatedAt
           relations:
-              newRelicService: .APPLICATION.entity_guids + .SERVICE.entity_guids
+              newRelicService: .__APPLICATION.entity_guids + .__SERVICE.entity_guids
 ```
 </details>
 
@@ -322,7 +322,7 @@ Let's take a look at a configuration example for issues:
 - The port, entity and the mappings keys used to map the NewRelic API object fields to Port entities.
 - The relations key is used to map the NewRelic API object fields to Port entities relations.
   - **Note** - The relations key is optional and can be omitted if the issue blueprint doesn't have any relations.
-    - To support dynamic relations to any type of blueprint created from a NewRelic entity, we are adding to the issue entity a key per entity type (e.g. APPLICATION) and inside of it we are adding a list of all the entity guids that are related to the issue.
+    - To support dynamic relations to any type of blueprint created from a NewRelic entity, we are adding to the issue entity a key per entity type (e.g. for `APPLICATION` we will add `__APPLICATION`) and inside of it we are adding a list of all the entity guids that are related to the issue.
 
 ### Listening to New Relic events
 The integration supports listening to New Relic events and updating the corresponding issues in Port.

@@ -18,7 +18,7 @@ resources:
               alertPolicyNames: .policyName
               activatedAt: .activatedAt
           relations:
-              newRelicService: ".APPLICATION.entity_guids + .SERVICE.entity_guids"
+              newRelicService: ".__APPLICATION.entity_guids + .__SERVICE.entity_guids"
   - kind: newRelicService
     selector:
       query: 'true'
