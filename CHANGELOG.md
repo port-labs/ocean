@@ -7,6 +7,36 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.3 (2023-08-02)
+==================
+
+### Bug Fixes
+
+- Fixed an issue preventing the setup of an integration with config values passed exclusively as environment variables. This fix also enables the option to deploy an integration to AWS ECS using Terraform (PORT-4379)
+
+
+0.1.2 (2023-07-27)
+==================
+
+### Breaking Changes
+
+- All integration configuration variables are now passed to the integration code in snake_case format
+- Renamed `port_ocean.config.integration` -> `port_ocean.config.settings`
+
+### Features
+
+- All the settings can now be set using environment variables with prefix of `OCEAN__{The name of the field}` and `__` between nested fields
+- The broker field in the kafka settings now has the Port production brokers as the default value
+
+### Improvements
+
+- Using pyhumps to automatically camelize the aliases of the settings
+
+### Bug Fixes
+
+- Fixed a crash when there are no resources in the port-app-config
+
+
 0.1.1 (2023-07-26)
 ==================
 

@@ -1,0 +1,31 @@
+resources:
+  - kind: services
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"pagerdutyService"'
+          properties:
+            status: .status
+  - kind: incidents
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"pagerdutyIncident"'
+          properties:
+            status: .status
+            url: .self
+            urgency: .urgency
+            responder: .assignments[0].assignee.summary
+            escalation_policy: .escalation_policy.summary
+            created_at: .created_at
+            updated_at: .updated_at
+          relations:
+            pagerdutyService: .service.id

@@ -1,1 +1,0 @@
-The broker field in the kafka settings has now the default of port production brokers
