@@ -16,7 +16,7 @@ from newrelic_integration.core.utils import render_query, send_graph_api_request
 ReturnType = TypeVar("ReturnType")
 ResponseType = TypeVar("ResponseType")
 
-__all__ = ["AsyncPageIterator", "AsyncItemPaged"]
+__all__ = ["AsyncItemPaged", "send_paginated_graph_api_request"]
 
 
 class AsyncList(AsyncIterator[ReturnType]):

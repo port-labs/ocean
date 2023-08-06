@@ -312,11 +312,19 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
             for resource in app_config.resources:
-                creation_results.append(
-                    await self._register_in_batches(
-                        resource, user_agent_type, ocean.config.batch_work_size
+                # create event context per resource kind, so resync method could have access to the resource config
+                # as we might have multiple resources with the same kind name
+                async with event_context(
+                    EventType.RESYNC,
+                    trigger_type=trigger_type,
+                    resource_config=resource,
+                    attributes={"resource_kind": resource.kind},
+                ):
+                    creation_results.append(
+                        await self._register_in_batches(
+                            resource, user_agent_type, ocean.config.batch_work_size
+                        )
                     )
-                )
             flat_created_entities, errors = zip_and_sum(creation_results) or [[], []]
 
             if errors:
