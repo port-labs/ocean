@@ -8,11 +8,14 @@ from pydantic import BaseModel, Field
 class NewRelicResourceConfig(ResourceConfig):
     class Selector(BaseModel):
         query: str
-        newrelic_types: list[str] | None = Field(default=None, alias="NewRelicTypes")
-        relation_identifier: str | None = Field(
-            default=None, alias="RelationIdentifier"
+        newrelic_types: list[str] | None = Field(default=None, alias="newRelicTypes")
+        calculate_open_issue_count: bool = Field(
+            default=False, alias="calculateOpenIssueCount"
         )
-        entity_query_filter: str | None = Field(default=None, alias="EntityQueryFilter")
+        entity_query_filter: str = Field(default="", alias="entityQueryFilter")
+        entity_extra_properties_query: str = Field(
+            default="", alias="entityExtraPropertiesQuery"
+        )
 
     selector: Selector  # type: ignore
 
