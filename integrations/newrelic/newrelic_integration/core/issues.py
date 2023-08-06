@@ -53,8 +53,8 @@ class IssuesHandler:
         self, state: IssueState | None = None
     ) -> list[dict[Any, Any]]:
         matching_issues = []
-        # key is entity guid and value is the relation identifier
-        # used for caching the relation identifier for each entity guid and avoid querying it multiple times for
+        # key is entity guid and value is the entity type
+        # used for caching the entity type for each entity guid and avoid querying it multiple times for
         # the same entity guid for different issues
         queried_issues: dict[str, str] = {}
         async for issue in send_paginated_graph_api_request(
@@ -76,7 +76,7 @@ class IssuesHandler:
                         queried_issues[entity_guid] = entity["type"]
 
                     # add the entity guid to the right relation key in the issue
-                    # by the format of .<type>.entity_guids.[<entity_guid>...]
+                    # by the format of .__<type>.entity_guids.[<entity_guid>...]
                     issue.setdefault(
                         queried_issues[entity_guid],
                         {},

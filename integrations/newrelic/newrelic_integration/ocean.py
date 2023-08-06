@@ -42,7 +42,7 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             entity["guid"],
                             issue_state=IssueState.ACTIVATED,
                         )
-                        entity["open_issues_count"] = number_of_open_issues
+                        entity["__open_issues_count"] = number_of_open_issues
                     yield entity
 
 
@@ -69,15 +69,16 @@ async def handle_issues_events(issue: IssueEvent) -> dict[str, bool]:
                     entity = await EntitiesHandler(http_client).get_entity(
                         entity_guid=entity_guid
                     )
+                    entity_type = entity["type"]
                     entity_resource_config = (
                         await get_port_resource_configuration_by_newrelic_entity_type(
-                            entity["type"]
+                            entity_type
                         )
                     )
                     if not entity_resource_config:
                         logger.warning(
                             "Received issue event for unknown entity type, ignoring",
-                            entity_type=entity["type"],
+                            entity_type=entity_type,
                         )
                     else:
                         if entity_resource_config.selector.calculate_open_issue_count:
@@ -87,9 +88,11 @@ async def handle_issues_events(issue: IssueEvent) -> dict[str, bool]:
                                 entity_guid,
                                 issue_state=IssueState.ACTIVATED,
                             )
-                            entity["open_issues_count"] = number_of_open_issues
+                            entity["__open_issues_count"] = number_of_open_issues
+                        # add the entity guid to the right relation key in the issue
+                        # by the format of .__<type>.entity_guids.[<entity_guid>...]
                         issue_record.setdefault(
-                            entity["type"],
+                            f"__{entity_type}",
                             {},
                         ).setdefault(
                             "entity_guids", []

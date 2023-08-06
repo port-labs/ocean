@@ -177,7 +177,7 @@ Let's take a look at the following example:
           properties:
             has_apm: 'if .domain | contains("APM") then "true" else "false" end'
             link: .permalink
-            open_issues_count: .open_issues_count
+            open_issues_count: .__open_issues_count
             reporting: .reporting
             tags: .tags
             domain: .domain
