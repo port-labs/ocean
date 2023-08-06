@@ -4,11 +4,6 @@ on:
     branches:
       - main
   workflow_dispatch:
-    inputs:
-      LATEST:
-        type: boolean
-        default: true
-        description: "If true, build the Docker image with both 'latest' and version tags. If false, build the Docker image with only the version tag."
 
 jobs:
   release-all:
@@ -45,13 +40,14 @@ jobs:
             if [ "$MANIFEST" = "200" ]; then            
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
-              echo "Building and pushing new image: port-ocean-$type:$version"
-              if [[ "${{ inputs.LATEST }}" == "true" ]]; then
-                # If true, build the Docker image with both "latest" and version tags
-                docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder/.."
+              # Check if the 'version' variable contains any character other than digits and "."
+              if [[ ! "$version" =~ ^[0-9.]+$ ]]; then
+                # If 'version' contains non-numeric and non-dot characters, skip building 'latest' tag
+                echo "Version contains non-numeric characters. Building without 'latest' tag."
+                docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" "$folder/.."
               else
-                  # If false, build the Docker image with only the version tag
-                  docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" "$folder/.."
+                # If 'version' contains only digits and dots, build with both 'latest' and version tags
+                docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder/.."
               fi
               docker push "ghcr.io/port-labs/port-ocean-$type" --all-tags
             fi
