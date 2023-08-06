@@ -17,7 +17,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-  - name: newRelicGraphqlAPIURL
+  - name: newRelicGraphqlURL
     required: false
     type: string
     default: https://api.newrelic.com/graphql

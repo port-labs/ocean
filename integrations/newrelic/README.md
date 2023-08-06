@@ -16,7 +16,7 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 # integration.identifier: Change the identifier to describe your integration
 # integration.config.NewRelicAPIKey: The New Relic API Key of type [User key](https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#user-key)
 # integration.config.NewRelicAccountID: The New Relic Account ID of type [Account ID](https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#account-id)
-# integration.config.NewRelicGraphqlAPIURL: Default value is https://api.newrelic.com/graphql if you are using a EU data center change the value to EU data center: https://api.eu.newrelic.com/graphql
+# integration.config.NewRelicGraphqlURL: Default value is https://api.newrelic.com/graphql if you are using a EU data center change the value to EU data center: https://api.eu.newrelic.com/graphql
 # ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target": Change the annotation value and key to match your ingress controller
 
 helm upgrade --install my-ocean-integration port-labs/port-ocean \

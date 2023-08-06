@@ -15,5 +15,5 @@ integration:
   type: "newrelic"
   config:
     NewRelicAPIKey: "{{ from env NEWRELIC_API_KEY }}"
-    NewRelicGraphqlAPIURL: "{{ from env NEWRELIC_GRAPHQL_API_URL }}"
+    NewRelicGraphqlURL: "{{ from env NEWRELIC_GRAPHQL_URL }}"
     NewRelicAccountID: "{{ from env NEWRELIC_ACCOUNT_ID }}"
