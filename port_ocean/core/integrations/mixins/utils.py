@@ -21,11 +21,9 @@ def resync_error_handling() -> Generator[None, None, None]:
     except StopAsyncIteration:
         raise
     except Exception as error:
-        # logger.exception is used to log the exception with the traceback
-        logger.exception("Failed to execute resync function")
-        raise OceanAbortException(
-            f"Failed to execute resync function, error: {error}"
-        ) from error
+        err_msg = f"Failed to execute resync function, error: {error}"
+        logger.exception(err_msg)
+        raise OceanAbortException(err_msg) from error
 
 
 async def resync_function_wrapper(
