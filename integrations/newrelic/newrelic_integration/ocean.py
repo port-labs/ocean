@@ -17,6 +17,12 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         port_resource_configuration = (
             await get_port_resource_configuration_by_port_kind(kind)
         )
+        if not port_resource_configuration:
+            logger.error(
+                "No resource configuration found for resource",
+                resource_kind=kind,
+            )
+            return
         # mainly for issues newRelicAlert as it has different resync logic than entities
         if not port_resource_configuration.selector.entity_query_filter:
             logger.debug(
