@@ -62,6 +62,7 @@ corresponding blueprint in port we need to provide the integration with instruct
 
 <details>
 <summary>blueprint.json</summary>
+
 ```json
 {
     "identifier": "newRelicService",
@@ -103,6 +104,22 @@ corresponding blueprint in port we need to provide the integration with instruct
         "domain": {
           "title": "Domain",
           "type": "string"
+        },
+        "throughput": {
+          "title": "Throughput",
+          "type": "number"
+        },
+        "response_time_avg": {
+          "title": "Response Time AVG",
+          "type": "number"
+        },
+        "error_rate": {
+          "title": "Error Rate",
+          "type": "number"
+        },
+        "instance_count": {
+            "title": "Instance Count",
+            "type": "number"
         }
       },
       "required": []
@@ -277,7 +294,7 @@ Let's take a look at a configuration example for issues:
   - kind: newRelicAlert
     selector:
       query: 'true'
-      NewRelicTypes: ['ISSUE']
+      newRelicTypes: ['ISSUE']
     port:
       entity:
         mappings:
@@ -298,7 +315,7 @@ Let's take a look at a configuration example for issues:
 
 #### Selector
 - **query** - A query to filter the issues that will be fetched from New Relic. Default value is `true` which means that all issues will be fetched.
-- **NewRelicTypes** - An array of New Relic entity types that will be fetched. The `ISSUE` type allows the integration to resolve from the configuration file which kind refers to the NewRelic Issues.
+- **newRelicTypes** - An array of New Relic entity types that will be fetched. The `ISSUE` type allows the integration to resolve from the configuration file which kind refers to the NewRelic Issues.
 
 #### Port
 - Under the `port` field we define the mapping between the New Relic issue and the Port issue.
