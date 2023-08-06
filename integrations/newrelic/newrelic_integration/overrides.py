@@ -12,7 +12,7 @@ class NewRelicResourceConfig(ResourceConfig):
         calculate_open_issue_count: bool = Field(
             default=False, alias="calculateOpenIssueCount"
         )
-        entity_query_filter: str | None = Field(default=None, alias="entityQueryFilter")
+        entity_query_filter: str = Field(default="", alias="entityQueryFilter")
         entity_extra_properties_query: str = Field(
             default="", alias="entityExtraPropertiesQuery"
         )

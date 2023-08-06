@@ -3,7 +3,7 @@ from typing import Optional, Any, Tuple
 
 import httpx
 from port_ocean.context.ocean import ocean
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, Extra
 
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.query_templates.issues import (
@@ -13,14 +13,11 @@ from newrelic_integration.core.query_templates.issues import (
 from newrelic_integration.core.paging import send_paginated_graph_api_request
 
 
-class IssueEvent(BaseModel):
+class IssueEvent(BaseModel, extra=Extra.allow):
     id: str = Field(..., alias="issueId")
     title: list[str]
     state: str
     entity_guids: list[str] = Field(..., alias="entityGuids")
-
-    class Config:
-        extra = "allow"
 
 
 class IssueState(Enum):
@@ -31,19 +28,20 @@ class IssueState(Enum):
 
 
 class IssuesHandler:
-    @classmethod
+    def __init__(self, http_client: httpx.AsyncClient):
+        self.http_client = http_client
+
     async def get_number_of_issues_by_entity_guid(
-        cls,
-        http_client: httpx.AsyncClient,
+        self,
         entity_guid: str,
         issue_state: IssueState = IssueState.ACTIVATED,
     ) -> int:
         counter = 0
         async for issue in send_paginated_graph_api_request(
-            http_client,
+            self.http_client,
             LIST_ISSUES_BY_ENTITY_GUIDS_MINIMAL_QUERY,
             request_type="get_number_of_issues_by_entity_guid",
-            extract_data=cls._extract_issues,
+            extract_data=self._extract_issues,
             account_id=ocean.integration_config.get("new_relic_account_id"),
             entity_guid=entity_guid,
         ):
@@ -51,9 +49,8 @@ class IssuesHandler:
                 counter += 1
         return counter
 
-    @classmethod
     async def list_issues(
-        cls, http_client: httpx.AsyncClient, state: IssueState | None = None
+        self, state: IssueState | None = None
     ) -> list[dict[Any, Any]]:
         matching_issues = []
         # key is entity guid and value is the relation identifier
@@ -61,10 +58,10 @@ class IssuesHandler:
         # the same entity guid for different issues
         queried_issues: dict[str, str] = {}
         async for issue in send_paginated_graph_api_request(
-            http_client,
+            self.http_client,
             LIST_ISSUES_QUERY,
             request_type="list_issues",
-            extract_data=cls._extract_issues,
+            extract_data=self._extract_issues,
             account_id=ocean.integration_config.get("new_relic_account_id"),
         ):
             if state is None or issue["state"] == state.value:
@@ -73,8 +70,8 @@ class IssuesHandler:
                 for entity_guid in issue["entityGuids"]:
                     # if we already queried this entity guid before, we can use the cached relation identifier
                     if entity_guid not in queried_issues.keys():
-                        entity = await EntitiesHandler.get_entity(
-                            http_client, entity_guid
+                        entity = await EntitiesHandler(self.http_client).get_entity(
+                            entity_guid
                         )
                         queried_issues[entity_guid] = entity["type"]
 

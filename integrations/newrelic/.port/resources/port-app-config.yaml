@@ -18,11 +18,13 @@ resources:
               alertPolicyNames: .policyName
               activatedAt: .activatedAt
           relations:
-              newRelicService: .newRelicService.entity_guids
+              newRelicService: ".APPLICATION.entity_guids + .SERVICE.entity_guids"
   - kind: newRelicService
     selector:
       query: 'true'
-      newRelicTypes: ['SERVICE', 'APPLICATION']
+      newRelicTypes:
+        - SERVICE
+        - APPLICATION
       calculateOpenIssueCount: true
       entityQueryFilter: "type in ('SERVICE','APPLICATION')"
       entityExtraPropertiesQuery: |
