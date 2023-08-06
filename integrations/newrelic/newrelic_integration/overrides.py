@@ -13,6 +13,9 @@ class NewRelicResourceConfig(ResourceConfig):
             default=False, alias="CalculateOpenIssueCount"
         )
         entity_query_filter: str | None = Field(default=None, alias="EntityQueryFilter")
+        entity_extra_properties_query: str = Field(
+            default="", alias="EntityExtraPropertiesQuery"
+        )
 
     selector: Selector  # type: ignore
 

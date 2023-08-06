@@ -61,6 +61,9 @@ class EntitiesHandler:
             request_type="list_entities_by_resource_kind",
             extract_data=extract_entities,
             entity_query_filter=entity_query_filter,
+            extra_entity_properties=resource_config.get("selector", {}).get(
+                "entity_extra_properties_query", ""
+            ),
         ):
             cls._format_tags(entity)
             yield entity

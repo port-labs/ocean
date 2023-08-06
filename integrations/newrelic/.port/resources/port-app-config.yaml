@@ -25,6 +25,32 @@ resources:
       NewRelicTypes: ['SERVICE', 'APPLICATION']
       CalculateOpenIssueCount: true
       EntityQueryFilter: "type in ('SERVICE','APPLICATION')"
+      EntityExtraPropertiesQuery: |
+        ... on ApmApplicationEntityOutline {
+          guid
+          name
+          alertSeverity
+          applicationId
+          apmBrowserSummary {
+            ajaxRequestThroughput
+            ajaxResponseTimeAverage
+            jsErrorRate
+            pageLoadThroughput
+            pageLoadTimeAverage
+          }
+          apmSummary {
+            apdexScore
+            errorRate
+            hostCount
+            instanceCount
+            nonWebResponseTimeAverage
+            nonWebThroughput
+            responseTimeAverage
+            throughput
+            webResponseTimeAverage
+            webThroughput
+          }
+        }
     port:
       entity:
         mappings:
@@ -39,3 +65,8 @@ resources:
             tags: .tags
             domain: .domain
             type: .type
+            throughput: .apmSummary.throughput
+            error_rate: .apmSummary.errorRate
+            response_time_avg: .apmSummary.responseTimeAverage
+            instance_count: .apmSummary.instanceCount
+

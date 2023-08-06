@@ -125,6 +125,32 @@ Let's take a look at the following example:
       NewRelicTypes: ['SERVICE', 'APPLICATION']
       CalculateOpenIssueCount: true
       EntityQueryFilter: "type in ('SERVICE','APPLICATION')"
+      EntityExtraPropertiesQuery: |
+        ... on ApmApplicationEntityOutline {
+          guid
+          name
+          alertSeverity
+          applicationId
+          apmBrowserSummary {
+            ajaxRequestThroughput
+            ajaxResponseTimeAverage
+            jsErrorRate
+            pageLoadThroughput
+            pageLoadTimeAverage
+          }
+          apmSummary {
+            apdexScore
+            errorRate
+            hostCount
+            instanceCount
+            nonWebResponseTimeAverage
+            nonWebThroughput
+            responseTimeAverage
+            throughput
+            webResponseTimeAverage
+            webThroughput
+          }
+        }
     port:
       entity:
         mappings:
@@ -152,6 +178,8 @@ Let's take a look at the following example:
   - A filter that will be applied to the New Relic API query. This will be places inside the `query` field of the `entitySearch` query in the New Relic GraphQL API. For examples of query filters see [here](https://docs.newrelic.com/docs/apis/nerdgraph/examples/nerdgraph-entities-api-tutorial/#search-query)
   - **Note** - Not specifying this field will cause the integration to fetch all the entities and map them to the blueprint defined in the kind.
   - **Rule of thumb** - Most of the time the EntityQueryFilter will be the same as the NewRelicTypes. For example, if we want to fetch all the services and applications we will set the EntityQueryFilter to `type in ('SERVICE','APPLICATION')` and the NewRelicTypes to `['SERVICE', 'APPLICATION']`.
+- **EntityExtraPropertiesQuery** -
+  - An optional property that allows defining extra properties to fetch for each New Relic Entity. This will be concatenated with the default query properties we are requesting under the `entities` section in `entitySearch` query in the New Relic GraphQL API. For examples of additional query properties [here](https://docs.newrelic.com/docs/apis/nerdgraph/examples/nerdgraph-entities-api-tutorial/#apm-summary)
 
 #### Port
 - Under the `port` field we define the mapping between the New Relic entity and the Port entity.
