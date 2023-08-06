@@ -1,4 +1,4 @@
-version: v0.1.0
+version: v0.1.1
 type: newrelic
 description: newrelic integration for Port Ocean
 icon: NewRelic
@@ -9,15 +9,15 @@ features:
       - kind: newRelicService
       - kind: newRelicAlert
 configurations:
-  - name: NewRelicAPIKey
+  - name: newRelicAPIKey
     required: true
     type: string
     sensitive: true
-  - name: NewRelicAccountID
+  - name: newRelicAccountID
     required: true
     type: string
     sensitive: true
-  - name: NewRelicGraphqlAPIURL
+  - name: newRelicGraphqlURL
     required: false
     type: string
     default: https://api.newrelic.com/graphql
