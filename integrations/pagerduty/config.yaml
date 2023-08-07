@@ -9,7 +9,7 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: "my-pagerduty-integration-d"
+  identifier: "my-pagerduty-integration"
   # The type of the integration.
   type: "pagerduty"
   config:
