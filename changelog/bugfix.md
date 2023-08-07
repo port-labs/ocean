@@ -1,1 +1,1 @@
-Fixed an issue that caused the jq None values for relations to become a string of None
+Fixed an issue that caused the jq `None` values for relations to become a string with the value `"None"` instead of being interpreted as `null` in JSON
