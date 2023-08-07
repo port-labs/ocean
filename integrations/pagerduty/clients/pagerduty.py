@@ -69,9 +69,7 @@ class PagerDutyClient:
 
                     # Fetch and update on-call user information for services
                     if data_key == "services":
-                        service_data = await self.update_oncall_users(
-                            data, data_key
-                        )
+                        service_data = await self.update_oncall_users(data, data_key)
                         all_data.extend(service_data)
                     else:
                         all_data.extend(data[data_key])
