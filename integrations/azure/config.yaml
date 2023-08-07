@@ -2,15 +2,15 @@
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 initializePortResources: true
 port:
-  clientId: {{ from env PORT_CLIENT_ID }} # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.
-  clientSecret: {{ from env PORT_CLIENT_SECRET }} # Can be loaded via environment variable: PORT_CLIENT_SECRET, if both are set, the environment variable will be used.
-  baseUrl: {{ from env PORT_BASE_URL }}
+  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET, if both are set, the environment variable will be used.
+  baseUrl: "{{ from env PORT_BASE_URL }}"
 #  baseUrl: http://localhost:3000 # Can be loaded via environment variable: PORT_BASE_URL, if both are set, the environment variable will be used.
 # The event listener to use for the integration service.
 eventListener:
 #  type: SAMPLE
-  type: KAFKA
-  brokers: {{ from env EVENT_LISTENER_BROKERS }}
+  type: POLLING
+#  brokers: {{ from env EVENT_LISTENER_BROKERS }}
 #  username: {{ from env EVENT_LISTENER_USERNAME }}
 #  password: {{ from env EVENT_LISTENER_PASSWORD }}
 #  consumerGroup: {{ from env EVENT_LISTENER_CONSUMER_GROUP }}
@@ -19,9 +19,9 @@ eventListener:
 #  brokers: "localhost:9092"
 integration:
   # The identifier of this integration instance.
-  identifier: {{ from env INTEGRATION_IDENTIFIER }}
+  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
   # The type of the integration.
   type: "Azure Integration"
   config:
-    subscriptionId: {{ from env AZURE_SUBSCRIPTION_ID }}
+    subscriptionId: "{{ from env AZURE_SUBSCRIPTION_ID }}"
     someApplicationUrl: "https://I-Am-Not-A-Real-Url.com"
