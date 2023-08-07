@@ -9,19 +9,22 @@
             "status": {
               "title": "Status",
               "type": "string"
+            },
+            "url": {
+              "title": "URL",
+              "type": "string",
+              "format": "url"
+            },
+            "oncall": {
+              "title": "On Call",
+              "type": "string",
+              "format": "user"
             }
           },
           "required": []
         },
         "mirrorProperties": {},
-        "calculationProperties": {
-          "service": {
-            "title": "Service URL",
-            "calculation": "'https://api.pagerduty.com/services/' + .identifier",
-            "type": "string",
-            "format": "url"
-          }
-        },
+        "calculationProperties": {},
         "relations": {}
       },
       {
