@@ -8,7 +8,7 @@
   /* For right to left languages */
   direction: ltr;
   max-height: 300px;
-  overflow: scroll;
+  overflow: auto;
 }
 
 .termy [data-termynal] {
