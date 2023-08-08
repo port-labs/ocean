@@ -5,7 +5,7 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"sonarCloudAnalyses"'
+          blueprint: '"sonarCodeAnalysis"'
           identifier: .project_key
           title: .project_name
           properties:

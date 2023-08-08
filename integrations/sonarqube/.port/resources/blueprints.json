@@ -1,8 +1,8 @@
 [
     {
-        "identifier": "sonarCloudAnalyses",
+        "identifier": "sonarCodeAnalysis",
         "description": "This blueprint represents a SonarCloud Analysis in our software catalog",
-        "title": "SonarQube Cloud Analysis",
+        "title": "SonarQube Code Analysis",
         "icon": "sonarqube",
         "schema": {
           "properties": {
@@ -31,16 +31,20 @@
             "qualityGateStatus": {
               "type": "string",
               "title": "Quality Gate Status",
-              "description": "General status of quality checks"
+              "enum": ["OK", "WARN", "ERROR", "NONE"],
+              "enumColors": {
+                "OK": "green",
+                "WARN": "yellow",
+                "ERROR": "red",
+                "NONE": "lightGray"
+              }
             },
             "qualityGateConditions": {
               "type": "array",
               "items": {
                 "type": "object"
               },
-              "title": "Quality Gate Conditions",
-              "description": "Conditions of the qaulity gate"
-            }
+              "title": "Quality Gate Conditions"            }
           },
           "required": []
         },
