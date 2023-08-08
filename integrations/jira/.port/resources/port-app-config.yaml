@@ -1,0 +1,34 @@
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key | tostring
+          title: .name | tostring
+          blueprint: '"project"'
+          properties:
+            url: .self
+  - kind: issue
+    selector:
+      query: "true"
+      jql: "test"
+    port:
+      entity:
+        mappings:
+          identifier: .key | tostring
+          title: .fields.summary
+          blueprint: '"issue"'
+          properties:
+            url: .self
+            status: .fields.status.name
+            issueType: .fields.issuetype.name
+            components: .fields.components
+            assignee: .fields.assignee.accountId
+            reporter: .fields.reporter.accountId
+            creator: .fields.creator.accountId
+          relations:
+            project: .fields.project.key
+            parentIssue: .fields.parent.key
+            subtasks: .fields.subtasks | map(.key)
