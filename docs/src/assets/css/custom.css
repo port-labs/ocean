@@ -1,0 +1,16 @@
+.termynal-comment {
+  color: #4a968f;
+  font-style: italic;
+  display: block;
+}
+
+.termy {
+  /* For right to left languages */
+  direction: ltr;
+  max-height: 300px;
+  overflow: scroll;
+}
+
+.termy [data-termynal] {
+  white-space: pre-wrap;
+}

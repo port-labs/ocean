@@ -56,18 +56,38 @@ plugins:
             show_bases: false
 
 markdown_extensions:
-  - attr_list
-  - pymdownx.snippets:
-      base_path: ../
+  toc:
+    permalink: true
+  markdown.extensions.codehilite:
+    guess_lang: false
+  admonition:
+  codehilite:
+  extra:
+  pymdownx.superfences:
+    custom_fences:
+      - name: mermaid
+        class: mermaid
+        format: !!python/name:pymdownx.superfences.fence_code_format ''
+  pymdownx.tabbed:
+    alternate_style: true
+  attr_list:
+  md_in_html:
+
+extra_css:
+- assets/css/termynal.css
+- assets/css/custom.css
+extra_javascript:
+- assets/js/termynal.js
+- assets/js/custom.js
 
 
 nav:
-  - 🌊 Ocean Overview: index.md
+  - 🌊 Ocean: index.md
   - 🎉 Getting Started:
-    - 🛠️ Installation: ./getting-started/installation.md
     - ⚡️ Quickstart: ./getting-started/quickstart.md
     - 🚀 Deployment: ./getting-started/deployment.md
     - 📦 Publishing: ./getting-started/publishing.md
+  - 🌟 Features: features.md
   - 💻 Cli: ./cli.md
   - 📚 Guides: ./guides/index.md
   - 🔧 Development: ./development/index.md
