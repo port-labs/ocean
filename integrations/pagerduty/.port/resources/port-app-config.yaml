@@ -10,6 +10,8 @@ resources:
           blueprint: '"pagerdutyService"'
           properties:
             status: .status
+            url: .html_url
+            oncall: .oncall_user[0].user.email
   - kind: incidents
     selector:
       query: 'true'

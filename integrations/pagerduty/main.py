@@ -54,8 +54,13 @@ async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
         response = await pager_duty_client.get_singular_from_pager_duty(
             object_type=ObjectKind.SERVICES, identifier=service_id
         )
+        service_data = response["service"]
+        oncall_user = await pager_duty_client.get_oncall_user(
+            service_data.get("escalation_policy", {}).get("id")
+        )
+        service_data["oncall_user"] = oncall_user["oncalls"]
 
-        await ocean.register_raw(ObjectKind.SERVICES, [response["service"]])
+        await ocean.register_raw(ObjectKind.SERVICES, [service_data])
 
 
 @ocean.on_start()
