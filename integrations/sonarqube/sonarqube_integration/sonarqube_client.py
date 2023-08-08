@@ -53,9 +53,47 @@ class SonarQubeClient:
         response = await self.send_api_request(client=client, endpoint=endpoint_url, query_params={"project": project_key, "organization": self.organization_id})
         return response.get("qualityGate", {}).get("name", "")
     
-    async def get_sonarqube_cloud_analysis(self):
+    async def get_sonarqube_cloud_analysis(self, client):
         """Get's sonarqube cloud analysis"""
-        pass
+
+        all_quality_gates_data = []
+        projects = await self.get_projects(client=client)
+        ## Iterate through the components array and create port entities
+
+        for project in projects:
+            ## get project level information
+            project_key = project.get("key", "")
+            project_name = project.get("name", "")
+            project_url = f"{self.base_url}/project/overview?id={project_key}"
+
+            ## fetch other information from API
+            branches = await self.get_branches(client=client, project_key=project_key)
+            project_quality_status = await self.get_quality_gate_status(client=client, project_key=project_key)
+            quality_gate_name = await self.get_quality_gate_name(client=client, project_key=project_key)
+
+            # Process the fetched data
+            if branches and project_quality_status and quality_gate_name:
+
+                quality_gate_onditions = project_quality_status.get("conditions", [])
+
+                branch_name = branches.get("name", "")
+                branch_type = branches.get("type", "")
+                quality_gate_status = project_quality_status.get("status", "")
+
+                quality_gates_data =  {
+                    "server_url": self.base_url,
+                    "project_key": project_key,
+                    "project_name": project_name,
+                    "project_url": project_url,
+                    "branch_name": branch_name,
+                    "branch_type": branch_type,
+                    "quality_gate_name": quality_gate_name,
+                    "quality_gate_status": quality_gate_status,
+                    "quality_gate_conditions": quality_gate_onditions
+                }
+                all_quality_gates_data.append(quality_gates_data)
+        
+        return all_quality_gates_data
 
     async def get_or_create_webhook_url(self):
         """Create webhook"""

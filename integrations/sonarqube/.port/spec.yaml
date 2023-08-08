@@ -6,8 +6,7 @@ features:
   - type: exporter
     section: Git Providers
     resources:
-      - kind: projects
-      - kind: analysis
+      - kind: cloudAnalysis
 configurations:
   - name: sonarApiToken
     required: true
@@ -18,7 +17,11 @@ configurations:
     type: url
     required: true
     description: The host of the Sonar instance. If not specified, the default will be https://sonarcloud.io
-  - name: sonarOrganizationID
+  - name: sonarOrganizationId
     type: string
     required: true
     description: The ID for the Sonar organization
+  - name: appHost
+    type: url
+    required: true
+    description: The host of the app

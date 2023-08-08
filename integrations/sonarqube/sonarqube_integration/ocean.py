@@ -1,21 +1,21 @@
 from typing import Any
-
+from loguru import logger
 from port_ocean.context.ocean import ocean
+from sonarqube_integration.sonarqube_client import SonarQubeClient
+import httpx
 
+sonar_client = SonarQubeClient(
+    ocean.integration_config["sonar_url"],
+    ocean.integration_config["sonar_api_token"],
+    ocean.integration_config["sonar_organization_id"],
+    ocean.integration_config["app_host"],
+)
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
-@ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-    return []
+@ocean.on_resync("cloudAnalysis")
+async def on_cloud_analysis_resync(kind: str) -> list[dict[str, Any]]:
+    logger.info(f"Listing Pagerduty resource: {kind}")
+    async with httpx.AsyncClient() as http_client:
+            return await sonar_client.get_sonarqube_cloud_analysis(http_client)
 
 
 # The same sync logic can be registered for one of the kinds that are available in the mapping in port.

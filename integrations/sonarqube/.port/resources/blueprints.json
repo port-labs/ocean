@@ -1,0 +1,51 @@
+[
+    {
+        "identifier": "sonarCloudAnalyses",
+        "description": "This blueprint represents a SonarCloud Analysis in our software catalog",
+        "title": "SonarQube Cloud Analysis",
+        "icon": "sonarqube",
+        "schema": {
+          "properties": {
+            "serverUrl": {
+              "type": "string",
+              "format": "url",
+              "title": "Server URL"
+            },
+            "projectUrl": {
+              "type": "string",
+              "format": "url",
+              "title": "Project URL"
+            },
+            "branchName": {
+              "type": "string",
+              "title": "Branch Name"
+            },
+            "branchType": {
+              "type": "string",
+              "title": "Branch Type"
+            },
+            "qualityGateName": {
+              "type": "string",
+              "title": "Quality Gate Name"
+            },
+            "qualityGateStatus": {
+              "type": "string",
+              "title": "Quality Gate Status",
+              "description": "General status of quality checks"
+            },
+            "qualityGateConditions": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "title": "Quality Gate Conditions",
+              "description": "Conditions of the qaulity gate"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {}
+      }
+]

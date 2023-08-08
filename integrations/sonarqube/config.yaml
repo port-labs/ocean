@@ -16,3 +16,4 @@ integration:
     sonarApiToken: {{ from env SONAR_API_TOKEN }}
     sonarUrl: {{ from env SONAR_URL }}
     sonarOrganizationID: {{ from env SONAR_ORGANIZATION_ID }}
+    appHost: {{ from env APP_HOST }}
