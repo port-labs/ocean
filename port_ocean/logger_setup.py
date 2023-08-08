@@ -10,8 +10,10 @@ def setup_logger(level: LogLevelType) -> None:
     logger_format = (
         "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
         "<level>{level: <8}</level> | "
-        "<level>{message}</level> | {extra}"
+        "<level>{message}</level>"
     )
+    if level == "DEBUG":
+        logger_format += " | {extra}"
 
     logger.remove()
     logger.add(

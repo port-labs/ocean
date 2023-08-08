@@ -30,9 +30,9 @@ class IntegrationClientMixin:
         )
         return response
 
-    async def get_current_integration(self) -> dict[str, Any]:
+    async def get_current_integration(self, should_raise: bool = True, should_log: bool = True) -> dict[str, Any]:
         response = await self._get_current_integration()
-        handle_status_code(response)
+        handle_status_code(response, should_raise, should_log)
         return response.json()["integration"]
 
     async def create_integration(

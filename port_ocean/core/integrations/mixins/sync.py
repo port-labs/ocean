@@ -216,7 +216,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 async for item in generator:
                     registered_entities_results.append(
                         await self._register_resource_raw(
-                            resource_config, [item], user_agent_type
+                            resource_config, item if isinstance(item, list) else [item], user_agent_type
                         )
                     )
             except* OceanAbortException as error:
