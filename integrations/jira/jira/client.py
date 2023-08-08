@@ -1,13 +1,10 @@
-import typing
-import httpx
 import base64
+import typing
 
+import httpx
 from loguru import logger
 
-from port_ocean.context.ocean import ocean
 from jira.overrides import JiraResourceConfig
-
-from jira.overrides import JiraPortAppConfig
 from port_ocean.context.event import event
 
 PAGE_SIZE = 50
@@ -79,7 +76,6 @@ class JiraClient:
 
     async def get_paginated_issues(self):
         logger.info(f"Getting issues from Jira")
-        get_more_issues = True
 
         params = {
             "maxResults": 0,
@@ -94,13 +90,10 @@ class JiraClient:
         total_issues = (await self._get_paginated_issues(params))["total"]
 
         params["maxResults"] = PAGE_SIZE
-        while get_more_issues:
+        while params["startAt"] <= total_issues:
             logger.info(f"Current query position: {params['startAt']}/{total_issues}")
             issue_response_list = (await self._get_paginated_issues(params))["issues"]
             yield issue_response_list
-            # Stop querying for more issues when the paginated response has a
-            # lower number of results than our page size (meaning we reached the last page)
-            get_more_issues = len(issue_response_list) == PAGE_SIZE
             params["startAt"] += PAGE_SIZE
 
     async def _get_paginated_issues(self, params):
