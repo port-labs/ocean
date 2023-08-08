@@ -32,8 +32,7 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
 
     async for issues in client.get_paginated_issues():
         logger.info(f"Received issue batch with {len(issues)} issues")
-        for issue in issues:
-            yield issue
+        yield issues
 
     # 1. Get all data from the source system
     # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
@@ -56,6 +55,11 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
 #     # 1. Get all issues from the source system
 #     # 2. Return a list of dictionaries with the raw data of the state
 #     return [{"some_issue_key": "someIssueValue", ...}]
+
+
+@ocean.router.post("/hook")
+async def handle_webhook_request(data: dict):
+    pass
 
 
 # Called once when the integration starts.

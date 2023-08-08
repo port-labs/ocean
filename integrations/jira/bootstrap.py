@@ -11,6 +11,6 @@ def setup_application() -> None:
         logic_settings.get("atlassian_user_token"),
     )
 
-    jira_client.create_rt_issue_updates_webhook(
+    jira_client.create_real_time_updates_webhook(
         logic_settings.get("app_host"),
     )

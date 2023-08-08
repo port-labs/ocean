@@ -1,3 +1,5 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
 resources:
   - kind: project
     selector:
@@ -13,7 +15,6 @@ resources:
   - kind: issue
     selector:
       query: "true"
-      jql: "test"
     port:
       entity:
         mappings:

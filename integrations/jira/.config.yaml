@@ -1,0 +1,20 @@
+# This is an example configuration file for the integration service.
+# Please copy this file to config.yaml file in the integration folder and edit it to your needs.
+
+initializePortResources: true
+port:
+  clientId: "KZ5zDPudPshQMShUb4cLopBEE1fNSJGE" # Can be loaded via environment variable: PORT_CLIENT_ID
+  clientSecret: "EUUVyrSOqnsYgNeojG1cu1wbdeAhZCe2mEA1wBdDAgQM4sKcXR4ZvlwkusVE4yUb" # Can be loaded via environment variable: PORT_CLIENT_SECRET
+# The event listener to use for the integration service.
+eventListener:
+  type: POLLING
+integration:
+  # The identifier of this integration instance.
+  identifier: "morpJira"
+  # The type of the integration.
+  type: "Jira"
+  config:
+    appHost: "https://getport.atlassian.net"
+    jiraHost: "https://getport.atlassian.net"
+    atlassianUserEmail: "mor@getport.io"
+    atlassianUserToken: "ATATT3xFfGF0X46LlHiqMBrLaAq1tk_UuX4rPwfLqobRtv2JwSsIS8KCuL7zi1ICjSBm42D-0PjnPYxncm9QdBZhXsuMaDliPHBomJlPiczj-5MBlXB7g2SM0DA_23Gz0NffJoGxsjfXQvWI0rg63WohebXexDU7aW0nSRWxyZZos-Qz8VVF4Cc=23A66032"
