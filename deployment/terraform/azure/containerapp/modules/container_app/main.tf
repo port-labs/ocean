@@ -87,8 +87,7 @@ resource "azurerm_container_app" "ocean-container-app" {
   secret {
     name = local.port_credentials_secret_name
     value = jsonencode({
-    client_secret : var.port.client_secret,
-    client_id : var.port.client_id,
+      for key, value in var.port : key => value if value != null
     })
   }
   dynamic "secret" {
