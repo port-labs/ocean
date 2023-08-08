@@ -1,0 +1,1 @@
+Changed the on_resyn generator to expect a list instead of a single item
