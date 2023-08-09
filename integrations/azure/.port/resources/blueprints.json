@@ -120,7 +120,7 @@
     }
   },
   {
-    "identifier": "Load_balancer",
+    "identifier": "load_balancer",
     "description": "This blueprint represents an Azure Load Balancer in our software catalog",
     "title": "Load Balancer",
     "icon": "Azure",
@@ -215,7 +215,7 @@
           "enumColors": {
             "unavailable": "red",
             "available": "green"
-          },
+          }
         },
         "status_of_secondary": {
           "title": "Status of Secondary",
