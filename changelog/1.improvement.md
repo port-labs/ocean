@@ -1,1 +1,0 @@
-Changed default log level to INFO

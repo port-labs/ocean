@@ -7,6 +7,28 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.0 (2023-08-09)
+==================
+
+### Breaking Changes
+
+- Changed the `on_resync` generator to expect a list instead of a single item
+
+### Improvements
+
+- Changed default log level to `INFO`
+- Changed the extra object messages log level from `INFO` to `DEBUG`
+- Removed a wrongful error log at the integration installation that says the integration does not exists
+
+### Bug Fixes
+
+- Supporting many relations for the same entity (PORT-4379)
+- Pass resource config inside event context (PORT-4398)
+- Fix not supporting multiple relations (PORT-4411)
+- Log exception traceback of integration resync methods exceptions (PORT-4422)
+- Fixed an issue that caused the jq `None` values for relations to become a string with the value `"None"` instead of being interpreted as `null` in JSON
+
+
 0.1.3 (2023-08-02)
 ==================
 

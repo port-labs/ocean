@@ -1,1 +1,0 @@
-Changed the `on_resync` generator to expect a list instead of a single item
