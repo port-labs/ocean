@@ -9,7 +9,7 @@ resources:
         mappings:
           identifier: .id
           title: .name
-          blueprint: '"containerapp"'
+          blueprint: '"container_app"'
           properties:
             location: .location
             provisioning_state: .properties.provisioningState
@@ -18,3 +18,77 @@ resources:
             host_name: .properties.configuration.ingress.fqdn
             min_replicas: .properties.template.scale.minReplicas
             max_replicas: .properties.template.scale.maxReplicas
+  - kind: Microsoft.ContainerService/managedClusters
+    selector:
+      query: "true"
+      # azure resource api version to query
+      api_version: '2023-05-01'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"aks"'
+          properties:
+            location: .location
+            provisioning_state: .properties.provisioningState
+            power_state: .properties.powerState.code
+            kubernetes_version: .properties.kubernetesVersion
+            current_kubernetes_version: .properties.currentKubernetesVersion
+            dns_prefix: .properties.dnsPrefix
+            fqdn: .properties.fqdn
+            node_resource_group: .properties.nodeResourceGroup
+            enable_rbac: .properties.enableRBAC
+            support_plan: .properties.supportPlan
+            network_plugin: .properties.networkProfile.networkPlugin
+            pod_cidr: .properties.networkProfile.podCidr
+            service_cidr: .properties.networkProfile.serviceCidr
+            dns_service_ip: .properties.networkProfile.dnsServiceIP
+            outbound_type: .properties.networkProfile.outboundType
+            load_balancer_sku: .properties.networkProfile.loadBalancerSku
+            max_agent_pools: .properties.maxAgentPools
+            sku_tier: .properties.sku.tier
+  - kind: Microsoft.Network/loadBalancers
+    selector:
+        query: "true"
+        # azure resource api version to query
+        api_version: '2023-02-01'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"load_balancer"'
+          location: .location
+          provisioning_state: .properties.provisioningState
+          tags: .tags
+          frontend_ip_resource_ids: .properties.frontendIPConfigurations[].id
+          backend_address_pool_resource_ids: .properties.backendAddressPools[].id
+          load_balancing_rules_resource_ids: .properties.loadBalancingRules[].id
+          probes_resource_ids: .properties.probes[].id
+          inbound_nat_rules_resource_ids: .properties.inboundNatRules[].id
+          inbound_nat_pools_resource_ids: .properties.inboundNatPools[].id
+  - kind: Microsoft.Storage/storageAccounts
+    selector:
+        query: "true"
+        # azure resource api version to query
+        api_version: '2023-01-01'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"storage_account"'
+          location: .location
+          provisioning_state: .properties.provisioningState
+          creation_time: .properties.creationTime
+          is_hns_enabled: .properties.isHnsEnabled
+          file_encryption_enabled: .properties.encryption.services.file.enabled
+          blob_encryption_enabled: .properties.encryption.services.blob.enabled
+          primary_location: .properties.primaryLocation
+          secondary_location: .properties.secondaryLocation
+          status_of_primary: .properties.statusOfPrimary
+          status_of_secondary: .properties.statusOfSecondary
+          allow_blob_public_access: .properties.allowBlobPublicAccess
+          tags: .tags
+

@@ -1,8 +1,8 @@
 [
   {
-    "identifier": "containerapp",
+    "identifier": "container_app",
     "description": "This blueprint represents an Azure Container App in our software catalog",
-    "title": "Container APP",
+    "title": "Container App",
     "icon": "Azure",
     "schema": {
       "properties": {
@@ -33,6 +33,209 @@
         "max_replicas": {
           "title": "Max Replicas",
           "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "aks",
+    "description": "This blueprint represents an Azure Kubernetes Service in our software catalog",
+    "title": "AKS",
+    "icon": "Azure",
+    "schema": {
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "provisioning_state": {
+          "title": "Provisioning State",
+          "type": "string"
+        },
+        "power_state": {
+          "title": "Power State",
+          "type": "string"
+        },
+        "kubernetes_version": {
+          "title": "Kubernetes Version",
+          "type": "string"
+        },
+        "current_kubernetes_version": {
+          "title": "Current Kubernetes Version",
+          "type": "string"
+        },
+        "dns_prefix": {
+          "title": "DNS Prefix",
+          "type": "string"
+        },
+        "fqdn": {
+          "title": "FQDN",
+          "type": "string"
+        },
+        "node_resource_group": {
+          "title": "Node Resource Group",
+          "type": "string"
+        },
+        "enable_rbac": {
+          "title": "Enable RBAC",
+          "type": "boolean"
+        },
+        "support_plan": {
+          "title": "Support Plan",
+          "type": "string"
+        },
+        "network_plugin": {
+          "title": "Network Plugin",
+          "type": "string"
+        },
+        "pod_cidr": {
+          "title": "Pod CIDR",
+          "type": "string"
+        },
+        "service_cidr": {
+          "title": "Service CIDR",
+          "type": "string"
+        },
+        "dns_service_ip": {
+          "title": "DNS Service IP",
+          "type": "string"
+        },
+        "outbound_type": {
+          "title": "Outbound Type",
+          "type": "string"
+        },
+        "load_balancer_sku": {
+          "title": "Load Balancer SKU",
+          "type": "string"
+        },
+        "max_agent_pools": {
+          "title": "Max Agent Pools",
+          "type": "number"
+        },
+        "sku_tier": {
+          "title": "Tier",
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "Load_balancer",
+    "description": "This blueprint represents an Azure Load Balancer in our software catalog",
+    "title": "Load Balancer",
+    "icon": "Azure",
+    "schema": {
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        },
+        "provisioning_state": {
+          "title": "Provisioning State",
+          "type": "string"
+        },
+        "frontend_ip_resource_ids": {
+            "title": "Frontend IP Resource IDs",
+            "type": "array"
+        },
+        "backend_address_pools_resource_ids": {
+            "title": "Backend Address Pools Resource IDs",
+            "type": "array"
+        },
+        "load_balancing_rules_resource_ids": {
+            "title": "Load Balancing Rules Resource IDs",
+            "type": "array"
+        },
+        "probes_resource_ids": {
+            "title": "Probes Resource IDs",
+            "type": "array"
+        },
+        "inbound_nat_rules_resource_ids": {
+            "title": "Inbound NAT Rules Resource IDs",
+            "type": "array"
+        },
+        "inbound_nat_pools_resource_ids": {
+            "title": "Inbound NAT Pools Resource IDs",
+            "type": "array"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "storage_account",
+    "description": "This blueprint represents an Azure Storage Account in our software catalog",
+    "title": "Storage Account",
+    "icon": "Azure",
+    "schema" : {
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "provisioning_state": {
+          "title": "Provisioning State",
+          "type": "string"
+        },
+        "creation_time": {
+          "title": "Creation Time",
+          "type": "string"
+        },
+        "is_hns_enabled": {
+          "title": "Is HNS Enabled",
+          "type": "boolean",
+          "default": false
+        },
+        "file_encryption_enabled": {
+          "title": "File Encryption Enabled",
+          "type": "boolean"
+        },
+        "blob_encryption_enabled": {
+          "title": "Blob Encryption Enabled",
+          "type": "boolean"
+        },
+        "primary_location": {
+          "title": "Primary Location",
+          "type": "string"
+        },
+        "secondary_location": {
+          "title": "Secondary Location",
+          "type": "string"
+        },
+        "status_of_primary": {
+          "title": "Status of Primary",
+          "type": "string",
+          "enum": [
+                "available",
+                "unavailable"
+          ],
+          "enumColors": {
+            "unavailable": "red",
+            "available": "green"
+          },
+        },
+        "status_of_secondary": {
+          "title": "Status of Secondary",
+          "type": "string",
+          "enum": [
+                "available",
+                "unavailable"
+          ],
+          "enumColors": {
+            "unavailable": "red",
+            "available": "green"
+          }
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        },
+        "allow_blob_public_access": {
+          "title": "Allow Blob Public Access",
+          "type": "boolean"
         }
       }
     }
