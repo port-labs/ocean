@@ -4,12 +4,10 @@ from loguru import logger
 
 
 class Endpoints:
-    PROJECTS = "components/search"
-    BRANCHES = "project_branches/list"
+    PROJECTS = "components/search_projects"
     QUALITY_GATE_STATUS = "qualitygates/project_status"
     QUALITY_GATE_NAME = "qualitygates/get_by_project"
     WEBHOOKS = "webhooks"
-
 
 class SonarQubeClient:
     def __init__(
@@ -83,24 +81,6 @@ class SonarQubeClient:
         )
         return response.get("components", [])
 
-    async def get_branches(self, project_key: str) -> Optional[dict[str, Any]]:
-        """
-        Get branch information from a project
-
-        :param project_key: Project key
-        :return: Dictionary containing branch information or None if no branches found
-        """
-        logger.info(f"Fetching all branches in project: {project_key}")
-        response = await self.send_api_request(
-            endpoint=Endpoints.BRANCHES, query_params={"project": project_key}
-        )
-        branches = response.get("branches", [])
-        if branches:
-            return branches[0]
-        else:
-            logger.info(f"No branches found for the project: {project_key}")
-            return None
-
     async def get_quality_gate_status(
         self, project_key: str
     ) -> Optional[dict[str, Any]]:
@@ -136,16 +116,17 @@ class SonarQubeClient:
         )
         quality_gate = response.get("qualityGate", {})
         if quality_gate:
-            return quality_gate.get("name")
+            return quality_gate
         else:
             logger.info(f"No quality gate data found for the project: {project_key}")
             return None
+            
 
     async def get_cloud_analysis_data_for_project(
         self, project: dict[str, Any]
     ) -> dict[str, Any]:
         """
-        Get cloud analysis data for a project
+        Get quality gates analysis data for a project
 
         :param project: Project dictionary
         :return: Dictionaries containing cloud analysis data
@@ -154,59 +135,15 @@ class SonarQubeClient:
             f'Fetching sonarqube quality analysis data for project: {project.get("key")}'
         )
 
-        ## get project level information
         project_key = project.get("key", "")
-        project_name = project.get("name", "")
-        project_url = f"{self.base_url}/project/overview?id={project_key}"
-
-        ## fetch other information from API
-        branches = await self.get_branches(project_key=project_key)
         project_quality_status = await self.get_quality_gate_status(
             project_key=project_key
         )
         quality_gate_name = await self.get_quality_gate_name(project_key=project_key)
+        project_quality_status.update(quality_gate_name)
 
-        # Process the fetched data
-        if branches and project_quality_status and quality_gate_name:
-            quality_gate_onditions = project_quality_status.get("conditions", [])
+        return project_quality_status
 
-            branch_name = branches.get("name", "")
-            branch_type = branches.get("type", "")
-            quality_gate_status = project_quality_status.get("status", "")
-
-            quality_gates_data = {
-                "server_url": self.base_url,
-                "project_key": project_key,
-                "project_name": project_name,
-                "project_url": project_url,
-                "branch_name": branch_name,
-                "branch_type": branch_type,
-                "quality_gate_name": quality_gate_name,
-                "quality_gate_status": quality_gate_status,
-                "quality_gate_conditions": quality_gate_onditions,
-            }
-            return quality_gates_data
-
-        return {}
-
-    async def get_sonarqube_cloud_analysis(self) -> list[dict[str, Any]]:
-        """
-        Get all SonarQube cloud analysis data
-
-        :return: List of dictionaries containing cloud analysis data for all projects and branches
-        """
-        logger.info(
-            f"Fetching all quality analysis data in organization: {self.organization_id}"
-        )
-
-        all_quality_gates_data = []
-        projects = await self.get_projects()
-
-        for project in projects:
-            quality_gates_data = await self.get_cloud_analysis_data_for_project(project)
-            all_quality_gates_data.append(quality_gates_data)
-
-        return all_quality_gates_data
 
     async def get_or_create_webhook_url(self) -> None:
         """

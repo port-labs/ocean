@@ -4,6 +4,10 @@ from port_ocean.context.ocean import ocean
 from sonarqube_integration.sonarqube_client import SonarQubeClient
 import httpx
 
+class ObjectKind:
+    PROJECTS = "projects"
+    QUALITY_GATES = "qualitygates"
+
 # Initialize the SonarQubeClient instance
 sonar_client = SonarQubeClient(
     ocean.integration_config["sonar_url"],
@@ -13,12 +17,18 @@ sonar_client = SonarQubeClient(
     httpx.AsyncClient(),
 )
 
-
-@ocean.on_resync("cloudAnalysis")
-async def on_cloud_analysis_resync(kind: str) -> list[dict[str, Any]]:
+@ocean.on_resync(ObjectKind.PROJECTS)
+async def on_project_resync(kind: str) -> list[dict[str, Any]]:
     logger.info(f"Listing Sonarqube resource: {kind}")
-    quality_analysis = await sonar_client.get_sonarqube_cloud_analysis()
-    return quality_analysis
+    return await sonar_client.get_projects()
+
+@ocean.on_resync(ObjectKind.QUALITY_GATES)
+async def on_quality_gate_resync(kind: str) -> list[dict[str, Any]]:
+    logger.info(f"Listing Sonarqube resource: {kind}")
+    projects = await sonar_client.get_projects()
+    for project in projects:
+        quality_gate = await sonar_client.get_cloud_analysis_data_for_project(project)
+        yield quality_gate
 
 
 @ocean.router.post("/webhook")
@@ -29,7 +39,7 @@ async def handle_sonarqube_webhook(data: dict[str, Any]) -> None:
 
     project = data.get("project", {})
     quality_analysis = await sonar_client.get_cloud_analysis_data_for_project(project)
-    await ocean.register_raw("cloudAnalysis", [quality_analysis])
+    await ocean.register_raw(ObjectKind.QUALITY_GATES, [quality_analysis])
 
 
 @ocean.on_start()

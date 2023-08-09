@@ -6,7 +6,8 @@ features:
   - type: exporter
     section: Code Quality Analysis
     resources:
-      - kind: cloudAnalysis
+      - kind: projects
+      - kind: qualitygates
 configurations:
   - name: sonarApiToken
     required: true

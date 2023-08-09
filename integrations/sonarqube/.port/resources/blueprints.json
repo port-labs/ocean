@@ -1,37 +1,46 @@
 [
     {
-        "identifier": "sonarCodeAnalysis",
-        "description": "This blueprint represents a SonarCloud Analysis in our software catalog",
-        "title": "SonarQube Code Analysis",
+        "identifier": "sonarqubeProject",
+        "description": "This blueprint represents a Sonarqube project in our software catalog",
+        "title": "SonarQube Project",
         "icon": "sonarqube",
         "schema": {
           "properties": {
-            "serverUrl": {
+            "organization": {
               "type": "string",
-              "format": "url",
-              "title": "Server URL"
+              "title": "Organization"
             },
-            "projectUrl": {
+            "visibility": {
               "type": "string",
-              "format": "url",
-              "title": "Project URL"
+              "title": "Visibility"
             },
-            "branchName": {
-              "type": "string",
-              "title": "Branch Name"
-            },
-            "branchType": {
-              "type": "string",
-              "title": "Branch Type"
-            },
-            "qualityGateName": {
-              "type": "string",
-              "title": "Quality Gate Name"
-            },
-            "qualityGateStatus": {
+            "tags": {
+              "type": "array",
+              "title": "Tags"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {}
+      },
+      {
+        "identifier": "sonarqubeQualityGate",
+        "description": "This blueprint represents a Sonarqube quality gate in our software catalog",
+        "title": "SonarQube Quality Gate",
+        "icon": "sonarqube",
+        "schema": {
+          "properties": {
+            "status": {
               "type": "string",
               "title": "Quality Gate Status",
-              "enum": ["OK", "WARN", "ERROR", "NONE"],
+              "enum": [
+                "OK",
+                "WARN",
+                "ERROR",
+                "NONE"
+              ],
               "enumColors": {
                 "OK": "green",
                 "WARN": "yellow",
@@ -39,17 +48,19 @@
                 "NONE": "lightGray"
               }
             },
-            "qualityGateConditions": {
+            "conditions": {
               "type": "array",
               "items": {
                 "type": "object"
               },
-              "title": "Quality Gate Conditions"            }
+              "title": "Quality Gate Conditions"
+            }
           },
           "required": []
         },
         "mirrorProperties": {},
         "calculationProperties": {},
-        "relations": {}
+        "relations": {
+        }
       }
 ]

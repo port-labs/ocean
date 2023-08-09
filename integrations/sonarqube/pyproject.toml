@@ -6,7 +6,9 @@ authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = { version = "^0.1.0", extras = ["cli"] }
+port_ocean = "0.1.2"
+rich = "^13.5.2"
+cookiecutter = "^2.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"

@@ -1,18 +1,26 @@
 resources:
-  - kind: cloudAnalysis
+  - kind: projects
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"sonarCodeAnalysis"'
-          identifier: .project_key
-          title: .project_name
+          blueprint: '"sonarqubeProject"'
+          identifier: .key
+          title: .name
           properties:
-              serverUrl: .server_url
-              projectUrl: .project_url
-              branchName: .branch_name
-              branchType: .branch_type
-              qualityGateName: .quality_gate_name
-              qualityGateStatus: .quality_gate_status
-              qualityGateConditions: .quality_gate_conditions
+              organization: .organization
+              visibility: .visibility
+              tags: .tags
+  - kind: qualitygates
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarqubeQualityGate"'
+          identifier: .id
+          title: .name
+          properties:
+              status: .status
+              conditions: .conditions
