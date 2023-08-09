@@ -7,6 +7,7 @@ import yaml
 from humps import decamelize
 from pydantic import BaseSettings
 from pydantic.env_settings import EnvSettingsSource, InitSettingsSource
+from pydantic.main import ModelMetaclass, BaseModel
 
 PROVIDER_WRAPPER_PATTERN = r"{{ from (.*) }}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
@@ -60,7 +61,9 @@ def decamelize_object(obj: Any) -> Any:
 
 
 def parse_config(
-    config: dict[str, Any], existing_data: dict[str, Any]
+    settings_model: BaseModel | ModelMetaclass,
+    config: dict[str, Any],
+    existing_data: dict[str, Any],
 ) -> dict[str, Any]:
     """
     Normalizing the config yaml file to work with snake_case and getting only the data that is missing for the settings
@@ -68,9 +71,18 @@ def parse_config(
     for key, value in config.items():
         decamelize_key = decamelize(key)
         if isinstance(value, dict):
-            existing_data[decamelize_key] = parse_config(
-                value, existing_data.get(decamelize_key, {})
-            )
+            # If the value is ModelMetaClass typed then its a nested model, and we need to parse it
+            # If the value is a dict then we need to decamelize the keys and not recurse into the values
+            _type = settings_model.__annotations__[decamelize_key]
+            if isinstance(_type, ModelMetaclass):
+                existing_data[decamelize_key] = parse_config(
+                    _type, value, existing_data.get(decamelize_key, {})
+                )
+            else:
+                existing_data[decamelize_key] = {
+                    decamelize(k): v for k, v in value.items()
+                }
+
         elif isinstance(value, str):
             # If the value is a provider, we try to load it from the provider
             if provider_match := re.match(PROVIDER_WRAPPER_PATTERN, value):
@@ -95,7 +107,7 @@ def load_providers(
 ) -> dict[str, Any]:
     yaml_content = read_yaml_config_settings_source(settings, base_path)
     data = yaml.safe_load(yaml_content)
-    return parse_config(data, existing_values)
+    return parse_config(settings, data, existing_values)
 
 
 class BaseOceanSettings(BaseSettings):
