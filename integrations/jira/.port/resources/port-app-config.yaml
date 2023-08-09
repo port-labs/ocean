@@ -8,7 +8,7 @@ resources:
       entity:
         mappings:
           identifier: .key | tostring
-          title: .name | tostring
+          title: .name
           blueprint: '"project"'
           properties:
             url: .self

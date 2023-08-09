@@ -1,11 +1,28 @@
+from enum import StrEnum
 from typing import Any
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
-
-from utils import ObjectKind
 from jira.client import JiraClient
-from bootstrap import setup_application
+
+
+class ObjectKind(StrEnum):
+    PROJECT = "project"
+    ISSUE = "issue"
+
+
+async def setup_application() -> None:
+    logic_settings = ocean.integration_config
+
+    jira_client = JiraClient(
+        logic_settings.get("jira_host"),
+        logic_settings.get("atlassian_user_email"),
+        logic_settings.get("atlassian_user_token"),
+    )
+
+    await jira_client.create_real_time_updates_webhook(
+        logic_settings.get("app_host"),
+    )
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

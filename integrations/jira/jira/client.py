@@ -6,9 +6,10 @@ from loguru import logger
 
 from jira.overrides import JiraResourceConfig
 from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
 
 PAGE_SIZE = 50
-WEBHOOK_NAME = "Port-Ocean-RT-Webhook"
+WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 
 WEBHOOK_EVENTS = [
     "jira:issue_created",
@@ -44,6 +45,11 @@ class JiraClient:
 
         self.client = httpx.AsyncClient(headers=self.base_headers)
 
+    async def _get_paginated_issues(self, params):
+        issue_response = await self.client.get(f"{self.api_url}/search", params=params)
+        issue_response.raise_for_status()
+        return issue_response.json()
+
     async def create_real_time_updates_webhook(self, app_host: str):
         # webhook_target_app_host = f"{app_host}/integration/webhook"
         # webhook_target_app_host = f"{app_host}"
@@ -58,7 +64,7 @@ class JiraClient:
                 return
 
         body = {
-            "name": WEBHOOK_NAME,
+            "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
             "url": webhook_target_app_host,
             "events": WEBHOOK_EVENTS,
             "filters": {"issue-related-events-section": ""},
@@ -109,8 +115,3 @@ class JiraClient:
             issue_response_list = (await self._get_paginated_issues(params))["issues"]
             yield issue_response_list
             params["startAt"] += PAGE_SIZE
-
-    async def _get_paginated_issues(self, params):
-        issue_response = await self.client.get(f"{self.api_url}/search", params=params)
-        issue_response.raise_for_status()
-        return issue_response.json()
