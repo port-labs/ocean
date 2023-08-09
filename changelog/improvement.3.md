@@ -1,1 +1,1 @@
-Removed a confusing error log at the integration installation that says the integration does not exists
+Removed a wrongful error log at the integration installation that says the integration does not exists

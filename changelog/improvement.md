@@ -1,1 +1,1 @@
-Removed a confusing error log at the integration installation that says the integration does not exists
+Moved the ocean httpx client so it will be more accessible to integrations
