@@ -1,0 +1,1 @@
+Changed the extra object messages log level from INFO to DEBUG
