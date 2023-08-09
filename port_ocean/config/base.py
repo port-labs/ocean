@@ -71,7 +71,9 @@ def parse_config(
     for key, value in config.items():
         decamelize_key = decamelize(key)
         if isinstance(value, dict):
-            _type: ModelMetaclass = settings_model.__annotations__[decamelize_key]
+            # If the value is ModelMetaClass typed then its a nested model, and we need to parse it
+            # If the value is a dict then we need to decamelize the keys and not recurse into the values
+            _type = settings_model.__annotations__[decamelize_key]
             if isinstance(_type, ModelMetaclass):
                 existing_data[decamelize_key] = parse_config(
                     _type, value, existing_data.get(decamelize_key, {})
