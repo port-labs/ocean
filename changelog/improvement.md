@@ -1,1 +1,1 @@
-Bump to ocean 0.1.3 for support in the terraform deployment method
+Moved the ocean httpx client so it will be more accessible to integrations
