@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "sonarqube"
 version = "0.1.0"
-description = "SonarQube projects and analysis"
-authors = ["Port <support@getport.io>"]
+description = "SonarQube projects and code quality analysis integration"
+authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"

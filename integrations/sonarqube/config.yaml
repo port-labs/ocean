@@ -9,7 +9,7 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: sonarqube-integration
+  identifier: my-sonarqube-integration
   # The type of the integration.
   type: "sonarqube"
   config:

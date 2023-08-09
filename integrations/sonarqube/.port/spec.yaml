@@ -1,10 +1,10 @@
 version: v0.1.0
-type: gitlab
-description: sonarqube integration for Port Ocean
-icon: Cookiecutter
+type: sonarqube
+description: Sonarqube integration for Port Ocean
+icon: sonarqube
 features:
   - type: exporter
-    section: Git Providers
+    section: Code Quality Analysis
     resources:
       - kind: cloudAnalysis
 configurations:
@@ -12,16 +12,17 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The sonar API token
+    description: The Sonarqube API token
   - name: sonarUrl
     type: url
     required: true
-    description: The host of the Sonar instance. If not specified, the default will be https://sonarcloud.io
+    default: https://sonarcloud.io
+    description: The host of the Sonarqube instance. If not specified, the default will be https://sonarcloud.io
   - name: sonarOrganizationId
     type: string
     required: true
-    description: The ID for the Sonar organization
+    description: The Sonarqube organization ID
   - name: appHost
     type: url
     required: true
-    description: The host of the app
+    description: The Sonarqube app host
