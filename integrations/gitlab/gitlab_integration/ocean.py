@@ -1,11 +1,11 @@
 from typing import Any, Dict
 
-from gitlab_integration.bootstrap import event_handler
-from gitlab_integration.bootstrap import setup_application
-from gitlab_integration.utils import get_all_services, ObjectKind
 from loguru import logger
 from starlette.requests import Request
 
+from gitlab_integration.bootstrap import event_handler
+from gitlab_integration.bootstrap import setup_application
+from gitlab_integration.utils import get_all_services, ObjectKind
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import RAW_RESULT, ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -74,18 +74,31 @@ async def resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for project in service.get_all_projects():
             jobs = project.jobs.list(per_page=100)
             logger.info(f"Found {len(jobs)} jobs for project {project.id}")
-            for job in jobs:
-                yield job.asdict()
+            yield [job.asdict() for job in jobs]
 
 
 @ocean.on_resync(ObjectKind.PIPELINE)
 async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in all_tokens_services:
         for project in service.get_all_projects():
-            pipelines = project.pipelines.list(all=True)
-            logger.info(f"Found {len(pipelines)} pipelines for project {project.id}")
-            for pipeline in pipelines:
-                yield {
-                    **pipeline.asdict(),
-                    "__project": project.asdict(),
-                }
+            batch_size = 50
+            page = 1
+            more = True
+
+            while more:
+                # Process the batch of pipelines here
+                pipelines = project.pipelines.list(page=page, per_page=batch_size)
+                logger.info(
+                    f"Found {len(pipelines)} for page {page} pipelines for project {project.id}"
+                )
+                yield [
+                    {
+                        **pipeline.asdict(),
+                        "__project": project.asdict(),
+                    }
+                    for pipeline in pipelines
+                ]
+
+                # Fetch the next batch
+                page += 1
+                more = len(pipelines) == batch_size
