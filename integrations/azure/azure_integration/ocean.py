@@ -6,6 +6,7 @@ from azure.identity.aio import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
+
 from azure_integration.utils import (
     get_integration_subscription_id,
     get_port_resource_configuration_by_kind,
@@ -14,9 +15,16 @@ from azure_integration.utils import (
 from azure_integration.azure_patch import list_resources
 
 
+RESOURCE_KINDS_WITH_SPECIAL_HANDLING = [
+    "Microsoft.Resources/resourceGroups",
+]
+
+
 @ocean.on_resync()
-async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.debug("Resyncing", kind=kind)
+async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind in RESOURCE_KINDS_WITH_SPECIAL_HANDLING:
+        logger.debug("Skipping resync", kind=kind)
+        return
 
     resource_config = await get_port_resource_configuration_by_kind(kind)
     api_version = resource_config["selector"]["api_version"]
@@ -29,7 +37,27 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield resource.as_dict()
 
 
-@ocean.router.post("/azure/events")
+@ocean.on_resync(kind="Microsoft.Resources/resourceGroups")
+async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    resource_config = await get_port_resource_configuration_by_kind(kind)
+    api_version = resource_config["selector"]["api_version"]
+    async with DefaultAzureCredential() as credential:
+        async with ResourceManagementClient(
+            credential=credential, subscription_id=get_integration_subscription_id()
+        ) as client:
+            async for resource_group in client.resource_groups.list(
+                api_version=api_version
+            ):
+                logger.debug(
+                    "Found resource group",
+                    resource_group_id=resource_group.id,
+                    kind=kind,
+                    api_version=api_version,
+                )
+                yield resource_group.as_dict()
+
+
+@ocean.router.post("/events")
 async def handle_events(request: Request):
     """
     Handles System events from Azure Event Grid by the Azure subscription resource and registers them in Port
