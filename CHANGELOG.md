@@ -24,7 +24,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Added support for many relations for the same entity (PORT-4379)
 - Added the resource config to the event context (PORT-4398)
-- Fix not supporting multiple relations (PORT-4411)
+- Fixed lack of support for multiple relations (PORT-4411)
 - Log exception traceback of integration resync methods exceptions (PORT-4422)
 - Fixed an issue that caused the jq `None` values for relations to become a string with the value `"None"` instead of being interpreted as `null` in JSON
 
