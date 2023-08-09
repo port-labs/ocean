@@ -32,46 +32,86 @@ helm upgrade --install my-sonarqube-integration port-labs/port-ocean \
     --set integration.config.sonarOrganizationId="my-organization"  \
 ```
 ## Supported Kinds
-### cloudAnalysis
-This kind represents a Sonarqube code quality analysis with project information.
+### Project
+This kind represents a Sonarqube project.
 
 <details>
 <summary>blueprint.json</summary>
 
 ```json
 {
-	"identifier": "sonarCodeAnalysis",
-	"description": "This blueprint represents a SonarCloud Analysis in our software catalog",
-	"title": "SonarQube Code Analysis",
+	"identifier": "sonarqubeProject",
+	"description": "This blueprint represents a Sonarqube project in our software catalog",
+	"title": "SonarQube Project",
 	"icon": "sonarqube",
 	"schema": {
 		"properties": {
-			"serverUrl": {
+			"organization": {
 				"type": "string",
-				"format": "url",
-				"title": "Server URL"
+				"title": "Organization"
 			},
-			"projectUrl": {
+			"visibility": {
 				"type": "string",
-				"format": "url",
-				"title": "Project URL"
+				"title": "Visibility"
 			},
-			"branchName": {
-				"type": "string",
-				"title": "Branch Name"
-			},
-			"branchType": {
-				"type": "string",
-				"title": "Branch Type"
-			},
-			"qualityGateName": {
-				"type": "string",
-				"title": "Quality Gate Name"
-			},
-			"qualityGateStatus": {
+			"tags": {
+				"type": "array",
+				"title": "Tags"
+			}
+		},
+		"required": []
+	},
+	"mirrorProperties": {},
+	"calculationProperties": {},
+	"relations": {}
+}
+```
+</details>
+<details>
+  <summary>port-app-config.yaml</summary>
+
+```yaml
+resources:
+  - kind: projects
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarqubeProject"'
+          identifier: .key
+          title: .name
+          properties:
+              organization: .organization
+              visibility: .visibility
+              tags: .tags
+
+```
+</details>
+
+### Quality Gates
+This kind represents a Sonarqube quality gate.
+
+<details>
+<summary>blueprint.json</summary>
+
+```json
+{
+	"identifier": "sonarqubeQualityGate",
+	"description": "This blueprint represents a Sonarqube quality gate in our software catalog",
+	"title": "SonarQube Quality Gate",
+	"icon": "sonarqube",
+	"schema": {
+		"properties": {
+			"status": {
 				"type": "string",
 				"title": "Quality Gate Status",
-				"enum": ["OK", "WARN", "ERROR", "NONE"],
+				"enum": [
+					"OK",
+					"WARN",
+					"ERROR",
+					"NONE"
+				],
 				"enumColors": {
 					"OK": "green",
 					"WARN": "yellow",
@@ -79,7 +119,7 @@ This kind represents a Sonarqube code quality analysis with project information.
 					"NONE": "lightGray"
 				}
 			},
-			"qualityGateConditions": {
+			"conditions": {
 				"type": "array",
 				"items": {
 					"type": "object"
@@ -100,23 +140,18 @@ This kind represents a Sonarqube code quality analysis with project information.
 
 ```yaml
 resources:
-  - kind: cloudAnalysis
+  - kind: qualitygates
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"sonarCodeAnalysis"'
-          identifier: .project_key
-          title: .project_name
+          blueprint: '"sonarqubeQualityGate"'
+          identifier: .id
+          title: .name
           properties:
-              serverUrl: .server_url
-              projectUrl: .project_url
-              branchName: .branch_name
-              branchType: .branch_type
-              qualityGateName: .quality_gate_name
-              qualityGateStatus: .quality_gate_status
-              qualityGateConditions: .quality_gate_conditions
+              status: .status
+              conditions: .conditions
 
 ```
 </details>
