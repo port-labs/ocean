@@ -77,9 +77,9 @@ class SonarQubeClient:
     async def get_projects(self) -> list[Any]:
         """A function to make API request to SonarQube and retrieve projects within an organization"""
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
-        endpoint_url = Endpoints.PROJECTS
         response = await self.send_api_request(
-            endpoint=endpoint_url, query_params={"organization": self.organization_id}
+            endpoint=Endpoints.PROJECTS,
+            query_params={"organization": self.organization_id},
         )
         return response.get("components", [])
 
@@ -91,9 +91,8 @@ class SonarQubeClient:
         :return: Dictionary containing branch information or None if no branches found
         """
         logger.info(f"Fetching all branches in project: {project_key}")
-        endpoint_url = Endpoints.BRANCHES
         response = await self.send_api_request(
-            endpoint=endpoint_url, query_params={"project": project_key}
+            endpoint=Endpoints.BRANCHES, query_params={"project": project_key}
         )
         branches = response.get("branches", [])
         if branches:
@@ -112,9 +111,9 @@ class SonarQubeClient:
         :return: Dictionary containing quality gate status or None if not available
         """
         logger.info(f"Fetching quality gate data in project: {project_key}")
-        endpoint_url = Endpoints.QUALITY_GATE_STATUS
         response = await self.send_api_request(
-            endpoint=endpoint_url, query_params={"projectKey": project_key}
+            endpoint=Endpoints.QUALITY_GATE_STATUS,
+            query_params={"projectKey": project_key},
         )
         project_status = response.get("projectStatus", {})
         if project_status:
@@ -131,9 +130,8 @@ class SonarQubeClient:
         :return: Quality gate name or None if not available
         """
         logger.info(f"Fetching quality gate name in project: {project_key}")
-        endpoint_url = Endpoints.QUALITY_GATE_NAME
         response = await self.send_api_request(
-            endpoint=endpoint_url,
+            endpoint=Endpoints.QUALITY_GATE_NAME,
             query_params={"project": project_key, "organization": self.organization_id},
         )
         quality_gate = response.get("qualityGate", {})
