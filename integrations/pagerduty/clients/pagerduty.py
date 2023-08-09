@@ -167,7 +167,7 @@ class PagerDutyClient:
         for service in services:
             escalation_policy_id = service["escalation_policy"]["id"]
 
-            service["oncall_user"] = [
+            service["__oncall_user"] = [
                 user
                 for user in oncall_users
                 if user["escalation_policy"]["id"] == escalation_policy_id
