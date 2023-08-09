@@ -7,6 +7,36 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.1 (2023-08-09)
+==================
+
+### Bug Fixes
+
+- Fixed an issue causing ocean to convert the integration config objects to camelized objects
+
+
+0.2.0 (2023-08-09)
+==================
+
+### Breaking Changes
+
+- Updated the `on_resync` generator to use a list of items instead of a single item
+
+### Improvements
+
+- Changed default log level to `INFO`
+- Changed the extra object messages log level from `INFO` to `DEBUG`
+- Removed a wrongful error log at the integration installation that says the integration does not exists
+
+### Bug Fixes
+
+- Added support for many relations for the same entity (PORT-4379)
+- Added the resource config to the event context (PORT-4398)
+- Fixed lack of support for multiple relations (PORT-4411)
+- Added traceback output to the integration resync method exception log (PORT-4422)
+- Fixed an issue that caused the jq `None` values for relations to become a string with the value `"None"` instead of being interpreted as `null` in JSON
+
+
 0.1.3 (2023-08-02)
 ==================
 

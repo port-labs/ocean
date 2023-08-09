@@ -14,7 +14,7 @@ def _get_http_client_context() -> httpx.AsyncClient:
     return client
 
 
-http: httpx.AsyncClient = LocalProxy(lambda: _get_http_client_context())  # type: ignore
+async_client: httpx.AsyncClient = LocalProxy(lambda: _get_http_client_context())  # type: ignore
 
 
 def handle_status_code(
