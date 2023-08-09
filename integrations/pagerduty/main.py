@@ -1,7 +1,9 @@
 from typing import Any
+
+from loguru import logger
+
 from clients.pagerduty import PagerDutyClient
 from port_ocean.context.ocean import ocean
-from loguru import logger
 
 
 class ObjectKind:
@@ -29,38 +31,34 @@ async def on_incidents_resync(kind: str) -> list[dict[str, Any]]:
 async def on_services_resync(kind: str) -> list[dict[str, Any]]:
     logger.info(f"Listing Pagerduty resource: {kind}")
 
-    return await pager_duty_client.paginate_request_to_pager_duty(
+    services = await pager_duty_client.paginate_request_to_pager_duty(
         data_key=ObjectKind.SERVICES
     )
+    return await pager_duty_client.update_oncall_users(services)
 
 
 @ocean.router.post("/webhook")
 async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
-    logger.info(
-        f"Processing Pagerduty webhook for event type: {data['event']['event_type']}"
-    )
-    if data["event"]["event_type"] in pager_duty_client.service_delete_events:
+    event_type = data["event"]["event_type"]
+    logger.info(f"Processing Pagerduty webhook for event type: {event_type}")
+    if event_type in pager_duty_client.service_delete_events:
         await ocean.unregister_raw(ObjectKind.SERVICES, [data["event"]["data"]])
 
-    elif data["event"]["event_type"] in pager_duty_client.incident_upsert_events:
+    elif event_type in pager_duty_client.incident_upsert_events:
         incident_id = data["event"]["data"]["id"]
         response = await pager_duty_client.get_singular_from_pager_duty(
             object_type=ObjectKind.INCIDENTS, identifier=incident_id
         )
         await ocean.register_raw(ObjectKind.INCIDENTS, [response["incident"]])
 
-    elif data["event"]["event_type"] in pager_duty_client.service_upsert_events:
+    elif event_type in pager_duty_client.service_upsert_events:
         service_id = data["event"]["data"]["id"]
         response = await pager_duty_client.get_singular_from_pager_duty(
             object_type=ObjectKind.SERVICES, identifier=service_id
         )
-        service_data = response["service"]
-        oncall_user = await pager_duty_client.get_oncall_user(
-            service_data.get("escalation_policy", {}).get("id")
-        )
-        service_data["oncall_user"] = oncall_user["oncalls"]
+        services = await pager_duty_client.update_oncall_users([response["service"]])
 
-        await ocean.register_raw(ObjectKind.SERVICES, [service_data])
+        await ocean.register_raw(ObjectKind.SERVICES, services)
 
 
 @ocean.on_start()
