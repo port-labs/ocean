@@ -1,5 +1,27 @@
 [
   {
+    "identifier": "resource_group",
+    "description": "This blueprint represents an Azure Resource Group in our software catalog",
+    "title": "Resource Group",
+    "icon": "Azure",
+    "schema": {
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "provisioning_state": {
+          "title": "Provisioning State",
+          "type": "string"
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        }
+      }
+    }
+  },
+  {
     "identifier": "container_app",
     "description": "This blueprint represents an Azure Container App in our software catalog",
     "title": "Container App",
@@ -34,6 +56,16 @@
           "title": "Max Replicas",
           "type": "number"
         }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "resource_group": {
+        "target": "resource_group",
+        "required": true,
+        "many": false
       }
     }
   },
@@ -116,6 +148,16 @@
           "title": "Tier",
           "type": "string"
         }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "resource_group": {
+        "target": "resource_group",
+        "required": true,
+        "many": false
       }
     }
   },
@@ -162,6 +204,16 @@
             "title": "Inbound NAT Pools Resource IDs",
             "type": "array"
         }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "resource_group": {
+        "target": "resource_group",
+        "required": true,
+        "many": false
       }
     }
   },
@@ -237,6 +289,16 @@
           "title": "Allow Blob Public Access",
           "type": "boolean"
         }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "resource_group": {
+        "target": "resource_group",
+        "required": true,
+        "many": false
       }
     }
   }
