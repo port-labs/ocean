@@ -1,1 +1,1 @@
-Displaying the extra object only for debug log level
+Changed the extra object messages log level from INFO to DEBUG
