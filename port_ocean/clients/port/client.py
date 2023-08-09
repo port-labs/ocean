@@ -7,7 +7,7 @@ from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.clients.port.types import (
     KafkaCreds,
 )
-from port_ocean.clients.utils import handle_status_code, async_client
+from port_ocean.clients.port.utils import handle_status_code, async_client
 from port_ocean.exceptions.clients import KafkaCredentialsNotFound
 
 
