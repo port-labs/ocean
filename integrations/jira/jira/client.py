@@ -47,7 +47,7 @@ class JiraClient:
     async def create_real_time_updates_webhook(self, app_host: str):
         # webhook_target_app_host = f"{app_host}/integration/webhook"
         # webhook_target_app_host = f"{app_host}"
-        webhook_target_app_host = f"https://smee.getport.io/WIxEj7z8VIyVbUid"
+        webhook_target_app_host = "https://smee.getport.io/WIxEj7z8VIyVbUid"
         webhook_check_response = await self.client.get(f"{self.webhooks_url}")
         webhook_check_response.raise_for_status()
         webhook_check = webhook_check_response.json()
@@ -89,7 +89,7 @@ class JiraClient:
         return issue_response.json()
 
     async def get_paginated_issues(self):
-        logger.info(f"Getting issues from Jira")
+        logger.info("Getting issues from Jira")
 
         params = {
             "maxResults": 0,

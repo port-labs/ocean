@@ -50,7 +50,7 @@ async def handle_webhook_request(data: dict):
         logger.info(f'Received webhook event for issue: {data["issue"]["key"]}')
         issue = await client.get_single_issue(data["issue"]["key"])
         ocean.register_raw(ObjectKind.ISSUE, [issue])
-    logger.info(f"Webhook event processed")
+    logger.info("Webhook event processed")
     return {"ok": True}
 
 
