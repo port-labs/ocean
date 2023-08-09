@@ -30,4 +30,6 @@ module "port_ocean_container_app" {
   max_replicas = var.max_replicas
   user_assigned_identity_ids = concat(var.user_assigned_identity_ids, [module.port_ocean_authorization.user_assigned_identity_id])
   additional_secrets = var.additional_secrets
+  user_assigned_client_id = module.port_ocean_authorization.user_assigned_identity_client_id
+  additional_environment_variables = var.additional_environment_variables
 }

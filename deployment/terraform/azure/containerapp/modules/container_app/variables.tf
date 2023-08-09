@@ -28,6 +28,11 @@ variable "additional_secrets" {
   default = {}
 }
 
+variable "additional_environment_variables" {
+  type = map(string)
+  default = {}
+}
+
 variable "port" {
   type = object({
     client_id     = string
@@ -121,4 +126,9 @@ variable "max_replicas" {
 variable "user_assigned_identity_ids" {
   type    = list(string)
   default = []
+}
+
+variable "user_assigned_client_id" {
+  type    = string
+  default = null
 }

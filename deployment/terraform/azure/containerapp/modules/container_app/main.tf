@@ -71,6 +71,17 @@ resource "azurerm_container_app" "ocean-container-app" {
           value = env.value.value
         }
       }
+      dynamic "env" {
+        for_each = var.additional_environment_variables
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+      env {
+        name = "AZURE_CLIENT_ID"
+        value = var.user_assigned_client_id
+      }
       env {
         name = "OCEAN__PORT"
         secret_name = local.port_credentials_secret_name
@@ -78,7 +89,7 @@ resource "azurerm_container_app" "ocean-container-app" {
       dynamic "env" {
         for_each = var.additional_secrets
         content {
-          name = env.key
+          name        = env.key
           secret_name = replace("ocean-${lower(env.key)}", "_", "-")
         }
       }

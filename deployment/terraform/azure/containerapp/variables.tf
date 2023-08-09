@@ -28,6 +28,11 @@ variable "additional_secrets" {
   default = {}
 }
 
+variable "additional_environment_variables" {
+  type = map(string)
+  default = {}
+}
+
 variable "port" {
   type = object({
     client_id     = string
