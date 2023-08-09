@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from typing import Awaitable, Generator, Callable
 
 from loguru import logger
+
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
@@ -44,7 +45,7 @@ async def resync_generator_wrapper(
             try:
                 with resync_error_handling():
                     result = await anext(generator)
-                    yield validate_result([result])[0]
+                    yield validate_result(result)
             except OceanAbortException as error:
                 errors.append(error)
     except StopAsyncIteration:
