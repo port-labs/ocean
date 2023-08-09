@@ -7,7 +7,7 @@ from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.clients.port.types import (
     KafkaCreds,
 )
-from port_ocean.clients.port.utils import handle_status_code, http
+from port_ocean.clients.utils import handle_status_code, async_client
 from port_ocean.exceptions.clients import KafkaCredentialsNotFound
 
 
@@ -21,7 +21,7 @@ class PortClient(EntityClientMixin, IntegrationClientMixin, BlueprintClientMixin
         integration_type: str,
     ):
         self.api_url = f"{base_url}/v1"
-        self.client = http
+        self.client = async_client
         self.auth = PortAuthentication(
             self.client,
             client_id,
