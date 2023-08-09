@@ -1,12 +1,15 @@
 from typing import Any
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from sonarqube_integration.sonarqube_client import SonarQubeClient
 import httpx
+
 
 class ObjectKind:
     PROJECTS = "projects"
     QUALITY_GATES = "qualitygates"
+
 
 # Initialize the SonarQubeClient instance
 sonar_client = SonarQubeClient(
@@ -17,13 +20,15 @@ sonar_client = SonarQubeClient(
     httpx.AsyncClient(),
 )
 
+
 @ocean.on_resync(ObjectKind.PROJECTS)
 async def on_project_resync(kind: str) -> list[dict[str, Any]]:
     logger.info(f"Listing Sonarqube resource: {kind}")
     return await sonar_client.get_projects()
 
+
 @ocean.on_resync(ObjectKind.QUALITY_GATES)
-async def on_quality_gate_resync(kind: str) -> list[dict[str, Any]]:
+async def on_quality_gate_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
     projects = await sonar_client.get_projects()
     for project in projects:

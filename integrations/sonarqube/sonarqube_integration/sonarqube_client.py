@@ -9,6 +9,7 @@ class Endpoints:
     QUALITY_GATE_NAME = "qualitygates/get_by_project"
     WEBHOOKS = "webhooks"
 
+
 class SonarQubeClient:
     def __init__(
         self,
@@ -81,9 +82,7 @@ class SonarQubeClient:
         )
         return response.get("components", [])
 
-    async def get_quality_gate_status(
-        self, project_key: str
-    ) -> Optional[dict[str, Any]]:
+    async def get_quality_gate_status(self, project_key: str) -> dict[str, Any]:
         """
         Get quality gate status for a project
 
@@ -96,13 +95,9 @@ class SonarQubeClient:
             query_params={"projectKey": project_key},
         )
         project_status = response.get("projectStatus", {})
-        if project_status:
-            return project_status
-        else:
-            logger.info(f"No quality gate data found for the project: {project_key}")
-            return None
+        return project_status
 
-    async def get_quality_gate_name(self, project_key: str) -> Optional[str]:
+    async def get_quality_gate_name(self, project_key: str) -> dict[str, Any]:
         """
         Get quality gate name for a project
 
@@ -115,12 +110,7 @@ class SonarQubeClient:
             query_params={"project": project_key, "organization": self.organization_id},
         )
         quality_gate = response.get("qualityGate", {})
-        if quality_gate:
-            return quality_gate
-        else:
-            logger.info(f"No quality gate data found for the project: {project_key}")
-            return None
-            
+        return quality_gate
 
     async def get_cloud_analysis_data_for_project(
         self, project: dict[str, Any]
@@ -143,7 +133,6 @@ class SonarQubeClient:
         project_quality_status.update(quality_gate_name)
 
         return project_quality_status
-
 
     async def get_or_create_webhook_url(self) -> None:
         """
