@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Breaking Changes
 
-- Updated the `on_resync` generator to use a list of items instaed of single item
+- Updated the `on_resync` generator to use a list of items instead of a single item
 
 ### Improvements
 
