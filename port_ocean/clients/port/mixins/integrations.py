@@ -5,7 +5,7 @@ from loguru import logger
 from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.utils import handle_status_code
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig

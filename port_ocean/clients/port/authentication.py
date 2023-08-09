@@ -5,7 +5,7 @@ from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.utils import handle_status_code
 from port_ocean.utils import get_time
 
 
