@@ -20,7 +20,6 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
 
   [[tool.towncrier.type]]
   directory = "breaking"

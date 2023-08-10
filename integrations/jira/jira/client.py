@@ -1,5 +1,6 @@
 import base64
 import typing
+from typing import Any, AsyncGenerator
 
 import httpx
 from loguru import logger
@@ -26,7 +27,7 @@ WEBHOOK_EVENTS = [
 
 
 class JiraClient:
-    def __init__(self, jira_url, jira_email, jira_token) -> None:
+    def __init__(self, jira_url: str, jira_email: str, jira_token: str) -> None:
         self.jira_url = jira_url
         self.jira_rest_url = f"{self.jira_url}/rest"
         self.jira_email = jira_email
@@ -45,12 +46,19 @@ class JiraClient:
 
         self.client = httpx.AsyncClient(headers=self.base_headers)
 
-    async def _get_paginated_issues(self, params):
+    async def _get_paginated_projects(self, params: dict[str, Any]) -> dict[str, Any]:
+        project_response = await self.client.get(
+            f"{self.api_url}/project/search", params=params
+        )
+        project_response.raise_for_status()
+        return project_response.json()
+
+    async def _get_paginated_issues(self, params: dict[str, Any]) -> dict[str, Any]:
         issue_response = await self.client.get(f"{self.api_url}/search", params=params)
         issue_response.raise_for_status()
         return issue_response.json()
 
-    async def create_real_time_updates_webhook(self, app_host: str):
+    async def create_events_webhook(self, app_host: str) -> None:
         # webhook_target_app_host = f"{app_host}/integration/webhook"
         # webhook_target_app_host = f"{app_host}"
         webhook_target_app_host = "https://smee.getport.io/WIxEj7z8VIyVbUid"
@@ -67,7 +75,7 @@ class JiraClient:
             "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
             "url": webhook_target_app_host,
             "events": WEBHOOK_EVENTS,
-            "filters": {"issue-related-events-section": ""},
+            # "filters": {"issue-related-events-section": ""},
         }
 
         webhook_create_response = await self.client.post(
@@ -76,28 +84,43 @@ class JiraClient:
         webhook_create_response.raise_for_status()
         logger.info("Ocean real time reporting webhook created")
 
-    async def get_single_project(self, project_key):
+    async def get_single_project(self, project_key: str) -> dict[str, Any]:
         project_response = await self.client.get(
             f"{self.api_url}/project/{project_key}"
         )
         project_response.raise_for_status()
         return project_response.json()
 
-    async def get_all_projects(self):
-        project_response = await self.client.get(f"{self.api_url}/project")
-        project_response.raise_for_status()
+    async def get_paginated_projects(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting projects from Jira")
 
-        return project_response.json()
+        params: dict[str, Any] = {
+            "maxResults": 0,
+            "startAt": 0,
+        }
 
-    async def get_single_issue(self, issue_key):
+        total_projects = (await self._get_paginated_projects(params))["total"]
+
+        params["maxResults"] = PAGE_SIZE
+        while params["startAt"] <= total_projects:
+            logger.info(f"Current query position: {params['startAt']}/{total_projects}")
+            project_response_list = (await self._get_paginated_projects(params))[
+                "values"
+            ]
+            yield project_response_list
+            params["startAt"] += PAGE_SIZE
+
+    async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         issue_response = await self.client.get(f"{self.api_url}/issue/{issue_key}")
         issue_response.raise_for_status()
         return issue_response.json()
 
-    async def get_paginated_issues(self):
+    async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
 
-        params = {
+        params: dict[str, Any] = {
             "maxResults": 0,
             "startAt": 0,
         }
