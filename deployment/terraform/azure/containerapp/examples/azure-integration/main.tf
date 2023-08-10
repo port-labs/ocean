@@ -19,9 +19,7 @@ module "ocean_integration" {
   # optional port integration parameters
   subscription_id = "/subscriptions/xxxxxx"
   location = "East US 2"
-#  resource_group_name = "DefaultResourceGroup-EUS"
-#  container_app_environment_id = "/subscriptions/7026e601-6a3b-4210-a9d6-b8742aa3b9f9/resourceGroups/DefaultResourceGroup-EUS/providers/Microsoft.App/managedEnvironments/managedEnvironment-DefaultResource-9253"
-#  log_analytics_workspace_id = "b049b4f3-a4cb-4229-a5b0-36fbc6f34361"
+
 
   image = "ghcr.io/port-labs/port-ocean-azure:v0.1.0rc11"
 
