@@ -11,10 +11,7 @@ Python 3.11
 ```console
 
 $ pip install "port-ocena[cli]"
-
-
 ---> 100%
-
 ```
 
 
@@ -29,17 +26,22 @@ $ ocean new
     
 🚢 Unloading cargo... Setting up your integration at the dock.
 integration_name [Name of the integration]: 
-# myIntegration$ 
+$ myIntegration
+ 
 integration_slug [myintegration]:  
-# my_slug$ 
+$ my_slug
+
 integration_short_description [A short description of the project]:
-# My custom integration made for Port$ 
+$ My custom integration made for Port
+ 
 full_name [Your name]:
-# Monkey D. Luffy$ 
+$ Monkey D. Luffy
+ 
 email [Your address email <you@example.com>]:
-# straw@hat.com$ 
-release_date [2023-08-07]:
-# 2023-08-06$ 
+$ straw@hat.com
+
+release_date [2023-08-06]:
+$ 2023-08-06
 
 
 🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!
@@ -62,33 +64,17 @@ Here are your next steps:
 
 - Edit the file `./my_slug/main.py` to add your integration logic.
 
-```python
+```python linenums="1"
 from typing import Any
 
 from port_ocean.context.ocean import ocean
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
-@ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-    return []
-
-
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
+@ocean.on_resync('project')
+async def resync_project(kind: str) -> list[dict[Any, Any]]:
+    # 1. Get all projects from the source system
+    # 2. Return a list of dictionaries with the raw data of the state
+    return [{"some_project_key": "someProjectValue", ...}]
 
 
 # Optional
@@ -156,12 +142,10 @@ integration:
 ```console
 $ cd ./my_integration
 $ make install
-
 ---> 100%
 
-
 $ . .venv/bin/activate
-$ ocean sail
+$ (my_slug3.11) ocean sail
 Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓
 INFO:     Started server process [50121]
 INFO:     Waiting for application startup.

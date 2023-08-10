@@ -13,7 +13,6 @@ theme:
     - navigation.indexes
     - navigation.top
     - navigation.tracking
-    - navigation.instant
     - search.highlight
     - search.share
     - search.suggest
@@ -22,14 +21,14 @@ theme:
   palette:
     - scheme: default
       media: "(prefers-color-scheme: light)"
-      primary: indigo
+      primary: teal
       accent: indigo
       toggle:
         icon: material/lightbulb
         name: Switch to dark mode
     - scheme: slate
       media: "(prefers-color-scheme: dark)"
-      primary: indigo
+      primary: teal
       accent: indigo
       toggle:
         icon: material/lightbulb-outline
@@ -63,6 +62,9 @@ markdown_extensions:
   admonition:
   codehilite:
   extra:
+  pymdownx.emoji:
+    emoji_index: !!python/name:materialx.emoji.twemoji
+    emoji_generator: !!python/name:materialx.emoji.to_svg
   pymdownx.superfences:
     custom_fences:
       - name: mermaid
@@ -85,8 +87,10 @@ nav:
   - 🌊 Ocean: index.md
   - 🎉 Getting Started:
     - ⚡️ Quickstart: ./getting-started/quickstart.md
-    - 🚀 Deployment: ./getting-started/deployment.md
     - 📦 Publishing: ./getting-started/publishing.md
+    - 🚀 Deployment:
+        - Helm: ./getting-started/deployment/helm.md
+        - Terraform: ./getting-started/deployment/terraform.md
   - 🌟 Features: features.md
   - 💻 Cli: ./cli.md
   - 📚 Guides: ./guides/index.md
