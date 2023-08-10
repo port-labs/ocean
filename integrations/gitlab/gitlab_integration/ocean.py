@@ -1,4 +1,5 @@
-from typing import Any, Dict
+from datetime import datetime, timedelta
+from typing import Any
 
 from loguru import logger
 from starlette.requests import Request
@@ -13,7 +14,7 @@ all_tokens_services = get_all_services()
 
 
 @ocean.router.post("/hook/{group_id}")
-async def handle_webhook(group_id: str, request: Request) -> Dict[str, Any]:
+async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
     body = await request.json()
     await event_handler.notify(event_id, group_id, body)
@@ -42,16 +43,25 @@ async def on_resync(kind: str) -> RAW_RESULT:
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def resync_merge_requests(kind: str) -> RAW_RESULT:
-    merge_requests = []
+    week_ago = datetime.now() - timedelta(days=14)
+
+    result = []
     for service in all_tokens_services:
         for group in service.get_root_groups():
-            for merge_request in group.mergerequests.list(all=True):
+            merge_requests = group.mergerequests.list(
+                all=True, state="opened"
+            ) + group.mergerequests.list(
+                all=True,
+                state=["closed", "locked", "merged"],
+                updated_after=week_ago.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            )
+            for merge_request in merge_requests:
                 project_path = merge_request.references.get("full").rstrip(
                     merge_request.references.get("short")
                 )
                 if service.should_run_for_project(project_path):
-                    merge_requests.append(merge_request.asdict())
-    return merge_requests
+                    result.append(merge_request.asdict())
+    return result
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -79,6 +89,9 @@ async def resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PIPELINE)
 async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    week_ago = datetime.now() - timedelta(days=14)
+    created_after = week_ago.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
     for service in all_tokens_services:
         for project in service.get_all_projects():
             batch_size = 50
@@ -87,7 +100,9 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
             while more:
                 # Process the batch of pipelines here
-                pipelines = project.pipelines.list(page=page, per_page=batch_size)
+                pipelines = project.pipelines.list(
+                    page=page, per_page=batch_size, created_after=created_after
+                )
                 logger.info(
                     f"Found {len(pipelines)} for page {page} pipelines for project {project.id}"
                 )
