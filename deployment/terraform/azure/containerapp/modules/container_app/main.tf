@@ -1,5 +1,3 @@
-data "azurerm_subscription" "current_subscription" {}
-
 locals {
   prefix = "port-ocean"
   env = [
