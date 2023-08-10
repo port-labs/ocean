@@ -1,0 +1,108 @@
+[
+    {
+       "identifier":"opsGenieSchedule",
+       "description":"This blueprint represents an opsGenie schedule in our software catalog",
+       "title":"OpsGenie Schedule",
+       "icon":"OpsGenie",
+       "schema":{
+          "properties":{
+             "description":{
+                "title":"Description",
+                "type":"string"
+             },
+             "enabled":{
+                "title":"Enabled",
+                "type":"boolean"
+             },
+             "oncall":{
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "user"
+                },
+                "title": "On Call"
+             },
+             "rotations":{
+                "title":"Rotations",
+                "type":"array"
+             }
+          },
+          "required":[]
+       },
+       "mirrorProperties":{},
+       "calculationProperties":{},
+       "relations":{}
+    },
+    {
+       "identifier":"opsGenieAlert",
+       "description":"This blueprint represents an OpsGenie alert in our software catalog",
+       "title":"OpsGenie Alert",
+       "icon":"OpsGenie",
+       "schema":{
+          "properties":{
+             "description":{
+                "type":"string",
+                "title":"Description"
+             },
+             "status":{
+                "type":"string",
+                "title":"Status",
+                "enum":[
+                   "closed",
+                   "active"
+                ],
+                "description":"The status of the alert"
+             },
+             "acknowledged":{
+                "type":"boolean",
+                "title":"Acknowledged"
+             },
+             "tags":{
+                "type":"array",
+                "items":{
+                   "type":"string"
+                },
+                "title":"Tags"
+             },
+             "responders":{
+                "type":"array",
+                "title":"Responders",
+                "description":"Responders to the alert"
+             },
+             "integration":{
+                "type":"string",
+                "title":"Integration",
+                "description":"The name of the Integration"
+             },
+             "priority":{
+                "type":"string",
+                "title":"Priority"
+             },
+             "sourceName":{
+                "type":"string",
+                "title":"Source Name",
+                "description":"Alert source name"
+             },
+             "createdBy":{
+                "title":"Created By",
+                "type":"string",
+                "format":"user"
+             },
+             "createdAt":{
+                "title":"Create At",
+                "type":"string",
+                "format":"date-time"
+             },
+             "updatedAt":{
+                "title":"Updated At",
+                "type":"string",
+                "format":"date-time"
+             }
+          },
+          "required":[]
+       },
+       "mirrorProperties":{},
+       "calculationProperties":{},
+       "relations":{}
+    }
+ ]

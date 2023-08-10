@@ -1,0 +1,36 @@
+resources:
+  - kind: schedules
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"opsGenieSchedule"'
+          properties:
+            description: .description
+            enabled: .enabled
+            oncall: .oncall_recipients
+            rotations: .rotations
+  - kind: alerts
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .message
+          blueprint: '"opsGenieAlert"'
+          properties:
+            status: .status
+            acknowledged: .acknowledged
+            responders: .responders
+            description: .description
+            integration: .integration.name
+            priority: .priority
+            sourceName: .source
+            tags: .tags
+            createdBy: .owner
+            createdAt: .createdAt
+            updatedAt: .updatedAt
