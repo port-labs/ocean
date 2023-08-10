@@ -34,7 +34,6 @@ theme:
         icon: material/lightbulb-outline
         name: Switch to light mode
 
-
 repo_name: port-labs/Port-Ocean
 repo_url: https://github.com/port-labs/Port-Ocean
 docs_dir: src
@@ -69,28 +68,27 @@ markdown_extensions:
     custom_fences:
       - name: mermaid
         class: mermaid
-        format: !!python/name:pymdownx.superfences.fence_code_format ''
+        format: !!python/name:pymdownx.superfences.fence_code_format ""
   pymdownx.tabbed:
     alternate_style: true
   attr_list:
   md_in_html:
 
 extra_css:
-- assets/css/termynal.css
-- assets/css/custom.css
+  - assets/css/termynal.css
+  - assets/css/custom.css
 extra_javascript:
-- assets/js/termynal.js
-- assets/js/custom.js
-
+  - assets/js/termynal.js
+  - assets/js/custom.js
 
 nav:
   - 🌊 Ocean: index.md
   - 🎉 Getting Started:
-    - ⚡️ Quickstart: ./getting-started/quickstart.md
-    - 📦 Publishing: ./getting-started/publishing.md
-    - 🚀 Deployment:
-        - Helm: ./getting-started/deployment/helm.md
-        - Terraform: ./getting-started/deployment/terraform.md
+      - ⚡️ Quickstart: ./getting-started/quickstart.md
+      - 📦 Publishing: ./getting-started/publishing.md
+      - 🚀 Deployment:
+          - Helm: ./getting-started/deployment/helm.md
+          - Terraform: ./getting-started/deployment/terraform.md
   - 🌟 Features: features.md
   - 💻 Cli: ./cli.md
   - 📚 Guides: ./guides/index.md
@@ -100,21 +98,21 @@ nav:
       - 🐞 Reporting a Bug: ./contributing/reporting-bug.md
       - 📝 Suggesting a Docs change: ./contributing/suggesting-docs-change.md
       - ⁉️ Asking a Question: ./contributing/asking-question.md
-  - 🔍 References:
-      - core:
-          - integrations: ./references/core/integrations.md
-          - handlers: ./references/core/handlers.md
-          - event listener: ./references/core/event-listener.md
-          - models: ./references/core/models.md
-          - types: ./references/core/types.md
-      - clients: ./references/clients.md
-      - config: ./references/config.md
-      - consumers: ./references/consumers.md
-      - context: ./references/context.md
-      - middleware: ./references/middleware.md
-      - ocean: ./references/ocean.md
-      - run: ./references/run.md
-      - utils: ./references/utils.md
+  # - 🔍 References:
+  #     - core:
+  #         - integrations: ./references/core/integrations.md
+  #         - handlers: ./references/core/handlers.md
+  #         - event listener: ./references/core/event-listener.md
+  #         - models: ./references/core/models.md
+  #         - types: ./references/core/types.md
+  #     - clients: ./references/clients.md
+  #     - config: ./references/config.md
+  #     - consumers: ./references/consumers.md
+  #     - context: ./references/context.md
+  #     - middleware: ./references/middleware.md
+  #     - ocean: ./references/ocean.md
+  #     - run: ./references/run.md
+  #     - utils: ./references/utils.md
   - 📜 License: ./license.md
   - 📅 Release Notes: ./release-notes.md
   - 🤔 FAQ: ./faq.md

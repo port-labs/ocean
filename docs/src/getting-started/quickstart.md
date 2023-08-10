@@ -2,11 +2,9 @@
 
 Python 3.11
 
-
 ## Installation
 
 <div class="termy">
-
 
 ```console
 
@@ -14,29 +12,29 @@ $ pip install "port-ocena[cli]"
 ---> 100%
 ```
 
-
 </div>
 ## Example
 
 ### Scaffold a new project
+
 <div class="termy" style="max-height: 500px">
 
 ```console
 $ ocean new
-    
+
 🚢 Unloading cargo... Setting up your integration at the dock.
-integration_name [Name of the integration]: 
+integration_name [Name of the integration]:
 $ myIntegration
- 
-integration_slug [myintegration]:  
+
+integration_slug [myintegration]:
 $ my_slug
 
 integration_short_description [A short description of the project]:
 $ My custom integration made for Port
- 
+
 full_name [Your name]:
 $ Monkey D. Luffy
- 
+
 email [Your address email <you@example.com>]:
 $ straw@hat.com
 
@@ -51,14 +49,13 @@ Here are your next steps:
 ▶️ cd ./my_slug && make install && . .venv/bin/activate
 
 ⚓️ Set sail with Ocean: Run ocean sail <path_to_integration> to run the project using Ocean.
-▶️ ocean sail ./my_slug 
+▶️ ocean sail ./my_slug
 
-⚓️ Smooth sailing with Make: Alternatively, you can run make run to launch your project using Make. 
+⚓️ Smooth sailing with Make: Alternatively, you can run make run to launch your project using Make.
 ▶️ make run ./my_slug
 ```
 
 </div>
-
 
 ### Write your integration
 
@@ -118,20 +115,20 @@ configurations:
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 
 port:
-  clientId: {{ from env PORT_CLIENT_ID }} # Can be loaded via environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
-  clientSecret: {{ from env PORT_CLIENT_SECRET }} # Can be loaded via environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
+  clientId: { { from env PORT_CLIENT_ID } } # Can be loaded via environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
+  clientSecret: { { from env PORT_CLIENT_SECRET } } # Can be loaded via environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
 # The event listener to use for the integration service.
 eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
   # Can be loaded via environment variable: INTEGRATION_IDENTIFIER or OCEAN__INTEGRATION__IDENTIFIER
-  identifier: {{ from env INTEGRATION_IDENTIFIER }}
-  
-  # These two should match the values in the .port/spec.yaml file    
+  identifier: { { from env INTEGRATION_IDENTIFIER } }
+
+  # These two should match the values in the .port/spec.yaml file
   type: "My Integration type (Gitlab, Jira, etc.)"
   config:
-    myJiraToken: {{ from env MY_INTEGRATION_CONFIG }} 
+    myJiraToken: { { from env MY_INTEGRATION_CONFIG } }
     jiraUrl: "https://example.com"
 ```
 
@@ -151,7 +148,6 @@ INFO:     Started server process [50121]
 INFO:     Waiting for application startup.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
-
 
 </div>
 
@@ -173,5 +169,3 @@ Open your browser and go to [http://localhost:8000/redoc](http://localhost:8000/
 ![IntegrationScaffoldSwagger.png](../assets/IntegrationScaffoldRedoc.png)
 
 </details>
-
-
