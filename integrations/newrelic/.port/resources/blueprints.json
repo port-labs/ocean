@@ -110,6 +110,22 @@
         "domain": {
           "title": "Domain",
           "type": "string"
+        },
+        "throughput": {
+          "title": "Throughput",
+          "type": "number"
+        },
+        "response_time_avg": {
+          "title": "Response Time AVG",
+          "type": "number"
+        },
+        "error_rate": {
+          "title": "Error Rate",
+          "type": "number"
+        },
+        "instance_count": {
+            "title": "Instance Count",
+            "type": "number"
         }
       },
       "required": []

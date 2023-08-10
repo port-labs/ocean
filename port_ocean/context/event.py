@@ -10,7 +10,10 @@ from port_ocean.exceptions.context import EventContextNotFoundError
 from port_ocean.utils import get_time
 
 if TYPE_CHECKING:
-    from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+    from port_ocean.core.handlers.port_app_config.models import (
+        PortAppConfig,
+        ResourceConfig,
+    )
 
 TriggerType = Literal["manual", "machine", "request"]
 
@@ -25,6 +28,7 @@ class EventType:
 class EventContext:
     event_type: str
     trigger_type: TriggerType = "machine"
+    resource_config: Optional["ResourceConfig"] = None
     attributes: dict[str, Any] = field(default_factory=dict)
     _port_app_config: Optional["PortAppConfig"] = None
     _parent_event: Optional["EventContext"] = None
@@ -76,6 +80,7 @@ event: EventContext = LocalProxy(lambda: _get_event_context())  # type: ignore
 async def event_context(
     event_type: str,
     trigger_type: TriggerType = "manual",
+    resource_config: Optional["ResourceConfig"] = None,
     attributes: dict[str, Any] | None = None,
 ) -> AsyncIterator[EventContext]:
     attributes = attributes or {}
@@ -86,8 +91,11 @@ async def event_context(
         EventContext(
             event_type,
             trigger_type=trigger_type,
+            resource_config=resource_config,
             attributes=attributes,
             _parent_event=parent,
+            # inherit port app config from parent event so it can be used in nested events
+            _port_app_config=parent.port_app_config if parent else None,
         )
     )
 
@@ -96,6 +104,10 @@ async def event_context(
         event_trigger_type=event.trigger_type,
         event_kind=event.event_type,
         event_id=event.id,
+        event_parent_id=event.parent_id,
+        event_resource_kind=event.resource_config.kind
+        if event.resource_config
+        else None,
     ):
         logger.info("Event started")
         try:

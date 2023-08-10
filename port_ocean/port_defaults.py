@@ -41,7 +41,7 @@ class Defaults(BaseModel):
 
 async def _is_integration_exists(port_client: PortClient) -> bool:
     try:
-        await port_client.get_current_integration()
+        await port_client.get_current_integration(should_log=False)
         return True
     except httpx.HTTPStatusError as e:
         if e.response.status_code != status.HTTP_404_NOT_FOUND:

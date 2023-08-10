@@ -9,7 +9,7 @@ LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
 
 class ApplicationSettings(BaseSettings):
-    log_level: LogLevelType = "DEBUG"
+    log_level: LogLevelType = "INFO"
     port: int = 8000
 
     class Config:
