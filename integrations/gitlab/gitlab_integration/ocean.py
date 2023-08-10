@@ -43,7 +43,7 @@ async def on_resync(kind: str) -> RAW_RESULT:
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def resync_merge_requests(kind: str) -> RAW_RESULT:
-    week_ago = datetime.now() - timedelta(days=14)
+    updated_after = datetime.now() - timedelta(days=14)
 
     result = []
     for service in all_tokens_services:
@@ -53,7 +53,7 @@ async def resync_merge_requests(kind: str) -> RAW_RESULT:
             ) + group.mergerequests.list(
                 all=True,
                 state=["closed", "locked", "merged"],
-                updated_after=week_ago.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                updated_after=updated_after.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             )
             for merge_request in merge_requests:
                 project_path = merge_request.references.get("full").rstrip(
@@ -89,8 +89,8 @@ async def resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PIPELINE)
 async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    week_ago = datetime.now() - timedelta(days=14)
-    created_after = week_ago.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    from_time = datetime.now() - timedelta(days=14)
+    created_after = from_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
     for service in all_tokens_services:
         for project in service.get_all_projects():
@@ -104,7 +104,7 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     page=page, per_page=batch_size, created_after=created_after
                 )
                 logger.info(
-                    f"Found {len(pipelines)} for page {page} pipelines for project {project.id}"
+                    f"Found {len(pipelines)} pipelines for page number {page} in project {project.id}"
                 )
                 yield [
                     {
