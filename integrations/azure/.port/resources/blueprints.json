@@ -301,5 +301,85 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "virtual_machine",
+    "description": "This blueprint represents an Azure Virtual Machine in our software catalog",
+    "title": "Virtual Machine",
+    "icon": "Azure",
+    "schema": {
+      "properties": {
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "provisioning_state": {
+          "title": "Provisioning State",
+          "type": "string"
+        },
+        "vm_size": {
+          "title": "VM Size",
+          "type": "string"
+        },
+        "os_disk_name": {
+          "title": "OS Disk Name",
+          "type": "string"
+        },
+        "os_disk_type": {
+          "title": "OS Disk Type",
+          "type": "string"
+        },
+        "os_disk_caching": {
+          "title": "OS Disk Caching",
+          "type": "string"
+        },
+        "os_disk_size_gb": {
+          "title": "OS Disk Size GB",
+          "type": "number"
+        },
+        "os_disk_create_option": {
+          "title": "OS Disk Create Option",
+          "type": "string"
+        },
+        "network_interface_ids": {
+          "title": "Network Interface IDs",
+          "type": "array"
+        },
+        "license_type": {
+          "title": "License Type",
+          "type": "string"
+        },
+        "vm_os_profile": {
+          "title": "VM OS Profile",
+          "type": "object"
+        },
+        "vm_hardware_profile": {
+          "title": "VM Hardware Profile",
+          "type": "object"
+        },
+        "vm_storage_profile": {
+          "title": "VM Storage Profile",
+          "type": "object"
+        },
+        "zones": {
+          "title": "Zones",
+          "type": "array"
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "resource_group": {
+        "target": "resource_group",
+        "required": true,
+        "many": false
+      }
+    }
   }
 ]

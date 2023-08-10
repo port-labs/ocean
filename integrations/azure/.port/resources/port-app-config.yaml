@@ -126,4 +126,34 @@ resources:
           relations:
             # resolve resource group id from storage account id
             resource_group: '.id | split("/") | .[3] |= ascii_downcase | .[:5] |join("/")'
-
+  - kind: Microsoft.Network/virtualNetworks
+    selector:
+        query: "true"
+        # azure resource api version to query
+        api_version: '2023-02-01'
+    port:
+      entity:
+        mappings:
+          # lowercase only the resourceGroups namespace to adjust with other azure api resources
+          identifier: '.id | split("/") | .[3] |= ascii_downcase | join("/")'
+          title: .name
+          blueprint: '"virtual_network"'
+          properties:
+            location: .location
+            provisioning_state: .properties.provisioningState
+            vm_size: .properties.hardwareProfile.vmSize
+            os_disk_name: .properties.storageProfile.osDisk.name
+            os_type: .properties.storageProfile.osDisk.osType
+            os_disk_caching: .properties.storageProfile.osDisk.caching
+            os_disk_size_gb: .properties.storageProfile.osDisk.diskSizeGB
+            os_disk_create_option: .properties.storageProfile.osDisk.createOption
+            network_interface_ids: .properties.networkProfile.networkInterfaces[].id
+            license_type: .properties.licenseType
+            vm_os_profile: .properties.osProfile
+            vm_hardware_profile: .properties.hardwareProfile
+            vm_storage_profile: .properties.storageProfile
+            zones: .properties.zones
+            tags: .tags
+          relations:
+            # resolve resource group id from virtual network id
+            resource_group: '.id | split("/") | .[3] |= ascii_downcase | .[:5] |join("/")'
