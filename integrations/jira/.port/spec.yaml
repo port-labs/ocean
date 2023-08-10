@@ -4,7 +4,7 @@ description: Jira integration for Port Ocean
 icon: Jira
 features:
   - type: exporter
-    section: Project Management
+    section: Project management
     resources:
       - kind: project
       - kind: issue

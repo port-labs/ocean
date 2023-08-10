@@ -82,7 +82,7 @@ resources:
           title: .name
           blueprint: '"project"'
           properties:
-            url: .self | split("/") | .[:3] | join("/") + "/projects/" + .key
+            url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
 ```
 
 </details>
@@ -184,7 +184,7 @@ resources:
           title: .fields.summary
           blueprint: '"issue"'
           properties:
-            url: .self | split("/") | .[:3] | join("/") + "/browse/" + .key
+            url: (.self | split("/") | .[:3] | join("/")) + "/browse/" + .key
             status: .fields.status.name
             issueType: .fields.issuetype.name
             components: .fields.components
@@ -195,6 +195,18 @@ resources:
             project: .fields.project.key
             parentIssue: .fields.parent.key
             subtasks: .fields.subtasks | map(.key)
+```
+
+You can add a [JQL](https://support.atlassian.com/jira-service-management-cloud/docs/use-advanced-search-with-jira-query-language-jql/) query to the Jira issues ingest process, add a `jql` key to the `selector` section to perform the filtering.
+
+For example:
+
+```yaml
+resources:
+  - kind: issue
+    selector:
+      query: "true"
+      jql: "issueKey=EXAMPLE-1234"
 ```
 
 </details>

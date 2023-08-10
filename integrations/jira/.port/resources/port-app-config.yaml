@@ -11,7 +11,7 @@ resources:
           title: .name
           blueprint: '"project"'
           properties:
-            url: .self | split("/") | .[:3] | join("/") + "/projects/" + .key
+            url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
   - kind: issue
     selector:
       query: "true"
@@ -22,7 +22,7 @@ resources:
           title: .fields.summary
           blueprint: '"issue"'
           properties:
-            url: .self | split("/") | .[:3] | join("/") + "/browse/" + .key
+            url: (.self | split("/") | .[:3] | join("/")) + "/browse/" + .key
             status: .fields.status.name
             issueType: .fields.issuetype.name
             components: .fields.components
