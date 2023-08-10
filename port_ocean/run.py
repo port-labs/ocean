@@ -31,7 +31,7 @@ def _get_base_integration_class_from_module(
 
 
 def _load_module(file_path: str) -> ModuleType:
-    spec = spec_from_file_location("module_name", file_path)
+    spec = spec_from_file_location("module.name", file_path)
     if spec is None or spec.loader is None:
         raise Exception(f"Failed to load integration from path: {file_path}")
 
@@ -41,7 +41,9 @@ def _load_module(file_path: str) -> ModuleType:
     return module
 
 
-def _create_default_app(path: str | None = None) -> Ocean:
+def _create_default_app(
+    path: str | None = None, use_default_config_factory: bool = False
+) -> Ocean:
     sys.path.append(".")
     try:
         integration_path = f"{path}/integration.py" if path else "integration.py"
@@ -52,7 +54,7 @@ def _create_default_app(path: str | None = None) -> Ocean:
 
     spec = get_spec_file()
     config_factory = None
-    if spec is not None:
+    if spec is not None and use_default_config_factory:
         config_factory = default_config_factory(spec.get("configurations", []))
     return Ocean(integration_class=integration_class, config_factory=config_factory)
 

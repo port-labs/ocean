@@ -152,11 +152,9 @@ async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     port_client = ocean.port_client
-    is_exists = await _is_integration_exists(port_client)
-    if is_exists:
-        return None
     defaults = get_port_integration_defaults(config_class)
     if not defaults:
+        logger.warning("No defaults found. Skipping...")
         return None
 
     try:
@@ -177,6 +175,41 @@ async def _initialize_defaults(
         raise ExceptionGroup(str(e), e.errors)
 
 
+async def _clear_defaults(
+    config_class: Type[PortAppConfig],
+    force,
+) -> None:
+    port_client = ocean.port_client
+    is_exists = await _is_integration_exists(port_client)
+    if not is_exists:
+        return None
+    defaults = get_port_integration_defaults(config_class)
+    if not defaults:
+        return None
+
+    try:
+        if force:
+            await asyncio.gather(
+                *(
+                    port_client.delete_all_entities(
+                        should_raise=False, blueprint_identifier=blueprint["identifier"]
+                    )
+                    for blueprint in defaults.blueprints
+                )
+            )
+        await asyncio.gather(
+            *(
+                port_client.delete_blueprint(
+                    blueprint["identifier"], should_raise=False
+                )
+                for blueprint in defaults.blueprints
+            )
+        )
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Failed to delete blueprints: {e.response.text}.")
+        raise e
+
+
 def initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
@@ -186,6 +219,18 @@ def initialize_defaults(
         )
     except Exception as e:
         logger.debug(f"Failed to initialize defaults, skipping... Error: {e}")
+
+
+def clear_defaults(
+    config_class: Type[PortAppConfig],
+    force: bool,
+) -> None:
+    try:
+        asyncio.new_event_loop().run_until_complete(
+            _clear_defaults(config_class, force)
+        )
+    except Exception as e:
+        logger.debug(f"Failed to clear defaults, skipping... Error: {e}")
 
 
 def get_port_integration_defaults(
