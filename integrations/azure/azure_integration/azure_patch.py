@@ -80,6 +80,9 @@ async def list_resources(
         yield resource
 
 
+# Patch the build_resources_list_request method in the resources operations module
+# This is done to be able to query the resource provider instead of the resources api
+# The original method is being called inside the list method in the resources client
 old_build_resources_list_request = (
     azure.mgmt.resource.resources.v2022_09_01.aio.operations._operations.build_resources_list_request
 )
