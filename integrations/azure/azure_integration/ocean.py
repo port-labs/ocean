@@ -12,7 +12,7 @@ from azure_integration.utils import (
     get_integration_subscription_id,
     get_port_resource_configuration_by_kind,
     resolve_resource_type_from_cloud_event,
-    batch_iterate_resources_list,
+    batch_resources_iterator,
 )
 from azure_integration.azure_patch import list_resources
 
@@ -37,7 +37,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 kind=kind,
                 api_version=event.resource_config.selector.api_version,
             )
-            async for resources_batch in batch_iterate_resources_list(
+            async for resources_batch in batch_resources_iterator(
                 list_resources,
                 resources_client=client,
                 resource_type=kind,
@@ -52,7 +52,7 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async with ResourceManagementClient(
             credential=credential, subscription_id=get_integration_subscription_id()
         ) as client:
-            async for resource_groups_batch in batch_iterate_resources_list(
+            async for resource_groups_batch in batch_resources_iterator(
                 client.resource_groups.list,
                 api_version=event.resource_config.selector.api_version,
             ):

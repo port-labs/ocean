@@ -42,7 +42,7 @@ def resolve_resource_type_from_cloud_event(cloud_event: dict) -> str:
     return resource_type
 
 
-async def batch_iterate_resources_list(
+async def batch_resources_iterator(
     async_list_method: typing.Callable[..., typing.AsyncIterable], **kwargs
 ) -> typing.AsyncIterable:
     """
