@@ -20,7 +20,6 @@ module "ocean_integration" {
   subscription_id = "/subscriptions/xxxxxx"
   location = "East US 2"
 
-
   image = "ghcr.io/port-labs/port-ocean-azure:v0.1.0rc11"
 
   permissions = {
@@ -67,7 +66,7 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "subscription_event
   ]
   event_delivery_schema = "CloudEventSchemaV1_0"
   webhook_endpoint {
-          url = "https://${module.ocean_integration.container_app_latest_fqdn}/integration/azure/events"
+        url = "https://${module.ocean_integration.container_app_latest_fqdn}/integration/events"
     }
   advanced_filtering_on_arrays_enabled = true
   advanced_filter {
@@ -78,6 +77,7 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "subscription_event
         "Microsoft.Storage/storageAccounts",
         "Microsoft.ContainerService/managedClusters",
         "Microsoft.Network/loadBalancers",
+        "Microsoft.Compute/virtualMachine",
         "Microsoft.Resources/subscriptions/resourceGroups",
       ]
     }
