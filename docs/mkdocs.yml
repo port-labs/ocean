@@ -72,6 +72,8 @@ markdown_extensions:
         format: !!python/name:pymdownx.superfences.fence_code_format ''
   pymdownx.tabbed:
     alternate_style: true
+  pymdownx.snippets:
+    base_path: ../
   attr_list:
   md_in_html:
 
