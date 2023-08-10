@@ -9,7 +9,7 @@ resource "azurerm_resource_group" "ocean-rg" {
 }
 
 module "port_ocean_authorization" {
-  source = "./modules/authorization"
+  source = "../modules/authorization"
   location = var.location
   resource_group_name = var.resource_group_name != null ? var.resource_group_name : azurerm_resource_group.ocean-rg[0].name
   integration = var.integration
