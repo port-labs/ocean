@@ -126,7 +126,7 @@ resources:
           relations:
             # resolve resource group id from storage account id
             resource_group: '.id | split("/") | .[3] |= ascii_downcase | .[:5] |join("/")'
-  - kind: Microsoft.Network/virtualNetworks
+  - kind: Microsoft.Compute/virtualMachines
     selector:
         query: "true"
         # azure resource api version to query
@@ -137,7 +137,7 @@ resources:
           # lowercase only the resourceGroups namespace to adjust with other azure api resources
           identifier: '.id | split("/") | .[3] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"virtual_network"'
+          blueprint: '"virtual_machine"'
           properties:
             location: .location
             provisioning_state: .properties.provisioningState
@@ -155,5 +155,5 @@ resources:
             zones: .properties.zones
             tags: .tags
           relations:
-            # resolve resource group id from virtual network id
+            # resolve resource group id from virtual machine id
             resource_group: '.id | split("/") | .[3] |= ascii_downcase | .[:5] |join("/")'
