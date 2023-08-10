@@ -8,7 +8,7 @@ resources:
       entity:
         mappings:
           # lowercase only the resourceGroups namespace so other azure resources will be able to relate to it
-          identifier: '.id | split("/") | .[3] |= ascii_downcase | join("/")'
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
           blueprint: '"resource_group"'
           properties:
@@ -23,8 +23,8 @@ resources:
     port:
       entity:
         mappings:
-          # lowercase only the resourceGroups namespace to adjust with other azure api resources
-          identifier: '.id | split("/") | .[3] |= ascii_downcase | join("/")'
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
           blueprint: '"container_app"'
           properties:
@@ -45,8 +45,8 @@ resources:
     port:
       entity:
         mappings:
-          # lowercase only the resourceGroups namespace to adjust with other azure api resources
-          identifier: '.id | split("/") | .[3] |= ascii_downcase | join("/")'
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
           blueprint: '"aks"'
           properties:
@@ -81,8 +81,8 @@ resources:
     port:
       entity:
         mappings:
-          # lowercase only the resourceGroups namespace to adjust with other azure api resources
-          identifier: '.id | split("/") | .[3] |= ascii_downcase | join("/")'
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
           blueprint: '"load_balancer"'
           properties:
@@ -106,8 +106,8 @@ resources:
     port:
       entity:
         mappings:
-          # lowercase only the resourceGroups namespace to adjust with other azure api resources
-          identifier: '.id | split("/") | .[3] |= ascii_downcase | join("/")'
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
           blueprint: '"storage_account"'
           properties:
@@ -130,12 +130,12 @@ resources:
     selector:
         query: "true"
         # azure resource api version to query
-        api_version: '2023-02-01'
+        api_version: '2023-03-01'
     port:
       entity:
         mappings:
-          # lowercase only the resourceGroups namespace to adjust with other azure api resources
-          identifier: '.id | split("/") | .[3] |= ascii_downcase | join("/")'
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
           blueprint: '"virtual_machine"'
           properties:
