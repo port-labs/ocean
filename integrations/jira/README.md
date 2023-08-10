@@ -1,6 +1,10 @@
 # Jira
 
-Integration to bring information from Jira into Port
+Integration to import information from Jira into Port.
+
+The integration supports importing issues and projects from your Jira cloud account to Port, according to your mapping and definition.
+
+**Note:** the integration supports Jira Cloud at the moment, support for Jira Server is being worked on.
 
 ## Development Requirements
 

@@ -59,9 +59,7 @@ class JiraClient:
         return issue_response.json()
 
     async def create_events_webhook(self, app_host: str) -> None:
-        # webhook_target_app_host = f"{app_host}/integration/webhook"
-        # webhook_target_app_host = f"{app_host}"
-        webhook_target_app_host = "https://smee.getport.io/WIxEj7z8VIyVbUid"
+        webhook_target_app_host = f"{app_host}/integration/webhook"
         webhook_check_response = await self.client.get(f"{self.webhooks_url}")
         webhook_check_response.raise_for_status()
         webhook_check = webhook_check_response.json()
@@ -75,7 +73,6 @@ class JiraClient:
             "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
             "url": webhook_target_app_host,
             "events": WEBHOOK_EVENTS,
-            # "filters": {"issue-related-events-section": ""},
         }
 
         webhook_create_response = await self.client.post(
