@@ -5,6 +5,8 @@ from port_ocean.ocean import ocean
 
 from azure_integration.overrides import AzurePortAppConfig
 
+BATCH_SIZE = 20
+
 
 def get_integration_subscription_id() -> str:
     logic_settings = ocean.integration_config
@@ -38,3 +40,25 @@ def resolve_resource_type_from_cloud_event(cloud_event: dict) -> str:
         return ""
     resource_type = f"{resource[6]}/{resource[7]}"
     return resource_type
+
+
+async def batch_iterate_resources_list(
+    async_list_method: typing.Callable[..., typing.AsyncIterable], **kwargs
+) -> typing.AsyncIterable:
+    """
+    Iterates over the list method of the resources client and yields a list of resources.
+
+    :param async_list_method: The list method of the resources client
+    :param kwargs: Any additional arguments that need to be passed to the list method
+    :return: A list of resources
+    """
+    counter = 0
+    resource_list = []
+    async for resource in async_list_method(**kwargs):
+        counter += 1
+        resource_list.append(resource.as_dict())
+        if counter == BATCH_SIZE:
+            yield resource_list
+            counter = 0
+            resource_list = []
+    yield resource_list
