@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.7 (2023-08-11)
+==================
+
+### Improvements
+
+- Upgraded ocean to version 0.2.2
+
+
+0.1.6 (2023-08-10)
+==================
+
+### Improvements
+
+- Implemented some performance enhancement by fetching only the open merge requests or merge request from the last 2 weeks & pipelines only from the last 2 weeks
+
+
+0.1.5 (2023-08-09)
+==================
+
+### Improvements
+
+- Upgraded ocean version to use the optimized `on_resync` generator
+
+
 0.1.4 (2023-07-27)
 ==================
 
