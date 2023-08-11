@@ -40,10 +40,6 @@
        "icon":"OpsGenie",
        "schema":{
           "properties":{
-             "description":{
-                "type":"string",
-                "title":"Description"
-             },
              "status":{
                 "type":"string",
                 "title":"Status",
@@ -69,11 +65,6 @@
                 "type":"array",
                 "title":"Responders",
                 "description":"Responders to the alert"
-             },
-             "integration":{
-                "type":"string",
-                "title":"Integration",
-                "description":"The name of the Integration"
              },
              "priority":{
                 "type":"string",

@@ -16,4 +16,4 @@ configurations:
   - name: apiUrl
     type: string
     required: true
-    default: https://api.opsgenie.com
+    default: https://api.opsgenie.com/v2

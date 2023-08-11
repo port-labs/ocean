@@ -26,8 +26,6 @@ resources:
             status: .status
             acknowledged: .acknowledged
             responders: .responders
-            description: .description
-            integration: .integration.name
             priority: .priority
             sourceName: .source
             tags: .tags

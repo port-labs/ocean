@@ -9,7 +9,7 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: my-opsgenie-integration-f
+  identifier: my-opsgenie-integration
   # The type of the integration.
   type: "opsgenie"
   config:
