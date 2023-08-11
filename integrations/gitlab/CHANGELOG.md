@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.9 (2023-08-11)
+==================
+
+### Improvements
+
+- Made the webhook live events feature optional
+
+
 0.1.8 (2023-08-11)
 ==================
 
