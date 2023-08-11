@@ -13,4 +13,3 @@ integration:
   # The configuration of the integration.
   config:
     tokenMapping: "{{ from env TOKEN_MAPPING }}"
-    appHost: "{{ from env APP_HOST }}"
