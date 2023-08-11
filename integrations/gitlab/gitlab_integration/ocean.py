@@ -27,7 +27,7 @@ async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
 async def on_start() -> None:
     logic_settings = ocean.integration_config
     if not logic_settings.get("app_host"):
-        logger.debug(
+        logger.warning(
             f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
         )
     try:
