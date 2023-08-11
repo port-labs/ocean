@@ -5,7 +5,6 @@ from loguru import logger
 
 
 class OpsGenieClient:
-
     def __init__(self, token: str, api_url: str):
         self.token = token
         self.api_url = api_url
