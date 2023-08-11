@@ -1,17 +1,17 @@
 from port_ocean.core.handlers.port_app_config.models import (
-    BaseModel,
     ResourceConfig,
     PortAppConfig,
 )
+from pydantic import BaseModel, Field
 
 
 class AzureResourceConfig(ResourceConfig):
     class Selector(BaseModel):
         query: str
-        api_version: str
+        api_version: str = Field(..., alias="apiVersion")
 
-    selector: Selector
+    selector: Selector  # type: ignore
 
 
 class AzurePortAppConfig(PortAppConfig):
-    resources: list[AzureResourceConfig] = None
+    resources: list[AzureResourceConfig] = None  # type: ignore

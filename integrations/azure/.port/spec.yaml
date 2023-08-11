@@ -1,13 +1,14 @@
 version: v0.1.0rc12
 type: azure
 description: azure integration for Port Ocean
-icon: Cookiecutter
+icon: Azure
 features:
   - type: exporter
-    section: Azure Providers
+    section: Cloud Providers
     resources:
-      - kind: <ResourceName1>
-      - kind: <ResourceName2>
+      - kind: resource_group
+      - kind: container_app
+      - kind: aks
 configurations:
   - name: subscriptionId
     required: true

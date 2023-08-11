@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "resource_group",
+    "identifier": "resourceGroup",
     "description": "This blueprint represents an Azure Resource Group in our software catalog",
     "title": "Resource Group",
     "icon": "Azure",
@@ -10,7 +10,7 @@
           "title": "Location",
           "type": "string"
         },
-        "provisioning_state": {
+        "provisioningState": {
           "title": "Provisioning State",
           "type": "string"
         },
@@ -22,7 +22,7 @@
     }
   },
   {
-    "identifier": "container_app",
+    "identifier": "containerApp",
     "description": "This blueprint represents an Azure Container App in our software catalog",
     "title": "Container App",
     "icon": "Azure",
@@ -32,27 +32,27 @@
           "title": "Location",
           "type": "string"
         },
-        "provisioning_state": {
+        "provisioningState": {
           "title": "Provisioning State",
           "type": "string"
         },
-        "outbound_ip_addresses": {
+        "outboundIpAddresses": {
           "title": "Outbound IP Addresses",
           "type": "array"
         },
-        "external_ingress": {
+        "externalIngress": {
           "title": "External Ingress",
           "type": "boolean"
         },
-        "host_name": {
+        "hostName": {
           "title": "Host Name",
           "type": "string"
         },
-        "min_replicas": {
+        "minReplicas": {
           "title": "Min Replicas",
           "type": "number"
         },
-        "max_replicas": {
+        "maxReplicas": {
           "title": "Max Replicas",
           "type": "number"
         }
@@ -62,8 +62,9 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "resource_group": {
-        "target": "resource_group",
+      "resourceGroup": {
+        "target": "resourceGroup",
+        "title": "Resource Group",
         "required": true,
         "many": false
       }
@@ -80,23 +81,23 @@
           "title": "Location",
           "type": "string"
         },
-        "provisioning_state": {
+        "provisioningState": {
           "title": "Provisioning State",
           "type": "string"
         },
-        "power_state": {
+        "powerState": {
           "title": "Power State",
           "type": "string"
         },
-        "kubernetes_version": {
+        "kubernetesVersion": {
           "title": "Kubernetes Version",
           "type": "string"
         },
-        "current_kubernetes_version": {
+        "currentKubernetesVersion": {
           "title": "Current Kubernetes Version",
           "type": "string"
         },
-        "dns_prefix": {
+        "dnsPrefix": {
           "title": "DNS Prefix",
           "type": "string"
         },
@@ -104,47 +105,47 @@
           "title": "FQDN",
           "type": "string"
         },
-        "node_resource_group": {
+        "nodeResourceGroup": {
           "title": "Node Resource Group",
           "type": "string"
         },
-        "enable_rbac": {
+        "enableRBAC": {
           "title": "Enable RBAC",
           "type": "boolean"
         },
-        "support_plan": {
+        "supportPlan": {
           "title": "Support Plan",
           "type": "string"
         },
-        "network_plugin": {
+        "networkPlugin": {
           "title": "Network Plugin",
           "type": "string"
         },
-        "pod_cidr": {
+        "podCIDR": {
           "title": "Pod CIDR",
           "type": "string"
         },
-        "service_cidr": {
+        "serviceCIDR": {
           "title": "Service CIDR",
           "type": "string"
         },
-        "dns_service_ip": {
+        "dnsServiceIp": {
           "title": "DNS Service IP",
           "type": "string"
         },
-        "outbound_type": {
+        "outboundType": {
           "title": "Outbound Type",
           "type": "string"
         },
-        "load_balancer_sku": {
+        "loadBalancerSKU": {
           "title": "Load Balancer SKU",
           "type": "string"
         },
-        "max_agent_pools": {
+        "maxAgentPools": {
           "title": "Max Agent Pools",
           "type": "number"
         },
-        "sku_tier": {
+        "skuTier": {
           "title": "Tier",
           "type": "string"
         }
@@ -154,15 +155,16 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "resource_group": {
-        "target": "resource_group",
+      "resourceGroup": {
+        "target": "resourceGroup",
+        "title": "Resource Group",
         "required": true,
         "many": false
       }
     }
   },
   {
-    "identifier": "load_balancer",
+    "identifier": "loadBalancer",
     "description": "This blueprint represents an Azure Load Balancer in our software catalog",
     "title": "Load Balancer",
     "icon": "Azure",
@@ -176,31 +178,31 @@
           "title": "Tags",
           "type": "object"
         },
-        "provisioning_state": {
+        "provisioningState": {
           "title": "Provisioning State",
           "type": "string"
         },
-        "frontend_ip_resource_ids": {
+        "frontendIpResourceIds": {
             "title": "Frontend IP Resource IDs",
             "type": "array"
         },
-        "backend_address_pools_resource_ids": {
+        "backendAddressPoolsResourceIds": {
             "title": "Backend Address Pools Resource IDs",
             "type": "array"
         },
-        "load_balancing_rules_resource_ids": {
+        "loadBalancingRulesResourceIds": {
             "title": "Load Balancing Rules Resource IDs",
             "type": "array"
         },
-        "probes_resource_ids": {
+        "probesResourceIds": {
             "title": "Probes Resource IDs",
             "type": "array"
         },
-        "inbound_nat_rules_resource_ids": {
+        "inboundNatRulesResourceIds": {
             "title": "Inbound NAT Rules Resource IDs",
             "type": "array"
         },
-        "inbound_nat_pools_resource_ids": {
+        "inboundNatPoolsResourceIds": {
             "title": "Inbound NAT Pools Resource IDs",
             "type": "array"
         }
@@ -210,15 +212,16 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "resource_group": {
-        "target": "resource_group",
+      "resourceGroup": {
+        "target": "resourceGroup",
+        "title": "Resource Group",
         "required": true,
         "many": false
       }
     }
   },
   {
-    "identifier": "storage_account",
+    "identifier": "storageAccount",
     "description": "This blueprint represents an Azure Storage Account in our software catalog",
     "title": "Storage Account",
     "icon": "Azure",
@@ -228,36 +231,36 @@
           "title": "Location",
           "type": "string"
         },
-        "provisioning_state": {
+        "provisioningState": {
           "title": "Provisioning State",
           "type": "string"
         },
-        "creation_time": {
+        "creationTime": {
           "title": "Creation Time",
           "type": "string"
         },
-        "is_hns_enabled": {
+        "isHnsEnabled": {
           "title": "Is HNS Enabled",
           "type": "boolean",
           "default": false
         },
-        "file_encryption_enabled": {
+        "fileEncryptionEnabled": {
           "title": "File Encryption Enabled",
           "type": "boolean"
         },
-        "blob_encryption_enabled": {
+        "blobEncryptionEnabled": {
           "title": "Blob Encryption Enabled",
           "type": "boolean"
         },
-        "primary_location": {
+        "primaryLocation": {
           "title": "Primary Location",
           "type": "string"
         },
-        "secondary_location": {
+        "secondaryLocation": {
           "title": "Secondary Location",
           "type": "string"
         },
-        "status_of_primary": {
+        "statusOfPrimary": {
           "title": "Status of Primary",
           "type": "string",
           "enum": [
@@ -269,7 +272,7 @@
             "available": "green"
           }
         },
-        "status_of_secondary": {
+        "statusOfSecondary": {
           "title": "Status of Secondary",
           "type": "string",
           "enum": [
@@ -285,7 +288,7 @@
           "title": "Tags",
           "type": "object"
         },
-        "allow_blob_public_access": {
+        "allowBlobPublicAccess": {
           "title": "Allow Blob Public Access",
           "type": "boolean"
         }
@@ -295,15 +298,77 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "resource_group": {
-        "target": "resource_group",
+      "resourceGroup": {
+        "target": "resourceGroup",
+        "title": "Resource Group",
         "required": true,
         "many": false
       }
     }
   },
   {
-    "identifier": "virtual_machine",
+    "identifier": "storageContainer",
+    "description": "This blueprint represents an Azure Storage Container in our software catalog",
+    "title": "Storage Container",
+    "icon": "S3",
+    "schema": {
+      "properties": {
+        "publicAccess": {
+          "title": "Public Access",
+          "type": "string"
+        },
+        "hasImmutabilityPolicy": {
+          "title": "Has Immutability Policy",
+          "type": "boolean"
+        },
+        "hasLegalHold": {
+          "title": "Has Legal Hold",
+          "type": "boolean"
+        },
+        "deleted": {
+          "title": "Deleted",
+          "type": "boolean"
+        },
+        "deletedTime": {
+          "title": "Deleted Time",
+          "type": "string"
+        },
+        "remainingRetentionDays": {
+          "title": "Remaining Retention Days",
+          "type": "number"
+        },
+        "leaseStatus": {
+          "title": "Lease Status",
+          "type": "string"
+        },
+        "leaseState": {
+          "title": "Lease State",
+          "type": "string"
+        },
+        "defaultEncryptionScope": {
+          "title": "Default Encryption Scope",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "storageAccount": {
+        "target": "storageAccount",
+        "title": "Storage Account",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "virtualMachine",
     "description": "This blueprint represents an Azure Virtual Machine in our software catalog",
     "title": "Virtual Machine",
     "icon": "Azure",
@@ -313,57 +378,53 @@
           "title": "Location",
           "type": "string"
         },
-        "provisioning_state": {
+        "provisioningState": {
           "title": "Provisioning State",
           "type": "string"
         },
-        "vm_size": {
+        "vmSize": {
           "title": "VM Size",
           "type": "string"
         },
-        "os_disk_name": {
+        "osDiskName": {
           "title": "OS Disk Name",
           "type": "string"
         },
-        "os_disk_type": {
+        "osDiskType": {
           "title": "OS Disk Type",
           "type": "string"
         },
-        "os_disk_caching": {
+        "osDiskCaching": {
           "title": "OS Disk Caching",
           "type": "string"
         },
-        "os_disk_size_gb": {
+        "osDiskSizeGB": {
           "title": "OS Disk Size GB",
           "type": "number"
         },
-        "os_disk_create_option": {
+        "osDiskCreateOption": {
           "title": "OS Disk Create Option",
           "type": "string"
         },
-        "network_interface_ids": {
+        "networkInterfaceIds": {
           "title": "Network Interface IDs",
           "type": "array"
         },
-        "license_type": {
+        "licenseType": {
           "title": "License Type",
           "type": "string"
         },
-        "vm_os_profile": {
+        "vmOsProfile": {
           "title": "VM OS Profile",
           "type": "object"
         },
-        "vm_hardware_profile": {
+        "vmHardwareProfile": {
           "title": "VM Hardware Profile",
           "type": "object"
         },
-        "vm_storage_profile": {
+        "vmStorageProfile": {
           "title": "VM Storage Profile",
           "type": "object"
-        },
-        "zones": {
-          "title": "Zones",
-          "type": "array"
         },
         "tags": {
           "title": "Tags",
@@ -375,8 +436,9 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "resource_group": {
-        "target": "resource_group",
+      "resourceGroup": {
+        "target": "resourceGroup",
+        "title": "Resource Group",
         "required": true,
         "many": false
       }

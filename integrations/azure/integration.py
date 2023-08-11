@@ -19,12 +19,13 @@ async def cloud_event_validation_middleware_handler(
 ) -> Response:
     """
     Middleware used to handle cloud event validation requests
+    Azure topic subscription expects a 200 response with specific headers
     https://github.com/cloudevents/spec/blob/v1.0/http-webhook.md#42-validation-response
     """
     if request.method == "OPTIONS" and request.url.path.startswith("/integration"):
         logger.info("Detected cloud event validation request")
         headers = {
-            "WebHook-Allowed-Rate": "1000",
+            "WebHook-Allowed-Rate": "100",
             "WebHook-Allowed-Origin": "*",
         }
         response = fastapi.Response(status_code=200, headers=headers)

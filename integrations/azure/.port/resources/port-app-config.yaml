@@ -3,45 +3,47 @@ resources:
     selector:
       query: "true"
       # azure resource api version to query
-      api_version: '2022-09-01'
+      apiVersion: '2022-09-01'
     port:
       entity:
         mappings:
           # lowercase only the resourceGroups namespace so other azure resources will be able to relate to it
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"resource_group"'
+          blueprint: '"resourceGroup"'
           properties:
             location: .location
-            provisioning_state: .properties.provisioning_state
+            # the provisioning state property is returned in lower case when using the SDK and in camelCase when using the REST API
+            # therefore supporting both (for users who use the SDK)
+            provisioningState: .properties.provisioningState + .properties.provisioning_state
             tags: .tags
   - kind: Microsoft.App/containerApps
     selector:
       query: "true"
       # azure resource api version to query
-      api_version: '2022-03-01'
+      apiVersion: '2022-03-01'
     port:
       entity:
         mappings:
           # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"container_app"'
+          blueprint: '"containerApp"'
           properties:
             location: .location
-            provisioning_state: .properties.provisioningState
-            outbound_ip_addresses: .properties.outboundIpAddresses
-            external_ingress: .properties.configuration.ingress.external
-            host_name: .properties.configuration.ingress.fqdn
-            min_replicas: .properties.template.scale.minReplicas
-            max_replicas: .properties.template.scale.maxReplicas
+            provisioningState: .properties.provisioningState
+            outboundIpAddresses: .properties.outboundIpAddresses
+            externalIngress: .properties.configuration.ingress.external
+            hostName: .properties.configuration.ingress.fqdn
+            minReplicas: .properties.template.scale.minReplicas
+            maxReplicas: .properties.template.scale.maxReplicas
           relations:
-            resource_group: '.id | split("/") | .[3] |= ascii_downcase | .[:5] |join("/")'
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
   - kind: Microsoft.ContainerService/managedClusters
     selector:
       query: "true"
       # azure resource api version to query
-      api_version: '2023-05-01'
+      apiVersion: '2023-05-01'
     port:
       entity:
         mappings:
@@ -51,109 +53,136 @@ resources:
           blueprint: '"aks"'
           properties:
             location: .location
-            provisioning_state: .properties.provisioningState
-            power_state: .properties.powerState.code
-            kubernetes_version: .properties.kubernetesVersion
-            current_kubernetes_version: .properties.currentKubernetesVersion
-            dns_prefix: .properties.dnsPrefix
+            provisioningState: .properties.provisioningState
+            powerState: .properties.powerState.code
+            kubernetesVersion: .properties.kubernetesVersion
+            currentKubernetesVersion: .properties.currentKubernetesVersion
+            dnsPrefix: .properties.dnsPrefix
             fqdn: .properties.fqdn
-            node_resource_group: .properties.nodeResourceGroup
-            enable_rbac: .properties.enableRBAC
-            support_plan: .properties.supportPlan
-            network_plugin: .properties.networkProfile.networkPlugin
-            pod_cidr: .properties.networkProfile.podCidr
-            service_cidr: .properties.networkProfile.serviceCidr
-            dns_service_ip: .properties.networkProfile.dnsServiceIP
-            outbound_type: .properties.networkProfile.outboundType
-            load_balancer_sku: .properties.networkProfile.loadBalancerSku
-            max_agent_pools: .properties.maxAgentPools
-            sku_tier: .properties.sku.tier
+            nodeResourceGroup: .properties.nodeResourceGroup
+            enableRBAC: .properties.enableRBAC
+            supportPlan: .properties.supportPlan
+            networkPlugin: .properties.networkProfile.networkPlugin
+            podCIDR: .properties.networkProfile.podCidr
+            serviceCIDR: .properties.networkProfile.serviceCidr
+            dnsServiceIp: .properties.networkProfile.dnsServiceIP
+            outboundType: .properties.networkProfile.outboundType
+            loadBalancerSKU: .properties.networkProfile.loadBalancerSku
+            maxAgentPools: .properties.maxAgentPools
+            skuTier: .properties.sku.tier
           relations:
             # resolve resource group id from aks id
             # AKS id contains the resourcegroups namespace instead of resourceGroups therefore we need to lowercase
             # all other resourceGroups namespaces of other azure resources so we will be able to relate them to resource group blueprint
-            resource_group: '.id | split("/") | .[3] |= ascii_downcase | .[:5] |join("/")'
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
   - kind: Microsoft.Network/loadBalancers
     selector:
         query: "true"
         # azure resource api version to query
-        api_version: '2023-02-01'
+        apiVersion: '2023-02-01'
     port:
       entity:
         mappings:
           # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"load_balancer"'
+          blueprint: '"loadBalancer"'
           properties:
             location: .location
-            provisioning_state: .properties.provisioningState
+            provisioningState: .properties.provisioningState
             tags: .tags
-            frontend_ip_resource_ids: .properties.frontendIPConfigurations[].id
-            backend_address_pool_resource_ids: .properties.backendAddressPools[].id
-            load_balancing_rules_resource_ids: .properties.loadBalancingRules[].id
-            probes_resource_ids: .properties.probes[].id
-            inbound_nat_rules_resource_ids: .properties.inboundNatRules[].id
-            inbound_nat_pools_resource_ids: .properties.inboundNatPools[].id
+            frontendIpResourceIds: .properties.frontendIPConfigurations[].id
+            backendAddressPoolResourceIds: .properties.backendAddressPools[].id
+            loadBalancingRulesResourceIds: .properties.loadBalancingRules[].id
+            probesResourceIds: .properties.probes[].id
+            inboundNatRulesResourceIds: .properties.inboundNatRules[].id
+            inboundNatPoolsResourceIds: .properties.inboundNatPools[].id
           relations:
             # resolve resource group id from load balancer id
-            resource_group: '.id | split("/") | .[3] |= ascii_downcase | .[:5] |join("/")'
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
   - kind: Microsoft.Storage/storageAccounts
     selector:
         query: "true"
         # azure resource api version to query
-        api_version: '2023-01-01'
+        apiVersion: '2023-01-01'
     port:
       entity:
         mappings:
           # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"storage_account"'
+          blueprint: '"storageAccount"'
           properties:
             location: .location
-            provisioning_state: .properties.provisioningState
-            creation_time: .properties.creationTime
-            is_hns_enabled: .properties.isHnsEnabled
-            file_encryption_enabled: .properties.encryption.services.file.enabled
-            blob_encryption_enabled: .properties.encryption.services.blob.enabled
-            primary_location: .properties.primaryLocation
-            secondary_location: .properties.secondaryLocation
-            status_of_primary: .properties.statusOfPrimary
-            status_of_secondary: .properties.statusOfSecondary
-            allow_blob_public_access: .properties.allowBlobPublicAccess
+            provisioningState: .properties.provisioningState
+            creationTime: .properties.creationTime
+            isHnsEnabled: .properties.isHnsEnabled
+            fileEncryptionEnabled: .properties.encryption.services.file.enabled
+            blobEncryptionEnabled: .properties.encryption.services.blob.enabled
+            primaryLocation: .properties.primaryLocation
+            secondaryLocation: .properties.secondaryLocation
+            statusOfPrimary: .properties.statusOfPrimary
+            statusOfSecondary: .properties.statusOfSecondary
+            allowBlobPublicAccess: .properties.allowBlobPublicAccess
             tags: .tags
           relations:
             # resolve resource group id from storage account id
-            resource_group: '.id | split("/") | .[3] |= ascii_downcase | .[:5] |join("/")'
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
+
+  - kind: Microsoft.Storage/storageAccounts/blobServices/containers
+    selector:
+        query: "true"
+        # azure resource api version to query
+        apiVersion: '2023-01-01'
+    port:
+      entity:
+        mappings:
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
+          title: .name
+          blueprint: '"storageContainer"'
+          properties:
+            publicAccess: .properties.publicAccess
+            hasImmutabilityPolicy: .properties.hasImmutabilityPolicy
+            hasLegalHold: .properties.hasLegalHold
+            deleted: .properties.deleted
+            deletedTime: .properties.deletedTime
+            remainingRetentionDays: .properties.remainingRetentionDays
+            leaseStatus: .properties.leaseStatus
+            leaseState: .properties.leaseState
+            defaultEncryptionScope: .properties.defaultEncryptionScope
+            version: .properties.version
+          relations:
+            # resolve storage account id from container id
+            storageAccount: '.id | split("/") | .[3] |= ascii_downcase | .[4] |= ascii_downcase | .[:-4] |join("/")'
+
+
   - kind: Microsoft.Compute/virtualMachines
     selector:
         query: "true"
         # azure resource api version to query
-        api_version: '2023-03-01'
+        apiVersion: '2023-03-01'
     port:
       entity:
         mappings:
           # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"virtual_machine"'
+          blueprint: '"virtualMachine"'
           properties:
             location: .location
-            provisioning_state: .properties.provisioningState
-            vm_size: .properties.hardwareProfile.vmSize
-            os_disk_name: .properties.storageProfile.osDisk.name
-            os_type: .properties.storageProfile.osDisk.osType
-            os_disk_caching: .properties.storageProfile.osDisk.caching
-            os_disk_size_gb: .properties.storageProfile.osDisk.diskSizeGB
-            os_disk_create_option: .properties.storageProfile.osDisk.createOption
-            network_interface_ids: .properties.networkProfile.networkInterfaces[].id
-            license_type: .properties.licenseType
-            vm_os_profile: .properties.osProfile
-            vm_hardware_profile: .properties.hardwareProfile
-            vm_storage_profile: .properties.storageProfile
-            zones: .properties.zones
+            provisioningState: .properties.provisioningState
+            vmSize: .properties.hardwareProfile.vmSize
+            osDiskName: .properties.storageProfile.osDisk.name
+            osType: .properties.storageProfile.osDisk.osType
+            osDiskCaching: .properties.storageProfile.osDisk.caching
+            osDiskSizeGB: .properties.storageProfile.osDisk.diskSizeGB
+            osDiskCreateOption: .properties.storageProfile.osDisk.createOption
+            networkInterfaceIds: .properties.networkProfile.networkInterfaces[].id
+            licenseType: .properties.licenseType
+            vmOsProfile: .properties.osProfile
+            vmHardwareProfile: .properties.hardwareProfile
+            vmStorageProfile: .properties.storageProfile
             tags: .tags
           relations:
             # resolve resource group id from virtual machine id
-            resource_group: '.id | split("/") | .[3] |= ascii_downcase | .[:5] |join("/")'
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase | .[4] |= ascii_downcase | .[:5] |join("/")'

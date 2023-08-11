@@ -12,7 +12,6 @@ integration:
   # The identifier of this integration instance.
   identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
   # The type of the integration.
-  type: "Azure Integration"
+  type: "azure"
   config:
     subscriptionId: "{{ from env AZURE_SUBSCRIPTION_ID }}"
-    someApplicationUrl: "https://I-Am-Not-A-Real-Url.com"
