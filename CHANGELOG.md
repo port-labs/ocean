@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.1 (2023-08-09)
+==================
+
+### Bug Fixes
+
+- Fixed an issue causing ocean to convert the integration config objects to camelized objects
+
+
 0.2.0 (2023-08-09)
 ==================
 
