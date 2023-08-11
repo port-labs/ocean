@@ -62,8 +62,8 @@ def parse_providers(
     """
     for key, value in config.items():
         if isinstance(value, dict) and settings_model is not None:
-            # If the value is ModelMetaClass typed then its a nested model, and we need to parse it
-            # If the value is a primitive dict then we need to decamelize the keys and not recurse into the values because its no longer part of the model
+            # If the value is of type ModelMetaClass then its a nested model, and we need to parse it
+            # If the value is of type primitive dict then we need to decamelize the keys and not recurse into the values because its no longer part of the model
             _type = settings_model.__annotations__[key]
             is_primitive_dict_type = _type is dict or (
                 isinstance(_type, GenericAlias) and _type.__origin__ is dict
