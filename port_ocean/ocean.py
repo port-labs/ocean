@@ -30,13 +30,6 @@ class Ocean:
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()
-        self.fast_api_app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
         self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(base_path="./")
