@@ -14,5 +14,6 @@ configurations:
     type: string
     sensitive: true
   - name: apiUrl
-    type: url
+    type: string
     required: true
+    default: https://api.opsgenie.com

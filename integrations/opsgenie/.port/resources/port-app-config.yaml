@@ -11,7 +11,7 @@ resources:
           properties:
             description: .description
             enabled: .enabled
-            oncall: .oncall_recipients
+            oncall: .oncall_users
             rotations: .rotations
   - kind: alerts
     selector:

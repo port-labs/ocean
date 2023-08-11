@@ -47,10 +47,11 @@
              "status":{
                 "type":"string",
                 "title":"Status",
-                "enum":[
-                   "closed",
-                   "active"
-                ],
+                "enum": ["closed", "open"],
+                "enumColors": {
+                    "closed": "green",
+                    "open": "red"
+                },
                 "description":"The status of the alert"
              },
              "acknowledged":{
