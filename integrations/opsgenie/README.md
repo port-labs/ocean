@@ -16,7 +16,7 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 # The following script will install an Ocean integration at your K8s cluster using helm
 # integration.identifier: Change the identifier to describe your integration
 # integration.secrets.apiToken: The OpsGenie API token
-# integration.config.apiUrl: The OpsGenie api url. If not specified, the default will be https://api.opsgenie.com/v2
+# integration.config.apiUrl: The OpsGenie api url. If not specified, the default will be https://api.opsgenie.com/v2. If you are using the EU instance of Opsgenie, the apiURL needs to be https://api.eu.opsgenie.com/v2 for requests to be executed.
 
 helm upgrade --install my-opsgenie-integration port-labs/port-ocean \
 	--set port.clientId="CLIENT_ID"  \
