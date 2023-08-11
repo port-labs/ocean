@@ -5,7 +5,6 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from opsgenie_integration.client import OpsGenieClient
 
-
 class ObjectKind(StrEnum):
     SCHEDULE = "schedules"
     ALERT = "alerts"
