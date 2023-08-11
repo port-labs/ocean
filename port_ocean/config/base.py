@@ -52,23 +52,43 @@ def load_from_config_provider(config_provider: str) -> Any:
         raise ValueError(f"Invalid provider type: {provider_type}")
 
 
-def decamelize_object(obj: Any) -> Any:
-    if isinstance(obj, dict):
-        return {decamelize(k): decamelize_object(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [decamelize_object(v) for v in obj]
-    else:
-        return obj
-
-
-def parse_config(
-    settings_model: BaseModel | ModelMetaclass,
+def parse_providers(
     config: dict[str, Any],
     existing_data: dict[str, Any],
 ) -> dict[str, Any]:
     """
     Normalizing the config yaml file to work with snake_case and getting only the data that is missing for the settings
     """
+    for key, value in config.items():
+        if isinstance(value, dict):
+            existing_data[key] = parse_providers(value, existing_data.get(key, {}))
+
+        elif isinstance(value, str):
+            # If the value is a provider, we try to load it from the provider
+            if provider_match := re.match(PROVIDER_WRAPPER_PATTERN, value):
+                # If the there is already value for that field, we ignore it
+                # If the provider failed to load, we ignore it
+                if key not in existing_data:
+                    try:
+                        existing_data[key] = load_from_config_provider(
+                            provider_match.group(1)
+                        )
+                    except ValueError:
+                        pass
+            else:
+                existing_data[key] = value
+        else:
+            existing_data[key] = value
+    return existing_data
+
+
+def decamelize_config(
+    settings_model: BaseModel | ModelMetaclass, config: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Normalizing the config yaml file to work with snake_case and getting only the data that is missing for the settings
+    """
+    result = {}
     for key, value in config.items():
         decamelize_key = decamelize(key)
         if isinstance(value, dict) and settings_model is not None:
@@ -82,27 +102,10 @@ def parse_config(
             if is_primitive_dict_type:
                 _type = None
 
-            existing_data[decamelize_key] = parse_config(
-                _type, value, existing_data.get(decamelize_key, {})
-            )
-
-        elif isinstance(value, str):
-            # If the value is a provider, we try to load it from the provider
-            if provider_match := re.match(PROVIDER_WRAPPER_PATTERN, value):
-                # If the there is already value for that field, we ignore it
-                # If the provider failed to load, we ignore it
-                if decamelize_key not in existing_data:
-                    try:
-                        existing_data[decamelize_key] = load_from_config_provider(
-                            provider_match.group(1)
-                        )
-                    except ValueError:
-                        pass
-            else:
-                existing_data[decamelize_key] = value
+            result[decamelize_key] = decamelize_config(_type, value)
         else:
-            existing_data[decamelize_key] = value
-    return existing_data
+            result[decamelize_key] = value
+    return result
 
 
 def load_providers(
@@ -110,7 +113,8 @@ def load_providers(
 ) -> dict[str, Any]:
     yaml_content = read_yaml_config_settings_source(settings, base_path)
     data = yaml.safe_load(yaml_content)
-    return parse_config(settings, data, existing_values)
+    snake_case_config = decamelize_config(settings, data)
+    return parse_providers(snake_case_config, existing_values)
 
 
 class BaseOceanSettings(BaseSettings):
