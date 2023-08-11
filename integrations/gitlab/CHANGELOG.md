@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Using a more slim version of the docker file (PORT-4485)
+- Optimized dockerfile to produce smaller images (PORT-4485)
 
 
 0.1.7 (2023-08-11)
