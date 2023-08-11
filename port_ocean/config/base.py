@@ -1,12 +1,14 @@
 import os
 import re
 from pathlib import Path
+from types import GenericAlias
 from typing import Any
 
 import yaml
 from humps import decamelize
 from pydantic import BaseSettings
 from pydantic.env_settings import EnvSettingsSource, InitSettingsSource
+from pydantic.main import ModelMetaclass, BaseModel
 
 PROVIDER_WRAPPER_PATTERN = r"{{ from (.*) }}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
@@ -60,17 +62,30 @@ def decamelize_object(obj: Any) -> Any:
 
 
 def parse_config(
-    config: dict[str, Any], existing_data: dict[str, Any]
+    settings_model: BaseModel | ModelMetaclass,
+    config: dict[str, Any],
+    existing_data: dict[str, Any],
 ) -> dict[str, Any]:
     """
     Normalizing the config yaml file to work with snake_case and getting only the data that is missing for the settings
     """
     for key, value in config.items():
         decamelize_key = decamelize(key)
-        if isinstance(value, dict):
-            existing_data[decamelize_key] = parse_config(
-                value, existing_data.get(decamelize_key, {})
+        if isinstance(value, dict) and settings_model is not None:
+            # If the value is ModelMetaClass typed then its a nested model, and we need to parse it
+            # If the value is a primitive dict then we need to decamelize the keys and not recurse into the values because its no longer part of the model
+            _type = settings_model.__annotations__[decamelize_key]
+            is_primitive_dict_type = _type is dict or (
+                isinstance(_type, GenericAlias) and _type.__origin__ is dict
             )
+
+            if is_primitive_dict_type:
+                _type = None
+
+            existing_data[decamelize_key] = parse_config(
+                _type, value, existing_data.get(decamelize_key, {})
+            )
+
         elif isinstance(value, str):
             # If the value is a provider, we try to load it from the provider
             if provider_match := re.match(PROVIDER_WRAPPER_PATTERN, value):
@@ -95,7 +110,7 @@ def load_providers(
 ) -> dict[str, Any]:
     yaml_content = read_yaml_config_settings_source(settings, base_path)
     data = yaml.safe_load(yaml_content)
-    return parse_config(data, existing_values)
+    return parse_config(settings, data, existing_values)
 
 
 class BaseOceanSettings(BaseSettings):
