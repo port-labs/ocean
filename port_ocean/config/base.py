@@ -53,6 +53,7 @@ def load_from_config_provider(config_provider: str) -> Any:
 
 
 def parse_providers(
+    settings_model: BaseModel | ModelMetaclass,
     config: dict[str, Any],
     existing_data: dict[str, Any],
 ) -> dict[str, Any]:
@@ -60,8 +61,19 @@ def parse_providers(
     Normalizing the config yaml file to work with snake_case and getting only the data that is missing for the settings
     """
     for key, value in config.items():
-        if isinstance(value, dict):
-            existing_data[key] = parse_providers(value, existing_data.get(key, {}))
+        if isinstance(value, dict) and settings_model is not None:
+            # If the value is ModelMetaClass typed then its a nested model, and we need to parse it
+            # If the value is a primitive dict then we need to decamelize the keys and not recurse into the values because its no longer part of the model
+            _type = settings_model.__annotations__[key]
+            is_primitive_dict_type = _type is dict or (
+                isinstance(_type, GenericAlias) and _type.__origin__ is dict
+            )
+
+            if is_primitive_dict_type:
+                _type = None
+            existing_data[key] = parse_providers(
+                _type, value, existing_data.get(key, {})
+            )
 
         elif isinstance(value, str):
             # If the value is a provider, we try to load it from the provider
@@ -114,7 +126,7 @@ def load_providers(
     yaml_content = read_yaml_config_settings_source(settings, base_path)
     data = yaml.safe_load(yaml_content)
     snake_case_config = decamelize_config(settings, data)
-    return parse_providers(snake_case_config, existing_values)
+    return parse_providers(settings, snake_case_config, existing_values)
 
 
 class BaseOceanSettings(BaseSettings):
