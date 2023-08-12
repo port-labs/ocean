@@ -7,6 +7,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.3 (2023-08-12)
+==================
+
+### Improvements
+
+- Optimized dockerfile to produce smaller images (PORT-4485)
+- Changed default log level to INFO in the cli (#1)
+
+### Bug Fixes
+
+- Fixed an issue with loading the configuration from the environment variables if the config is a dictionary (#1)
+
+
 0.2.2 (2023-08-11)
 ==================
 
