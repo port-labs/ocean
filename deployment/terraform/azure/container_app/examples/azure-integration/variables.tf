@@ -8,7 +8,7 @@ variable "port_base_url" {
   type = string
   default = ""
 }
-variable "event_grid_topic_name" {
+variable "event_grid_system_topic_name" {
   type = string
   default = ""
   description = "If the event grid topic name is not provided, the module will create a new one"
@@ -30,7 +30,7 @@ variable "resources_filter_values" {
   ]
   description = "The list of resources that will be used for the advanced filtering of the subscription event grid topic"
 }
-variable "include_event_types" {
+variable "included_event_types" {
   type = list(string)
   default = [
     "Microsoft.Resources.ResourceWriteSuccess",

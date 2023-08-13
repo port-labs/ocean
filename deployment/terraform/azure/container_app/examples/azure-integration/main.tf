@@ -45,7 +45,7 @@ module "ocean_integration" {
 
 resource "azurerm_eventgrid_system_topic" "subscription_event_grid_topic" {
   # if the event grid topic name is not provided, the module will create a new one
-  count               = var.event_grid_topic_name != "" ? 0 : 1
+  count               = var.event_grid_system_topic_name != "" ? 0 : 1
   name                = "subscription-event-grid-topic"
   resource_group_name = module.ocean_integration.resource_group_name
   location            = "Global"
@@ -59,14 +59,9 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "subscription_event
   for_each            = local.chunked_resouces_filter_dict
   name                = replace(replace("ocean-${module.ocean_integration.integration.type}-${module.ocean_integration.integration.identifier}-subscription-${each.key}","_", "-"),".","-")
   resource_group_name = var.event_grid_resource_group != "" ? var.event_grid_resource_group: azurerm_eventgrid_system_topic.subscription_event_grid_topic[0].resource_group_name
-  system_topic        = var.event_grid_topic_name != "" ? var.event_grid_topic_name : azurerm_eventgrid_system_topic.subscription_event_grid_topic[0].name
+  system_topic        = var.event_grid_system_topic_name != "" ? var.event_grid_system_topic_name : azurerm_eventgrid_system_topic.subscription_event_grid_topic[0].name
 
-  included_event_types = [
-    "Microsoft.Resources.ResourceWriteSuccess",
-    "Microsoft.Resources.ResourceWriteFailure",
-    "Microsoft.Resources.ResourceDeleteSuccess",
-    "Microsoft.Resources.ResourceDeleteFailure",
-  ]
+  included_event_types = var.included_event_types
   event_delivery_schema = "CloudEventSchemaV1_0"
   webhook_endpoint {
         url = "https://${module.ocean_integration.container_app_latest_fqdn}/integration/events"
