@@ -44,12 +44,13 @@ variable "included_event_types" {
 variable "action_permissions_list" {
   type = list(string)
   default = [
+      "Microsoft.Resources/subscriptions/resources/read",
       "microsoft.app/containerapps/read",
       "Microsoft.Storage/storageAccounts/read",
       "Microsoft.ContainerService/managedClusters/read",
       "Microsoft.Network/loadBalancers/read",
       "Microsoft.Resources/subscriptions/resourceGroups/read",
-      "Microsoft.Resources/subscriptions/resources/read",
+      "Microsoft.Compute/virtualMachine/read",
   ]
   description = "The list of permissions that will be granted to the integration user"
 }
