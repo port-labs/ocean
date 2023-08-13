@@ -34,7 +34,14 @@
         },
         "provisioningState": {
           "title": "Provisioning State",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "Canceled",
+            "InProgress",
+            "Succeeded",
+            "Deleting",
+            "Failed"
+          ]
         },
         "outboundIpAddresses": {
           "title": "Outbound IP Addresses",
@@ -65,7 +72,7 @@
       "resourceGroup": {
         "target": "resourceGroup",
         "title": "Resource Group",
-        "required": true,
+        "required": false,
         "many": false
       }
     }
@@ -147,7 +154,12 @@
         },
         "skuTier": {
           "title": "Tier",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "Free",
+            "Paid",
+            "Standard"
+          ]
         }
       },
       "required": []
@@ -158,7 +170,7 @@
       "resourceGroup": {
         "target": "resourceGroup",
         "title": "Resource Group",
-        "required": true,
+        "required": false,
         "many": false
       }
     }
@@ -180,7 +192,13 @@
         },
         "provisioningState": {
           "title": "Provisioning State",
-          "type": "string"
+          "type": "string",
+          "enum": [
+              "Succeeded",
+              "Updating",
+              "Deleting",
+              "Failed"
+          ]
         },
         "frontendIpResourceIds": {
             "title": "Frontend IP Resource IDs",
@@ -215,7 +233,7 @@
       "resourceGroup": {
         "target": "resourceGroup",
         "title": "Resource Group",
-        "required": true,
+        "required": false,
         "many": false
       }
     }
@@ -233,11 +251,17 @@
         },
         "provisioningState": {
           "title": "Provisioning State",
-          "type": "string"
+          "type": "string",
+          "enum": [
+              "Creating",
+              "ResolvingDNS",
+              "Succeeded"
+          ]
         },
         "creationTime": {
           "title": "Creation Time",
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "isHnsEnabled": {
           "title": "Is HNS Enabled",
@@ -301,7 +325,7 @@
       "resourceGroup": {
         "target": "resourceGroup",
         "title": "Resource Group",
-        "required": true,
+        "required": false,
         "many": false
       }
     }
@@ -362,7 +386,7 @@
       "storageAccount": {
         "target": "storageAccount",
         "title": "Storage Account",
-        "required": true,
+        "required": false,
         "many": false
       }
     }
@@ -439,7 +463,7 @@
       "resourceGroup": {
         "target": "resourceGroup",
         "title": "Resource Group",
-        "required": true,
+        "required": false,
         "many": false
       }
     }
