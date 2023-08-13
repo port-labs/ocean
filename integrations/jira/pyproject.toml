@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "pagerduty"
-version = "0.1.4"
-description = "Pagerduty Integration"
-authors = ["Port Team <support@getport.io>"]
+name = "Jira"
+version = "0.1.2"
+description = "Integration to bring information from Jira into Port"
+authors = ["Mor Paz <mor@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -20,7 +20,6 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
 
   [[tool.towncrier.type]]
   directory = "breaking"

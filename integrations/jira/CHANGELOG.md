@@ -7,25 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.2 (2023-08-11)
+0.1.2 (2023-08-11)
 
 ### Improvements
 
 - Optimized dockerfile to produce smaller images (PORT-4485)
 
 
-0.1.1 (2023-08-03)
-==================
+0.1.1 (2023-08-11)
 
-### Bug Fixes
+### Improvements
 
-- Add README.md (#1)
-- Support specifying whether to count open issues per new relic entity (#1)
+- Upgraded ocean to version 0.2.2
 
 
-0.1.0 (2023-08-02)
-==================
+v0.1.0 (2023-08-10)
 
 ### Features
 
-- Add NewRelic ocean integration [PORT-4382]
+- Added Jira integration with support for projects and issues (PORT-4410)

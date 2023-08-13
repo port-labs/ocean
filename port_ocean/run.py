@@ -61,7 +61,7 @@ def _create_default_app(
 
 def run(
     path: str = ".",
-    log_level: LogLevelType = "DEBUG",
+    log_level: LogLevelType = "INFO",
     port: int = 8000,
     initialize_port_resources: bool | None = None,
 ) -> None:

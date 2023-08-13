@@ -1,3 +1,6 @@
+# This is an example configuration file for the integration service.
+# Please copy this file to config.yaml file in the integration folder and edit it to your needs.
+
 initializePortResources: true
 port:
   clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.
@@ -6,10 +9,12 @@ port:
 eventListener:
   type: POLLING
 integration:
-  # The name of the integration.
-  identifier: "my_gitlab_integration"
+  # The identifier of this integration instance.
+  identifier: "portOceanJiraIntegration"
   # The type of the integration.
-  type: "gitlab"
-  # The configuration of the integration.
+  type: "Jira"
   config:
-    tokenMapping: "{{ from env TOKEN_MAPPING }}"
+    appHost: "{{ from env APP_HOST }}"
+    jiraHost: "{{ from env JIRA_HOST }}"
+    atlassianUserEmail: "{{ from env ATLASSIAN_EMAIL }}"
+    atlassianUserToken: "{{ from env ATLASSIAN_TOKEN }}"

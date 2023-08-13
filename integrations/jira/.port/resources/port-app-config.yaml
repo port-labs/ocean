@@ -1,0 +1,35 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"project"'
+          properties:
+            url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
+  - kind: issue
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .fields.summary
+          blueprint: '"issue"'
+          properties:
+            url: (.self | split("/") | .[:3] | join("/")) + "/browse/" + .key
+            status: .fields.status.name
+            issueType: .fields.issuetype.name
+            components: .fields.components
+            assignee: .fields.assignee.displayName
+            reporter: .fields.reporter.displayName
+            creator: .fields.creator.displayName
+          relations:
+            project: .fields.project.key
+            parentIssue: .fields.parent.key
+            subtasks: .fields.subtasks | map(.key)
