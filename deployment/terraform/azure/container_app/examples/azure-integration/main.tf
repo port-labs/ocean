@@ -1,10 +1,22 @@
+variable "port_client_id" {
+  type = string
+}
+variable "port_client_secret" {
+  type = string
+}
+variable "port_base_url" {
+  type = string
+  default = ""
+}
+
 module "ocean_integration" {
   source       = "../.."
 
   # required port parameters so that the integration could communicate with Port
   port = {
-    client_id     = "xxxxxxx"
-    client_secret = "xxxxxxx"
+    client_id     = var.port_client_id
+    client_secret = var.port_client_secret
+    base_url = var.port_base_url
   }
 
   initialize_port_resources = true
