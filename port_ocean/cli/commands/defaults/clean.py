@@ -5,9 +5,8 @@ from inspect import getmembers
 from .group import defaults
 from port_ocean import __version__
 from port_ocean.cli.commands.main import print_logo, console
-from port_ocean.cli.utils import cli_root_path
 from port_ocean.ocean import Ocean
-from port_ocean.cli.defaults.port_defaults import clean_defaults
+from port_ocean.cli.defaults import clean_defaults
 from port_ocean.run import _create_default_app, _load_module
 
 
@@ -21,7 +20,15 @@ from port_ocean.run import _create_default_app, _load_module
     default=False,
     help="Delete all the entities of the Blueprint as well as the blueprint itself.",
 )
-def clean(path: str, force: bool) -> None:
+@click.option(
+    "-w",
+    "--wait",
+    "wait",
+    type=bool,
+    default=False,
+    help="Wait for the migration to finish. when force is set to true.",
+)
+def clean(path: str, force: bool, wait: bool) -> None:
     """
     Clean defaults of the integration from the .port/resources PATH.
 
@@ -46,13 +53,10 @@ def clean(path: str, force: bool) -> None:
     )
 
     migration_ids = clean_defaults(
-        app.integration.AppConfigHandlerClass.CONFIG_CLASS, force
+        app.integration.AppConfigHandlerClass.CONFIG_CLASS, force, wait
     )
 
-    if (
-        migration_ids
-        and len([migration_id for migration_id in migration_ids if migration_id]) > 0
-    ):
+    if migration_ids and len(migration_ids) > 0 and not wait:
         console.print(
             f"The clean migration has started, you can track the migration process using the following migration ids {migration_ids} ⚓️"
         )

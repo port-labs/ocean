@@ -11,7 +11,7 @@ from port_ocean.config.settings import LogLevelType, ApplicationSettings
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
-from port_ocean.cli.defaults.port_defaults import initialize_defaults
+from port_ocean.cli.defaults.initialize import initialize_defaults
 from port_ocean.utils import get_spec_file
 
 
