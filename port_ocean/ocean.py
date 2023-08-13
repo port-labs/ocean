@@ -2,7 +2,6 @@ import sys
 from typing import Callable
 
 from fastapi import FastAPI, APIRouter
-from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Scope, Receive, Send
