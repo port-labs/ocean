@@ -10,6 +10,8 @@ from gitlab_integration.utils import get_all_services, ObjectKind
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import RAW_RESULT, ASYNC_GENERATOR_RESYNC_TYPE
 
+NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not export live changes from the gitlab"
+
 all_tokens_services = get_all_services()
 
 
@@ -23,7 +25,22 @@ async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
 
 @ocean.on_start()
 async def on_start() -> None:
-    setup_application()
+    logic_settings = ocean.integration_config
+    if not logic_settings.get("app_host"):
+        logger.warning(
+            f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
+        )
+    try:
+        setup_application(
+            logic_settings["token_mapping"],
+            logic_settings["gitlab_host"],
+            logic_settings["app_host"],
+        )
+    except Exception as e:
+        logger.warning(
+            f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}",
+            stack_info=True,
+        )
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
