@@ -155,7 +155,6 @@ resources:
             # resolve storage account id from container id
             storageAccount: '.id | split("/") | .[3] |= ascii_downcase | .[4] |= ascii_downcase | .[:-4] |join("/")'
 
-
   - kind: Microsoft.Compute/virtualMachines
     selector:
         query: "true"
