@@ -6,9 +6,12 @@ features:
   - type: exporter
     section: Cloud Providers
     resources:
-      - kind: resource_group
-      - kind: container_app
+      - kind: resourceGroup
+      - kind: containerApp
       - kind: aks
+      - kind: storageAccount
+      - kind: virtualMachine
+      - kind: storageContainer
 configurations:
   - name: subscriptionId
     required: true
