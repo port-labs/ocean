@@ -1,4 +1,5 @@
-from requests import Request, Response
+from requests import Request
+from starlette import responses
 from typing import Awaitable, Callable
 
 import fastapi
@@ -15,8 +16,9 @@ class AzureIntegration(BaseIntegration):
 
 
 async def cloud_event_validation_middleware_handler(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
+    request: Request,
+    call_next: Callable[[Request], Awaitable[responses.Response]],
+) -> responses.Response:
     """
     Middleware used to handle cloud event validation requests
     Azure topic subscription expects a 200 response with specific headers

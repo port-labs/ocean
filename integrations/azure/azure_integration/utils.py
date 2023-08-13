@@ -38,6 +38,14 @@ async def get_port_resource_configuration_by_kind(
     return None
 
 
+def get_current_resource_config() -> AzureResourceConfig:
+    """
+    Returns the current resource config, accessible only inside an event context
+    """
+    # for some reason mypy doesn't recognize the `resource_config` as defined in the event context, ignoring it
+    return typing.cast(event.resource_config, AzureResourceConfig)  # type: ignore
+
+
 def resolve_resource_type_from_resource_uri(resource_uri: str) -> str:
     """
     Resolves the resource type from azure resource uri
