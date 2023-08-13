@@ -3,7 +3,6 @@ import click
 
 from inspect import getmembers
 from .group import defaults
-from port_ocean import __version__
 from port_ocean.cli.commands.main import print_logo, console
 from port_ocean.ocean import Ocean
 from port_ocean.cli.defaults import clean_defaults
@@ -52,11 +51,4 @@ def clean(path: str, force: bool, wait: bool) -> None:
         default_app,
     )
 
-    migration_ids = clean_defaults(
-        app.integration.AppConfigHandlerClass.CONFIG_CLASS, force, wait
-    )
-
-    if migration_ids and len(migration_ids) > 0 and not wait:
-        console.print(
-            f"The clean migration has started, you can track the migration process using the following migration ids {migration_ids} ⚓️"
-        )
+    clean_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, force, wait)

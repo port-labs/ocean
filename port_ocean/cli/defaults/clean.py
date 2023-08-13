@@ -18,7 +18,7 @@ def clean_defaults(
     config_class: Type[PortAppConfig],
     force: bool,
     wait: bool,
-) -> list[str] | None:
+) -> None:
     try:
         asyncio.new_event_loop().run_until_complete(
             _clean_defaults(config_class, force, wait)

@@ -3,9 +3,7 @@ import click
 
 from inspect import getmembers
 from .group import defaults
-from port_ocean import __version__
 from port_ocean.cli.commands.main import print_logo, console
-from port_ocean.cli.utils import cli_root_path
 from port_ocean.ocean import Ocean
 from port_ocean.cli.defaults.initialize import initialize_defaults
 from port_ocean.run import _create_default_app, _load_module

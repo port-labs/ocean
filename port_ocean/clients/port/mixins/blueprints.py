@@ -46,12 +46,13 @@ class BlueprintClientMixin:
 
     async def delete_blueprint(
         self, identifier: str, should_raise: bool = False, delete_entities: bool = False
-    ) -> None or str:
+    ) -> None | str:
         logger.info(
             f"Deleting blueprint with id: {identifier} with all entities: {delete_entities}"
         )
         headers = await self.auth.headers()
         response = None
+
         if not delete_entities:
             response = await self.client.delete(
                 f"{self.auth.api_url}/blueprints/{identifier}",

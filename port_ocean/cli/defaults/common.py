@@ -1,20 +1,15 @@
-import asyncio
 import json
 from pathlib import Path
 from typing import Type, Any, TypedDict, Optional
 
 import httpx
 import yaml
-from loguru import logger
 from pydantic import BaseModel, Field
 from starlette import status
 
 from port_ocean.clients.port.client import PortClient
-from port_ocean.config.settings import IntegrationConfiguration
-from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.exceptions.port_defaults import (
-    AbortDefaultCreationError,
     UnsupportedDefaultFileType,
 )
 
