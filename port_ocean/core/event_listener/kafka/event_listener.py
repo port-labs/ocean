@@ -52,13 +52,10 @@ class KafkaEventListener(BaseEventListener):
 
         return KafkaConsumerConfig.parse_obj(self.event_listener_config.dict())
 
-    def _should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
-        after = msg_value.get("diff", {}).get("after", {})
-        # handles delete events where there is no after
-        if after is None:
-            return False
-
-        integration_identifier = after.get("identifier")
+    def should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
+        integration_identifier = (
+            msg_value.get("diff", {}).get("after", {}).get("identifier")
+        )
         if integration_identifier == self.integration_identifier and (
             "change.log" in topic
         ):
@@ -67,7 +64,7 @@ class KafkaEventListener(BaseEventListener):
         return False
 
     async def _handle_message(self, message: dict[Any, Any], topic: str) -> None:
-        if not self._should_be_processed(message, topic):
+        if not self.should_be_processed(message, topic):
             return
 
         if "change.log" in topic and message is not None:
