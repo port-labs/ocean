@@ -175,7 +175,7 @@ async def _initialize_defaults(
         raise ExceptionGroup(str(e), e.errors)
 
 
-async def _clear_defaults(
+async def _clean_defaults(
     config_class: Type[PortAppConfig],
     force,
 ) -> None:
@@ -188,19 +188,10 @@ async def _clear_defaults(
         return None
 
     try:
-        if force:
-            await asyncio.gather(
-                *(
-                    port_client.delete_all_entities(
-                        should_raise=False, blueprint_identifier=blueprint["identifier"]
-                    )
-                    for blueprint in defaults.blueprints
-                )
-            )
-        await asyncio.gather(
+        return await asyncio.gather(
             *(
                 port_client.delete_blueprint(
-                    blueprint["identifier"], should_raise=False
+                    blueprint["identifier"], should_raise=True, delete_entities=force
                 )
                 for blueprint in defaults.blueprints
             )
@@ -221,14 +212,15 @@ def initialize_defaults(
         logger.debug(f"Failed to initialize defaults, skipping... Error: {e}")
 
 
-def clear_defaults(
+def clean_defaults(
     config_class: Type[PortAppConfig],
     force: bool,
-) -> None:
+) -> list[str] | None:
     try:
-        asyncio.new_event_loop().run_until_complete(
-            _clear_defaults(config_class, force)
+        migration_ids = asyncio.new_event_loop().run_until_complete(
+            _clean_defaults(config_class, force)
         )
+        return migration_ids
     except Exception as e:
         logger.debug(f"Failed to clear defaults, skipping... Error: {e}")
 

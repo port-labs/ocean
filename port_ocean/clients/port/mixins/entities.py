@@ -155,21 +155,3 @@ class EntityClientMixin:
                 "validation_only": True,
             },
         )
-
-    async def delete_all_entities(
-        self,
-        blueprint_identifier: str,
-        should_raise: bool,
-    ) -> None:
-        logger.info(f"Delete all entities of blueprint: {blueprint_identifier}")
-        response = await self.client.delete(
-            f"{self.auth.api_url}/blueprints/{blueprint_identifier}/all-entities",
-            headers=await self.auth.headers(),
-        )
-
-        if response.is_error:
-            logger.error(
-                f"Error deleting all entities " f"blueprint: {blueprint_identifier}"
-            )
-
-        handle_status_code(response, should_raise)

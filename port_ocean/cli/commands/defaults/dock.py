@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
+import click
 
 from inspect import getmembers
-import os
-import click
-from cookiecutter.main import cookiecutter  # type: ignore
-
+from .group import defaults
 from port_ocean import __version__
-from port_ocean.cli.commands.main import cli_start, print_logo, console
+from port_ocean.cli.commands.main import print_logo, console
 from port_ocean.cli.utils import cli_root_path
 from port_ocean.ocean import Ocean
-from port_ocean.port_defaults import initialize_defaults
+from port_ocean.cli.defaults.port_defaults import initialize_defaults
 from port_ocean.run import _create_default_app, _load_module
 
 
-@cli_start.command()
+@defaults.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
-def apply_defaults(path: str) -> None:
+def dock(path: str) -> None:
     """
     Apply defaults of the integration from the .port/resources PATH.
 
@@ -23,7 +21,7 @@ def apply_defaults(path: str) -> None:
     """
     print_logo()
 
-    console.print("Applying default blueprints and configurations! ⚓️")
+    console.print("Unloading cargo at the dock... 📦🚢")
 
     default_app = _create_default_app(path, False)
 
