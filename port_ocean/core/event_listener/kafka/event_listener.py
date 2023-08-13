@@ -54,7 +54,7 @@ class KafkaEventListener(BaseEventListener):
 
     def _should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
         after = msg_value.get("diff", {}).get("after", {})
-        # handles delete events from audit log where there is no after
+        # handles delete events from change log where there is no after
         if after is None:
             return False
 
