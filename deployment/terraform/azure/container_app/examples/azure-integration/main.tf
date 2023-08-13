@@ -1,12 +1,9 @@
-variable "port_client_id" {
-  type = string
-}
-variable "port_client_secret" {
-  type = string
-}
-variable "port_base_url" {
-  type = string
-  default = ""
+locals {
+  # splits the list into chunks of 25 elements, due to the limit of 25 elements in the advanced filtering for each subscription filter
+  # https://learn.microsoft.com/en-us/azure/event-grid/event-filtering#limitations
+  chunked_resources_filter_values = chunklist(var.resources_filter_values, 25)
+  # creates a dictionary with the index of the chunk as key and the chunk as value
+  chunked_resouces_filter_dict = { for i in range(length(local.chunked_resources_filter_values)) : i => local.chunked_resources_filter_values[i] }
 }
 
 module "ocean_integration" {
@@ -19,44 +16,36 @@ module "ocean_integration" {
     base_url = var.port_base_url
   }
 
-  initialize_port_resources = true
+  initialize_port_resources = var.initialize_port_resources
 
   # required port integration parameters so Port could identify the integration
   integration = {
     type       = "azure"
-    identifier = "az1"
+    identifier = var.integration_identifier
     config     = {
     }
   }
   # optional port integration parameters
-  subscription_id = "/subscriptions/xxxxxx"
-  location = "East US 2"
+  subscription_id = "/subscriptions/${var.subscription_id}"
+  location = var.location
 
-  image = "ghcr.io/port-labs/port-ocean-azure:v0.1.0rc11"
+  image = var.image
 
   permissions = {
-    actions = [
-      "microsoft.app/containerapps/read",
-      "Microsoft.Storage/storageAccounts/read",
-      "Microsoft.ContainerService/managedClusters/read",
-      "Microsoft.Network/loadBalancers/read",
-      "Microsoft.Resources/subscriptions/resourceGroups/read",
-      "Microsoft.Resources/subscriptions/resources/read",
-    ]
+    actions = var.action_permissions_list
     not_actions = []
     data_actions = []
     not_data_actions = []
   }
 
   additional_secrets = {
-      OCEAN__INTEGRATION__CONFIG__SUBSCRIPTION_ID = "xxxxxxxxx"
-  }
-  additional_environment_variables = {
-    OCEAN__INTEGRATION__CONFIG__SOME_ENV_VAR = "some-value"
+      OCEAN__INTEGRATION__CONFIG__SUBSCRIPTION_ID = var.subscription_id
   }
 }
 
 resource "azurerm_eventgrid_system_topic" "subscription_event_grid_topic" {
+  # if the event grid topic name is not provided, the module will create a new one
+  count               = var.event_grid_topic_name != "" ? 0 : 1
   name                = "subscription-event-grid-topic"
   resource_group_name = module.ocean_integration.resource_group_name
   location            = "Global"
@@ -66,9 +55,11 @@ resource "azurerm_eventgrid_system_topic" "subscription_event_grid_topic" {
 
 
 resource "azurerm_eventgrid_system_topic_event_subscription" "subscription_event_grid_topic_subscription" {
-  name                = replace(replace("ocean-${module.ocean_integration.integration.type}-${module.ocean_integration.integration.identifier}-subscription","_", "-"),".","-")
-  resource_group_name = azurerm_eventgrid_system_topic.subscription_event_grid_topic.resource_group_name
-  system_topic   = azurerm_eventgrid_system_topic.subscription_event_grid_topic.name
+  # creates a subscription for each chunk of filter values ( 25 per chunk )
+  for_each            = local.chunked_resouces_filter_dict
+  name                = replace(replace("ocean-${module.ocean_integration.integration.type}-${module.ocean_integration.integration.identifier}-subscription-${each.key}","_", "-"),".","-")
+  resource_group_name = var.event_grid_resource_group != "" ? var.event_grid_resource_group: azurerm_eventgrid_system_topic.subscription_event_grid_topic[0].resource_group_name
+  system_topic        = var.event_grid_topic_name != "" ? var.event_grid_topic_name : azurerm_eventgrid_system_topic.subscription_event_grid_topic[0].name
 
   included_event_types = [
     "Microsoft.Resources.ResourceWriteSuccess",
@@ -84,14 +75,7 @@ resource "azurerm_eventgrid_system_topic_event_subscription" "subscription_event
   advanced_filter {
     string_contains {
       key    = "data.operationName"
-      values = [
-        "microsoft.app/containerapps",
-        "Microsoft.Storage/storageAccounts",
-        "Microsoft.ContainerService/managedClusters",
-        "Microsoft.Network/loadBalancers",
-        "Microsoft.Compute/virtualMachine",
-        "Microsoft.Resources/subscriptions/resourceGroups",
-      ]
+      values = each.value
     }
   }
   delivery_property {

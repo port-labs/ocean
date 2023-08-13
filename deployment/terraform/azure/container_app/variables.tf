@@ -85,14 +85,14 @@ variable "image_registry" {
 
 variable "location" {
   type    = string
-  default = "West US 2"
+  default = "East US 2"
   description = "The location to deploy the container to"
 }
 
 variable "subscription_id" {
   type    = string
   default = null
-  description = "The scope of the user assigned identity and the scope of the role definition"
+  description = "The scope of the user assigned identity and the scope of the role definition (e.g /subscriptions/00000000-0000-0000-0000-000000000000)"
 }
 
 variable "resource_group_name" {
