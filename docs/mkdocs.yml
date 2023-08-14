@@ -54,27 +54,26 @@ plugins:
             show_bases: false
 
 markdown_extensions:
-  toc:
-    permalink: true
-  markdown.extensions.codehilite:
-    guess_lang: false
-  admonition:
-  codehilite:
-  extra:
-  pymdownx.emoji:
-    emoji_index: !!python/name:materialx.emoji.twemoji
-    emoji_generator: !!python/name:materialx.emoji.to_svg
-  pymdownx.superfences:
-    custom_fences:
-      - name: mermaid
-        class: mermaid
-        format: !!python/name:pymdownx.superfences.fence_code_format ""
-  pymdownx.tabbed:
-    alternate_style: true
-  pymdownx.snippets:
-    base_path: ../
-  attr_list:
-  md_in_html:
+  - admonition
+  - toc:
+      permalink: true
+  - codehilite:
+      linenums: True
+      guess_lang: false
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format ""
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: ../
+  - attr_list:
+  - md_in_html:
 
 extra_css:
   - assets/css/termynal.css
@@ -91,7 +90,8 @@ nav:
       - 🚀 Deployment:
           - Helm: ./getting-started/deployment/helm.md
           - Terraform: ./getting-started/deployment/terraform.md
-  - 🌟 Features: features.md
+  - 📝 Integrations Library: ./integrations_library/index.md
+  - 🌟 Features: ./features/index.md
   - 💻 Cli: ./cli.md
   - 📚 Guides: ./guides/index.md
   - 🔧 Development: ./development/index.md
