@@ -50,7 +50,7 @@ variable "action_permissions_list" {
       "Microsoft.ContainerService/managedClusters/read",
       "Microsoft.Network/loadBalancers/read",
       "Microsoft.Resources/subscriptions/resourceGroups/read",
-      "Microsoft.Compute/virtualMachine/read",
+      "Microsoft.Compute/virtualMachines/read",
   ]
   description = "The list of permissions that will be granted to the integration user"
 }
