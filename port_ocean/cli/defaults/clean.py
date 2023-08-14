@@ -25,7 +25,7 @@ def clean_defaults(
         )
 
     except Exception as e:
-        logger.debug(f"Failed to clear defaults, skipping... Error: {e}")
+        logger.error(f"Failed to clear defaults, skipping... Error: {e}")
 
 
 async def _clean_defaults(

@@ -28,11 +28,6 @@ class MigrationClientMixin:
             headers=headers,
         )
 
-        if response.is_error:
-            logger.error(
-                f"Could not get migration status with id: {migration_id}. Error: {response.text}"
-            )
-
         handle_status_code(response, should_raise=True)
 
         migration_status = response.json().get("migration", {}).get("status", None)
@@ -43,9 +38,9 @@ class MigrationClientMixin:
         ):
             await asyncio.sleep(interval)
             await self.wait_for_migration_to_complete(migration_id, interval)
-
-        logger.info(
-            f"Migration with id: {migration_id} completed successfully",
-        )
+        else:
+            logger.info(
+                f"Migration with id: {migration_id} finished with status {migration_status}",
+            )
 
         return Migration.parse_obj(response.json()["migration"])
