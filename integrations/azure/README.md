@@ -41,13 +41,13 @@ The integration will need to have permissions to read the resources you want to 
 #### Azure Infrastructure
 
 - **Azure Subscription**: You'll need an Azure subscription to deploy the integration.
-- **Azure Resource Group**: The integration need to be deployed to an Azure Resource Group, you can pass an existing one, or the integration will create a new one. (To override add `resource_group_id: <your-resource-group-id>`)
-- **Azure Container App**: The integration will be deployed using Azure Container App. Which requires some extra infrastructure to be deployed, by default if not specified otherwise we will deploy the associate infrastructure.
-  - **Azure Log Analytics Workspace**: The integration will create a new Log Analytics Workspace to store the logs of the integration. (To override add `log_analytics_workspace_id: <your-log-analytics-workspace-id>`)
-  - **Azure Container App Environment**: The integration will create a new Container App Environment to deploy the integration to. (To override add `container_app_environment_id: <your-app-environment-id>`)
+- **Azure Resource Group**: The integration need to be deployed to an Azure Resource Group, you can pass an existing one, or the integration will create a new one. (To override add `-var='resource_group_id=<your-resource-group-id>'`)
+- **Azure Container App**: The integration will be deployed using Azure Container App. Which requires some extra infrastructure to be deployed, by default if not specified otherwise we will deploy the required infrastructure.
+  - **Azure Log Analytics Workspace**: The integration will create a new Log Analytics Workspace to store the logs of the integration. (To override add `-var='log_analytics_workspace_id=<your-log-analytics-workspace-id>'` to the terraform apply command)
+  - **Azure Container App Environment**: The integration will create a new Container App Environment to deploy the integration to. (To override add `-var='container_app_environment_id=<your-app-environment-id>'` to the terraform apply command)
 
 #### Azure Event Grid
-- **Azure Event Grid System Topic**: To allow the integration to receive events from Azure, an Event Grid System Topic of type `Microsoft.Resources.Subscriptions` will be needed. The integration will create a new System Topic and will subscribe to it. (Due to a limitation in Azure only one Event Grid System Topic of type `Microsoft.Resources.Subscriptions` can be created per subscription, so if you already have one you'll need to pass it to the integration using `event_grid_system_topic_name: <your-event-grid-system-topic-name>`) Further example on how to create the System Topic will be provided later on in the documentation.
+- **Azure Event Grid System Topic**: To allow the integration to receive events from Azure, an Event Grid System Topic of type `Microsoft.Resources.Subscriptions` will be needed. The integration will create a new System Topic and will subscribe to it. (Due to a limitation in Azure only one Event Grid System Topic of type `Microsoft.Resources.Subscriptions` can be created per subscription, so if you already have one you'll need to pass it to the integration using `-var='event_grid_system_topic_name=<your-event-grid-system-topic-name>'`) Further example on how to create the System Topic will be provided later on in the documentation.
 - **Azure Event Grid Subscription**: To Pass the events from the System Topic to the integration, an Event Grid Subscription will be needed. The integration will create a new Subscription and will pass the events to the integration.
 
 
@@ -55,9 +55,11 @@ The integration will need to have permissions to read the resources you want to 
 
 The integration is deployed using Terraform on Azure [ContainerApp](https://learn.microsoft.com/en-us/azure/container-apps/overview).
 
-The integration is being triggered in two ways:
-- On events sends from the Azure Event Grid.
+The integration can be triggered in two ways:
+- On events sent from the Azure Event Grid.
 - When a change in the integration configuration is detected.
+
+To deploy the integration, run the following commands:
 
 ```sh
 export TF_VAR_port_client_id=<PORT_CLIENT_ID>
@@ -69,7 +71,7 @@ cd deployment/azure/container_app/examples
 
 terraform init
 
-terraform apply -var="subscription_id=<subscription_id>"
+terraform apply -var='subscription_id=<subscription_id>'
 ```
 
 ## Supported Kinds
@@ -867,6 +869,8 @@ The mapping should refer to one of the storage containers from the example respo
 
 ## Adding a new Azure Resource kind
 
+Adding new azure resource that the integration will know how to handle requires the following steps:
+
 ### Blueprints
 To add a new Azure Resource kind, you'll need to add a new blueprint to the `blueprints.json` file.
 
@@ -899,7 +903,7 @@ cd deployment/azure/container_app/examples
 
 terraform init
 
-terraform apply -var='subscription_id=<subscription_id>' -var='action_permissions_list=["Microsoft.app/containerapps/read","Microsoft.Storage/storageAccounts/read","Microsoft.ContainerService/managedClusters/read","Microsoft.Network/loadBalancers/read","Microsoft.Resources/subscriptions/resourceGroups/read","Microsoft.Resources/subscriptions/resources/read", "Microsoft.Network/virtualNetworks/read"]' -var='event_grid_event_filter_list=["Microsoft.App/containerApp","Microsoft.Storage/storageAccounts","Microsoft.Compute/virtualMachines","Microsoft.Network/loadBalancers","Microsoft.Resources/subscriptions/resourceGroups", "Microsoft.Network/virtualNetworks]'
+terraform apply -var='action_permissions_list=["Microsoft.Network/virtualNetworks/read", <previous-provided-permissions-list>]' -var='event_grid_event_filter_list=["Microsoft.Network/virtualNetworks",<extra-filters-for-previous-resources>]' -var='subscription_id=<subscription_id>'
 ```
 
 Let's go over the changes we made:

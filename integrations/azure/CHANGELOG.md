@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Add Azure ocean integration [PORT-4351] (#0)
+- Added Azure ocean integration [PORT-4351] (#0)

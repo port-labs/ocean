@@ -1,4 +1,4 @@
-from requests import Request
+from requests import Request  # type: ignore
 from starlette import responses
 from typing import Awaitable, Callable
 

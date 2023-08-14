@@ -1,4 +1,4 @@
-version: v0.1.0rc14
+version: v0.1.0rc15
 type: azure
 description: azure integration for Port Ocean
 icon: Azure
@@ -17,3 +17,5 @@ configurations:
     required: true
     type: string
     sensitive: true
+deploymentMethod:
+  deployments:

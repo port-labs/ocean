@@ -27,7 +27,7 @@ variable "event_listener" {
 variable "additional_secrets" {
   type = map(string)
   default = {}
-  description = "Additional secrets to be injected into the container, the key of the map is the name of the secret and will be the environment variable name"
+  description = 'Additional secrets to be injected into the container, the key of the map is the name of the secret and will be the environment variable name, e.g. {MY_SECRET: "my-secret"}'
 }
 
 variable "additional_environment_variables" {

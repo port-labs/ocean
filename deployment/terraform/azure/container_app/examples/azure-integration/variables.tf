@@ -22,13 +22,13 @@ variable "resources_filter_values" {
   type = list(string)
   default = [
         "microsoft.app/containerapps",
-        "Microsoft.Storage/storageAccounts",
         "Microsoft.ContainerService/managedClusters",
         "Microsoft.Network/loadBalancers",
         "Microsoft.Compute/virtualMachine",
         "Microsoft.Resources/subscriptions/resourceGroups",
+        "Microsoft.Storage/storageAccounts",
   ]
-  description = "The list of resources that will be used for the advanced filtering of the subscription event grid topic"
+  description = "The list of resources that integration will receive events for"
 }
 variable "included_event_types" {
   type = list(string)
@@ -64,12 +64,12 @@ variable "image" {
 variable "initialize_port_resources" {
     type = bool
     default = true
-    description = "If true, the module will initialize the port resources"
+    description = "If true, the module will initialize the default port resources (blueprints and relations)"
 }
 
 variable "integration_identifier" {
     type = string
-    default = "az"
+    default = "azure"
     description = "The identifier of the integration"
 }
 
@@ -81,6 +81,6 @@ variable "subscription_id" {
 
 variable "location" {
   type    = string
-  default = "East US 2"
+  default = "East US"
   description = "The location to deploy the container to"
 }

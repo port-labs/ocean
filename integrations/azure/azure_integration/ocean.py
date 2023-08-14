@@ -69,12 +69,12 @@ async def resync_extension_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     The Resource Management API does not support listing extension resources
     The only way to list extension resources is to query the base resource and get the extension resources from the response
-    This method take advantage of the fact that the resource id is the same as the resource url,
-    and uses it to query the base resource and with like that get the extension resources
+    This method takes advantage of the fact that the resource id is the same as the resource url,
+    and uses it to query the base resource which it uses to get the extension resources
 
     We support multiple levels of extension resources
     For example:
-    Microsoft.Storage/storageAccounts/blobServices/containers is an extension resource, and also it parent
+    Microsoft.Storage/storageAccounts/blobServices/containers is an extension resource, and its parent
     Microsoft.Storage/storageAccounts/blobServices is an extension resource of Microsoft.Storage/storageAccounts
     Microsoft.Storage/storageAccounts is a base resource
 
