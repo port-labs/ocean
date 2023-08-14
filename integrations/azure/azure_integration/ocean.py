@@ -179,21 +179,21 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
     https://learn.microsoft.com/en-us/azure/event-grid/event-schema-subscriptions?tabs=event-grid-event-schema
     https://learn.microsoft.com/en-us/azure/event-grid/cloud-event-schema
     """
-    cloud_event_data = typing.cast(cloud_event.data, dict[str, typing.Any])  # type: ignore
     logger.debug(
         "Received azure cloud event",
         event_id=cloud_event.id,
         event_type=cloud_event.type,
-        resource_provider=cloud_event_data["resourceProvider"],
-        operation_name=cloud_event_data["operationName"],
+        resource_provider=getattr(cloud_event.data, "resourceProvider"),
+        operation_name=getattr(cloud_event.data, "operationName"),
     )
+    resource_uri = getattr(cloud_event.data, "resourceUri")
     resource_type = resolve_resource_type_from_resource_uri(
-        cloud_event_data["resourceUri"]
+        resource_uri=resource_uri,
     )
     if not resource_type:
         logger.warning(
             "Could not resolve resource type from cloud event",
-            resource_uri=cloud_event_data["resourceUri"],
+            resource_uri=resource_uri,
         )
         return fastapi.Response(status_code=http.HTTPStatus.NOT_FOUND)
 
@@ -208,19 +208,19 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
     async with resource_client_context() as client:
         logger.debug(
             "Querying full resource",
-            id=cloud_event_data["resourceUri"],
+            id=resource_uri,
             kind=resource_type,
             api_version=resource_config.selector.api_version,
         )
         try:
             resource = await client.resources.get_by_id(
-                resource_id=cloud_event_data["resourceUri"],
+                resource_id=resource_uri,
                 api_version=resource_config.selector.api_version,
             )
         except ResourceNotFoundError:
             logger.debug(
                 "Resource not found in azure, unregistering from port",
-                id=cloud_event_data["resourceUri"],
+                id=resource_uri,
                 kind=resource_type,
                 api_version=resource_config.selector.api_version,
             )
@@ -228,7 +228,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
                 [
                     Entity(
                         blueprint=resource_config.port.entity.mappings.blueprint,  # type: ignore
-                        identifier=cloud_event_data["resourceUri"],
+                        identifier=resource_uri,
                     )
                 ]
             )
