@@ -180,7 +180,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
     https://learn.microsoft.com/en-us/azure/event-grid/cloud-event-schema
     """
     cloud_event_data: dict[str, typing.Any] = cloud_event.data  # type: ignore
-    logger.debug(
+    logger.info(
         "Received azure cloud event",
         event_id=cloud_event.id,
         event_type=cloud_event.type,
@@ -219,7 +219,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
                 api_version=resource_config.selector.api_version,
             )
         except ResourceNotFoundError:
-            logger.debug(
+            logger.info(
                 "Resource not found in azure, unregistering from port",
                 id=resource_uri,
                 kind=resource_type,
@@ -228,7 +228,9 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
             await ocean.unregister(
                 [
                     Entity(
-                        blueprint=resource_config.port.entity.mappings.blueprint,  # type: ignore
+                        # remove the quotes from the blueprint name
+                        # TODO: remove this once the port client handles it
+                        blueprint=resource_config.port.entity.mappings.blueprint.strip('"'),  # type: ignore
                         identifier=resource_uri,
                     )
                 ]
