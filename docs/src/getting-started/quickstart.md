@@ -1,3 +1,5 @@
+In this quickstart guide, you'll learn how to **install** the Ocean CLI, **scaffold** a new integration, add your **custom logic** and **run** the new integration locally.
+
 ## Requirements
 
 Python 3.11
@@ -15,7 +17,7 @@ $ pip install "port-ocena[cli]"
 </div>
 ## Example
 
-### Scaffold a new project
+### Scaffold
 
 <div class="termy" style="max-height: 500px">
 
@@ -57,7 +59,7 @@ Here are your next steps:
 
 </div>
 
-### Write your integration
+### Develop
 
 - Edit the file `./my_slug/main.py` to add your integration logic.
 
@@ -108,7 +110,7 @@ configurations:
     type: url
 ```
 
-- Edit the file `./my_slug/config.yaml` to add your integration default configuration.
+- Edit the file `./my_slug/config.yaml` to add the default configuration of your integration.
 
 ```yaml linenums="1" hl_lines="5-6 13-18"
 # This is an example configuration file for the integration service.
@@ -132,7 +134,7 @@ integration:
     jiraUrl: "https://example.com"
 ```
 
-### Run it
+### Run
 
 <div class="termy">
 
@@ -151,20 +153,20 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 
 </div>
 
-### Interactive API docs
+#### Interactive API docs
 
-Open your browser and go to [http://localhost:8000/docs](http://localhost:8000/docs). You should see the following:
+An integration comes built-in with a FastAPI server which also provides a REST interface and a Swagger webpage.
+
+To view the routes exposed by your integration open your browser and go to [http://localhost:8000/docs](http://localhost:8000/docs). You will see the automatic interactive API documentation for the integration routes (provided by [Swagger UI](https://github.com/swagger-api/swagger-ui)):
 
 ![IntegrationScaffoldSwagger.png](../assets/IntegrationScaffoldSwagger.png)
 
-You will see the automatic interactive API documentation for the integration routes (provided by [Swagger UI](https://github.com/swagger-api/swagger-ui))
-
 <details markdown="1">
-<summary>Alternative Api docs...</summary>
+<summary>Alternative API docs</summary>
 
-There is an alternative to the Api docs (provided by [Redoc](https://github.com/Redocly/redoc))
+There is an alternative to the API docs (provided by [Redoc](https://github.com/Redocly/redoc))
 
-Open your browser and go to [http://localhost:8000/redoc](http://localhost:8000/redoc). You should see the following:
+Open your browser and go to [http://localhost:8000/redoc](http://localhost:8000/redoc). You will see the following:
 
 ![IntegrationScaffoldSwagger.png](../assets/IntegrationScaffoldRedoc.png)
 
