@@ -334,7 +334,7 @@
     "identifier": "storageContainer",
     "description": "This blueprint represents an Azure Storage Container in our software catalog",
     "title": "Storage Container",
-    "icon": "S3",
+    "icon": "Azure",
     "schema": {
       "properties": {
         "publicAccess": {

@@ -179,14 +179,15 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
     https://learn.microsoft.com/en-us/azure/event-grid/event-schema-subscriptions?tabs=event-grid-event-schema
     https://learn.microsoft.com/en-us/azure/event-grid/cloud-event-schema
     """
+    cloud_event_data: dict[str, typing.Any] = cloud_event.data  # type: ignore
     logger.debug(
         "Received azure cloud event",
         event_id=cloud_event.id,
         event_type=cloud_event.type,
-        resource_provider=getattr(cloud_event.data, "resourceProvider"),
-        operation_name=getattr(cloud_event.data, "operationName"),
+        resource_provider=cloud_event_data["resourceProvider"],
+        operation_name=cloud_event_data["operationName"],
     )
-    resource_uri = getattr(cloud_event.data, "resourceUri")
+    resource_uri = cloud_event_data["resourceUri"]
     resource_type = resolve_resource_type_from_resource_uri(
         resource_uri=resource_uri,
     )
