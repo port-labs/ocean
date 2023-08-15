@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.4 (2023-08-11)
+
+### Improvements
+
+- Optimized dockerfile to produce smaller images (PORT-4485)
+
+
 # Port_Ocean 0.1.3 (2023-08-11)
 
 ### Improvements
