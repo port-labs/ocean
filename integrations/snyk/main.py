@@ -24,8 +24,7 @@ snyk_client = SnykClient(
 @ocean.on_resync(ObjectKind.TARGET)
 async def on_targets_resync(kind: str) -> list[dict[Any, Any]]:
     logger.info(f"Listing Snyk resource: {kind}")
-    targets = await snyk_client.get_targets()
-    return targets
+    return await snyk_client.get_targets()
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
