@@ -48,6 +48,23 @@ h6::first-letter {
   --ifm-color-primary-lightest: #86e2ea;
 }
 
+.termynal-comment {
+  color: #4a968f;
+  font-style: italic;
+  display: block;
+}
+
+.termy {
+  /* For right to left languages */
+  direction: ltr;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.termy [data-termynal] {
+  white-space: pre-wrap;
+}
+
 :root {
   --docusaurus-highlighted-code-line-bg: #e6ecf3;
 }
