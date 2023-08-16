@@ -1,0 +1,122 @@
+site_name: Ocean Documentation
+site_url: https://app.getport.io
+theme:
+  name: material
+  logo: ./assets/OceanSymbol.svg
+  favicon: ./assets/OceanSymbol.svg
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tooltips
+    - navigation.indexes
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+
+  palette:
+    - scheme: default
+      media: "(prefers-color-scheme: light)"
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/lightbulb
+        name: Switch to dark mode
+    - scheme: slate
+      media: "(prefers-color-scheme: dark)"
+      primary: teal
+      accent: indigo
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to light mode
+
+repo_name: port-labs/Port-Ocean
+repo_url: https://github.com/port-labs/Port-Ocean
+docs_dir: src
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [../port_ocean]
+          options:
+            show_root_heading: true
+            heading_level: 2
+            show_category_heading: true
+            show_source: false
+            show_bases: false
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - codehilite:
+      linenums: True
+      guess_lang: false
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format ""
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets:
+      base_path: ../
+  - attr_list:
+  - md_in_html:
+
+extra_css:
+  - assets/css/termynal.css
+  - assets/css/custom.css
+extra_javascript:
+  - assets/js/termynal.js
+  - assets/js/custom.js
+
+nav:
+  - 🌊 Ocean: index.md
+  - 🎉 Getting Started:
+      - ⚡️ Quickstart: ./getting-started/quickstart.md
+      - 📦 Publishing: ./getting-started/publishing.md
+      - 🚀 Deployment:
+          - Helm: ./getting-started/deployment/helm.md
+          - Terraform: ./getting-started/deployment/terraform.md
+  - 📝 Integrations Library: ./integrations_library/index.md
+  - 🔧 Develop an Integration: ./development/index.md
+  - 🏖️ The Ocean Framework:
+      - 🏖️ The Ocean Framework: ./framework/index.md
+      - 🌟 Features: ./framework/features/index.md
+      - 💻 Cli: ./framework/cli/index.md
+  - 🤝 Contributing:
+      - ⚙️ Developing a Feature: ./contributing/developing-feature.md
+      - 💡 Suggesting a Feature: ./contributing/suggesting-feature.md
+      - 🐞 Reporting a Bug: ./contributing/reporting-bug.md
+      - 📝 Suggesting a Docs change: ./contributing/suggesting-docs-change.md
+      - ⁉️ Asking a Question: ./contributing/asking-question.md
+  # - 🔍 References:
+  #     - core:
+  #         - integrations: ./references/core/integrations.md
+  #         - handlers: ./references/core/handlers.md
+  #         - event listener: ./references/core/event-listener.md
+  #         - models: ./references/core/models.md
+  #         - types: ./references/core/types.md
+  #     - clients: ./references/clients.md
+  #     - config: ./references/config.md
+  #     - consumers: ./references/consumers.md
+  #     - context: ./references/context.md
+  #     - middleware: ./references/middleware.md
+  #     - ocean: ./references/ocean.md
+  #     - run: ./references/run.md
+  #     - utils: ./references/utils.md
+  - 📜 License: ./license.md
+  - 📅 Release Notes: ./release-notes.md
+  - 🤔 FAQ: ./faq.md

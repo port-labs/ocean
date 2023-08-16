@@ -1,12 +1,12 @@
+In this quickstart guide, you'll learn how to **install** the Ocean CLI, **scaffold** a new integration, add your **custom logic** and **run** the new integration locally.
+
 ## Requirements
 
 Python 3.11
 
-
 ## Installation
 
 <div class="termy">
-
 
 ```console
 
@@ -14,29 +14,29 @@ $ pip install "port-ocena[cli]"
 ---> 100%
 ```
 
-
 </div>
 ## Example
 
-### Scaffold a new project
+### Scaffold
+
 <div class="termy" style="max-height: 500px">
 
 ```console
 $ ocean new
-    
+
 🚢 Unloading cargo... Setting up your integration at the dock.
-integration_name [Name of the integration]: 
+integration_name [Name of the integration]:
 $ myIntegration
- 
-integration_slug [myintegration]:  
-$ my_slug
+
+integration_slug [myintegration]:
+$ my_integration
 
 integration_short_description [A short description of the project]:
 $ My custom integration made for Port
- 
+
 full_name [Your name]:
 $ Monkey D. Luffy
- 
+
 email [Your address email <you@example.com>]:
 $ straw@hat.com
 
@@ -48,21 +48,29 @@ $ 2023-08-06
 Here are your next steps:
 
 ⚓️ Install necessary packages: Run make install to install all required packages for your project.
-▶️ cd ./my_slug && make install && . .venv/bin/activate
+▶️ cd ./my_integration && make install && . .venv/bin/activate
 
 ⚓️ Set sail with Ocean: Run ocean sail <path_to_integration> to run the project using Ocean.
-▶️ ocean sail ./my_slug 
+▶️ ocean sail ./my_integration
 
-⚓️ Smooth sailing with Make: Alternatively, you can run make run to launch your project using Make. 
-▶️ make run ./my_slug
+⚓️ Smooth sailing with Make: Alternatively, you can run make run to launch your project using Make.
+▶️ make run ./my_integration
 ```
 
 </div>
 
+<details markdown="1">
+<summary>Scaffolding the project with <code>make new</code></summary>
 
-### Write your integration
+You may use the "make new" command instead of "ocean new" to scaffold a new integration project in the integrations folder.
 
-- Edit the file `./my_slug/main.py` to add your integration logic.
+The make command will use the ocean new command behind the scenes.
+
+</details>
+
+### Develop
+
+- Edit the file `./my_integration/main.py` to add your integration logic.
 
 ```python linenums="1"
 from typing import Any
@@ -85,7 +93,7 @@ async def on_start() -> None:
 
 ```
 
-- Edit the file `./my_slug/.port/spec.yaml` to add your integration specification.
+- Edit the file `./my_integration/.port/spec.yaml` to add your integration specification.
 
 ```yaml linenums="1"
 version: v0.1.0
@@ -111,31 +119,31 @@ configurations:
     type: url
 ```
 
-- Edit the file `./my_slug/config.yaml` to add your integration default configuration.
+- Edit the file `./my_integration/config.yaml` to add the default configuration of your integration.
 
 ```yaml linenums="1" hl_lines="5-6 13-18"
 # This is an example configuration file for the integration service.
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 
 port:
-  clientId: {{ from env PORT_CLIENT_ID }} # Can be loaded via environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
-  clientSecret: {{ from env PORT_CLIENT_SECRET }} # Can be loaded via environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
+  clientId: { { from env PORT_CLIENT_ID } } # Can be loaded via environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
+  clientSecret: { { from env PORT_CLIENT_SECRET } } # Can be loaded via environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
 # The event listener to use for the integration service.
 eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
   # Can be loaded via environment variable: INTEGRATION_IDENTIFIER or OCEAN__INTEGRATION__IDENTIFIER
-  identifier: {{ from env INTEGRATION_IDENTIFIER }}
-  
-  # These two should match the values in the .port/spec.yaml file    
+  identifier: { { from env INTEGRATION_IDENTIFIER } }
+
+  # These two should match the values in the .port/spec.yaml file
   type: "My Integration type (Gitlab, Jira, etc.)"
   config:
-    myJiraToken: {{ from env MY_INTEGRATION_CONFIG }} 
+    myJiraToken: { { from env MY_INTEGRATION_CONFIG } }
     jiraUrl: "https://example.com"
 ```
 
-### Run it
+### Run
 
 <div class="termy">
 
@@ -145,33 +153,30 @@ $ make install
 ---> 100%
 
 $ . .venv/bin/activate
-$ (my_slug3.11) ocean sail
+$ (my_integration3.11) ocean sail
 Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓
 INFO:     Started server process [50121]
 INFO:     Waiting for application startup.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
 
-
 </div>
 
-### Interactive API docs
+#### Interactive API docs
 
-Open your browser and go to [http://localhost:8000/docs](http://localhost:8000/docs). You should see the following:
+An integration comes built-in with a FastAPI server which also provides a REST interface and a Swagger webpage.
+
+To view the routes exposed by your integration open your browser and go to [http://localhost:8000/docs](http://localhost:8000/docs). You will see the automatic interactive API documentation for the integration routes (provided by [Swagger UI](https://github.com/swagger-api/swagger-ui)):
 
 ![IntegrationScaffoldSwagger.png](../assets/IntegrationScaffoldSwagger.png)
 
-You will see the automatic interactive API documentation for the integration routes (provided by [Swagger UI](https://github.com/swagger-api/swagger-ui))
-
 <details markdown="1">
-<summary>Alternative Api docs...</summary>
+<summary>Alternative API docs</summary>
 
-There is an alternative to the Api docs (provided by [Redoc](https://github.com/Redocly/redoc))
+There is an alternative to the API docs (provided by [Redoc](https://github.com/Redocly/redoc))
 
-Open your browser and go to [http://localhost:8000/redoc](http://localhost:8000/redoc). You should see the following:
+Open your browser and go to [http://localhost:8000/redoc](http://localhost:8000/redoc). You will see the following:
 
 ![IntegrationScaffoldSwagger.png](../assets/IntegrationScaffoldRedoc.png)
 
 </details>
-
-
