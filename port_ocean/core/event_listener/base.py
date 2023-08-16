@@ -8,6 +8,7 @@ class EventListenerEvents(TypedDict):
     """
     A dictionary containing event types and their corresponding event handlers.
     """
+
     on_resync: Callable[[dict[Any, Any]], Awaitable[None]]
 
 
@@ -29,6 +30,5 @@ class EventListenerSettings(BaseModel, extra=Extra.allow):
     def to_request(self) -> dict[str, Any]:
         """
         Converts the Settings object to a dictionary representation (request format).
-        This method is used when configuring the event listener settings for the Polling event listener.
         """
         return {"type": self.type}

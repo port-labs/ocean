@@ -8,7 +8,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
-from port_ocean.core.event_listener.polling.utils import repeat_every
+from port_ocean.utils import repeat_every
 
 
 class PollingEventListenerSettings(EventListenerSettings):
@@ -20,6 +20,7 @@ class PollingEventListenerSettings(EventListenerSettings):
         interval (int): The interval in seconds at which the polling event listener checks for changes in the integration.
                         The default interval is set to 60 seconds.
     """
+
     type: Literal["POLLING"]
     resync_on_start: bool = True
     interval: int = 60
@@ -38,6 +39,7 @@ class PollingEventListener(BaseEventListener):
         events (EventListenerEvents): A dictionary containing event types and their corresponding event handlers.
         event_listener_config (PollingEventListenerSettings): Configuration settings for the Polling event listener.
     """
+
     def __init__(
         self,
         events: EventListenerEvents,

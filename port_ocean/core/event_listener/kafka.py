@@ -34,6 +34,7 @@ class KafkaEventListenerSettings(EventListenerSettings):
         consumer_poll_timeout (int): The maximum time in seconds to wait for messages during a poll.
                                      The default value is 1 second.
     """
+
     type: Literal["KAFKA"]
     brokers: str = "b-1-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-2-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-3-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196"
     security_protocol: str = "SASL_SSL"
@@ -53,6 +54,7 @@ class KafkaEventListener(BaseEventListener):
         integration_identifier (str): The identifier of the integration being monitored.
         integration_type (str): The type of the integration being monitored.
     """
+
     def __init__(
         self,
         events: EventListenerEvents,

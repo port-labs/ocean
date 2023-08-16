@@ -22,6 +22,7 @@ class HttpEventListenerSettings(EventListenerSettings):
         app_host (AnyHttpUrl): The base URL of the application hosting the webhook.
                                The "AnyHttpUrl" type indicates that the value must be a valid HTTP/HTTPS URL.
     """
+
     type: Literal["WEBHOOK"]
     app_host: AnyHttpUrl
 
@@ -43,6 +44,7 @@ class HttpEventListener(BaseEventListener):
         events (EventListenerEvents): A dictionary containing event types and their corresponding event handlers.
         event_listener_config (HttpEventListenerSettings): Configuration settings for the HTTP event listener.
     """
+
     def __init__(
         self,
         events: EventListenerEvents,

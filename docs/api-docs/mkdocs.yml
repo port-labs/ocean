@@ -97,7 +97,11 @@ nav:
                - entities_state_applier: ./references/core/handlers/entities-state-applier.md
                - entity_processor: ./references/core/handlers/entity-processor.md
                - port_app_config: ./references/core/handlers/port-app-config.md
-           - event listener: ./references/core/event-listener.md
+           - event_listener:
+               - ./references/core/event-listener/index.md
+               - polling: ./references/core/event-listener/polling.md
+               - kafka: ./references/core/event-listener/kafka.md
+               - http: ./references/core/event-listener/http.md
            - models: ./references/core/models.md
            - ocean_types: ./references/core/ocean-types.md
        - clients: ./references/clients.md
