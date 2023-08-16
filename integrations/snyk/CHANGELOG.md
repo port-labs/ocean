@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Implemented Snyk integration using Ocean (#0)
+- Implemented Snyk integration using Ocean

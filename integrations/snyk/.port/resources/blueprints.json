@@ -103,7 +103,7 @@
        }
     },
     {
-       "identifier":"snykVulnerabilety",
+       "identifier":"snykVulnerability",
        "description":"This blueprint represents a Snyk vulnerability in our software catalog",
        "title":"Snyk Vulnerability",
        "icon":"Snyk",

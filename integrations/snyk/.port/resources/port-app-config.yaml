@@ -41,7 +41,7 @@ resources:
         mappings:
           identifier: .issueData.id
           title: .issueData.title
-          blueprint: '"snykVulnerabilety"'
+          blueprint: '"snykVulnerability"'
           properties:
             priorityScore: .priorityScore
             pkgName: .pkgName

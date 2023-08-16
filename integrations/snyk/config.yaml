@@ -9,12 +9,12 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: my-snyk-integration-d
+  identifier: my-snyk-integration
   # The type of the integration.
   type: "snyk"
   config:
     ApiToken: "{{ from env SNYK_API_TOKEN }}"
     webhookSecret: "{{ from env SNYK_WEBHOOK_SECRET }}"
-    apiUrl: "https://api.snyk.io"
+    apiUrl: {{ from env SNYK_API_URL }}
     organizationId: "{{ from env SNYK_ORGANIZATION_ID }}"
     appHost: "{{ from env APP_HOST }}"
