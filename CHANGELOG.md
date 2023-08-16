@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.2 (2023-08-11)
+==================
+
+### Bug Fixes
+
+- Fixed an issue causing the config yaml providers to not be parsed
+
+
 0.2.1 (2023-08-09)
 ==================
 

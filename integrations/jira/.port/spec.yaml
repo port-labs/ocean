@@ -1,4 +1,4 @@
-version: v0.1.0
+version: v0.1.2
 type: jira
 description: Jira integration for Port Ocean
 icon: Jira
