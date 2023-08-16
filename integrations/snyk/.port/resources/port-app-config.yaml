@@ -1,0 +1,54 @@
+resources:
+  - kind: targets
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.displayName
+          blueprint: '"snykTarget"'
+          properties:
+            origin: .attributes.origin
+            isPrivate: .attributes.isPrivate | tostring
+            remoteUrl: .attributes.remoteUrl
+  - kind: projects
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"snykProject"'
+          properties:
+            type: .attributes.type
+            targetFile: .attributes.target_file
+            targetReference: .attributes.target_reference
+            origin: .attributes.origin
+            status: .attributes.status
+            createdAt: .attributes.created
+            tags: .attributes.tags
+            businessCriticality: .attributes.business_criticality
+            environment: .attributes.environment
+          relations:
+            target: .relationships.target.data.id
+  - kind: vulnerabilities
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .issueData.id
+          title: .issueData.title
+          blueprint: '"snykVulnerabilety"'
+          properties:
+            priorityScore: .priorityScore
+            pkgName: .pkgName
+            pkgVersions: .pkgVersions
+            issueType: .issueType
+            issueSeverity: .issueData.severity
+            issueURL: .issueData.url
+            language: .issueData.language
+            publicationTime: .issueData.publicationTime
+            isPatched: .isPatched | tostring

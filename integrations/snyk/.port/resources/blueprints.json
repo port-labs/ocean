@@ -1,0 +1,173 @@
+[
+    {
+       "identifier":"snykTarget",
+       "description":"This blueprint represents a snyk target in our software catalog",
+       "title":"Snyk Target",
+       "icon":"Snyk",
+       "schema":{
+          "properties":{
+             "origin":{
+                "title":"Origin",
+                "type":"string"
+             },
+             "isPrivate":{
+                "title":"Is Private",
+                "type":"string"
+             },
+             "remoteUrl":{
+                "title":"Remote URL",
+                "type":"string",
+                "format":"url"
+             }
+          },
+          "required":[
+             
+          ]
+       },
+       "mirrorProperties":{
+          
+       },
+       "calculationProperties":{
+          
+       },
+       "relations":{
+          
+       }
+    },
+    {
+       "identifier":"snykProject",
+       "description":"This blueprint represents a snyk project in our software catalog",
+       "title":"Snyk Project",
+       "icon":"Snyk",
+       "schema":{
+          "properties":{
+             "type":{
+                "title":"Type",
+                "type":"string"
+             },
+             "targetFile":{
+                "title":"Target File",
+                "type":"string"
+             },
+             "targetReference":{
+                "title":"Target Reference",
+                "type":"string"
+             },
+             "origin":{
+                "title":"Origin",
+                "type":"string"
+             },
+             "status":{
+                "title":"Status",
+                "type":"string",
+                "enum": ["active", "inactive"]
+             },
+             "createdAt":{
+                "title":"Create At",
+                "type":"string",
+                "format":"date-time"
+             },
+             "tags":{
+                "type":"array",
+                "items":{
+                   "type":"string"
+                },
+                "title":"Tags"
+             },
+             "businessCriticality":{
+                "title":"Business Criticality",
+                "type":"array"
+             },
+             "environment":{
+                "title":"Environment",
+                "type":"array"
+             }
+          },
+          "required":[
+             
+          ]
+       },
+       "mirrorProperties":{
+          
+       },
+       "calculationProperties":{
+          
+       },
+       "relations":{
+          "target":{
+             "title":"Target",
+             "target":"snykTarget",
+             "required":false,
+             "many":false
+          }
+       }
+    },
+    {
+       "identifier":"snykVulnerabilety",
+       "description":"This blueprint represents a Snyk vulnerability in our software catalog",
+       "title":"Snyk Vulnerability",
+       "icon":"Snyk",
+       "schema":{
+          "properties":{
+             "priorityScore":{
+                "type":"number",
+                "title":"Priority Score"
+             },
+             "pkgName":{
+                "type":"string",
+                "title":"Package Name"
+             },
+             "pkgVersions":{
+                "title":"Package Versions",
+                "type":"array"
+             },
+             "issueType":{
+                "type":"string",
+                "title":"Issue Type",
+                "enum": ["vuln", "license", "configuration"]
+             },
+             "issueSeverity":{
+                "type":"string",
+                "title":"Issue Severity",
+                "enum": ["low", "medium", "high", "critical"],
+                "enumColors": {
+                    "low": "green",
+                    "medium": "yellow",
+                    "high": "red",
+                    "critical": "red"
+                }
+             },
+             "issueURL":{
+                "type":"string",
+                "format":"url",
+                "title":"Issue URL"
+             },
+             "language":{
+                "type":"string",
+                "title":"Language"
+             },
+             "publicationTime":{
+                "type":"string",
+                "format":"date-time",
+                "title":"Publication Time"
+             },
+             "isPatched":{
+                "type":"string",
+                "title":"Is Patched"
+             }
+          },
+          "required":[
+             
+          ]
+       },
+       "mirrorProperties":{
+          
+       },
+       "calculationProperties":{
+          
+       },
+       "relations":{
+          
+       }
+    }
+ ]
