@@ -29,7 +29,7 @@ integration_name [Name of the integration]:
 $ myIntegration
 
 integration_slug [myintegration]:
-$ my_slug
+$ my_integration
 
 integration_short_description [A short description of the project]:
 $ My custom integration made for Port
@@ -48,20 +48,29 @@ $ 2023-08-06
 Here are your next steps:
 
 ⚓️ Install necessary packages: Run make install to install all required packages for your project.
-▶️ cd ./my_slug && make install && . .venv/bin/activate
+▶️ cd ./my_integration && make install && . .venv/bin/activate
 
 ⚓️ Set sail with Ocean: Run ocean sail <path_to_integration> to run the project using Ocean.
-▶️ ocean sail ./my_slug
+▶️ ocean sail ./my_integration
 
 ⚓️ Smooth sailing with Make: Alternatively, you can run make run to launch your project using Make.
-▶️ make run ./my_slug
+▶️ make run ./my_integration
 ```
 
 </div>
 
+<details markdown="1">
+<summary>Scaffolding the project with <code>make new</code></summary>
+
+You may use the "make new" command instead of "ocean new" to scaffold a new integration project in the integrations folder.
+
+The make command will use the ocean new command behind the scenes.
+
+</details>
+
 ### Develop
 
-- Edit the file `./my_slug/main.py` to add your integration logic.
+- Edit the file `./my_integration/main.py` to add your integration logic.
 
 ```python linenums="1"
 from typing import Any
@@ -84,7 +93,7 @@ async def on_start() -> None:
 
 ```
 
-- Edit the file `./my_slug/.port/spec.yaml` to add your integration specification.
+- Edit the file `./my_integration/.port/spec.yaml` to add your integration specification.
 
 ```yaml linenums="1"
 version: v0.1.0
@@ -110,7 +119,7 @@ configurations:
     type: url
 ```
 
-- Edit the file `./my_slug/config.yaml` to add the default configuration of your integration.
+- Edit the file `./my_integration/config.yaml` to add the default configuration of your integration.
 
 ```yaml linenums="1" hl_lines="5-6 13-18"
 # This is an example configuration file for the integration service.
@@ -144,7 +153,7 @@ $ make install
 ---> 100%
 
 $ . .venv/bin/activate
-$ (my_slug3.11) ocean sail
+$ (my_integration3.11) ocean sail
 Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓
 INFO:     Started server process [50121]
 INFO:     Waiting for application startup.

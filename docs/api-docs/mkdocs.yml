@@ -91,11 +91,13 @@ nav:
           - Helm: ./getting-started/deployment/helm.md
           - Terraform: ./getting-started/deployment/terraform.md
   - 📝 Integrations Library: ./integrations_library/index.md
-  - 🌟 Features: ./features/index.md
-  - 💻 Cli: ./cli.md
-  - 📚 Guides: ./guides/index.md
-  - 🔧 Development: ./development/index.md
+  - 🔧 Develop an Integration: ./development/index.md
+  - 🏖️ The Ocean Framework:
+      - 🏖️ The Ocean Framework: ./framework/index.md
+      - 🌟 Features: ./framework/features/index.md
+      - 💻 Cli: ./framework/cli/index.md
   - 🤝 Contributing:
+      - ⚙️ Developing a Feature: ./contributing/developing-feature.md
       - 💡 Suggesting a Feature: ./contributing/suggesting-feature.md
       - 🐞 Reporting a Bug: ./contributing/reporting-bug.md
       - 📝 Suggesting a Docs change: ./contributing/suggesting-docs-change.md

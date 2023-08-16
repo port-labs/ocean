@@ -30,7 +30,7 @@ Ocean is made up of two distinct pieces:
 - Ocean CLI - used to create boilerplate for new Ocean integrations, and to aid in their development.
 - Ocean framework - provides common functionality and interfaces to make the development of new Port integrations faster and easier.
 
-The following section explains specifically about the Ocean framework, to learn more about the Ocean CLI, refer to the [CLI](cli.md) docs
+The following section explains specifically about the Ocean framework, to learn more about the Ocean CLI, refer to the [CLI](./framework/cli/index.md) docs
 
 ### The Ocean framework
 
@@ -43,15 +43,18 @@ The goal of Ocean is to provide a layer of abstraction for a multitude of common
 - Application of JQ mapping to information received from 3rd-party services for ingestion into Port
 - Sync and re-sync information from a 3rd-party service
 - Support a multitude of connection modes to receive commands and requests from Port, to account for any network or security configuration:
+
   - Trigger by webhook from Port
   - Trigger by querying configuration from Port
   - Trigger by reading a message from a Kafka topic provided by Port
-- Support a multitude of deployment methods to account for any environment, infrastructure or architecture:
+
+* Support a multitude of deployment methods to account for any environment, infrastructure or architecture:
+
   - Kubernetes (via helm)
   - AWS ECS (via Terraform module)
   - Azure Container App (via Terraform module)
 
-To learn more about the tools and abstractions provided by the Ocean framework to make it easier to develop new integrations, refer to the [features](./features/index.md) docs.
+To learn more about the tools and abstractions provided by the Ocean framework to make it easier to develop new integrations, refer to the [features](./framework/features/index.md) docs.
 
 ## How do integrations powered by the Ocean framework work?
 
