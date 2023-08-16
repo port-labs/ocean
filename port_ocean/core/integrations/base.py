@@ -10,7 +10,7 @@ from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.event_listener.factory import (
     EventListenerFactory,
 )
-from port_ocean.core.integrations.mixins.sync import SyncRawMixin, SyncMixin
+from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
 from port_ocean.exceptions.core import IntegrationAlreadyStartedException
 
 
@@ -38,6 +38,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         NotImplementedError: Raised if the `on_resync` method is not implemented, and the event
             strategy does not have a custom implementation for resync events.
     """
+
     def __init__(self, context: PortOceanContext):
         SyncRawMixin.__init__(self)
         SyncMixin.__init__(self)
