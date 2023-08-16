@@ -1,4 +1,4 @@
-version: v0.1.0
+version: v0.1.4
 type: pagerduty
 description: pagerduty integration for Port Ocean
 icon: pagerduty

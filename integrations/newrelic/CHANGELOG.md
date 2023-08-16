@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.2 (2023-08-11)
+
+### Improvements
+
+- Optimized dockerfile to produce smaller images (PORT-4485)
+
+
+0.1.1 (2023-08-03)
+==================
+
+### Bug Fixes
+
+- Add README.md (#1)
+- Support specifying whether to count open issues per new relic entity (#1)
+
+
 0.1.0 (2023-08-02)
 ==================
 
