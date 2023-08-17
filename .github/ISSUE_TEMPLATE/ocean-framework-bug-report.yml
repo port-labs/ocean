@@ -1,0 +1,33 @@
+name: Ocean Framework Bug report
+description: Problems with the Ocean framework python package
+title: "[Bug] [Framework]"
+labels: ["bug", "framework"]
+body:
+  - type: textarea
+    attributes:
+      label: Ocean Framework Version
+      description: >
+        Please provide the OS and the Ocean framework version, you can extract it via running `ocean version`
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Minimal reproduce step
+      description: Please try to give reproducing steps to facilitate quick location of the problem.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What did you expect to see?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What did you see instead?
+    validations:
+      required: true
+  - type: checkboxes
+    attributes:
+      label: Are you willing to submit a PR?
+      options:
+        - label: I'm willing to submit a PR!
