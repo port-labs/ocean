@@ -62,7 +62,7 @@ Save the following code in a file named `main.tf`:
 ```hcl
 module "ocean-containerapp_example_azure-integration" {
   source  = "port-labs/ocean-containerapp/azure//examples/azure-integration"
-  version = "0.1.0"
+  version = "~>0.0.2"
   
   port_client_id = "<PORT_CLIENT_ID>"
   port_client_secret = "<PORT_CLIENT_SECRET>"
@@ -902,7 +902,7 @@ Edit the `main.tf` file and add the following:
 ```hcl
 module "ocean-containerapp_example_azure-integration" {
   source  = "port-labs/ocean-containerapp/azure//examples/azure-integration"
-  version = "0.1.0"
+  version = "~>0.0.2"
   
   port_client_id = "<PORT_CLIENT_ID>"
   port_client_secret = "<PORT_CLIENT_SECRET>"
