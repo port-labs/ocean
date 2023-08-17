@@ -1,4 +1,4 @@
-site_name: Ocean Documentation
+site_name: Ocean API References
 site_url: https://app.getport.io
 theme:
   name: material
@@ -17,6 +17,7 @@ theme:
     - search.share
     - search.suggest
     - toc.follow
+    - navigation.tabs
 
   palette:
     - scheme: default
@@ -40,12 +41,15 @@ docs_dir: src
 
 # Plugins
 plugins:
+  - redirects:
+      redirect_maps:
+          'index.md': 'references/index.md'
   - search:
       separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
   - mkdocstrings:
       handlers:
         python:
-          paths: [../port_ocean]
+          paths: [../../port_ocean]
           options:
             show_root_heading: true
             heading_level: 2
@@ -83,40 +87,29 @@ extra_javascript:
   - assets/js/custom.js
 
 nav:
-  - 🌊 Ocean: index.md
-  - 🎉 Getting Started:
-      - ⚡️ Quickstart: ./getting-started/quickstart.md
-      - 📦 Publishing: ./getting-started/publishing.md
-      - 🚀 Deployment:
-          - Helm: ./getting-started/deployment/helm.md
-          - Terraform: ./getting-started/deployment/terraform.md
-  - 📝 Integrations Library: ./integrations_library/index.md
-  - 🔧 Develop an Integration: ./development/index.md
-  - 🏖️ The Ocean Framework:
-      - 🏖️ The Ocean Framework: ./framework/index.md
-      - 🌟 Features: ./framework/features/index.md
-      - 💻 Cli: ./framework/cli/index.md
-  - 🤝 Contributing:
-      - ⚙️ Developing a Feature: ./contributing/developing-feature.md
-      - 💡 Suggesting a Feature: ./contributing/suggesting-feature.md
-      - 🐞 Reporting a Bug: ./contributing/reporting-bug.md
-      - 📝 Suggesting a Docs change: ./contributing/suggesting-docs-change.md
-      - ⁉️ Asking a Question: ./contributing/asking-question.md
-  # - 🔍 References:
-  #     - core:
-  #         - integrations: ./references/core/integrations.md
-  #         - handlers: ./references/core/handlers.md
-  #         - event listener: ./references/core/event-listener.md
-  #         - models: ./references/core/models.md
-  #         - types: ./references/core/types.md
-  #     - clients: ./references/clients.md
-  #     - config: ./references/config.md
-  #     - consumers: ./references/consumers.md
-  #     - context: ./references/context.md
-  #     - middleware: ./references/middleware.md
-  #     - ocean: ./references/ocean.md
-  #     - run: ./references/run.md
-  #     - utils: ./references/utils.md
-  - 📜 License: ./license.md
-  - 📅 Release Notes: ./release-notes.md
-  - 🤔 FAQ: ./faq.md
+   - 🔍 References:
+       - References: ./references/index.md
+       - core:
+           - integrations:
+               - ./references/core/integrations/index.md
+               - mixins: ./references/core/integrations/mixins.md
+           - handlers:
+               - entities_state_applier: ./references/core/handlers/entities-state-applier.md
+               - entity_processor: ./references/core/handlers/entity-processor.md
+               - port_app_config: ./references/core/handlers/port-app-config.md
+           - event_listener:
+               - ./references/core/event-listener/index.md
+               - polling: ./references/core/event-listener/polling.md
+               - kafka: ./references/core/event-listener/kafka.md
+               - http: ./references/core/event-listener/http.md
+           - models: ./references/core/models.md
+           - ocean_types: ./references/core/ocean-types.md
+       - clients: ./references/clients.md
+       - config: ./references/config.md
+       - consumers: ./references/consumers.md
+       - context: ./references/context.md
+       - middleware: ./references/middleware.md
+       - ocean: ./references/ocean.md
+       - run: ./references/run.md
+       - utils: ./references/utils.md
+   - 🌊 Ocean Guides: https://ocean.getport.io

@@ -33,7 +33,7 @@ install:
 
 run:
 	$(ACTIVATE) && \
-	mkdocs serve -w ../
+	mkdocs serve -w ../../
 
 build:
 	$(ACTIVATE) && \
