@@ -2,11 +2,13 @@
 import click
 
 from inspect import getmembers
+
+from port_ocean.utils import load_module
 from .group import defaults
 from port_ocean.cli.commands.main import print_logo, console
 from port_ocean.ocean import Ocean
-from port_ocean.cli.defaults import clean_defaults
-from port_ocean.run import _create_default_app, _load_module
+from port_ocean.core.defaults import clean_defaults
+from port_ocean.bootstrap import create_default_app
 
 
 @defaults.command()
@@ -15,16 +17,14 @@ from port_ocean.run import _create_default_app, _load_module
     "-f",
     "--force",
     "force",
-    type=bool,
-    default=False,
+    is_flag=True,
     help="Delete all the entities of the Blueprint as well as the blueprint itself.",
 )
 @click.option(
     "-w",
     "--wait",
     "wait",
-    type=bool,
-    default=False,
+    is_flag=True,
     help="Wait for the migration to finish. when force is set to true.",
 )
 def clean(path: str, force: bool, wait: bool) -> None:
@@ -41,11 +41,11 @@ def clean(path: str, force: bool, wait: bool) -> None:
         console.print(
             "Deleting entities forcefully I sure hope you know what you are doing 🚨 🚨 🚨 ",
         )
-    default_app = _create_default_app(path, False)
+    default_app = create_default_app(path)
 
     main_path = f"{path}/main.py" if path else "main.py"
 
-    app_module = _load_module(main_path)
+    app_module = load_module(main_path)
     app: Ocean = {name: item for name, item in getmembers(app_module)}.get(
         "app",
         default_app,

@@ -12,7 +12,7 @@ from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
 
-from port_ocean.cli.defaults.common import Defaults, get_port_integration_defaults
+from port_ocean.core.defaults.common import Defaults, get_port_integration_defaults
 
 
 def deconstruct_blueprints_to_creation_steps(

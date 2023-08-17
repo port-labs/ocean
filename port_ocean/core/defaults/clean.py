@@ -8,7 +8,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
-from port_ocean.cli.defaults.common import (
+from port_ocean.core.defaults.common import (
     get_port_integration_defaults,
     is_integration_exists,
 )

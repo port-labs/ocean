@@ -1,6 +1,8 @@
+from importlib.util import module_from_spec, spec_from_file_location
 import inspect
 from pathlib import Path
 from time import time
+from types import ModuleType
 from typing import Callable, Any
 from uuid import uuid4
 
@@ -31,3 +33,14 @@ def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
         return yaml.safe_load((path / ".port/spec.yaml").read_text())
     except FileNotFoundError:
         return None
+
+
+def load_module(file_path: str) -> ModuleType:
+    spec = spec_from_file_location("module.name", file_path)
+    if spec is None or spec.loader is None:
+        raise Exception(f"Failed to load integration from path: {file_path}")
+
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module
