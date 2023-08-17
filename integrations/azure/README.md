@@ -22,10 +22,6 @@ Before using this module, make sure you have completed the following prerequisit
     az login
     ```
 - Export your [Port Credentials](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/api/#find-your-port-credentials).
-  ```bash
-  export TF_VAR_port_client_id=<PORT_CLIENT_ID>
-  export TF_VAR_port_client_secret=<PORT_CLIENT_SECRET>
-  ```
 
 ### Azure
 
@@ -41,13 +37,13 @@ The integration will need to have permissions to read the resources you want to 
 #### Azure Infrastructure
 
 - **Azure Subscription**: You'll need an Azure subscription to deploy the integration.
-- **Azure Resource Group**: The integration need to be deployed to an Azure Resource Group, you can pass an existing one, or the integration will create a new one. (To override add `-var='resource_group_id=<your-resource-group-id>'`)
+- **Azure Resource Group**: The integration need to be deployed to an Azure Resource Group, you can pass an existing one, or the integration will create a new one. (To override add `resource_group_id=<your-resource-group-id>`)
 - **Azure Container App**: The integration will be deployed using Azure Container App. Which requires some extra infrastructure to be deployed, by default if not specified otherwise we will deploy the required infrastructure.
-  - **Azure Log Analytics Workspace**: The integration will create a new Log Analytics Workspace to store the logs of the integration. (To override add `-var='log_analytics_workspace_id=<your-log-analytics-workspace-id>'` to the terraform apply command)
-  - **Azure Container App Environment**: The integration will create a new Container App Environment to deploy the integration to. (To override add `-var='container_app_environment_id=<your-app-environment-id>'` to the terraform apply command)
+  - **Azure Log Analytics Workspace**: The integration will create a new Log Analytics Workspace to store the logs of the integration. (To override add `log_analytics_workspace_id=<your-log-analytics-workspace-id>` to the terraform apply command)
+  - **Azure Container App Environment**: The integration will create a new Container App Environment to deploy the integration to. (To override add `container_app_environment_id=<your-app-environment-id>` to the terraform apply command)
 
 #### Azure Event Grid
-- **Azure Event Grid System Topic**: To allow the integration to receive events from Azure, an Event Grid System Topic of type `Microsoft.Resources.Subscriptions` will be needed. The integration will create a new System Topic and will subscribe to it. (Due to a limitation in Azure only one Event Grid System Topic of type `Microsoft.Resources.Subscriptions` can be created per subscription, so if you already have one you'll need to pass it to the integration using `-var='event_grid_system_topic_name=<your-event-grid-system-topic-name>'`) Further example on how to create the System Topic will be provided later on in the documentation.
+- **Azure Event Grid System Topic**: To allow the integration to receive events from Azure, an Event Grid System Topic of type `Microsoft.Resources.Subscriptions` will be needed. The integration will create a new System Topic and will subscribe to it. (Due to a limitation in Azure only one Event Grid System Topic of type `Microsoft.Resources.Subscriptions` can be created per subscription, so if you already have one you'll need to pass it to the integration using `event_grid_system_topic_name=<your-event-grid-system-topic-name>`) Further example on how to create the System Topic will be provided later on in the documentation.
 - **Azure Event Grid Subscription**: To Pass the events from the System Topic to the integration, an Event Grid Subscription will be needed. The integration will create a new Subscription and will pass the events to the integration.
 
 
@@ -59,19 +55,26 @@ The integration can be triggered in two ways:
 - On events sent from the Azure Event Grid.
 - When a change in the integration configuration is detected.
 
-To deploy the integration, run the following commands:
+To deploy the integration, do the following:
+
+Save the following code in a file named `main.tf`:
+
+```hcl
+module "ocean-containerapp_example_azure-integration" {
+  source  = "port-labs/ocean-containerapp/azure//examples/azure-integration"
+  version = "0.1.0"
+  
+  port_client_id = "<PORT_CLIENT_ID>"
+  port_client_secret = "<PORT_CLIENT_SECRET>"
+  subscription_id = "<SUBSCRIPTION_ID>"  
+}
+```
+    
+Then run the following commands:
 
 ```sh
-export TF_VAR_port_client_id=<PORT_CLIENT_ID>
-export TF_VAR_port_client_secret=<PORT_CLIENT_SECRET>
-
-git clone git@github.com:port-labs/Port-Ocean.git
-
-cd deployment/azure/container_app/examples
-
 terraform init
-
-terraform apply -var='subscription_id=<subscription_id>'
+terraform apply
 ```
 
 ## Supported Kinds
@@ -889,21 +892,45 @@ When adding new Azure resource we need to make sure our exporter will be able to
 To do so we will need to add a new event filter to the integration event grid subscription. For more information on [action permissions](https://learn.microsoft.com/en-us/azure/role-based-access-control/role-definitions#actions)
 
 ### Example
-Here is an example on how to apply it, as in the base example we will head to the `deployment/azure/container_app/examples` directory
+Here is an example on how to apply it, for more information on the different inputs please refer to our terraform module [documentation](https://registry.terraform.io/modules/port-labs/ocean-containerapp/azure/latest/examples/azure-integration).
 and apply the terraform changes.
 
 `Microsoft.Network/virtualNetworks` is the resource we want to add.
+
+Edit the `main.tf` file and add the following:
+
+```hcl
+module "ocean-containerapp_example_azure-integration" {
+  source  = "port-labs/ocean-containerapp/azure//examples/azure-integration"
+  version = "0.1.0"
+  
+  port_client_id = "<PORT_CLIENT_ID>"
+  port_client_secret = "<PORT_CLIENT_SECRET>"
+  subscription_id = "<SUBSCRIPTION_ID>"
+  event_grid_event_filter_list = [
+    "Microsoft.App/containerApp",
+    "Microsoft.Storage/storageAccounts",
+    "Microsoft.Compute/virtualMachines",
+    "Microsoft.Network/loadBalancers",
+    "Microsoft.Resources/subscriptions/resourceGroups",
+    "Microsoft.Network/virtualNetworks"
+  ]
+  action_permissions_list = [
+    "Microsoft.app/containerapps/read",
+    "Microsoft.Storage/storageAccounts/*/read",
+    "Microsoft.ContainerService/managedClusters/read",
+    "Microsoft.Network/loadBalancers/read",
+    "Microsoft.Resources/subscriptions/resourceGroups/read",
+    "Microsoft.Resources/subscriptions/resources/read",
+    "Microsoft.Network/virtualNetworks/read"
+  ]
+}
+```
+
 ```sh
-export TF_VAR_port_client_id=<PORT_CLIENT_ID>
-export TF_VAR_port_client_secret=<PORT_CLIENT_SECRET>
-
-git clone git@github.com:port-labs/Port-Ocean.git
-
-cd deployment/azure/container_app/examples
-
+az login
 terraform init
-
-terraform apply -var='action_permissions_list=["Microsoft.Network/virtualNetworks/read", <previous-provided-permissions-list>]' -var='event_grid_event_filter_list=["Microsoft.Network/virtualNetworks",<extra-filters-for-previous-resources>]' -var='subscription_id=<subscription_id>'
+terraform apply
 ```
 
 Let's go over the changes we made:
