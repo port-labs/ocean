@@ -20,10 +20,11 @@ class PortResourceConfig(BaseModel):
     entity: Optional[MappingsConfig]
 
 
-class ResourceConfig(BaseModel):
-    class Selector(BaseModel):
-        query: str
+class Selector(BaseModel):
+    query: str
 
+
+class ResourceConfig(BaseModel):
     kind: str
     selector: Selector
     port: PortResourceConfig
