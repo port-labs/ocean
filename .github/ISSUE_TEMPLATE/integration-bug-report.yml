@@ -1,5 +1,5 @@
 name: Integration Bug report (PagerDuty/Jira/Other..)
-description: Problems with one of the Ocean listed in this repository under the integrations/ folder
+description: Report a problem with one of the available Ocean integrations listed in this repository under the `integrations/` folder
 title: "[Bug] [Integration] [Integration Name (PagerDuty/Jira/Other..)]"
 labels: ["bug", "integration"]
 body:
@@ -19,8 +19,8 @@ body:
       required: true      
   - type: textarea
     attributes:
-      label: Minimal reproduce step
-      description: Please try to give reproducing steps to facilitate quick location of the problem.
+      label: Steps to reproduce
+      description: Please try to give a short list of steps used to reproduce the problem for easier debugging
     validations:
       required: true
   - type: textarea

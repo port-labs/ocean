@@ -1,5 +1,5 @@
 name: Ocean Framework Bug report
-description: Problems with the Ocean framework python package
+description: Report a problem with the Ocean framework core functionality and Python pacakge
 title: "[Bug] [Framework]"
 labels: ["bug", "framework"]
 body:
@@ -12,8 +12,8 @@ body:
       required: true
   - type: textarea
     attributes:
-      label: Minimal reproduce step
-      description: Please try to give reproducing steps to facilitate quick location of the problem.
+      label: Steps to reproduce
+      description: Please try to give a short list of steps used to reproduce the problem for easier debugging
     validations:
       required: true
   - type: textarea
