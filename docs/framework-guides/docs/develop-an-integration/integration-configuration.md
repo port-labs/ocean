@@ -3,6 +3,8 @@ title: 🏗️ Integration Configuration
 sidebar_position: 3
 ---
 
+import EventListenerTypesList from '../framework/features/\_event-listener-types-list.md'
+
 # 🏗️ Integration Configuration
 
 This section explains the structure of the `config.yml` file.
@@ -76,5 +78,17 @@ Remember that your Port client ID and secret are API credentials which are sensi
 :::
 
 :::note
-In case you directly write the client ID and secret in the `port` section, when publishing the integration the values in this section need to be returned to their defaults so that they properly read the credentials from the environment variables
+In case you directly write the client ID and secret in the `port` section, when publishing the integration the values in this section need to be **returned to their defaults** so that they properly read the credentials from the environment variables
 :::
+
+#### `eventListener` - how to trigger & resync an integration
+
+```yaml showLineNumbers
+# The event listener to use for the integration service.
+eventListener:
+  type: KAFKA
+```
+
+This section is used to specify the type of event listener the integration will use to receive events and resync requests from Port.
+
+<EventListenerTypesList/>
