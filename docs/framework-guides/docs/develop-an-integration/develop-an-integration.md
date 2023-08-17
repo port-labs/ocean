@@ -20,7 +20,7 @@ These steps do not follow a specific order. Some steps only become relevant near
 
 1. Scaffold a new integration, as seen in [getting started](../getting-started/getting-started.md#scaffold)
 2. Add any required code libraries and the code and logic required for the new integration
-3. Update the `config.yml` file with default configuration and parameters for the integration
+3. Update the `config.yaml` file with default configuration and parameters for the integration
 4. Update the `.port/spec.yml` file with metadata of the integration, including the provided kinds and required parameters
 5. (Optional) Add default definitions to the `.port/resources` directory such as default blueprints and integration mapping
 6. Create the necessary documentation for the new integration including the README and a changelog
