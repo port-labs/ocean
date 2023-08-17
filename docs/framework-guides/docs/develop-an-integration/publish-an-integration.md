@@ -1,9 +1,9 @@
 ---
-title: 📦 Publishing an Integration
-sidebar_position: 2
+title: 📦 Publish an Integration
+sidebar_position: 7
 ---
 
-# Publishing an Integration
+# Publish an Integration
 
 This guide outlines the steps required to publish an integration built using the Ocean framework.
 
@@ -19,9 +19,11 @@ This guide assumes that you already went through the [quickstart](../getting-sta
   - `poetry check` for dependency checks.
   - `poetry lock` to update the `pyproject.toml` file.
 
-!!! note
+:::note
 
-    All of the integrations powered by Ocean are expected to pass the automated CI check, when you open a PR to the [Port Ocean](https://github.com/port-labs/port-ocean) repository in Github, Port's CI will validate that your new code passes the CI checks and Port's team will only merge your code once it passes.
+All of the integrations powered by Ocean are expected to pass the automated CI check, when you open a PR to the [Port Ocean](https://github.com/port-labs/port-ocean) repository in Github, Port's CI will validate that your new code passes the CI checks and Port's team will only merge your code once it passes.
+
+:::
 
 ## Steps to publish an integration
 
@@ -33,7 +35,7 @@ Fork the Ocean framework repository to your GitHub account. This will create a c
 
 Clone the forked repository to your local machine using the following command:
 
-```
+```shell showLineNumbers
 git clone https://github.com/your-username/ocean-framework.git
 ```
 

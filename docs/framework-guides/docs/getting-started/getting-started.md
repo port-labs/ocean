@@ -62,10 +62,12 @@ Here are your next steps:
 
 </div>
 
-<details markdown="1">
+<br/>
+
+<details>
 <summary>Scaffolding the project with <code>make new</code></summary>
 
-You may use the "make new" command instead of "ocean new" to scaffold a new integration project in the integrations folder.
+If you clone the [Port Ocean](https://github.com/port-labs/port-ocean) repository to your local machine, you can also use the `make new` command instead of `ocean new` to scaffold a new integration project in the integrations folder.
 
 The make command will use the ocean new command behind the scenes.
 
@@ -124,25 +126,24 @@ configurations:
 
 - Edit the file `./my_integration/config.yaml` to add the default configuration of your integration.
 
-```yaml showLineNumbers hl_lines="5-6 13-18"
+```yaml showLineNumbers
 # This is an example configuration file for the integration service.
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 
 port:
-  clientId: { { from env PORT_CLIENT_ID } } # Can be loaded via environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
-  clientSecret: { { from env PORT_CLIENT_SECRET } } # Can be loaded via environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
+  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
 # The event listener to use for the integration service.
 eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
   # Can be loaded via environment variable: INTEGRATION_IDENTIFIER or OCEAN__INTEGRATION__IDENTIFIER
-  identifier: { { from env INTEGRATION_IDENTIFIER } }
-
+  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
   # These two should match the values in the .port/spec.yaml file
   type: "My Integration type (Gitlab, Jira, etc.)"
   config:
-    myJiraToken: { { from env MY_INTEGRATION_CONFIG } }
+    myJiraToken: "{{ from env MY_INTEGRATION_CONFIG }}"
     jiraUrl: "https://example.com"
 ```
 

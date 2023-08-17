@@ -60,12 +60,17 @@ const config = {
         },
         items: [
           {
+            href: "./getting-started",
+            label: "Changelog",
+            position: "right",
+          },
+          {
             href: "https://demo.getport.io",
             label: "Demo",
             position: "right",
           },
           {
-            href: "https://github.com/port-labs/port-docs",
+            href: "https://github.com/port-labs/port-ocean",
             label: "GitHub",
             position: "right",
           },
