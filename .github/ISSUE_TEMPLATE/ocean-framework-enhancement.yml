@@ -1,4 +1,4 @@
-name: Enhancement
+name: Ocean Framework Enhancement
 description: Add new feature, improve code to one of the Ocean integration listed under the integrations/ folder
 title: "[Enhancement/Feature] [Integration] [<Integration Name Here i.e PagerDuty, Jira...>]"
 labels: [ "enhancement", "integration" ]
