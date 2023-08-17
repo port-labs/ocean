@@ -1,0 +1,1 @@
+Added the abillity to clean and create the defaults of an integration
