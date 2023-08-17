@@ -1,6 +1,6 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
-
+const path = require("path");
 const lightCodeTheme = require("prism-react-renderer/themes/github");
 const darkCodeTheme = require("prism-react-renderer/themes/dracula");
 
@@ -79,12 +79,17 @@ const config = {
             position: "right",
           },
           {
+            href: "./getting-started",
+            label: "Changelog",
+            position: "right",
+          },
+          {
             href: "https://demo.getport.io",
             label: "Demo",
             position: "right",
           },
           {
-            href: "https://github.com/port-labs/port-docs",
+            href: "https://github.com/port-labs/port-ocean",
             label: "GitHub",
             position: "right",
           },
@@ -260,6 +265,18 @@ const config = {
 
   plugins: [
     "@docusaurus/theme-live-codeblock",
+    "docusaurus-plugin-sass",
+    [
+      "docusaurus-plugin-module-alias",
+      {
+        alias: {
+          // "styled-components": path.resolve(__dirname, "./node_modules/styled-components"),
+          // react: path.resolve(__dirname, "./node_modules/react"),
+          // "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
+          "@components": path.resolve(__dirname, "./src/components"),
+        },
+      },
+    ],
     "@stackql/docusaurus-plugin-hubspot",
     [
       require.resolve('./src/plugins/changelog/index.js'),

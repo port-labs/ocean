@@ -25,6 +25,8 @@
     "@mdx-js/react": "^1.6.22",
     "@stackql/docusaurus-plugin-hubspot": "^1.0.1",
     "clsx": "^1.1.1",
+    "docusaurus-plugin-module-alias": "^0.0.2",
+    "docusaurus-plugin-sass": "^0.2.5",
     "prettier": "^2.8.2",
     "prism-react-renderer": "^1.3.1",
     "react": "^17.0.2",

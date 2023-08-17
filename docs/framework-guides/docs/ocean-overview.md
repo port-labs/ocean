@@ -48,13 +48,10 @@ The goal of Ocean is to provide a layer of abstraction for a multitude of common
 - Application of JQ mapping to information received from 3rd-party services for ingestion into Port
 - Sync and re-sync information from a 3rd-party service
 - Support a multitude of connection modes to receive commands and requests from Port, to account for any network or security configuration:
-
   - Trigger by webhook from Port
   - Trigger by querying configuration from Port
   - Trigger by reading a message from a Kafka topic provided by Port
-
-* Support a multitude of deployment methods to account for any environment, infrastructure or architecture:
-
+- Support a multitude of deployment methods to account for any environment, infrastructure or architecture:
   - Kubernetes (via helm)
   - AWS ECS (via Terraform module)
   - Azure Container App (via Terraform module)
