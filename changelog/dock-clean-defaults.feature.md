@@ -1,1 +1,1 @@
-Added the abillity to clean and create the defaults of an integration
+Added the ability to clean and create the defaults of an integration using CLI commands of `ocean defaults dock` and `ocean defaults clean`
