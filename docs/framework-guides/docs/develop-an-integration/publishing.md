@@ -1,8 +1,13 @@
+---
+title: 📦 Publishing an Integration
+sidebar_position: 2
+---
+
 # Publishing an Integration
 
 This guide outlines the steps required to publish an integration built using the Ocean framework.
 
-This guide assumes that you already went through the [quickstart](./quickstart.md) and you have an integration in development.
+This guide assumes that you already went through the [quickstart](../getting-started/getting-started.md) and you have an integration in development.
 
 ## Prerequisites
 

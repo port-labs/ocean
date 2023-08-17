@@ -1,6 +1,6 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
-
+const path = require("path");
 const lightCodeTheme = require("prism-react-renderer/themes/github");
 const darkCodeTheme = require("prism-react-renderer/themes/dracula");
 
@@ -237,6 +237,18 @@ const config = {
 
   plugins: [
     "@docusaurus/theme-live-codeblock",
+    "docusaurus-plugin-sass",
+    [
+      "docusaurus-plugin-module-alias",
+      {
+        alias: {
+          // "styled-components": path.resolve(__dirname, "./node_modules/styled-components"),
+          // react: path.resolve(__dirname, "./node_modules/react"),
+          // "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
+          "@components": path.resolve(__dirname, "./src/components"),
+        },
+      },
+    ],
     "@stackql/docusaurus-plugin-hubspot",
     [
       "@docusaurus/plugin-ideal-image",
