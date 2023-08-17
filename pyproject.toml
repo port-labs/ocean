@@ -31,7 +31,7 @@ classifiers = [
 ocean = "port_ocean.cli.cli:cli_start"
 
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry-core"]
 build-backend = "poetry.masonry.api"
 
 [tool.poetry.dependencies]
@@ -72,9 +72,10 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-title_format = "{version} ({project_date})"
+title_format = "## {version} ({project_date})"
 package_dir = "."
 package = "port_ocean"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

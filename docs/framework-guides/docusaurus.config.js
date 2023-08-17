@@ -16,7 +16,7 @@ const config = {
   organizationName: "port-labs", // Usually your GitHub org/user name.
   projectName: "port-ocean", // Usually your repo name.
   staticDirectories: ["static"],
-  scripts: ["./src/js/custom.js", "./src/js/termynal.js"],
+  scripts: ["js/custom.js", "js/termynal.js"],
 
   presets: [
     [
@@ -31,7 +31,21 @@ const config = {
             return `https://github.com/port-labs/port-ocean/edit/main/docs/framework-guide/docs/${docPath}`;
           },
         },
-        blog: false,
+        blog: {
+            // routeBasePath: '/',
+            path: 'blog',
+            editUrl: ({locale, blogDirPath, blogPath}) => {
+              return `https://github.com/facebook/docusaurus/edit/main/website/${blogDirPath}/${blogPath}`;
+            },
+            remarkPlugins: [],
+            postsPerPage: 5,
+            feedOptions: {
+              type: 'all',
+              copyright: `Copyright © ${new Date().getFullYear()} Facebook, Inc.`,
+            },
+            blogSidebarCount: 'ALL',
+            blogSidebarTitle: 'All our posts',
+          },
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },
@@ -59,6 +73,11 @@ const config = {
           src: "img/favicon.svg",
         },
         items: [
+            {
+            href: "/changelog",
+            label: "Changelog",
+            position: "right",
+          },
           {
             href: "https://demo.getport.io",
             label: "Demo",
@@ -77,6 +96,10 @@ const config = {
           {
             title: "Documentation",
             items: [
+              {
+                label: "Changelog",
+                to: "/changelog",
+              },
               // {
               //   label: "Port Overview",
               //   to: "/",
@@ -238,6 +261,17 @@ const config = {
   plugins: [
     "@docusaurus/theme-live-codeblock",
     "@stackql/docusaurus-plugin-hubspot",
+    [
+      require.resolve('./src/plugins/changelog/index.js'),
+      {
+        blogTitle: 'Ocean changelog',
+        blogDescription:
+            'Keep yourself up-to-date about new features in every release',
+        blogSidebarCount: 'ALL',
+        blogSidebarTitle: 'Changelog',
+        routeBasePath: '/changelog',
+      },
+    ],
     [
       "@docusaurus/plugin-ideal-image",
       {

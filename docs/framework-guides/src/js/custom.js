@@ -106,5 +106,6 @@ function setupTermynal() {
     loadVisibleTermynals();
 }
 
+console.log("@@@@@@@@@@@@@@@@@@@");
 setupTermynal();
 

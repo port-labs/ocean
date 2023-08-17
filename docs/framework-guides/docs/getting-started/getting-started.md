@@ -8,7 +8,7 @@ Python 3.11
 
 ## Installation
 
-<div class="termy">
+<div className="termy">
 
 ```console
 
@@ -21,7 +21,7 @@ $ pip install "port-ocena[cli]"
 
 ### Scaffold
 
-<div class="termy" style={{"max-height": "500px"}}>
+<div className="termy" style={{"maxHeight":"500px"}}>
 
 ```console
 $ ocean new
@@ -147,7 +147,7 @@ integration:
 
 ### Run
 
-<div class="termy">
+<div className="termy">
 
 ```console
 $ cd ./my_integration
