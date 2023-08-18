@@ -1,0 +1,20 @@
+name: Integration Feature Request/Enhancement
+description: Request a new feature or ask for an improvement of existing functionality in an integration powered by the Ocean framework
+title: "[Enhancement/Feature] [Framework]"
+labels: [ "enhancement", "framework" ]
+body:
+  - type: textarea
+    attributes:
+      label: Motivation
+      description: Describe the motivation for this enhancement.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed Changes
+      description: Describe the proposed changes and add related materials like links if any.
+  - type: checkboxes
+    attributes:
+      label: Are you willing to submit a PR?
+      options:
+        - label: I'm willing to submit a PR!
