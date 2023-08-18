@@ -4,7 +4,7 @@ import typing
 from cloudevents.pydantic import CloudEvent
 import fastapi
 from loguru import logger
-
+from starlette import responses
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -29,19 +29,15 @@ from azure_integration.azure_patch import list_resources
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    with logger.contextualize(resource_kind=kind):
-        logger.info("Entered resync of base resources", kind=kind)
-        if kind in iter(ResourceKindsWithSpecialHandling) or is_sub_resource(kind):
-            logger.info("Kind is not a base resource, skipping resync", kind=kind)
-            return
-        async with resource_client_context() as client:
-            async for resources_batch in batch_resources_iterator(
-                list_resources,
-                resources_client=client,
-                resource_type=kind,
-                api_version=get_current_resource_config().selector.api_version,
-            ):
-                yield resources_batch
+    if kind in iter(ResourceKindsWithSpecialHandling):
+        logger.info("Kind already has a specific handling, skipping", kind=kind)
+        return
+    if is_sub_resource(kind):
+        iterator_resync_method = resync_extension_resources
+    else:
+        iterator_resync_method = resync_base_resources
+    async for resources_batch in iterator_resync_method(kind):
+        yield resources_batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.RESOURCE_GROUPS)
@@ -49,20 +45,28 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Re-syncs resource groups, this is done separately because the resource groups api is different from the other apis
     """
-    with logger.contextualize(resource_kind=kind):
-        logger.info("Entered resync of resource groups", kind=kind)
-        async with DefaultAzureCredential() as credential:
-            async with ResourceManagementClient(
-                credential=credential, subscription_id=get_integration_subscription_id()
-            ) as client:
-                async for resource_groups_batch in batch_resources_iterator(
-                    client.resource_groups.list,
-                    api_version=get_current_resource_config().selector.api_version,
-                ):
-                    yield resource_groups_batch
+    async with DefaultAzureCredential() as credential:
+        async with ResourceManagementClient(
+            credential=credential, subscription_id=get_integration_subscription_id()
+        ) as client:
+            async for resource_groups_batch in batch_resources_iterator(
+                client.resource_groups.list,
+                api_version=get_current_resource_config().selector.api_version,
+            ):
+                yield resource_groups_batch
 
 
-@ocean.on_resync()
+async def resync_base_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async with resource_client_context() as client:
+        async for resources_batch in batch_resources_iterator(
+            list_resources,
+            resources_client=client,
+            resource_type=kind,
+            api_version=get_current_resource_config().selector.api_version,
+        ):
+            yield resources_batch
+
+
 async def resync_extension_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Re-syncs sub resources
@@ -91,11 +95,6 @@ async def resync_extension_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     :return: Async generator of extension resources
     """
     with logger.contextualize(resource_kind=kind):
-        logger.info("Entered resync of extension resources", kind=kind)
-        if not is_sub_resource(kind) or kind in iter(ResourceKindsWithSpecialHandling):
-            logger.info("Kind is not an extension resource, skipping resync", kind=kind)
-            return
-
         async with resource_client_context() as client:
             base_resource_kind, _ = get_resource_kind_by_level(kind, 0)
             api_version = get_current_resource_config().selector.api_version
@@ -238,3 +237,25 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
             return fastapi.Response(status_code=http.HTTPStatus.OK)
     await ocean.register_raw(resource_type, [resource.as_dict()])  # type: ignore
     return fastapi.Response(status_code=http.HTTPStatus.OK)
+
+
+@ocean.app.fast_api_app.middleware("azure_cloud_event")
+async def cloud_event_validation_middleware_handler(
+    request: fastapi.Request,
+    call_next: typing.Callable[[fastapi.Request], typing.Awaitable[responses.Response]],
+) -> responses.Response:
+    """
+    Middleware used to handle cloud event validation requests
+    Azure topic subscription expects a 200 response with specific headers
+    https://github.com/cloudevents/spec/blob/v1.0/http-webhook.md#42-validation-response
+    """
+    if request.method == "OPTIONS" and request.url.path.startswith("/integration"):
+        logger.info("Detected cloud event validation request")
+        headers = {
+            "WebHook-Allowed-Rate": "100",
+            "WebHook-Allowed-Origin": "*",
+        }
+        response = fastapi.Response(status_code=200, headers=headers)
+        return response
+
+    return await call_next(request)
