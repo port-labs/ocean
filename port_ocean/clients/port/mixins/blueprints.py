@@ -45,15 +45,29 @@ class BlueprintClientMixin:
         handle_status_code(response)
 
     async def delete_blueprint(
-        self, identifier: str, should_raise: bool = False
-    ) -> None:
-        logger.info(f"Deleting blueprint with id: {identifier}")
-        headers = await self.auth.headers()
-        response = await self.client.delete(
-            f"{self.auth.api_url}/blueprints/{identifier}",
-            headers=headers,
+        self, identifier: str, should_raise: bool = False, delete_entities: bool = False
+    ) -> None | str:
+        logger.info(
+            f"Deleting blueprint with id: {identifier} with all entities: {delete_entities}"
         )
-        handle_status_code(response, should_raise)
+        headers = await self.auth.headers()
+        response = None
+
+        if not delete_entities:
+            response = await self.client.delete(
+                f"{self.auth.api_url}/blueprints/{identifier}",
+                headers=headers,
+            )
+            handle_status_code(response, should_raise)
+            return None
+        else:
+            response = await self.client.delete(
+                f"{self.auth.api_url}/blueprints/{identifier}/all-entities?delete_blueprint=true",
+                headers=await self.auth.headers(),
+            )
+
+            handle_status_code(response, should_raise)
+            return response.json().get("migrationId", "")
 
     async def create_action(
         self, blueprint_identifier: str, action: dict[str, Any]
