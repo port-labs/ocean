@@ -8,6 +8,7 @@ define run_checks
 	mypy . --exclude '/\.venv/' || exit_code=$$?; \
 	ruff . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
+	yamllint . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
 		echo "\033[0;31mOne or more checks failed with exit code $$exit_code\033[0m"; \
 	else \
