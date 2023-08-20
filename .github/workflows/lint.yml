@@ -18,5 +18,4 @@ jobs:
       - name: Lint
         run: |
           make install/all
-          
           make lint/all

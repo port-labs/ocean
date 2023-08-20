@@ -71,4 +71,3 @@ resources:
             error_rate: .apmSummary.errorRate
             response_time_avg: .apmSummary.responseTimeAverage
             instance_count: .apmSummary.instanceCount
-

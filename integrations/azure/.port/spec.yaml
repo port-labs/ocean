@@ -1,4 +1,4 @@
-version: v0.1.0
+version: v0.1.1
 type: azure
 description: azure integration for Port Ocean
 icon: Azure
@@ -19,7 +19,7 @@ configurations:
     sensitive: true
 deploymentMethod:
   - type: terraform
-    module: ocean-containerapp
+    module: port-labs/ocean-containerapp/azure
     example: azure-integration
     title: Azure Container App
     version: ">=0.0.4"
