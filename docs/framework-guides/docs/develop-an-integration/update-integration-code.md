@@ -42,7 +42,7 @@ When running the command `ocean sail`, the Ocean CLI triggers a run of the integ
 
 ## `debug.py` - debug an integration
 
-This file is used to trigger a local development run of the integration, it is useful to debug your integration and examining its execution through your IDE or preferred Python debugging interface.
+This file is used to trigger a local development run of the integration, it is useful to debug your integration and examine its execution through your IDE or preferred Python debugging interface.
 
 In most cases **you should not change this file**, only use it as the target for your debug execution of the integration.
 
