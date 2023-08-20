@@ -1,6 +1,6 @@
 version: v0.1.0
 type: gitlab
-description: '{{cookiecutter.integration_name}} integration for Port Ocean'
+description: {{cookiecutter.integration_name}} integration for Port Ocean
 icon: Cookiecutter
 features:
   - type: exporter
