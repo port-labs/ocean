@@ -92,3 +92,5 @@ eventListener:
 This section is used to specify the type of event listener the integration will use to receive events and resync requests from Port.
 
 <EventListenerTypesList/>
+
+To learn more about a specific event listener, click on its name in the list.

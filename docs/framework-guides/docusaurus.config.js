@@ -31,21 +31,6 @@ const config = {
             return `https://github.com/port-labs/port-ocean/edit/main/docs/framework-guide/docs/${docPath}`;
           },
         },
-        blog: {
-            // routeBasePath: '/',
-            path: 'blog',
-            editUrl: ({locale, blogDirPath, blogPath}) => {
-              return `https://github.com/facebook/docusaurus/edit/main/website/${blogDirPath}/${blogPath}`;
-            },
-            remarkPlugins: [],
-            postsPerPage: 5,
-            feedOptions: {
-              type: 'all',
-              copyright: `Copyright © ${new Date().getFullYear()} Facebook, Inc.`,
-            },
-            blogSidebarCount: 'ALL',
-            blogSidebarTitle: 'All our posts',
-          },
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },
@@ -73,13 +58,8 @@ const config = {
           src: "img/favicon.svg",
         },
         items: [
-            {
-            href: "/changelog",
-            label: "Changelog",
-            position: "right",
-          },
           {
-            href: "./getting-started",
+            href: "/changelog",
             label: "Changelog",
             position: "right",
           },
@@ -279,14 +259,13 @@ const config = {
     ],
     "@stackql/docusaurus-plugin-hubspot",
     [
-      require.resolve('./src/plugins/changelog/index.js'),
+      require.resolve("./src/plugins/changelog/index.js"),
       {
-        blogTitle: 'Ocean changelog',
-        blogDescription:
-            'Keep yourself up-to-date about new features in every release',
-        blogSidebarCount: 'ALL',
-        blogSidebarTitle: 'Changelog',
-        routeBasePath: '/changelog',
+        blogTitle: "Ocean changelog",
+        blogDescription: "Keep yourself up-to-date about new features in every release",
+        blogSidebarCount: "ALL",
+        blogSidebarTitle: "Changelog",
+        routeBasePath: "/changelog",
       },
     ],
     [
