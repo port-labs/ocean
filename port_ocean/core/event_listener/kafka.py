@@ -87,15 +87,14 @@ class KafkaEventListener(BaseEventListener):
         return KafkaConsumerConfig.parse_obj(self.event_listener_config.dict())
 
     def _should_be_processed(self, msg_value: dict[Any, Any], topic: str) -> bool:
-        """
-        Determines if a given message should be processed based on the integration identifier and topic.
-        Returns True if the message should be processed, False otherwise.
-        """
-        integration_identifier = (
-            msg_value.get("diff", {}).get("after", {}).get("identifier")
-        )
+        after = msg_value.get("diff", {}).get("after", {})
+        # handles delete events from change log where there is no after
+        if after is None:
+            return False
+
+        integration_identifier = after.get("identifier")
         if integration_identifier == self.integration_identifier and (
-            "change.log" in topic
+                "change.log" in topic
         ):
             return msg_value.get("changelogDestination", {}).get("type", "") == "KAFKA"
 
