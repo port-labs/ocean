@@ -6,7 +6,6 @@ import fastapi
 from loguru import logger
 from starlette import responses
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from azure.identity.aio import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
