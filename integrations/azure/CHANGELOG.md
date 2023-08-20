@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Remove capability to remove port entity on received event of resource deletion
+- Removed capability to remove port entity on received event of resource deletion
+- Changed deployment method to point to full terraform module path
 
 # 0.1.0 (2023-08-13)
 

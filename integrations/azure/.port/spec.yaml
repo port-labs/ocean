@@ -19,7 +19,7 @@ configurations:
     sensitive: true
 deploymentMethod:
   - type: terraform
-    module: ocean-containerapp
+    module: port-labs/ocean-containerapp/azure
     example: azure-integration
     title: Azure Container App
     version: ">=0.0.4"
