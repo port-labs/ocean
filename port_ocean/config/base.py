@@ -20,7 +20,6 @@ def read_yaml_config_settings_source(
     yaml_file = getattr(settings.__config__, "yaml_file", "")
 
     assert yaml_file, "Settings.yaml_file not properly configured"
-
     path = Path(base_path, yaml_file)
 
     if not path.exists():

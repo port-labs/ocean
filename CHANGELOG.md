@@ -7,6 +7,24 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.2.3 (2023-08-17)
+
+### Features
+
+- Added the ability to create and clean the defaults of an integration using the following CLI commands: `ocean defaults dock` and `ocean defaults clean` (dock-clean-defaults)
+
+### Improvements
+
+- Optimized dockerfile to produce smaller images (PORT-4485)
+- Changed default log level to INFO in the cli
+
+### Bug Fixes
+
+- Fixed an issue with loading the configuration from the environment variables if the config is a dictionary
+- Move Resource Config Selector class to public
+- Handled delete events from change log where there is no after
+
+
 ## 0.2.2 (2023-08-11)
 
 ### Bug Fixes

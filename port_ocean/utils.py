@@ -1,9 +1,12 @@
 import asyncio
+from importlib.util import module_from_spec, spec_from_file_location
 import inspect
 from asyncio import ensure_future
 from functools import wraps
 from pathlib import Path
 from time import time
+from types import ModuleType
+from typing import Callable, Any
 from traceback import format_exception
 from typing import Callable, Any, Coroutine
 from uuid import uuid4
@@ -39,6 +42,17 @@ def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:
         return None
 
 
+def load_module(file_path: str) -> ModuleType:
+    spec = spec_from_file_location("module.name", file_path)
+    if spec is None or spec.loader is None:
+        raise Exception(f"Failed to load integration from path: {file_path}")
+
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module
+
+
 NoArgsNoReturnFuncT = Callable[[], None]
 NoArgsNoReturnAsyncFuncT = Callable[[], Coroutine[Any, Any, None]]
 NoArgsNoReturnDecorator = Callable[
@@ -47,9 +61,9 @@ NoArgsNoReturnDecorator = Callable[
 
 
 def repeat_every(
-    seconds: float,
-    wait_first: bool = False,
-    raise_exceptions: bool = False,
+        seconds: float,
+        wait_first: bool = False,
+        raise_exceptions: bool = False,
 ) -> NoArgsNoReturnDecorator:
     """
     This function returns a decorator that modifies a function so it is periodically re-executed after its first call.
@@ -71,7 +85,7 @@ def repeat_every(
     """
 
     def decorator(
-        func: NoArgsNoReturnAsyncFuncT | NoArgsNoReturnFuncT,
+            func: NoArgsNoReturnAsyncFuncT | NoArgsNoReturnFuncT,
     ) -> NoArgsNoReturnAsyncFuncT:
         """
         Converts the decorated function into a repeated, periodically-called version of itself.
