@@ -13,7 +13,7 @@ sidebar_label: 🌊 Ocean Overview
 
 Ocean is an open source integration framework for [Port](https://getport.io). Ocean is meant to make it easy to connect Port with your existing infrastructure and 3rd-party tools.
 
-Ocean does this by providing a streamlined interface to interact with Port, including abstractions and commonly required functionality to interact with Port's REST API.
+Ocean does this by providing a streamlined interface to interact with Port, including abstractions and commonly required functionality to interact with [Port's REST API](https://api.getport.io/).
 
 This out-of-the-box functionality greatly simplifies the process of writing a new integration for Port, because as a developer your only requirement is to implement the logic that will query your desired 3rd-party system.
 

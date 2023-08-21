@@ -168,7 +168,7 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 
 #### Interactive API docs
 
-An integration comes built-in with a FastAPI server which also provides a REST interface and a Swagger webpage.
+An integration comes built-in with a [FastAPI](https://fastapi.tiangolo.com/) server which also provides a REST interface and a Swagger webpage.
 
 To view the routes exposed by your integration open your browser and go to [http://localhost:8000/docs](http://localhost:8000/docs). You will see the automatic interactive API documentation for the integration routes (provided by [Swagger UI](https://github.com/swagger-api/swagger-ui)):
 
