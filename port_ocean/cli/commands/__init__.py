@@ -4,6 +4,8 @@ from .new import new
 from .pull import pull
 from .sail import sail
 from .version import version
+from .defaults.dock import dock
+from .defaults.clean import clean
 
 __all__ = [
     "cli_start",
@@ -12,4 +14,6 @@ __all__ = [
     "pull",
     "sail",
     "version",
+    "dock",
+    "clean",
 ]
