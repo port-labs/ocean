@@ -41,7 +41,7 @@ guide.
 
 ## How do I remove my integration from Port?
 
-You can remove your integration by sending an HTTP DELETE method to the `https://api.getport.io/v1/integration/<INTEGRATION_IDENTIFIER>` endpoint in Port's API.
+You can remove your integration by sending an HTTP DELETE method to the `https://api.getport.io/v1/integration/<INTEGRATION_IDENTIFIER>` endpoint in [Port's API](https://api.getport.io/static/index.html#/Integrations/delete_v1_integration__identifier_).
 
 :::caution
 Deleting an integration will not stop the service from running and ingesting data. To stop the service, you need to stop
@@ -66,7 +66,7 @@ You can read all about writing an integration with live events in our [Live even
 
 ## My integration is experiencing sluggish performance. Any solutions?
 
-You can read about how to improve your integration's performance in our [Performance](/framework/develop-an-integration-performance) page.
+You can read about how to improve your integration's performance in our [Performance](/develop-an-integration/performance) page.
 
 ## My integration isn't functioning correctly. What should I do?
 
@@ -78,7 +78,7 @@ If you are still experiencing issues, you can contact us at any of the following
 
 - [Slack](https://www.getport.io/community)
 - [Mail](mailto:support@getport.io)
-- [Live chat](https://www.getport.io)
+- [Live Chat](https://www.app.getport.io)
 
 ## How do I incorporate custom fields into my integration?
 
