@@ -7,7 +7,7 @@ import EventListenerTypesList from '../framework/features/\_event-listener-types
 
 # 🏗️ Integration Configuration
 
-This section explains the structure of the `config.yml` file.
+This section explains the structure of the `config.yaml` file.
 
 ## `config.yaml` file
 
@@ -38,7 +38,7 @@ integration:
   type: "My Integration type (Gitlab, Jira, etc.)"
   config:
     myGitToken: "{{ from env MY_GIT_TOKEN }}"
-    someApplicationUrl: "https://I-Am-Not-A-Real-Url.com"
+    someApplicationUrl: "https://example.com"
 ```
 
 Let's go over the different sections and their allowed values:
@@ -94,3 +94,36 @@ This section is used to specify the type of event listener the integration will 
 <EventListenerTypesList/>
 
 To learn more about a specific event listener, click on its name in the list.
+
+#### `integration` - configure the integration object in Port
+
+```yaml showLineNumbers
+integration:
+  # The identifier of this integration instance.
+  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
+  # The type of the integration.
+  type: "My Integration type (Gitlab, Jira, etc.)"
+  config: ...
+```
+
+This section is used to specify the integration type (for display in Port) and the integration identifier to uniquely identify the integration in case a user has multiple deployments of an integration of the same type.
+
+The required parameters are the integration `type` and the integration `identifier`. In addition to those, an integration can define as many additional parameters and inputs under the `config` object:
+
+##### `config` - integration inputs and parameters
+
+```yaml showLineNumbers
+integration:
+  config:
+    myGitToken: "{{ from env MY_GIT_TOKEN }}"
+    someApplicationUrl: "https://example.com"
+```
+
+This section is used to specify the inputs and parameters required by the integration, an integration can use any number of required parameters and inputs. Inputs can either be static hard-coded values, or dynamic values taken from the environment variables of the running environment/shell.
+
+As the integration developer, you can use the `config` object to receive as many inputs from the user as you require for the integration's proper operation, some common example inputs for the `config` object:
+
+- Secret tokens and credentials to access 3rd-party services
+- URLs to APIs the integration will send requests to that are not static. For example, the Ocean integration for Jira receives a `jiraHost` parameter that specifies the URL of the user's Jira, for example: https://example.atlassian.net
+- Parameters used to configure the integration behavior. For example, a `pageSize` parameter to specify the amount of entries queried from a 3rd-party service when performing a data resync
+- etc
