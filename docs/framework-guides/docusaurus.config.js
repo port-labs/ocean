@@ -174,7 +174,7 @@ const config = {
               },
               {
                 label: "GitHub",
-                href: "https://github.com/port-labs",
+                href: "https://github.com/port-labs/port-ocean",
               },
               {
                 label: "Port",
@@ -232,15 +232,15 @@ const config = {
       // },
     }),
   themes: [
-    // [
-    //   require.resolve("@easyops-cn/docusaurus-search-local"),
-    //   {
-    //     hashed: true,
-    //     indexDocs: true,
-    //     indexBlog: false,
-    //     docsRouteBasePath: "/",
-    //   },
-    // ],
+    [
+      require.resolve("@easyops-cn/docusaurus-search-local"),
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: false,
+        docsRouteBasePath: "/",
+      },
+    ],
   ],
 
   plugins: [
