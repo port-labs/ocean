@@ -4,9 +4,7 @@ from loguru import logger
 
 
 class ArgocdClient:
-    def __init__(
-        self, token: str, server_url: str
-    ):
+    def __init__(self, token: str, server_url: str):
         self.token = token
         self.api_url = f"{server_url}/api/v1"
         self.http_client = httpx.AsyncClient(headers=self.api_auth_header)
@@ -14,14 +12,14 @@ class ArgocdClient:
     @property
     def api_auth_header(self) -> dict[str, Any]:
         return {"Authorization": f"Bearer {self.token}"}
-    
+
     async def _send_api_request(
         self,
         url: str,
         method: str = "GET",
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         """
         Makes an API request to the given URL
 
@@ -35,7 +33,9 @@ class ArgocdClient:
             dict[str, Any]: A dictionary containing the JSON response from the resource.
         """
         try:
-            response = await self.http_client.request(method=method, url=url, params=query_params, json=json_data)
+            response = await self.http_client.request(
+                method=method, url=url, params=query_params, json=json_data
+            )
 
             response.raise_for_status()
             return response.json()["items"]
@@ -45,7 +45,6 @@ class ArgocdClient:
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
-
 
     async def get_argocd_resource(self, resource_type: str) -> list[dict[str, Any]]:
         """
@@ -68,12 +67,9 @@ class ArgocdClient:
         Returns:
             list[dict[str, Any]]: A list of dictionaries representing ArgoCD deployments.
         """
-        applications = await self.get_argocd_resource(
-            resource_type="applications"
-        )
+        applications = await self.get_argocd_resource(resource_type="applications")
         all_deployments = []
         for application in applications:
-
             application_metadata = application.get("metadata", {})
             application_uid = application_metadata.get("uid")
 
