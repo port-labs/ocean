@@ -31,28 +31,36 @@ Using the Ocean context, the integration can access the following functionality:
 Here is an example snippet showing how to use some of the functions provided by the `ocean` context:
 
 ```python showLineNumbers
+from typing import Any
+
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 # highlight-next-line
-@ocean.on_resync(ObjectKind.ISSUE)
+@ocean.on_resync("Issue")
 async def on_resync_kind(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    # handle the request to resync catalog items of a specific kind
+  # handle the request to resync catalog items of a specific kind
+  ...
+
 
 # highlight-next-line
 @ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    # handle an event sent to the integration's app host to the `/integration/webhook` route
+async def handle_webhook_request(data: dict[str, Any]) -> None:
+  # handle an event sent to the integration's app host to the `/integration/webhook` route
 
-    # Get the value of the appHost parameter from the integration config
-    # highlight-next-line
-    integration_app_host = ocean.integration_config.get("app_host")
+  # Get the value of the appHost parameter from the integration config
+  # highlight-next-line
+  integration_app_host = ocean.integration_config.get("app_host")
+  await ocean.register_raw("myKind", [data])
+
 
 # Called once when the integration starts.
 # highlight-next-line
 @ocean.on_start()
 async def on_start() -> None:
-    # integration startup logic
+  # integration startup logic
+  ...
 ```
 
 ## Event context
