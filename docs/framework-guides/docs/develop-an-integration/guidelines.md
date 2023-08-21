@@ -14,7 +14,7 @@ An integration should follow the following structure:
 
 ## Important development guidelines
 
-- Use httpx for making HTTP requests (a requests like library that supports async)
+- Use `httpx` package instead if `requests` for making HTTP requests and take advantage of its async & connection re-use capabilities.
 - Use the Ocean CLI or the make new command to scaffold a new integration
 - Make sure that your integration is passing all linting and type checks
 - Be agnostic to the integration usage, do not assume it will be used in a specific way and try to just return the data as-is
