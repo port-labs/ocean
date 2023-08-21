@@ -7,6 +7,8 @@ sidebar_label: 🌊 Ocean Overview
 
 # 🌊 Ocean Overview
 
+![Thumbnail](https://github.com/port-labs/ocean/blob/f61343caa69d886f8ffe48fe05326f7442bca294/assets/Thumbnail.jpg?raw=true)
+
 ## What is Ocean?
 
 Ocean is an open source integration framework for [Port](https://getport.io). Ocean is meant to make it easy to connect Port with your existing infrastructure and 3rd-party tools.
