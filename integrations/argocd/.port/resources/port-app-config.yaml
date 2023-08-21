@@ -1,0 +1,51 @@
+resources:
+  - kind: projects
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.name
+          blueprint: '"argocdProject"'
+          properties:
+            namespace: .metadata.namespace
+            createdAt: .metadata.creationTimestamp
+  - kind: applications
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.uid
+          title: .metadata.name
+          blueprint: '"argocdApplication"'
+          properties:
+            gitRepo: .spec.source.repoURL
+            gitPath: .spec.source.path
+            sourceType: .status.sourceType
+            destinationServer: .spec.destination.server
+            namespace: .metadata.namespace
+            syncStatus: .status.sync.status
+            healthStatus: .status.health.status
+            createdAt: .metadata.creationTimestamp
+          relations:
+            project: .spec.project
+  - kind: deployments
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"argocdDeployment"'
+          properties:
+            kind: .kind
+            syncStatus: .status
+            healthStatus: .health.status
+            group: .group
+            version: .version
+            namespace: .namespace
+          relations:
+            application: .application_uid

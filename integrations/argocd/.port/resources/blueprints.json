@@ -1,0 +1,185 @@
+[
+    {
+        "identifier": "argocdProject",
+        "description": "This blueprint represents an ArgoCD Project",
+        "title": "ArgoCD Project",
+        "icon": "Argo",
+        "schema": {
+          "properties": {
+            "namespace": {
+              "title": "Namespace",
+              "type": "string"
+            },
+            "createdAt": {
+              "title": "creation At",
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {}
+      },
+      {
+        "identifier": "argocdApplication",
+        "description": "This blueprint represents an ArgoCD Application",
+        "title": "ArgoCD Application",
+        "icon": "Argo",
+        "schema": {
+          "properties": {
+            "gitRepo": {
+              "type": "string",
+              "format": "url",
+              "icon": "Git",
+              "title": "Repository URL",
+              "description": "The URL of the Git repository containing the application source code"
+            },
+            "gitPath": {
+              "type": "string",
+              "title": "Path",
+              "description": "The path within the Git repository where the application manifests are located"
+            },
+            "sourceType": {
+              "type": "string",
+              "title": "Source Type"
+            },
+            "destinationServer": {
+              "type": "string",
+              "title": "Destination Server",
+              "format": "url"
+            },
+            "namespace": {
+              "type": "string",
+              "title": "Namespace"
+            },
+            "syncStatus": {
+              "type": "string",
+              "title": "Sync Status",
+              "enum": [
+                "Synced",
+                "OutOfSync",
+                "Unknown"
+              ],
+              "enumColors": {
+                "Synced": "green",
+                "OutOfSync": "red",
+                "Unknown": "lightGray"
+              },
+              "description": "The sync status of the application"
+            },
+            "healthStatus": {
+              "type": "string",
+              "title": "Health Status",
+              "enum": [
+                "Healthy",
+                "Missing",
+                "Suspended",
+                "Degraded",
+                "Progressing",
+                "Unknown"
+              ],
+              "enumColors": {
+                "Healthy": "green",
+                "Missing": "yellow",
+                "Suspended": "purple",
+                "Degraded": "red",
+                "Progressing": "blue",
+                "Unknown": "lightGray"
+              },
+              "description": "The health status of the application"
+            },
+            "createdAt": {
+              "title": "Created At",
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+          "project": {
+            "title": "Project",
+            "target": "argocdProject",
+            "required": false,
+            "many": false
+          }
+        }
+      },
+      {
+        "identifier": "argocdDeployment",
+        "description": "This blueprint represents an ArgoCD Deployment",
+        "title": "ArgoCD Deployment",
+        "icon": "Argo",
+        "schema": {
+          "properties": {
+            "kind": {
+              "type": "string",
+              "title": "Resource Kind"
+            },
+            "syncStatus": {
+              "type": "string",
+              "title": "Sync Status",
+              "enum": [
+                "Synced",
+                "OutOfSync",
+                "Unknown"
+              ],
+              "enumColors": {
+                "Synced": "green",
+                "OutOfSync": "red",
+                "Unknown": "lightGray"
+              },
+              "description": "The sync status of the application"
+            },
+            "healthStatus": {
+              "type": "string",
+              "title": "Health Status",
+              "enum": [
+                "Healthy",
+                "Missing",
+                "Suspended",
+                "Degraded",
+                "Progressing",
+                "Unknown"
+              ],
+              "enumColors": {
+                "Healthy": "green",
+                "Missing": "yellow",
+                "Suspended": "purple",
+                "Degraded": "red",
+                "Progressing": "blue",
+                "Unknown": "lightGray"
+              },
+              "description": "The health status of the application"
+            },
+            "group": {
+              "type": "string",
+              "title": "Group"
+            },
+            "version": {
+              "title": "Version",
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string",
+              "title": "Namespace"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+          "application": {
+            "title": "Application",
+            "target": "argocdApplication",
+            "required": false,
+            "many": false
+          }
+        }
+      }
+]

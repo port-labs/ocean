@@ -1,0 +1,18 @@
+version: v0.1.0
+type: argocd
+description: Argocd integration for Port Ocean
+icon: Argo
+features:
+  - type: exporter
+    section: Git Providers
+    resources:
+      - kind: projects
+      - kind: applications
+      - kind: deployments
+configurations:
+  - name: token
+    required: true
+    type: string
+    sensitive: true
+  - name: serverUrl
+    type: string
