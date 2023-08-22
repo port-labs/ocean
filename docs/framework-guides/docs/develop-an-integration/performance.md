@@ -1,21 +1,20 @@
 ---
 title: 🏎️ Performance
-sidebar_position: 7
+sidebar_position: 5
 ---
 
-import HttpxExample from '../_common/httpx-instead-of-requests.md'
+import HttpxExample from '../\_common/httpx-instead-of-requests.md'
 
 This guide outlines the possible known performance enhancements that can be applied to an integration built using the
 Ocean framework.
 
 ## Async work
 
-Make sure to use async work whenever needed, for example, use async implementation of 3rd party libraries.
+Make sure to use async work whenever needed, for example, use async an implementation of 3rd party libraries.
 
 ### httpx instead of requests
 
-For instance, use `httpx` instead of `requests`, httpx is an async implementation of the requests library and by using
-it you can make sure that your integration will not block the event loop.
+For instance, use `httpx` instead of `requests`, httpx is an async implementation of the requests library and its usage makes sure that your integration does not block the event loop.
 
 <HttpxExample />
 
@@ -38,7 +37,7 @@ for value in gen:
     print(value)
 ```
 
-n this example, my_generator is a generator function. Instead of using return, it uses the yield keyword to produce
+n this example, `my_generator` is a generator function. Instead of using return, it uses the `yield` keyword to produce
 values one at a time. When you iterate over the generator, each call to yield produces the next value in the sequence,
 and the generator's state is preserved between calls.
 
@@ -47,29 +46,32 @@ and the generator's state is preserved between calls.
 The Ocean framework provides a way to use generators in the integration `@ocean.on_resync` listeners.
 
 Instead of returning a list of raw items, you can return a generator that will yield a list of items that will return
-the data in batches. This will allow the framework to start processing the data as soon as it is available and not wait
+the data in batches. This allows the framework to start processing the data as soon as it is available and not wait
 for the whole list to be returned.
 
-This is especially useful when the integration is returning a large list of items or need to fetch alot data from the
-api that can be processed in batches or can be paginated from the api.
+This is especially useful when the integration is returning a large list of items or the integration needs to query paginated information which can be ingested in batches (for example, yielding one page response as a batch at a time to make sure the integration already starts ingesting entities to Port while the rest of the dataset is queried in the background)
 
 :::tip
-Try to optimize the amount of data that is being returned in each batch from the generator, this will make the waiting
-for the data fetching to be more seamless.
+Try to optimize the amount of data that is being returned in each batch from the generator, this will make sure the integration is always working and passing the data from the 3rd-party to Port with no delay
 :::
 
 :::caution
-although using generators with ocean can make the data appear faster, it will not make the integration faster, it will
+Although using generators with Ocean can make the data appear faster, it will not make the integration faster, it will
 only allow the framework to start processing the data as soon as it is available.
 
-Try to make batches as big as possible to allow more data to be processed in each batch, But not too big to make the
-waiting for the data to be fetched not too long.
+In general batch sizes should be optimized according to the performance seen both when querying the 3rd-party for information, and when examining Ocean's rate of ingestion to Port.
+
+- A batch size that is too large can cause the integration to wait around too much without ingesting new entities, while also making the ingestion to Port slow due to the large single dataset
+  - This will not cause a logical issue, it will only impact the integration's performance
+- A batch size that is too small can cause rate-limiting issues when querying the 3rd-party
+  - This could result in the integration not being functional
+
 :::
 
-In the following example, we are using a generator to fetch projects from an api that returns the data in batches.
-Each batch will be processed an ingested accordingly to Port upon receiving it.
+In the following example, we are using a generator to fetch projects from an API that returns the data in batches.
+Each batch will be yielded to the Ocean framework, which will ingest it into Port, while the integration processes the next batch.
 
-```python
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 

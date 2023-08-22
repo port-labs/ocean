@@ -1,12 +1,13 @@
 ---
 title: 🕹️ Trigger your Integration
+sidebar_position: 7
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import SwaggerGuide from './_mdx/trigger-swagger-guide.md';
-import CurlGuide from './_mdx/trigger-curl-guide.md';
-import PythonGuide from './_mdx/trigger-python-guide.md';
+import SwaggerGuide from './\_mdx/trigger-swagger-guide.md';
+import CurlGuide from './\_mdx/trigger-curl-guide.md';
+import PythonGuide from './\_mdx/trigger-python-guide.md';
 
 This guide explains how you can trigger your integration using the [Port](https://app.getport.io).
 
@@ -36,5 +37,3 @@ detect the trigger and will run the integration resync.
         <PythonGuide/>
     </TabItem>
 </Tabs>
-
-

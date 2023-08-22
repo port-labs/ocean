@@ -1,9 +1,10 @@
 ---
 title: 🗺 Development Guidelines
+sidebar_position: 6
 ---
 
-import Structure from './_mdx/integration_structure.md'
-import HttpxExample from '../_common/httpx-instead-of-requests.md'
+import Structure from './\_mdx/integration_structure.md'
+import HttpxExample from '../\_common/httpx-instead-of-requests.md'
 
 This section provides guidelines for developing an integration.
 
@@ -68,23 +69,23 @@ You can read more about possible performance enhancements in the [Performance](.
 
    :::tip ✅ Do
 
-    ```python
-    # Do use simple and straightforward code
-    result = 0
-    for num in range(1, 11):
-        result += num
-    print(result)
-    ```
+   ```python
+   # Do use simple and straightforward code
+   result = 0
+   for num in range(1, 11):
+       result += num
+   print(result)
+   ```
 
    :::
 
    :::danger ❌ Don't
 
-    ```python
-    # Don't use unnecessarily complex expressions
-    result = sum([num for num in range(1, 11)])
-    print(result)
-    ```
+   ```python
+   # Don't use unnecessarily complex expressions
+   result = sum([num for num in range(1, 11)])
+   print(result)
+   ```
 
    :::
 
@@ -96,48 +97,48 @@ You can read more about possible performance enhancements in the [Performance](.
 
    :::tip ✅ Do
 
-    ```python
-    # Do use a single level of nesting for clarity
-    if condition:
-        do_something()
-    else:
-        do_another_thing()
-    ```
+   ```python
+   # Do use a single level of nesting for clarity
+   if condition:
+       do_something()
+   else:
+       do_another_thing()
+   ```
 
    :::
 
    :::danger ❌ Don't
 
-    ```python
-    # Don't nest multiple conditions excessively
-    if condition1:
-        if condition2:
-            if condition3:
-                do_something()
-    ```
+   ```python
+   # Don't nest multiple conditions excessively
+   if condition1:
+       if condition2:
+           if condition3:
+               do_something()
+   ```
 
    :::
 
-3. "_Readability Counts._"  - [The Zen of Python](https://peps.python.org/pep-0020/#the-zen-of-python)
+3. "_Readability Counts._" - [The Zen of Python](https://peps.python.org/pep-0020/#the-zen-of-python)
 
    This principle emphasizes the significance of writing code that is easy to read and understand. Code is often read by
    other developers, including your future self, so it's crucial to prioritize clarity over cleverness.
 
    :::tip ✅ Do
 
-    ```python
-    # Choose meaningful variable, function, and class names that convey their purpose or functionality.
-    # Avoid single-letter or cryptic names.
-    total_score = calculate_total_score()
-    ```
+   ```python
+   # Choose meaningful variable, function, and class names that convey their purpose or functionality.
+   # Avoid single-letter or cryptic names.
+   total_score = calculate_total_score()
+   ```
 
    :::
 
    :::danger ❌ Don't
 
-    ```python
-    # Don't use single-letter or cryptic names
-    ts = calc_score()
-    ```
+   ```python
+   # Don't use single-letter or cryptic names
+   ts = calc_score()
+   ```
 
    :::

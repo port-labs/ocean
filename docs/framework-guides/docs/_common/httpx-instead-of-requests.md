@@ -13,12 +13,10 @@ Reuse the async client across your integration to take advantage of connection r
 :::
 
 :::caution
-Usage of `requests` package will cause the requests to be made synchronously and will block the event loop.
+Usage of `requests` package will cause the web requests to be made synchronously and will block the event loop.
 :::
 
 :::danger
 The integration can be used with a [Kafka event listener](../framework/features/event-listener.md#kafka), which runs
-in a separate thread. Make sure to use your client
-in a thread-safe manner. The async client will throw an exception if will be used in a different event loop than the
-one it was created in.
+in a separate thread. Make sure to use your client in a thread-safe manner. The async client will throw an exception if is used in a different event loop than the one it was created in.
 :::
