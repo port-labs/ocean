@@ -20,7 +20,7 @@ class ArgocdClient:
         method: str = "GET",
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
-    ) -> list[dict[str, Any]]:
+    ) -> dict[str, Any]:
         """
         Makes an API request to the given URL. The Argo CD REST API documentation can be found here https://cd.apps.argoproj.io/swagger-ui
 
@@ -73,11 +73,14 @@ class ArgocdClient:
 
         for project in projects:
             project_name = project.get("metadata", {}).get("name")
-            applications = await self._send_api_request(url=url, query_params={"projects": project_name})
-            all_applications.extend(applications.get("items", [])) if applications.get("items") else None
+            applications = await self._send_api_request(
+                url=url, query_params={"projects": project_name}
+            )
+            all_applications.extend(applications.get("items", [])) if applications.get(
+                "items"
+            ) else None
 
         return all_applications
-
 
     async def get_argocd_deployments(self) -> list[dict[str, Any]]:
         """
