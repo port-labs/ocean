@@ -29,14 +29,6 @@ h6 {
   font-family: "Lexend";
 }
 
-h2::first-letter,
-h3::first-letter,
-h4::first-letter,
-h5::first-letter,
-h6::first-letter {
-  text-transform: uppercase;
-}
-
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme="dark"] {
   --ifm-color-primary: #3ed0dd;
