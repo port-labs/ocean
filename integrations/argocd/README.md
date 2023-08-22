@@ -31,7 +31,7 @@ helm upgrade --install my-argocd-integration port-labs/port-ocean \
 ```
 ## Supported Kinds
 ### Projects
-This kind represents an ArgoCD project.
+This kind represents an ArgoCD project. The mapping should refer to one of the projects from the example response [ArgoCD documentation](https://cd.apps.argoproj.io/swagger-ui#operation/ProjectService_List)
 
 <details>
 <summary>blueprint.json</summary>
@@ -84,7 +84,7 @@ resources:
 </details>
 
 ### Applications
-This kind represents an ArgoCD application.
+This kind represents an ArgoCD application. The mapping should refer to one of the applications from the example response [ArgoCD documentation](https://cd.apps.argoproj.io/swagger-ui#operation/ApplicationService_List)
 
 <details>
 <summary>blueprint.json</summary>
@@ -209,7 +209,7 @@ resources:
 </details>
 
 ### Deployment
-This kind represents all the different deployment resources. It includes Deployment, Services, Ingress etc
+This kind represents all the different deployment resources. It includes Deployment, Services, Ingress etc. The mapping should refer to one of the applications from the example response [ArgoCD documentation](https://cd.apps.argoproj.io/swagger-ui#operation/ApplicationService_List)
 
 <details>
 <summary>blueprint.json</summary>

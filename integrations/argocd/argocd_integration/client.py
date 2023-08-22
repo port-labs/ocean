@@ -1,6 +1,7 @@
 from typing import Any, Optional
 import httpx
 from loguru import logger
+from argocd_integration.utils import ObjectKind
 
 
 class ArgocdClient:
@@ -21,7 +22,7 @@ class ArgocdClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         """
-        Makes an API request to the given URL
+        Makes an API request to the given URL. The Argo CD REST API documentation can be found here https://cd.apps.argoproj.io/swagger-ui
 
         Args:
             url (str): API endpoint URL
@@ -38,7 +39,7 @@ class ArgocdClient:
             )
 
             response.raise_for_status()
-            return response.json()["items"]
+            return response.json()
 
         except httpx.HTTPStatusError as e:
             logger.error(
@@ -46,28 +47,46 @@ class ArgocdClient:
             )
             raise
 
-    async def get_argocd_resource(self, resource_type: str) -> list[dict[str, Any]]:
+    async def get_argocd_projects(self) -> list[dict[str, Any]]:
         """
-        Retrieve ArgoCD resources of a specific type.
-
-        Args:
-            resource_type (str): The type of ArgoCD resource to retrieve.
+        Retrieves all ArgoCD projects
 
         Returns:
             list[dict[str, Any]]: A list of dictionaries representing the ArgoCD resources
             of the specified type.
         """
-        url = f"{self.api_url}/{resource_type}"
-        return await self._send_api_request(url=url)
+        url = f"{self.api_url}/{ObjectKind.PROJECT}"
+
+        response = await self._send_api_request(url=url)
+        return response.get("items", [])
+
+    async def get_argocd_applications(self) -> list[dict[str, Any]]:
+        """
+        Retrieve all ArgoCD applications across all projects. Due to the unavailability of server-side pagination in the ArgoCD REST API, we can temporary resolve it by filtering with projects. This will solve the issue of having a very huge data in the network call
+
+        Returns:
+            List[dict[str, Any]]: A list of dictionaries representing ArgoCD applications.
+        """
+        projects = await self.get_argocd_projects()
+        all_applications = []
+        url = f"{self.api_url}/{ObjectKind.APPLICATION}"
+
+        for project in projects:
+            project_name = project.get("metadata", {}).get("name")
+            applications = await self._send_api_request(url=url, query_params={"projects": project_name})
+            all_applications.extend(applications.get("items", [])) if applications.get("items") else None
+
+        return all_applications
+
 
     async def get_argocd_deployments(self) -> list[dict[str, Any]]:
         """
-        Retrieve a list of ArgoCD deployments.
+        Retrieve a list of ArgoCD deployments. We define deployment as all the resources contained in an application
 
         Returns:
             list[dict[str, Any]]: A list of dictionaries representing ArgoCD deployments.
         """
-        applications = await self.get_argocd_resource(resource_type="applications")
+        applications = await self.get_argocd_applications()
         all_deployments = []
         for application in applications:
             application_metadata = application.get("metadata", {})

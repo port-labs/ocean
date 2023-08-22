@@ -37,7 +37,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .name
+          identifier: .name + "-" + .kind | tostring
           title: .name
           blueprint: '"argocdDeployment"'
           properties:
