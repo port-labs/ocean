@@ -1,4 +1,4 @@
-version: v0.1.1
+version: v0.1.2
 type: azure
 description: azure integration for Port Ocean
 icon: Azure
@@ -17,10 +17,15 @@ configurations:
     required: true
     type: string
     sensitive: true
-deploymentMethod:
+    description: Azure subscription ID to
+deploymentMethodOverride:
   - type: terraform
-    module: port-labs/ocean-containerapp/azure
-    example: azure-integration
+    module: port-labs/integration-factory/ocean
+    example: azure_container_app_azure_integration
     title: Azure Container App
-    version: ">=0.0.4"
-    extraVars: []
+    version: ">=0.0.15"
+    extraVars:
+      - name: event_grid_system_topic_name
+        description: The name of the event grid system topic of type Microsoft.Resources.Subscriptions to use to receive events from Azure. If not set, a new topic will be created. Note that Azure supports only one Microsoft.Resources.Subscriptions topic in account.
+        required: true
+        default: ""

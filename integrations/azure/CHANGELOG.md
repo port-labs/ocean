@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# 0.1.2 (2023-08-21)
+
+### Bug Fixes
+
+- Aligned the deployment method attribute in spec.yaml to our new terraform module architecture
+
+
 # 0.1.1 (2023-08-20)
 
 ### Bug Fixes
