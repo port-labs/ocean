@@ -3,7 +3,7 @@ title: 📦 Publish an Integration
 sidebar_position: 7
 ---
 
-# Publish an Integration
+# 📦 Publish an Integration
 
 This guide outlines the steps required to publish an integration built using the Ocean framework.
 

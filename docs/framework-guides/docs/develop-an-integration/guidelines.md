@@ -2,7 +2,7 @@
 title: 🗺 Development Guidelines
 ---
 
-import Structure from './_integration_structure.md'
+import Structure from './_mdx/integration_structure.md'
 import HttpxExample from '../_common/httpx-instead-of-requests.md'
 
 This section provides guidelines for developing an integration.
