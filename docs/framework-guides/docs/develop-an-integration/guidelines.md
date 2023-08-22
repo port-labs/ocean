@@ -49,7 +49,8 @@ Use the Ocean CLI or the make new command to scaffold a new integration
 
 ### Integration maturity
 
-Make sure that your integration is passing all linting and type checks
+Make sure that your integration is passing all linting and type checks as described in
+the [Publishing](../develop-an-integration/publish-an-integration.md#prerequisites) page.
 
 Use `make lint` to run the linting locally
 
