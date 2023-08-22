@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.4 (2023-08-22)
+
+### Bug Fixes
+
+- Added event_grid_system_topic_name and event_grid_event_filter_list to the spec.yaml extra vars (#1)
+
+
 # 0.1.3 (2023-08-22)
 
 ### Bug Fixes
