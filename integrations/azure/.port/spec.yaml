@@ -1,4 +1,4 @@
-version: v0.1.0
+version: v0.1.4
 type: azure
 description: azure integration for Port Ocean
 icon: Azure
@@ -17,10 +17,37 @@ configurations:
     required: true
     type: string
     sensitive: true
-deploymentMethod:
+    description: Azure subscription ID to export resources from
+deploymentMethodOverride:
   - type: terraform
-    module: ocean-containerapp
-    example: azure-integration
+    module: port-labs/integration-factory/ocean
+    example: azure_container_app_azure_integration
     title: Azure Container App
-    version: ">=0.0.4"
-    extraVars: []
+    version: ">=0.0.15"
+    extraVars:
+      - name: event_grid_system_topic_name
+        description: The name of the event grid system topic of type Microsoft.Resources.Subscriptions to use to receive events from Azure. If not set, a new topic will be created. Note that Azure supports only one Microsoft.Resources.Subscriptions topic in account.
+        required: true
+        default: ""
+        type: string
+      - name: event_grid_event_filter_list
+        description: A list of resources to filter events from Azure.
+        required: true
+        default:
+          - "Microsoft.Resources/subscriptions/resourceGroups"
+          - "Microsoft.App/containerApp"
+          - "Microsoft.Storage/storageAccounts"
+          - "Microsoft.Compute/virtualMachines"
+          - "Microsoft.Network/loadBalancers"
+        type: array
+      - name: action_permissions_list
+        description: A list of permissions that will be assigned to the Azure Integration User to export Azure Resources.
+        required: true
+        default:
+          - "Microsoft.Resources/subscriptions/resourceGroups/read"
+          - "Microsoft.Resources/subscriptions/resources/read"
+          - "Microsoft.app/containerapps/read"
+          - "Microsoft.Storage/storageAccounts/*/read"
+          - "Microsoft.ContainerService/managedClusters/read"
+          - "Microsoft.Network/loadBalancers/read"
+        type: array

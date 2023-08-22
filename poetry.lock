@@ -1307,10 +1307,28 @@ files = [
     {file = "wrapt-1.15.0.tar.gz", hash = "sha256:d06730c6aed78cee4126234cf2d071e01b44b915e725a6cb439a879ec9754a3a"},
 ]
 
+[[package]]
+name = "yamllint"
+version = "1.32.0"
+description = "A linter for YAML files."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "yamllint-1.32.0-py3-none-any.whl", hash = "sha256:d97a66e48da820829d96077d76b8dfbe6c6140f106e558dae87e81ac4e6b30b7"},
+    {file = "yamllint-1.32.0.tar.gz", hash = "sha256:d01dde008c65de5b235188ab3110bebc59d18e5c65fc8a58267cd211cd9df34a"},
+]
+
+[package.dependencies]
+pathspec = ">=0.5.3"
+pyyaml = "*"
+
+[package.extras]
+dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
+
 [extras]
 cli = ["click", "cookiecutter", "jinja2-time", "rich"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "99a57ea0b3bc4843006bd5c6b2842f4ecfcb521ce87f46c1f69fd6e72468096d"
+content-hash = "c7280bfff76d2b447783d36470ff936a818da231f2901ad9bfdea72b729e7b71"
