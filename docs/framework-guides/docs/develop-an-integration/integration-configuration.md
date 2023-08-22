@@ -1,6 +1,6 @@
 ---
 title: 🏗️ Integration Configuration
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 import EventListenerTypesList from '../framework/features/\_event-listener-types-list.md'

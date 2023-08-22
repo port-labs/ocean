@@ -4,8 +4,10 @@ sidebar_position: 5
 ---
 
 The Ocean framework provides a convenient way to validate the configuration of an integration.
-By validating the configuration, the integration can make sure that the configuration is valid and that it can perform
-the tasks it needs to perform before starting to run.
+
+By providing a validation specification, the Ocean framework can verify that the configuration provided to the integration contains all required resources in the expected format, ensuring it can start and perform its logic.
+
+Ocean performs configuration validation based on the specification provided in the `.port/spec.yml` file.
 
 ## How to setup configuration type validation
 
@@ -15,6 +17,7 @@ using the `.port/spec.yaml` file.
 ## Supported configuration types
 
 The Ocean framework supports the following configuration types:
+
 - `string` - Will check if the value is a valid string. For example: `my string`
 - `integer` - Will check if the value is a valid integer. For example: `123`
 - `boolean` - Will check if the value is a valid boolean. For example: `true`
@@ -24,8 +27,8 @@ The Ocean framework supports the following configuration types:
 ### Example
 
 `.port/spec.yaml`:
+
 ```yaml showLineNumbers
-...
 configurations:
   - name: myBooleanConfig
     type: boolean
@@ -34,6 +37,7 @@ configurations:
 
 `config.yaml`:
 :::danger ❌ Invalid configuration
+
 ```yaml showLineNumbers
 ...
 integration:
@@ -43,9 +47,11 @@ integration:
     myConfig: 123 # This will fail validation
     // highlight-end
 ```
+
 :::
 
 :::tip ✅ Valid configuration
+
 ```yaml showLineNumbers
 ...
 integration:
@@ -55,4 +61,5 @@ integration:
     myConfig: true # This is a valid configuration
     // highlight-end
 ```
+
 :::
