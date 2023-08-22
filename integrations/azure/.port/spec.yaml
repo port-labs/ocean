@@ -1,4 +1,4 @@
-version: v0.1.2
+version: v0.1.3
 type: azure
 description: azure integration for Port Ocean
 icon: Azure
@@ -17,7 +17,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: Azure subscription ID to
+    description: Azure subscription ID to export resources from
 deploymentMethodOverride:
   - type: terraform
     module: port-labs/integration-factory/ocean
