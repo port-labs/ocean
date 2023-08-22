@@ -115,3 +115,17 @@ configurations:
 ```
 
 This section is used to specify the inputs required by the integration, this information is used to verify the [integration configuration](./integration-configuration.md) is valid before the integration starts. This information is also used to auto-generate the correct deployment snippet in Port's UI for the integration.
+
+The integration's `configurations` spec is an array where each item includes:
+
+- `name` - the name of the integration parameter
+  - Parameters should be passed in camelCase format - `appHost`, `secretToken`, `emailAddress`, etc.
+- `required` - whether the parameter is required or optional
+  - Available values: `true`, `false`
+- `type` - the type of the parameter
+  - Available values: `string`, `number`, `url`
+- `description` - a description for the parameter and its usage in the integration
+  - Please provide a description to make it easier for users who want to use your integration to understand the different required parameters
+- `sensitive` - whether this parameter is secret or sensitive
+  - Available values: `true`, `false`
+  - Parameters marked as sensitive are stored in the secrets mechanism provided by the integration deployment scheme (K8s secret for Helm deployment, AWS Secrets Manager for deployment in AWS ECS, etc)
