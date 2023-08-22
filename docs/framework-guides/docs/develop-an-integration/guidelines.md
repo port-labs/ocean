@@ -72,6 +72,12 @@ from loguru import logger
 logger.info('Hello World')
 ```
 
+### Performance
+
+Make sure your integration is performant and does not block the event loop for too long.
+
+You can read more about possible performance enhancements in the [Performance](../develop-an-integration/performance.md)
+
 ### Code Principles
 
 1. > "_Simple is better than complex._" - [The Zen of Python](https://peps.python.org/pep-0020/#the-zen-of-python)
