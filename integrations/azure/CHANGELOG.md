@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# 0.1.3 (2023-08-22)
+
+### Bug Fixes
+
+- Fixed subscriptionID description in the spec.yaml
+
+
 # 0.1.2 (2023-08-21)
 
 ### Bug Fixes
