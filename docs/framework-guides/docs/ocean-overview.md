@@ -5,9 +5,24 @@ title: Ocean Overview
 sidebar_label: 🌊 Ocean Overview
 ---
 
-# 🌊 Ocean Overview
 
 ![Thumbnail](https://github.com/port-labs/ocean/blob/f61343caa69d886f8ffe48fe05326f7442bca294/assets/Thumbnail.jpg?raw=true)
+
+<div style={{display:'flex',justifyContent:'center'}}>
+<Badges/>
+</div>
+
+<p align="center">
+<a href="https://github.com/tiangolo/fastapi/actions?query=lint+event:push+branch:main" target="_blank" style={{marginRight: "0.5em"}}>
+    <img src="https://github.com/port-labs/Port-Ocean/actions/workflows/lint.yml/badge.svg" alt="Lint" />
+</a>
+<a href="https://pypi.org/project/port-ocean" target="_blank" style={{marginRight: "0.5em"}}>
+    <img src="https://img.shields.io/pypi/v/port-ocean?color=%2334D058&label=pypi%20package" alt="Package version"/>
+</a>
+<a href="https://pypi.org/project/fastapi" target="_blank">
+    <img src="https://img.shields.io/pypi/pyversions/port-ocean.svg?color=%2334D058" alt="Supported Python versions"/>
+</a>
+</p>
 
 ## What is Ocean?
 
