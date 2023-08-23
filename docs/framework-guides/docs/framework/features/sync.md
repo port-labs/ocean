@@ -114,6 +114,8 @@ def sync_webhook():
     })
 ```
 
+<!-- TODO: fix -->
+
 :::note
 The `ocean.update_raw_diff` function will not affect entities that are not defined in the given states.
 Therefore, if the integration is syncing a list of entities, the function will not delete entities that are not
