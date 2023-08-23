@@ -5,6 +5,7 @@ title: Ocean Overview
 sidebar_label: 🌊 Ocean Overview
 ---
 
+# 🌊 Ocean Overview
 
 ![Thumbnail](https://github.com/port-labs/ocean/blob/f61343caa69d886f8ffe48fe05326f7442bca294/assets/Thumbnail.jpg?raw=true)
 
