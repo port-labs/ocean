@@ -18,7 +18,7 @@ page.
 - [`ocean.on_resync`](#oceanon_resync)
 - [`ocean.sync_raw_all`](#oceansync_raw_all)
 - [`ocean.sync`](#oceansync)
-  :::
+:::
 
 ## Ocean Raw Sync
 
