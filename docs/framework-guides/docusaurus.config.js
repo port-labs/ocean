@@ -64,6 +64,11 @@ const config = {
             position: "right",
           },
           {
+            href: "https://getport.io",
+            label: "Port",
+            position: "right",
+          },
+          {
             href: "https://demo.getport.io",
             label: "Demo",
             position: "right",
@@ -79,69 +84,57 @@ const config = {
         style: "dark",
         links: [
           {
-            title: "Documentation",
+            title: "Ocean",
             items: [
+              {
+                label: "Overview",
+                to: "/",
+              },
+              {
+                label: "Integrations Library",
+                to: "/integrations-library",
+              },
               {
                 label: "Changelog",
                 to: "/changelog",
               },
-              // {
-              //   label: "Port Overview",
-              //   to: "/",
-              // },
-              // {
-              //   label: "Quickstart",
-              //   to: "/quickstart",
-              // },
-              // {
-              //   label: "Build Software Catalog",
-              //   to: "/build-your-software-catalog",
-              // },
-              // {
-              //   label: "Create Self-Service Experiences",
-              //   to: "/create-self-service-experiences",
-              // },
-              // {
-              //   label: "Promote Scorecards",
-              //   to: "/promote-scorecards",
-              // },
-              // {
-              //   label: "Search & Query",
-              //   to: "/search-and-query",
-              // },
-              // {
-              //   label: "API Reference",
-              //   to: "/api-reference",
-              // },
+              {
+                label: "Contributing",
+                to: "/contributing",
+              },
+              {
+                label: "FAQ",
+                to: "/faq",
+              },
             ],
           },
           {
-            title: "Ingest Data to Catalog",
+            title: "Features & Development",
             items: [
-              // {
-              //   label: "API",
-              //   to: "/build-your-software-catalog/sync-data-to-catalog/api",
-              // },
-              // {
-              //   label: "CI/CD",
-              //   to: "/build-your-software-catalog/sync-data-to-catalog/ci-cd",
-              // },
-              // {
-              //   label: "Kubernetes",
-              //   to: "/build-your-software-catalog/sync-data-to-catalog/kubernetes",
-              // },
-              // {
-              //   label: "Git",
-              //   to: "/build-your-software-catalog/sync-data-to-catalog/git",
-              // },
-              // {
-              //   label: "AWS",
-              //   to: "/build-your-software-catalog/sync-data-to-catalog/aws",
-              // },
-              // {
-              //   label: "Terraform",
-              //   to: "/build-your-software-catalog/sync-data-to-catalog/iac/terraform",
-              // },
+              {
+                label: "Quickstart",
+                to: "/getting-started",
+              },
+              {
+                label: "Develop an Integration",
+                to: "/develop-an-integration/",
+              },
+              {
+                label: "Resource Mapping",
+                to: "/framework/features/resource-mapping",
+              },
+              {
+                label: "Sync Entities State",
+                to: "/framework/features/sync",
+              },
+              {
+                label: "Event Listener",
+                to: "/framework/features/event-listener",
+              },
+              {
+                label: "Live Events",
+                to: "/framework/features/live-events",
+              },
             ],
           },
           {
@@ -162,7 +155,7 @@ const config = {
             ],
           },
           {
-            title: "More",
+            title: "More from Port",
             items: [
               {
                 label: "Blog",
@@ -185,6 +178,10 @@ const config = {
           {
             title: "Legal",
             items: [
+              {
+                label: "License",
+                href: "/license",
+              },
               {
                 label: "Terms of Service",
                 href: "https://getport.io/legal/terms-of-service",
