@@ -20,7 +20,7 @@ sidebar_label: 🌊 Ocean Overview
 <a href="https://pypi.org/project/port-ocean" target="_blank" style={{marginRight: "0.5em"}}>
     <img src="https://img.shields.io/pypi/v/port-ocean?color=%2334D058&label=pypi%20package" alt="Package version"/>
 </a>
-<a href="https://pypi.org/project/fastapi" target="_blank">
+<a href="https://pypi.org/project/port-ocean" target="_blank">
     <img src="https://img.shields.io/pypi/pyversions/port-ocean.svg?color=%2334D058" alt="Supported Python versions"/>
 </a>
 </p>
