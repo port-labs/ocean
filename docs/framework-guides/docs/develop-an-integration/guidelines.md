@@ -22,13 +22,14 @@ An integration should follow the following structure:
 
 ### Scaffold using the CLI
 
-Use the Ocean CLI or the make new command to scaffold a new integration
+To scaffold a new integration you can use the following options:
 
-`ocean new` or `make new`
+- `ocean new` - available through the Ocean CLI
+- `make new` - available when cloning the [Ocean](https://github.com/port-labs/port-ocean) repository locally
 
 ### Integration maturity
 
-Make sure that your integration is passing all linting and type checks as described in
+Make sure that your integration passes linting and type checks as described in
 the [Publishing](../develop-an-integration/publish-an-integration.md#prerequisites) page.
 
 Use `make lint` to run the linting locally
@@ -36,9 +37,9 @@ Use `make lint` to run the linting locally
 ### Integration should be agnostic
 
 Be agnostic to the integration usage, do not assume it will be used in a specific way and try to just return the data
-as-is
+as-is. Integration users can use the mapping configuration to choose how to ingest the data into Port, the integration should serve as a straightforward way to get the raw data from the 3rd-party for mapping.
 
-Extensions to the basic kind data with additional custom fields should be done using in keys that start with `__` (
+Extensions to the basic kind data with additional custom fields should be done using keys that start with `__` (
 e.g. `__my_custom_field`)
 
 ### Logging
@@ -53,9 +54,9 @@ logger.info('Hello World')
 
 ### Performance
 
-Make sure your integration is performant and does not block the event loop for too long.
+Make sure your integration is performant and does not block the event loop if possible.
 
-You can read more about possible performance enhancements in the [Performance](../develop-an-integration/performance.md)
+You can read more about possible performance enhancements in the [performance](../develop-an-integration/performance.md) page
 
 ### Code Principles
 
@@ -65,11 +66,11 @@ You can read more about possible performance enhancements in the [Performance](.
    ones. Complex code can be harder to maintain, debug, and extend. Prioritizing simplicity helps in creating code
    that's more readable and approachable for everyone involved.
 
-   consider splitting the `main.py` into multiple files and import to import them.
+   consider splitting the `main.py` into multiple files and import them when needed.
 
    :::tip ✅ Do
 
-   ```python
+   ```python showLineNumbers
    # Do use simple and straightforward code
    result = 0
    for num in range(1, 11):
@@ -81,7 +82,7 @@ You can read more about possible performance enhancements in the [Performance](.
 
    :::danger ❌ Don't
 
-   ```python
+   ```python showLineNumbers
    # Don't use unnecessarily complex expressions
    result = sum([num for num in range(1, 11)])
    print(result)
@@ -97,7 +98,7 @@ You can read more about possible performance enhancements in the [Performance](.
 
    :::tip ✅ Do
 
-   ```python
+   ```python showLineNumbers
    # Do use a single level of nesting for clarity
    if condition:
        do_something()
@@ -109,7 +110,7 @@ You can read more about possible performance enhancements in the [Performance](.
 
    :::danger ❌ Don't
 
-   ```python
+   ```python showLineNumbers
    # Don't nest multiple conditions excessively
    if condition1:
        if condition2:
@@ -126,7 +127,7 @@ You can read more about possible performance enhancements in the [Performance](.
 
    :::tip ✅ Do
 
-   ```python
+   ```python showLineNumbers
    # Choose meaningful variable, function, and class names that convey their purpose or functionality.
    # Avoid single-letter or cryptic names.
    total_score = calculate_total_score()
@@ -136,7 +137,7 @@ You can read more about possible performance enhancements in the [Performance](.
 
    :::danger ❌ Don't
 
-   ```python
+   ```python showLineNumbers
    # Don't use single-letter or cryptic names
    ts = calc_score()
    ```
