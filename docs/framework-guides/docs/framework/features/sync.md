@@ -1,6 +1,7 @@
 ---
 title: 🔁 Sync Entities State
 sidebar_position: 1
+description: Use Ocean to keep the catalog up to date
 ---
 
 The Ocean framework provides a way to sync entities state between the 3rd party application and Port. This can be done

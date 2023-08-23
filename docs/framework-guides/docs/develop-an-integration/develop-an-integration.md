@@ -19,9 +19,10 @@ These steps do not follow a specific order. Some steps only become relevant near
 :::
 
 1. Scaffold a new integration, as seen in [getting started](../getting-started/getting-started.md#scaffold)
-2. Add any required code libraries and the code and logic required for the new integration
-3. Update the `config.yaml` file with default configuration and parameters for the integration
-4. Update the `.port/spec.yml` file with metadata of the integration, including the provided kinds and required parameters
-5. (Optional) Add default definitions to the `.port/resources` directory such as default blueprints and integration mapping
+2. Add any required code libraries and the [code and logic](./update-integration-code.md) required for the new integration
+   1. Be sure to go over the integration [performance](./performance.md) and [code guidelines](./guidelines.md) to ensure a performant and well written integration
+3. Update the [`.port/spec.yml`](./integration-spec-and-default-resources.md#specyaml-file) file with metadata of the integration, including the provided kinds and required parameters
+4. Update the [`config.yaml`](./integration-configuration.md) file with configuration and parameters for the integration
+5. (Optional) Add default definitions to the [`.port/resources`](./integration-spec-and-default-resources.md#port-folder) directory such as [default blueprints](./integration-spec-and-default-resources.md#blueprintsjson-file) and integration [mapping](./integration-spec-and-default-resources.md#port-app-configyml-file)
 6. Create the necessary documentation for the new integration including the README and a changelog
 7. [Publish](./publish-an-integration.md) the integration

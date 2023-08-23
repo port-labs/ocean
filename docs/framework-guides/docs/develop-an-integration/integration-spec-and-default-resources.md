@@ -1,6 +1,6 @@
 ---
 title: 📋 Integration Spec and Defaults
-sidebar_position: 3
+sidebar_position: 2
 ---
 
 # 📋 Integration Spec and Defaults
@@ -72,11 +72,11 @@ This section is used to specify the basic information of the integration, this i
 The integration's base spec includes:
 
 - `version` - the integration's current version, should be bumped when a new version of the integration is released
-- `type` - integration type
+- `type` - integration type, also determines the name of the generated image for the integration
 - `description` - the description that will be displayed in Port's UI for the integration
-- `icon` - the icon that will displayed in Port's UI for the integration
+- `icon` - the icon that will displayed in Port's UI for the integration, the value has to match one of the icons available in Port's library
 
-#### Integration feature specification
+#### `features` - integration feature specification
 
 ```yaml showLineNumbers
 ---
@@ -99,7 +99,7 @@ The integration's `features` spec is an array where each item includes:
 - `resources` - an array of key-value pairs that specify the kinds provided by the integration
   - For example - the Jira Ocean integration provides the kinds `issue` and `project`
 
-#### Integration configuration validation
+#### `configurations` - integration configuration validation
 
 ```yaml showLineNumbers
 configurations:
@@ -123,9 +123,86 @@ The integration's `configurations` spec is an array where each item includes:
 - `required` - whether the parameter is required or optional
   - Available values: `true`, `false`
 - `type` - the type of the parameter
-  - Available values: `string`, `number`, `url`
+  - Available values: `string`, `number`, `boolean`, `object`, `url`
 - `description` - a description for the parameter and its usage in the integration
   - Please provide a description to make it easier for users who want to use your integration to understand the different required parameters
 - `sensitive` - whether this parameter is secret or sensitive
   - Available values: `true`, `false`
   - Parameters marked as sensitive are stored in the secrets mechanism provided by the integration deployment scheme (K8s secret for Helm deployment, AWS Secrets Manager for deployment in AWS ECS, etc)
+
+:::tip
+To learn more about the available parameter inputs and see examples for valid configurations, check out the [configuration validation](../framework/features/configuration-validation.md) page
+:::
+
+## `blueprints.json` file
+
+```json showLineNumbers
+[
+  {
+    "identifier": "myBlueprint",
+    "title": "My Blueprint",
+    "icon": "Service",
+    "schema": {
+      "properties": {
+        "myProp": {
+          "title": "My Property",
+          "type": "string"
+        }
+      }
+    },
+    "relations": {
+      "relatedBlueprint": {
+        "title": "Related Blueprint",
+        "target": "relatedBlueprintIdentifier",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
+```
+
+The `blueprints.json` file is part of the `.port/resources` directory, it is used to specify the default [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) that will be created when the integration is started for the first time.
+
+### Structure
+
+The `blueprints.json` is a JSON file which contains an array of objects that match the [blueprint objects](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/#blueprint-structure) from Port's API.
+
+:::tip
+The `blueprints.json` file is optional, if it is not provided, the integration will not create any blueprints when it is started for the first time.
+
+**However**, to make integration easier to use and onboard into Port, it is highly recommended to provide a `blueprints.json` file which users can use as a starting point and customize the data ingested from the integration into Port
+:::
+
+## `port-app-config.yml` file
+
+```yml showLineNumbers
+resources:
+  - kind: myKind
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .myIdentifierField
+          title: .myTitleField
+          blueprint: '"myTargetBlueprintIdentifier"'
+          properties:
+            myProp: .myPropField
+```
+
+The `port-app-config.yml` file is part of the `.port/resources` directory, it is used to specify the default integration mapping that will be created when the integration is started for the first time.
+
+:::tip
+Refer to the mapping feature documentation to learn more about Ocean's mapping functionality
+:::
+
+### Structure
+
+The `port-app-config.yml` is a YAML file which contains a root object called `resources`, this object stores an array of definitions that tell the integration how to map the different `kind`s that it supports.
+
+:::tip
+The `port-app-config.yml` file is optional, if it is not provided, the integration will create an empty mapping when it is started for the first time.
+
+**However**, to make integration easier to use and onboard into Port, it is highly recommended to provide a `port-app-config.yml` file which users can use as a starting point and customize the data ingested from the integration into Port
+:::

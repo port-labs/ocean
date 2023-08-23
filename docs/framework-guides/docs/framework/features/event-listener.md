@@ -1,6 +1,7 @@
 ---
 title: 🔈 Event Listener
 sidebar_position: 2
+description: Use event listeners to receive configurations from Port
 ---
 
 import EventListenerTypesList from './\_event-listener-types-list.md'

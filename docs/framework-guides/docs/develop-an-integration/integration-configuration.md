@@ -1,6 +1,6 @@
 ---
 title: 🏗️ Integration Configuration
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 import EventListenerTypesList from '../framework/features/\_event-listener-types-list.md'
@@ -108,7 +108,7 @@ integration:
 
 This section is used to specify the integration type (for display in Port) and the integration identifier to uniquely identify the integration in case a user has multiple deployments of an integration of the same type.
 
-The required parameters are the integration `type` and the integration `identifier`. In addition to those, an integration can define as many additional parameters and inputs under the `config` object:
+The required parameters are the integration `type` (this field should match the `type` specified in the [integration specification](./integration-spec-and-default-resources.md#specyaml-file)) and the integration `identifier`. In addition to those, an integration can define as many additional parameters and inputs under the `config` object:
 
 ##### `config` - integration inputs and parameters
 

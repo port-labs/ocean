@@ -1,9 +1,10 @@
 ---
 title: 🗺 Development Guidelines
+sidebar_position: 6
 ---
 
-import Structure from './_mdx/integration_structure.md'
-import HttpxExample from '../_common/httpx-instead-of-requests.md'
+import Structure from './\_mdx/integration_structure.md'
+import HttpxExample from '../\_common/httpx-instead-of-requests.md'
 
 This section provides guidelines for developing an integration.
 
@@ -21,13 +22,14 @@ An integration should follow the following structure:
 
 ### Scaffold using the CLI
 
-Use the Ocean CLI or the make new command to scaffold a new integration
+To scaffold a new integration you can use the following options:
 
-`ocean new` or `make new`
+- `ocean new` - available through the Ocean CLI
+- `make new` - available when cloning the [Ocean](https://github.com/port-labs/port-ocean) repository locally
 
 ### Integration maturity
 
-Make sure that your integration is passing all linting and type checks as described in
+Make sure that your integration passes linting and type checks as described in
 the [Publishing](../develop-an-integration/publish-an-integration.md#prerequisites) page.
 
 Use `make lint` to run the linting locally
@@ -35,9 +37,9 @@ Use `make lint` to run the linting locally
 ### Integration should be agnostic
 
 Be agnostic to the integration usage, do not assume it will be used in a specific way and try to just return the data
-as-is
+as-is. Integration users can use the mapping configuration to choose how to ingest the data into Port, the integration should serve as a straightforward way to get the raw data from the 3rd-party for mapping.
 
-Extensions to the basic kind data with additional custom fields should be done using in keys that start with `__` (
+Extensions to the basic kind data with additional custom fields should be done using keys that start with `__` (
 e.g. `__my_custom_field`)
 
 ### Logging
@@ -58,9 +60,9 @@ cause to an inconsistency in the data passed to the transformation and can resul
 
 ### Performance
 
-Make sure your integration is performant and does not block the event loop for too long.
+Make sure your integration is performant and does not block the event loop if possible.
 
-You can read more about possible performance enhancements in the [Performance](../develop-an-integration/performance.md)
+You can read more about possible performance enhancements in the [performance](../develop-an-integration/performance.md) page
 
 ### Code Principles
 
@@ -70,27 +72,27 @@ You can read more about possible performance enhancements in the [Performance](.
    ones. Complex code can be harder to maintain, debug, and extend. Prioritizing simplicity helps in creating code
    that's more readable and approachable for everyone involved.
 
-   consider splitting the `main.py` into multiple files and import to import them.
+   consider splitting the `main.py` into multiple files and import them when needed.
 
    :::tip ✅ Do
 
-    ```python
-    # Do use simple and straightforward code
-    result = 0
-    for num in range(1, 11):
-        result += num
-    print(result)
-    ```
+   ```python showLineNumbers
+   # Do use simple and straightforward code
+   result = 0
+   for num in range(1, 11):
+       result += num
+   print(result)
+   ```
 
    :::
 
    :::danger ❌ Don't
 
-    ```python
-    # Don't use unnecessarily complex expressions
-    result = sum([num for num in range(1, 11)])
-    print(result)
-    ```
+   ```python showLineNumbers
+   # Don't use unnecessarily complex expressions
+   result = sum([num for num in range(1, 11)])
+   print(result)
+   ```
 
    :::
 
@@ -102,48 +104,48 @@ You can read more about possible performance enhancements in the [Performance](.
 
    :::tip ✅ Do
 
-    ```python
-    # Do use a single level of nesting for clarity
-    if condition:
-        do_something()
-    else:
-        do_another_thing()
-    ```
+   ```python showLineNumbers
+   # Do use a single level of nesting for clarity
+   if condition:
+       do_something()
+   else:
+       do_another_thing()
+   ```
 
    :::
 
    :::danger ❌ Don't
 
-    ```python
-    # Don't nest multiple conditions excessively
-    if condition1:
-        if condition2:
-            if condition3:
-                do_something()
-    ```
+   ```python showLineNumbers
+   # Don't nest multiple conditions excessively
+   if condition1:
+       if condition2:
+           if condition3:
+               do_something()
+   ```
 
    :::
 
-3. "_Readability Counts._"  - [The Zen of Python](https://peps.python.org/pep-0020/#the-zen-of-python)
+3. "_Readability Counts._" - [The Zen of Python](https://peps.python.org/pep-0020/#the-zen-of-python)
 
    This principle emphasizes the significance of writing code that is easy to read and understand. Code is often read by
    other developers, including your future self, so it's crucial to prioritize clarity over cleverness.
 
    :::tip ✅ Do
 
-    ```python
-    # Choose meaningful variable, function, and class names that convey their purpose or functionality.
-    # Avoid single-letter or cryptic names.
-    total_score = calculate_total_score()
-    ```
+   ```python showLineNumbers
+   # Choose meaningful variable, function, and class names that convey their purpose or functionality.
+   # Avoid single-letter or cryptic names.
+   total_score = calculate_total_score()
+   ```
 
    :::
 
    :::danger ❌ Don't
 
-    ```python
-    # Don't use single-letter or cryptic names
-    ts = calc_score()
-    ```
+   ```python showLineNumbers
+   # Don't use single-letter or cryptic names
+   ts = calc_score()
+   ```
 
    :::
