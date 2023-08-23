@@ -5,10 +5,9 @@ define run_checks
 	cd $1; \
 	poetry check || exit_code=$$?;\
   	poetry lock --check || exit_code=$$?;\
-	mypy . --exclude '/\.venv/' || exit_code=$$?; \
+	mypy . || exit_code=$$?; \
 	ruff . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
-	yamllint . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
 		echo "\033[0;31mOne or more checks failed with exit code $$exit_code\033[0m"; \
 	else \
@@ -16,7 +15,6 @@ define run_checks
 	fi; \
 	exit $$exit_code
 endef
-
 
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
@@ -40,66 +38,26 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all lint lint/integrations lint/all build run new test clean
+.SILENT: install install/prod lint run test clean
 
-
-# Install dependencies
 install:
 	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
-	poetry install --with dev --all-extras
+	poetry install --with dev
 
+install/prod:
+	$(call install_poetry) && \
+	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
-install/all: install
-	exit_code=0; \
-	for dir in $(wildcard $(CURDIR)/integrations/*); do \
-		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
-		if [ $$count -ne 0 ]; then \
-			echo "Installing $$dir"; \
-		  	cd $$dir; \
-			$(MAKE) install || exit_code=$$?; \
-			cd ../..; \
-		fi; \
-    done; \
-    if [ $$exit_code -ne 0 ]; then \
-        exit 1; \
-    fi
-
-# Linting
 lint:
 	$(ACTIVATE) && \
 	$(call run_checks,.)
 
-lint/integrations:
-	$(ACTIVATE) && \
-	exit_code=0; \
-	for dir in $(wildcard $(CURDIR)/integrations/*); do \
-		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
-		if [ $$count -ne 0 ]; then \
-			echo "Linting $$dir"; \
-		  	cd $$dir; \
-			$(MAKE) lint || exit_code=$$?; \
-			cd ../..; \
-		fi; \
-    done; \
-    if [ $$exit_code -ne 0 ]; then \
-        exit 1; \
-    fi
-
-lint/all: lint lint/integrations
-
-# Development commands
-build: 
-	$(ACTIVATE) && poetry build
-
-run: lint
-	$(ACTIVATE) && poetry run ocean sail ./integrations/example
-
-new:
-	$(ACTIVATE) && poetry run ocean new ./integrations
+run:
+	$(ACTIVATE) && ocean sail
 
 test: lint
-	$(ACTIVATE) && pytest
+	$(ACTIVATE) && poetry run pytest
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;

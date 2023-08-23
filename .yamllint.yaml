@@ -1,0 +1,16 @@
+extends: default
+
+ignore-from-file: [.gitignore, .yamlignore]
+
+rules:
+  # ignore line length
+  line-length: disable
+
+  # ignore truthy checks
+  truthy: disable
+
+  # ignore document start marker
+  document-start: disable
+
+  # don't bother me with this rule
+  indentation: disable
