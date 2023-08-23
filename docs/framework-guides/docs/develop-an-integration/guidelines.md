@@ -37,7 +37,8 @@ Use `make lint` to run the linting locally
 ### Integration should be agnostic
 
 Be agnostic to the integration usage, do not assume it will be used in a specific way and try to just return the data
-as-is. Integration users can use the mapping configuration to choose how to ingest the data into Port, the integration should serve as a straightforward way to get the raw data from the 3rd-party for mapping.
+as-is. Integration users can use the mapping configuration to choose how to ingest the data into Port, the integration
+should serve as a straightforward way to get the raw data from the 3rd-party for mapping.
 
 Extensions to the basic kind data with additional custom fields should be done using keys that start with `__` (
 e.g. `__my_custom_field`)
@@ -58,11 +59,23 @@ When handling live events in the integration, make sure to not register the even
 Often the data incoming from the live event is not the same as the data that is being retrieved from the api, which will
 cause to an inconsistency in the data passed to the transformation and can result in inconsistent entities.
 
+### Accessing the configuration
+
+The integration configuration is available in the `ocean.integration_config` variable.
+
+The configuration is a dictionary that contains the configuration keys in a CamelCase format.
+
+:::info
+The configuration is parsed from the environment variables, config.yml and the pydantic model defaults and later on
+formatted to a CamelCase format.
+:::
+
 ### Performance
 
 Make sure your integration is performant and does not block the event loop if possible.
 
-You can read more about possible performance enhancements in the [performance](../develop-an-integration/performance.md) page
+You can read more about possible performance enhancements in the [performance](../develop-an-integration/performance.md)
+page
 
 ### Code Principles
 
