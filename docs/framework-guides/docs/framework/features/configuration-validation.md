@@ -1,7 +1,7 @@
 ---
 title: Configuration Validation
 sidebar_label: ✅ Configuration Validation
-sidebar_position: 5
+sidebar_position: 7
 description: Use Ocean to validate integration inputs before startup
 ---
 

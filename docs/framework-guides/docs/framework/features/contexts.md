@@ -1,7 +1,7 @@
 ---
 title: Contexts
 sidebar_label: 🧩 Contexts
-sidebar_position: 3
+sidebar_position: 6
 description: Use Ocean contexts to streamline integration logic
 ---
 

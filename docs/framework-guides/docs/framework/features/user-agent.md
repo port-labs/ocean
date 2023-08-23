@@ -1,7 +1,7 @@
 ---
 title: User Agent
 sidebar_label: 🕵️‍♂️ User Agent
-sidebar_position: 1
+sidebar_position: 5
 description: Access only the relevant data for the integration
 ---
 
@@ -19,7 +19,7 @@ The user agent sent to port is formatted as follows:
 
 `port-ocean/<integration_type>/<integration_identifier>/<integration_version>/<feature>`
 
-For example: 
+For example:
 
 `port-ocean/gitlab/my_gitlab_integration/0.1.9/exporter`
 
@@ -75,5 +75,3 @@ The following features are ingesting entities using the User Agent:
   Gitops is usually used with Ocean Sync functionality and not Sync Raw because of the gitops format which is already
   constructed in the Port entities format and there is no need top transform its data using the Resource Mapping.
   :::
-
-

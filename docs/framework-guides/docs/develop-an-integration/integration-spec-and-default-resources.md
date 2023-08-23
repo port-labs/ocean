@@ -192,10 +192,10 @@ resources:
             myProp: .myPropField
 ```
 
-The `port-app-config.yml` file is part of the `.port/resources` directory, it is used to specify the default integration mapping that will be created when the integration is installed.
+The `port-app-config.yml` file is part of the `.port/resources` directory, it is used to specify the default integration resource mapping that will be created when the integration is installed.
 
 :::tip
-Refer to the mapping feature documentation to learn more about Ocean's mapping functionality
+Refer to the [resource mapping](../framework/features/resource-mapping.md) feature documentation to learn more about Ocean's mapping functionality
 :::
 
 ### Structure

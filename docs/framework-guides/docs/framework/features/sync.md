@@ -1,64 +1,60 @@
 ---
 title: Sync Entities State
 sidebar_label: 🔁 Sync Entities State
-sidebar_position: 1
+sidebar_position: 2
 description: Use Ocean to keep the catalog up to date
 ---
 
 # 🔁 Sync Entities State
 
-The Ocean framework provides a way to sync entities state between the 3rd party application and Port. This can be done
-by Ocean sync and raw sync functionality.
+The Ocean framework provides a way to sync entities state between the 3rd-party application and Port. This can be done using the Ocean **sync** and **raw sync** functionality.
 
-One of ocean main goal is to provide a simple unified way to sync entities state into Port
-while [Resource Mapping](./resource-mapping.md) capabilities introduced in other Port integrations.
-
-:::note
-The following functions are checking the difference between a give state and Port entities state and will create/update
-or delete only entities that created or updated by the integration. As explained in the [User Agent](./user-agent.md)
-page.
+The following functions are used to check state of entities in Port vs the state of entities and objects reported by the 3rd-party service. Based on the difference between these two states, the integration will generate a set of create, update and delete requests to Port's API, that will sync the two states.
 
 - [`ocean.on_resync`](#oceanon_resync)
 - [`ocean.sync_raw_all`](#oceansync_raw_all)
 - [`ocean.sync`](#oceansync)
-  :::
 
-## Ocean Raw Sync
+:::note
+The integration will only interact with entities in Port that match its user agent. This means these are entities that were either created or updated by the integration during their lifecycle.
 
-Ocean Raw Sync is a simple way to sync entities state into Port. By leveraging JQ Expression Language, Ocean Raw Sync
-allows the integration end user to define the way ocean will transform the 3rd party raw data into Port entities.
+For more information refer to the [user agent](./user-agent.md) page.
+:::
 
-By default, Ocean will raw sync all data returned from the `@ocean.on_resync` listener functions. On these functions,
+## Ocean raw sync
+
+Ocean raw sync is a simple way to sync entities state into Port.
+
+The Ocean raw sync functionality uses the integration [resource mapping](./resource-mapping.md) specified by the end user to transform the 3rd-party raw data into Port entities, by leveraging the JQ expressions specified in the resource mapping applying them to the raw data received from the 3rd-party.
+
+By default, Ocean will perform a raw sync on all data returned from the `@ocean.on_resync` listener functions. In these functions,
 the integration needs to return a list of raw data (dictionaries) that the end user will be able to transform into
-Port entities using the [Resource Mapping](./resource-mapping.md).
+Port entities using the [resource mapping](./resource-mapping.md).
 
-[Ocean context](./contexts.md#ocean-context) expose multiple functions that can be used to help to sync raw data into
-Port.
+The [Ocean context](./contexts.md#ocean-context) provides multiple functions that can be used to help to sync raw data into
+Port:
 
 ### `@ocean.on_resync()`
 
-A decorator that will wrap the function that will be called when the integration received a
-resync event. The wrapped function will need to return a list of raw data (dictionaries) that will be transformed into
-Port entities. The decorator by default will register the function to be called for all kinds specified in the
-user [Resource Mapping](./resource-mapping.md), but it can be configured to be called only for specific kinds by
-passing the `kind` argument to the decorator (default value is `*`).
+A decorator used to wrap the function that will be called when the integration receives a resync event.
 
-:::tip
-For a large amount of data that is required to fetch from the 3rd party application, it is recommended to use the
-`@ocean.on_resync` decorator and instead of returning the data directly, to return a generator that will yield the
-data like specified in
-the [Performance](../../develop-an-integration/performance.md#generators-in-the-ocean-framework) page.
-:::
+The wrapped function will need to return a list of raw data (dictionaries) that will be transformed into
+Port entities.
 
-```python
+By default, the decorated function will be used to process all `kind`s specified in the integration's [resource mapping](./resource-mapping.md) (the default value to filter kinds is `*`).
+
+It is possible to create a separate function that will handle a specific `kind` by passing the `kind` argument to the decorator.
+
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
 
-
+# The following function will be called and used to process only
+# resources of the "SpecialKind" during every resync event
 @ocean.on_resync("SpecialKind")
 def special_kind_resync(kind: str):
     return [...]  # List of raw dictionaries from the 3rd party application
 
-
+# The following function will be called and used to process all kinds during every resync event
 @ocean.on_resync()
 def generic_resync(kind: str):
     if kind == "SpecialKind":
@@ -66,36 +62,57 @@ def generic_resync(kind: str):
     return [...]  # List of raw dictionaries from the 3rd party application
 ```
 
-### `ocean.sync_raw_all`
+:::tip
+As shown in the [Performance](../../develop-an-integration/performance.md#generators-in-the-ocean-framework) page, it is recommended to use the `@ocean.on_resync` decorator and return a generator with the results (using the `yield` keyword) to avoid blocking the event loop and improve integration performance.
 
-This function will check the current integration entities state and will call all
-the [`@ocean.on_resync()`](#oceanon_resync) wrapped functions with the relevant kind, then it will proceed with
-transforming,
-checking the difference between Port state and the raw data returned from the wrapped functions and will create/update
-or delete the relevant entities.
-
-:::note
-This function will start a new `resync` event and will call all the wrapped functions, therefore it is recommended to
-use this function only when the integration needs to sync all the entities state.
+For simplicity, the examples above show usage of the decorator using the `return` keyword.
 :::
 
-```python
+### `ocean.sync_raw_all`
+
+The `ocean.sync_raw_all` function checks the current state of Port entities managed by the integration, then it calls all of the functions decorated with the [`@ocean.on_resync()`](#oceanon_resync) decorator to perform a complete resync between the state in Port and the state in the 3rd-party service.
+
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
 
-
+# Whenever a POST request is made to the "/integration/my-custom-resync" route of the integration,
+# a complete resync will occur
 @ocean.router.post("/my-custom-resync")
 def my_custom_resync():
     ocean.sync_raw_all()
 ```
 
+:::note
+This function starts a complete `resync` event calls all of the decorated functions, therefore it is recommended to
+use this function only when the integration needs to resync the state for all of the entities from all of the `kind`s.
+:::
+
 ### `ocean.update_raw_diff`
 
-A function that will calculate the difference between 2 states and apply it to port
-accordingly. The function will required 2 arguments, the first one `kind` is the kind of the entities that will be
-synced which will be used to identify the relevant [Resource Mapping](./resource-mapping.md) and the second one
-is `raw_diff` which is a dictionary that contains 2 keys `before` and `after` that will contain the state of known
-entities before and the desired state after the sync. After calculating which entities need to be created, updated
-or deleted, the function will apply the changes to Port.
+The `ocean.update_raw_diff` function is used to calculate the difference between 2 given states and apply it to Port.
+
+The function receives 2 arguments:
+
+1. `kind` - a string that specifies the kind of entities to perform the update for, will be used to find the relevant [resource mapping](./resource-mapping.md)
+2. `raw_diff` - a dictionary that contains 2 keys - `before` and `after` that contain the desired state of known entities before and after the update respectively
+
+The function will generate a list of create, update and delete requests based on the `raw_diff` and apply the requests to Port to sync the entities state.
+
+```python showLineNumbers
+from port_ocean.context.ocean import ocean
+
+
+@ocean.router.post("/sync")
+def sync_webhook():
+    # Fetch the raw data from the 3rd party application
+    raw_data = [...]  # List of raw dictionaries from the 3rd party application
+
+    # Calculate the difference between the current state and the desired state
+    ocean.update_raw_diff("MyKind", {
+        "before": [...],  # List of raw dictionaries from Port
+        "after": raw_data
+    })
+```
 
 :::note
 The `ocean.update_raw_diff` function will not affect entities that are not defined in the given states.
@@ -108,28 +125,11 @@ An empty list can be passed to the `before` or `after` keys to indicate that the
 and therefore all the entities in the other state will be created or deleted accordingly.
 :::
 
-```python
-from port_ocean.context.ocean import ocean
-
-
-@ocean.router.post("/sync")
-def sync_webhook():
-    # Fetch the raw data from the 3rd party application
-    raw_data = [...]  # List of raw dictionaries from the 3rd party application
-
-    # Calculate the difference between the current state and the desired state
-    ocean.update_raw_diff("MyKind", {
-        "before": [...],  # List of raw dictionaries from the 3rd party application
-        "after": raw_data
-    })
-```
-
 ### `ocean.register_raw`
 
-A function that will only transform the given data into Port entities without calculating the difference between the
-the data and port state and just create or update the resulted entities in Port.
+The `ocean.register_raw` function transforms the given data into Port entities without taking the existing state into consideration, the function will only create or update entities in Port based on the list of dictionaries passed to it and the resource mapping matching the input `kind`:
 
-```python
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
 
 
@@ -144,10 +144,9 @@ def sync_webhook():
 
 ### `ocean.unregister_raw`
 
-A function that will only transform the given data into Port entities without calculating the difference between the
-the data and port state and just delete the resulted entities in Port.
+The `ocean.unregister_raw` function transforms the given data into Port entities without taking the existing state into consideration, the function will only delete entities in Port based on the list of dictionaries passed to it and the resource mapping matching the input `kind`:
 
-```python
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
 
 
@@ -160,16 +159,19 @@ def sync_webhook():
     ocean.unregister_raw("MyKind", raw_data)
 ```
 
-## Ocean Sync
+## Ocean sync
 
-All the [Ocean Raw Sync](#ocean-raw-sync) functionality is also implemented in a Sync form. While the Raw Sync will
-required the integration to register the data as is and later on required the end user to specify how to transform the
-data into Port entities, the Sync functionality will receive an already transformed data that will be pass in a form of
-an Entity.
+The Ocean sync functions provide equivalent functionality to their [raw sync](#ocean-raw-sync) counterparts. The difference is that the sync functions expect objects that already match the format of Port entities.
 
-### `ocean.update_diff` (equivalent to [`ocean.update_raw_diff`](#oceanupdaterawdiff))
+:::tip
+Since these functions receive proper entities, there is no need to specify the `kind` parameter.
+:::
 
-```python
+### `ocean.update_diff`
+
+Equivalent to [`ocean.update_raw_diff`](#oceanupdate_raw_diff)
+
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
 
@@ -185,9 +187,11 @@ def sync_webhook():
     })
 ```
 
-### `ocean.register` (equivalent to [`ocean.register_raw`](#oceanregisterraw))
+### `ocean.register`
 
-```python
+Equivalent to [`ocean.register_raw`](#oceanregister_raw)
+
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
 
@@ -200,9 +204,11 @@ def sync_webhook():
     ocean.register(entities)
 ```
 
-### `ocean.unregister` (equivalent to [`ocean.unregister_raw`](#oceanunregisterraw))
+### `ocean.unregister`
 
-```python
+Equivalent to [`ocean.unregister_raw`](#oceanunregister_raw)
+
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
 
@@ -217,10 +223,9 @@ def sync_webhook():
 
 ### `ocean.sync`
 
-Ocean sync is a function that will receive a list of pre constructed entities and will calculate the difference between
-the given list and Port state and will apply the changes to Port.
+The `ocean.sync` function receives a list of Port entity objects, it calculates the difference between the given list and the state in Port and then applies the necessary changes to Port.
 
-```python
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
 

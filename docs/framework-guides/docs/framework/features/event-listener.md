@@ -1,7 +1,7 @@
 ---
 title: Event Listener
 sidebar_label: 🔈 Event Listener
-sidebar_position: 2
+sidebar_position: 3
 description: Use event listeners to receive configurations from Port
 ---
 
