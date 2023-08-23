@@ -1,7 +1,10 @@
 ---
-title: 🚧 Development Guidelines
+title: Development Guidelines
+sidebar_label: 🚧 Development Guidelines
 sidebar_position: 6
 ---
+
+# 🚧 Development Guidelines
 
 import Structure from './\_mdx/integration_structure.md'
 import HttpxExample from '../\_common/httpx-instead-of-requests.md'

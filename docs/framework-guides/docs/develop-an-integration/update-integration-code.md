@@ -1,5 +1,6 @@
 ---
-title: ⚙️ Update Integration Code
+title: Update Integration Code
+sidebar_label: ⚙️ Update Integration Code
 sidebar_position: 1
 ---
 

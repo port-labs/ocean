@@ -1,3 +1,7 @@
+---
+title: Quickstart
+---
+
 # ⚡️ Quickstart
 
 In this quickstart guide, you'll learn how to **install** the Ocean CLI, **scaffold** a new integration, add your **custom logic** and **run** the new integration locally.

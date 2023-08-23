@@ -1,10 +1,13 @@
 ---
-title: 🔈 Event Listener
+title: Event Listener
+sidebar_label: 🔈 Event Listener
 sidebar_position: 2
 description: Use event listeners to receive configurations from Port
 ---
 
 import EventListenerTypesList from './\_event-listener-types-list.md'
+
+# 🔈 Event Listener
 
 The Ocean framework provides built-in support for multiple event listeners. The event listener is used to receive events and resync requests from Port and forward them to the running Ocean integration.
 

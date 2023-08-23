@@ -1,5 +1,6 @@
 ---
-title: 🔧 Develop an Integration
+title: Develop an Integration
+sidebar_label: 🔧 Develop an Integration
 ---
 
 # 🔧 Develop an Integration
