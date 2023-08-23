@@ -163,14 +163,14 @@ To learn more about the available parameter inputs and see examples for valid co
 ]
 ```
 
-The `blueprints.json` file is part of the `.port/resources` directory, it is used to specify the default [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) that will be created when the integration is started for the first time.
+The `blueprints.json` file is part of the `.port/resources` directory, it is used to specify the default [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) that will be created when the integration is installed.
 
 ### Structure
 
 The `blueprints.json` is a JSON file which contains an array of objects that match the [blueprint objects](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/#blueprint-structure) from Port's API.
 
 :::tip
-The `blueprints.json` file is optional, if it is not provided, the integration will not create any blueprints when it is started for the first time.
+The `blueprints.json` file is optional, if it is not provided, the integration will not create any blueprints when it is installed.
 
 **However**, to make integration easier to use and onboard into Port, it is highly recommended to provide a `blueprints.json` file which users can use as a starting point and customize the data ingested from the integration into Port
 :::
@@ -192,7 +192,7 @@ resources:
             myProp: .myPropField
 ```
 
-The `port-app-config.yml` file is part of the `.port/resources` directory, it is used to specify the default integration mapping that will be created when the integration is started for the first time.
+The `port-app-config.yml` file is part of the `.port/resources` directory, it is used to specify the default integration mapping that will be created when the integration is installed.
 
 :::tip
 Refer to the mapping feature documentation to learn more about Ocean's mapping functionality
@@ -203,7 +203,7 @@ Refer to the mapping feature documentation to learn more about Ocean's mapping f
 The `port-app-config.yml` is a YAML file which contains a root object called `resources`, this object stores an array of definitions that tell the integration how to map the different `kind`s that it supports.
 
 :::tip
-The `port-app-config.yml` file is optional, if it is not provided, the integration will create an empty mapping when it is started for the first time.
+The `port-app-config.yml` file is optional, if it is not provided, the integration will create an empty mapping when it is installed.
 
 **However**, to make integration easier to use and onboard into Port, it is highly recommended to provide a `port-app-config.yml` file which users can use as a starting point and customize the data ingested from the integration into Port
 :::

@@ -9,45 +9,35 @@ import TabItem from "@theme/TabItem";
 
 # 🗺 Resource Mapping
 
-Resource Mapping is a way to map the 3rd party application entities into Port entities. Ocean is getting the Resource
-Mapping
-stored on the integration in the Port API.
+Resource Mapping is an ETL layer built into the Ocean framework. Ocean integrations can use the resource mapping configuration to parse and map data from the integrated 3rd-party service to standard Port entities.
 
-The Resource Mapping is a YAML that tells the Ocean framework how to transform data from the integration into Port
-entities.
+## Usage
 
-:::danger
-The Resource Mapping is being held in the integration user integration and any field inside of it can be changed by him.
+A resource mapping is a YAML configuration that can be applied to an integration in the following ways:
 
-The integration should not rely on the Resource Mapping specific value and should always handle the data accordingly.
+- Via a [`port-app-config.yml`](../../develop-an-integration/integration-spec-and-default-resources.md#port-app-configyml-file) file that is part of the [`.port`](../../develop-an-integration/integration-spec-and-default-resources.md#port-folder) specification folder of the integration
+- By updating the integration configuration through Port's UI
+- By updating the integration configuration by making a PATCH request to Port's `https://api.getport.io/v1/integration/<INTEGRATION_IDENTIIFER>` route with the updated configuration
+
+The Ocean integration uses the resource mapping to process an object received in the response from the 3rd-party service, and transform it into the desired [Port entity](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/#entity-json-structure).
+
+:::tip
+The `port-app-config.yml` file is optional, if it is not provided, the integration will create an empty resource mapping when it is installed.
+
+However, to make integration easier to use and onboard into Port, it is highly recommended to provide a `port-app-config.yml` file which users can use as a starting point and customize the data ingested from the integration into Port
 :::
 
-:::tip Setting a Default
-The integration can specify a default Resource Mapping that will be set to the integration upon integration installation
-by specify a default in the `.port` folder as specified in
-the [Integration Spec and Defaults](../../develop-an-integration/integration-spec-and-default-resources.md#port-app-configyml-file)
-page.
+:::danger
+The resource mapping is customizable and can always be modified by the user who installed the integration.
+
+As an integration developer you should not assume a specific field, value or logic exists in the resource mapping used by the user.
+
+You can always assume that the resource mapping makes use of JQ and follows the basic field structure outlined in the [structure](#structure) section.
 :::
 
 ## Structure
 
-## Ingesting Git objects
-
-Port's Ocean integrations allows you to ingest a variety of objects resources provided by the 3rd party API. The Ocean
-integration allows you to perform extract, transform, load (ETL) on data from the GitHub API into the desired software
-catalog data model.
-
-The Ocean framework uses a YAML configuration to describe the ETL process to load data into the developer portal. The
-approach reflects a golden middle between an overly opinionated 3rd part application visualization that might not work
-for everyone and a too-broad approach that could introduce unneeded complexity into the developer portal.
-
-:::note
-The following structure is a generic structure that should match all integrations. The integration can extend this
-structure by adding more fields to the Resource Mapping that will be used by the integration to extract more specific
-data from the 3rd party application.
-:::
-
-```yaml
+```yaml showLineNumbers
 deleteDependentEntities: bool
 createMissingRelatedEntities: bool
 resources:
@@ -67,15 +57,29 @@ resources:
           MY_RELATION_IDENTIFIER: str
 ```
 
-The integrations makes use of the [JQ JSON processor](https://stedolan.github.io/jq/manual/) to select, modify,
-concatenate, transform and perform other operations on existing fields and values from 3rd party API.
+Port's Ocean integrations allows you to ingest a variety of objects resources provided by the 3rd-party API. The Ocean
+integration allows you to perform extract, transform, load (ETL) on data from the 3rd-party API responses into the desired software
+catalog entities and data model.
 
-The Resource Mapping is how you specify the exact resources you want to query from the 3rd party application, and also
+The Ocean framework uses the resource mapping to describe the ETL process to load data into the developer portal. The
+approach reflects a middle-ground between an overly opinionated 3rd-party application visualization that might not work
+for everyone and a too-broad approach that could introduce unneeded complexity or force developers to implement the additional mapping on their own.
+
+:::note
+The following structure is a generic structure that should match all integrations. The integration can extend this
+structure by adding more fields to the resource mapping that will be used by the integration to extract more specific
+data from the 3rd party application.
+:::
+
+The integrations makes use of the [JQ JSON processor](https://stedolan.github.io/jq/manual/) to select, modify,
+concatenate, transform and perform other operations on existing fields and values from 3rd-party API.
+
+The resource mapping is how you specify the exact resources you want to query from the 3rd-party application, and also
 how you specify which entities and which properties you want to fill with data from it.
 
 ### Fields
 
-- The root key of the Resource Mapping configuration is the `resources` key:
+- The root key of the resource mapping configuration is the `resources` key:
 
   ```yaml showLineNumbers
   # highlight-next-line
@@ -85,7 +89,7 @@ how you specify which entities and which properties you want to fill with data f
       ...
   ```
 
-- The `kind` key is a specifier for one of the available kinds in the integration:
+- The `kind` key is a specifier for one of the `kind`s provided by the integration:
 
   ```yaml showLineNumbers
     resources:
@@ -94,7 +98,6 @@ how you specify which entities and which properties you want to fill with data f
         selector:
         ...
   ```
-
 
 - The `selector` and the `query` keys let you filter exactly which objects from the specified `kind` will be ingested to
   the software catalog:
@@ -111,16 +114,16 @@ how you specify which entities and which properties you want to fill with data f
 
   Some example use cases:
 
-    - To sync all objects from the specified `kind`: do not specify a `selector` and `query` key;
-    - To sync all objects from the specified `kind` that start with `service`, use:
+  - To sync all objects from the specified `kind`: do not specify a `selector` and `query` key
+  - To sync all objects from the specified `kind` whose `name` key starts with `service`, use:
 
-      ```yaml showLineNumbers
-      query: .name | startswith("service")
-      ```
+    ```yaml showLineNumbers
+    query: .name | startswith("service")
+    ```
 
-    - etc.
+  - etc.
 
-- The `port`, `entity` and the `mappings` keys open the section used to map the 3rd party application object fields to
+- The `port`, `entity` and the `mappings` keys open the section used to map the 3rd-party application object fields to
   Port entities. To create multiple mappings of the same kind, you can add another item to the `resources` array;
 
   ```yaml showLineNumbers
@@ -139,7 +142,7 @@ how you specify which entities and which properties you want to fill with data f
               url: ".html_url"
               description: ".description"
       # highlight-end
-    - kind: repository # In this instance repository is mapped again with a different filter
+    - kind: myIntegrationKind # In this instance myIntegrationKind is mapped again with a different filter
       selector:
         query: '.name == "MyRepositoryName"'
       port:
@@ -154,24 +157,22 @@ how you specify which entities and which properties you want to fill with data f
 
 #### Advanced Fields
 
-The ocean framework supports additional flags to provide additional configuration, making it easier to configure its
+The Ocean framework supports additional flags to provide additional configuration, making it easier to configure its
 behavior to your liking.
 
 To use the advanced configuration and additional flags, add them as a root key to
-your [Resource Mapping](#-resource-mapping), for example to add the
-`createMissingRelatedEntities` flag:
+your resource mapping, for example to add the `createMissingRelatedEntities` flag:
 
 ```yaml showLineNumbers
 # highlight-next-line
 createMissingRelatedEntities: true
-resources:
-  ...
+resources: ...
 ```
 
 The following advanced configuration parameters are available and can be added to
-the [Resource Mapping](#-resource-mapping):
+the resource mapping:
 
-<Tabs groupId="config" queryString="parameter">
+<Tabs groupId="config" queryString>
 
 <TabItem label="Delete dependent entities" value="deleteDependent">
 
@@ -192,45 +193,43 @@ The `createMissingRelatedEntities` parameter is used to enable the creation of m
 automatically in cases where the target related entity does not exist in the software catalog yet.
 
 - Default value: `false` (do not create missing related entities)
-- Use case: use `true` if you want GitHub app to create barebones related entities, in case those related entities do
-  not exist in the software catalog.
+- Use case: use `true` if you want Ocean integration to create barebones related entities, in case those related entities do
+  not already exist in the software catalog.
 
 </TabItem>
 
 </Tabs>
 
-| Field                                  | Type  | Default | Description                                                                                            |
-|----------------------------------------|-------|---------|--------------------------------------------------------------------------------------------------------|
-| `deleteDependentEntities`              | bool  | `false` | Delete dependent entities when the parent entity is deleted.                                           |
-| `createMissingRelatedEntities`         | bool  | `false` | Create missing related entities when the parent entity is created.                                     |
-| `resources`                            | array | `[]`    | A list of resources to map.                                                                            |
-| `resources.[].kind`*                   | str   |         | The kind name of the resource. (Should match one of the available kinds in the integration)            |
-| `resources.[].selector.query`*         | str   |         | A JQ expression that will be used to select the raw data from the 3rd party application.               |
-| `resources.[].port.entity.identifier`* | str   |         | A JQ expression that will be used to extract the entity identifier.                                    |
-| `resources.[].port.entity.blueprint`*  | str   |         | A JQ expression that will be used to extract the entity blueprint.                                     |
-| `resources.[].port.entity.title`       | str   |         | A JQ expression that will be used to extract the entity title.                                         |
-| `resources.[].port.entity.properties`  | dict  | `{}`    | An object of property identifier to JQ expressions that will be used to extract the entity properties. |
-| `resources.[].port.entity.relations`   | dict  | `{}`    | An object of relation identifier to JQ expressions that will be used to extract the entity properties. |
+### Complete resource mapping fields reference
 
-## Specify Custom Resource Mapping Fields
+The following table specifies all of the fields that can be specified in the resource mapping configuration:
 
-The integration can specify custom fields in the Resource Mapping that will be used to validate and parse the Resource
-Mapping from Port API.
+| Field                                   | Type  | Default | Description                                                                                                                                                                                                                      |
+| --------------------------------------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deleteDependentEntities`               | bool  | `false` | Delete dependent entities when the parent entity is deleted.                                                                                                                                                                     |
+| `createMissingRelatedEntities`          | bool  | `false` | Create missing related entities when the child entity is created.                                                                                                                                                                |
+| `resources`                             | array | `[]`    | A list of resources to map.                                                                                                                                                                                                      |
+| `resources.[].kind`\*                   | str   |         | The kind name of the resource. (Should match one of the available kinds in the [integration specification](../../develop-an-integration/integration-spec-and-default-resources.md#features---integration-feature-specification)) |
+| `resources.[].selector.query`\*         | str   |         | A JQ expression that will be used to filter the raw data from the 3rd-party application.                                                                                                                                         |
+| `resources.[].port.entity.identifier`\* | str   |         | A JQ expression that will be used to extract the entity identifier.                                                                                                                                                              |
+| `resources.[].port.entity.blueprint`\*  | str   |         | A JQ expression that will be used to extract the entity blueprint.                                                                                                                                                               |
+| `resources.[].port.entity.title`        | str   |         | A JQ expression that will be used to extract the entity title.                                                                                                                                                                   |
+| `resources.[].port.entity.properties`   | dict  | `{}`    | An object of property identifier to JQ expressions that will be used to extract the entity properties.                                                                                                                           |
+| `resources.[].port.entity.relations`    | dict  | `{}`    | An object of relation identifier to JQ expressions that will be used to extract the entity properties.                                                                                                                           |
 
-Specifying custom fields is done by overriding the `CONFIG_CLASS` Property for the integration PortAppConfig handler.
+## Specify custom resource mapping fields
 
-### Overriding the `CONFIG_CLASS` Property
+The integration can support custom fields in the resource mapping that can be used to extend the functionality provided by the resource mapping.
 
-The integration can override the `CONFIG_CLASS` Property to specify a custom class that will be used to parse the
-Resource Mapping. To override the `CONFIG_CLASS` Property, the integration should have a `integration.py` file in the
+Specifying custom fields is done by overriding the `CONFIG_CLASS` property for the integration `PortAppConfig` handler.
+
+### Overriding the `CONFIG_CLASS` property
+
+The integration can override the `CONFIG_CLASS` property to specify a custom class that will be used to parse the
+resource mapping. To override the `CONFIG_CLASS` property, the integration should have an `integration.py` file in the
 root of the integration folder that contains the following:
 
-:::note
-Ocean utilizes [Pydantic](https://docs.pydantic.dev/latest/) to validate and parse the Resource Mapping. The integration
-can override those models by adding more fields to the model.
-:::
-
-```python
+```python showLineNumbers
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig, ResourceConfig, Selector
@@ -238,11 +237,14 @@ from pydantic import Field
 
 
 class CustomResourceConfig(ResourceConfig):
+    # The following class inherits the base "selector" key in the PortAppConfig and extends it
     class CustomSelector(Selector):
+        # Every field specified here will be added to the fields available in the "selector" key
         my_custom_selector_field: str = Field(alias="myCustomSelectorField")
 
-
+# The following class inherits the base PortAppConfig and can extend the types it expects for its different fields
 class MyIntegrationCustomPortAppConfig(PortAppConfig):
+    # every type assignment made inside the class will modify the base types used when parsing the PortAppConfig
     resources: ResourceConfig = []
 
 
@@ -251,9 +253,14 @@ class MyIntegration(BaseIntegration):
         CONFIG_CLASS = MyIntegrationCustomPortAppConfig
 ```
 
-This custom Resource Mapping will expect portAppConfig with the following format:
+:::note
+Ocean utilizes [Pydantic](https://docs.pydantic.dev/latest/) to validate and parse the resource mapping. The integration
+can override those models by adding more fields to the model.
+:::
 
-```yaml
+This custom `CONFIG_CLASS` will expect resource mappings with the following format:
+
+```yaml showLineNumbers
 deleteDependentEntities: bool
 createMissingRelatedEntities: bool
 resources:
