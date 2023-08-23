@@ -1,5 +1,5 @@
 ---
-title: 🗺 Development Guidelines
+title: 🚧 Development Guidelines
 sidebar_position: 6
 ---
 
