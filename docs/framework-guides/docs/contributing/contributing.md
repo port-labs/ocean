@@ -1,6 +1,10 @@
+---
+title: Contributing
+---
+
 # 🤝 Contributing
 
-import TBD from '../_common/tbd.md';
+import TBD from '../\_common/tbd.md';
 
 ## Report a Bug
 

@@ -1,7 +1,10 @@
 ---
-title: 🤔 FAQ
-sidebar_position: 8
+title: FAQ
+sidebar_label: 🤔 FAQ
+sidebar_position: 9
 ---
+
+# 🤔 FAQ
 
 import TBD from './\_common/tbd.md';
 
