@@ -1,20 +1,21 @@
 ---
 title: ✅ Configuration Validation
 sidebar_position: 5
+description: Use Ocean to validate integration inputs before startup
 ---
 
 The Ocean framework provides a convenient way to validate the configuration of an integration.
 
-By providing a validation specification, the Ocean framework can verify that the configuration provided to the integration contains all required resources in the expected format, ensuring it can start and perform its logic.
+By providing a validation specification (provided in the [`spec.yml`](../../develop-an-integration/integration-spec-and-default-resources.md#specyaml-file) file), the Ocean framework can verify that the configuration provided to the integration contains all required parameters in the expected format, ensuring it can start and perform its logic.
 
 Ocean performs configuration validation based on the specification provided in the `.port/spec.yml` file.
 
 ## How to setup configuration type validation
 
-To setup configuration type validation, the integration needs to provide the available configuration and their types
+To setup configuration type validation, the integration needs to provide the available inputs and their types
 using the `.port/spec.yaml` file.
 
-## Supported configuration types
+## Supported parameter configuration types
 
 The Ocean framework supports the following configuration types:
 
@@ -26,40 +27,35 @@ The Ocean framework supports the following configuration types:
 
 ### Example
 
-`.port/spec.yaml`:
-
-```yaml showLineNumbers
+```yaml showLineNumbers title=".port/spec.yml"
 configurations:
-  - name: myBooleanConfig
+  - name: myBooleanParameter
     type: boolean
-    description: My boolean configuration
+    description: My boolean parameter
 ```
 
-`config.yaml`:
 :::danger ❌ Invalid configuration
 
-```yaml showLineNumbers
+```yaml showLineNumbers title="config.yml"
 ...
 integration:
   ...
   config:
-    // highlight-start
-    myConfig: 123 # This will fail validation
-    // highlight-end
+    // highlight-next-line
+    myBooleanParameter: 123 # This will fail validation
 ```
 
 :::
 
 :::tip ✅ Valid configuration
 
-```yaml showLineNumbers
+```yaml showLineNumbers title="config.yml"
 ...
 integration:
   ...
   config:
-    // highlight-start
-    myConfig: true # This is a valid configuration
-    // highlight-end
+    // highlight-next-line
+    myBooleanParameter: true # This is a valid configuration
 ```
 
 :::

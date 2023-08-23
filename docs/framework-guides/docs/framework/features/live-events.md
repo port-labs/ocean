@@ -1,6 +1,7 @@
 ---
 title: ⌛ Live Events
 sidebar_position: 4
+description: Use Ocean to process live events from 3rd-party services
 ---
 
 The Ocean framework provides convenient way to listen to events triggered by the third-party service and react to them
