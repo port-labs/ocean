@@ -50,6 +50,12 @@ from loguru import logger
 logger.info('Hello World')
 ```
 
+### Live Events (Webhook)
+
+When handling live events in the integration, make sure to not register the event data as the data to sync.
+Often the data incoming from the live event is not the same as the data that is being retrieved from the api, which will
+cause to an inconsistency in the data passed to the transformation and can result in inconsistent entities.
+
 ### Performance
 
 Make sure your integration is performant and does not block the event loop for too long.

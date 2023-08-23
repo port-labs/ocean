@@ -3,8 +3,8 @@ title: 🧩 Contexts
 sidebar_position: 3
 ---
 
-The Ocean framework provides a built-in thread-safe global variables store that holds relevant context information for the
-integration.
+The Ocean framework provides a built-in thread-safe global variables store that holds relevant context information for
+the integration.
 
 ## Ocean context
 
@@ -24,7 +24,8 @@ Using the Ocean context, the integration can access the following functionality:
 - `ocean.port_client`: A Port client the Ocean framework uses to communicate with Port's API
 - `ocean.on_resync`: A decorator that can be used to register a function to be called when a resync is requested
 - `ocean.on_start`: A decorator that can be used to register a function to be called when the integration starts
-- And more methods that can be used to sync, register, unregister resources
+- And more methods that can be used to sync, register, unregister resources that are mentioned in the
+  [Sync](./sync.md) page
 
 ### Example
 
@@ -40,27 +41,27 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 # highlight-next-line
 @ocean.on_resync("Issue")
 async def on_resync_kind(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-  # handle the request to resync catalog items of a specific kind
-  ...
+    # handle the request to resync catalog items of a specific kind
+    ...
 
 
 # highlight-next-line
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> None:
-  # handle an event sent to the integration's app host to the `/integration/webhook` route
+    # handle an event sent to the integration's app host to the `/integration/webhook` route
 
-  # Get the value of the appHost parameter from the integration config
-  # highlight-next-line
-  integration_app_host = ocean.integration_config.get("app_host")
-  await ocean.register_raw("myKind", [data])
+    # Get the value of the appHost parameter from the integration config
+    # highlight-next-line
+    integration_app_host = ocean.integration_config.get("app_host")
+    await ocean.register_raw("myKind", [data])
 
 
 # Called once when the integration starts.
 # highlight-next-line
 @ocean.on_start()
 async def on_start() -> None:
-  # integration startup logic
-  ...
+    # integration startup logic
+    ...
 ```
 
 ## Event context
@@ -85,11 +86,15 @@ Using the event context, the integration can access the following information:
 
 - `event.type`: the type of the event. For example: `resync`, `start`, `http_request`
 - `event.triggerType`: the trigger type of the event. For example: `manual`, `machine`, `request`
-- `event.resource_config`: when the event is a resync event, the `resource_config` holds the resource mapping configuration for the
+- `event.resource_config`: when the event is a resync event, the `resource_config` holds the resource mapping
+  configuration for the resync
+- `event.port_app_config`: when the event is a resync event, the `port_app_config` holds the PortAppConfig used for the
   resync
-- `event.port_app_config`: when the event is a resync event, the `port_app_config` holds the PortAppConfig used for the resync
-- `event.attributes`: a dictionary of attributes that can be used to pass data between different parts of the integration
-  code. The `attributes` dictionary can also be used as a cache to avoid performing the same query or data calculation twice in the context of the same event, and saving the results directly in the `attributes` for later usage in the event processing
+- `event.attributes`: a dictionary of attributes that can be used to pass data between different parts of the
+  integration
+  code. The `attributes` dictionary can also be used as a cache to avoid performing the same query or data calculation
+  twice in the context of the same event, and saving the results directly in the `attributes` for later usage in the
+  event processing
 
 ### Example
 
