@@ -1,5 +1,6 @@
 ---
-title: 🏗️ Integration Configuration
+title: Integration Configuration
+sidebar_label: 🏗️ Integration Configuration
 sidebar_position: 3
 ---
 

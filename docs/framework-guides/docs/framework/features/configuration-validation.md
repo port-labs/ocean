@@ -1,8 +1,11 @@
 ---
-title: ✅ Configuration Validation
+title: Configuration Validation
+sidebar_label: ✅ Configuration Validation
 sidebar_position: 5
 description: Use Ocean to validate integration inputs before startup
 ---
+
+# ✅ Configuration Validation
 
 The Ocean framework provides a convenient way to validate the configuration of an integration.
 

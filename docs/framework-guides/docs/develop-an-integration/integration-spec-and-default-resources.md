@@ -1,5 +1,6 @@
 ---
-title: 📋 Integration Spec and Defaults
+title: Integration Spec and Defaults
+sidebar_label: 📋 Integration Spec and Defaults
 sidebar_position: 2
 ---
 

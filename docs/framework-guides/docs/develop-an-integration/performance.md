@@ -1,9 +1,12 @@
 ---
-title: 🏎️ Performance
+title: Performance
+sidebar_label: 🏎️ Performance
 sidebar_position: 5
 ---
 
 import HttpxExample from '../\_common/httpx-instead-of-requests.md'
+
+# 🏎️ Performance
 
 This guide outlines the possible known performance enhancements that can be applied to an integration built using the
 Ocean framework.

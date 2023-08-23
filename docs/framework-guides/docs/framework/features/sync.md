@@ -1,8 +1,11 @@
 ---
-title: 🔁 Sync Entities State
+title: Sync Entities State
+sidebar_label: 🔁 Sync Entities State
 sidebar_position: 1
 description: Use Ocean to keep the catalog up to date
 ---
+
+# 🔁 Sync Entities State
 
 The Ocean framework provides a way to sync entities state between the 3rd party application and Port. This can be done
 by Ocean sync and raw sync functionality.
@@ -18,7 +21,7 @@ page.
 - [`ocean.on_resync`](#oceanon_resync)
 - [`ocean.sync_raw_all`](#oceansync_raw_all)
 - [`ocean.sync`](#oceansync)
-:::
+  :::
 
 ## Ocean Raw Sync
 

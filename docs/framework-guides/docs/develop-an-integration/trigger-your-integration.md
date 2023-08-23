@@ -1,7 +1,10 @@
 ---
-title: 🕹️ Trigger your Integration
+title: Trigger your Integration
+sidebar_label: 🕹️ Trigger your Integration
 sidebar_position: 7
 ---
+
+# 🕹️ Trigger your Integration
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';

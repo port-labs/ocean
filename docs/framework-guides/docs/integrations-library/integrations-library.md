@@ -1,5 +1,6 @@
 ---
-title: 📝 Integrations Library
+title: Integrations Library
+sidebar_label: 📝 Integrations Library
 ---
 
 import DocsCard from '@components/DocsCard';

@@ -1,8 +1,11 @@
 ---
-title: 🧩 Contexts
+title: Contexts
+sidebar_label: 🧩 Contexts
 sidebar_position: 3
 description: Use Ocean contexts to streamline integration logic
 ---
+
+# 🧩 Contexts
 
 The Ocean framework provides a built-in thread-safe global variables store that holds relevant context information for
 the integration.
