@@ -12,7 +12,7 @@ import SwaggerGuide from './\_mdx/trigger-swagger-guide.md';
 import CurlGuide from './\_mdx/trigger-curl-guide.md';
 import PythonGuide from './\_mdx/trigger-python-guide.md';
 
-This guide explains how you can trigger your integration using the [Port](https://app.getport.io).
+This guide explains how you can trigger your integration using [Port](https://app.getport.io).
 
 After setting up & running your integration, you can trigger it using Port UI/ Port API.
 
