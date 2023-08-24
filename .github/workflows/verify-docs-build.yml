@@ -19,7 +19,7 @@ jobs:
     name: Test successful docs production build
     defaults:
       run:
-        working-directory: docs/framework-guide
+        working-directory: docs/framework-guides
     steps:
       - uses: actions/checkout@v3
         with:
