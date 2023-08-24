@@ -1,6 +1,7 @@
 ---
 title: Quickstart
 ---
+import CodeBlock from '@theme/CodeBlock';
 
 # ⚡️ Quickstart
 
@@ -12,21 +13,15 @@ Python 3.11
 
 ## Installation
 
-<div className="termy">
 
 ```console
-
 $ pip install "port-ocena[cli]"
----> 100%
 ```
 
-</div>
 
 ## Example
 
 ### Scaffold
-
-<div className="termy" style={{"maxHeight":"500px"}}>
 
 ```console
 $ ocean new
@@ -63,8 +58,6 @@ Here are your next steps:
 ⚓️ Smooth sailing with Make: Alternatively, you can run make run to launch your project using Make.
 ▶️ make run ./my_integration
 ```
-
-</div>
 
 <br/>
 
@@ -153,12 +146,9 @@ integration:
 
 ### Run
 
-<div className="termy">
-
 ```console
 $ cd ./my_integration
 $ make install
----> 100%
 
 $ . .venv/bin/activate
 $ (my_integration3.11) ocean sail
@@ -167,8 +157,6 @@ INFO:     Started server process [50121]
 INFO:     Waiting for application startup.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
-
-</div>
 
 #### Interactive API docs
 
