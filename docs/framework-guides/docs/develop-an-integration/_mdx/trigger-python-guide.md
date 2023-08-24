@@ -11,10 +11,6 @@ headers = {
     "Content-Type": "application/json"
 }
 
-payload = {
-    "key": "new_value"
-}
-
-response = requests.patch(url, headers=headers, json=payload)
+response = requests.patch(url, headers=headers, json={})
 
 ```
