@@ -16,7 +16,6 @@ const config = {
   organizationName: "port-labs", // Usually your GitHub org/user name.
   projectName: "port-ocean", // Usually your repo name.
   staticDirectories: ["static"],
-  scripts: ["js/custom.js", "js/termynal.js"],
 
   presets: [
     [
@@ -34,10 +33,10 @@ const config = {
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },
-        // gtag: { TODO: add proper tag and Ganalytics project
-        //   trackingID: "G-3YL3X47R7L",
-        //   anonymizeIP: false,
-        // },
+        gtag: {
+          trackingID: "G-ZCC35DLDF7",
+          anonymizeIP: false,
+        },
         sitemap: {
           changefreq: "weekly",
           priority: 0.5,

@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import DocsCard from '../DocsCard';
 import DocsCards from '../DocsCards';
 import {parseString} from "xml2js";
@@ -10,18 +10,7 @@ const BUCKET_URL = "https://port-graphical-assets.s3.eu-west-1.amazonaws.com";
 function Index(props): JSX.Element {
     const [integrations, setIntegrations] = useState([]);
 
-    useEffect(() => {
-        fetch('https://ocean-registry.s3.eu-west-1.amazonaws.com/index.json')
-            .then((response) => response.json())
-            .then(data => {
-                setIntegrations(data);
-            });
-    }, [])
-
-    useEffect(async () => {
-        if (integrations.length === 0) {
-            return;
-        }
+    const loadIntegrations = async (integrations) => {
         try {
             const seachParams = new URLSearchParams({
                 "list-type": '2',
@@ -34,7 +23,6 @@ function Index(props): JSX.Element {
                     const name = key.split("/").pop().split(".")[0];
                     return [name, key]
                 });
-
                 for (const integration of integrations) {
                     const iconName = integration.icon;
 
@@ -43,15 +31,22 @@ function Index(props): JSX.Element {
                     if (iconInS3) {
                         const svgResponse = await fetch(`${BUCKET_URL}/${integrationIcon[1]}`)
                         integration.iconText = await svgResponse.text();
+                        integration.svgUrl = `${BUCKET_URL}/${integrationIcon[1]}`;
                     }
                 }
+
+                setIntegrations(integrations);
             });
         } catch (error) {
         }
-    }, [integrations]);
+    }
 
-    const getIcon = useCallback((integration) => {
-        console.log(integration.iconText);
+    useEffect(async () => {
+        const response = await fetch('https://ocean-registry.s3.eu-west-1.amazonaws.com/index.json')
+        await loadIntegrations(await response.json());
+    }, [])
+
+    const getIcon = (integration) => {
         return (
             <div className={"svg-container"} style={{
                 backgroundColor: 'white',
@@ -61,11 +56,10 @@ function Index(props): JSX.Element {
                 justifyContent: 'center',
                 border: "1px solid #dddddd"
             }}>
-                <div style={{width: '80%', height: '80%'}} dangerouslySetInnerHTML={{__html: integration.iconText}}/>
+                <img style={{width: '80%', height: '80%'}} src={integration.svgUrl} alt="Integration Icon"/>
             </div>
         );
-    }, [integrations])
-
+    }
     return (
         <DocsCards>
             {
