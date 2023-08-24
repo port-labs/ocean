@@ -14,16 +14,16 @@ import PythonGuide from './\_mdx/trigger-python-guide.md';
 
 This guide explains how you can trigger your integration using [Port](https://app.getport.io).
 
-After setting up & running your integration, you can trigger it using Port UI/ Port API.
+After setting up & running your integration, you can trigger it using Port's UI/API.
 
 Triggering your integration will run the integration resync and will resync all the data from the source into port and
 creating new data, update existing data and delete data that no longer exists in the source by doing so.
 
-## Triggering using Port UI
+## Triggering using Port's UI
 
 1. Login to [Port](https://app.getport.io) and browse to the [builder page](https://app.getport.io/dev-portal).
 
-2. Open the ingest modal by expanding one of the [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) and clicking the ingest button on the blueprints.
+2. Open the ingest modal by expanding one of the [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) and clicking the ingest button on the blueprint.
 
    ![Ingest Button](@site/static/img/ingest-button-1.png)
 
@@ -31,15 +31,15 @@ creating new data, update existing data and delete data that no longer exists in
 
    ![Ingest Button](@site/static/img/ingest-button-2.png)
 
-3. Select on your installed that you want to trigger from the list of available integrations.
+3. Select the integration you want to trigger a resync for from the list of your installed integrations.
 4. Click on the `Resync` button.
 
    ![Installation Page](@site/static/img/resync-button.png)
 
-## Triggering using Port API
+## Triggering using Port's API
 
 By patching the integration either with a new configuration or by patching it with no changes, The integration will
-detect the trigger and will run the integration resync.
+detect the trigger and perform a resync.
 
 <Tabs>
     <TabItem value="swagger" label="Swagger" default>
