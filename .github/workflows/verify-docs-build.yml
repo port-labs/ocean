@@ -28,10 +28,10 @@ jobs:
           cache: npm
           cache-dependency-path: docs/framework-guides/package-lock.json
       - run: npm ci
-        working-directory: docs/framework-guides/package-lock.json
+        working-directory: docs/framework-guides/
       - name: Build
         run: npm run build
-        working-directory: docs/framework-guides/package-lock.json
+        working-directory: docs/framework-guides/
 
   build-api-docs:
     runs-on: ubuntu-latest
