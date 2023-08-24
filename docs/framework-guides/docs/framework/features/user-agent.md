@@ -60,14 +60,14 @@ Because the `UserAgentType.gitops` is specified then Ocean will query only the `
 
 By default an integration will query entities marked with the `exporter` feature and user agent.
 
-When a different feature is specified via the user agent, the integration performs an entity state sync only for entities managed by the specified feature.
+When a different feature is specified using the user agent, the integration performs an entity state sync only for entities managed by the specified feature.
 :::
 
 ### Available user agent and features
 
 The following features use the user agent header to ingest their own managed entities:
 
-- `exporter` - the exporter feature is used for integrations that perform a simple export and sync of entities from the 3rd-party service into Port (via queries to the 3rd-party API for example). This is the default user agent feature. This feature is used by the [sync entities state](../features/sync.md) functions
+- `exporter` - the exporter feature is used for integrations that perform a simple export and sync of entities from the 3rd-party service into Port (using queries to the 3rd-party API for example). This is the default user agent feature. This feature is used by the [sync entities state](../features/sync.md) functions
   when no user agent was specified
 - `gitops` - the GitOps feature is used for integrations that perform an entity sync based on the state of files and entity in a Git provider (by reading the content of specification files for example)
 

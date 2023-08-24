@@ -21,8 +21,20 @@ creating new data, update existing data and delete data that no longer exists in
 
 ## Triggering using the Port UI
 
-1. Navigate to the [Port](https://app.getport.io) and login to your account.
-2. Click on the
+1. Login to [Port](https://app.getport.io) and browse to the [builder page](https://app.getport.io/dev-portal).
+
+2. Open the ingest modal by expanding one of the [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) and clicking the ingest button on the blueprints.
+
+   ![Ingest Button](@site/static/img/ingest-button-1.png)
+
+   or
+
+   ![Ingest Button](@site/static/img/ingest-button-2.png)
+
+3. Select on your installed that you want to trigger from the list of available integrations.
+4. Click on the `Resync` button.
+
+   ![Installation Page](@site/static/img/resync-button.png)
 
 ## Triggering using the Port API
 

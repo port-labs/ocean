@@ -127,14 +127,14 @@ configurations:
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 
 port:
-  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
-  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
+  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
 # The event listener to use for the integration service.
 eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  # Can be loaded via environment variable: INTEGRATION_IDENTIFIER or OCEAN__INTEGRATION__IDENTIFIER
+  # Can be loaded using environment variable: INTEGRATION_IDENTIFIER or OCEAN__INTEGRATION__IDENTIFIER
   identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
   # These two should match the values in the .port/spec.yaml file
   type: "My Integration type (Gitlab, Jira, etc.)"
