@@ -1,16 +1,16 @@
 ---
-title: Helm deployment
+title: Helm Deployment
 sidebar_label: ⚓️ Helm
-sidebar_position: 2
+sidebar_position: 1
 ---
 
-import IntegrationsLibraryLink from './_integration-list-link.md';
-import UIInstallation from './_ui-installation-process.md';
-import CheckInstallation from './_check_installation.md';
+import IntegrationsLibraryLink from './\_integration-list-link.md';
+import UIInstallation from './\_ui-installation-process.md';
+import CheckInstallation from './\_check_installation.md';
 
-# ⚓️ Helm deployment
+# ⚓️ Helm Deployment
 
-This guide will walk you through deploying an integration of the Ocean framework using Helm.
+This guide will walk you through deploying an integration of the Ocean framework using [Helm](https://helm.sh/).
 
 <CheckInstallation/>
 
@@ -19,7 +19,7 @@ This guide will walk you through deploying an integration of the Ocean framework
 - [Helm](https://helm.sh/docs/intro/install/) installed
 - [Kubernetes](https://kubernetes.io/docs/tasks/tools/) cluster to deploy the integration to
 - [Port](https://app.getport.io) organization for the the Client ID and Client Secret
-- The integration required configurations
+- The integration's required configurations
 
 :::caution
 This guide will install the Helm chart using the current Kubernetes context. Make sure you have the correct context set
@@ -32,7 +32,7 @@ before continuing.
 
 ### 1. Add the Ocean Helm repository
 
-```bash
+```bash showLineNumbers
 helm repo add port-labs https://port-labs.github.io/helm-charts
 helm repo update
 ```
@@ -41,7 +41,7 @@ helm repo update
 
 <IntegrationsLibraryLink/>
 
-```bash
+```bash showLineNumbers
 helm upgrade --install <MY_INSTALLATION_NAME> port-labs/port-ocean \
 	--set port.clientId="<PORT_CLIENT_ID>"  \
 	--set port.clientSecret="<PORT_CLIENT_SECRET>"  \
@@ -53,12 +53,12 @@ helm upgrade --install <MY_INSTALLATION_NAME> port-labs/port-ocean \
 	--set integration.config.<INTEGRATION_SPECIFIC_CONFIG>="<CONFIG_VALUE>"
 ```
 
-:::info Integration Configuration
+:::tip Integration Configuration
 The generic configuration for integrations can be found in
-the [Integration Configuration](../develop-an-integration/integration-configuration.md) guide.
+the [integration configuration](../develop-an-integration/integration-configuration.md) guide.
 :::
 
-:::info Event Listener
+:::tip Event Listener
 More information about the available event listener types and optional configurations can be found in
-the [Event Listeners](../framework/features/event-listener.md) guide.
+the [event listeners](../framework/features/event-listener.md) guide.
 :::

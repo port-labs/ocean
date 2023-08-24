@@ -1,13 +1,13 @@
 :::tip UI Installation Process
-All the integrations in the [Integration Library](../integrations-library/integrations-library.md) can be installed
-using the Port UI. The UI will guide you through the installation process.
+All the integrations in the [integrations library](../integrations-library/integrations-library.md) can be installed
+using Port's UI. The UI will guide you through the installation process.
 
 <details>
-<summary>To get to the integration installation page you should follow these steps:</summary>
+<summary>To get to the integration installation page</summary>
 
-1. Go your Organization page in the [Port UI](https://app.getport.io).
+1. Login to [Port](https://app.getport.io) and browse to the [builder page](https://app.getport.io/dev-portal).
 
-2. Open the Ingest modal by clicking the Ingest Button on the blueprints.
+2. Open the ingest modal by expanding one of the [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) and clicking the ingest button on the blueprints.
 
    ![Ingest Button](@site/static/img/ingest-button-1.png)
 
@@ -20,8 +20,7 @@ using the Port UI. The UI will guide you through the installation process.
 
    ![Installation Page](@site/static/img/installation-ui.png)
 
-5. After the installation is complete, the installation tab should be closed and you should see
-   the [Resource Mapping](../framework/features/resource-mapping.md) page.
+5. After the installation is complete, the installation section will automatically close and you will see the [resource mapping](../framework/features/resource-mapping.md) interface.
 
 </details>
 :::

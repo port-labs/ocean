@@ -1,4 +1,4 @@
 :::info
-The list of available integrations can be found on
-the [Integration Library](../integrations-library/integrations-library.md) page.
+The list of available integrations can be found in
+the [integrations library](../integrations-library/integrations-library.md) page.
 :::

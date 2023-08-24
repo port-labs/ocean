@@ -1,3 +1,3 @@
 :::caution
-Please check that the desired installation supports this installation process before continuing.
+Please verify that the desired integration supports this installation method before continuing.
 :::
