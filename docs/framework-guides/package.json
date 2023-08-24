@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
-    "start": "docusaurus start --port 4001",
-    "build": "docusaurus build",
+    "start": "cp ../../LICENSE.md ./static/LICENSE.md && docusaurus start --port 4001",
+    "build": "cp ../../LICENSE.md ./static/LICENSE.md &&  docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",

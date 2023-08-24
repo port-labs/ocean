@@ -6,6 +6,6 @@ sidebar_position: 10
 
 # 📜 License
 
-import License from '@site/../../License.md';
+import License from '@site/static/License.md';
 
 <License />
