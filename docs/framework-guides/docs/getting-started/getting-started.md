@@ -1,10 +1,10 @@
 ---
-title: Quickstart
+title: Getting Started
 ---
 
 import CodeBlock from '@theme/CodeBlock';
 
-# ⚡️ Quickstart
+# ⚡️ Getting Started
 
 In this quickstart guide, you'll learn how to **install** the Ocean CLI, **scaffold** a new integration, add your **custom logic** and **run** the new integration locally.
 
