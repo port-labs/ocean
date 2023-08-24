@@ -31,7 +31,7 @@ creating new data, update existing data and delete data that no longer exists in
 
    ![Ingest Button](@site/static/img/ingest-button-2.png)
 
-3. Select on your installed that you want to trigger from the list of available integrations.
+3. Select the integration you want to trigger a resync for from the list of your installed integrations.
 4. Click on the `Resync` button.
 
    ![Installation Page](@site/static/img/resync-button.png)
