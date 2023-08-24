@@ -4,7 +4,7 @@ ignore: |
   **/node_modules/**
   .gitignore
   .yamlignore
-  port_ocean/cli/cookiecutter/{{cookiecutter.integration_slug}}/**
+  **/{{cookiecutter.integration_slug}}/**
 
 rules:
   # ignore line length
