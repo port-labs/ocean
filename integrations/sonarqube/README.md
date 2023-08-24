@@ -33,37 +33,90 @@ helm upgrade --install my-sonarqube-integration port-labs/port-ocean \
 ```
 ## Supported Kinds
 ### Project
-This kind represents a Sonarqube project.
+This kind represents a Sonarqube project. Retrieves data from [Sonarqube components](https://next.sonarqube.com/sonarqube/web_api/api/components) and [Sonarqube measures](https://next.sonarqube.com/sonarqube/web_api/api/measures) and [Sonarque branches](https://next.sonarqube.com/sonarqube/web_api/api/project_branches)
 
 <details>
 <summary>blueprint.json</summary>
 
 ```json
 {
-	"identifier": "sonarqubeProject",
-	"description": "This blueprint represents a Sonarqube project in our software catalog",
-	"title": "SonarQube Project",
-	"icon": "sonarqube",
-	"schema": {
-		"properties": {
-			"organization": {
-				"type": "string",
-				"title": "Organization"
-			},
-			"visibility": {
-				"type": "string",
-				"title": "Visibility"
-			},
-			"tags": {
-				"type": "array",
-				"title": "Tags"
-			}
-		},
-		"required": []
-	},
-	"mirrorProperties": {},
-	"calculationProperties": {},
-	"relations": {}
+    "identifier": "sonarQubeProject",
+    "title": "SonarQube Project",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "organization": {
+          "type": "string",
+          "title": "Organization",
+          "icon": "TwoUsers"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Link",
+          "icon": "Link"
+        },
+        "lastAnalysisStatus": {
+          "type": "string",
+          "title": "Last Analysis Status",
+          "enum": [
+            "PASSED",
+            "OK",
+            "FAILED",
+            "ERROR"
+          ],
+          "enumColors": {
+            "PASSED": "green",
+            "OK": "green",
+            "FAILED": "red",
+            "ERROR": "red"
+          }
+        },
+        "lastAnalysisDate": {
+          "type": "string",
+          "format": "date-time",
+          "icon": "Clock",
+          "title": "Last Analysis Date"
+        },
+        "numberOfBugs": {
+          "type": "number",
+          "title": "Number Of Bugs"
+        },
+        "numberOfCodeSmells": {
+          "type": "number",
+          "title": "Number Of CodeSmells"
+        },
+        "numberOfVulnerabilities": {
+          "type": "number",
+          "title": "Number Of Vulnerabilities"
+        },
+        "numberOfHotSpots": {
+          "type": "number",
+          "title": "Number Of HotSpots"
+        },
+        "numberOfDuplications": {
+          "type": "number",
+          "title": "Number Of Duplications"
+        },
+        "coverage": {
+          "type": "number",
+          "title": "Coverage"
+        },
+        "mainBranch": {
+          "type": "string",
+          "icon": "Git",
+          "title": "Main Branch"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
 }
 ```
 </details>
@@ -78,60 +131,106 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"sonarqubeProject"'
+          blueprint: '"sonarQubeProject"'
           identifier: .key
           title: .name
           properties:
               organization: .organization
-              visibility: .visibility
+              link: .link
+              lastAnalysisStatus: .branch.status.qualityGateStatus
+              lastAnalysisDate: .analysisDateAllBranches
+              numberOfBugs: .measures[]? | select(.metric == "bugs") | .value
+              numberOfCodeSmells: .measures[]? | select(.metric == "code_smells") | .value
+              numberOfVulnerabilities: .measures[]? | select(.metric == "vulnerabilities") | .value
+              numberOfHotSpots: .measures[]? | select(.metric == "security_hotspots") | .value
+              numberOfDuplications: .measures[]? | select(.metric == "duplicated_files") | .value
+              coverage: .measures[]? | select(.metric == "coverage") | .value
+              mainBranch: .branch.name
               tags: .tags
-
 ```
 </details>
 
-### Quality Gates
-This kind represents a Sonarqube quality gate.
+### Issues
+This kind represents a Sonarqube issue. It relies on data from [Sonarqube issues](https://next.sonarqube.com/sonarqube/web_api/api/issues)
 
 <details>
 <summary>blueprint.json</summary>
 
 ```json
-{
-	"identifier": "sonarqubeQualityGate",
-	"description": "This blueprint represents a Sonarqube quality gate in our software catalog",
-	"title": "SonarQube Quality Gate",
-	"icon": "sonarqube",
-	"schema": {
-		"properties": {
-			"status": {
-				"type": "string",
-				"title": "Quality Gate Status",
-				"enum": [
-					"OK",
-					"WARN",
-					"ERROR",
-					"NONE"
-				],
-				"enumColors": {
-					"OK": "green",
-					"WARN": "yellow",
-					"ERROR": "red",
-					"NONE": "lightGray"
-				}
-			},
-			"conditions": {
-				"type": "array",
-				"items": {
-					"type": "object"
-				},
-				"title": "Quality Gate Conditions"
-			}
-		},
-		"required": []
-	},
-	"mirrorProperties": {},
-	"calculationProperties": {},
-	"relations": {}
+ {
+    "identifier": "sonarQubeIssue",
+    "title": "SonarQube Issue",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "CODE_SMELL",
+            "BUG",
+            "VULNERABILITY"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "MAJOR",
+            "INFO",
+            "MINOR",
+            "CRITICAL",
+            "BLOCKER"
+          ],
+          "enumColors": {
+            "MAJOR": "orange",
+            "INFO": "green",
+            "CRITICAL": "red",
+            "BLOCKER": "red",
+            "MINOR": "yellow"
+          }
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "icon": "Link",
+          "title": "Link"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "OPEN",
+            "CLOSED",
+            "RESOLVED",
+            "REOPENED",
+            "CONFIRMED"
+          ]
+        },
+        "assignees": {
+          "title": "Assignees",
+          "type": "string",
+          "icon": "TwoUsers"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        }
+      }
+    },
+    "relations": {
+      "sonarQubeProject": {
+        "target": "sonarQubeProject",
+        "required": false,
+        "title": "SonarQube Project",
+        "many": false
+      }
+    }
 }
 ```
 </details>
@@ -140,19 +239,104 @@ This kind represents a Sonarqube quality gate.
 
 ```yaml
 resources:
-  - kind: qualitygates
+  - kind: issues
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"sonarqubeQualityGate"'
-          identifier: .id
-          title: .name
+          blueprint: '"sonarQubeIssue"'
+          identifier: .key
+          title: .message
           properties:
+              type: .type
+              severity: .severity
+              link: .link
               status: .status
-              conditions: .conditions
+              assignees: .assignee
+              tags: .tags
+              createdAt: .creationDate
+          relations:
+            sonarQubeProject: .project
 
+```
+</details>
+
+### Analysis
+This kind represents a Sonarqube analysis and latest activity.
+
+<details>
+<summary>blueprint.json</summary>
+
+```json
+  {
+    "identifier": "sonarQubeAnalysis",
+    "title": "SonarQube Analysis",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "branch": {
+          "type": "string",
+          "title": "Branch",
+          "icon": "GitVersion"
+        },
+        "fixedIssues": {
+          "type": "number",
+          "title": "Fixed Issues"
+        },
+        "newIssues": {
+          "type": "number",
+          "title": "New Issues"
+        },
+        "coverage": {
+          "title": "Coverage",
+          "type": "number"
+        },
+        "duplications": {
+          "type": "number",
+          "title": "Duplications"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        }
+      }
+    },
+    "relations": {
+      "sonarQubeProject": {
+        "target": "sonarQubeProject",
+        "required": false,
+        "title": "SonarQube Project",
+        "many": false
+      }
+    }
+}
+```
+</details>
+<details>
+  <summary>port-app-config.yaml</summary>
+
+```yaml
+resources:
+  - kind: analysis
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeAnalysis"'
+          identifier: .analysisId
+          title: .commit.message
+          properties:
+              branch: .branch_name
+              fixedIssues: .measures.violations_fixed
+              newIssues: .measures.violations_added
+              coverage: .measures.coverage_change
+              duplications: .measures.duplicated_lines_density_change
+              createdAt: .analysis_date
+          relations:
+            sonarQubeProject: .project
 ```
 </details>
 

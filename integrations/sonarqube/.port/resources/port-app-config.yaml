@@ -5,22 +5,56 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"sonarqubeProject"'
+          blueprint: '"sonarQubeProject"'
           identifier: .key
           title: .name
           properties:
               organization: .organization
-              visibility: .visibility
+              link: .link
+              lastAnalysisStatus: .branch.status.qualityGateStatus
+              lastAnalysisDate: .analysisDateAllBranches
+              numberOfBugs: .measures[]? | select(.metric == "bugs") | .value
+              numberOfCodeSmells: .measures[]? | select(.metric == "code_smells") | .value
+              numberOfVulnerabilities: .measures[]? | select(.metric == "vulnerabilities") | .value
+              numberOfHotSpots: .measures[]? | select(.metric == "security_hotspots") | .value
+              numberOfDuplications: .measures[]? | select(.metric == "duplicated_files") | .value
+              coverage: .measures[]? | select(.metric == "coverage") | .value
+              mainBranch: .branch.name
               tags: .tags
-  - kind: qualitygates
+  - kind: analysis
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"sonarqubeQualityGate"'
-          identifier: .id
-          title: .name
+          blueprint: '"sonarQubeAnalysis"'
+          identifier: .analysisId
+          title: .commit.message
           properties:
+              branch: .branch_name
+              fixedIssues: .measures.violations_fixed
+              newIssues: .measures.violations_added
+              coverage: .measures.coverage_change
+              duplications: .measures.duplicated_lines_density_change
+              createdAt: .analysis_date
+          relations:
+            sonarQubeProject: .project
+  - kind: issues
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeIssue"'
+          identifier: .key
+          title: .message
+          properties:
+              type: .type
+              severity: .severity
+              link: .link
               status: .status
-              conditions: .conditions
+              assignees: .assignee
+              tags: .tags
+              createdAt: .creationDate
+          relations:
+            sonarQubeProject: .project

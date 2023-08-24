@@ -1,14 +1,14 @@
 from typing import Any
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from sonarqube_integration.sonarqube_client import SonarQubeClient
 import httpx
 
 
 class ObjectKind:
     PROJECTS = "projects"
-    QUALITY_GATES = "qualitygates"
+    ISSUES = "issues"
+    ANALYSIS = "analysis"
 
 
 # Initialize the SonarQubeClient instance
@@ -27,24 +27,32 @@ async def on_project_resync(kind: str) -> list[dict[str, Any]]:
     return await sonar_client.get_projects()
 
 
-@ocean.on_resync(ObjectKind.QUALITY_GATES)
-async def on_quality_gate_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync(ObjectKind.ISSUES)
+async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
     logger.info(f"Listing Sonarqube resource: {kind}")
-    projects = await sonar_client.get_projects()
-    for project in projects:
-        quality_gate = await sonar_client.get_cloud_analysis_data_for_project(project)
-        yield quality_gate
+    components = await sonar_client.get_components()
+    return await sonar_client.get_issues(components)
+
+
+@ocean.on_resync(ObjectKind.ANALYSIS)
+async def on_analysis_resync(kind: str) -> list[dict[str, Any]]:
+    logger.info(f"Listing Sonarqube resource: {kind}")
+    components = await sonar_client.get_components()
+    return await sonar_client.get_analyses(components)
 
 
 @ocean.router.post("/webhook")
 async def handle_sonarqube_webhook(data: dict[str, Any]) -> None:
     logger.info(
-        f"Processing Sonarqube webhook for event type: {data['project']['key']}"
+        f"Processing Sonarqube webhook for event type: {data.get('project', {}).get('key')}"
     )
 
     project = data.get("project", {})
-    quality_analysis = await sonar_client.get_cloud_analysis_data_for_project(project)
-    await ocean.register_raw(ObjectKind.QUALITY_GATES, [quality_analysis])
+    issues = await sonar_client.get_issues([project])
+    analysis = await sonar_client.get_analyses([project])
+
+    await ocean.register_raw(ObjectKind.ISSUES, issues)
+    await ocean.register_raw(ObjectKind.ANALYSIS, analysis)
 
 
 @ocean.on_start()
