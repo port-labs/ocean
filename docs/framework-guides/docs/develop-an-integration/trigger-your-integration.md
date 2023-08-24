@@ -12,31 +12,43 @@ import SwaggerGuide from './\_mdx/trigger-swagger-guide.md';
 import CurlGuide from './\_mdx/trigger-curl-guide.md';
 import PythonGuide from './\_mdx/trigger-python-guide.md';
 
-This guide explains how you can trigger your integration using the [Port](https://app.getport.io).
+This guide explains how you can trigger your integration using [Port](https://app.getport.io).
 
-After setting up & running your integration, you can trigger it using the Port UI/ Port API.
+After setting up & running your integration, you can trigger it using Port's UI/API.
 
 Triggering your integration will run the integration resync and will resync all the data from the source into port and
 creating new data, update existing data and delete data that no longer exists in the source by doing so.
 
-## Triggering using the Port UI
+## Triggering using Port's UI
 
-1. Navigate to the [Port](https://app.getport.io) and login to your account.
-2. Click on the
+1. Login to [Port](https://app.getport.io) and browse to the [builder page](https://app.getport.io/dev-portal).
 
-## Triggering using the Port API
+2. Open the ingest modal by expanding one of the [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) and clicking the ingest button on the blueprint.
+
+   ![Ingest Button](@site/static/img/ingest-button-1.png)
+
+   or
+
+   ![Ingest Button](@site/static/img/ingest-button-2.png)
+
+3. Select the integration you want to trigger a resync for from the list of your installed integrations.
+4. Click on the `Resync` button.
+
+   ![Installation Page](@site/static/img/resync-button.png)
+
+## Triggering using Port's API
 
 By patching the integration either with a new configuration or by patching it with no changes, The integration will
-detect the trigger and will run the integration resync.
+detect the trigger and perform a resync.
 
 <Tabs>
-    <TabItem value="swagger" label="swagger" default>
+    <TabItem value="swagger" label="Swagger" default>
         <SwaggerGuide/>
     </TabItem>
-    <TabItem value="curl" label="curl">
+    <TabItem value="curl" label="cURL">
         <CurlGuide/>
     </TabItem>
-    <TabItem value="python" label="python">
+    <TabItem value="python" label="Python">
         <PythonGuide/>
     </TabItem>
 </Tabs>

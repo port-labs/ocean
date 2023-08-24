@@ -37,7 +37,7 @@ This file serves as the entrypoint for the integration logic, when you scaffold 
 Of course since this file is only the entrypoint, you can add as many other `.py` files as needed and construct your own directory structure including classes and modules when developing your integration.
 
 :::tip OCEAN SAIL
-When running the command `ocean sail`, the Ocean CLI triggers a run of the integration via the `main.py` file, after loading all of the necessary context and resources required by the Ocean framework.
+When running the command `ocean sail`, the Ocean CLI triggers a run of the integration using the `main.py` file, after loading all of the necessary context and resources required by the Ocean framework.
 
 :::
 
