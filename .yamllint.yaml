@@ -1,6 +1,10 @@
 extends: default
 
-ignore-from-file: [.gitignore, .yamlignore]
+ignore: |
+  **/node_modules/**
+  .gitignore
+  .yamlignore
+  **/{{cookiecutter.integration_slug}}/**
 
 rules:
   # ignore line length

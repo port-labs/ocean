@@ -25,6 +25,13 @@ from port_ocean.exceptions.core import RelationValidationException
 
 
 class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
+    """Applies and manages changes to entities' state using HTTP requests.
+
+    This class extends the BaseEntitiesStateApplier and provides concrete implementations
+    for applying changes, deleting entities, upserting entities, and handling entity diffs
+    through HTTP requests.
+    """
+
     async def _validate_delete_dependent_entities(self, entities: list[Entity]) -> None:
         logger.info("Validated deleted entities")
         if not event.port_app_config.delete_dependent_entities:

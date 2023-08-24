@@ -1,6 +1,15 @@
-from .http.event_listener import HttpEventListener, HttpEventListenerSettings
-from .kafka.event_listener import KafkaEventListener, KafkaEventListenerSettings
-from .polling.event_listener import PollingEventListener, PollingEventListenerSettings
+from port_ocean.core.event_listener.http import (
+    HttpEventListenerSettings,
+    HttpEventListener,
+)
+from port_ocean.core.event_listener.kafka import (
+    KafkaEventListenerSettings,
+    KafkaEventListener,
+)
+from port_ocean.core.event_listener.polling import (
+    PollingEventListenerSettings,
+    PollingEventListener,
+)
 
 EventListenerSettingsType = (
     HttpEventListenerSettings
