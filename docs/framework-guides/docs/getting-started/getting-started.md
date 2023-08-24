@@ -1,6 +1,7 @@
 ---
 title: Quickstart
 ---
+
 import CodeBlock from '@theme/CodeBlock';
 
 # ⚡️ Quickstart
@@ -13,17 +14,15 @@ Python 3.11
 
 ## Installation
 
-
-```console
+```bash showLineNumbers
 $ pip install "port-ocena[cli]"
 ```
-
 
 ## Example
 
 ### Scaffold
 
-```console
+```bash showLineNumbers
 $ ocean new
 
 🚢 Unloading cargo... Setting up your integration at the dock.
@@ -146,7 +145,7 @@ integration:
 
 ### Run
 
-```console
+```bash showLineNumbers
 $ cd ./my_integration
 $ make install
 
