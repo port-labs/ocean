@@ -1,13 +1,12 @@
 import asyncio
-from importlib.util import module_from_spec, spec_from_file_location
 import inspect
 from asyncio import ensure_future
 from functools import wraps
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from time import time
-from types import ModuleType
-from typing import Callable, Any
 from traceback import format_exception
+from types import ModuleType
 from typing import Callable, Any, Coroutine
 from uuid import uuid4
 
@@ -61,9 +60,9 @@ NoArgsNoReturnDecorator = Callable[
 
 
 def repeat_every(
-        seconds: float,
-        wait_first: bool = False,
-        raise_exceptions: bool = False,
+    seconds: float,
+    wait_first: bool = False,
+    raise_exceptions: bool = False,
 ) -> NoArgsNoReturnDecorator:
     """
     This function returns a decorator that modifies a function so it is periodically re-executed after its first call.
@@ -85,7 +84,7 @@ def repeat_every(
     """
 
     def decorator(
-            func: NoArgsNoReturnAsyncFuncT | NoArgsNoReturnFuncT,
+        func: NoArgsNoReturnAsyncFuncT | NoArgsNoReturnFuncT,
     ) -> NoArgsNoReturnAsyncFuncT:
         """
         Converts the decorated function into a repeated, periodically-called version of itself.

@@ -94,7 +94,7 @@ class KafkaEventListener(BaseEventListener):
 
         integration_identifier = after.get("identifier")
         if integration_identifier == self.integration_identifier and (
-                "change.log" in topic
+            "change.log" in topic
         ):
             return msg_value.get("changelogDestination", {}).get("type", "") == "KAFKA"
 

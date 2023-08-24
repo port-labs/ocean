@@ -113,7 +113,9 @@ exclude = [
     'port_ocean/cli/cookiecutter',
     'venv',
     '.venv',
-    'integrations'
+    'integrations',
+    'docs',
+    'node_modules'
 ]
 plugins = [
     "pydantic.mypy"
@@ -155,5 +157,7 @@ exclude = '''
   |Dockerfile
   |\.venv
   |integrations
+  |docs
+  |node_modules
 )/
 '''
