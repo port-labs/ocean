@@ -15,7 +15,7 @@ Python 3.11
 ## Installation
 
 ```bash showLineNumbers
-$ pip install "port-ocena[cli]"
+$ pip install "port-ocean[cli]"
 ```
 
 ## Example
