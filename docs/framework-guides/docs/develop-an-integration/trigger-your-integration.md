@@ -19,7 +19,7 @@ After setting up & running your integration, you can trigger it using Port's UI/
 Triggering your integration will run the integration resync and will resync all the data from the source into port and
 creating new data, update existing data and delete data that no longer exists in the source by doing so.
 
-## Triggering using Port UI
+## Triggering using Port's UI
 
 1. Login to [Port](https://app.getport.io) and browse to the [builder page](https://app.getport.io/dev-portal).
 
