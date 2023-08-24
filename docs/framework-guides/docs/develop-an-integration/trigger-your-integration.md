@@ -42,13 +42,13 @@ By patching the integration either with a new configuration or by patching it wi
 detect the trigger and will run the integration resync.
 
 <Tabs>
-    <TabItem value="swagger" label="swagger" default>
+    <TabItem value="swagger" label="Swagger" default>
         <SwaggerGuide/>
     </TabItem>
-    <TabItem value="curl" label="curl">
+    <TabItem value="curl" label="cURL">
         <CurlGuide/>
     </TabItem>
-    <TabItem value="python" label="python">
+    <TabItem value="python" label="Python">
         <PythonGuide/>
     </TabItem>
 </Tabs>
