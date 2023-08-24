@@ -17,9 +17,6 @@ jobs:
   build-docs:
     runs-on: ubuntu-latest
     name: Test successful docs production build
-    defaults:
-      run:
-        working-directory: docs/framework-guide
     steps:
       - uses: actions/checkout@v3
         with:
@@ -29,9 +26,10 @@ jobs:
         with:
           node-version: lts/*
           cache: npm
-      - run: npm ci
+          cache-dependency-path: docs/framework-guides/package-lock.json
+      - run: cd docs/framework-guides && npm ci
       - name: Build
-        run: npm run build
+        run: cd docs/framework-guides && npm run build
 
   build-api-docs:
     runs-on: ubuntu-latest

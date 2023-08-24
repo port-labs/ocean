@@ -18,7 +18,7 @@ using Port's UI. The UI will guide you through the installation process.
 3. Select the integration you want to install from the list of available integrations.
 4. Follow the instructions on the installation page.
 
-   ![Installation Page](@site/static/img/installation-ui.png)
+   ![Installation Page](@site/static/img/integration-installation-ui.png)
 
 5. After the installation is complete, the installation section will automatically close and you will see the [resource mapping](../framework/features/resource-mapping.md) interface.
 
