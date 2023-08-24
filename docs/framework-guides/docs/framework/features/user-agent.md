@@ -7,15 +7,14 @@ description: Access only the relevant data for the integration
 
 # 🕵️‍♂️ User Agent
 
-The Ocean framework ingest entities into Port using the [Sync Entities State](../features/sync.md) functionality, upon
-registering an entity (create/update) Port will mark the integration as its creator. This means that the integration
-will be able to look up for its own entities.
+The Ocean framework ingests entities into Port using the [sync entities state](../features/sync.md) functionality. Upon
+registering an entity (create/update) Port will mark the integration as its maintainer. This means that the integration
+will be able to look up for its own managed entities.
 
-Ocean is using the `USER_AGENT` header to let port know which specific integration it is and which specific feature its
-using to ingest those entities.
+Ocean is using the [`User-Agent`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) header to let Port know which specific integration it is and which specific feature its using to ingest those entities.
 
 :::info Format
-The user agent sent to port is formatted as follows:
+Here is the format of the user agent sent to Port:
 
 `port-ocean/<integration_type>/<integration_identifier>/<integration_version>/<feature>`
 
@@ -30,48 +29,48 @@ or
 
 ## Features
 
-Thea feature in the user agent lets Ocean to distinguish between entities created by different features of the same
-integration. For example, if an integration is created entities using the `exporter` feature and the `gitops` feature,
-Ocean will be able to sync each one of them separately without touching the other feature entities.
+The [feature](../../develop-an-integration/integration-spec-and-default-resources.md#features---integration-feature-specification) specified in the user agent header allows Ocean to distinguish between entities created by different features of the same
+integration.
 
-By default, Ocean will use the `exporter` feature if no user agent was specified. To specify a user agent, use the
-pass the user agent to one ot the [Sync Entities State](../features/sync.md) functions.
+For example, if an integration creates entities using both the `exporter` feature and the `gitops` feature,
+Ocean will be able to sync each one of them separately without unnecessarily modifying the state of entities managed by the other feature.
+
+By default, Ocean will use the `exporter` feature if no user agent was specified. To specify a user agent, pass the user agent to one of the [Sync Entities State](../features/sync.md) functions.
 
 The following example will sync entities using the `gitops` feature:
 
-:::info
-Because the `UserAgentType.gitops` is specified then Ocean will query only the `gitops` related entities for this
-integration
-instead of querying the `exporter` related entities by default and compare the difference between the given entities and
-the requested entities that are in Port
-:::
-
-```python
+```python showLineNumbers
 from port_ocean.context.ocean import ocean
+# highlight-next-line
 from port_ocean.clients.port.types import UserAgentType
 
 
 @ocean.router.post("/resync_gitops")
 def resync_gitops():
+    # Note the use of the ocean.sync function rather than raw_sync, see below for an explanation
     await ocean.sync(
         [...],
+        # highlight-next-line
         UserAgentType.gitops,
     )
 ```
 
-### Available User Agent Features
+:::info
+Because the `UserAgentType.gitops` is specified then Ocean will query only the `gitops` related entities managed by the integration.
 
-The following features are ingesting entities using the User Agent:
+By default an integration will query entities marked with the `exporter` feature and user agent.
 
-- `exporter`
-  The default user agent feature. This feature is used by the [Sync Entities State](../features/sync.md) functions
-  when no user agent was specified. Used to export entities from the 3rd party application to Port.
+When a different feature is specified via the user agent, the integration performs an entity state sync only for entities managed by the specified feature.
+:::
 
-- `gitops`
-  This feature user agent is used by git integrations like the Gitlab integration to export entities from the git
-  project to Port that are specified in a different format than the default `exporter` feature.
+### Available user agent and features
 
-  :::note
-  Gitops is usually used with Ocean Sync functionality and not Sync Raw because of the gitops format which is already
-  constructed in the Port entities format and there is no need top transform its data using the Resource Mapping.
+The following features use the user agent header to ingest their own managed entities:
+
+- `exporter` - the exporter feature is used for integrations that perform a simple export and sync of entities from the 3rd-party service into Port (via queries to the 3rd-party API for example). This is the default user agent feature. This feature is used by the [sync entities state](../features/sync.md) functions
+  when no user agent was specified
+- `gitops` - the GitOps feature is used for integrations that perform an entity sync based on the state of files and entity in a Git provider (by reading the content of specification files for example)
+
+  :::tip
+  GitOps is usually used with Ocean sync functionality and not sync raw because of the GitOps format which already contains fully formatted entity objects that do not require an additional transformation is already using the resource mapping.
   :::
