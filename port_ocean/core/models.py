@@ -1,9 +1,7 @@
-from typing import Any, TypeVar
+from typing import Any
 
 from pydantic import BaseModel
 from pydantic.fields import Field
-
-Model = TypeVar("Model", bound="BaseModel")
 
 
 class Entity(BaseModel):

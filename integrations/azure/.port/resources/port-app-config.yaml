@@ -1,0 +1,187 @@
+resources:
+  - kind: Microsoft.Resources/resourceGroups
+    selector:
+      query: "true"
+      # azure resource api version to query
+      apiVersion: '2022-09-01'
+    port:
+      entity:
+        mappings:
+          # lowercase only the resourceGroups namespace so other azure resources will be able to relate to it
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
+          title: .name
+          blueprint: '"resourceGroup"'
+          properties:
+            location: .location
+            # the provisioning state property is returned in lower case when using the SDK and in camelCase when using the REST API
+            # therefore supporting both (for users who use the SDK)
+            provisioningState: .properties.provisioningState + .properties.provisioning_state
+            tags: .tags
+  - kind: Microsoft.App/containerApps
+    selector:
+      query: "true"
+      # azure resource api version to query
+      apiVersion: '2022-03-01'
+    port:
+      entity:
+        mappings:
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
+          title: .name
+          blueprint: '"containerApp"'
+          properties:
+            location: .location
+            provisioningState: .properties.provisioningState
+            outboundIpAddresses: .properties.outboundIpAddresses
+            externalIngress: .properties.configuration.ingress.external
+            hostName: .properties.configuration.ingress.fqdn
+            minReplicas: .properties.template.scale.minReplicas
+            maxReplicas: .properties.template.scale.maxReplicas
+          relations:
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
+  - kind: Microsoft.ContainerService/managedClusters
+    selector:
+      query: "true"
+      # azure resource api version to query
+      apiVersion: '2023-05-01'
+    port:
+      entity:
+        mappings:
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
+          title: .name
+          blueprint: '"aks"'
+          properties:
+            location: .location
+            provisioningState: .properties.provisioningState
+            powerState: .properties.powerState.code
+            kubernetesVersion: .properties.kubernetesVersion
+            currentKubernetesVersion: .properties.currentKubernetesVersion
+            dnsPrefix: .properties.dnsPrefix
+            fqdn: .properties.fqdn
+            nodeResourceGroup: .properties.nodeResourceGroup
+            enableRBAC: .properties.enableRBAC
+            supportPlan: .properties.supportPlan
+            networkPlugin: .properties.networkProfile.networkPlugin
+            podCIDR: .properties.networkProfile.podCidr
+            serviceCIDR: .properties.networkProfile.serviceCidr
+            dnsServiceIp: .properties.networkProfile.dnsServiceIP
+            outboundType: .properties.networkProfile.outboundType
+            loadBalancerSKU: .properties.networkProfile.loadBalancerSku
+            maxAgentPools: .properties.maxAgentPools
+            skuTier: .properties.sku.tier
+          relations:
+            # resolve resource group id from aks id
+            # AKS id contains the resourcegroups namespace instead of resourceGroups therefore we need to lowercase
+            # all other resourceGroups namespaces of other azure resources so we will be able to relate them to resource group blueprint
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
+  - kind: Microsoft.Network/loadBalancers
+    selector:
+        query: "true"
+        # azure resource api version to query
+        apiVersion: '2023-02-01'
+    port:
+      entity:
+        mappings:
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
+          title: .name
+          blueprint: '"loadBalancer"'
+          properties:
+            location: .location
+            provisioningState: .properties.provisioningState
+            tags: .tags
+            frontendIpResourceIds: .properties.frontendIPConfigurations[].id
+            backendAddressPoolResourceIds: .properties.backendAddressPools[].id
+            loadBalancingRulesResourceIds: .properties.loadBalancingRules[].id
+            probesResourceIds: .properties.probes[].id
+            inboundNatRulesResourceIds: .properties.inboundNatRules[].id
+            inboundNatPoolsResourceIds: .properties.inboundNatPools[].id
+          relations:
+            # resolve resource group id from load balancer id
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
+  - kind: Microsoft.Storage/storageAccounts
+    selector:
+        query: "true"
+        # azure resource api version to query
+        apiVersion: '2023-01-01'
+    port:
+      entity:
+        mappings:
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
+          title: .name
+          blueprint: '"storageAccount"'
+          properties:
+            location: .location
+            provisioningState: .properties.provisioningState
+            creationTime: .properties.creationTime
+            isHnsEnabled: .properties.isHnsEnabled
+            fileEncryptionEnabled: .properties.encryption.services.file.enabled
+            blobEncryptionEnabled: .properties.encryption.services.blob.enabled
+            primaryLocation: .properties.primaryLocation
+            secondaryLocation: .properties.secondaryLocation
+            statusOfPrimary: .properties.statusOfPrimary
+            statusOfSecondary: .properties.statusOfSecondary
+            allowBlobPublicAccess: .properties.allowBlobPublicAccess
+            tags: .tags
+          relations:
+            # resolve resource group id from storage account id
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
+
+  - kind: Microsoft.Storage/storageAccounts/blobServices/containers
+    selector:
+        query: "true"
+        # azure resource api version to query
+        apiVersion: '2023-01-01'
+    port:
+      entity:
+        mappings:
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
+          title: .name
+          blueprint: '"storageContainer"'
+          properties:
+            publicAccess: .properties.publicAccess
+            hasImmutabilityPolicy: .properties.hasImmutabilityPolicy
+            hasLegalHold: .properties.hasLegalHold
+            deleted: .properties.deleted
+            deletedTime: .properties.deletedTime
+            remainingRetentionDays: .properties.remainingRetentionDays
+            leaseStatus: .properties.leaseStatus
+            leaseState: .properties.leaseState
+            defaultEncryptionScope: .properties.defaultEncryptionScope
+            version: .properties.version
+          relations:
+            # resolve storage account id from container id
+            storageAccount: '.id | split("/") | .[3] |= ascii_downcase | .[4] |= ascii_downcase | .[:-4] | join("/")'
+
+  - kind: Microsoft.Compute/virtualMachines
+    selector:
+        query: "true"
+        # azure resource api version to query
+        apiVersion: '2023-03-01'
+    port:
+      entity:
+        mappings:
+          # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
+          identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
+          title: .name
+          blueprint: '"virtualMachine"'
+          properties:
+            location: .location
+            provisioningState: .properties.provisioningState
+            vmSize: .properties.hardwareProfile.vmSize
+            osDiskName: .properties.storageProfile.osDisk.name
+            osType: .properties.storageProfile.osDisk.osType
+            osDiskCaching: .properties.storageProfile.osDisk.caching
+            osDiskSizeGB: .properties.storageProfile.osDisk.diskSizeGB
+            osDiskCreateOption: .properties.storageProfile.osDisk.createOption
+            networkInterfaceIds: .properties.networkProfile.networkInterfaces[].id
+            licenseType: .properties.licenseType
+            vmOsProfile: .properties.osProfile
+            vmHardwareProfile: .properties.hardwareProfile
+            vmStorageProfile: .properties.storageProfile
+            tags: .tags
+          relations:
+            # resolve resource group id from virtual machine id
+            resourceGroup: '.id | split("/") | .[3] |= ascii_downcase | .[4] |= ascii_downcase | .[:5] |join("/")'
