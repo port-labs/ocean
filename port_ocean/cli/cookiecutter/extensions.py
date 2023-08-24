@@ -5,6 +5,7 @@ from jinja2.parser import Parser
 from port_ocean import __version__
 
 
+# Used to extend the cookiecutter syntax and allow the template to use ocean version in it using `{% version %}`
 class VersionExtension(Extension):
     tags = {"version"}
 
