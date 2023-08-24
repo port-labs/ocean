@@ -36,7 +36,7 @@ creating new data, update existing data and delete data that no longer exists in
 
    ![Installation Page](@site/static/img/resync-button.png)
 
-## Triggering using Port API
+## Triggering using Port's API
 
 By patching the integration either with a new configuration or by patching it with no changes, The integration will
 detect the trigger and will run the integration resync.
