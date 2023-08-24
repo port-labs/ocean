@@ -16,7 +16,6 @@ const config = {
   organizationName: "port-labs", // Usually your GitHub org/user name.
   projectName: "port-ocean", // Usually your repo name.
   staticDirectories: ["static"],
-  scripts: ["js/custom.js", "js/termynal.js"],
 
   presets: [
     [
