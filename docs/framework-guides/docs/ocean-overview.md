@@ -1,8 +1,8 @@
 ---
 sidebar_position: 1
 slug: /
-title: Ocean Overview
-sidebar_label: 🌊 Ocean Overview
+title: Overview
+sidebar_label: 🌊 Overview
 ---
 
 # Overview
