@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import DocsCard from '../DocsCard';
 import DocsCards from '../DocsCards';
-import XMLParser from 'react-xml-parser';
+import {parseString} from "xml2js";
 
 import '../Integrations/custom.css';
 
@@ -28,24 +28,24 @@ function Index(props): JSX.Element {
                 prefix: `icons/blueprintsColor`
             })
             const response = await fetch(`${BUCKET_URL}?` + seachParams)
-            const xml = new XMLParser().parseFromString(await response.text());
-            const iconInS3 = xml.children.filter((child) => child.name === "Contents").map((content) => {
-                const key = content.children.find((child) => child.name === "Key").value;
-                const name = key.split("/").pop().split(".")[0];
-                return [name, key]
-            });
+            parseString(await response.text(), async (err, result) => {
+                const iconInS3 = result.ListBucketResult.Contents.map((content) => {
+                    const key = content.Key[0]
+                    const name = key.split("/").pop().split(".")[0];
+                    return [name, key]
+                });
 
-            for (const integration of integrations) {
-                const iconName = integration.icon;
+                for (const integration of integrations) {
+                    const iconName = integration.icon;
 
-                const integrationIcon = iconInS3.find(([name, key]) => name.toLowerCase() === iconName.toLowerCase())
+                    const integrationIcon = iconInS3.find(([name, key]) => name.toLowerCase() === iconName.toLowerCase())
 
-                if (iconInS3) {
-                    const svgResponse = await fetch(`${BUCKET_URL}/${integrationIcon[1]}`)
-                    integration.iconText = await svgResponse.text();
+                    if (iconInS3) {
+                        const svgResponse = await fetch(`${BUCKET_URL}/${integrationIcon[1]}`)
+                        integration.iconText = await svgResponse.text();
+                    }
                 }
-            }
-
+            });
         } catch (error) {
         }
     }, [integrations]);
