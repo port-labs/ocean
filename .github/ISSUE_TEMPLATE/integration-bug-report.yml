@@ -1,0 +1,40 @@
+name: Integration Bug report (PagerDuty/Jira/Other..)
+description: Report a problem with one of the available Ocean integrations listed in this repository under the `integrations/` folder
+title: "[Bug] [Integration] [Integration Name (PagerDuty/Jira/Other..)]"
+labels: ["bug", "integration"]
+body:
+  - type: textarea
+    attributes:
+      label: Ocean Framework Version
+      description: >
+        Please provide the OS and the Ocean framework version, you can extract it via running `ocean version`
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Integration Version
+      description: >
+        The version of the integration, can be extracted via the spec.yml file in the .port folder, or the docker container image tag
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      description: Please try to give a short list of steps used to reproduce the problem for easier debugging
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What did you expect to see?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What did you see instead?
+    validations:
+      required: true
+  - type: checkboxes
+    attributes:
+      label: Are you willing to submit a PR?
+      options:
+        - label: I'm willing to submit a PR!
