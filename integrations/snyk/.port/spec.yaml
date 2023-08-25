@@ -6,7 +6,6 @@ features:
   - type: exporter
     section: Application Testing
     resources:
-      - kind: targets
       - kind: projects
       - kind: vulnerabilities
 configurations:
@@ -15,7 +14,7 @@ configurations:
     type: string
     sensitive: true
   - name: webhookSecret
-    required: true
+    required: false
     type: string
     sensitive: true
   - name: apiUrl
@@ -26,4 +25,4 @@ configurations:
     required: true
   - name: appHost
     type: string
-    required: true
+    required: false

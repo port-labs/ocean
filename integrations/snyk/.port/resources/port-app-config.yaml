@@ -1,17 +1,4 @@
 resources:
-  - kind: targets
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .attributes.displayName
-          blueprint: '"snykTarget"'
-          properties:
-            origin: .attributes.origin
-            isPrivate: .attributes.isPrivate | tostring
-            remoteUrl: .attributes.remoteUrl
   - kind: projects
     selector:
       query: 'true'
@@ -22,17 +9,18 @@ resources:
           title: .attributes.name
           blueprint: '"snykProject"'
           properties:
-            type: .attributes.type
-            targetFile: .attributes.target_file
-            targetReference: .attributes.target_reference
-            origin: .attributes.origin
-            status: .attributes.status
-            createdAt: .attributes.created
-            tags: .attributes.tags
+            url: ("https://app.snyk.io/org/" + .relationships.organization.data.id + "/project/" + .id | tostring)
+            owner: ._owner.email
             businessCriticality: .attributes.business_criticality
             environment: .attributes.environment
-          relations:
-            target: .relationships.target.data.id
+            lifeCycle: .attributes.lifecycle
+            highOpenVulnerabilities: .meta.latest_issue_counts.high
+            mediumOpenVulnerabilities: .meta.latest_issue_counts.medium
+            lowOpenVulnerabilities: .meta.latest_issue_counts.low
+            importedBy: ._importer.email
+            tags: .attributes.tags
+            targetOrigin: .attributes.origin
+            targetUrl: .relationships.target.data.attributes.url
   - kind: vulnerabilities
     selector:
       query: 'true'
@@ -43,12 +31,14 @@ resources:
           title: .issueData.title
           blueprint: '"snykVulnerability"'
           properties:
-            priorityScore: .priorityScore
-            pkgName: .pkgName
-            pkgVersions: .pkgVersions
-            issueType: .issueType
-            issueSeverity: .issueData.severity
-            issueURL: .issueData.url
+            score: .priorityScore
+            packageName: .pkgName
+            packageVersions: .pkgVersions
+            type: .issueType
+            severity: .issueData.severity
+            url: .issueData.url
             language: .issueData.language
             publicationTime: .issueData.publicationTime
-            isPatched: .isPatched | tostring
+            isPatched: .isPatched
+          relations:
+            snykProject: .links.paths | capture("/project/(?<project_id>[^/]+)/history/") | .project_id

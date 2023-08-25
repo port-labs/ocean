@@ -15,8 +15,8 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 # The following script will install an Ocean integration at your K8s cluster using helm
 # integration.identifier: Change the identifier to describe your integration
 # integration.secrets.ApiToken: Your Snyk API token
-# integration.secrets.webhookSecret: Your Snyk webhook secret. This is a password you create, that Snyk uses to ensure the webhook notification is authentic
-# integration.config.appHost: Your Snyk app host
+# integration.secrets.webhookSecret: This field is optional. It is a password you create, that Snyk uses to ensure the webhook notification is authentic
+# integration.config.appHost: Your Snyk app host (optional)
 # integration.config.apiUrl: The url of the Snyk API. If not specified, the default will be https://api.snyk.io
 # integration.config.organizationId: The Snyk organization ID
 
@@ -36,146 +36,150 @@ helm upgrade --install my-snyk-integration port-labs/port-ocean \
      --set ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target"= / 
 ```
 ## Supported Kinds
-### Targets
-This kind represents a Snyk target.
-
-<details>
-<summary>blueprint.json</summary>
-
-```json
-{
-    "identifier":"snykTarget",
-    "description":"This blueprint represents a snyk target in our software catalog",
-    "title":"Snyk Target",
-    "icon":"Snyk",
-    "schema":{
-        "properties":{
-            "origin":{
-            "title":"Origin",
-            "type":"string"
-            },
-            "isPrivate":{
-            "title":"Is Private",
-            "type":"string"
-            },
-            "remoteUrl":{
-            "title":"Remote URL",
-            "type":"string",
-            "format":"url"
-            }
-        },
-        "required":[
-            
-        ]
-    },
-    "mirrorProperties":{
-        
-    },
-    "calculationProperties":{
-        
-    },
-    "relations":{
-        
-    }
-}
-```
-</details>
-<details>
-  <summary>port-app-config.yaml</summary>
-
-```yaml
-resources:
-  - kind: targets
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .attributes.displayName
-          blueprint: '"snykTarget"'
-          properties:
-            origin: .attributes.origin
-            isPrivate: .attributes.isPrivate | tostring
-            remoteUrl: .attributes.remoteUrl
-
-```
-</details>
-
 ### Projects
-This kind represents a Snyk project.
+This kind represents a Snyk project. The schema should be similar to the one on the [Snyk REST API documentation](https://apidocs.snyk.io/?version=2023-08-21#tag--Projects). The owner and importer details are fetched from the [Snyk v1 API documentation](https://snyk.docs.apiary.io/#reference/users/user-details/get-user-details)
 
 <details>
 <summary>blueprint.json</summary>
 
 ```json
 {
-    "identifier":"snykProject",
-    "description":"This blueprint represents a snyk project in our software catalog",
-    "title":"Snyk Project",
-    "icon":"Snyk",
-    "schema":{
-        "properties":{
-            "type":{
-            "title":"Type",
-            "type":"string"
-            },
-            "targetFile":{
-            "title":"Target File",
-            "type":"string"
-            },
-            "targetReference":{
-            "title":"Target Reference",
-            "type":"string"
-            },
-            "origin":{
-            "title":"Origin",
-            "type":"string"
-            },
-            "status":{
-            "title":"Status",
-            "type":"string",
-            "enum": ["active", "inactive"]
-            },
-            "createdAt":{
-            "title":"Create At",
-            "type":"string",
-            "format":"date-time"
-            },
-            "tags":{
-            "type":"array",
-            "items":{
-                "type":"string"
-            },
-            "title":"Tags"
-            },
-            "businessCriticality":{
-            "title":"Business Criticality",
-            "type":"array"
-            },
-            "environment":{
-            "title":"Environment",
-            "type":"array"
-            }
-        },
-        "required":[
-            
-        ]
-    },
-    "mirrorProperties":{
-        
-    },
-    "calculationProperties":{
-        
-    },
-    "relations":{
-        "target":{
-            "title":"Target",
-            "target":"snykTarget",
-            "required":false,
-            "many":false
-        }
-    }
+     "identifier": "snykProject",
+     "description": "This blueprint represents a snyk project in our software catalog",
+     "title": "Snyk Project",
+     "icon": "Snyk",
+     "schema": {
+       "properties": {
+         "url": {
+           "type": "string",
+           "title": "URL",
+           "format": "url",
+           "icon": "Snyk"
+         },
+         "owner": {
+           "type": "string",
+           "title": "Owner",
+           "format": "user",
+           "icon": "TwoUsers"
+         },
+         "businessCriticality": {
+           "title": "Business Criticality",
+           "type": "array",
+           "items": {
+             "type": "string",
+             "enum": [
+               "critical",
+               "high",
+               "medium",
+               "low"
+             ]
+           },
+           "icon": "DefaultProperty"
+         },
+         "environment": {
+           "items": {
+             "type": "string",
+             "enum": [
+               "frontend",
+               "backend",
+               "internal",
+               "external",
+               "mobile",
+               "saas",
+               "onprem",
+               "hosted",
+               "distributed"
+             ]
+           },
+           "icon": "Environment",
+           "title": "Environment",
+           "type": "array"
+         },
+         "lifeCycle": {
+           "title": "Life Cycle",
+           "type": "array",
+           "items": {
+             "type": "string",
+             "enum": [
+               "development",
+               "sandbox",
+               "production"
+             ]
+           },
+           "icon": "DefaultProperty"
+         },
+         "highOpenVulnerabilities": {
+           "icon": "Vulnerability",
+           "type": "number",
+           "title": "Open High Vulnerabilities"
+         },
+         "mediumOpenVulnerabilities": {
+           "icon": "Vulnerability",
+           "type": "number",
+           "title": "Open Medium Vulnerabilities"
+         },
+         "lowOpenVulnerabilities": {
+           "icon": "Vulnerability",
+           "type": "number",
+           "title": "Open Low Vulnerabilities"
+         },
+         "importedBy": {
+           "icon": "TwoUsers",
+           "type": "string",
+           "title": "Imported By",
+           "format": "user"
+         },
+         "tags": {
+           "type": "array",
+           "title": "Tags",
+           "icon": "DefaultProperty"
+         },
+         "targetOrigin": {
+           "title": "Target Origin",
+           "type": "string",
+           "enum": [
+             "artifactory-cr",
+             "aws-config",
+             "aws-lambda",
+             "azure-functions",
+             "azure-repos",
+             "bitbucket-cloud",
+             "bitbucket-server",
+             "cli",
+             "cloud-foundry",
+             "digitalocean-cr",
+             "docker-hub",
+             "ecr",
+             "gcr",
+             "github",
+             "github-cr",
+             "github-enterprise",
+             "gitlab",
+             "gitlab-cr",
+             "google-artifact-cr",
+             "harbor-cr",
+             "heroku",
+             "ibm-cloud",
+             "kubernetes",
+             "nexus-cr",
+             "pivotal",
+             "quay-cr",
+             "terraform-cloud"
+           ],
+           "icon": "DefaultProperty"
+         },
+         "targetUrl": {
+           "title": "Target URL",
+           "type": "string",
+           "format": "url",
+           "icon": "Snyk"
+         }
+       },
+       "required": []
+     },
+     "mirrorProperties": {},
+     "calculationProperties": {},
+     "relations": {}
 }
 ```
 </details>
@@ -194,95 +198,112 @@ resources:
           title: .attributes.name
           blueprint: '"snykProject"'
           properties:
-            type: .attributes.type
-            targetFile: .attributes.target_file
-            targetReference: .attributes.target_reference
-            origin: .attributes.origin
-            status: .attributes.status
-            createdAt: .attributes.created
-            tags: .attributes.tags
+            url: ("https://app.snyk.io/org/" + .relationships.organization.data.id + "/project/" + .id | tostring)
+            owner: ._owner.email
             businessCriticality: .attributes.business_criticality
             environment: .attributes.environment
-          relations:
-            target: .relationships.target.data.id
-
+            lifeCycle: .attributes.lifecycle
+            highOpenVulnerabilities: .meta.latest_issue_counts.high
+            mediumOpenVulnerabilities: .meta.latest_issue_counts.medium
+            lowOpenVulnerabilities: .meta.latest_issue_counts.low
+            importedBy: ._importer.email
+            tags: .attributes.tags
+            targetOrigin: .attributes.origin
+            targetUrl: .relationships.target.data.attributes.url
 ```
 </details>
 
 ### Vulnerabilities
-This kind represents a Snyk vulnerability.
+This kind represents a Snyk vulnerability or issues. The schema should be similar to the one on the [Snyk V1 API documentation](https://snyk.docs.apiary.io/#reference/projects/aggregated-project-issues/list-all-aggregated-issues).
 
 <details>
 <summary>blueprint.json</summary>
 
 ```json
 {
-    "identifier":"snykVulnerability",
-    "description":"This blueprint represents a Snyk vulnerability in our software catalog",
-    "title":"Snyk Vulnerability",
-    "icon":"Snyk",
-    "schema":{
-        "properties":{
-            "priorityScore":{
-            "type":"number",
-            "title":"Priority Score"
-            },
-            "pkgName":{
-            "type":"string",
-            "title":"Package Name"
-            },
-            "pkgVersions":{
-            "title":"Package Versions",
-            "type":"array"
-            },
-            "issueType":{
-            "type":"string",
-            "title":"Issue Type",
-            "enum": ["vuln", "license", "configuration"]
-            },
-            "issueSeverity":{
-            "type":"string",
-            "title":"Issue Severity",
-            "enum": ["low", "medium", "high", "critical"],
-            "enumColors": {
-                "low": "green",
-                "medium": "yellow",
-                "high": "red",
-                "critical": "red"
-            }
-            },
-            "issueURL":{
-            "type":"string",
-            "format":"url",
-            "title":"Issue URL"
-            },
-            "language":{
-            "type":"string",
-            "title":"Language"
-            },
-            "publicationTime":{
-            "type":"string",
-            "format":"date-time",
-            "title":"Publication Time"
-            },
-            "isPatched":{
-            "type":"string",
-            "title":"Is Patched"
-            }
-        },
-        "required":[
-            
-        ]
-    },
-    "mirrorProperties":{
-        
-    },
-    "calculationProperties":{
-        
-    },
-    "relations":{
-        
-    }
+     "identifier": "snykVulnerability",
+     "description": "This blueprint represents a Snyk vulnerability in our software catalog",
+     "title": "Snyk Vulnerability",
+     "icon": "Snyk",
+     "schema": {
+       "properties": {
+         "score": {
+           "icon": "Star",
+           "type": "number",
+           "title": "Score"
+         },
+         "packageName": {
+           "type": "string",
+           "title": "Package Name",
+           "icon": "DefaultProperty"
+         },
+         "packageVersions": {
+           "icon": "Package",
+           "title": "Package Versions",
+           "type": "array"
+         },
+         "type": {
+           "type": "string",
+           "title": "Type",
+           "enum": [
+             "vuln",
+             "license",
+             "configuration"
+           ],
+           "icon": "DefaultProperty"
+         },
+         "severity": {
+           "icon": "Alert",
+           "title": "Issue Severity",
+           "type": "string",
+           "enum": [
+             "low",
+             "medium",
+             "high",
+             "critical"
+           ],
+           "enumColors": {
+             "low": "green",
+             "medium": "yellow",
+             "high": "red",
+             "critical": "red"
+           }
+         },
+         "url": {
+           "icon": "Link",
+           "type": "string",
+           "title": "Issue URL",
+           "format": "url"
+         },
+         "language": {
+           "type": "string",
+           "title": "Language",
+           "icon": "DefaultProperty"
+         },
+         "publicationTime": {
+           "type": "string",
+           "format": "date-time",
+           "title": "Publication Time",
+           "icon": "DefaultProperty"
+         },
+         "isPatched": {
+           "type": "boolean",
+           "title": "Is Patched",
+           "icon": "DefaultProperty"
+         }
+       },
+       "required": []
+     },
+     "mirrorProperties": {},
+     "calculationProperties": {},
+     "relations": {
+       "snykProject": {
+         "title": "Project",
+         "target": "snykProject",
+         "required": false,
+         "many": false
+       }
+     }
 }
 ```
 </details>
@@ -291,7 +312,7 @@ This kind represents a Snyk vulnerability.
 
 ```yaml
 resources:
-  - kind: vulnerabilities
+ - kind: vulnerabilities
     selector:
       query: 'true'
     port:
@@ -301,16 +322,17 @@ resources:
           title: .issueData.title
           blueprint: '"snykVulnerability"'
           properties:
-            priorityScore: .priorityScore
-            pkgName: .pkgName
-            pkgVersions: .pkgVersions
-            issueType: .issueType
-            issueSeverity: .issueData.severity
-            issueURL: .issueData.url
+            score: .priorityScore
+            packageName: .pkgName
+            packageVersions: .pkgVersions
+            type: .issueType
+            severity: .issueData.severity
+            url: .issueData.url
             language: .issueData.language
             publicationTime: .issueData.publicationTime
-            isPatched: .isPatched | tostring
-
+            isPatched: .isPatched
+          relations:
+            snykProject: .links.paths | capture("/project/(?<project_id>[^/]+)/history/") | .project_id
 ```
 </details>
 

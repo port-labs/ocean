@@ -7,7 +7,6 @@ from snyk_integration.client import SnykClient
 
 
 class ObjectKind(StrEnum):
-    TARGET = "targets"
     PROJECT = "projects"
     VULNERABILITY = "vulnerabilities"
 
@@ -21,25 +20,25 @@ snyk_client = SnykClient(
 )
 
 
-@ocean.on_resync(ObjectKind.TARGET)
-async def on_targets_resync(kind: str) -> list[dict[Any, Any]]:
-    logger.info(f"Listing Snyk resource: {kind}")
-    return await snyk_client.get_targets()
-
-
 @ocean.on_resync(ObjectKind.PROJECT)
-async def on_projects_resync(kind: str) -> list[dict[Any, Any]]:
+async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Snyk resource: {kind}")
-    return await snyk_client.get_projects()
+
+    async for projects in snyk_client.get_paginated_projects():
+        logger.info(f"Received batch with {len(projects)} projects")
+        updated_project_users = await snyk_client.update_project_users(
+            projects=projects
+        )
+        yield updated_project_users
 
 
 @ocean.on_resync(ObjectKind.VULNERABILITY)
 async def on_vulnerabilities_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Snyk resource: {kind}")
-    projects = await snyk_client.get_projects()
-    for project in projects:
-        vulnerabilities_data = await snyk_client.get_vulnerabilities(project)
-        yield vulnerabilities_data
+    async for project_data in snyk_client.get_paginated_projects():
+        for project in project_data:
+            async for vulnerabilities_data in snyk_client.get_vulnerabilities(project):
+                yield vulnerabilities_data
 
 
 @ocean.router.post("/webhook")
@@ -47,11 +46,18 @@ async def on_vulnerability_webhook_handler(data: dict[str, Any]) -> None:
     logger.info("Processing Snyk webhook event")
 
     project = data.get("project", {})
-    vulnerabilities = await snyk_client.get_vulnerabilities(project)
-    await ocean.register_raw(ObjectKind.VULNERABILITY, vulnerabilities)
+    project_details = await snyk_client.get_single_project(project)
+    await ocean.register_raw(ObjectKind.PROJECT, [project_details])
+
+    async for vulnerabilities_data in snyk_client.get_vulnerabilities(project):
+        await ocean.register_raw(ObjectKind.VULNERABILITY, vulnerabilities_data)
 
 
 @ocean.on_start()
 async def on_start() -> None:
-    logger.info("Subscribing to Snyk webhooks")
-    await snyk_client.create_webhooks_if_not_exists()
+    ## check if user provided webhook secret or app_host. These variable are required to create webhook subscriptions. If the user did not provide them, we ignore creating webhook subscriptions
+    if ocean.integration_config.get("app_host") and ocean.integration_config.get(
+        "webhook_secret"
+    ):
+        logger.info("Subscribing to Snyk webhooks")
+        await snyk_client.create_webhooks_if_not_exists()
