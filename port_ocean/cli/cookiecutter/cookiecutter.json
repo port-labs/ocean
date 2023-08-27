@@ -5,8 +5,8 @@
     "full_name": "Your name",
     "email": "Your address email <you@example.com>",
     "release_date": "{% now 'local' %}",
-    "version": "0.1.0",
     "_extensions": [
-        "jinja2_time.TimeExtension"
+        "jinja2_time.TimeExtension",
+        "extensions.VersionExtension"
     ]
 }

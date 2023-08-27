@@ -1,10 +1,10 @@
 ---
-title: Quickstart
+title: Getting Started
 ---
 
 import CodeBlock from '@theme/CodeBlock';
 
-# ⚡️ Quickstart
+# ⚡️ Getting Started
 
 In this quickstart guide, you'll learn how to **install** the Ocean CLI, **scaffold** a new integration, add your **custom logic** and **run** the new integration locally.
 
@@ -15,7 +15,7 @@ Python 3.11
 ## Installation
 
 ```bash showLineNumbers
-$ pip install "port-ocena[cli]"
+$ pip install "port-ocean[cli]"
 ```
 
 ## Example
@@ -94,7 +94,7 @@ async def on_start() -> None:
 
 ```
 
-- Edit the file `./my_integration/.port/spec.yaml` to add your integration specification.
+- Edit the file `./my_integration/.port/spec.yaml` to add your [integration specification](../develop-an-integration/integration-spec-and-default-resources.md#specyaml-file).
 
 ```yaml showLineNumbers
 version: v0.1.0
@@ -120,21 +120,25 @@ configurations:
     type: url
 ```
 
-- Edit the file `./my_integration/config.yaml` to add the default configuration of your integration.
+:::tip
+The `spec.yml` file is used to provide the integration specification and also a validation layer for the inputs required by the integration. The validation layer is used to verify the provided [integration configuration](../develop-an-integration/integration-configuration.md) during the integration startup process.
+:::
+
+- Edit the file `./my_integration/config.yaml` to add the default [configuration](../develop-an-integration/integration-configuration.md) of your integration.
 
 ```yaml showLineNumbers
 # This is an example configuration file for the integration service.
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 
 port:
-  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
-  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
+  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID or OCEAN__PORT__CLIENT_ID
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET or OCEAN__PORT__CLIENT_SECRET
 # The event listener to use for the integration service.
 eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  # Can be loaded via environment variable: INTEGRATION_IDENTIFIER or OCEAN__INTEGRATION__IDENTIFIER
+  # Can be loaded using environment variable: INTEGRATION_IDENTIFIER or OCEAN__INTEGRATION__IDENTIFIER
   identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
   # These two should match the values in the .port/spec.yaml file
   type: "My Integration type (Gitlab, Jira, etc.)"
@@ -142,6 +146,10 @@ integration:
     myJiraToken: "{{ from env MY_INTEGRATION_CONFIG }}"
     jiraUrl: "https://example.com"
 ```
+
+:::tip
+The `config.yaml` file is used to specify the default configuration and parameters for the integration during its deployment phase.
+:::
 
 ### Run
 

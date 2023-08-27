@@ -14,7 +14,7 @@ This section explains the structure of the `config.yaml` file.
 
 The `config.yaml` file is used to specify the default configuration and parameters for the integration during its deployment phase.
 
-When an integration is first started, it registers itself with [Port's REST API](https://api.getport.io/static/index.html#/Integrations/post_v1_integration), via the `https://api.getport.io/v1/integration` route.
+When an integration is first started, it registers itself with [Port's REST API](https://api.getport.io/static/index.html#/Integrations/post_v1_integration), using the `https://api.getport.io/v1/integration` route.
 
 During this first boot registration, it uses the configuration specified in the `config.yaml` file for its default inputs and parameters (unless those are overridden by the environment variables of the running environment/shell)
 
@@ -27,8 +27,8 @@ Here is a brand new `config.yaml` file created as part of the `ocean new` comman
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 
 port:
-  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID
-  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET
+  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET
 # The event listener to use for the integration service.
 eventListener:
   type: KAFKA
@@ -48,8 +48,8 @@ Let's go over the different sections and their allowed values:
 
 ```yaml showLineNumbers
 port:
-  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID
-  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET
+  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET
 ```
 
 This section is used to provide the integration with [credentials](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/api/#find-your-port-credentials) to Port's API.
