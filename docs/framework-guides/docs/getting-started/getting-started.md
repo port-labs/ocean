@@ -94,7 +94,7 @@ async def on_start() -> None:
 
 ```
 
-- Edit the file `./my_integration/.port/spec.yaml` to add your integration specification.
+- Edit the file `./my_integration/.port/spec.yaml` to add your [integration specification](../develop-an-integration/integration-spec-and-default-resources.md#specyaml-file).
 
 ```yaml showLineNumbers
 version: v0.1.0
@@ -120,7 +120,11 @@ configurations:
     type: url
 ```
 
-- Edit the file `./my_integration/config.yaml` to add the default configuration of your integration.
+:::tip
+The `spec.yml` file is used to provide the integration specification and also a validation layer for the inputs required by the integration. The validation layer is used to verify the provided [integration configuration](../develop-an-integration/integration-configuration.md) during the integration startup process.
+:::
+
+- Edit the file `./my_integration/config.yaml` to add the default [configuration](../develop-an-integration/integration-configuration.md) of your integration.
 
 ```yaml showLineNumbers
 # This is an example configuration file for the integration service.
@@ -142,6 +146,10 @@ integration:
     myJiraToken: "{{ from env MY_INTEGRATION_CONFIG }}"
     jiraUrl: "https://example.com"
 ```
+
+:::tip
+The `config.yaml` file is used to specify the default configuration and parameters for the integration during its deployment phase.
+:::
 
 ### Run
 

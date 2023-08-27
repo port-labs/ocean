@@ -218,25 +218,25 @@ const config = {
       hubspot: {
         accountId: 21928972,
       },
-      // algolia: { TODO: open request to Algolia for new search index
-      //   // The application ID provided by Algolia
-      //   appId: "VHYI0G637S",
-      //   // Public API key: it is safe to commit it
-      //   apiKey: "1bacc12054c0224408f2be6b60d697c9",
-      //   indexName: "getport",
-      //   contextualSearch: true,
-      // },
+      algolia: {
+        // The application ID provided by Algolia
+        appId: "NG4IRPMXWL",
+        // Public API key: it is safe to commit it
+        apiKey: "bd55c88283057f72410672ee2a18035a",
+        indexName: "ocean-getport",
+        contextualSearch: true,
+      },
     }),
   themes: [
-    [
-      require.resolve("@easyops-cn/docusaurus-search-local"),
-      {
-        hashed: true,
-        indexDocs: true,
-        indexBlog: false,
-        docsRouteBasePath: "/",
-      },
-    ],
+    // [
+    //   require.resolve("@easyops-cn/docusaurus-search-local"),
+    //   {
+    //     hashed: true,
+    //     indexDocs: true,
+    //     indexBlog: false,
+    //     docsRouteBasePath: "/",
+    //   },
+    // ],
   ],
 
   plugins: [
