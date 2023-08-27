@@ -1,11 +1,11 @@
 ---
 sidebar_position: 1
 slug: /
-title: Ocean Overview
-sidebar_label: 🌊 Ocean Overview
+title: Overview
+sidebar_label: 🌊 Overview
 ---
 
-# 🌊 Ocean Overview
+# Overview
 
 ![Thumbnail](https://github.com/port-labs/ocean/blob/f61343caa69d886f8ffe48fe05326f7442bca294/assets/Thumbnail.jpg?raw=true)
 
@@ -27,7 +27,7 @@ sidebar_label: 🌊 Ocean Overview
 
 ## What is Ocean?
 
-Ocean is an open source integration framework for [Port](https://getport.io). Ocean is meant to make it easy to connect Port with your existing infrastructure and 3rd-party tools.
+Ocean is an open source extensibility framework for [Port](https://getport.io). Ocean is meant to make it easy to connect Port with your existing infrastructure and 3rd-party tools.
 
 Ocean does this by providing a streamlined interface to interact with Port, including abstractions and commonly required functionality to interact with [Port's REST API](https://api.getport.io/).
 
@@ -40,20 +40,20 @@ This documentation is meant to describe two main use cases for the Ocean framewo
 
 ### Why Ocean?
 
-Port aims to be the hub for everything developers, platform, DevOps teams and other personas require in an organization, by providing an open developer portal. Because Port aims to be such a central element of an organization's R&D, it aims to truly be a virtual Port - providing a safe, organized and intuitive way to store data, enable visibility, provide self-service actions, and expose scorecards and insights.
+Port aims to be the hub for everything developers, platform, DevOps teams and other personas require in an organization, by providing an open developer portal. Because Port aims to be such a central element of an organization's R&D, it aims to truly be a virtual Port - providing a safe, organized and intuitive way to store data, enable visibility, provide self-service actions, and expose scorecards, initiatives and insights.
 
-To build on this goal, Port follows a theme of nautical elements, including in its own name, design, names of internal services and teams in the R&D department.
+To build on this goal, Port follows a theme of nautical elements, including in its name, design, names of internal services and teams in the R&D department.
 
-Following that theme, we wanted Ocean to be the ultimate framework to integrate Port with the rest of your environment, and make it easy to connect Port with your organization and infrastructure, in whichever way made sense to you. In a way, it is meant to open you an _Ocean_ of possibilities.
+Following that theme, we wanted Ocean to be the ultimate framework to integrate Port with the rest of your environment, and make it easy to connect Port with your organization and infrastructure, in whichever way made sense to you. In a way, Ocean opens an _Ocean_ of possibilities (pun intended).
 
 ## How does Ocean work?
 
 Ocean is made up of two distinct pieces:
 
-- Ocean CLI - used to create boilerplate for new Ocean integrations, and to aid in their development.
-- Ocean framework - provides common functionality and interfaces to make the development of new Port integrations faster and easier.
+- Ocean CLI - used to create boilerplates for new Ocean integrations, and to aid in their development.
+- The Ocean Framework - provides common functionalities and interfaces to make the development of new Port integrations faster and easier.
 
-The following section explains specifically about the Ocean framework, to learn more about the Ocean CLI, refer to the [CLI](./framework/cli/cli.md) docs
+The following section provides a deep dive into the Ocean framework, To learn more about the Ocean CLI, refer to the [CLI](./framework/cli/cli.md) docs
 
 ### The Ocean framework
 
@@ -70,24 +70,24 @@ The goal of Ocean is to provide a layer of abstraction for a multitude of common
   - Trigger by querying configuration from Port
   - Trigger by reading a message from a Kafka topic provided by Port
 - Support a multitude of deployment methods to account for any environment, infrastructure or architecture:
-  - Kubernetes (via helm)
-  - AWS ECS (via Terraform module)
-  - Azure Container App (via Terraform module)
+  - Kubernetes (using helm)
+  - AWS ECS (using Terraform module)
+  - Azure Container App (using Terraform module)
 
 To learn more about the tools and abstractions provided by the Ocean framework to make it easier to develop new integrations, refer to the [features](./framework/features/features.md) docs.
 
 ## How do integrations powered by the Ocean framework work?
 
-Since Ocean provides so many abstractions and common functionality out-of-the-box, creating a new integration for Port, powered by the Ocean framework is as easy as:
+Since Ocean provides many abstractions and common functionality out-of-the-box, creating a new integration for Port, powered by the Ocean framework is as easy as:
 
 1. Scaffolding a new integration
 2. Defining the inputs required by the integration
 3. Writing the business logic to query information from the 3rd-party service
 4. Testing the integration locally
-5. Opening a PR to the Port team via the [Port Ocean](https://github.com/port-labs/port-ocean) repository on GitHub
+5. Opening a PR to the Port team using the [Port Ocean](https://github.com/port-labs/port-ocean) repository on GitHub
 6. Done! once the PR is approved and merged, the new integration will appear for all users in the list of available data sources
 
-Port encourages the community to contribute their own integrations, as well as improve existing integrations and the core of the Ocean framework itself.
+Port encourages members of its community to contribute their own integrations, as well as improve existing integrations and the core of the Ocean framework itself.
 
 ## Next steps
 
