@@ -4,7 +4,7 @@ description: Sonarqube integration for Port Ocean
 icon: sonarqube
 features:
   - type: exporter
-    section: Code Quality Analysis
+    section: SonarQube Code Quality Analysis
     resources:
       - kind: projects
       - kind: analysis
@@ -17,7 +17,7 @@ configurations:
     description: The Sonarqube API token
   - name: sonarUrl
     type: url
-    required: true
+    required: false
     default: https://sonarcloud.io
     description: The host of the Sonarqube instance. If not specified, the default will be https://sonarcloud.io
   - name: sonarOrganizationId
@@ -26,5 +26,5 @@ configurations:
     description: The Sonarqube organization ID
   - name: appHost
     type: url
-    required: true
+    required: false
     description: The Sonarqube app host

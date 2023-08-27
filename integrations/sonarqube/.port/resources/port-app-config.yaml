@@ -10,16 +10,16 @@ resources:
           title: .name
           properties:
               organization: .organization
-              link: .link
-              lastAnalysisStatus: .branch.status.qualityGateStatus
+              link: .__link
+              lastAnalysisStatus: .__branch.status.qualityGateStatus
               lastAnalysisDate: .analysisDateAllBranches
-              numberOfBugs: .measures[]? | select(.metric == "bugs") | .value
-              numberOfCodeSmells: .measures[]? | select(.metric == "code_smells") | .value
-              numberOfVulnerabilities: .measures[]? | select(.metric == "vulnerabilities") | .value
-              numberOfHotSpots: .measures[]? | select(.metric == "security_hotspots") | .value
-              numberOfDuplications: .measures[]? | select(.metric == "duplicated_files") | .value
-              coverage: .measures[]? | select(.metric == "coverage") | .value
-              mainBranch: .branch.name
+              numberOfBugs: .__measures[]? | select(.metric == "bugs") | .value
+              numberOfCodeSmells: .__measures[]? | select(.metric == "code_smells") | .value
+              numberOfVulnerabilities: .__measures[]? | select(.metric == "vulnerabilities") | .value
+              numberOfHotSpots: .__measures[]? | select(.metric == "security_hotspots") | .value
+              numberOfDuplications: .__measures[]? | select(.metric == "duplicated_files") | .value
+              coverage: .__measures[]? | select(.metric == "coverage") | .value
+              mainBranch: .__branch.name
               tags: .tags
   - kind: analysis
     selector:
@@ -29,16 +29,16 @@ resources:
         mappings:
           blueprint: '"sonarQubeAnalysis"'
           identifier: .analysisId
-          title: .commit.message
+          title: .__commit.message
           properties:
-              branch: .branch_name
+              branch: .__branchName
               fixedIssues: .measures.violations_fixed
               newIssues: .measures.violations_added
               coverage: .measures.coverage_change
               duplications: .measures.duplicated_lines_density_change
-              createdAt: .analysis_date
+              createdAt: .__analysisDate
           relations:
-            sonarQubeProject: .project
+            sonarQubeProject: .__project
   - kind: issues
     selector:
       query: 'true'
@@ -51,7 +51,7 @@ resources:
           properties:
               type: .type
               severity: .severity
-              link: .link
+              link: .__link
               status: .status
               assignees: .assignee
               tags: .tags

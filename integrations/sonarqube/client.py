@@ -1,4 +1,4 @@
-from typing import Any, Optional, AsyncGenerator
+from typing import Any, Optional, AsyncGenerator, cast
 import httpx
 from loguru import logger
 
@@ -14,11 +14,7 @@ class Endpoints:
 
 class SonarQubeClient:
     def __init__(
-        self,
-        base_url: str,
-        api_key: str,
-        organization_id: str,
-        app_host: str
+        self, base_url: str, api_key: str, organization_id: str, app_host: str
     ):
         """
         Initialize SonarQubeClient
@@ -148,11 +144,29 @@ class SonarQubeClient:
         )
         return response
 
+    async def get_single_component(self, project: dict[str, Any]) -> dict[str, Any]:
+        """
+        Retrieves a single component from SonarQube organization.
+
+        :param project (dict): A dictionary containing the project information.
+        :return: The component details associated with the specified project key.
+        """
+        logger.info(f"Fetching all components in organization: {self.organization_id}")
+        components = await self.get_components()
+        return next(
+            (
+                component
+                for component in components
+                if component.get("key") == project.get("key")
+            ),
+            {},
+        )
+
     async def get_measures(self, project_key: str) -> list[Any]:
         """
         Retrieve measures for a specific component from SonarQube API.
 
-        :param component: A dictionary containing information about the component.
+        :param project_key: A string containing the project key.
 
         :return: A list of measures associated with the specified component.
         """
@@ -173,14 +187,16 @@ class SonarQubeClient:
             endpoint=Endpoints.BRANCHES, query_params={"project": project_key}
         )
         return response.get("branches", [])
-    
+
     async def get_single_project(self, project: dict[str, Any]) -> dict[str, Any]:
         """
         Retrieves project information from SonarQube API.
 
+        :param project (dict[str, Any]): A project dictionary containing information about a project.
+
         :return (list[Any]): A list containing projects data for your organization.
         """
-        project_key = project.get("key")
+        project_key = cast(str, project.get("key"))
         logger.info(f"Fetching all project information for: {project_key}")
 
         project["__measures"] = await self.get_measures(project_key)
@@ -188,12 +204,10 @@ class SonarQubeClient:
         branches = await self.get_branches(project_key)
         main_branch = [branch for branch in branches if branch.get("isMain")]
         project["__branch"] = main_branch[0]
-        project[
-            "__link"
-        ] = f"{self.base_url}/project/overview?id={project_key}"
+        project["__link"] = f"{self.base_url}/project/overview?id={project_key}"
 
         return project
-    
+
     async def get_all_projects(self) -> list[dict[str, Any]]:
         """
         Retrieve all projects from SonarQube API.
@@ -208,9 +222,7 @@ class SonarQubeClient:
             all_projects.append(project_data)
         return all_projects
 
-    async def get_all_issues(
-        self
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve issues data across all components from SonarQube API  as an asynchronous generator.
 
@@ -261,7 +273,9 @@ class SonarQubeClient:
             response = await self.get_analysis_by_project(component=component)
             yield response
 
-    async def get_analysis_by_project(self, component: dict[str, Any]) -> list[dict[str, Any]]:
+    async def get_analysis_by_project(
+        self, component: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Retrieve analysis data for the given component from SonarQube API.
 
@@ -269,7 +283,7 @@ class SonarQubeClient:
 
         :return (list[dict[str, Any]]): A list containing analysis data for all components.
         """
-        component_key = component.get('key')
+        component_key = component.get("key")
         component_analysis_data = []
 
         logger.info(f"Fetching all analysis data in : {component_key}")
@@ -300,28 +314,31 @@ class SonarQubeClient:
 
                 component_analysis_data.append(analysis_data)
 
-
         return component_analysis_data
 
-    async def get_single_analysis(self, webhook_data: dict[str, Any], ) -> dict[str, Any]:
-        """Fetches a single project analysis object for the given project. The latest activity analysis API (/api/activity_feed/list) can only return data for a given project.
-        So, to get one analysis object, we need to go through the project analysis list and return the matching object based on the analysisId key. 
-        Also, since the SonarQube webhook returns the compute engine (ce) task related to the analysis, we can get the analysis data from the compute engine.
+    async def get_analysis_for_task(
+        self,
+        webhook_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Retrieves analysis data associated with a specific task. 
         
         :param webhook_data (dict[str, Any]): A dictionary containing information about the incoming webhook.
 
         :return (dict[str, Any]): A dictionary containing analysis data for the given project and ID.
         """
         ## Get the compute engine task that runs the analysis
-        task_response = await self.send_api_request(endpoint="ce/task", query_params={"id": webhook_data.get("taskId")})
+        task_id = webhook_data.get("taskId")
+        task_response = await self.send_api_request(endpoint="ce/task", query_params={"id": task_id})
         analysis_identifier = task_response.get("task", {}).get("analysisId")
 
-        ## Now get all the analysis data for the given project and and filter by the analysisID
-        project_analysis_data = await self.get_analysis_by_project(component=webhook_data.get("project"))
+        ## Now get all the analysis data for the given project and and filter by the analysisId
+        project = cast(dict[str, Any], webhook_data.get("project"))
+        project_analysis_data = await self.get_analysis_by_project(component=project)
+
         for analysis_object in project_analysis_data:
-            if analysis_object.get("data", {}).get("analysisId") == analysis_identifier:
+            if analysis_object.get("analysisId") == analysis_identifier:
                 return analysis_object
-        return {} ## when no data is found
+        return {}  ## when no data is found
 
     async def get_or_create_webhook_url(self) -> None:
         """
