@@ -320,15 +320,17 @@ class SonarQubeClient:
         self,
         webhook_data: dict[str, Any],
     ) -> dict[str, Any]:
-        """Retrieves analysis data associated with a specific task. 
-        
+        """Retrieves analysis data associated with a specific task.
+
         :param webhook_data (dict[str, Any]): A dictionary containing information about the incoming webhook.
 
         :return (dict[str, Any]): A dictionary containing analysis data for the given project and ID.
         """
         ## Get the compute engine task that runs the analysis
         task_id = webhook_data.get("taskId")
-        task_response = await self.send_api_request(endpoint="ce/task", query_params={"id": task_id})
+        task_response = await self.send_api_request(
+            endpoint="ce/task", query_params={"id": task_id}
+        )
         analysis_identifier = task_response.get("task", {}).get("analysisId")
 
         ## Now get all the analysis data for the given project and and filter by the analysisId
