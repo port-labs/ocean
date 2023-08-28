@@ -13,6 +13,9 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 
 
+PROJECTS_CACHE_KEY = "__cache_all_projects"
+
+
 class GitlabService:
     def __init__(
         self,
@@ -135,13 +138,30 @@ class GitlabService:
 
         return webhook_ids
 
-    def get_project(self, project_id: int) -> Project:
+    def get_project(self, project_id: int) -> Project | None:
+        """
+        Returns project if it should be processed, None otherwise
+        If the project is not in the cache, it will be fetched from gitlab and validated against the group mapping
+        before being added to the cache
+        :param project_id: project id
+        :return: Project if it should be processed, None otherwise
+        """
         logger.info(f"fetching project {project_id}")
-        return self.gitlab_client.projects.get(project_id)
+        filtered_projects = event.attributes.get(PROJECTS_CACHE_KEY)
+        for project in filtered_projects:
+            if project.id == project_id:
+                return project
 
-    def get_all_projects(self) -> list[Project]:
-        cache_key = "__cache_all_projects"
-        filtered_projects = event.attributes.get(cache_key)
+        project = self.gitlab_client.projects.get(project_id)
+        if self.should_run_for_project(project.path_with_namespace):
+            filtered_projects.append(project)
+            event.attributes[PROJECTS_CACHE_KEY] = filtered_projects
+            return project
+        else:
+            return None
+
+    def get_all_projects(self) -> dict[int, Project]:
+        filtered_projects = event.attributes.get(PROJECTS_CACHE_KEY)
         if filtered_projects is None:
             logger.info("fetching all projects for the token")
             projects: list[Project] = typing.cast(
@@ -152,15 +172,15 @@ class GitlabService:
             )
             logger.debug(f"Found {len(projects)} projects")
 
-            filtered_projects = [
-                project
+            filtered_projects = {
+                project.id: project
                 for project in projects
                 if self.should_run_for_project(project.path_with_namespace)
-            ]
+            }
             logger.debug(
-                f"Found {len(filtered_projects)} projects after filtering. Projects: {[proj.path_with_namespace for proj in filtered_projects]}"
+                f"Found {len(filtered_projects)} projects after filtering. Projects: {[proj.path_with_namespace for proj in filtered_projects.values()]}"
             )
-            event.attributes[cache_key] = filtered_projects
+            event.attributes[PROJECTS_CACHE_KEY] = filtered_projects
 
         return filtered_projects
 
