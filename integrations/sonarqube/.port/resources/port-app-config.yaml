@@ -12,7 +12,7 @@ resources:
               organization: .organization
               link: .__link
               lastAnalysisStatus: .__branch.status.qualityGateStatus
-              lastAnalysisDate: .analysisDateAllBranches
+              lastAnalysisDate: .__branch.analysisDate
               numberOfBugs: .__measures[]? | select(.metric == "bugs") | .value
               numberOfCodeSmells: .__measures[]? | select(.metric == "code_smells") | .value
               numberOfVulnerabilities: .__measures[]? | select(.metric == "vulnerabilities") | .value

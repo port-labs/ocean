@@ -9,11 +9,11 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: my-sonarqube-integration
+  identifier: my-sonarqube-integration-21
   # The type of the integration.
   type: "sonarqube"
   config:
     sonarApiToken: "{{ from env SONAR_API_TOKEN }}"
-    sonarUrl: "{{ from env SONAR_URL }}"
+    # sonarUrl: "{{ from env SONAR_URL }}"
     sonarOrganizationID: "{{ from env SONAR_ORGANIZATION_ID }}"
-    appHost: "{{ from env APP_HOST }}"
+    # appHost: "{{ from env APP_HOST }}"

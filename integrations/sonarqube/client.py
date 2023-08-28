@@ -25,7 +25,7 @@ class SonarQubeClient:
         :param app_host: Application host URL
         :param http_client: httpx.AsyncClient instance
         """
-        self.base_url = base_url
+        self.base_url = base_url or "https://sonarcloud.io"
         self.api_key = api_key
         self.organization_id = organization_id
         self.app_host = app_host
@@ -151,16 +151,13 @@ class SonarQubeClient:
         :param project (dict): A dictionary containing the project information.
         :return: The component details associated with the specified project key.
         """
-        logger.info(f"Fetching all components in organization: {self.organization_id}")
-        components = await self.get_components()
-        return next(
-            (
-                component
-                for component in components
-                if component.get("key") == project.get("key")
-            ),
-            {},
+        project_key = project.get("key")
+        logger.info(f"Fetching component data in : {project_key}")
+        response = await self.send_api_request(
+            endpoint="component/show",
+            query_params={"component": project_key},
         )
+        return response.get("component", {})
 
     async def get_measures(self, project_key: str) -> list[Any]:
         """

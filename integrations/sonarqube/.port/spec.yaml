@@ -15,16 +15,16 @@ configurations:
     type: string
     sensitive: true
     description: The Sonarqube API token
-  - name: sonarUrl
-    type: url
-    required: false
-    default: https://sonarcloud.io
-    description: The host of the Sonarqube instance. If not specified, the default will be https://sonarcloud.io
+  # - name: sonarUrl
+  #   type: url
+  #   required: false
+  #   default: https://sonarcloud.io
+  #   description: The host of the Sonarqube instance. If not specified, the default will be https://sonarcloud.io
   - name: sonarOrganizationId
     type: string
     required: true
     description: The Sonarqube organization ID
-  - name: appHost
-    type: url
-    required: false
-    description: The Sonarqube app host
+  # - name: appHost
+  #   type: url
+  #   required: false
+  #   description: The Sonarqube app host
