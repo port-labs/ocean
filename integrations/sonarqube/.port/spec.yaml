@@ -1,6 +1,6 @@
 version: v0.1.0
 type: sonarqube
-description: Sonarqube integration for Port Ocean
+description: SonarQube integration for Port Ocean
 icon: sonarqube
 features:
   - type: exporter
@@ -14,9 +14,12 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The Sonarqube API token
+    description: The SonarQube API token
   - name: sonarOrganizationId
     type: string
     required: true
-    description: The Sonarqube organization ID
-
+    description: The SonarQube organization ID
+  - name: appHost
+    type: string
+    required: false
+    description: The host to subscribe webhooks to
