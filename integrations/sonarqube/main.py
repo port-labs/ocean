@@ -68,9 +68,12 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
     )  ## making sure we're getting the right project details
     project_data = await sonar_client.get_single_project(project)
     analysis_data = await sonar_client.get_analysis_for_task(webhook_data=webhook_data)
+    issues_data = await sonar_client.get_issues_by_component(project)
 
     await ocean.register_raw(ObjectKind.PROJECTS, [project_data])
     await ocean.register_raw(ObjectKind.ANALYSIS, [analysis_data])
+    await ocean.register_raw(ObjectKind.ISSUES, issues_data)
+
     logger.info("Webhook event processed")
 
 

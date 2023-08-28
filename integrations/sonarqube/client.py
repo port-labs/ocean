@@ -154,7 +154,7 @@ class SonarQubeClient:
         project_key = project.get("key")
         logger.info(f"Fetching component data in : {project_key}")
         response = await self.send_api_request(
-            endpoint="component/show",
+            endpoint="components/show",
             query_params={"component": project_key},
         )
         return response.get("component", {})
