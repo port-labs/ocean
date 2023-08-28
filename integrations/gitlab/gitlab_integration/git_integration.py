@@ -21,7 +21,7 @@ class FileEntityProcessor(JQEntityProcessor):
 
     def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         project_id, ref = self._validate_project_scope(data)
-        # relying on that the code is being called after event initialization and as part of the GitLab service
+        # assuming that the code is being called after event initialization and as part of the GitLab service
         # initialization
         project_client: Project | None = event.attributes["PROJECTS_CACHE_KEY"][
             project_id
@@ -66,7 +66,7 @@ class SearchEntityProcessor(JQEntityProcessor):
         project_id, _ = self._validate_project_scope(data)
         scope, query = self._parse_search_pattern(pattern)
 
-        # relying on that the code is being called after event initialization and as part of the GitLab service
+        # assuming that the code is being called after event initialization and as part of the GitLab service
         # initialization
         project: Project | None = event.attributes[PROJECTS_CACHE_KEY][project_id]
         logger.info(f"Searching for {query} in Project {project_id}, scope {scope}")
@@ -85,7 +85,7 @@ class SearchEntityProcessor(JQEntityProcessor):
         pattern = pattern.replace(self.prefix, "")
         if len(pattern.split(self.separation_symbol)) == 1:
             raise ValueError(
-                f"Search pattern {pattern} does not contain separation symbol {self.separation_symbol}"
+                f"Search pattern {pattern} does not contain separation symbol: {self.separation_symbol}"
             )
         # handle case when the query contains the separation symbol
         elif len(pattern.split(self.separation_symbol)) > 2:
