@@ -4,7 +4,7 @@ description: SonarQube integration for Port Ocean
 icon: sonarqube
 features:
   - type: exporter
-    section: SonarQube Code Quality Analysis
+    section: Code Quality & Security
     resources:
       - kind: projects
       - kind: analysis
