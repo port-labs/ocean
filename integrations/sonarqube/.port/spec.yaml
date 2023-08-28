@@ -23,3 +23,7 @@ configurations:
     type: string
     required: false
     description: The host to subscribe webhooks to
+  - name: sonarUrl
+    type: string
+    required: false
+    description: The SonarQube URL

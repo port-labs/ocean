@@ -29,7 +29,7 @@ resources:
         mappings:
           blueprint: '"sonarQubeAnalysis"'
           identifier: .analysisId
-          title: .__commit.message
+          title: .__commit.message // .analysisId
           properties:
               branch: .__branchName
               fixedIssues: .measures.violations_fixed
