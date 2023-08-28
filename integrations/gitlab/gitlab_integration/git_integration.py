@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple, List, Type
 
 from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,
@@ -80,6 +80,7 @@ class SearchEntityProcessor(JQEntityProcessor):
 
 class GitManipulationHandler(JQEntityProcessor):
     def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+        entity_processor: Type[JQEntityProcessor]
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             entity_processor = FileEntityProcessor
         elif pattern.startswith(SEARCH_PROPERTY_PREFIX):
