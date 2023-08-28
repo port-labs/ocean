@@ -148,9 +148,9 @@ class GitlabService:
         """
         logger.info(f"fetching project {project_id}")
         filtered_projects = event.attributes.get(PROJECTS_CACHE_KEY)
-        for project in filtered_projects:
-            if project.id == project_id:
-                return project
+        project = filtered_projects[project_id]
+        if project:
+            return project
 
         project = self.gitlab_client.projects.get(project_id)
         if self.should_run_for_project(project.path_with_namespace):
