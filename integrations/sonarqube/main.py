@@ -15,10 +15,10 @@ class ObjectKind:
 async def on_project_resync(kind: str) -> list[dict[str, Any]]:
     logger.info(f"Listing Sonarqube resource: {kind}")
     sonar_client = SonarQubeClient(
-        ocean.integration_config.get("sonar_url"),
-        ocean.integration_config.get("sonar_api_token"),
-        ocean.integration_config.get("sonar_organization_id"),
-        ocean.integration_config.get("app_host"),
+        ocean.integration_config.get("sonar_url", ""),
+        ocean.integration_config.get("sonar_api_token", ""),
+        ocean.integration_config.get("sonar_organization_id", ""),
+        ocean.integration_config.get("app_host", ""),
     )
     return await sonar_client.get_all_projects()
 
@@ -27,28 +27,29 @@ async def on_project_resync(kind: str) -> list[dict[str, Any]]:
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
     sonar_client = SonarQubeClient(
-        ocean.integration_config.get("sonar_url"),
-        ocean.integration_config.get("sonar_api_token"),
-        ocean.integration_config.get("sonar_organization_id"),
-        ocean.integration_config.get("app_host"),
+        ocean.integration_config.get("sonar_url", ""),
+        ocean.integration_config.get("sonar_api_token", ""),
+        ocean.integration_config.get("sonar_organization_id", ""),
+        ocean.integration_config.get("app_host", ""),
     )
     async for issues_list in sonar_client.get_all_issues():
         for issue in issues_list:
-            yield issue
+            yield [issue]
 
 
 @ocean.on_resync(ObjectKind.ANALYSIS)
 async def on_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
     sonar_client = SonarQubeClient(
-        ocean.integration_config.get("sonar_url"),
-        ocean.integration_config.get("sonar_api_token"),
-        ocean.integration_config.get("sonar_organization_id"),
-        ocean.integration_config.get("app_host"),
+        ocean.integration_config.get("sonar_url", ""),
+        ocean.integration_config.get("sonar_api_token", ""),
+        ocean.integration_config.get("sonar_organization_id", ""),
+        ocean.integration_config.get("app_host", ""),
     )
+
     async for analyses_list in sonar_client.get_all_analyses():
         for analysis_data in analyses_list:
-            yield analysis_data
+            yield [analysis_data]
 
 
 @ocean.router.post("/webhook")
@@ -57,10 +58,10 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
         f"Processing Sonarqube webhook for event type: {webhook_data.get('project', {}).get('key')}"
     )
     sonar_client = SonarQubeClient(
-        ocean.integration_config.get("sonar_url"),
-        ocean.integration_config.get("sonar_api_token"),
-        ocean.integration_config.get("sonar_organization_id"),
-        ocean.integration_config.get("app_host"),
+        ocean.integration_config.get("sonar_url", ""),
+        ocean.integration_config.get("sonar_api_token", ""),
+        ocean.integration_config.get("sonar_organization_id", ""),
+        ocean.integration_config.get("app_host", ""),
     )
 
     project = await sonar_client.get_single_component(
@@ -82,9 +83,9 @@ async def on_start() -> None:
     ## We are making the real-time subscription of Sonar webhook events optional. That said, we only subscribe to webhook events when the user supplies the app_host config variable
     if ocean.integration_config.get("app_host"):
         sonar_client = SonarQubeClient(
-            ocean.integration_config.get("sonar_url"),
-            ocean.integration_config.get("sonar_api_token"),
-            ocean.integration_config.get("sonar_organization_id"),
-            ocean.integration_config.get("app_host"),
+            ocean.integration_config.get("sonar_url", ""),
+            ocean.integration_config.get("sonar_api_token", ""),
+            ocean.integration_config.get("sonar_organization_id", ""),
+            ocean.integration_config.get("app_host", ""),
         )
         await sonar_client.get_or_create_webhook_url()

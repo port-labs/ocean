@@ -16,22 +16,6 @@
           "title": "Link",
           "icon": "Link"
         },
-        "lastAnalysisStatus": {
-          "type": "string",
-          "title": "Last Analysis Status",
-          "enum": [
-            "PASSED",
-            "OK",
-            "FAILED",
-            "ERROR"
-          ],
-          "enumColors": {
-            "PASSED": "green",
-            "OK": "green",
-            "FAILED": "red",
-            "ERROR": "red"
-          }
-        },
         "lastAnalysisDate": {
           "type": "string",
           "format": "date-time",
@@ -196,4 +180,4 @@
       }
     }
   }
-  ]
+]

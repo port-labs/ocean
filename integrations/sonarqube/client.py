@@ -217,6 +217,7 @@ class SonarQubeClient:
         for component in components:
             project_data = await self.get_single_project(project=component)
             all_projects.append(project_data)
+        print(all_projects[0])
         return all_projects
 
     async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
