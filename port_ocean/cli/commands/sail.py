@@ -13,11 +13,11 @@ from port_ocean.config.settings import LogLevelType
     "--log-level",
     "log_level",
     type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
-    default="DEBUG",
+    default="INFO",
     help="""Set the logging level for the integration.
             Supported levels are DEBUG, INFO, WARNING, ERROR,
             and CRITICAL. If not specified, the default level
-            is DEBUG.""",
+            is INFO.""",
 )
 @click.option(
     "-p",

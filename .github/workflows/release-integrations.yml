@@ -23,7 +23,7 @@ jobs:
       - name: Build and push Docker image
         run: |
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
-          
+
           files=$(find integrations/*/.port -name "spec.yaml")
           for file in $files; do
             # Get the type from ocean-spec.yaml
@@ -37,7 +37,7 @@ jobs:
 
             MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
 
-            if [ "$MANIFEST" = "200" ]; then            
+            if [ "$MANIFEST" = "200" ]; then
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
               # Check if the 'version' variable contains any character other than digits and "."

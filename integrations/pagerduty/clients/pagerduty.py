@@ -1,4 +1,5 @@
 from typing import Any
+
 import httpx
 from loguru import logger
 
@@ -131,3 +132,44 @@ class PagerDutyClient:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
+
+    async def get_oncall_user(
+        self, *escalation_policy_ids: str
+    ) -> list[dict[str, Any]]:
+        url = f"{self.api_url}/oncalls"
+
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    url,
+                    params={
+                        "escalation_policy_ids[]": ",".join(escalation_policy_ids),
+                        "include[]": "users",
+                    },
+                    headers=self.api_auth_header,
+                )
+                response.raise_for_status()
+                return response.json()["oncalls"]
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+                )
+                raise
+
+    async def update_oncall_users(
+        self, services: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        logger.info("Fetching and matching who is on-call for services")
+        oncall_users = await self.get_oncall_user(
+            *[service["escalation_policy"]["id"] for service in services]
+        )
+
+        for service in services:
+            escalation_policy_id = service["escalation_policy"]["id"]
+
+            service["__oncall_user"] = [
+                user
+                for user in oncall_users
+                if user["escalation_policy"]["id"] == escalation_policy_id
+            ]
+        return services

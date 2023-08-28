@@ -1,0 +1,87 @@
+[
+  {
+    "identifier": "project",
+    "title": "Jira Project",
+    "icon": "Jira",
+    "description": "A Jira project",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Project URL",
+          "type": "string",
+          "format": "url",
+          "description": "URL to the project in Jira"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "issue",
+    "title": "Jira Issue",
+    "icon": "Jira",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Issue URL",
+          "type": "string",
+          "format": "url",
+          "description": "URL to the issue in Jira"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "description": "The status of the issue"
+        },
+        "issueType": {
+          "title": "Type",
+          "type": "string",
+          "description": "The type of the issue"
+        },
+        "components": {
+          "title": "Components",
+          "type": "array",
+          "description": "The components related to this issue"
+        },
+        "assignee": {
+          "title": "Assignee",
+          "type": "string",
+          "format": "user",
+          "description": "The user assigned to the issue"
+        },
+        "reporter": {
+          "title": "Reporter",
+          "type": "string",
+          "description": "The user that reported to the issue",
+          "format": "user"
+        },
+        "creator": {
+          "title": "Creator",
+          "type": "string",
+          "description": "The user that created to the issue",
+          "format": "user"
+        }
+      }
+    },
+    "relations": {
+      "project": {
+        "target": "project",
+        "title": "Project",
+        "description": "The Jira project that contains this issue",
+        "required": false,
+        "many": false
+      },
+      "parentIssue": {
+        "target": "issue",
+        "title": "Parent Issue",
+        "required": false,
+        "many": false
+      },
+      "subtasks": {
+        "target": "issue",
+        "title": "Subtasks",
+        "required": false,
+        "many": true
+      }
+    }
+  }
+]
