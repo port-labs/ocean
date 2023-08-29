@@ -53,7 +53,7 @@ This file consists of 3 main responsibilities:
 
 - `version` - the integration's current version, should be bumped when a new version of the integration is released
 - `dependencies` - the integration's dependencies, should be updated when new dependencies are added to the integration
-- Configuration for automated tools that ensure consistent code quality for every developed integration. These
+- Stores the configuration for automated tools that ensure consistent code quality for every developed integration. These
   include `mypy`, `ruff` and `black`. In addition it includes the setup for `towncrier` to maintain a proper CHANGELOG
   for the integration.
 
