@@ -50,8 +50,8 @@ Following that theme, we wanted Ocean to be the ultimate framework to integrate 
 
 Ocean is made up of two distinct pieces:
 
-- Ocean CLI - used to create boilerplate for new Ocean integrations, and to aid in their development.
-- Ocean framework - provides common functionalities and interfaces to make the development of new Port integrations faster and easier.
+- Ocean CLI - used to create boilerplates for new Ocean integrations, and to aid in their development.
+- The Ocean Framework - provides common functionalities and interfaces to make the development of new Port integrations faster and easier.
 
 The following section provides a deep dive into the Ocean framework, To learn more about the Ocean CLI, refer to the [CLI](./framework/cli/cli.md) docs
 
