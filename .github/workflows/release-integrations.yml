@@ -29,9 +29,9 @@ jobs:
             # Get the type from ocean-spec.yaml
             type=$(yq eval '.type' "$file")
             folder=$(dirname "$file")
-
-            # Get the version from ocean-spec.yaml
-            version=$(yq eval '.version' "$file")
+          
+            # Get the version from pyproject.toml
+            version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
 
             # Check if the version exists in the ghcr.io registry
 
@@ -77,7 +77,7 @@ jobs:
           while IFS= read -r file; do
               # Extract the version from pyproject.toml
               integration_dir=$(dirname "$file")
-              version=$(grep -E '^version = "[0-9.]+"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+              version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
         
               echo "- " >> "$temp_file"
               sed 's/^/  /' "$file" >> "$temp_file"
