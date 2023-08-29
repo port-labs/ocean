@@ -49,7 +49,7 @@ In most cases **you should not change this file**, only use it as the target for
 
 ## `pyproject.toml`
 
-This file consists of 3 main responsibilities: 
+This file is used for the following main goals:
 
 - Maintain the integration's current version via the `version` field. Should be bumped when a new version of the integration is released
 - Maintains the list of dependencies required by the integration, should be updated when new dependencies are added to the integration using the `poetry` CLI
