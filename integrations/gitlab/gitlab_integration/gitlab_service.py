@@ -147,20 +147,31 @@ class GitlabService:
         :return: Project if it should be processed, None otherwise
         """
         logger.info(f"fetching project {project_id}")
-        filtered_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {})
+        filtered_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).get(
+            self.gitlab_client.private_token, {}
+        )
         project = filtered_projects[project_id]
         if project:
             return project
 
         project = self.gitlab_client.projects.get(project_id)
         if self.should_run_for_project(project.path_with_namespace):
-            event.attributes[PROJECTS_CACHE_KEY][project_id] = project
+            event.attributes[PROJECTS_CACHE_KEY][self.gitlab_client.private_token][
+                project_id
+            ] = project
             return project
         else:
             return None
 
     def get_all_projects(self) -> dict[int, Project]:
         logger.info("fetching all projects for the token")
+        service_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).get(
+            self.gitlab_client.private_token, {}
+        )
+        if service_projects:
+            logger.debug(f"Found {len(service_projects)} projects in cache")
+            return service_projects
+
         projects: list[Project] = typing.cast(
             list[Project],
             self.gitlab_client.projects.list(
@@ -175,9 +186,12 @@ class GitlabService:
             if self.should_run_for_project(project.path_with_namespace)
         }
         logger.debug(
-            f"Found {len(filtered_projects)} projects after filtering. Projects: {[proj.path_with_namespace for proj in filtered_projects.values()]}"
+            f"Found {len(filtered_projects)} projects after filtering. Projects: "
+            f"{[proj.path_with_namespace for proj in filtered_projects.values()]}"
         )
-        event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).update(filtered_projects)
+        event.attributes[PROJECTS_CACHE_KEY][
+            self.gitlab_client.private_token
+        ] = filtered_projects
 
         return filtered_projects
 

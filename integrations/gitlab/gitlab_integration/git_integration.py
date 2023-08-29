@@ -21,17 +21,13 @@ class FileEntityProcessor(JQEntityProcessor):
         project_id, ref = _validate_project_scope(data)
         # assuming that the code is being called after event initialization and as part of the GitLab service
         # initialization
-        project_client: Project | None = event.attributes[PROJECTS_CACHE_KEY][
-            project_id
-        ]
+        project = _get_project_from_cache(project_id)
         logger.info(f"Searching for file {pattern} in Project {project_id}, ref {ref}")
 
         file_path = pattern.replace(self.prefix, "")
         return (
-            project_client.files.get(file_path=file_path, ref=ref)
-            .decode()
-            .decode("utf-8")
-            if project_client
+            project.files.get(file_path=file_path, ref=ref).decode().decode("utf-8")
+            if project
             else None
         )
 
@@ -52,7 +48,7 @@ class SearchEntityProcessor(JQEntityProcessor):
 
         # assuming that the code is being called after event initialization and as part of the GitLab service
         # initialization
-        project: Project | None = event.attributes[PROJECTS_CACHE_KEY][project_id]
+        project = _get_project_from_cache(project_id)
         logger.info(f"Searching for {query} in Project {project_id}, scope {scope}")
 
         match = None
@@ -93,6 +89,26 @@ class GitManipulationHandler(JQEntityProcessor):
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str = "main"
+
+
+def _get_project_from_cache(project_id: int) -> Project | None:
+    """
+    projects cache structure:
+    {
+        "token1": {
+            "project_id1": Project1,
+            "project_id2": Project2,
+        },
+        "token2": {
+            "project_id3": Project3,
+            ...
+        }
+    }
+    """
+    for token_projects in event.attributes[PROJECTS_CACHE_KEY].values():
+        if project := token_projects.get(project_id):
+            return project
+    return None
 
 
 def _validate_project_scope(data: Dict[str, Any]) -> Tuple[int, str]:
