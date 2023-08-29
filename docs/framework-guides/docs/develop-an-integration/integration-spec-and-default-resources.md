@@ -35,7 +35,6 @@ The `spec.yml` file is used to provide the integration specification and also a 
 Here is the structure of a sample `spec.yml` file:
 
 ```yaml showLineNumbers
-version: v0.1.0
 type: myIntegration
 description: My integration for Port Ocean
 icon: myIntegration
@@ -62,7 +61,6 @@ Let's go over the different sections and their allowed values:
 #### Integration base specification
 
 ```yaml showLineNumbers
-version: v0.1.0
 type: myIntegration
 description: My integration for Port Ocean
 icon: myIntegration
@@ -72,7 +70,6 @@ This section is used to specify the basic information of the integration, this i
 
 The integration's base spec includes:
 
-- `version` - the integration's current version, should be bumped when a new version of the integration is released
 - `type` - integration type, also determines the name of the generated image for the integration
 - `description` - the description that will be displayed in Port's UI for the integration
 - `icon` - the icon that will displayed in Port's UI for the integration, the value has to match one of the icons available in Port's library
