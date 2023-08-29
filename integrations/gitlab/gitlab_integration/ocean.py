@@ -51,7 +51,7 @@ async def on_resync(kind: str) -> RAW_RESULT:
         logger.info(
             f"fetching projects for token {service.gitlab_client.private_token}"
         )
-        result = [project.asdict() for project in service.get_all_projects()]
+        result = [project.asdict() for project in service.get_all_projects().values()]
         logger.info(f"found {len(result)} projects")
         projects.extend(result)
 
@@ -98,9 +98,9 @@ async def resync_issues(kind: str) -> RAW_RESULT:
 @ocean.on_resync(ObjectKind.JOB)
 async def resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in all_tokens_services:
-        for project in service.get_all_projects():
+        for project_id, project in service.get_all_projects().items():
             jobs = project.jobs.list(per_page=100)
-            logger.info(f"Found {len(jobs)} jobs for project {project.id}")
+            logger.info(f"Found {len(jobs)} jobs for project {project_id}")
             yield [job.asdict() for job in jobs]
 
 
@@ -110,7 +110,7 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     created_after = from_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
     for service in all_tokens_services:
-        for project in service.get_all_projects():
+        for project_id, project in service.get_all_projects().items():
             batch_size = 50
             page = 1
             more = True
@@ -121,7 +121,7 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     page=page, per_page=batch_size, created_after=created_after
                 )
                 logger.info(
-                    f"Found {len(pipelines)} pipelines for page number {page} in project {project.id}"
+                    f"Found {len(pipelines)} pipelines for page number {page} in project {project_id}"
                 )
                 yield [
                     {
