@@ -10,7 +10,7 @@ features:
       - kind: issue
 configurations:
   - name: appHost
-    required: true
+    required: false
     type: url
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Jira"
   - name: jiraHost
