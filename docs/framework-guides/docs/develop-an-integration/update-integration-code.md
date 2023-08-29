@@ -51,7 +51,7 @@ In most cases **you should not change this file**, only use it as the target for
 
 This file consists of 3 main responsibilities: 
 
-- `version` - the integration's current version, should be bumped when a new version of the integration is released
+- Maintain the integration's current version via the `version` field. Should be bumped when a new version of the integration is released
 - Maintains the list of dependencies required by the integration, should be updated when new dependencies are added to the integration using the `poetry` CLI
 - Stores the configuration for automated tools that ensure consistent code quality for every developed integration. These
   include `mypy`, `ruff` and `black`. In addition it includes the setup for `towncrier` to maintain a proper CHANGELOG
