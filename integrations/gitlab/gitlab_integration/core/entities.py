@@ -6,6 +6,7 @@ from gitlab.v4.objects import Project
 from port_ocean.core.models import Entity
 
 FILE_PROPERTY_PREFIX = "file://"
+SEARCH_PROPERTY_PREFIX = "search://"
 JSON_SUFFIX = ".json"
 
 
