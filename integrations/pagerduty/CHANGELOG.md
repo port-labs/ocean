@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Changed the app_host to not be required for the installation (PORT-4527)
+- Changed the `app_host` to not be required for the installation (PORT-4527)
 - Bumped Ocean to 0.2.3 (#1)
 
 
