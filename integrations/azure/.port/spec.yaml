@@ -1,4 +1,3 @@
-version: v0.1.5
 type: azure
 description: azure integration for Port Ocean
 icon: Azure
