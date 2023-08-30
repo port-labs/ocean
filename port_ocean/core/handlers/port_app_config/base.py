@@ -1,6 +1,9 @@
 from abc import abstractmethod
 from typing import Type, Any
 
+from loguru import logger
+from pydantic import ValidationError
+
 from port_ocean.context.event import event
 from port_ocean.core.handlers.base import BaseHandler
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -29,6 +32,11 @@ class BasePortAppConfig(BaseHandler):
             PortAppConfig: The parsed port application configuration.
         """
         raw_config = await self._get_port_app_config()
-        config = self.CONFIG_CLASS.parse_obj(raw_config)
+        try:
+            config = self.CONFIG_CLASS.parse_obj(raw_config)
+        except ValidationError as e:
+            logger.error("Invalid port app config found. Please check the integration has been configured correctly.")
+            raise
+
         event.port_app_config = config
         return config

@@ -15,4 +15,10 @@ class APIPortAppConfig(BasePortAppConfig):
     async def _get_port_app_config(self) -> dict[str, Any]:
         logger.info("Fetching port app config")
         integration = await self.context.port_client.get_current_integration()
-        return integration["config"]
+        config = integration["config"]
+
+        if not config:
+            logger.error("The integration port app config is empty. "
+                         "Please make sure to configure your port app config in the Port API.")
+
+        return config
