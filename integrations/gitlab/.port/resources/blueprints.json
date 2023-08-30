@@ -1,8 +1,8 @@
 [
   {
-    "identifier": "microservice",
-    "title": "Microservice",
-    "icon": "Service",
+    "identifier": "project",
+    "title": "Project",
+    "icon": "GitLab",
     "schema": {
       "properties": {
         "url": {
@@ -74,8 +74,8 @@
       }
     },
     "relations": {
-      "microservice": {
-        "target": "microservice",
+      "project": {
+        "target": "project",
         "required": true,
         "many": false
       }
@@ -138,8 +138,8 @@
       }
     },
     "relations": {
-      "microservice": {
-        "target": "microservice",
+      "project": {
+        "target": "project",
         "required": true,
         "many": false
       }
