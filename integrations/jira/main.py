@@ -1,11 +1,10 @@
 from enum import StrEnum
 from typing import Any
-from loguru import logger
 
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
-from port_ocean.context.ocean import ocean
 from jira.client import JiraClient
+from loguru import logger
+from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 class ObjectKind(StrEnum):
@@ -15,6 +14,13 @@ class ObjectKind(StrEnum):
 
 async def setup_application() -> None:
     logic_settings = ocean.integration_config
+    app_host = logic_settings.get("app_host")
+    if not app_host:
+        logger.warning(
+            "No app host provided, skipping webhook creation. "
+            "Without setting up the webhook, the integration will not export live changes from Jira"
+        )
+        return
 
     jira_client = JiraClient(
         logic_settings["jira_host"],

@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.11 (2023-08-30)
+===================
+
+### Improvements
+
+- Removed ingressRequired from the spec.yaml file (PORT-4527)
+- Bumped Ocean to 0.2.3 (#1)
+
+
 0.1.10 (2023-08-29)
 ===================
 
