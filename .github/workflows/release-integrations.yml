@@ -29,12 +29,11 @@ jobs:
             # Get the type from ocean-spec.yaml
             type=$(yq eval '.type' "$file")
             folder=$(dirname "$file")
-          
+
             # Get the version from pyproject.toml
             version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
 
             # Check if the version exists in the ghcr.io registry
-
             MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
 
             if [ "$MANIFEST" = "200" ]; then
@@ -78,7 +77,7 @@ jobs:
               # Extract the version from pyproject.toml
               integration_dir=$(dirname "$file")
               version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
-        
+
               echo "- " >> "$temp_file"
               sed 's/^/  /' "$file" >> "$temp_file"
               echo "  version: $version" >> "$temp_file"
