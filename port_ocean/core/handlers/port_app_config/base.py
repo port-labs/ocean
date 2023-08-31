@@ -36,7 +36,7 @@ class BasePortAppConfig(BaseHandler):
             config = self.CONFIG_CLASS.parse_obj(raw_config)
         except ValidationError:
             logger.error(
-                "Invalid port app config found. Please check the integration has been configured correctly."
+                "Invalid port app config found. Please check that the integration has been configured correctly."
             )
             raise
 
