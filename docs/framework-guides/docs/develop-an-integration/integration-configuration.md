@@ -45,7 +45,7 @@ integration:
 
 Let's go over the different sections and their allowed values:
 
-#### `initializePortResources` - Initialize Port Resources
+#### `initializePortResources` - Initialize Port resources
 
 This configuration is used to specify whether the integration should initialize its default resources in Port as 
 described in the [integration specification](./integration-spec-and-default-resources.md#default-resources).
