@@ -61,6 +61,8 @@ class Ocean:
         if self.config.scheduled_resync_interval is not None:
             repeated_function = repeat_every(
                 seconds=self.config.scheduled_resync_interval * 60,
+                # Not running the resync immediately because the event listener should run resync on startup
+                wait_first=True,
             )(sync_raw_all)
             await repeated_function()
 
