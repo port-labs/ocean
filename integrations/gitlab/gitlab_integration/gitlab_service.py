@@ -5,13 +5,12 @@ import yaml
 from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
 from gitlab.v4.objects import Project
-from gitlab_integration.core.entities import generate_entity_from_port_yaml
-from gitlab_integration.core.utils import does_pattern_apply
 from loguru import logger
 
+from gitlab_integration.core.entities import generate_entity_from_port_yaml
+from gitlab_integration.core.utils import does_pattern_apply
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
-
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 
@@ -150,8 +149,8 @@ class GitlabService:
         filtered_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).get(
             self.gitlab_client.private_token, {}
         )
-        project = filtered_projects[project_id]
-        if project:
+
+        if project := filtered_projects.get(project_id):
             return project
 
         project = self.gitlab_client.projects.get(project_id)
