@@ -132,7 +132,13 @@ The integration's `configurations` spec is an array where each item includes:
 To learn more about the available parameter inputs and see examples for valid configurations, check out the [configuration validation](../framework/features/configuration-validation.md) page
 :::
 
-## `blueprints.json` file
+## Default resources
+
+The `.port/resources` directory is used to provide default resources that will be created when the integration is installed.
+
+The following resources are supported:
+
+### `blueprints.json` file
 
 ```json showLineNumbers
 [
@@ -162,7 +168,7 @@ To learn more about the available parameter inputs and see examples for valid co
 
 The `blueprints.json` file is part of the `.port/resources` directory, it is used to specify the default [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) that will be created when the integration is installed.
 
-### Structure
+#### Structure
 
 The `blueprints.json` is a JSON file which contains an array of objects that match the [blueprint objects](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/#blueprint-structure) from Port's API.
 
@@ -172,7 +178,7 @@ The `blueprints.json` file is optional, if it is not provided, the integration w
 **However**, to make integration easier to use and onboard into Port, it is highly recommended to provide a `blueprints.json` file which users can use as a starting point and customize the data ingested from the integration into Port
 :::
 
-## `port-app-config.yml` file
+### `port-app-config.yml` file
 
 ```yml showLineNumbers
 resources:
@@ -195,7 +201,7 @@ The `port-app-config.yml` file is part of the `.port/resources` directory, it is
 Refer to the [resource mapping](../framework/features/resource-mapping.md) feature documentation to learn more about Ocean's mapping functionality
 :::
 
-### Structure
+#### Structure
 
 The `port-app-config.yml` is a YAML file which contains a root object called `resources`, this object stores an array of definitions that tell the integration how to map the different `kind`s that it supports.
 
