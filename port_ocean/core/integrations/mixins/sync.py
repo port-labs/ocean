@@ -248,10 +248,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return entities_after
 
     async def _register_in_batches(
-        self,
-        resource_config: ResourceConfig,
-        user_agent_type: UserAgentType,
-        batch_work_size: int,
+        self, resource_config: ResourceConfig, user_agent_type: UserAgentType
     ) -> tuple[list[Entity], list[Exception]]:
         results, errors = await self._get_resource_raw_results(resource_config)
         async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
@@ -262,21 +259,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 async_generators.append(result)
 
-        batches = [
-            raw_results[i : i + batch_work_size]
-            for i in range(0, len(raw_results), batch_work_size)
-        ]
-
-        registered_entities_results = await asyncio.gather(
-            *(
-                self._register_resource_raw(resource_config, batch, user_agent_type)
-                for batch in batches
-            )
+        entities = await self._register_resource_raw(
+            resource_config, raw_results, user_agent_type
         )
+
         for generator in async_generators:
             try:
                 async for items in generator:
-                    registered_entities_results.append(
+                    entities.extend(
                         await self._register_resource_raw(
                             resource_config, items, user_agent_type
                         )
@@ -284,7 +274,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except* OceanAbortException as error:
                 errors.append(error)
 
-        entities: list[Entity] = sum(registered_entities_results, [])
         logger.info(
             f"Finished registering change for {len(results)} raw results for kind: {resource_config.kind}. {len(entities)} entities were affected"
         )
@@ -427,9 +416,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     attributes={"resource_kind": resource.kind},
                 ):
                     creation_results.append(
-                        await self._register_in_batches(
-                            resource, user_agent_type, ocean.config.batch_work_size
-                        )
+                        await self._register_in_batches(resource, user_agent_type)
                     )
             flat_created_entities, errors = zip_and_sum(creation_results) or [[], []]
 

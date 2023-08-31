@@ -44,6 +44,8 @@ integration:
 
 Let's go over the different sections and their allowed values:
 
+### `initializePortResources`
+
 #### `port` - Port API credentials
 
 ```yaml showLineNumbers
