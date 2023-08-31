@@ -4,15 +4,20 @@ from typing import AsyncIterator, Literal, Any, TYPE_CHECKING, Optional
 from uuid import uuid4
 
 from loguru import logger
+from pydispatch import dispatcher
 from werkzeug.local import LocalStack, LocalProxy
 
-from port_ocean.exceptions.context import EventContextNotFoundError
+from port_ocean.context.resource import resource
+from port_ocean.exceptions.context import (
+    EventContextNotFoundError,
+    ResourceContextNotFoundError,
+)
 from port_ocean.utils import get_time
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
-        PortAppConfig,
         ResourceConfig,
+        PortAppConfig,
     )
 
 TriggerType = Literal["manual", "machine", "request"]
@@ -28,11 +33,36 @@ class EventType:
 class EventContext:
     event_type: str
     trigger_type: TriggerType = "machine"
-    resource_config: Optional["ResourceConfig"] = None
     attributes: dict[str, Any] = field(default_factory=dict)
+    _aborted: bool = False
     _port_app_config: Optional["PortAppConfig"] = None
     _parent_event: Optional["EventContext"] = None
     _event_id: str = field(default_factory=lambda: str(uuid4()))
+    _on_abort_callbacks: list[callable] = field(default_factory=list)
+
+    def on_abort(self, c) -> None:
+        self._on_abort_callbacks.append(c)
+
+    def abort(self) -> None:
+        self._aborted = True
+        for c in self._on_abort_callbacks:
+            try:
+                c()
+            except Exception as ex:
+                logger.warning(
+                    f"Failed to call one of the abort callbacks {ex}", exc_info=True
+                )
+
+    @property
+    def aborted(self) -> bool:
+        return self._aborted
+
+    @property
+    def resource_config(self) -> Optional["ResourceConfig"]:
+        try:
+            return resource.resource_config
+        except ResourceContextNotFoundError:
+            return None
 
     @property
     def id(self) -> str:
@@ -80,24 +110,29 @@ event: EventContext = LocalProxy(lambda: _get_event_context())  # type: ignore
 async def event_context(
     event_type: str,
     trigger_type: TriggerType = "manual",
-    resource_config: Optional["ResourceConfig"] = None,
     attributes: dict[str, Any] | None = None,
 ) -> AsyncIterator[EventContext]:
     attributes = attributes or {}
 
     parent = _event_context_stack.top
-
-    _event_context_stack.push(
-        EventContext(
-            event_type,
-            trigger_type=trigger_type,
-            resource_config=resource_config,
-            attributes=attributes,
-            _parent_event=parent,
-            # inherit port app config from parent event so it can be used in nested events
-            _port_app_config=parent.port_app_config if parent else None,
-        )
+    e = EventContext(
+        event_type,
+        trigger_type=trigger_type,
+        attributes=attributes,
+        _parent_event=parent,
+        # inherit port app config from parent event, so it can be used in nested events
+        _port_app_config=parent.port_app_config if parent else None,
     )
+    _event_context_stack.push(e)
+
+    def _handle_abort(triggering_event) -> None:
+        if e.id != triggering_event:
+            logger.error("ABORTING EVENT")
+            e.abort()
+
+    if event_type == EventType.RESYNC:
+        dispatcher.connect(_handle_abort, EventType.RESYNC)
+    dispatcher.send(event_type, triggering_event=event.id)
 
     start_time = get_time(seconds_precision=False)
     with logger.contextualize(
@@ -124,5 +159,8 @@ async def event_context(
                 success=success,
                 time_elapsed=time_elapsed,
             ).info("Event finished")
+
+            if event_type == EventType.RESYNC:
+                dispatcher.disconnect(_handle_abort, EventType.RESYNC)
 
     _event_context_stack.pop()

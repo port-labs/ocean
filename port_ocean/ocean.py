@@ -1,4 +1,6 @@
+import asyncio
 import sys
+import threading
 from typing import Callable
 
 from fastapi import FastAPI, APIRouter
@@ -55,17 +57,28 @@ class Ocean:
     ) -> None:
         async def sync_raw_all() -> None:
             logger.info("Starting scheduled resync")
+
             await self.integration.sync_raw_all()
             logger.info("Finished scheduled resync")
 
+        def between_callback():
+            initialize_port_ocean_context(ocean_app=self)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            loop.run_until_complete(sync_raw_all())
+            loop.close()
+
         interval = self.config.scheduled_resync_interval
         if interval is not None:
-            logger.info(f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)")
+            logger.info(
+                f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)"
+            )
             repeated_function = repeat_every(
-                seconds=interval * 60,
+                seconds=5,
                 # Not running the resync immediately because the event listener should run resync on startup
                 wait_first=True,
-            )(sync_raw_all)
+            )(lambda: threading.Thread(target=between_callback).start())
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
