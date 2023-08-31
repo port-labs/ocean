@@ -58,9 +58,11 @@ class Ocean:
             await self.integration.sync_raw_all()
             logger.info("Finished scheduled resync")
 
-        if self.config.scheduled_resync_interval is not None:
+        interval = self.config.scheduled_resync_interval
+        if interval is not None:
+            logger.info(f"Setting up scheduled resync (interval: {interval} minutes)")
             repeated_function = repeat_every(
-                seconds=self.config.scheduled_resync_interval * 60,
+                seconds=interval * 60,
                 # Not running the resync immediately because the event listener should run resync on startup
                 wait_first=True,
             )(sync_raw_all)
