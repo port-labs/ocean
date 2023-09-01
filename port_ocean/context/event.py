@@ -139,7 +139,7 @@ async def event_context(
     )
     _event_context_stack.push(new_event)
 
-    def _handle_event(triggering_event_id) -> None:
+    def _handle_event(triggering_event_id: int) -> None:
         if (
             new_event.event_type == EventType.RESYNC
             and new_event.id != triggering_event_id
