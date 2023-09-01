@@ -14,7 +14,7 @@ from typing import (
 from uuid import uuid4
 
 from loguru import logger
-from pydispatch import dispatcher
+from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.context.resource import resource
