@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.14 (2023-09-01)
+===================
+
+### Bug Fixes
+
+- Fixed an issue causing the push event listener to fail for a key error (#1)
+
+
 0.1.13 (2023-08-31)
 ===================
 
