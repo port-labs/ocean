@@ -70,7 +70,7 @@ kinds and might cause conflicts with itself in a case where the resync takes lon
 
 :::note
 Unlike the [Polling](../framework/features/event-listener.md#polling) event listener, this configuration will start the resync regardless of
-whether there are any changes in the PortAppConfig.
+whether there are any changes in the [Port App Config](./trigger-your-integration.md).
 :::
 
 ```yaml showLineNumbers
