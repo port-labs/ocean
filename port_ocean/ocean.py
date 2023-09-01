@@ -55,17 +55,13 @@ class Ocean:
     async def _setup_scheduled_resync(
         self,
     ) -> None:
-        async def sync_raw_all() -> None:
-            logger.info("Starting a new scheduled resync")
-
-            await self.integration.sync_raw_all()
-
-        def between_callback():
+        def execute_resync_all() -> None:
             initialize_port_ocean_context(ocean_app=self)
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-            loop.run_until_complete(sync_raw_all())
+            logger.info("Starting a new scheduled resync")
+            loop.run_until_complete(self.integration.sync_raw_all())
             loop.close()
 
         interval = self.config.scheduled_resync_interval
@@ -74,10 +70,10 @@ class Ocean:
                 f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)"
             )
             repeated_function = repeat_every(
-                seconds=5,
+                seconds=interval * 60,
                 # Not running the resync immediately because the event listener should run resync on startup
                 wait_first=True,
-            )(lambda: threading.Thread(target=between_callback).start())
+            )(lambda: threading.Thread(target=execute_resync_all).start())
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
