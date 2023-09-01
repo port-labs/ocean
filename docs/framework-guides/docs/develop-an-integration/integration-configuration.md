@@ -45,7 +45,7 @@ integration:
 
 Let's go over the different sections and their allowed values:
 
-#### `initializePortResources` - Initialize Port Resources
+#### `initializePortResources` - Initialize Port resources
 
 This configuration is used to specify whether the integration should initialize its default resources in Port as 
 described in the [integration specification](./integration-spec-and-default-resources.md#default-resources).
@@ -58,7 +58,7 @@ initializePortResources: true
 
 #### `scheduledReyncInterval` - Run scheduled resync
 
-This configuration is used to specify the interval in minutes in which the integration should initiate a full resync.
+This configuration is used to specify the interval in minutes in which the integration should initiate a full resync from the 3rd-party system.
 
 By default, this feature is disabled. To enable it, set the value to a positive integer representing the interval in
 minutes.
@@ -69,7 +69,7 @@ kinds and might cause conflicts with itself in a case where the resync takes lon
 :::
 
 :::note
-Unlike the [Pooling](../framework/features/event-listener.md#polling) event listener, This configuration will start the resync regardless to
+Unlike the [Polling](../framework/features/event-listener.md#polling) event listener, this configuration will start the resync regardless of
 whether there are any changes in the PortAppConfig.
 :::
 
