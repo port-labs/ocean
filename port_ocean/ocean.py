@@ -56,10 +56,9 @@ class Ocean:
         self,
     ) -> None:
         async def sync_raw_all() -> None:
-            logger.info("Starting scheduled resync")
+            logger.info("Starting a new scheduled resync")
 
             await self.integration.sync_raw_all()
-            logger.info("Finished scheduled resync")
 
         def between_callback():
             initialize_port_ocean_context(ocean_app=self)

@@ -1,6 +1,16 @@
+import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import AsyncIterator, Literal, Any, TYPE_CHECKING, Optional
+from typing import (
+    AsyncIterator,
+    Literal,
+    Any,
+    TYPE_CHECKING,
+    Optional,
+    Callable,
+    Awaitable,
+    Union,
+)
 from uuid import uuid4
 
 from loguru import logger
@@ -21,6 +31,7 @@ if TYPE_CHECKING:
     )
 
 TriggerType = Literal["manual", "machine", "request"]
+AbortCallbackFunction = Callable[[], Union[Any, Awaitable[Any]]]
 
 
 class EventType:
@@ -38,20 +49,23 @@ class EventContext:
     _port_app_config: Optional["PortAppConfig"] = None
     _parent_event: Optional["EventContext"] = None
     _event_id: str = field(default_factory=lambda: str(uuid4()))
-    _on_abort_callbacks: list[callable] = field(default_factory=list)
+    _on_abort_callbacks: list[AbortCallbackFunction] = field(default_factory=list)
 
-    def on_abort(self, c) -> None:
-        self._on_abort_callbacks.append(c)
+    def on_abort(self, func: AbortCallbackFunction) -> None:
+        self._on_abort_callbacks.append(func)
 
     def abort(self) -> None:
-        self._aborted = True
-        for c in self._on_abort_callbacks:
+        for func in self._on_abort_callbacks:
             try:
-                c()
+                if asyncio.iscoroutinefunction(func):
+                    asyncio.get_running_loop().run_until_complete(func())
+                else:
+                    func()
             except Exception as ex:
                 logger.warning(
                     f"Failed to call one of the abort callbacks {ex}", exc_info=True
                 )
+        self._aborted = True
 
     @property
     def aborted(self) -> bool:
@@ -115,7 +129,7 @@ async def event_context(
     attributes = attributes or {}
 
     parent = _event_context_stack.top
-    e = EventContext(
+    new_event = EventContext(
         event_type,
         trigger_type=trigger_type,
         attributes=attributes,
@@ -123,15 +137,17 @@ async def event_context(
         # inherit port app config from parent event, so it can be used in nested events
         _port_app_config=parent.port_app_config if parent else None,
     )
-    _event_context_stack.push(e)
+    _event_context_stack.push(new_event)
 
-    def _handle_abort(triggering_event) -> None:
-        if e.id != triggering_event:
-            logger.error("ABORTING EVENT")
-            e.abort()
+    def _handle_event(triggering_event_id) -> None:
+        if (
+            new_event.event_type == EventType.RESYNC
+            and new_event.id != triggering_event_id
+        ):
+            logger.warning("A new resync event was triggered, aborting the old one.")
+            new_event.abort()
 
-    if event_type == EventType.RESYNC:
-        dispatcher.connect(_handle_abort, EventType.RESYNC)
+    dispatcher.connect(_handle_event, event_type)
     dispatcher.send(event_type, triggering_event=event.id)
 
     start_time = get_time(seconds_precision=False)
@@ -161,6 +177,6 @@ async def event_context(
             ).info("Event finished")
 
             if event_type == EventType.RESYNC:
-                dispatcher.disconnect(_handle_abort, EventType.RESYNC)
+                dispatcher.disconnect(_handle_event, EventType.RESYNC)
 
     _event_context_stack.pop()

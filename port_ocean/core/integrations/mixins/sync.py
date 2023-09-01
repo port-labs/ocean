@@ -30,7 +30,7 @@ from port_ocean.exceptions.core import OceanAbortException
 
 
 class SyncMixin(HandlerMixin):
-    """Mixin class for synchronization of cosntructed entities.
+    """Mixin class for synchronization of constructed entities.
 
     This mixin class extends the functionality of HandlerMixin to provide methods for updating,
     registering, unregistering, and syncing entities state changes.
@@ -410,8 +410,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             try:
                 for resource in app_config.resources:
-                    # create resource context per resource kind, so resync method could have access to the resource config
-                    # as we might have multiple resources in the same event
+                    # create resource context per resource kind, so resync method could have access to the resource
+                    # config as we might have multiple resources in the same event
                     async with resource_context(resource):
                         task = asyncio.get_event_loop().create_task(
                             self._register_in_batches(resource, user_agent_type)
@@ -421,7 +421,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                         creation_results.append(await task)
             except asyncio.CancelledError as e:
-                logger.info("Resync was aborted")
+                logger.warning("Resync aborted successfully")
             else:
                 flat_created_entities, errors = zip_and_sum(creation_results) or [
                     [],
