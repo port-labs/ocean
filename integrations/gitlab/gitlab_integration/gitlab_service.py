@@ -146,9 +146,9 @@ class GitlabService:
         :return: Project if it should be processed, None otherwise
         """
         logger.info(f"fetching project {project_id}")
-        filtered_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).get(
-            self.gitlab_client.private_token, {}
-        )
+        filtered_projects = event.attributes.setdefault(
+            PROJECTS_CACHE_KEY, {}
+        ).setdefault(self.gitlab_client.private_token, {})
 
         if project := filtered_projects.get(project_id):
             return project
