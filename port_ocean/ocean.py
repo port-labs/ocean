@@ -60,7 +60,9 @@ class Ocean:
 
         interval = self.config.scheduled_resync_interval
         if interval is not None:
-            logger.info(f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)")
+            logger.info(
+                f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)"
+            )
             repeated_function = repeat_every(
                 seconds=interval * 60,
                 # Not running the resync immediately because the event listener should run resync on startup
