@@ -1,6 +1,7 @@
 # This is an example configuration file for the integration service.
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 
+scheduledResyncInterval: 1
 initializePortResources: true
 port:
   clientId: "{{ from env PORT_CLIENT_ID }}"  # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.
@@ -14,6 +15,6 @@ integration:
   # The type of the integration.
   type: "Jira"
   config:
-    jiraHost: "{{ from env JIRA_HOST }}"
-    atlassianUserEmail: "{{ from env ATLASSIAN_EMAIL }}"
-    atlassianUserToken: "{{ from env ATLASSIAN_TOKEN }}"
+    jiraHost: https://getport.atlassian.net
+    atlassianUserEmail: matanlevi@getport.io
+    atlassianUserToken: ATATT3xFfGF0sLnsVqzMglUJpvVy2N30mXEMfkOtBNCIKsRsQVFr9R5mdBE8dqugtM7aIXEzQaJ_bbpikeX_zXx1RYGjbIEdzcXdEWH7P2QWXJh4PoOu5irLOSru_VfQFXBuPLbLnvo5dt5EwNG0mohGoKcc0-TvAP98M5_CvKlFsgA0JHd15U4=9EAD9270
