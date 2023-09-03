@@ -5,6 +5,7 @@ sidebar_position: 3
 ---
 
 import EventListenerTypesList from '../framework/features/\_event-listener-types-list.md'
+import ResyncAbortMessage from '@site/docs/_common/resync-abort-message.mdx';
 
 # 🏗️ Integration Configuration
 
@@ -63,10 +64,7 @@ This configuration is used to specify the interval in minutes in which the integ
 By default, this feature is disabled. To enable it, set the value to a positive integer representing the interval in
 minutes.
 
-:::caution
-This value should be set to a reasonable interval, as it will cause the integration to perform a full resync of all its
-kinds and might cause conflicts with itself in a case where the resync takes longer than the interval.
-:::
+<ResyncAbortMessage />
 
 :::note
 Unlike the [Polling](../framework/features/event-listener.md#polling) event listener, this configuration will start the resync regardless of

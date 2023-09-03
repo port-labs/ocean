@@ -6,8 +6,9 @@ from typing import Any, Awaitable, Callable
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.event import TriggerType, event_context, EventType
+from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.ocean import ocean
+from port_ocean.context.resource import resource_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
@@ -29,7 +30,7 @@ from port_ocean.exceptions.core import OceanAbortException
 
 
 class SyncMixin(HandlerMixin):
-    """Mixin class for synchronization of cosntructed entities.
+    """Mixin class for synchronization of constructed entities.
 
     This mixin class extends the functionality of HandlerMixin to provide methods for updating,
     registering, unregistering, and syncing entities state changes.
@@ -406,32 +407,39 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             entities_at_port = await ocean.port_client.search_entities(user_agent_type)
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
-            for resource in app_config.resources:
-                # create event context per resource kind, so resync method could have access to the resource config
-                # as we might have multiple resources with the same kind name
-                async with event_context(
-                    EventType.RESYNC,
-                    trigger_type=trigger_type,
-                    resource_config=resource,
-                    attributes={"resource_kind": resource.kind},
-                ):
-                    creation_results.append(
-                        await self._register_in_batches(resource, user_agent_type)
-                    )
-            flat_created_entities, errors = zip_and_sum(creation_results) or [[], []]
 
-            if errors:
-                message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
-                error_group = ExceptionGroup(
-                    f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state",
-                    errors,
-                )
-                if not silent:
-                    raise error_group
+            try:
+                for resource in app_config.resources:
+                    # create resource context per resource kind, so resync method could have access to the resource
+                    # config as we might have multiple resources in the same event
+                    async with resource_context(resource):
+                        task = asyncio.get_event_loop().create_task(
+                            self._register_in_batches(resource, user_agent_type)
+                        )
 
-                logger.error(message, exc_info=error_group)
+                        event.on_abort(lambda: task.cancel())
+
+                        creation_results.append(await task)
+            except asyncio.CancelledError as e:
+                logger.warning("Resync aborted successfully")
             else:
-                await self.entities_state_applier.delete_diff(
-                    {"before": entities_at_port, "after": flat_created_entities},
-                    user_agent_type,
-                )
+                flat_created_entities, errors = zip_and_sum(creation_results) or [
+                    [],
+                    [],
+                ]
+
+                if errors:
+                    message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
+                    error_group = ExceptionGroup(
+                        f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state",
+                        errors,
+                    )
+                    if not silent:
+                        raise error_group
+
+                    logger.error(message, exc_info=error_group)
+                else:
+                    await self.entities_state_applier.delete_diff(
+                        {"before": entities_at_port, "after": flat_created_entities},
+                        user_agent_type,
+                    )

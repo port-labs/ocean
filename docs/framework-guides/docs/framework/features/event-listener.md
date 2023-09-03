@@ -5,7 +5,8 @@ sidebar_position: 3
 description: Use event listeners to receive configurations from Port
 ---
 
-import EventListenerTypesList from './\_event-listener-types-list.md'
+import EventListenerTypesList from './\_event-listener-types-list.md';
+import ResyncAbortMessage from '@site/docs/_common/resync-abort-message.mdx';
 
 # 🔈 Event Listener
 
@@ -25,6 +26,8 @@ By configuring an event listener the integration will listen to and react to the
 :::caution
 The event listeners that are currently available do not support multiple instances of the same integration
 :::
+
+<ResyncAbortMessage />
 
 ## `POLLING`
 
