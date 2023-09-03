@@ -1,5 +1,5 @@
 :::danger
-Triggering your integration resync while there is an already running resync will abort the current resync and start a
+If a resync event is received by your integration while it is actively performing a resync, the currently running resync will be aborted and a new resync process will start.
 new one.
 
 If this would repeatedly happen, it could cause your integration to never finish the resync process.
