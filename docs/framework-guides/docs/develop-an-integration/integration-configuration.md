@@ -25,7 +25,8 @@ Here is a brand new `config.yaml` file created as part of the `ocean new` comman
 ```yaml showLineNumbers
 # This is an example configuration file for the integration service.
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
-
+initializePortResources: true
+scheduledReyncInterval: 1440 # 60 minutes X 24 hours = 1 day
 port:
   clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID
   clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET
@@ -43,6 +44,38 @@ integration:
 ```
 
 Let's go over the different sections and their allowed values:
+
+#### `initializePortResources` - Initialize Port resources
+
+This configuration is used to specify whether the integration should initialize its default resources in Port as 
+described in the [integration specification](./integration-spec-and-default-resources.md#default-resources).
+
+By default, this feature value is set to `false`. To enable it, set the value to `true`.
+
+```yaml showLineNumbers
+initializePortResources: true
+```
+
+#### `scheduledReyncInterval` - Run scheduled resync
+
+This configuration is used to specify the interval in minutes in which the integration should initiate a full resync from the 3rd-party system.
+
+By default, this feature is disabled. To enable it, set the value to a positive integer representing the interval in
+minutes.
+
+:::caution
+This value should be set to a reasonable interval, as it will cause the integration to perform a full resync of all its
+kinds and might cause conflicts with itself in a case where the resync takes longer than the interval.
+:::
+
+:::note
+Unlike the [Polling](../framework/features/event-listener.md#polling) event listener, this configuration will start the resync regardless of
+whether there are any changes in the [Port App Config](./trigger-your-integration.md).
+:::
+
+```yaml showLineNumbers
+scheduledReyncInterval: 1440 # 60 minutes X 24 hours = 1 day
+```
 
 #### `port` - Port API credentials
 
