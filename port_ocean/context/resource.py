@@ -17,6 +17,11 @@ if TYPE_CHECKING:
 
 @dataclass
 class ResourceContext:
+    """
+    The resource context is a context manager that allows you to access the current resource config if there is one.
+    This is useful for getting the resource kind / mapping from withing a resync context of a specific kind.
+    """
+
     resource_config: "ResourceConfig"
 
     @property
