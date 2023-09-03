@@ -176,7 +176,6 @@ async def event_context(
                 time_elapsed=time_elapsed,
             ).info("Event finished")
 
-            if event_type == EventType.RESYNC:
-                dispatcher.disconnect(_handle_event, EventType.RESYNC)
+            dispatcher.disconnect(_handle_event, event_type)
 
     _event_context_stack.pop()
