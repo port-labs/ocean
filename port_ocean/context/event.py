@@ -144,7 +144,7 @@ async def event_context(
             new_event.event_type == EventType.RESYNC
             and new_event.id != triggering_event_id
         ):
-            logger.warning("A new resync event was triggered, aborting the old one.")
+            logger.warning("ABORTING RESYNC EVENT DUE TO NEWER RESYNC REQUEST")
             new_event.abort()
 
     dispatcher.connect(_handle_event, event_type)
