@@ -15,6 +15,6 @@ integration:
   # The type of the integration.
   type: "Jira"
   config:
-    jiraHost: https://getport.atlassian.net
-    atlassianUserEmail: matanlevi@getport.io
-    atlassianUserToken: ATATT3xFfGF0sLnsVqzMglUJpvVy2N30mXEMfkOtBNCIKsRsQVFr9R5mdBE8dqugtM7aIXEzQaJ_bbpikeX_zXx1RYGjbIEdzcXdEWH7P2QWXJh4PoOu5irLOSru_VfQFXBuPLbLnvo5dt5EwNG0mohGoKcc0-TvAP98M5_CvKlFsgA0JHd15U4=9EAD9270
+    jiraHost: "{{ from env JIRA_HOST }}"
+    atlassianUserEmail: "{{ from env ATLASSIAN_EMAIL }}"
+    atlassianUserToken: "{{ from env ATLASSIAN_TOKEN }}"
