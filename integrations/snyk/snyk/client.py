@@ -154,7 +154,7 @@ class SnykClient:
         project = await self.get_single_project({"id": project_id})
         target_id = project.get("__target", {}).get("data", {}).get("id")
 
-        url = f"{self.rest_api_url}/orgs/{self.org_id}/targets/${target_id}"
+        url = f"{self.rest_api_url}/orgs/{self.org_id}/targets/{target_id}"
         query_params = {"version": f"{self.snyk_api_version}~beta"}
 
         response = await self._send_api_request(
