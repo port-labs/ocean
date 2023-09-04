@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.15 (2023-09-04)
+===================
+
+### Improvements
+
+- Added more logs to gitops parsing errors (#1)
+
+### Bug Fixes
+
+- Fixed a bug that caused the gitops parsing to fail (#1)
+
+
 0.1.14 (2023-09-01)
 ===================
 
