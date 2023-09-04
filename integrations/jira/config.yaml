@@ -3,8 +3,8 @@
 
 initializePortResources: true
 port:
-  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.
-  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET, if both are set, the environment variable will be used.
+  clientId: "{{ from env PORT_CLIENT_ID }}"  # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}"  # Can be loaded via environment variable: PORT_CLIENT_SECRET, if both are set, the environment variable will be used.
 # The event listener to use for the integration service.
 eventListener:
   type: POLLING
@@ -14,7 +14,6 @@ integration:
   # The type of the integration.
   type: "Jira"
   config:
-    appHost: "{{ from env APP_HOST }}"
     jiraHost: "{{ from env JIRA_HOST }}"
     atlassianUserEmail: "{{ from env ATLASSIAN_EMAIL }}"
     atlassianUserToken: "{{ from env ATLASSIAN_TOKEN }}"

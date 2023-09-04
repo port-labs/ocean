@@ -1,9 +1,7 @@
-from typing import Any, TypeVar
+from typing import Any
 
 from pydantic import BaseModel
 from pydantic.fields import Field
-
-Model = TypeVar("Model", bound="BaseModel")
 
 
 class Entity(BaseModel):
@@ -28,3 +26,11 @@ class Blueprint(BaseModel):
     team: str | None
     properties_schema: dict[str, Any] = Field(alias="schema")
     relations: dict[str, BlueprintRelation]
+
+
+class Migration(BaseModel):
+    id: str
+    actor: str
+    sourceBlueprint: str
+    mapping: dict[str, Any]
+    status: str

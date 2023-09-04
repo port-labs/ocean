@@ -4,6 +4,8 @@ from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.mixins.blueprints import BlueprintClientMixin
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
+from port_ocean.clients.port.mixins.migrations import MigrationClientMixin
+
 from port_ocean.clients.port.types import (
     KafkaCreds,
 )
@@ -11,7 +13,12 @@ from port_ocean.clients.port.utils import handle_status_code, async_client
 from port_ocean.exceptions.clients import KafkaCredentialsNotFound
 
 
-class PortClient(EntityClientMixin, IntegrationClientMixin, BlueprintClientMixin):
+class PortClient(
+    EntityClientMixin,
+    IntegrationClientMixin,
+    BlueprintClientMixin,
+    MigrationClientMixin,
+):
     def __init__(
         self,
         base_url: str,
@@ -35,6 +42,7 @@ class PortClient(EntityClientMixin, IntegrationClientMixin, BlueprintClientMixin
             self, integration_identifier, self.auth, self.client
         )
         BlueprintClientMixin.__init__(self, self.auth, self.client)
+        MigrationClientMixin.__init__(self, self.auth, self.client)
 
     async def get_kafka_creds(self) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")

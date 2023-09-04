@@ -1,0 +1,28 @@
+type: sonarqube
+description: SonarQube integration for Port Ocean
+icon: sonarqube
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: projects
+      - kind: analysis
+      - kind: issues
+configurations:
+  - name: sonarApiToken
+    required: true
+    type: string
+    sensitive: true
+    description: The SonarQube API token
+  - name: sonarOrganizationId
+    type: string
+    required: true
+    description: The SonarQube organization ID
+  - name: appHost
+    type: string
+    required: false
+    description: The host to subscribe webhooks to
+  - name: sonarUrl
+    type: string
+    required: false
+    description: The SonarQube URL

@@ -5,12 +5,14 @@ import yaml
 from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
 from gitlab.v4.objects import Project
-from gitlab_integration.core.entities import generate_entity_from_port_yaml
-from gitlab_integration.core.utils import does_pattern_apply
 from loguru import logger
 
+from gitlab_integration.core.entities import generate_entity_from_port_yaml
+from gitlab_integration.core.utils import does_pattern_apply
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
+
+PROJECTS_CACHE_KEY = "__cache_all_projects"
 
 
 class GitlabService:
@@ -135,32 +137,60 @@ class GitlabService:
 
         return webhook_ids
 
-    def get_project(self, project_id: int) -> Project:
+    def get_project(self, project_id: int) -> Project | None:
+        """
+        Returns project if it should be processed, None otherwise
+        If the project is not in the cache, it will be fetched from gitlab and validated against the group mapping
+        before being added to the cache
+        :param project_id: project id
+        :return: Project if it should be processed, None otherwise
+        """
         logger.info(f"fetching project {project_id}")
-        return self.gitlab_client.projects.get(project_id)
+        filtered_projects = event.attributes.setdefault(
+            PROJECTS_CACHE_KEY, {}
+        ).setdefault(self.gitlab_client.private_token, {})
 
-    def get_all_projects(self) -> list[Project]:
-        cache_key = "__cache_all_projects"
-        filtered_projects = event.attributes.get(cache_key)
-        if filtered_projects is None:
-            logger.info("fetching all projects for the token")
-            projects: list[Project] = typing.cast(
-                list[Project],
-                self.gitlab_client.projects.list(
-                    include_subgroups=True, owned=True, all=True
-                ),
-            )
-            logger.debug(f"Found {len(projects)} projects")
+        if project := filtered_projects.get(project_id):
+            return project
 
-            filtered_projects = [
-                project
-                for project in projects
-                if self.should_run_for_project(project.path_with_namespace)
-            ]
-            logger.debug(
-                f"Found {len(filtered_projects)} projects after filtering. Projects: {[proj.path_with_namespace for proj in filtered_projects]}"
-            )
-            event.attributes[cache_key] = filtered_projects
+        project = self.gitlab_client.projects.get(project_id)
+        if self.should_run_for_project(project.path_with_namespace):
+            event.attributes[PROJECTS_CACHE_KEY][self.gitlab_client.private_token][
+                project_id
+            ] = project
+            return project
+        else:
+            return None
+
+    def get_all_projects(self) -> dict[int, Project]:
+        logger.info("fetching all projects for the token")
+        service_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).get(
+            self.gitlab_client.private_token, {}
+        )
+        if service_projects:
+            logger.debug(f"Found {len(service_projects)} projects in cache")
+            return service_projects
+
+        projects: list[Project] = typing.cast(
+            list[Project],
+            self.gitlab_client.projects.list(
+                include_subgroups=True, owned=True, all=True
+            ),
+        )
+        logger.debug(f"Found {len(projects)} projects")
+
+        filtered_projects = {
+            project.id: project
+            for project in projects
+            if self.should_run_for_project(project.path_with_namespace)
+        }
+        logger.debug(
+            f"Found {len(filtered_projects)} projects after filtering. Projects: "
+            f"{[proj.path_with_namespace for proj in filtered_projects.values()]}"
+        )
+        event.attributes[PROJECTS_CACHE_KEY][
+            self.gitlab_client.private_token
+        ] = filtered_projects
 
         return filtered_projects
 

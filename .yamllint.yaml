@@ -1,0 +1,20 @@
+extends: default
+
+ignore: |
+  **/node_modules/**
+  .gitignore
+  .yamlignore
+  **/{{cookiecutter.integration_slug}}/**
+
+rules:
+  # ignore line length
+  line-length: disable
+
+  # ignore truthy checks
+  truthy: disable
+
+  # ignore document start marker
+  document-start: disable
+
+  # don't bother me with this rule
+  indentation: disable
