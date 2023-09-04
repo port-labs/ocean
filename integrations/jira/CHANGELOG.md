@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.3 (2023-08-29)
+
+### Improvements
+
+- Changed the app_host to not be required for the installation (PORT-4527)
+- Bumped Ocean to 0.2.3 (#1)
+
+
 0.1.2 (2023-08-11)
 
 ### Improvements

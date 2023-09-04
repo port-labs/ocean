@@ -5,6 +5,10 @@ class NoContextError(BaseOceanException):
     pass
 
 
+class ResourceContextNotFoundError(NoContextError):
+    pass
+
+
 class EventContextNotFoundError(NoContextError):
     pass
 

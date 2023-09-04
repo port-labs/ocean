@@ -97,7 +97,6 @@ async def on_start() -> None:
 - Edit the file `./my_integration/.port/spec.yaml` to add your [integration specification](../develop-an-integration/integration-spec-and-default-resources.md#specyaml-file).
 
 ```yaml showLineNumbers
-version: v0.1.0
 # The integration name
 type: my-jira-integration
 description: myIntegration integration for Port Ocean

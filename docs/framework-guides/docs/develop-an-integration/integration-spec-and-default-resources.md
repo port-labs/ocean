@@ -35,7 +35,6 @@ The `spec.yml` file is used to provide the integration specification and also a 
 Here is the structure of a sample `spec.yml` file:
 
 ```yaml showLineNumbers
-version: v0.1.0
 type: myIntegration
 description: My integration for Port Ocean
 icon: myIntegration
@@ -62,7 +61,6 @@ Let's go over the different sections and their allowed values:
 #### Integration base specification
 
 ```yaml showLineNumbers
-version: v0.1.0
 type: myIntegration
 description: My integration for Port Ocean
 icon: myIntegration
@@ -72,7 +70,6 @@ This section is used to specify the basic information of the integration, this i
 
 The integration's base spec includes:
 
-- `version` - the integration's current version, should be bumped when a new version of the integration is released
 - `type` - integration type, also determines the name of the generated image for the integration
 - `description` - the description that will be displayed in Port's UI for the integration
 - `icon` - the icon that will displayed in Port's UI for the integration, the value has to match one of the icons available in Port's library
@@ -135,7 +132,13 @@ The integration's `configurations` spec is an array where each item includes:
 To learn more about the available parameter inputs and see examples for valid configurations, check out the [configuration validation](../framework/features/configuration-validation.md) page
 :::
 
-## `blueprints.json` file
+## Default resources
+
+The `.port/resources` directory is used to provide default resources that will be created when the integration is installed.
+
+The following resources are supported:
+
+### `blueprints.json` file
 
 ```json showLineNumbers
 [
@@ -165,7 +168,7 @@ To learn more about the available parameter inputs and see examples for valid co
 
 The `blueprints.json` file is part of the `.port/resources` directory, it is used to specify the default [blueprints](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/) that will be created when the integration is installed.
 
-### Structure
+#### Structure
 
 The `blueprints.json` is a JSON file which contains an array of objects that match the [blueprint objects](https://docs.getport.io/build-your-software-catalog/define-your-data-model/setup-blueprint/#blueprint-structure) from Port's API.
 
@@ -175,7 +178,7 @@ The `blueprints.json` file is optional, if it is not provided, the integration w
 **However**, to make integration easier to use and onboard into Port, it is highly recommended to provide a `blueprints.json` file which users can use as a starting point and customize the data ingested from the integration into Port
 :::
 
-## `port-app-config.yml` file
+### `port-app-config.yml` file
 
 ```yml showLineNumbers
 resources:
@@ -198,7 +201,7 @@ The `port-app-config.yml` file is part of the `.port/resources` directory, it is
 Refer to the [resource mapping](../framework/features/resource-mapping.md) feature documentation to learn more about Ocean's mapping functionality
 :::
 
-### Structure
+#### Structure
 
 The `port-app-config.yml` is a YAML file which contains a root object called `resources`, this object stores an array of definitions that tell the integration how to map the different `kind`s that it supports.
 

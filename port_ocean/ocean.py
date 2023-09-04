@@ -1,4 +1,6 @@
+import asyncio
 import sys
+import threading
 from typing import Callable
 
 from fastapi import FastAPI, APIRouter
@@ -17,6 +19,7 @@ from port_ocean.context.ocean import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.middlewares import request_handler
+from port_ocean.utils import repeat_every
 
 
 class Ocean:
@@ -49,6 +52,30 @@ class Ocean:
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
 
+    async def _setup_scheduled_resync(
+        self,
+    ) -> None:
+        def execute_resync_all() -> None:
+            initialize_port_ocean_context(ocean_app=self)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            logger.info("Starting a new scheduled resync")
+            loop.run_until_complete(self.integration.sync_raw_all())
+            loop.close()
+
+        interval = self.config.scheduled_resync_interval
+        if interval is not None:
+            logger.info(
+                f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)"
+            )
+            repeated_function = repeat_every(
+                seconds=interval * 60,
+                # Not running the resync immediately because the event listener should run resync on startup
+                wait_first=True,
+            )(lambda: threading.Thread(target=execute_resync_all).start())
+            await repeated_function()
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
@@ -56,6 +83,7 @@ class Ocean:
         async def startup() -> None:
             try:
                 await self.integration.start()
+                await self._setup_scheduled_resync()
             except Exception as e:
                 logger.error(f"Failed to start integration with error: {e}")
                 sys.exit("Server stopped")
