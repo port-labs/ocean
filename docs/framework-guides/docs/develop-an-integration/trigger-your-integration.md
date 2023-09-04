@@ -4,6 +4,8 @@ sidebar_label: 🕹️ Trigger your Integration
 sidebar_position: 7
 ---
 
+import ResyncAbortMessage from '@site/docs/_common/resync-abort-message.mdx';
+
 # 🕹️ Trigger your Integration
 
 import Tabs from '@theme/Tabs';
@@ -18,6 +20,8 @@ After setting up & running your integration, you can trigger it using Port's UI/
 
 Triggering your integration will run the integration resync and will resync all the data from the source into port and
 creating new data, update existing data and delete data that no longer exists in the source by doing so.
+
+<ResyncAbortMessage />
 
 ## Triggering using Port's UI
 

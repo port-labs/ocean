@@ -5,13 +5,13 @@ import yaml
 from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
 from gitlab.v4.objects import Project
+from loguru import logger
+from yaml.parser import ParserError
+
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
-from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
-
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 
@@ -82,8 +82,16 @@ class GitlabService:
                 generate_entity_from_port_yaml(entity_data, project, ref)
                 for entity_data in raw_entities
             ]
+        except ParserError as exec:
+            logger.error(
+                f"Failed to parse gitops entities from gitlab project {project.path_with_namespace},z file {file_name}."
+                f"\n {exec}"
+            )
         except Exception:
-            return []
+            logger.error(
+                f"Failed to get gitops entities from gitlab project {project.path_with_namespace}, file {file_name}"
+            )
+        return []
 
     def _get_entities_by_commit(
         self, project: Project, spec: str | List["str"], commit: str, ref: str
@@ -147,11 +155,11 @@ class GitlabService:
         :return: Project if it should be processed, None otherwise
         """
         logger.info(f"fetching project {project_id}")
-        filtered_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).get(
-            self.gitlab_client.private_token, {}
-        )
-        project = filtered_projects[project_id]
-        if project:
+        filtered_projects = event.attributes.setdefault(
+            PROJECTS_CACHE_KEY, {}
+        ).setdefault(self.gitlab_client.private_token, {})
+
+        if project := filtered_projects.get(project_id):
             return project
 
         project = self.gitlab_client.projects.get(project_id)

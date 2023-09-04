@@ -1,4 +1,3 @@
-version: v0.1.0
 type: sonarqube
 description: SonarQube integration for Port Ocean
 icon: sonarqube

@@ -1,4 +1,3 @@
-version: v0.1.4
 type: pagerduty
 description: pagerduty integration for Port Ocean
 icon: pagerduty
@@ -20,6 +19,6 @@ configurations:
     type: string
     default: https://api.pagerduty.com
   - name: appHost
-    description: Pagerduty app host (https://app.pagerduty.com)
-    required: true
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in PagerDuty"
+    required: false
     type: string

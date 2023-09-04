@@ -39,8 +39,8 @@ The integration will need to have permissions to read the resources you want to 
 - **Azure Subscription**: You'll need an Azure subscription to deploy the integration.
 - **Azure Resource Group**: The integration need to be deployed to an Azure Resource Group, you can pass an existing one, or the integration will create a new one. (To override add `resource_group_id=<your-resource-group-id>`)
 - **Azure Container App**: The integration will be deployed using Azure Container App. Which requires some extra infrastructure to be deployed, by default if not specified otherwise we will deploy the required infrastructure.
-  - **Azure Log Analytics Workspace**: The integration will create a new Log Analytics Workspace to store the logs of the integration. (To override add `log_analytics_workspace_id=<your-log-analytics-workspace-id>` to the terraform apply command)
-  - **Azure Container App Environment**: The integration will create a new Container App Environment to deploy the integration to. (To override add `container_app_environment_id=<your-app-environment-id>` to the terraform apply command)
+  - **Azure Log Analytics Workspace**: The integration will create a new Log Analytics Workspace to store the logs of the integration.
+  - **Azure Container App Environment**: The integration will create a new Container App Environment to deploy the integration to.
 
 #### Azure Event Grid
 - **Azure Event Grid System Topic**: To allow the integration to receive events from Azure, an Event Grid System Topic of type `Microsoft.Resources.Subscriptions` will be needed. The integration will create a new System Topic and will subscribe to it. (Due to a limitation in Azure only one Event Grid System Topic of type `Microsoft.Resources.Subscriptions` can be created per subscription, so if you already have one you'll need to pass it to the integration using `event_grid_system_topic_name=<your-event-grid-system-topic-name>`) Further example on how to create the System Topic will be provided later on in the documentation.
@@ -60,13 +60,12 @@ To deploy the integration, do the following:
 Save the following code in a file named `main.tf`:
 
 ```hcl
-module "ocean-containerapp_example_azure-integration" {
-  source  = "port-labs/ocean-containerapp/azure//examples/azure-integration"
-  version = "~>0.0.2"
+module "ocean_container_app_example_azure-integration" {
+  source  = "port-labs/integration-factory/ocean//examples/azure_container_app_azure_integration"
+  version = ">=0.0.7"
   
-  port_client_id = "<PORT_CLIENT_ID>"
-  port_client_secret = "<PORT_CLIENT_SECRET>"
-  subscription_id = "<SUBSCRIPTION_ID>"  
+  port_client_id = "xxxxx-xxxx-xxxx-xxxx"
+  port_client_secret = "yyyy-yyyy-yyyy-yyyy"
 }
 ```
     
@@ -900,30 +899,26 @@ and apply the terraform changes.
 Edit the `main.tf` file and add the following:
 
 ```hcl
-module "ocean-containerapp_example_azure-integration" {
-  source  = "port-labs/ocean-containerapp/azure//examples/azure-integration"
-  version = "~>0.0.2"
-  
-  port_client_id = "<PORT_CLIENT_ID>"
-  port_client_secret = "<PORT_CLIENT_SECRET>"
-  subscription_id = "<SUBSCRIPTION_ID>"
-  event_grid_event_filter_list = [
-    "Microsoft.App/containerApp",
-    "Microsoft.Storage/storageAccounts",
-    "Microsoft.Compute/virtualMachines",
-    "Microsoft.Network/loadBalancers",
-    "Microsoft.Resources/subscriptions/resourceGroups",
-    "Microsoft.Network/virtualNetworks"
-  ]
-  action_permissions_list = [
-    "Microsoft.app/containerapps/read",
-    "Microsoft.Storage/storageAccounts/*/read",
-    "Microsoft.ContainerService/managedClusters/read",
-    "Microsoft.Network/loadBalancers/read",
-    "Microsoft.Resources/subscriptions/resourceGroups/read",
-    "Microsoft.Resources/subscriptions/resources/read",
-    "Microsoft.Network/virtualNetworks/read"
-  ]
+# Copying the following module into a main.tf file
+module "my-azure-integration" {
+	source = "port-labs/integration-factory/ocean//examples/azure_container_app_azure_integration" 
+	version = ">=0.0.15" 
+	port_client_id = "<PORT_CLIENT_ID>"
+	port_client_secret = "<PORT_CLIENT_SECRET>"
+	port_base_url = "https://api.getport.io" 
+	initialize_port_resources = true # When set to true the integration will create default blueprints + JQ Mappings
+	integration_identifier = "my-azure-integration" # Change the identifier to describe your integration
+	event_listener = {
+ 	 type = "POLLING"
+	} 
+  	event_grid_event_filter_list = ["Microsoft.Resources/subscriptions/resourceGroups","Microsoft.Network/virtualNetworks","Microsoft.App/containerApp","Microsoft.Storage/storageAccounts","Microsoft.Compute/virtualMachines","Microsoft.Network/loadBalancers"] # A list of resources to filter events from Azure.
+	action_permissions_list = ["Microsoft.Resources/subscriptions/resourceGroups/read","microsoft.network/virtualnetworks/read","Microsoft.Resources/subscriptions/resources/read","Microsoft.app/containerapps/read","Microsoft.Storage/storageAccounts/*/read","Microsoft.ContainerService/managedClusters/read","Microsoft.Network/loadBalancers/read"] # A list of permissions that will be assigned to the Azure Integration User to export Azure Resources.
+	additional_environment_variables = {
+	
+	}
+	additional_secrets = {
+		OCEAN__INTEGRATION__CONFIG__SUBSCRIPTION_ID = "<SUBSCRIPTION_ID>" # Azure subscription ID to export resources from
+	}
 }
 ```
 
