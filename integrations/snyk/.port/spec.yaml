@@ -4,7 +4,7 @@ description: Snyk integration for Port Ocean
 icon: Snyk
 features:
   - type: exporter
-    section: Application Testing
+    section: Code Quality & Security
     resources:
       - kind: projects
       - kind: vulnerabilities
