@@ -7,7 +7,12 @@ from port_ocean.context.event import event
 
 class SnykClient:
     def __init__(
-        self, token: str, api_url: str, app_host: str, org_id: str, webhook_secret: str
+        self,
+        token: str,
+        api_url: str,
+        app_host: str | None,
+        org_id: str,
+        webhook_secret: str | None,
     ):
         self.token = token
         self.api_url = f"{api_url}/v1"
@@ -17,8 +22,6 @@ class SnykClient:
         self.webhook_secret = webhook_secret
         self.http_client = httpx.AsyncClient(headers=self.api_auth_header, timeout=30)
         self.snyk_api_version = "2023-08-21"
-        self.user_details_cache: dict[str, Any] = {}
-        self.target_details_cache: dict[str, Any] = {}
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -31,18 +34,6 @@ class SnykClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        """
-        Fetches a single resource from the given Snyk URL using an HTTP GET/POST request.
-
-        Args:
-            url (str): API endpoint URL
-            method (str): HTTP method (default: 'GET')
-            query_params (dict): Query parameters (default: None)
-            json_data (dict): JSON data to send in request body (default: None)
-
-        Returns:
-            dict[str, Any]: A dictionary containing the JSON response from the resource.
-        """
         try:
             response = await self.http_client.request(
                 method=method, url=url, params=query_params, json=json_data
@@ -86,15 +77,24 @@ class SnykClient:
                 )
                 raise
 
-    async def get_issues(
-        self, project: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        url = f"/org/{self.org_id}/project/{project.get('id')}/aggregated-issues"
+    async def get_issues(self, project: dict[str, Any]) -> list[dict[str, Any]]:
+        def build_cache_key(project_id: str) -> str:
+            return f"issues-{project_id}"
+
+        if event.attributes.get(build_cache_key(project["id"])):
+            return event.attributes[build_cache_key(project["id"])]
+
+        url = f"{self.api_url}/org/{self.org_id}/project/{project.get('id')}/aggregated-issues"
         try:
-            async for issues in self._get_paginated_resources(
-                base_url=self.api_url, url_path=url, method="POST", data_key="issues"
-            ):
-                yield issues
+            issues = (
+                await self._send_api_request(
+                    url=url,
+                    method="POST",
+                    query_params={"version": self.snyk_api_version},
+                )
+            )["issues"]
+            event.attributes[build_cache_key(project["id"])] = issues
+            return issues
         except Exception as e:
             logger.error(
                 f"Error fetching issues for project: {project.get('id')} error: {e}"
@@ -150,6 +150,24 @@ class SnykClient:
             )
             yield projects_to_yield
 
+    async def get_single_target_by_project_id(self, project_id: str) -> dict[str, Any]:
+        project = await self.get_single_project({"id": project_id})
+        target_id = project.get("__target", {}).get("data", {}).get("id")
+
+        url = f"{self.rest_api_url}/orgs/{self.org_id}/targets/${target_id}"
+        query_params = {"version": f"{self.snyk_api_version}~beta"}
+
+        response = await self._send_api_request(
+            url=url, method="GET", query_params=query_params
+        )
+
+        target = response.get("data", {})
+        async for projects_data_of_target in self.get_paginated_projects(
+            target.get("id")
+        ):
+            target.setdefault("__projects", []).extend(projects_data_of_target)
+        return target
+
     async def get_paginated_targets(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -163,8 +181,10 @@ class SnykClient:
                 async for projects_data_of_target in self.get_paginated_projects(
                     target_data.get("id")
                 ):
-                    target_data["__projects"] = projects_data_of_target
-                    targets_with_project_data.append(target_data)
+                    target_data.setdefault("__projects", []).extend(
+                        projects_data_of_target
+                    )
+                targets_with_project_data.append(target_data)
             yield targets_with_project_data
 
     async def get_single_project(self, project: dict[str, Any]) -> dict[str, Any]:
@@ -177,25 +197,25 @@ class SnykClient:
         response = await self._send_api_request(
             url=url, method="GET", query_params=query_params
         )
-        return response.get("data", {})
+        return await self.enrich_project(response.get("data", {}))
 
     async def get_cached_user_details(self, user_id: str) -> dict[str, Any]:
         if (
             not user_id
         ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
             return {}
-        cached_details = self.user_details_cache.get(user_id)
+        cached_details = event.attributes.get(user_id)
         if cached_details:
             return cached_details
 
         user_details = await self._send_api_request(
             url=f"{self.api_url}/user/{user_id}"
         )
-        self.user_details_cache[user_id] = user_details
+        event.attributes[user_id] = user_details
         return user_details
 
     async def get_cached_target_details(self, target_id: str) -> dict[str, Any]:
-        cached_details = self.target_details_cache.get(target_id)
+        cached_details = event.attributes.get(target_id)
         if cached_details:
             return cached_details
 
@@ -203,7 +223,7 @@ class SnykClient:
             url=f"{self.rest_api_url}/orgs/{self.org_id}/targets/{target_id}",
             query_params={"version": f"{self.snyk_api_version}~beta"},
         )
-        self.target_details_cache[target_id] = target_details
+        event.attributes[target_id] = target_details
         return target_details
 
     async def enrich_project(self, project: dict[str, Any]) -> dict[str, Any]:

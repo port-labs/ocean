@@ -1,62 +1,73 @@
 [
   {
-    "identifier": "snykTarget",
-    "title": "Snyk Target",
+    "identifier": "snykVulnerability",
+    "title": "Snyk Vulnerability",
     "icon": "Snyk",
     "schema": {
       "properties": {
-        "criticalOpenVulnerabilities": {
-          "icon": "Vulnerability",
+        "score": {
+          "icon": "Star",
           "type": "number",
-          "title": "Open Critical Vulnerabilities"
+          "title": "Score"
         },
-        "highOpenVulnerabilities": {
-          "icon": "Vulnerability",
-          "type": "number",
-          "title": "Open High Vulnerabilities"
+        "packageName": {
+          "type": "string",
+          "title": "Package Name",
+          "icon": "DefaultProperty"
         },
-        "mediumOpenVulnerabilities": {
-          "icon": "Vulnerability",
-          "type": "number",
-          "title": "Open Medium Vulnerabilities"
+        "packageVersions": {
+          "icon": "Package",
+          "title": "Package Versions",
+          "type": "array"
         },
-        "lowOpenVulnerabilities": {
-          "icon": "Vulnerability",
-          "type": "number",
-          "title": "Open Low Vulnerabilities"
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "vuln",
+            "license",
+            "configuration"
+          ],
+          "icon": "DefaultProperty"
         },
-        "origin": {
-          "title": "Target Origin",
+        "severity": {
+          "icon": "Alert",
+          "title": "Issue Severity",
           "type": "string",
           "enum": [
-            "artifactory-cr",
-            "aws-config",
-            "aws-lambda",
-            "azure-functions",
-            "azure-repos",
-            "bitbucket-cloud",
-            "bitbucket-server",
-            "cli",
-            "cloud-foundry",
-            "digitalocean-cr",
-            "docker-hub",
-            "ecr",
-            "gcr",
-            "github",
-            "github-cr",
-            "github-enterprise",
-            "gitlab",
-            "gitlab-cr",
-            "google-artifact-cr",
-            "harbor-cr",
-            "heroku",
-            "ibm-cloud",
-            "kubernetes",
-            "nexus-cr",
-            "pivotal",
-            "quay-cr",
-            "terraform-cloud"
-          ]
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "enumColors": {
+            "low": "green",
+            "medium": "yellow",
+            "high": "red",
+            "critical": "red"
+          }
+        },
+        "url": {
+          "icon": "Link",
+          "type": "string",
+          "title": "Issue URL",
+          "format": "url"
+        },
+        "language": {
+          "type": "string",
+          "title": "Language",
+          "icon": "DefaultProperty"
+        },
+        "publicationTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Publication Time",
+          "icon": "DefaultProperty"
+        },
+        "isPatched": {
+          "type": "boolean",
+          "title": "Is Patched",
+          "icon": "DefaultProperty"
         }
       },
       "required": []
@@ -161,83 +172,72 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "snykTarget": {
-        "title": "Snyk Target",
-        "target": "snykTarget",
+      "snykVulnerabilities": {
+        "title": "Snyk Vulnerabilities",
+        "target": "snykVulnerability",
         "required": false,
-        "many": false
+        "many": true
       }
     }
   },
   {
-    "identifier": "snykVulnerability",
-    "title": "Snyk Vulnerability",
+    "identifier": "snykTarget",
+    "title": "Snyk Target",
     "icon": "Snyk",
     "schema": {
       "properties": {
-        "score": {
-          "icon": "Star",
+        "criticalOpenVulnerabilities": {
+          "icon": "Vulnerability",
           "type": "number",
-          "title": "Score"
+          "title": "Open Critical Vulnerabilities"
         },
-        "packageName": {
-          "type": "string",
-          "title": "Package Name",
-          "icon": "DefaultProperty"
+        "highOpenVulnerabilities": {
+          "icon": "Vulnerability",
+          "type": "number",
+          "title": "Open High Vulnerabilities"
         },
-        "packageVersions": {
-          "icon": "Package",
-          "title": "Package Versions",
-          "type": "array"
+        "mediumOpenVulnerabilities": {
+          "icon": "Vulnerability",
+          "type": "number",
+          "title": "Open Medium Vulnerabilities"
         },
-        "type": {
-          "type": "string",
-          "title": "Type",
-          "enum": [
-            "vuln",
-            "license",
-            "configuration"
-          ],
-          "icon": "DefaultProperty"
+        "lowOpenVulnerabilities": {
+          "icon": "Vulnerability",
+          "type": "number",
+          "title": "Open Low Vulnerabilities"
         },
-        "severity": {
-          "icon": "Alert",
-          "title": "Issue Severity",
+        "origin": {
+          "title": "Target Origin",
           "type": "string",
           "enum": [
-            "low",
-            "medium",
-            "high",
-            "critical"
-          ],
-          "enumColors": {
-            "low": "green",
-            "medium": "yellow",
-            "high": "red",
-            "critical": "red"
-          }
-        },
-        "url": {
-          "icon": "Link",
-          "type": "string",
-          "title": "Issue URL",
-          "format": "url"
-        },
-        "language": {
-          "type": "string",
-          "title": "Language",
-          "icon": "DefaultProperty"
-        },
-        "publicationTime": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Publication Time",
-          "icon": "DefaultProperty"
-        },
-        "isPatched": {
-          "type": "boolean",
-          "title": "Is Patched",
-          "icon": "DefaultProperty"
+            "artifactory-cr",
+            "aws-config",
+            "aws-lambda",
+            "azure-functions",
+            "azure-repos",
+            "bitbucket-cloud",
+            "bitbucket-server",
+            "cli",
+            "cloud-foundry",
+            "digitalocean-cr",
+            "docker-hub",
+            "ecr",
+            "gcr",
+            "github",
+            "github-cr",
+            "github-enterprise",
+            "gitlab",
+            "gitlab-cr",
+            "google-artifact-cr",
+            "harbor-cr",
+            "heroku",
+            "ibm-cloud",
+            "kubernetes",
+            "nexus-cr",
+            "pivotal",
+            "quay-cr",
+            "terraform-cloud"
+          ]
         }
       },
       "required": []
@@ -245,8 +245,8 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "snykProject": {
-        "title": "Project",
+      "snykProjects": {
+        "title": "Snyk Projects",
         "target": "snykProject",
         "required": false,
         "many": true

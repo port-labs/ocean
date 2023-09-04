@@ -13,6 +13,10 @@ configurations:
     required: true
     type: string
     sensitive: true
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
   - name: apiUrl
     type: string
     required: false
@@ -20,3 +24,6 @@ configurations:
   - name: organizationId
     type: string
     required: true
+  - name: appHost
+    type: string
+    required: false

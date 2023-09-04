@@ -1,19 +1,23 @@
 resources:
-  - kind: target
+  - kind: issue
     selector:
-      query: 'true'
+      query: '.issueType == "vuln"'
     port:
       entity:
         mappings:
-          identifier: .attributes.displayName
-          title: .attributes.displayName
-          blueprint: '"snykTarget"'
+          identifier: .issueData.id
+          title: .issueData.title
+          blueprint: '"snykVulnerability"'
           properties:
-            origin: .attributes.origin
-            highOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.high] | add'
-            mediumOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.medium] | add'
-            lowOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.low] | add'
-            criticalOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.critical] | add'
+            score: .priorityScore
+            packageName: .pkgName
+            packageVersions: .pkgVersions
+            type: .issueType
+            severity: .issueData.severity
+            url: .issueData.url
+            language: .issueData.language // .issueType
+            publicationTime: .issueData.publicationTime
+            isPatched: .isPatched
   - kind: project
     selector:
       query: 'true'
@@ -36,25 +40,21 @@ resources:
             importedBy: .__importer.email
             tags: .attributes.tags
           relations:
-            snykTarget: .__target.data.attributes.displayName
-  - kind: issue
+            snykVulnerabilities: '[.__issues[] | select(.issueType == "vuln").issueData.id]'
+  - kind: target
     selector:
-      query: '.issueType == "vuln"'
+      query: 'true'
     port:
       entity:
         mappings:
-          identifier: .issueData.id
-          title: .issueData.title
-          blueprint: '"snykVulnerability"'
+          identifier: .attributes.displayName
+          title: .attributes.displayName
+          blueprint: '"snykTarget"'
           properties:
-            score: .priorityScore
-            packageName: .pkgName
-            packageVersions: .pkgVersions
-            type: .issueType
-            severity: .issueData.severity
-            url: .issueData.url
-            language: .issueData.language // .issueType
-            publicationTime: .issueData.publicationTime
-            isPatched: .isPatched
+            origin: .attributes.origin
+            highOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.high] | add'
+            mediumOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.medium] | add'
+            lowOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.low] | add'
+            criticalOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.critical] | add'
           relations:
-            snykProject: '[.__projects[].id]'
+            snykProjects: '[.__projects[].id]'
