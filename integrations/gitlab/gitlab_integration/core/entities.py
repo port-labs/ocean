@@ -27,6 +27,8 @@ def generate_entity_from_port_yaml(
             properties[key] = value
 
     return Entity(
-        **raw_entity.dict(exclude_unset=True),
-        properties=properties,
+        **{
+            **raw_entity.dict(exclude_unset=True),
+            "properties": properties,
+        }
     )
