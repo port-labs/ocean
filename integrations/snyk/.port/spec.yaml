@@ -9,20 +9,14 @@ features:
       - kind: projects
       - kind: vulnerabilities
 configurations:
-  - name: ApiToken
+  - name: token
     required: true
-    type: string
-    sensitive: true
-  - name: webhookSecret
-    required: false
     type: string
     sensitive: true
   - name: apiUrl
     type: string
+    required: false
     default: https://api.snyk.io
   - name: organizationId
     type: string
     required: true
-  - name: appHost
-    type: string
-    required: false

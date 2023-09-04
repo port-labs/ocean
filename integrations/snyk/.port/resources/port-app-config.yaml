@@ -1,5 +1,20 @@
 resources:
-  - kind: projects
+  - kind: target
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .attributes.displayName
+          title: .attributes.displayName
+          blueprint: '"snykTarget"'
+          properties:
+            origin: .attributes.origin
+            highOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.high] | add'
+            mediumOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.medium] | add'
+            lowOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.low] | add'
+            criticalOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.critical] | add'
+  - kind: project
     selector:
       query: 'true'
     port:
@@ -10,20 +25,21 @@ resources:
           blueprint: '"snykProject"'
           properties:
             url: ("https://app.snyk.io/org/" + .relationships.organization.data.id + "/project/" + .id | tostring)
-            owner: ._owner.email
+            owner: .__owner.email
             businessCriticality: .attributes.business_criticality
             environment: .attributes.environment
             lifeCycle: .attributes.lifecycle
             highOpenVulnerabilities: .meta.latest_issue_counts.high
             mediumOpenVulnerabilities: .meta.latest_issue_counts.medium
             lowOpenVulnerabilities: .meta.latest_issue_counts.low
-            importedBy: ._importer.email
+            criticalOpenVulnerabilities: .meta.latest_issue_counts.critical
+            importedBy: .__importer.email
             tags: .attributes.tags
-            targetOrigin: .attributes.origin
-            targetUrl: .relationships.target.data.attributes.url
-  - kind: vulnerabilities
+          relations:
+            snykTarget: .__target.data.attributes.displayName
+  - kind: issue
     selector:
-      query: 'true'
+      query: '.issueType == "vuln"'
     port:
       entity:
         mappings:
@@ -37,8 +53,8 @@ resources:
             type: .issueType
             severity: .issueData.severity
             url: .issueData.url
-            language: .issueData.language
+            language: .issueData.language // .issueType
             publicationTime: .issueData.publicationTime
             isPatched: .isPatched
           relations:
-            snykProject: .links.paths | capture("/project/(?<project_id>[^/]+)/history/") | .project_id
+            snykProject: '[.__projects[].id]'

@@ -13,8 +13,5 @@ integration:
   # The type of the integration.
   type: "snyk"
   config:
-    ApiToken: "{{ from env SNYK_API_TOKEN }}"
-    webhookSecret: "{{ from env SNYK_WEBHOOK_SECRET }}"
-    apiUrl: "{{ from env SNYK_API_URL }}"
-    organizationId: "{{ from env SNYK_ORGANIZATION_ID }}"
-    appHost: "{{ from env APP_HOST }}"
+    token: "{{ from env SNYK_API_TOKEN }}"
+    organizationId: "{{ from env SNYK_ORG_ID }}"

@@ -2,6 +2,8 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from loguru import logger
 
+from port_ocean.context.event import event
+
 
 class SnykClient:
     def __init__(
@@ -13,13 +15,10 @@ class SnykClient:
         self.org_id = org_id
         self.rest_api_url = f"{api_url}/rest"
         self.webhook_secret = webhook_secret
-        self.http_client = httpx.AsyncClient(headers=self.api_auth_header)
+        self.http_client = httpx.AsyncClient(headers=self.api_auth_header, timeout=30)
         self.snyk_api_version = "2023-08-21"
-        self.user_details_cache: dict[
-            str, Any
-        ] = (
-            {}
-        )  ## used as a temporary in-memory object to avoid making API call for the same user
+        self.user_details_cache: dict[str, Any] = {}
+        self.target_details_cache: dict[str, Any] = {}
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -65,23 +64,14 @@ class SnykClient:
         data_key: str = "data",
         query_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[Any], None]:
-        """
-        Retrieves paginated resources from Snyk as an asynchronous generator.
-
-        Args:
-            base_url (str): The base URL of the API.
-            url_path (str): The path for the current endpoint.
-            data_key (str): The key for the data in the API response.
-            query_params (dict): Query parameters (default: None)
-
-        Yields:
-            list[Any]: A list of paginated resources.
-        """
         while url_path:
             try:
                 full_url = f"{base_url}{url_path}"
+
                 response = await self.http_client.request(
-                    method=method, url=full_url, params=query_params
+                    method=method,
+                    url=full_url,
+                    params={**(query_params or {}), "limit": 50},
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -96,60 +86,88 @@ class SnykClient:
                 )
                 raise
 
-    async def get_vulnerabilities(
+    async def get_issues(
         self, project: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """
-        Fetches all vulnerabilities associated with the provided project as an asynchronous generator.
-
-        Args:
-            project (dict[str, Any]): A dictionary representing the project for which vulnerabilities need to be fetched. The project dictionary should contain necessary information like project ID.
-
-        Yields:
-            dict[str, Any]: A dictionary representing a vulnerability associated with the provided project.
-        """
         url = f"/org/{self.org_id}/project/{project.get('id')}/aggregated-issues"
         try:
-            async for issues_data in self._get_paginated_resources(
+            async for issues in self._get_paginated_resources(
                 base_url=self.api_url, url_path=url, method="POST", data_key="issues"
             ):
-                yield issues_data
+                yield issues
         except Exception as e:
             logger.error(
-                f"Error fetching vulnerabilities for project: {project.get('id')} error: {e}"
+                f"Error fetching issues for project: {project.get('id')} error: {e}"
             )
             raise
 
     async def get_paginated_projects(
         self,
+        target_id: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """
-        Fetches projects from Snyk as an asynchronous generator.
+        if "projects" in event.attributes:
+            all_projects = event.attributes["projects"]
+            projects_to_yield = (
+                [
+                    project
+                    for project in all_projects
+                    if project.get("__target", {}).get("data", {}).get("id")
+                    == target_id
+                ]
+                if target_id
+                else all_projects
+            )
+            yield projects_to_yield
+            return
 
-        Yields:
-            dict[str, Any]: A dictionary representing a project.
-        """
         url = f"/orgs/{self.org_id}/projects"
         query_params = {
             "version": self.snyk_api_version,
             "meta.latest_issue_counts": "true",
             "expand": "target",
         }
-        async for project_data in self._get_paginated_resources(
+
+        async for projects in self._get_paginated_resources(
             base_url=self.rest_api_url, url_path=url, query_params=query_params
         ):
-            yield project_data
+            all_projects = []
+
+            for project in projects:
+                enriched_project = await self.enrich_project(project)
+                all_projects.append(enriched_project)
+
+            event.attributes.setdefault("projects", []).extend(all_projects)
+
+            projects_to_yield = (
+                [
+                    project
+                    for project in all_projects
+                    if project.get("__target", {}).get("data", {}).get("id")
+                    == target_id
+                ]
+                if target_id
+                else all_projects
+            )
+            yield projects_to_yield
+
+    async def get_paginated_targets(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        url = f"/orgs/{self.org_id}/targets"
+        query_params = {"version": f"{self.snyk_api_version}~beta"}
+        async for targets in self._get_paginated_resources(
+            base_url=self.rest_api_url, url_path=url, query_params=query_params
+        ):
+            targets_with_project_data = []
+            for target_data in targets:
+                async for projects_data_of_target in self.get_paginated_projects(
+                    target_data.get("id")
+                ):
+                    target_data["__projects"] = projects_data_of_target
+                    targets_with_project_data.append(target_data)
+            yield targets_with_project_data
 
     async def get_single_project(self, project: dict[str, Any]) -> dict[str, Any]:
-        """
-        Fetches a single project from Snyk.
-
-        Params:
-            project (dict[str, Any]): A dictionary representing the project. The project dictionary should contain necessary information like project ID.
-
-        Returns:
-            dict[str, Any]: A dictionary representing the project entity.
-        """
         url = f"{self.rest_api_url}/orgs/{self.org_id}/projects/{project.get('id')}"
         query_params = {
             "version": self.snyk_api_version,
@@ -162,9 +180,6 @@ class SnykClient:
         return response.get("data", {})
 
     async def get_cached_user_details(self, user_id: str) -> dict[str, Any]:
-        """
-        Fetches user details from the cache if available, or makes an API call and caches the response.
-        """
         if (
             not user_id
         ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
@@ -179,53 +194,42 @@ class SnykClient:
         self.user_details_cache[user_id] = user_details
         return user_details
 
-    async def update_project_users(
-        self, projects: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """
-        Updates the projects by fetching the owner and importer from Snyk
+    async def get_cached_target_details(self, target_id: str) -> dict[str, Any]:
+        cached_details = self.target_details_cache.get(target_id)
+        if cached_details:
+            return cached_details
 
-        Params:
-            projects (list): A list of projects to retrieves their onwers and importers details
+        target_details = await self._send_api_request(
+            url=f"{self.rest_api_url}/orgs/{self.org_id}/targets/{target_id}",
+            query_params={"version": f"{self.snyk_api_version}~beta"},
+        )
+        self.target_details_cache[target_id] = target_details
+        return target_details
 
-        Returns:
-            list[dict[str, Any]]: A list of dictionaries, where each dictionary represents a project entity.
-        """
-        updated_projects = []
-        for project in projects:
-            owner_id = (
-                project.get("relationships", {})
-                .get("owner", {})
-                .get("data", {})
-                .get("id")
-            )
-            importer_id = (
-                project.get("relationships", {})
-                .get("importer", {})
-                .get("data", {})
-                .get("id")
-            )
+    async def enrich_project(self, project: dict[str, Any]) -> dict[str, Any]:
+        owner_id = (
+            project.get("relationships", {}).get("owner", {}).get("data", {}).get("id")
+        )
+        importer_id = (
+            project.get("relationships", {})
+            .get("importer", {})
+            .get("data", {})
+            .get("id")
+        )
+        target_id = (
+            project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
+        )
+        owner_details = await self.get_cached_user_details(owner_id)
+        importer_details = await self.get_cached_user_details(importer_id)
+        target_details = await self.get_cached_target_details(target_id)
 
-            owner_details = await self.get_cached_user_details(owner_id)
-            importer_details = await self.get_cached_user_details(importer_id)
+        project["__owner"] = owner_details
+        project["__importer"] = importer_details
+        project["__target"] = target_details
 
-            project["_owner"] = owner_details
-            project["_importer"] = importer_details
-
-            updated_projects.append(project)
-        return updated_projects
+        return project
 
     async def create_webhooks_if_not_exists(self) -> None:
-        """
-        Creates Snyk webhooks if they do not already exist.
-
-        This function checks for the presence of webhooks and creates them if they are not already set up.
-        It ensures that the necessary webhooks for certain events are in place to enable event notifications
-
-        Returns:
-            None: This function does not return a value; it either creates the required webhooks or leaves
-                them unchanged based on their existence.
-        """
         snyk_webhook_url = f"{self.api_url}/org/{self.org_id}/webhooks"
         all_subscriptions = await self._send_api_request(
             url=snyk_webhook_url, method="GET"

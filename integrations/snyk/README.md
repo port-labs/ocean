@@ -14,8 +14,8 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 ```bash
 # The following script will install an Ocean integration at your K8s cluster using helm
 # integration.identifier: Change the identifier to describe your integration
-# integration.secrets.ApiToken: Your Snyk API token
-# integration.secrets.webhookSecret: This field is optional. It is a password you create, that Snyk uses to ensure the webhook notification is authentic
+# integration.secrets.token: Your Snyk API token
+# integration.secrets.webhookSecret: This field is optional. It is a password you create, that Snyk uses to ensure the webhook notification is authenticated
 # integration.config.appHost: Your Snyk app host (optional)
 # integration.config.apiUrl: The url of the Snyk API. If not specified, the default will be https://api.snyk.io
 # integration.config.organizationId: The Snyk organization ID
@@ -26,17 +26,114 @@ helm upgrade --install my-snyk-integration port-labs/port-ocean \
 	--set initializePortResources=true  \
 	--set integration.identifier="my-snyk-integration"  \
 	--set integration.type="snyk"  \
-	--set integration.triggerChannel.type="POLLING"  \
-	--set integration.secrets.ApiToken="<your-token>"  \
-    --set integration.secrets.webhookSecret="<your-secret>"  \
-	--set integration.config.appHost="<your-host-url>"  \
-    --set integration.config.apiUrl="<your-api-url>"  \
-    --set integration.config.organizationId="<your-organization-id>"  \
-     --set ingress.enabled=true  \
-     --set ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target"= / 
+	--set integration.eventListener.type="POLLING"  \
+	--set integration.secrets.token="<your-token>"  \
+  --set integration.config.organizationId="<your-organization-id>"  \
+  --set ingress.enabled=true  \
+  --set ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target"= / 
 ```
+
 ## Supported Kinds
-### Projects
+
+### Target
+This kind represents a Snyk target. The schema should be similar to the one on the [Snyk REST API documentation](https://apidocs.snyk.io/?version=2023-08-29%7Ebeta#tag--Targets). 
+
+
+<details>
+<summary>blueprint.json</summary>
+
+```json
+  {
+    "identifier": "snykTarget",
+    "title": "Snyk Target",
+    "icon": "Snyk",
+    "schema": {
+      "properties": {
+        "criticalOpenVulnerabilities": {
+          "icon": "Vulnerability",
+          "type": "number",
+          "title": "Open Critical Vulnerabilities"
+        },
+        "highOpenVulnerabilities": {
+          "icon": "Vulnerability",
+          "type": "number",
+          "title": "Open High Vulnerabilities"
+        },
+        "mediumOpenVulnerabilities": {
+          "icon": "Vulnerability",
+          "type": "number",
+          "title": "Open Medium Vulnerabilities"
+        },
+        "lowOpenVulnerabilities": {
+          "icon": "Vulnerability",
+          "type": "number",
+          "title": "Open Low Vulnerabilities"
+        },
+        "origin": {
+          "title": "Target Origin",
+          "type": "string",
+          "enum": [
+            "artifactory-cr",
+            "aws-config",
+            "aws-lambda",
+            "azure-functions",
+            "azure-repos",
+            "bitbucket-cloud",
+            "bitbucket-server",
+            "cli",
+            "cloud-foundry",
+            "digitalocean-cr",
+            "docker-hub",
+            "ecr",
+            "gcr",
+            "github",
+            "github-cr",
+            "github-enterprise",
+            "gitlab",
+            "gitlab-cr",
+            "google-artifact-cr",
+            "harbor-cr",
+            "heroku",
+            "ibm-cloud",
+            "kubernetes",
+            "nexus-cr",
+            "pivotal",
+            "quay-cr",
+            "terraform-cloud"
+          ]
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  }
+```
+</details>
+<details>
+  <summary>port-app-config.yaml</summary>
+
+```yaml
+  - kind: target
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .attributes.displayName
+          title: .attributes.displayName
+          blueprint: '"snykTarget"'
+          properties:
+            origin: .attributes.origin
+            highOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.high] | add'
+            mediumOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.medium] | add'
+            lowOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.low] | add'
+            criticalOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.critical] | add'
+```
+</details>
+
+### Project
 This kind represents a Snyk project. The schema should be similar to the one on the [Snyk REST API documentation](https://apidocs.snyk.io/?version=2023-08-21#tag--Projects). The owner and importer details are fetched from the [Snyk v1 API documentation](https://snyk.docs.apiary.io/#reference/users/user-details/get-user-details)
 
 <details>
@@ -123,6 +220,11 @@ This kind represents a Snyk project. The schema should be similar to the one on 
            "type": "number",
            "title": "Open Low Vulnerabilities"
          },
+        "criticalOpenVulnerabilities": {
+           "icon": "Vulnerability",
+           "type": "number",
+           "title": "Open Low Vulnerabilities"
+         },
          "importedBy": {
            "icon": "TwoUsers",
            "type": "string",
@@ -133,46 +235,6 @@ This kind represents a Snyk project. The schema should be similar to the one on 
            "type": "array",
            "title": "Tags",
            "icon": "DefaultProperty"
-         },
-         "targetOrigin": {
-           "title": "Target Origin",
-           "type": "string",
-           "enum": [
-             "artifactory-cr",
-             "aws-config",
-             "aws-lambda",
-             "azure-functions",
-             "azure-repos",
-             "bitbucket-cloud",
-             "bitbucket-server",
-             "cli",
-             "cloud-foundry",
-             "digitalocean-cr",
-             "docker-hub",
-             "ecr",
-             "gcr",
-             "github",
-             "github-cr",
-             "github-enterprise",
-             "gitlab",
-             "gitlab-cr",
-             "google-artifact-cr",
-             "harbor-cr",
-             "heroku",
-             "ibm-cloud",
-             "kubernetes",
-             "nexus-cr",
-             "pivotal",
-             "quay-cr",
-             "terraform-cloud"
-           ],
-           "icon": "DefaultProperty"
-         },
-         "targetUrl": {
-           "title": "Target URL",
-           "type": "string",
-           "format": "url",
-           "icon": "Snyk"
          }
        },
        "required": []
@@ -188,7 +250,7 @@ This kind represents a Snyk project. The schema should be similar to the one on 
 
 ```yaml
 resources:
-  - kind: projects
+  - kind: project
     selector:
       query: 'true'
     port:
@@ -199,21 +261,20 @@ resources:
           blueprint: '"snykProject"'
           properties:
             url: ("https://app.snyk.io/org/" + .relationships.organization.data.id + "/project/" + .id | tostring)
-            owner: ._owner.email
+            owner: .__owner.email
             businessCriticality: .attributes.business_criticality
             environment: .attributes.environment
             lifeCycle: .attributes.lifecycle
             highOpenVulnerabilities: .meta.latest_issue_counts.high
             mediumOpenVulnerabilities: .meta.latest_issue_counts.medium
             lowOpenVulnerabilities: .meta.latest_issue_counts.low
-            importedBy: ._importer.email
+            criticalOpenVulnerabilities: .meta.latest_issue_counts.critical
+            importedBy: .__importer.email
             tags: .attributes.tags
-            targetOrigin: .attributes.origin
-            targetUrl: .relationships.target.data.attributes.url
 ```
 </details>
 
-### Vulnerabilities
+### Issue
 This kind represents a Snyk vulnerability or issues. The schema should be similar to the one on the [Snyk V1 API documentation](https://snyk.docs.apiary.io/#reference/projects/aggregated-project-issues/list-all-aggregated-issues).
 
 <details>
@@ -312,9 +373,9 @@ This kind represents a Snyk vulnerability or issues. The schema should be simila
 
 ```yaml
 resources:
- - kind: vulnerabilities
+  - kind: vulnerability
     selector:
-      query: 'true'
+      query: '.issueType == "vuln"'
     port:
       entity:
         mappings:
@@ -328,11 +389,11 @@ resources:
             type: .issueType
             severity: .issueData.severity
             url: .issueData.url
-            language: .issueData.language
+            language: .issueData.language // .issueType
             publicationTime: .issueData.publicationTime
             isPatched: .isPatched
           relations:
-            snykProject: .links.paths | capture("/project/(?<project_id>[^/]+)/history/") | .project_id
+            snykProject: .__project.id
 ```
 </details>
 
@@ -369,7 +430,7 @@ The Snyk integration suggested folder structure is as follows:
 
 ```
 snyk/
-├─ snyk_integration/             # The integration logic
+├─ snyk/             # The integration logic
 │  ├─ client.py      # Wrapper to the Snyk REST API and other custom integration logic
 ├─ main.py              # The main exports the custom Ocean logic to the ocean sail command
 ├─ pyproject.toml
