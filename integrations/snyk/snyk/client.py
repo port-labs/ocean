@@ -125,7 +125,7 @@ class SnykClient:
         target_id: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if CacheKeys.PROJECT in event.attributes:
-            all_projects = event.attributes["projects"]
+            all_projects = event.attributes[CacheKeys.PROJECT]
             projects_to_yield = self._get_projects_by_target(
                 all_projects, target_id=target_id
             )
@@ -191,7 +191,7 @@ class SnykClient:
 
     async def get_single_project(self, project_id: str) -> dict[str, Any]:
         if CacheKeys.PROJECT in event.attributes:
-            all_projects = event.attributes["projects"]
+            all_projects = event.attributes[CacheKeys.PROJECT]
             project = next(
                 (
                     project
