@@ -35,8 +35,8 @@ class IntegrationSettings(BaseModel, extra=Extra.allow):
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
+    initialize_port_resources: bool = False
+    scheduled_resync_interval: int | None = None
     port: PortSettings
     event_listener: EventListenerSettingsType
-    batch_work_size: int = 20
-    initialize_port_resources: bool = False
     integration: IntegrationSettings
