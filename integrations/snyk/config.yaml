@@ -14,6 +14,6 @@ integration:
   type: "snyk"
   config:
     token: "{{ from env SNYK_API_TOKEN }}"
-    webhookSecret: "{{ from env SNYK_WEBHOOK_SECRET }}"
-    appHost: "{{ from env LOCAL_TUNNEL }}"
+    # webhookSecret: "{{ from env SNYK_WEBHOOK_SECRET }}"
+    # appHost: "{{ from env LOCAL_TUNNEL }}"
     organizationId: "{{ from env SNYK_ORG_ID }}"

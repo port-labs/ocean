@@ -1,4 +1,3 @@
-version: v0.1.0
 type: snyk
 description: Snyk integration for Port Ocean
 icon: Snyk
@@ -6,8 +5,9 @@ features:
   - type: exporter
     section: Code Quality & Security
     resources:
-      - kind: projects
-      - kind: vulnerabilities
+      - kind: issue
+      - kind: project
+      - kind: target
 configurations:
   - name: token
     required: true
