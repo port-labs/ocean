@@ -6,6 +6,7 @@ from gitlab.v4.objects import Project
 from port_ocean.core.models import Entity
 
 FILE_PROPERTY_PREFIX = "file://"
+SEARCH_PROPERTY_PREFIX = "search://"
 JSON_SUFFIX = ".json"
 
 
@@ -26,6 +27,8 @@ def generate_entity_from_port_yaml(
             properties[key] = value
 
     return Entity(
-        **raw_entity.dict(exclude_unset=True),
-        properties=properties,
+        **{
+            **raw_entity.dict(exclude_unset=True),
+            "properties": properties,
+        }
     )

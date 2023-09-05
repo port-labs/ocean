@@ -5,6 +5,10 @@ from pydantic import BaseModel, Extra
 
 
 class EventListenerEvents(TypedDict):
+    """
+    A dictionary containing event types and their corresponding event handlers.
+    """
+
     on_resync: Callable[[dict[Any, Any]], Awaitable[None]]
 
 
@@ -24,4 +28,7 @@ class EventListenerSettings(BaseModel, extra=Extra.allow):
     type: str
 
     def to_request(self) -> dict[str, Any]:
+        """
+        Converts the Settings object to a dictionary representation (request format).
+        """
         return {"type": self.type}

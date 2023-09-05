@@ -7,7 +7,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 
 class GitlabIntegration(BaseIntegration):
-    ManipulationHandlerClass = GitManipulationHandler
+    EntityProcessorClass = GitManipulationHandler
 
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = GitlabPortAppConfig

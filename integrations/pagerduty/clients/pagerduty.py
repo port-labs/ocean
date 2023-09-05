@@ -5,7 +5,7 @@ from loguru import logger
 
 
 class PagerDutyClient:
-    def __init__(self, token: str, api_url: str, app_host: str):
+    def __init__(self, token: str, api_url: str, app_host: str | None):
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
@@ -104,6 +104,12 @@ class PagerDutyClient:
                 raise
 
     async def create_webhooks_if_not_exists(self) -> None:
+        if not self.app_host:
+            logger.warning(
+                "No app host provided, skipping webhook creation. "
+                "Without setting up the webhook, the integration will not export live changes from PagerDuty"
+            )
+            return
         all_subscriptions = await self.paginate_request_to_pager_duty(
             data_key="webhook_subscriptions"
         )

@@ -7,6 +7,59 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.15 (2023-09-04)
+===================
+
+### Improvements
+
+- Added more logs to gitops parsing errors (#1)
+
+### Bug Fixes
+
+- Fixed a bug that caused the gitops parsing to fail (#1)
+
+
+0.1.14 (2023-09-01)
+===================
+
+### Bug Fixes
+
+- Fixed an issue causing the push event listener to fail for a key error (#1)
+
+
+0.1.13 (2023-08-31)
+===================
+
+### Bug Fixes
+
+- Fixed an issue causing the push event listener to fail (#1)
+
+
+0.1.12 (2023-08-30)
+===================
+
+### Improvements
+
+- Updated the default microservice blueprint to be project blueprint (PORT-4555)
+
+
+0.1.11 (2023-08-30)
+===================
+
+### Improvements
+
+- Removed ingressRequired from the spec.yaml file (PORT-4527)
+- Bumped Ocean to 0.2.3 (#1)
+
+
+0.1.10 (2023-08-29)
+===================
+
+### Features
+
+- Added support for search:// capability when parsing entities (PORT-4597)
+
+
 0.1.9 (2023-08-11)
 ==================
 

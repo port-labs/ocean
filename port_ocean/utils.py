@@ -1,12 +1,18 @@
-from importlib.util import module_from_spec, spec_from_file_location
+import asyncio
 import inspect
+from asyncio import ensure_future
+from functools import wraps
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from time import time
+from traceback import format_exception
 from types import ModuleType
-from typing import Callable, Any
+from typing import Callable, Any, Coroutine
 from uuid import uuid4
 
 import yaml
+from loguru import logger
+from starlette.concurrency import run_in_threadpool
 
 
 def get_time(seconds_precision: bool = True) -> float:
@@ -44,3 +50,69 @@ def load_module(file_path: str) -> ModuleType:
     spec.loader.exec_module(module)
 
     return module
+
+
+NoArgsNoReturnFuncT = Callable[[], None]
+NoArgsNoReturnAsyncFuncT = Callable[[], Coroutine[Any, Any, None]]
+NoArgsNoReturnDecorator = Callable[
+    [NoArgsNoReturnFuncT | NoArgsNoReturnAsyncFuncT], NoArgsNoReturnAsyncFuncT
+]
+
+
+def repeat_every(
+    seconds: float,
+    wait_first: bool = False,
+    raise_exceptions: bool = False,
+) -> NoArgsNoReturnDecorator:
+    """
+    This function returns a decorator that modifies a function so it is periodically re-executed after its first call.
+
+    The function it decorates should accept no arguments and return nothing. If necessary, this can be accomplished
+    by using `functools.partial` or otherwise wrapping the target function prior to decoration.
+
+    Parameters
+    ----------
+    seconds: float
+        The number of seconds to wait between repeated calls
+    wait_first: bool (default False)
+        If True, the function will wait for a single period before the first call
+    raise_exceptions: bool (default False)
+        If True, errors raised by the decorated function will be raised to the event loop's exception handler.
+        Note that if an error is raised, the repeated execution will stop.
+        Otherwise, exceptions are just logged and the execution continues to repeat.
+        See https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.set_exception_handler for more info.
+    """
+
+    def decorator(
+        func: NoArgsNoReturnAsyncFuncT | NoArgsNoReturnFuncT,
+    ) -> NoArgsNoReturnAsyncFuncT:
+        """
+        Converts the decorated function into a repeated, periodically-called version of itself.
+        """
+        is_coroutine = asyncio.iscoroutinefunction(func)
+
+        @wraps(func)
+        async def wrapped() -> None:
+            async def loop() -> None:
+                if wait_first:
+                    await asyncio.sleep(seconds)
+                while True:
+                    try:
+                        if is_coroutine:
+                            await func()  # type: ignore
+                        else:
+                            await run_in_threadpool(func)
+                    except Exception as exc:
+                        formatted_exception = "".join(
+                            format_exception(type(exc), exc, exc.__traceback__)
+                        )
+                        logger.error(formatted_exception)
+                        if raise_exceptions:
+                            raise exc
+                    await asyncio.sleep(seconds)
+
+            ensure_future(loop())
+
+        return wrapped
+
+    return decorator
