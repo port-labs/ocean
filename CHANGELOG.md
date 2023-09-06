@@ -23,14 +23,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Changed the way an empty port app config is handled in the `PortAppConfig Handler` (PORT-4483)
 - Added yaml linter (#1)
-- Removed the ocean version parameter from the scaffold and getting automatically (#2)
+- Removed the Ocean version parameter from the integration scaffold template, the version is now queried directly from the Ocean framework library used by the integration (#2)
 - Changed the publish integration workflow to get the integration version from the `pyproject.toml` file of the integration and not from the `spec.yml` file (#3)
 
 ### Bug Fixes
 
-- Fixed a bug when rollbacking blueprint it would rollback all the blueprints instead only the one who failed (blueprints-to-rollback)
-- Fixed a bug when there are falsy jq evaluation so ocean would them from the entity properties (include-falsy-jq-evaluate)
-- Fixed the injections in config.yaml to be wrapped with "" (#1)
+- Fixed a bug that rollbacked all blueprints instead of only those created during integration setup, when the setup encountered an issue with blueprint creation
+- Fixed a bug that caused values that resulted with a  falsy jq evaluation to convert them to null. The values will now be ingested using their proper falsy representation (0 as 0, empty array as empty array, false as false, etc.)
+- Fixed the injections of parameters to the `config.yaml` file, the injected values will now be wrapped with `""` (#1)
 
 
 ## 0.2.3 (2023-08-17)
