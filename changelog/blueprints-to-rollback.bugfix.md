@@ -1,1 +1,0 @@
-Fixed a bug when rollbacking blueprint it would rollback all the blueprints instead only the one who failed
