@@ -1,0 +1,1 @@
+Fixed a bug when there are falsy jq evaluation so ocean would them from the entity properties
