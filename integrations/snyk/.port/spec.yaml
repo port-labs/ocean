@@ -1,0 +1,29 @@
+type: snyk
+description: Snyk integration for Port Ocean
+icon: Snyk
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: issue
+      - kind: project
+      - kind: target
+configurations:
+  - name: token
+    required: true
+    type: string
+    sensitive: true
+  - name: webhookSecret
+    required: false
+    type: string
+    sensitive: true
+  - name: apiUrl
+    type: string
+    required: false
+    default: https://api.snyk.io
+  - name: organizationId
+    type: string
+    required: true
+  - name: appHost
+    type: string
+    required: false
