@@ -1,6 +1,10 @@
 import asyncio
+import hashlib
+import hmac
+import json
 from typing import Any
 from enum import StrEnum
+from fastapi import Request
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
@@ -11,6 +15,18 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
     TARGET = "target"
+
+
+async def verify_signature(request: Request, secret: str) -> bool:
+    signature = request.headers.get("x-hub-signature", "")
+    expected_signature = generate_signature(await request.body(), secret)
+
+    return signature == expected_signature
+
+
+def generate_signature(payload: bytes, secret: str) -> str:
+    hmac_obj = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256)
+    return f"sha256={hmac_obj.hexdigest()}"
 
 
 def init_client() -> SnykClient:
@@ -75,7 +91,14 @@ async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
 
 
 @ocean.router.post("/webhook")
-async def on_vulnerability_webhook_handler(data: dict[str, Any]) -> None:
+async def on_vulnerability_webhook_handler(request: Request) -> None:
+    verify_signature_result = await verify_signature(
+        request, ocean.integration_config["webhook_secret"]
+    )
+    if not verify_signature_result:
+        logger.warning("Signature verification failed, ignoring request")
+        return
+    data = await request.json()
     if (
         "project" in data
     ):  # Following this document, this is how we will detect the event type https://snyk.docs.apiary.io/#introduction/consuming-webhooks/payload-versioning
