@@ -36,7 +36,8 @@ helm upgrade --install my-snyk-integration port-labs/port-ocean \
 ## Supported Kinds
 
 ### Target
-This kind represents a Snyk target. The schema should be similar to the one on the [Snyk REST API documentation](https://apidocs.snyk.io/?version=2023-08-29%7Ebeta#tag--Targets). 
+This kind represents a Snyk target. The schema should be similar to the one on the [Snyk REST API documentation](https://apidocs.snyk.io/?version=2023-08-21%7Ebeta#tag--Targets).
+To bring this data the integration is using the Snyk REST API in version 2021-08-21-beta.
 
 
 <details>
@@ -135,6 +136,7 @@ This kind represents a Snyk target. The schema should be similar to the one on t
 
 ### Project
 This kind represents a Snyk project. The schema should be similar to the one on the [Snyk REST API documentation](https://apidocs.snyk.io/?version=2023-08-21#tag--Projects). The owner and importer details are fetched from the [Snyk v1 API documentation](https://snyk.docs.apiary.io/#reference/users/user-details/get-user-details)
+To bring this data the integration is using the Snyk REST API in version 2021-08-21.
 
 <details>
 <summary>blueprint.json</summary>
@@ -276,6 +278,7 @@ resources:
 
 ### Issue
 This kind represents a Snyk vulnerability or issues. The schema should be similar to the one on the [Snyk V1 API documentation](https://snyk.docs.apiary.io/#reference/projects/aggregated-project-issues/list-all-aggregated-issues).
+To bring this data the integration is using the Snyk v1 API.
 
 <details>
 <summary>blueprint.json</summary>
