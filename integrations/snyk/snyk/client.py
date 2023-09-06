@@ -90,8 +90,9 @@ class SnykClient:
                 raise
 
     async def get_issues(self, project_id: str) -> list[dict[str, Any]]:
+        cache_key = f"{CacheKeys.ISSUE}-{project_id}"
         # We cache the issues for each project in the event attributes as in the same resync events we may need to fetch the issues multiple times for aggregations
-        if cache := event.attributes.get(f"{CacheKeys.ISSUE}-{project_id}"):
+        if cache := event.attributes.get(cache_key):
             return cache
 
         url = f"{self.api_url}/org/{self.org_id}/project/{project_id}/aggregated-issues"
@@ -102,7 +103,7 @@ class SnykClient:
                 version=self.snyk_api_version,
             )
         )["issues"]
-        event.attributes[f"{CacheKeys.ISSUE}-{project_id}"] = issues
+        event.attributes[cache_key] = issues
         return issues
 
     def _get_projects_by_target(
@@ -221,7 +222,7 @@ class SnykClient:
 
         return project
 
-    async def _get_user_details(self, user_id: str) -> dict[str, Any]:
+    async def _get_user_details(self, user_id: str | None) -> dict[str, Any]:
         if (
             not user_id
         ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
