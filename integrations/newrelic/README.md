@@ -14,7 +14,7 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 ```bash
 # The following script will install an Ocean integration at your K8s cluster using helm
 # integration.identifier: Change the identifier to describe your integration
-# integration.config.newRelicAPIKey: The New Relic API Key of type [User key](https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#user-key)
+# integration.secrets.newRelicAPIKey: The New Relic API Key of type [User key](https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#user-key)
 # integration.config.newRelicAccountID: The New Relic Account ID of type [Account ID](https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/#account-id)
 # integration.config.newRelicGraphqlURL: Default value is https://api.newrelic.com/graphql if you are using a EU data center change the value to EU data center: https://api.eu.newrelic.com/graphql
 # ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target": Change the annotation value and key to match your ingress controller
@@ -27,7 +27,7 @@ helm upgrade --install my-ocean-integration port-labs/port-ocean \
   --set integration.identifier="<INTEGRATION_IDENTIFIER>" \
   --set integration.type="newrelic" \
   --set integration.eventListener.type="POLLING" \
-  --set integration.config.newRelicAPIKey="<newRelicAPIKey>" \
+  --set integration.secrets.newRelicAPIKey="<newRelicAPIKey>" \
   --set integration.config.newRelicAccountID="<newRelicAccountID>" \
   --set ingress.enabled=true  \
   --set ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target"= / 
