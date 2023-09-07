@@ -1,0 +1,89 @@
+resources:
+  - kind: environment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"firehydrantEnvironment"'
+          identifier: .id
+          title: .name
+          properties:
+              description: .description
+              createdAt: .created_at
+              updatedAt: .updated_at
+  - kind: service
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"firehydrantService"'
+          identifier: .id
+          title: .name
+          properties:
+              description: .description
+              slug: .slug
+              links: .links[].href_url
+              labels: .labels
+              owner: .owner.name
+              activeIncidents: .active_incidents | length
+              meanTimeToAcknowledge: .__incidentMetrics.time_to_acknowledge
+              meanTimeToDetect: .__incidentMetrics.time_to_identify
+              meanTimeToMitigate: .__incidentMetrics.time_to_mitigate
+              meanTimeToResolve: .__incidentMetrics.time_to_resolve
+              createdAt: .created_at
+              updatedAt: .updated_at
+  - kind: incident
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"firehydrantIncident"'
+          identifier: .id
+          title: .name
+          properties:
+              url: .incident_url
+              priority: .priority
+              severity: .severity
+              tags: .tag_list
+              currentMilestone: .current_milestone
+              functionalities: .functionalities[].name
+              description: .description
+              customerImpact: .customers_impacted
+              commander: .role_assignments[] | select(.incident_role.name == "Commander") | .user.email
+              createdBy: .created_by.email
+              createdAt: .created_at
+          relations:
+            environment: .environments[].id
+            service: .services[].id
+  - kind: retrospective
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"firehydrantRetrospective"'
+          identifier: .id
+          title: .name
+          properties:
+              url: .incident.incident_url
+              tags: .tag_list
+              currentMilestone: .incident.current_milestone
+              services: .incident.services[].name
+              environments: .incident.environments[].name
+              functionalities: .incident.functionalities[].name
+              description: .incident.description
+              customerImpact: .incident.customers_impacted
+              commander: .incident.role_assignments[] | select(.incident_role.name == "Commander") | .user.email
+              createdBy: .incident.created_by.email
+              resolvedAt: .incident.milestones[] | select(.type == "resolved") | .created_at
+              createdAt: .incident.created_at
+              publishedAt: .incident.milestones[] | select(.type == "postmortem_completed") | .created_at
+              duration: .__enrichedData.duration
+              completedTasks: .__enrichedData.tasks.completed
+              incompletedTasks: .__enrichedData.tasks.incompleted
+              questions: .__enrichedData.questions
+          relations:
+            incident: .incident.id

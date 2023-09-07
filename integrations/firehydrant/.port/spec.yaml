@@ -1,0 +1,22 @@
+version: v0.1.0
+type: firehydrant
+description: firehydrant integration for Port Ocean
+icon: Alert
+features:
+  - type: exporter
+    section: Incident Management
+    resources:
+      - kind: environment
+      - kind: service
+      - kind: incident
+      - kind: retrospective
+configurations:
+  - name: token
+    required: true
+    type: string
+    sensitive: true
+  - name: apiUrl
+    type: string
+    required: false
+  - name: appHost
+    type: string
