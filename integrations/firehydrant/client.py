@@ -18,9 +18,8 @@ class FirehydrantClient:
         """
         Initialize Firehydrant client
 
-        :param base_url: SonarQube base URL
-        :param api_key: SonarQube API key
-        :param organization_id: SonarQube organization ID
+        :param base_url: Firehydrant base URL
+        :param api_key: Firehydrant API key
         :param app_host: Application host URL
         :param http_client: httpx.AsyncClient instance
         """
@@ -44,7 +43,7 @@ class FirehydrantClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         """
-        Sends an API request to SonarQube
+        Sends an API request to Firehydrant
 
         :param endpoint: API endpoint URL
         :param method: HTTP method (default: 'GET')
@@ -77,7 +76,7 @@ class FirehydrantClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         """
-        Sends an API request to SonarQube
+        Sends an API request to Firehydrant and returns all resources available. It does not use generator
 
         :param endpoint: API endpoint URL
         :param data_key: Resource key to fetch
