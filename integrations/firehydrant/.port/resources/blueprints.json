@@ -3,7 +3,7 @@
         "identifier": "firehydrantIncident",
         "description": "This blueprint represents a firehydrant incident",
         "title": "FireHydrant Incident",
-        "icon": "Alert",
+        "icon": "Firehydrant",
         "schema": {
           "properties": {
             "url": {
@@ -14,7 +14,19 @@
             },
             "priority": {
               "title": "Priority",
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "P1",
+                "P2",
+                "P3",
+                "P4"
+              ],
+              "enumColors": {
+                "P1": "red",
+                "P2": "red",
+                "P3": "orange",
+                "P4": "orange"
+              }
             },
             "severity": {
               "title": "Severity",
@@ -39,7 +51,19 @@
                 "postmortem_started",
                 "postmortem_completed",
                 "closed"
-              ]
+              ],
+              "enumColors": {
+                "started": "red",
+                "detected": "red",
+                "acknowledged": "orange",
+                "investigating": "yellow",
+                "identified": "yellow",
+                "mitigated": "green",
+                "resolved": "green",
+                "postmortem_started": "purple",
+                "postmortem_completed": "blue",
+                "closed": "green"
+              }
             },
             "functionalities": {
               "title": "Functionalities Impacted",
@@ -77,16 +101,16 @@
         "calculationProperties": {},
         "relations": {
           "environment": {
-            "title": "Environments",
+            "title": "Impacted Environments",
             "target": "firehydrantEnvironment",
             "required": false,
-            "many": false
+            "many": true
           },
           "service": {
-            "title": "Services",
+            "title": "Impacted Services",
             "target": "firehydrantService",
             "required": false,
-            "many": false
+            "many": true
           }
         }
       },
@@ -94,7 +118,7 @@
         "identifier": "firehydrantService",
         "description": "This blueprint represents a firehydrant service",
         "title": "FireHydrant Service",
-        "icon": "Alert",
+        "icon": "Firehydrant",
         "schema": {
           "properties": {
             "description": {
@@ -136,24 +160,24 @@
             },
             "activeIncidents": {
               "title": "Active Incidents",
-              "type": "string",
+              "type": "number",
               "description": "Number of active incidents attached to this service"
             },
             "meanTimeToAcknowledge": {
               "title": "Mean Time to Acknowledge",
-              "type": "string"
+              "type": "number"
             },
             "meanTimeToDetect": {
               "title": "Mean Time to Detection",
-              "type": "string"
+              "type": "number"
             },
             "meanTimeToMitigate": {
               "title": "Mean Time to Mitigation",
-              "type": "string"
+              "type": "number"
             },
             "meanTimeToResolve": {
               "title": "Mean Time to Resolution",
-              "type": "string"
+              "type": "number"
             }
           },
           "required": []
@@ -166,12 +190,17 @@
         "identifier": "firehydrantEnvironment",
         "description": "This blueprint represents a firehydrant environment",
         "title": "FireHydrant Environment",
-        "icon": "Alert",
+        "icon": "Firehydrant",
         "schema": {
           "properties": {
             "description": {
               "title": "Description",
               "type": "string"
+            },
+            "activeIncidents": {
+              "title": "Active Incidents",
+              "type": "number",
+              "description": "Number of active incidents attached to this environment"
             },
             "createdAt": {
               "title": "Created At",
@@ -194,7 +223,7 @@
         "identifier": "firehydrantRetrospective",
         "description": "This blueprint represents a service in our software catalog",
         "title": "FireHydrant Retrospective",
-        "icon": "Alert",
+        "icon": "Firehydrant",
         "schema": {
           "properties": {
             "url": {
@@ -261,7 +290,7 @@
             },
             "duration": {
               "icon": "DefaultProperty",
-              "title": "Incident Duration (Hours)",
+              "title": "Incident Duration (Minutes)",
               "type": "number"
             },
             "completedTasks": {

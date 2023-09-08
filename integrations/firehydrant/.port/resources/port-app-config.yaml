@@ -1,3 +1,5 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
 resources:
   - kind: environment
     selector:
@@ -10,6 +12,7 @@ resources:
           title: .name
           properties:
               description: .description
+              activeIncidents: .active_incidents | length
               createdAt: .created_at
               updatedAt: .updated_at
   - kind: service
@@ -56,11 +59,11 @@ resources:
               createdBy: .created_by.email
               createdAt: .created_at
           relations:
-            environment: .environments[].id
-            service: .services[].id
+            environment: .environments | map(.id)
+            service: .services | map(.id)
   - kind: retrospective
     selector:
-      query: 'true'
+      query: '.incident.current_milestone == "postmortem_completed"'
     port:
       entity:
         mappings:
@@ -70,7 +73,6 @@ resources:
           properties:
               url: .incident.incident_url
               tags: .tag_list
-              currentMilestone: .incident.current_milestone
               services: .incident.services[].name
               environments: .incident.environments[].name
               functionalities: .incident.functionalities[].name

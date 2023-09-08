@@ -14,5 +14,5 @@ integration:
   type: "firehydrant"
   config:
     token: "{{ from env FIREHYDRANT_API_TOKEN }}"
-    appHost: "https://I-Am-Not-A-Real-Url.com"
+    appHost: "{{ from env APP_HOST }}"
     apiUrl: "{{ from env FIREHYDRANT_API_URL }}"
