@@ -1,7 +1,9 @@
+from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 import httpx
 from loguru import logger
 from datetime import datetime
+from port_ocean.context.event import event
 
 PAGE_SIZE = 50
 
@@ -11,6 +13,10 @@ endpoint_resource_type_mapper = {
     "incident": "incidents",
     "retrospective": "post_mortems/reports",
 }
+
+
+class CacheKeys(StrEnum):
+    INCIDENT = "incident"
 
 
 class FirehydrantClient:
@@ -82,7 +88,13 @@ class FirehydrantClient:
             logger.error(f"Error while fetching {resource_type}: {str(e)}")
 
     async def get_single_incident(self, incident_id: str) -> dict[str, Any]:
-        return await self.send_api_request(endpoint=f"incidents/{incident_id}")
+        cache_key = f"{CacheKeys.INCIDENT}-{incident_id}"
+        if cache := event.attributes.get(cache_key):
+            return cache
+
+        incident_data = await self.send_api_request(endpoint=f"incidents/{incident_id}")
+        event.attributes[cache_key] = incident_data
+        return incident_data
 
     async def get_single_service(self, service_id: str) -> dict[str, Any]:
         serice_data = await self.send_api_request(endpoint=f"services/{service_id}")
@@ -200,9 +212,9 @@ class FirehydrantClient:
             "resolved": None,
         }
 
-        for event in milestones:
-            incident_type = event["type"]
-            occurred_at = datetime.fromisoformat(event.get("occurred_at", ""))
+        for _event in milestones:
+            incident_type = _event["type"]
+            occurred_at = datetime.fromisoformat(_event["occurred_at"])
 
             if incident_type in incident_times:
                 if incident_times[incident_type] is None:
