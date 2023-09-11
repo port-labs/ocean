@@ -84,8 +84,8 @@ resources:
               createdAt: .incident.created_at
               publishedAt: .incident.milestones[] | select(.type == "postmortem_completed") | .created_at
               duration: .__enrichedData.duration
-              completedTasks: .__enrichedData.tasks.completed
-              incompletedTasks: .__enrichedData.tasks.incompleted
-              questions: .__enrichedData.questions
+              completedTasks: .__enrichedData.tasks | map(select(.state == "done")) | length
+              incompletedTasks: .__enrichedData.tasks | map(select(.state != "done")) | length
+              questions: ".questions | map({question: .title, answer: .body})"
           relations:
             incident: .incident.id

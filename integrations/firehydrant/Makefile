@@ -44,6 +44,10 @@ install:
 	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
 	poetry install --with dev
+	
+install/prod:
+	$(call install_poetry) && \
+	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 lint:
 	$(ACTIVATE) && \

@@ -9,7 +9,7 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: "my-firehydrant-integration"
+  identifier: "my-firehydrant-integration-1"
   # The type of the integration.
   type: "firehydrant"
   config:

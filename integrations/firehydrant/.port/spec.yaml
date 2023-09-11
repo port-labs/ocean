@@ -1,4 +1,3 @@
-version: v0.1.0
 type: firehydrant
 description: Firehydrant integration for Port Ocean
 icon: Firehydrant
@@ -18,6 +17,7 @@ configurations:
   - name: apiUrl
     type: string
     required: true
+    default: https://api.firehydrant.io
   - name: appHost
     type: string
     required: false
