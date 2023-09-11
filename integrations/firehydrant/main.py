@@ -39,7 +39,7 @@ async def process_service_analytics(
 ) -> dict[str, Any]:
     async with semaphore:
         return await http_client.compute_service_mean_time_metrics(
-            service.get("active_incidents", [])
+            service["active_incidents"]
         )
 
 
