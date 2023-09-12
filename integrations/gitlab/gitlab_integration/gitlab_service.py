@@ -183,7 +183,7 @@ class GitlabService:
         projects: list[Project] = typing.cast(
             list[Project],
             self.gitlab_client.projects.list(
-                include_subgroups=True, owned=True, all=True
+                include_subgroups=True, owned=False, all=True
             ),
         )
         logger.debug(f"Found {len(projects)} projects")
