@@ -7,7 +7,7 @@ eventListener:
   type: POLLING
 integration:
   # The name of the integration.
-  identifier: "repository_integration"
+  identifier: "my_gitlab_integration"
   # The type of the integration.
   type: "gitlab"
   # The configuration of the integration.
