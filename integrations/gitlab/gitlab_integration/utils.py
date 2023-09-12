@@ -1,5 +1,4 @@
 from typing import List
-import typing
 
 from gitlab import Gitlab
 from gitlab_integration.gitlab_service import GitlabService
