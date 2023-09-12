@@ -10,6 +10,7 @@ from yaml.parser import ParserError
 
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
+from gitlab_integration.overrides import GitLabResourceConfig
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 
@@ -176,6 +177,9 @@ class GitlabService:
         service_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).get(
             self.gitlab_client.private_token, {}
         )
+        project_resource_config = typing.cast(
+            GitLabResourceConfig, event.resource_config
+        )
         if service_projects:
             logger.debug(f"Found {len(service_projects)} projects in cache")
             return service_projects
@@ -183,7 +187,10 @@ class GitlabService:
         projects: list[Project] = typing.cast(
             list[Project],
             self.gitlab_client.projects.list(
-                include_subgroups=True, owned=True, all=True
+                include_subgroups=True,
+                owned=project_resource_config.selector.owned,
+                all=True,
+                visibility=project_resource_config.selector.visibility,
             ),
         )
         logger.debug(f"Found {len(projects)} projects")

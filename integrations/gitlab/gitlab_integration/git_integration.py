@@ -12,6 +12,7 @@ from gitlab.v4.objects import Project
 from port_ocean.context.event import event
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from gitlab_integration.overrides import GitLabResourceConfig
 
 
 class FileEntityProcessor(JQEntityProcessor):
@@ -89,6 +90,7 @@ class GitManipulationHandler(JQEntityProcessor):
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str = "main"
+    resources: list[GitLabResourceConfig]  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:
