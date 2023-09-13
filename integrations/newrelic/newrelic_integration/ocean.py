@@ -48,6 +48,7 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         entity["__open_issues_count"] = number_of_open_issues
                     counter += 1
                     entities.append(entity)
+                    # yield the entities in batches to take advantage of the async list generator
                     if counter == page_size:
                         counter = 0
                         yield entities
