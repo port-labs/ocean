@@ -2,7 +2,6 @@ from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 import httpx
 from loguru import logger
-from datetime import datetime
 from port_ocean.context.event import event
 
 PAGE_SIZE = 50
@@ -91,7 +90,6 @@ class FirehydrantClient:
         cache_key = f"{CacheKeys.INCIDENT}-{incident_id}"
         if cache := event.attributes.get(cache_key):
             return cache
-
         incident_data = await self.send_api_request(endpoint=f"incidents/{incident_id}")
         event.attributes[cache_key] = incident_data
         return incident_data
@@ -116,7 +114,7 @@ class FirehydrantClient:
         report_data["__incident"] = tasks
         return report_data
 
-    async def get_tasks_by_incident(self, incident_id: str) -> list[dict[str, Any]]:
+    async def get_tasks_by_incident(self, incident_id: str) -> dict[str, Any]:
         logger.info(f"Getting tasks details for incident: {incident_id}")
         task_endpoint = f"incidents/{incident_id}/tasks"
         tasks = []
@@ -128,14 +126,12 @@ class FirehydrantClient:
     async def get_milestones_by_incident(
         self, active_incidents_ids: list[Any]
     ) -> dict[str, Any]:
-
         incident_milestones = []
         for incident_id in active_incidents_ids:
             incident_data = await self.get_single_incident(incident_id=incident_id)
             incident_milestones.append(incident_data["milestones"])
 
         return {"milestones": incident_milestones}
-
 
     async def create_webhooks_if_not_exists(self) -> None:
         webhook_endpoint = "webhooks"

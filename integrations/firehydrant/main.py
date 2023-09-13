@@ -38,9 +38,7 @@ async def process_service_analytics(
     service: dict[str, Any],
 ) -> dict[str, Any]:
     async with semaphore:
-        return await http_client.get_milestones_by_incident(
-            service["active_incidents"]
-        )
+        return await http_client.get_milestones_by_incident(service["active_incidents"])
 
 
 @ocean.on_resync(ObjectKind.ENVIRONMENT)
