@@ -11,10 +11,9 @@ from yaml.parser import ParserError
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
 from gitlab_integration.git_integration import GitlabPortAppConfig
+from gitlab_integration.git_integration import PROJECTS_CACHE_KEY
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
-
-PROJECTS_CACHE_KEY = "__cache_all_projects"
 
 
 class GitlabService:
