@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.16 (2023-09-13)
+===================
+
+### Improvements
+
+- Added owned & visibility flags to project configurations (#1)
+- Masking token at the startup log (#2)
+
+
 0.1.15 (2023-09-04)
 ===================
 
