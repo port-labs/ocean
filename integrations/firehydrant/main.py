@@ -28,17 +28,17 @@ async def process_incident_tasks(
     http_client: FirehydrantClient, semaphore: asyncio.Semaphore, report: dict[str, Any]
 ) -> dict[str, Any]:
     async with semaphore:
-        return await http_client.enrich_incident_report_data(report)
+        return await http_client.get_tasks_by_incident(report["incident"]["id"])
 
 
-## Enriches the services data
+## Enriches the services data with incident milestones (used to compute service analytics in jq)
 async def process_service_analytics(
     http_client: FirehydrantClient,
     semaphore: asyncio.Semaphore,
     service: dict[str, Any],
 ) -> dict[str, Any]:
     async with semaphore:
-        return await http_client.compute_service_mean_time_metrics(
+        return await http_client.get_milestones_by_incident(
             service["active_incidents"]
         )
 
@@ -70,7 +70,7 @@ async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         service_analytics = await asyncio.gather(*tasks)
 
         yield [
-            {**service, "__incidentMetrics": metrics}
+            {**service, "__incidents": metrics}
             for service, metrics in zip(services, service_analytics)
         ]
 
@@ -104,7 +104,7 @@ async def on_retrospective_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         tasks_completion = await asyncio.gather(*tasks)
 
         yield [
-            {**report, "__enrichedData": task}
+            {**report, "__incident": task}
             for report, task in zip(reports, tasks_completion)
         ]
 

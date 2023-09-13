@@ -98,10 +98,10 @@ class FirehydrantClient:
 
     async def get_single_service(self, service_id: str) -> dict[str, Any]:
         serice_data = await self.send_api_request(endpoint=f"services/{service_id}")
-        service_analytics_data = await self.compute_service_mean_time_metrics(
+        service_analytics_data = await self.get_milestones_by_incident(
             serice_data["active_incidents"]
         )
-        serice_data["__incidentMetrics"] = service_analytics_data
+        serice_data["__incidents"] = service_analytics_data
         return serice_data
 
     async def get_single_environment(self, environment_id: str) -> dict[str, Any]:
@@ -111,25 +111,10 @@ class FirehydrantClient:
         report_data = await self.send_api_request(
             endpoint=f"post_mortems/reports/{report_id}"
         )
-        enriched_data = await self.enrich_incident_report_data(report_data)
-        report_data["__enrichedData"] = enriched_data
-        return report_data
-
-    async def enrich_incident_report_data(
-        self, report: dict[str, Any]
-    ) -> dict[str, Any]:
-        ## get incident taskS
-        incident_id = report.get("incident", {}).get("id")
+        incident_id = report_data["incident"]["id"]
         tasks = await self.get_tasks_by_incident(incident_id=incident_id)
-
-        ## get incident duration data
-        milestones = report.get("incident", {}).get("milestones", [])
-        incident_duration = await self.compute_incident_duration(milestones=milestones)
-
-        return {
-            "tasks": tasks,
-            "duration": incident_duration,
-        }
+        report_data["__incident"] = tasks
+        return report_data
 
     async def get_tasks_by_incident(self, incident_id: str) -> list[dict[str, Any]]:
         logger.info(f"Getting tasks details for incident: {incident_id}")
@@ -138,116 +123,19 @@ class FirehydrantClient:
 
         async for item in self.get_paginated_resource(task_endpoint):
             tasks.extend(item)
-        return tasks
+        return {"tasks": tasks}
 
-    async def compute_incident_duration(
-        self, milestones: list[dict[str, Any]]
-    ) -> Optional[float]:
-        started_time = None
-        resolved_time = None
-
-        # Iterate through the milestones to find the "started" and "resolved" events.
-        for milestone in milestones:
-            event_type = milestone.get("type")
-            occurred_at = milestone.get("occurred_at", "")
-
-            # Check if the event is a "started" event.
-            if event_type == "started":
-                started_time = datetime.fromisoformat(occurred_at[:-1])
-
-            # Check if the event is a "resolved" event.
-            if event_type == "resolved":
-                resolved_time = datetime.fromisoformat(occurred_at[:-1])
-
-        # Calculate the duration if both "started" and "resolved" events are found.
-        if started_time and resolved_time:
-            duration = resolved_time - started_time
-            duration_hours = duration.total_seconds() / 60  # Convert to minutes
-            return round(duration_hours, 2)
-
-        return None
-
-    async def compute_service_mean_time_metrics(
+    async def get_milestones_by_incident(
         self, active_incidents_ids: list[Any]
     ) -> dict[str, Any]:
-        if len(active_incidents_ids) == 0:
-            return {}
 
-        service_metrics = {
-            "time_to_acknowledge": 0,
-            "time_to_identify": 0,
-            "time_to_mitigate": 0,
-            "time_to_resolve": 0,
-        }
-
+        incident_milestones = []
         for incident_id in active_incidents_ids:
             incident_data = await self.get_single_incident(incident_id=incident_id)
-            milestones = incident_data.get("milestones", {})
-            incident_metrics = await self.compute_incident_analytics_metrics(
-                milestones=milestones
-            )
+            incident_milestones.append(incident_data["milestones"])
 
-            # Update the cumulative metrics for the service
-            for metric_name, metric_value in incident_metrics.items():
-                service_metrics[metric_name] += metric_value
+        return {"milestones": incident_milestones}
 
-        # Calculate the average metrics for the service
-        for metric_name in service_metrics:
-            service_metrics[metric_name] //= len(active_incidents_ids)
-
-        return service_metrics
-
-    async def compute_incident_analytics_metrics(
-        self, milestones: list[dict[str, Any]]
-    ) -> dict[str, Any]:
-        """
-        Compute incident analytics metrics based on milestone data. Formular retrieved from https://firehydrant.com/docs/managing-incidents/incident-metrics/
-        """
-
-        incident_times = {
-            "started": None,
-            "acknowledged": None,
-            "mitigated": None,
-            "identified": None,
-            "resolved": None,
-        }
-
-        for _event in milestones:
-            incident_type = _event["type"]
-            occurred_at = datetime.fromisoformat(_event["occurred_at"])
-
-            if incident_type in incident_times:
-                if incident_times[incident_type] is None:
-                    incident_times[incident_type] = occurred_at  # type: ignore
-            else:
-                continue  # Ignore unknown incident types
-        result: dict[str, Any] = {}
-
-        if incident_times["started"] and incident_times["acknowledged"]:
-            time_to_acknowledge = (
-                incident_times["acknowledged"] - incident_times["started"]
-            ).total_seconds()
-            result["time_to_acknowledge"] = int(time_to_acknowledge / 60)
-
-        if incident_times["started"] and incident_times["identified"]:
-            time_to_identify = (
-                incident_times["identified"] - incident_times["started"]
-            ).total_seconds()
-            result["time_to_identify"] = int(time_to_identify / 60)
-
-        if incident_times["started"] and incident_times["mitigated"]:
-            time_to_acknowledge = (
-                incident_times["mitigated"] - incident_times["started"]
-            ).total_seconds()
-            result["time_to_mitigate"] = int(time_to_acknowledge / 60)
-
-        if incident_times["started"] and incident_times["resolved"]:
-            time_to_resolve = (
-                incident_times["resolved"] - incident_times["started"]
-            ).total_seconds()
-            result["time_to_resolve"] = int(time_to_resolve / 60)
-
-        return result
 
     async def create_webhooks_if_not_exists(self) -> None:
         webhook_endpoint = "webhooks"

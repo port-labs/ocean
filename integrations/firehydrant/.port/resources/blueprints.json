@@ -165,19 +165,18 @@
             },
             "meanTimeToAcknowledge": {
               "title": "Mean Time to Acknowledge",
-              "type": "number"
+              "type": "number",
+              "description": "Mean time (in hours) to acknowledge incidents attached to this service"
             },
             "meanTimeToDetect": {
               "title": "Mean Time to Detection",
-              "type": "number"
+              "type": "number",
+              "description": "Mean time (in hours) to detect incidents attached to this service"
             },
             "meanTimeToMitigate": {
               "title": "Mean Time to Mitigation",
-              "type": "number"
-            },
-            "meanTimeToResolve": {
-              "title": "Mean Time to Resolution",
-              "type": "number"
+              "type": "number",
+              "description": "Mean time (in hours) to mitigate incidents attached to this service"
             }
           },
           "required": []
@@ -290,7 +289,7 @@
             },
             "duration": {
               "icon": "DefaultProperty",
-              "title": "Incident Duration (Minutes)",
+              "title": "Incident Duration (Hours)",
               "type": "number"
             },
             "completedTasks": {
