@@ -32,6 +32,9 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             return
         else:
             async with httpx.AsyncClient() as http_client:
+                page_size = 100
+                counter = 0
+                entities = []
                 async for entity in EntitiesHandler(
                     http_client
                 ).list_entities_by_resource_kind(kind):
@@ -43,16 +46,21 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             issue_state=IssueState.ACTIVATED,
                         )
                         entity["__open_issues_count"] = number_of_open_issues
-                    yield entity
+                    counter += 1
+                    entities.append(entity)
+                    if counter == page_size:
+                        counter = 0
+                        yield entities
+                        entities = []
+                if entities:
+                    yield entities
 
 
 @ocean.on_resync(kind="newRelicAlert")
 async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
         async with httpx.AsyncClient() as http_client:
-            issues = await IssuesHandler(http_client).list_issues()
-            for issue in issues:
-                yield issue
+            yield await IssuesHandler(http_client).list_issues()
 
 
 @ocean.router.post("/events")
