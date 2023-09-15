@@ -86,6 +86,9 @@ class FirehydrantClient:
         except Exception as e:
             logger.error(f"Error while fetching {resource_type}: {str(e)}")
 
+    async def get_single_environment(self, environment_id: str) -> dict[str, Any]:
+        return await self.send_api_request(endpoint=f"environments/{environment_id}")
+    
     async def get_single_incident(self, incident_id: str) -> dict[str, Any]:
         cache_key = f"{CacheKeys.INCIDENT}-{incident_id}"
         if cache := event.attributes.get(cache_key):
@@ -96,14 +99,11 @@ class FirehydrantClient:
 
     async def get_single_service(self, service_id: str) -> dict[str, Any]:
         serice_data = await self.send_api_request(endpoint=f"services/{service_id}")
-        service_analytics_data = await self.get_milestones_by_incident(
+        incident_data = await self.get_milestones_by_incident(
             serice_data["active_incidents"]
         )
-        serice_data["__incidents"] = service_analytics_data
+        serice_data["__incidents"] = {"milestones": incident_data}
         return serice_data
-
-    async def get_single_environment(self, environment_id: str) -> dict[str, Any]:
-        return await self.send_api_request(endpoint=f"environments/{environment_id}")
 
     async def get_single_retrospective(self, report_id: str) -> dict[str, Any]:
         report_data = await self.send_api_request(
@@ -111,17 +111,16 @@ class FirehydrantClient:
         )
         incident_id = report_data["incident"]["id"]
         tasks = await self.get_tasks_by_incident(incident_id=incident_id)
-        report_data["__incident"] = tasks
+        report_data["__incident"] = {"tasks": tasks }
         return report_data
 
-    async def get_tasks_by_incident(self, incident_id: str) -> dict[str, Any]:
+    async def get_tasks_by_incident(self, incident_id: str) -> list[dict[str, Any]]:
         logger.info(f"Getting tasks details for incident: {incident_id}")
         task_endpoint = f"incidents/{incident_id}/tasks"
         tasks = []
-
         async for item in self.get_paginated_resource(task_endpoint):
             tasks.extend(item)
-        return {"tasks": tasks}
+        return tasks
 
     async def get_milestones_by_incident(
         self, active_incidents_ids: list[Any]
@@ -131,7 +130,7 @@ class FirehydrantClient:
             incident_data = await self.get_single_incident(incident_id=incident_id)
             incident_milestones.append(incident_data["milestones"])
 
-        return {"milestones": incident_milestones}
+        return incident_milestones
 
     async def create_webhooks_if_not_exists(self) -> None:
         webhook_endpoint = "webhooks"

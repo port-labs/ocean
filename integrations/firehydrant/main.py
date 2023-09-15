@@ -30,15 +30,28 @@ async def process_incident_tasks(
     async with semaphore:
         return await http_client.get_tasks_by_incident(report["incident"]["id"])
 
+## Enriches the incident report data
+async def enrich_retrospective_with_incident_data(
+    http_client: FirehydrantClient, semaphore: asyncio.Semaphore, report: dict[str, Any]
+) -> dict[str, Any]:
+    async with semaphore:
+        tasks = await http_client.get_tasks_by_incident(report["incident"]["id"])
+        incident_info = {"tasks": tasks}
+        report["__incident"] = incident_info
+        return report
+
 
 ## Enriches the services data with incident milestones (used to compute service analytics in jq)
-async def process_service_analytics(
+async def enrich_service_with_incident_data(
     http_client: FirehydrantClient,
     semaphore: asyncio.Semaphore,
     service: dict[str, Any],
 ) -> dict[str, Any]:
     async with semaphore:
-        return await http_client.get_milestones_by_incident(service["active_incidents"])
+        milestones = await http_client.get_milestones_by_incident(service["active_incidents"])
+        incident_info = {"milestones": milestones}
+        service["__incidents"] = incident_info
+        return service
 
 
 @ocean.on_resync(ObjectKind.ENVIRONMENT)
@@ -62,15 +75,11 @@ async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.debug(f"Received batch with {len(services)} services")
         semaphore = asyncio.Semaphore(5)
         tasks = [
-            process_service_analytics(firehydrant_client, semaphore, service)
+            enrich_service_with_incident_data(firehydrant_client, semaphore, service)
             for service in services
         ]
-        service_analytics = await asyncio.gather(*tasks)
-
-        yield [
-            {**service, "__incidents": metrics}
-            for service, metrics in zip(services, service_analytics)
-        ]
+        enriched_services = await asyncio.gather(*tasks)
+        yield enriched_services
 
 
 @ocean.on_resync(ObjectKind.INCIDENT)
@@ -96,15 +105,11 @@ async def on_retrospective_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         semaphore = asyncio.Semaphore(5)
         tasks = [
-            process_incident_tasks(firehydrant_client, semaphore, report)
+            enrich_retrospective_with_incident_data(firehydrant_client, semaphore, report)
             for report in reports
         ]
-        tasks_completion = await asyncio.gather(*tasks)
-
-        yield [
-            {**report, "__incident": task}
-            for report, task in zip(reports, tasks_completion)
-        ]
+        enriched_reports = await asyncio.gather(*tasks)
+        yield enriched_reports
 
 
 @ocean.router.post("/webhook")
