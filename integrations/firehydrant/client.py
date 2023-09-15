@@ -88,7 +88,7 @@ class FirehydrantClient:
 
     async def get_single_environment(self, environment_id: str) -> dict[str, Any]:
         return await self.send_api_request(endpoint=f"environments/{environment_id}")
-    
+
     async def get_single_incident(self, incident_id: str) -> dict[str, Any]:
         cache_key = f"{CacheKeys.INCIDENT}-{incident_id}"
         if cache := event.attributes.get(cache_key):
@@ -111,7 +111,7 @@ class FirehydrantClient:
         )
         incident_id = report_data["incident"]["id"]
         tasks = await self.get_tasks_by_incident(incident_id=incident_id)
-        report_data["__incident"] = {"tasks": tasks }
+        report_data["__incident"] = {"tasks": tasks}
         return report_data
 
     async def get_tasks_by_incident(self, incident_id: str) -> list[dict[str, Any]]:
@@ -124,7 +124,7 @@ class FirehydrantClient:
 
     async def get_milestones_by_incident(
         self, active_incidents_ids: list[Any]
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         incident_milestones = []
         for incident_id in active_incidents_ids:
             incident_data = await self.get_single_incident(incident_id=incident_id)

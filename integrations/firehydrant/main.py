@@ -24,13 +24,6 @@ def init_client() -> FirehydrantClient:
 
 
 ## Enriches the incident report data
-async def process_incident_tasks(
-    http_client: FirehydrantClient, semaphore: asyncio.Semaphore, report: dict[str, Any]
-) -> dict[str, Any]:
-    async with semaphore:
-        return await http_client.get_tasks_by_incident(report["incident"]["id"])
-
-## Enriches the incident report data
 async def enrich_retrospective_with_incident_data(
     http_client: FirehydrantClient, semaphore: asyncio.Semaphore, report: dict[str, Any]
 ) -> dict[str, Any]:
@@ -48,7 +41,9 @@ async def enrich_service_with_incident_data(
     service: dict[str, Any],
 ) -> dict[str, Any]:
     async with semaphore:
-        milestones = await http_client.get_milestones_by_incident(service["active_incidents"])
+        milestones = await http_client.get_milestones_by_incident(
+            service["active_incidents"]
+        )
         incident_info = {"milestones": milestones}
         service["__incidents"] = incident_info
         return service
@@ -105,7 +100,9 @@ async def on_retrospective_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         semaphore = asyncio.Semaphore(5)
         tasks = [
-            enrich_retrospective_with_incident_data(firehydrant_client, semaphore, report)
+            enrich_retrospective_with_incident_data(
+                firehydrant_client, semaphore, report
+            )
             for report in reports
         ]
         enriched_reports = await asyncio.gather(*tasks)
