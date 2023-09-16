@@ -148,7 +148,7 @@ async def event_context(
             new_event.abort()
 
     dispatcher.connect(_handle_event, event_type)
-    dispatcher.send(event_type, triggering_event=event.id)
+    dispatcher.send(event_type, triggering_event_id=event.id)
 
     start_time = get_time(seconds_precision=False)
     with logger.contextualize(

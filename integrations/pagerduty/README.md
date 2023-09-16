@@ -24,7 +24,7 @@ helm upgrade --install my-pagerduty-integration port-labs/port-ocean \
 	--set initializePortResources=true  \
 	--set integration.identifier="my-pagerduty-integration"  \
 	--set integration.type="pagerduty"  \
-	--set integration.triggerChannel.type="POLLING"  \
+	--set integration.eventListener.type="POLLING"  \
 	--set integration.secrets.token="token"  \
 	--set integration.config.appHost="https://example.com"  \
     --set integration.config.apiUrl="https://api.pagerduty.com"  \

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.3 (2023-09-13)
+
+### Features
+
+- Changed returned entities to ocean with a generator of a list to support ocean 0.3.0
+
+
 # Port_Ocean 0.1.2 (2023-08-11)
 
 ### Improvements

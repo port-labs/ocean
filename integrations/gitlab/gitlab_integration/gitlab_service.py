@@ -6,6 +6,7 @@ from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
 from gitlab.v4.objects import Project
 from loguru import logger
+from yaml.parser import ParserError
 
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
@@ -81,8 +82,16 @@ class GitlabService:
                 generate_entity_from_port_yaml(entity_data, project, ref)
                 for entity_data in raw_entities
             ]
+        except ParserError as exec:
+            logger.error(
+                f"Failed to parse gitops entities from gitlab project {project.path_with_namespace},z file {file_name}."
+                f"\n {exec}"
+            )
         except Exception:
-            return []
+            logger.error(
+                f"Failed to get gitops entities from gitlab project {project.path_with_namespace}, file {file_name}"
+            )
+        return []
 
     def _get_entities_by_commit(
         self, project: Project, spec: str | List["str"], commit: str, ref: str
