@@ -24,7 +24,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
-            return self._compile(pattern).first(data) or None
+            return self._compile(pattern).first(data)
         except Exception:
             return None
 

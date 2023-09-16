@@ -7,6 +7,32 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.3.0 (2023-09-06)
+
+
+### Deprecations
+
+- Removed the `batch_work_size` configuration. Integrations should use the async generator syntax instead (PORT-4616)
+
+### Features
+
+- Added support for a configurable resync interval for integrations (PORT-4616)
+- Added a new feature that will abort a running resync if a new resync is attempting to start (PORT-4619)
+
+### Improvements
+
+- Changed the way an empty port app config is handled in the `PortAppConfig Handler` (PORT-4483)
+- Added yaml linter (#1)
+- Removed the Ocean version parameter from the integration scaffold template, the version is now queried directly from the Ocean framework library used by the integration (#2)
+- Changed the publish integration workflow to get the integration version from the `pyproject.toml` file of the integration and not from the `spec.yml` file (#3)
+
+### Bug Fixes
+
+- Fixed a bug that rollbacked all blueprints instead of only those created during integration setup, when the setup encountered an issue with blueprint creation
+- Fixed a bug that caused values that resulted with a  falsy jq evaluation to convert them to null. The values will now be ingested using their proper falsy representation (0 as 0, empty array as empty array, false as false, etc.)
+- Fixed the injections of parameters to the `config.yaml` file, the injected values will now be wrapped with `""` (#1)
+
+
 ## 0.2.3 (2023-08-17)
 
 ### Features
