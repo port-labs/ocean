@@ -25,7 +25,7 @@ helm upgrade --install my-sonarqube-integration port-labs/port-ocean \
 	--set initializePortResources=true  \
 	--set integration.identifier="my-sonarqube-integration"  \
 	--set integration.type="sonarqube"  \
-	--set integration.triggerChannel.type="POLLING"  \
+	--set integration.eventListener.type="POLLING"  \
 	--set integration.secrets.sonarApiToken="token"  \
 	--set integration.config.appHost="https://example.com"  \
     --set integration.config.sonarUrl="https://sonarcloud.io"  \
