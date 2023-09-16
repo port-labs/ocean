@@ -1,0 +1,39 @@
+resources:
+  - kind: services
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"opsGenieService"'
+          properties:
+            description: .description
+            url: .links.web
+            tags: .tags
+            oncallTeam: .__team.name
+            teamMembers: '[.__team.members[].user.username]'
+            teamSize: .__team.members | length
+  - kind: alerts
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .message
+          blueprint: '"opsGenieAlert"'
+          properties:
+            status: .status
+            acknowledged: .acknowledged
+            responders: .responders
+            priority: .priority
+            sourceName: .source
+            tags: .tags
+            count: .count
+            createdBy: .owner
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            description: .description
+            integration: .integration.name

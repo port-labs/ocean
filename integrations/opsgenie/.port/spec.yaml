@@ -1,0 +1,18 @@
+type: opsgenie
+description: OpsGenie integration for Port Ocean
+icon: OpsGenie
+features:
+  - type: exporter
+    section: Incident Management
+    resources:
+      - kind: services
+      - kind: alerts
+configurations:
+  - name: apiToken
+    required: true
+    type: string
+    sensitive: true
+  - name: apiUrl
+    type: string
+    required: true
+    default: https://api.opsgenie.com
