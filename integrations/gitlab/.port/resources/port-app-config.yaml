@@ -50,5 +50,5 @@ resources:
             link: .web_url
             labels: '[.labels[]]'
             object: .
-        relations:
-          project: .references.full | gsub("#.+"; "")
+          relations:
+            project: .references.full | gsub("#.+"; "")
