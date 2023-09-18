@@ -48,9 +48,8 @@ async def on_resync(kind: str) -> RAW_RESULT:
     projects = []
 
     for service in all_tokens_services:
-        logger.info(
-            f"fetching projects for token {service.gitlab_client.private_token}"
-        )
+        masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
+        logger.info(f"fetching projects for token {masked_token}")
         result = [project.asdict() for project in service.get_all_projects().values()]
         logger.info(f"found {len(result)} projects")
         projects.extend(result)
