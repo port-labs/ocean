@@ -7,14 +7,13 @@ from gitlab_integration.core.entities import (
 from loguru import logger
 from pydantic import Field
 from gitlab.v4.objects import Project
+from gitlab_integration.gitlab_service import PROJECTS_CACHE_KEY
 
 from port_ocean.context.event import event
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
 )
-
-PROJECTS_CACHE_KEY = "__cache_all_projects"
 
 
 class FileEntityProcessor(JQEntityProcessor):

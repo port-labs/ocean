@@ -14,7 +14,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Added owned & visibility flags to project configurations (#1)
 - Masking token at the startup log (#2)
-
+- Bumped Ocean to 0.3.0 (#3)
 
 0.1.15 (2023-09-04)
 ===================

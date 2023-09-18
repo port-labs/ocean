@@ -1,5 +1,5 @@
 import typing
-from typing import List, Tuple, Any, Union
+from typing import List, Tuple, Any, Union, TYPE_CHECKING
 
 import yaml
 from gitlab import Gitlab, GitlabList
@@ -10,10 +10,14 @@ from yaml.parser import ParserError
 
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
-from gitlab_integration.git_integration import GitlabPortAppConfig
-from gitlab_integration.git_integration import PROJECTS_CACHE_KEY
+
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
+
+PROJECTS_CACHE_KEY = "__cache_all_projects"
+
+if TYPE_CHECKING:
+    from gitlab_integration.git_integration import GitlabPortAppConfig
 
 
 class GitlabService:
@@ -176,7 +180,7 @@ class GitlabService:
         service_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).get(
             self.gitlab_client.private_token, {}
         )
-        port_app_config = typing.cast(GitlabPortAppConfig, event.port_app_config)
+        port_app_config = typing.cast("GitlabPortAppConfig", event.port_app_config)
         if service_projects:
             logger.debug(f"Found {len(service_projects)} projects in cache")
             return service_projects
