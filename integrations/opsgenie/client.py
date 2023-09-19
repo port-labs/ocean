@@ -53,8 +53,7 @@ class OpsGenieClient:
                 response = await self._get_single_resource(
                     url=url, query_params=pagination_params
                 )
-                if response.get("data"):
-                    yield response["data"]
+                yield response["data"]
 
                 url = response.get("paging", {}).get("next")
             except httpx.HTTPStatusError as e:
