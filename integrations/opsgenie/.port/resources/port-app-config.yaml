@@ -14,7 +14,6 @@ resources:
             tags: .tags
             oncallTeam: .__team.name
             teamMembers: '[.__team.members[].user.username]'
-            teamSize: .__team.members | length
   - kind: alert
     selector:
       query: 'true'

@@ -23,7 +23,7 @@ helm upgrade --install my-opsgenie-integration port-labs/port-ocean \
 	--set port.clientSecret="CLIENT_SECRET"  \
 	--set initializePortResources=true  \
 	--set integration.identifier="my-opsgenie-integration"  \
-	--set integration.type="pagerduty"  \
+	--set integration.type="opsgenie"  \
 	--set integration.triggerChannel.type="POLLING"  \
 	--set integration.secrets.apiToken="token"  \
     --set integration.config.apiUrl="https://api.opsgenie.com"  \
@@ -237,6 +237,9 @@ resources:
             integration: .integration.name
 ```
 </details>
+
+## Webhook Configuration
+The OpsGenie API currently does not offer support for programmatically creating webhooks. To implement a webhook with this ocean integration, users are kindly requested to configure it manually within [OpsGenie's interface](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/webhook/examples/opsgenie#create-a-webhook-in-opsgenie). Ensure that you use the following URL format when configuring the webhook: `<your_app_host>/integration/webhook`.
 
 ## Installation
 

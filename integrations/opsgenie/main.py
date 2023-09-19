@@ -61,7 +61,7 @@ async def on_alert_webhook_handler(data: dict[str, Any]) -> None:
 
     logger.info(f"Processing OpsGenie webhook for event type: {event_type}")
 
-    if event_type in opsgenie_client.delete_alert_events:
+    if event_type == "Delete":
         alert_data = data.get("alert", {})
         alert_data["id"] = alert_data.pop("alertId")
         await ocean.unregister_raw(ObjectKind.ALERT, [alert_data])

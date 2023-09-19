@@ -13,12 +13,6 @@ class OpsGenieClient:
         self.http_client = httpx.AsyncClient(headers=self.api_auth_header)
 
     @property
-    def delete_alert_events(self) -> list[str]:
-        return [
-            "Delete",
-        ]
-
-    @property
     def api_auth_header(self) -> dict[str, Any]:
         return {"Authorization": f"GenieKey {self.token}"}
 
