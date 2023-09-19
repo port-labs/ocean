@@ -27,13 +27,13 @@ async def enrich_services_with_team_data(
         return service
 
 
-@ocean.on_resync(ObjectKind.SERVICES)
+@ocean.on_resync(ObjectKind.SERVICE)
 async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
     semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
 
     async for service_batch in opsgenie_client.get_paginated_resources(
-        resource_type=ObjectKind.SERVICES
+        resource_type=ObjectKind.SERVICE
     ):
         logger.info(f"Received batch with {len(service_batch)} services")
         tasks = [
@@ -44,11 +44,11 @@ async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield enriched_services
 
 
-@ocean.on_resync(ObjectKind.ALERTS)
+@ocean.on_resync(ObjectKind.ALERT)
 async def on_alert_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
     async for alerts in opsgenie_client.get_paginated_resources(
-        resource_type=ObjectKind.ALERTS
+        resource_type=ObjectKind.ALERT
     ):
         logger.info(f"Received batch with {len(alerts)} alerts")
         yield alerts
@@ -64,8 +64,8 @@ async def on_alert_webhook_handler(data: dict[str, Any]) -> None:
     if event_type in opsgenie_client.delete_alert_events:
         alert_data = data.get("alert", {})
         alert_data["id"] = alert_data.pop("alertId")
-        await ocean.unregister_raw(ObjectKind.ALERTS, [alert_data])
+        await ocean.unregister_raw(ObjectKind.ALERT, [alert_data])
     else:
         alert_id = data.get("alert", {}).get("alertId")
         alert_data = await opsgenie_client.get_alert(identifier=alert_id)
-        await ocean.register_raw(ObjectKind.ALERTS, [alert_data])
+        await ocean.register_raw(ObjectKind.ALERT, [alert_data])

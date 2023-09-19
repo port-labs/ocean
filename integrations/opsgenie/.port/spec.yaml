@@ -5,8 +5,8 @@ features:
   - type: exporter
     section: Incident Management
     resources:
-      - kind: services
-      - kind: alerts
+      - kind: service
+      - kind: alert
 configurations:
   - name: apiToken
     required: true

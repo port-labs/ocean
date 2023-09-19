@@ -1,5 +1,5 @@
 resources:
-  - kind: services
+  - kind: service
     selector:
       query: 'true'
     port:
@@ -15,7 +15,7 @@ resources:
             oncallTeam: .__team.name
             teamMembers: '[.__team.members[].user.username]'
             teamSize: .__team.members | length
-  - kind: alerts
+  - kind: alert
     selector:
       query: 'true'
     port:

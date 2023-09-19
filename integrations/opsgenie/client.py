@@ -64,11 +64,11 @@ class OpsGenieClient:
                 raise
 
     async def get_alert(self, identifier: str) -> dict[str, Any]:
-        api_version = await self.get_resource_api_version(ObjectKind.ALERTS)
+        api_version = await self.get_resource_api_version(ObjectKind.ALERT)
         url = f"{self.api_url}/{api_version}/alerts/{identifier}"
         return (await self._get_single_resource(url))["data"]
 
     async def get_oncall_team(self, identifier: str) -> dict[str, Any]:
-        api_version = await self.get_resource_api_version(ObjectKind.TEAMS)
+        api_version = await self.get_resource_api_version(ObjectKind.TEAM)
         url = f"{self.api_url}/{api_version}/teams/{identifier}"
         return (await self._get_single_resource(url))["data"]
