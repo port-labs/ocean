@@ -774,13 +774,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.2.3"
+version = "0.3.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "port_ocean-0.2.3-py3-none-any.whl", hash = "sha256:277ea80a9abbe43deb0bd5c1212b8ecf3ff4336f81c5202045100363b3744c79"},
-    {file = "port_ocean-0.2.3.tar.gz", hash = "sha256:b90c933dc8d2dee069d04a7373a6aca219afeef637ff90877a6241746ec32e0f"},
+    {file = "port_ocean-0.3.0-py3-none-any.whl", hash = "sha256:385107475da2b294c190b6e8653b4fc079644310c8be5a5a1fbdf8ee8be56add"},
+    {file = "port_ocean-0.3.0.tar.gz", hash = "sha256:3494c0a1278fb26db34ad531668a8069fb17de2ee10e8af42bd79e791b344cfe"},
 ]
 
 [package.dependencies]
@@ -792,6 +792,7 @@ httpx = ">=0.24.1,<0.25.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
 pydantic = ">=1.10.8,<2.0.0"
+pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
 pyjq = ">=2.6.0,<3.0.0"
 pyyaml = ">=6.0,<7.0"
@@ -855,6 +856,20 @@ typing-extensions = ">=4.2.0"
 [package.extras]
 dotenv = ["python-dotenv (>=0.10.4)"]
 email = ["email-validator (>=1.0.3)"]
+
+[[package]]
+name = "pydispatcher"
+version = "2.0.7"
+description = "Multi-producer multi-consumer in-memory signal dispatch system"
+optional = false
+python-versions = "*"
+files = [
+    {file = "PyDispatcher-2.0.7-py3-none-any.whl", hash = "sha256:96543bea04115ffde08f851e1d45cacbfd1ee866ac42127d9b476dc5aefa7de0"},
+    {file = "PyDispatcher-2.0.7.tar.gz", hash = "sha256:b777c6ad080dc1bad74a4c29d6a46914fa6701ac70f94b0d66fbcfde62f5be31"},
+]
+
+[package.extras]
+dev = ["tox"]
 
 [[package]]
 name = "pygments"
@@ -1325,4 +1340,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "c94a365a6b10cf54f6cc7dca6234975638d68c3c9d72de29e9bbdac1b7151277"
+content-hash = "a71a418a1d6cda056ba2cf8dd690ffb41d6b5cda9bc8bd38c08b07cd00b6a45a"

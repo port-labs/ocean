@@ -30,7 +30,7 @@ resources:
             description: .description
             link: .web_url
           relations:
-            project: .references.full
+            project: .references.full | gsub("!.+"; "")
   - kind: issue
     selector:
       query: 'true'
@@ -50,5 +50,5 @@ resources:
             link: .web_url
             labels: '[.labels[]]'
             object: .
-        relations:
-          project: .references.full
+          relations:
+            project: .references.full | gsub("#.+"; "")
