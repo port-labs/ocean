@@ -10,7 +10,6 @@ CONCURRENT_REQUESTS = 5
 
 
 def init_client() -> OpsGenieClient:
-    logger.error("creating and")
     return OpsGenieClient(
         ocean.integration_config["api_token"],
         ocean.integration_config["api_url"],
