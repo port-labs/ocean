@@ -34,6 +34,7 @@ resources:
               meanTimeToAcknowledge: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "acknowledged")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
               meanTimeToDetect: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "detected")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
               meanTimeToMitigate: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "mitigated")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
+              meanTimeToResolve: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "resolved")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
               createdAt: .created_at
               updatedAt: .updated_at
   - kind: incident

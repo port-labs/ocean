@@ -1,17 +1,10 @@
 from typing import Any
-from enum import StrEnum
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 import asyncio
 from client import FirehydrantClient
-
-
-class ObjectKind(StrEnum):
-    ENVIRONMENT = "environment"
-    INCIDENT = "incident"
-    SERVICE = "service"
-    RETROSPECTIVE = "retrospective"
+from utils import ObjectKind
 
 
 ## Helper function to initialize the Firehydrant client
@@ -19,7 +12,7 @@ def init_client() -> FirehydrantClient:
     return FirehydrantClient(
         ocean.integration_config["api_url"],
         ocean.integration_config["token"],
-        ocean.integration_config.get("app_host", ""),
+        ocean.integration_config.get("app_host", None),
     )
 
 
@@ -29,24 +22,8 @@ async def enrich_retrospective_with_incident_data(
 ) -> dict[str, Any]:
     async with semaphore:
         tasks = await http_client.get_tasks_by_incident(report["incident"]["id"])
-        incident_info = {"tasks": tasks}
-        report["__incident"] = incident_info
+        report["__incident"] = {"tasks": tasks}
         return report
-
-
-## Enriches the services data with incident milestones (used to compute service analytics in jq)
-async def enrich_service_with_incident_data(
-    http_client: FirehydrantClient,
-    semaphore: asyncio.Semaphore,
-    service: dict[str, Any],
-) -> dict[str, Any]:
-    async with semaphore:
-        milestones = await http_client.get_milestones_by_incident(
-            service["active_incidents"]
-        )
-        incident_info = {"milestones": milestones}
-        service["__incidents"] = incident_info
-        return service
 
 
 @ocean.on_resync(ObjectKind.ENVIRONMENT)
@@ -67,13 +44,10 @@ async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for services in firehydrant_client.get_paginated_resource(
         resource_type=ObjectKind.SERVICE
     ):
-        logger.debug(f"Received batch with {len(services)} services")
-        semaphore = asyncio.Semaphore(5)
-        tasks = [
-            enrich_service_with_incident_data(firehydrant_client, semaphore, service)
-            for service in services
-        ]
-        enriched_services = await asyncio.gather(*tasks)
+        logger.error(f"Received batch with {len(services)} services")
+        enriched_services = await firehydrant_client.get_incident_milestones(
+            services=services
+        )
         yield enriched_services
 
 
@@ -129,18 +103,20 @@ async def handle_firehydrant_webhook(webhook_data: dict[str, Any]) -> None:
             await ocean.register_raw(ObjectKind.RETROSPECTIVE, [retrospective_data])
 
     if "environments" in data:
-        environment_id = data["environments"]["id"]
-        environment_data = await firehydrant_client.get_single_environment(
-            environment_id=environment_id
-        )
-        await ocean.register_raw(ObjectKind.ENVIRONMENT, [environment_data])
+        for environment in data["environments"]:
+            environment_id = environment["id"]
+            environment_data = await firehydrant_client.get_single_environment(
+                environment_id=environment_id
+            )
+            await ocean.register_raw(ObjectKind.ENVIRONMENT, [environment_data])
 
     if "services" in data:
-        service_id = data["services"]["id"]
-        service_data = await firehydrant_client.get_single_service(
-            service_id=service_id
-        )
-        await ocean.register_raw(ObjectKind.SERVICE, [service_data])
+        for service in data["services"]:
+            service_id = service["id"]
+            service_data = await firehydrant_client.get_single_service(
+                service_id=service_id
+            )
+            await ocean.register_raw(ObjectKind.SERVICE, service_data)
 
     logger.info("Webhook event processed")
 

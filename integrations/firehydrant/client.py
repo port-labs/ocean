@@ -1,8 +1,9 @@
 from enum import StrEnum
-from typing import Any, Optional, AsyncGenerator
+from typing import Any, Optional, AsyncGenerator, Union
 import httpx
 from loguru import logger
 from port_ocean.context.event import event
+from utils import ObjectKind, RESOURCE_API_PATH_MAPPER
 
 PAGE_SIZE = 50
 
@@ -56,34 +57,39 @@ class FirehydrantClient:
             raise
 
     async def get_paginated_resource(
-        self, resource_type: str
+        self,
+        resource_type: Union[ObjectKind, str],
+        additional_params: dict[str, Any] = {},
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info(f"Getting {resource_type} from Firehydrant")
-        endpoint = endpoint_resource_type_mapper.get(resource_type, resource_type)
+        if isinstance(resource_type, ObjectKind):
+            endpoint = RESOURCE_API_PATH_MAPPER.get(resource_type, resource_type.value)
+        elif isinstance(resource_type, str):
+            endpoint = resource_type
+        else:
+            raise ValueError(
+                "Invalid resource parameter. It should be ObjectKind or a string endpoint."
+            )
+        logger.info(f"Fetching {endpoint} from Firehydrant")
 
         pagination_params: dict[str, Any] = {
             "page": 1,
             "per_page": PAGE_SIZE,
         }
+        pagination_params.update(additional_params)
 
         try:
             while True:
                 response = await self.send_api_request(
                     endpoint=endpoint, query_params=pagination_params
                 )
-                if response.get("data"):
-                    yield response["data"]
-                else:
-                    logger.warning(f"No {resource_type} found in the response")
+                yield response["data"]
 
                 pagination_params["page"] += 1
 
-                if pagination_params["page"] > response.get("pagination", {}).get(
-                    "pages"
-                ):
+                if pagination_params["page"] > response["pagination"]["pages"]:
                     break
 
-        except Exception as e:
+        except httpx.HTTPError as e:
             logger.error(f"Error while fetching {resource_type}: {str(e)}")
 
     async def get_single_environment(self, environment_id: str) -> dict[str, Any]:
@@ -97,13 +103,9 @@ class FirehydrantClient:
         event.attributes[cache_key] = incident_data
         return incident_data
 
-    async def get_single_service(self, service_id: str) -> dict[str, Any]:
-        serice_data = await self.send_api_request(endpoint=f"services/{service_id}")
-        incident_data = await self.get_milestones_by_incident(
-            serice_data["active_incidents"]
-        )
-        serice_data["__incidents"] = {"milestones": incident_data}
-        return serice_data
+    async def get_single_service(self, service_id: str) -> list[dict[str, Any]]:
+        service_data = await self.send_api_request(endpoint=f"services/{service_id}")
+        return await self.get_incident_milestones(services=[service_data])
 
     async def get_single_retrospective(self, report_id: str) -> dict[str, Any]:
         report_data = await self.send_api_request(
@@ -122,15 +124,32 @@ class FirehydrantClient:
             tasks.extend(item)
         return tasks
 
-    async def get_milestones_by_incident(
-        self, active_incidents_ids: list[Any]
+    async def get_incident_milestones(
+        self, services: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        incident_milestones = []
-        for incident_id in active_incidents_ids:
-            incident_data = await self.get_single_incident(incident_id=incident_id)
-            incident_milestones.append(incident_data["milestones"])
+        incidents = []
+        service_ids = [service["id"] for service in services]
 
-        return incident_milestones
+        pagination_params: dict[str, Any] = {"services": ",".join(service_ids)}
+
+        async for batched_incidents in self.get_paginated_resource(
+            ObjectKind.INCIDENT, additional_params=pagination_params
+        ):
+            incidents.extend(batched_incidents)
+
+        service_milestones: dict[str, Any] = {
+            service_id: [] for service_id in service_ids
+        }
+
+        for incident in incidents:
+            for service_data in incident["services"]:
+                service_id = service_data["id"]
+                if service_id in service_milestones:
+                    service_milestones[service_id].append(incident["milestones"])
+        for service in services:
+            service["__incidents"] = {"milestones": service_milestones[service["id"]]}
+
+        return services
 
     async def create_webhooks_if_not_exists(self) -> None:
         webhook_endpoint = "webhooks"
@@ -148,7 +167,7 @@ class FirehydrantClient:
         body = {
             "url": app_host_webhook_url,
             "state": "active",
-            "subscriptions": ["incidents", "change_event"],
+            "subscriptions": ["incidents", "change_events"],
         }
 
         await self.send_api_request(

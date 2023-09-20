@@ -3,7 +3,7 @@
         "identifier": "firehydrantIncident",
         "description": "This blueprint represents a firehydrant incident",
         "title": "FireHydrant Incident",
-        "icon": "Firehydrant",
+        "icon": "FireHydrant",
         "schema": {
           "properties": {
             "url": {
@@ -118,7 +118,7 @@
         "identifier": "firehydrantService",
         "description": "This blueprint represents a firehydrant service",
         "title": "FireHydrant Service",
-        "icon": "Firehydrant",
+        "icon": "FireHydrant",
         "schema": {
           "properties": {
             "description": {
@@ -177,6 +177,11 @@
               "title": "Mean Time to Mitigation",
               "type": "number",
               "description": "Mean time (in hours) to mitigate incidents attached to this service"
+            },
+            "meanTimeToResolve": {
+              "title": "Mean Time to Resolution",
+              "type": "number",
+              "description": "Mean time (in hours) to resolve incidents attached to this service"
             }
           },
           "required": []
@@ -189,7 +194,7 @@
         "identifier": "firehydrantEnvironment",
         "description": "This blueprint represents a firehydrant environment",
         "title": "FireHydrant Environment",
-        "icon": "Firehydrant",
+        "icon": "FireHydrant",
         "schema": {
           "properties": {
             "description": {
@@ -222,7 +227,7 @@
         "identifier": "firehydrantRetrospective",
         "description": "This blueprint represents a service in our software catalog",
         "title": "FireHydrant Retrospective",
-        "icon": "Firehydrant",
+        "icon": "FireHydrant",
         "schema": {
           "properties": {
             "url": {
