@@ -58,6 +58,77 @@
      "relations":{}
   },
   {
+   "identifier": "opsGenieIncident",
+   "description": "This blueprint represents an OpsGenie incident in our software catalog",
+   "title": "OpsGenie Incident",
+   "icon": "OpsGenie",
+   "schema": {
+     "properties": {
+       "description": {
+         "title": "Description",
+         "type": "string"
+       },
+       "status": {
+         "type": "string",
+         "title": "Status",
+         "enum": [
+           "closed",
+           "open",
+           "resolved"
+         ],
+         "enumColors": {
+           "closed": "blue",
+           "open": "red",
+           "resolved": "green"
+         },
+         "description": "The status of the incident"
+       },
+       "url": {
+         "type": "string",
+         "format": "url",
+         "title": "URL"
+       },
+       "tags": {
+         "type": "array",
+         "items": {
+           "type": "string"
+         },
+         "title": "Tags"
+       },
+       "responders": {
+         "type": "array",
+         "title": "Responders",
+         "description": "Responders to the alert"
+       },
+       "priority": {
+         "type": "string",
+         "title": "Priority"
+       },
+       "createdAt": {
+         "title": "Create At",
+         "type": "string",
+         "format": "date-time"
+       },
+       "updatedAt": {
+         "title": "Updated At",
+         "type": "string",
+         "format": "date-time"
+       }
+     },
+     "required": []
+   },
+   "mirrorProperties": {},
+   "calculationProperties": {},
+   "relations": {
+     "services": {
+       "title": "Impacted Services",
+       "target": "opsGenieService",
+       "many": true,
+       "required": false
+     }
+   }
+ },
+  {
      "identifier":"opsGenieAlert",
      "description":"This blueprint represents an OpsGenie alert in our software catalog",
      "title":"OpsGenie Alert",

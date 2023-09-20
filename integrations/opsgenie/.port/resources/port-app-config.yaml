@@ -14,6 +14,26 @@ resources:
             tags: .tags
             oncallTeam: .__team.name
             teamMembers: '[.__team.members[].user.username]'
+  - kind: incident
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .message
+          blueprint: '"opsGenieIncident"'
+          properties:
+            status: .status
+            responders: .responders
+            priority: .priority
+            tags: .tags
+            url: .links.web
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            description: .description
+          relations:
+            services: .impactedServices
   - kind: alert
     selector:
       query: 'true'

@@ -10,6 +10,7 @@ CONCURRENT_REQUESTS = 5
 
 
 def init_client() -> OpsGenieClient:
+    logger.error("creating and")
     return OpsGenieClient(
         ocean.integration_config["api_token"],
         ocean.integration_config["api_url"],
@@ -42,6 +43,16 @@ async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ]
         enriched_services = await asyncio.gather(*tasks)
         yield enriched_services
+
+
+@ocean.on_resync(ObjectKind.INCIDENT)
+async def on_incident_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    opsgenie_client = init_client()
+    async for incident in opsgenie_client.get_paginated_resources(
+        resource_type=ObjectKind.INCIDENT
+    ):
+        logger.info(f"Received batch with {len(incident)} incident")
+        yield incident
 
 
 @ocean.on_resync(ObjectKind.ALERT)
