@@ -44,7 +44,7 @@ async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for services in firehydrant_client.get_paginated_resource(
         resource_type=ObjectKind.SERVICE
     ):
-        logger.error(f"Received batch with {len(services)} services")
+        logger.debug(f"Received batch with {len(services)} services")
         enriched_services = await firehydrant_client.get_incident_milestones(
             services=services
         )
