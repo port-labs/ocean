@@ -4,14 +4,16 @@ from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,
     SEARCH_PROPERTY_PREFIX,
 )
-from gitlab_integration.gitlab_service import PROJECTS_CACHE_KEY
 from loguru import logger
 from pydantic import Field
 from gitlab.v4.objects import Project
+from gitlab_integration.gitlab_service import PROJECTS_CACHE_KEY
 
 from port_ocean.context.event import event
 from port_ocean.core.handlers import JQEntityProcessor
-from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from port_ocean.core.handlers.port_app_config.models import (
+    PortAppConfig,
+)
 
 
 class FileEntityProcessor(JQEntityProcessor):
@@ -89,6 +91,12 @@ class GitManipulationHandler(JQEntityProcessor):
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str = "main"
+    filter_owned_projects: bool | None = Field(
+        alias="filterOwnedProjects", default=True
+    )
+    project_visibility_filter: str | None = Field(
+        alias="projectVisibilityFilter", default=None
+    )
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:
