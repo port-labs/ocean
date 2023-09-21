@@ -2,10 +2,10 @@ from enum import StrEnum
 
 
 class ObjectKind(StrEnum):
-    ALERT = "alerts"
-    SERVICE = "services"
-    TEAM = "teams"
-    INCIDENT = "incidents"
+    ALERT = "alert"
+    SERVICE = "service"
+    TEAM = "team"
+    INCIDENT = "incident"
 
 
 # A dictionary to map each resource type to its API version

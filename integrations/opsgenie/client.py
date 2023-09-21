@@ -39,7 +39,7 @@ class OpsGenieClient:
         self, resource_type: ObjectKind
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         api_version = await self.get_resource_api_version(resource_type)
-        url = f"{self.api_url}/{api_version}/{resource_type.value}"
+        url = f"{self.api_url}/{api_version}/{resource_type.value}s"
         pagination_params: dict[str, Any] = {"limit": PAGE_SIZE}
 
         while url:
