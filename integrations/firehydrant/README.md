@@ -28,7 +28,6 @@ helm upgrade --install my-firehydrant-integration port-labs/port-ocean \
 	--set integration.identifier="my-firehydrant-integration"  \
 	--set integration.type="firehydrant"  \
 	--set integration.eventListener.type="POLLING"  \
-	--set integration.config.appHost="https://example.com"  \
 	--set integration.config.apiUrl="https://api.firehydrant.io"  \
 	--set integration.secrets.token="<FIREHYDRANT_API_TOKEN>"
 ```
