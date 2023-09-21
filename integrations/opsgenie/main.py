@@ -8,6 +8,7 @@ from utils import ObjectKind
 
 CONCURRENT_REQUESTS = 5
 
+
 def init_client() -> OpsGenieClient:
     return OpsGenieClient(
         ocean.integration_config["api_token"],
