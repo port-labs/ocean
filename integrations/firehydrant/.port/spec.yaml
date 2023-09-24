@@ -1,6 +1,6 @@
 type: firehydrant
 description: Firehydrant integration for Port Ocean
-icon: Firehydrant
+icon: FireHydrant
 features:
   - type: exporter
     section: Incident Management
