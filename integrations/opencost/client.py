@@ -42,11 +42,6 @@ class OpenCostClient:
         """
         endpoint = "allocation/compute"
         parameters: dict[str, Any] = {"window": self.window}
-        cost_data = (
+        return (
             await self.send_api_request(endpoint=endpoint, query_params=parameters)
-        )["data"][0]
-        return self.format_data(data=cost_data)
-
-    def format_data(self, data: dict[str, Any]) -> list[dict[str, Any]]:
-        formatted_data = [value for key, value in data.items()]
-        return formatted_data
+        )["data"]

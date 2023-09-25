@@ -11,5 +11,7 @@ configurations:
   - name: window
     type: string
     default: today
+    description: Duration of time over which to query. Accepts words like today, week, month, yesterday, lastweek, lastmonth
   - name: appHost
     type: string
+    description: The URL of your OpenCost server
