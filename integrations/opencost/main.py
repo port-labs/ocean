@@ -15,13 +15,16 @@ def init_client() -> OpenCostClient:
         ocean.integration_config.get("window", "today"),
     )
 
-async def process_cost_item(item: dict[str, Any], semaphore: asyncio.Semaphore):
+
+async def process_cost_item(
+    item: dict[str, Any], semaphore: asyncio.Semaphore
+) -> list[dict[str, Any]]:
     async with semaphore:
         simplified_data = []
         for key, value in item.items():
             simplified_data.append(value)
         return simplified_data
-    
+
 
 @ocean.on_resync(ObjectKind.COST)
 async def on_cost_resync(kind: str) -> list[dict[Any, Any]]:
