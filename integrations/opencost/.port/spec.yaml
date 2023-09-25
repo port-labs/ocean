@@ -1,0 +1,15 @@
+version: v0.1.0
+type: opencost
+description: OpenCost integration for Port Ocean
+icon: OpenCost
+features:
+  - type: exporter
+    section: Cloud Cost
+    resources:
+      - kind: cost
+configurations:
+  - name: window
+    type: string
+    default: today
+  - name: appHost
+    type: string
