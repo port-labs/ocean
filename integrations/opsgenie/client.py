@@ -102,11 +102,13 @@ class OpsGenieClient:
                 return schedule
         return {}
 
-    async def get_associated_alerts(self, incident_identifier: str) -> list[dict[str, Any]]:
+    async def get_associated_alerts(
+        self, incident_identifier: str
+    ) -> list[dict[str, Any]]:
         api_version = await self.get_resource_api_version(ObjectKind.INCIDENT)
         url = f"{self.api_url}/{api_version}/incidents/{incident_identifier}/associated-alert-ids"
         return (await self._get_single_resource(url))["data"]
-    
+
     async def get_incidents(self) -> list[dict[str, Any]]:
         cache_key = ObjectKind.INCIDENT
         incidents = []
@@ -116,7 +118,7 @@ class OpsGenieClient:
             incidents.extend(incident_batch)
         event.attributes[cache_key] = incidents
         return incidents
-    
+
     async def get_incidents_by_service(self, service_id: str) -> list[dict[str, Any]]:
         incidents = await self.get_incidents()
         impacted_services = []

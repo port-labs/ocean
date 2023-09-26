@@ -24,12 +24,15 @@ async def enrich_services_with_team_data(
     async with semaphore:
         team_data = await opsgenie_client.get_oncall_team(service["teamId"])
         schedule = await opsgenie_client.get_schedule_by_team(service["teamId"])
-        related_incidents = await opsgenie_client.get_incidents_by_service(service["id"])
+        related_incidents = await opsgenie_client.get_incidents_by_service(
+            service["id"]
+        )
         service["__team"] = team_data
         service["__incidents"] = related_incidents
         if schedule:
             service["__oncalls"] = await opsgenie_client.get_oncall_user(schedule["id"])
         return service
+
 
 async def enrich_incident_with_alert_data(
     opsgenie_client: OpsGenieClient,
