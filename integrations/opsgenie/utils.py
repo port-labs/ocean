@@ -6,6 +6,7 @@ class ObjectKind(StrEnum):
     SERVICE = "service"
     TEAM = "team"
     INCIDENT = "incident"
+    SCHEDULE = "schedule"
 
 
 # A dictionary to map each resource type to its API version
@@ -14,4 +15,5 @@ RESOURCE_API_VERSIONS = {
     ObjectKind.SERVICE: "v1",
     ObjectKind.TEAM: "v2",
     ObjectKind.INCIDENT: "v1",
+    ObjectKind.SCHEDULE: "v2",
 }

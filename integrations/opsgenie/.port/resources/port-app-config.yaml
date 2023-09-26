@@ -1,3 +1,5 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
 resources:
   - kind: service
     selector:
@@ -14,6 +16,8 @@ resources:
             tags: .tags
             oncallTeam: .__team.name
             teamMembers: '[.__team.members[].user.username]'
+            oncallUsers: .__oncalls.onCallRecipients
+            numOpenIncidents: '[ .__incidents[] | select(.status == "open")] | length'
   - kind: alert
     selector:
       query: 'true'
@@ -56,3 +60,4 @@ resources:
             description: .description
           relations:
             services: .impactedServices
+            associatedAlerts: .__associatedAlerts

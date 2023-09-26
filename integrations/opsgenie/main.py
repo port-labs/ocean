@@ -23,8 +23,23 @@ async def enrich_services_with_team_data(
 ) -> dict[str, Any]:
     async with semaphore:
         team_data = await opsgenie_client.get_oncall_team(service["teamId"])
+        schedule = await opsgenie_client.get_schedule_by_team(service["teamId"])
+        related_incidents = await opsgenie_client.get_incidents_by_service(service["id"])
         service["__team"] = team_data
+        service["__incidents"] = related_incidents
+        if schedule:
+            service["__oncalls"] = await opsgenie_client.get_oncall_user(schedule["id"])
         return service
+
+async def enrich_incident_with_alert_data(
+    opsgenie_client: OpsGenieClient,
+    semaphore: asyncio.Semaphore,
+    incident: dict[str, Any],
+) -> dict[str, Any]:
+    async with semaphore:
+        associated_alerts = await opsgenie_client.get_associated_alerts(incident["id"])
+        incident["__associatedAlerts"] = associated_alerts
+        return incident
 
 
 @ocean.on_resync(ObjectKind.SERVICE)
@@ -47,21 +62,28 @@ async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.INCIDENT)
 async def on_incident_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
-    async for incident in opsgenie_client.get_paginated_resources(
+    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+
+    async for incident_batch in opsgenie_client.get_paginated_resources(
         resource_type=ObjectKind.INCIDENT
     ):
-        logger.info(f"Received batch with {len(incident)} incident")
-        yield incident
+        logger.info(f"Received batch with {len(incident_batch)} incident")
+        tasks = [
+            enrich_incident_with_alert_data(opsgenie_client, semaphore, incident)
+            for incident in incident_batch
+        ]
+        enriched_incidents = await asyncio.gather(*tasks)
+        yield enriched_incidents
 
 
 @ocean.on_resync(ObjectKind.ALERT)
 async def on_alert_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
-    async for alerts in opsgenie_client.get_paginated_resources(
+    async for alerts_batch in opsgenie_client.get_paginated_resources(
         resource_type=ObjectKind.ALERT
     ):
-        logger.info(f"Received batch with {len(alerts)} alerts")
-        yield alerts
+        logger.info(f"Received batch with {len(alerts_batch)} alerts")
+        yield alerts_batch
 
 
 @ocean.router.post("/webhook")

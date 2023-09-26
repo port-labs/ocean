@@ -41,7 +41,21 @@
                },
                "title": "Team Members",
                "description": "Members of team responsible for this service"
-            }
+            },
+            "oncallUsers": {
+               "icon": "TwoUsers",
+               "type": "array",
+               "items": {
+                  "type": "string",
+                  "format": "user"
+               },
+               "title": "Oncall Users",
+               "description": "Who is on call for this service"
+            },
+            "numOpenIncidents": {
+               "title": "Number of Open Incidents",
+               "type": "number"
+             }
          },
          "required": []
       },
@@ -125,7 +139,13 @@
             "target": "opsGenieService",
             "many": true,
             "required": false
-         }
+         },
+         "associatedAlerts": {
+            "title": "Associated Alerts",
+            "target": "opsGenieAlert",
+            "required": false,
+            "many": true
+          }
       }
    },
    {
