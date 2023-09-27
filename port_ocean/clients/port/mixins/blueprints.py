@@ -4,6 +4,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.port.utils import handle_status_code
 from port_ocean.core.models import Blueprint
 
@@ -22,9 +23,14 @@ class BlueprintClientMixin:
         handle_status_code(response)
         return Blueprint.parse_obj(response.json()["blueprint"])
 
-    async def create_blueprint(self, raw_blueprint: dict[str, Any]) -> None:
+    async def create_blueprint(
+        self,
+        raw_blueprint: dict[str, Any],
+        user_agent_type: UserAgentType | None = None,
+    ) -> None:
         logger.info(f"Creating blueprint with id: {raw_blueprint.get('identifier')}")
-        headers = await self.auth.headers()
+        headers = await self.auth.headers(user_agent_type)
+        logger.info(f"headers: {headers}")
         response = await self.client.post(
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
@@ -33,10 +39,13 @@ class BlueprintClientMixin:
             return response.json()["blueprint"]
 
     async def patch_blueprint(
-        self, identifier: str, raw_blueprint: dict[str, Any]
+        self,
+        identifier: str,
+        raw_blueprint: dict[str, Any],
+        user_agent_type: UserAgentType | None = None,
     ) -> None:
         logger.info(f"Patching blueprint with id: {identifier}")
-        headers = await self.auth.headers()
+        headers = await self.auth.headers(user_agent_type)
         response = await self.client.patch(
             f"{self.auth.api_url}/blueprints/{identifier}",
             headers=headers,
@@ -45,12 +54,16 @@ class BlueprintClientMixin:
         handle_status_code(response)
 
     async def delete_blueprint(
-        self, identifier: str, should_raise: bool = False, delete_entities: bool = False
+        self,
+        identifier: str,
+        should_raise: bool = False,
+        delete_entities: bool = False,
+        user_agent_type: UserAgentType | None = None,
     ) -> None | str:
         logger.info(
             f"Deleting blueprint with id: {identifier} with all entities: {delete_entities}"
         )
-        headers = await self.auth.headers()
+        headers = await self.auth.headers(user_agent_type)
         response = None
 
         if not delete_entities:
