@@ -143,7 +143,6 @@ async def _initialize_defaults(
                 port_client.delete_blueprint(
                     identifier,
                     should_raise=False,
-                    delete_entities=False,
                     user_agent_type=UserAgentType.exporter,
                 )
                 for identifier in e.blueprints_to_rollback

@@ -30,7 +30,6 @@ class BlueprintClientMixin:
     ) -> None:
         logger.info(f"Creating blueprint with id: {raw_blueprint.get('identifier')}")
         headers = await self.auth.headers(user_agent_type)
-        logger.info(f"headers: {headers}")
         response = await self.client.post(
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
