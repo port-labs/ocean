@@ -9,9 +9,8 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: my-new-opsgenie-integration-a
+  identifier: my-opsgenie-integration
   # The type of the integration.
   type: "opsgenie"
   config:
     apiToken: "{{ from env OPSGENIE_API_KEY }}"
-    apiUrl: "{{ from env OPSGENIE_API_URL }}"
