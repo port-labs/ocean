@@ -12,7 +12,7 @@ CONCURRENT_REQUESTS = 5
 def init_client() -> OpsGenieClient:
     return OpsGenieClient(
         ocean.integration_config["api_token"],
-        ocean.integration_config["api_url"],
+        ocean.integration_config.get("api_url", "https://api.opsgenie.com"),
     )
 
 
@@ -40,9 +40,23 @@ async def enrich_incident_with_alert_data(
     incident: dict[str, Any],
 ) -> dict[str, Any]:
     async with semaphore:
-        associated_alerts = await opsgenie_client.get_associated_alerts(incident["id"])
-        incident["__associatedAlerts"] = associated_alerts
+        impacted_services = await opsgenie_client.get_impacted_services(
+            incident["impactedServices"]
+        )
+        incident["__impactedServices"] = impacted_services
         return incident
+
+
+async def enrich_alert_with_related_Incident_data(
+    opsgenie_client: OpsGenieClient,
+    semaphore: asyncio.Semaphore,
+    alert: dict[str, Any],
+) -> dict[str, Any]:
+    async with semaphore:
+        alert_with_related_incident = (
+            await opsgenie_client.get_related_incident_by_alert(alert)
+        )
+        return alert_with_related_incident
 
 
 @ocean.on_resync(ObjectKind.SERVICE)
@@ -82,11 +96,19 @@ async def on_incident_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ALERT)
 async def on_alert_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
+    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+
     async for alerts_batch in opsgenie_client.get_paginated_resources(
         resource_type=ObjectKind.ALERT
     ):
         logger.info(f"Received batch with {len(alerts_batch)} alerts")
-        yield alerts_batch
+
+        tasks = [
+            enrich_alert_with_related_Incident_data(opsgenie_client, semaphore, alert)
+            for alert in alerts_batch
+        ]
+        enriched_alerts = await asyncio.gather(*tasks)
+        yield enriched_alerts
 
 
 @ocean.router.post("/webhook")

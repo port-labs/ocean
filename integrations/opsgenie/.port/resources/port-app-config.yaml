@@ -7,7 +7,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id
+          identifier: .name | gsub("[^a-zA-Z0-9@_.:/=-]"; "-") | tostring
           title: .name
           blueprint: '"opsGenieService"'
           properties:
@@ -40,6 +40,8 @@ resources:
             updatedAt: .updatedAt
             description: .description
             integration: .integration.name
+          relations:
+            relatedIncident: .__relatedIncident.id
   - kind: incident
     selector:
       query: 'true'
@@ -59,5 +61,4 @@ resources:
             updatedAt: .updatedAt
             description: .description
           relations:
-            services: .impactedServices
-            associatedAlerts: .__associatedAlerts
+            services: '[.__impactedServices[] | .name | gsub("[^a-zA-Z0-9@_.:/=-]"; "-") | tostring]'
