@@ -5,6 +5,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.clients.port.client import PortClient
+from port_ocean.clients.port.types import UserAgentType
 from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -56,7 +57,12 @@ async def _create_resources(
     )
 
     create_results = await asyncio.gather(
-        *(port_client.create_blueprint(blueprint) for blueprint in creation_stage),
+        *(
+            port_client.create_blueprint(
+                blueprint, user_agent_type=UserAgentType.exporter
+            )
+            for blueprint in creation_stage
+        ),
         return_exceptions=True,
     )
 
@@ -80,7 +86,11 @@ async def _create_resources(
         for patch_stage in blueprint_patches:
             await asyncio.gather(
                 *(
-                    port_client.patch_blueprint(blueprint["identifier"], blueprint)
+                    port_client.patch_blueprint(
+                        blueprint["identifier"],
+                        blueprint,
+                        user_agent_type=UserAgentType.exporter,
+                    )
                     for blueprint in patch_stage
                 )
             )
@@ -130,7 +140,11 @@ async def _initialize_defaults(
         )
         await asyncio.gather(
             *(
-                port_client.delete_blueprint(identifier, should_raise=False)
+                port_client.delete_blueprint(
+                    identifier,
+                    should_raise=False,
+                    user_agent_type=UserAgentType.exporter,
+                )
                 for identifier in e.blueprints_to_rollback
             )
         )
