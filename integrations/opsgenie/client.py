@@ -40,19 +40,22 @@ class OpsGenieClient:
     async def get_paginated_resources(
         self, resource_type: ObjectKind
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if cache := event.attributes.get(resource_type.value):
+        cache_key = resource_type.value
+        if cache := event.attributes.get(cache_key):
             yield cache
             return
         api_version = await self.get_resource_api_version(resource_type)
         url = f"{self.api_url}/{api_version}/{resource_type.value}s"
         pagination_params: dict[str, Any] = {"limit": PAGE_SIZE}
-
+        resources_list = []
         while url:
             try:
                 response = await self._get_single_resource(
                     url=url, query_params=pagination_params
                 )
-                yield response["data"]
+                batch_data = response["data"]
+                resources_list.extend(batch_data)
+                yield batch_data
 
                 url = response.get("paging", {}).get("next")
             except httpx.HTTPStatusError as e:
@@ -60,6 +63,7 @@ class OpsGenieClient:
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
                 raise
+        event.attributes[cache_key] = resources_list
 
     async def get_alert(self, identifier: str) -> dict[str, Any]:
         api_version = await self.get_resource_api_version(ObjectKind.ALERT)
@@ -82,25 +86,13 @@ class OpsGenieClient:
         url = f"{self.api_url}/{api_version}/schedules/{schedule_identifier}/on-calls?flat=true"
         return (await self._get_single_resource(url))["data"]
 
-    async def get_cached_resources(
-        self, resource_type: ObjectKind
-    ) -> list[dict[str, Any]]:
-        resources_list = []
-        if cache := event.attributes.get(resource_type.value):
-            return cache
-        async for batch_data in self.get_paginated_resources(resource_type):
-            resources_list.extend(batch_data)
-        event.attributes[resource_type.value] = resources_list
-        return resources_list
-
     async def get_schedule_by_team(
         self, team_identifier: str
     ) -> Optional[dict[str, Any]]:
-        schedules = await self.get_cached_resources(ObjectKind.SCHEDULE)
-        for schedule in schedules:
-            if schedule["ownerTeam"]["id"] == team_identifier:
-                return schedule
-        return {}
+        schedules = []
+        async for schedule_batch in self.get_paginated_resources(ObjectKind.SCHEDULE):
+            schedules.extend(schedule_batch)
+        return next((schedule for schedule in schedules if schedule["ownerTeam"]["id"] == team_identifier), {})
 
     async def get_associated_alerts(
         self, incident_identifier: str
@@ -116,22 +108,18 @@ class OpsGenieClient:
         return associated_alerts
 
     async def get_incidents_by_service(self, service_id: str) -> list[dict[str, Any]]:
-        incidents = await self.get_cached_resources(ObjectKind.INCIDENT)
-        impacted_services = []
-        for incident in incidents:
-            if service_id in incident["impactedServices"]:
-                impacted_services.append(incident)
-        return impacted_services
+        incidents = []
+        async for incident_batch in self.get_paginated_resources(ObjectKind.INCIDENT):
+            incidents.extend(incident_batch)
+        return [incident for incident in incidents if service_id in incident["impactedServices"]]
 
     async def get_impacted_services(
         self, impacted_service_ids: list[str]
     ) -> list[dict[str, Any]]:
-        if (
-            len(impacted_service_ids) == 0
-        ):  ## quickly return when there is no impacted services
-            return []
-        cached_services = await self.get_cached_resources(ObjectKind.SERVICE)
-        service_dict = {service["id"]: service for service in cached_services}
+        services = []
+        async for service_batch in self.get_paginated_resources(ObjectKind.SERVICE):
+            services.extend(service_batch)
+        service_dict = {service["id"]: service for service in services}
         services_data = [
             service_dict[service_id]
             for service_id in impacted_service_ids
@@ -142,9 +130,11 @@ class OpsGenieClient:
     async def get_related_incident_by_alert(
         self, alert: dict[str, Any]
     ) -> dict[str, Any]:
-        incident_list = await self.get_cached_resources(ObjectKind.INCIDENT)
+        incidents = []
+        async for incident_batch in self.get_paginated_resources(ObjectKind.INCIDENT):
+            incidents.extend(incident_batch)
 
-        for incident in incident_list:
+        for incident in incidents:
             associated_alerts = await self.get_associated_alerts(incident["id"])
             if alert["id"] in associated_alerts:
                 alert["__relatedIncident"] = incident

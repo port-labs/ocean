@@ -12,7 +12,7 @@ CONCURRENT_REQUESTS = 5
 def init_client() -> OpsGenieClient:
     return OpsGenieClient(
         ocean.integration_config["api_token"],
-        ocean.integration_config.get("api_url", "https://api.opsgenie.com"),
+        ocean.integration_config["api_url"],
     )
 
 
@@ -22,11 +22,12 @@ async def enrich_services_with_team_data(
     service: dict[str, Any],
 ) -> dict[str, Any]:
     async with semaphore:
-        team_data = await opsgenie_client.get_oncall_team(service["teamId"])
-        schedule = await opsgenie_client.get_schedule_by_team(service["teamId"])
-        related_incidents = await opsgenie_client.get_incidents_by_service(
-            service["id"]
+        team_data, schedule, related_incidents = await asyncio.gather(
+            opsgenie_client.get_oncall_team(service["teamId"]),
+            opsgenie_client.get_schedule_by_team(service["teamId"]),
+            opsgenie_client.get_incidents_by_service(service["id"])
         )
+
         service["__team"] = team_data
         service["__incidents"] = related_incidents
         if schedule:
@@ -40,6 +41,8 @@ async def enrich_incident_with_alert_data(
     incident: dict[str, Any],
 ) -> dict[str, Any]:
     async with semaphore:
+        if not incident["impactedServices"]:
+            return []
         impacted_services = await opsgenie_client.get_impacted_services(
             incident["impactedServices"]
         )
@@ -119,10 +122,10 @@ async def on_alert_webhook_handler(data: dict[str, Any]) -> None:
     logger.info(f"Processing OpsGenie webhook for event type: {event_type}")
 
     if event_type == "Delete":
-        alert_data = data.get("alert", {})
+        alert_data = data["alert"]
         alert_data["id"] = alert_data.pop("alertId")
         await ocean.unregister_raw(ObjectKind.ALERT, [alert_data])
     else:
-        alert_id = data.get("alert", {}).get("alertId")
+        alert_id = data["alert"]["alertId"]
         alert_data = await opsgenie_client.get_alert(identifier=alert_id)
         await ocean.register_raw(ObjectKind.ALERT, [alert_data])

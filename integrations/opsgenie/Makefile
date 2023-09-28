@@ -38,7 +38,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install lint run test clean
+.SILENT: install install/prod lint run test clean
 
 install:
 	$(call deactivate_virtualenv) && \
