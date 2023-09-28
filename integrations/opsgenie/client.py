@@ -41,6 +41,7 @@ class OpsGenieClient:
         self, resource_type: ObjectKind
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         cache_key = resource_type.value
+
         if cache := event.attributes.get(cache_key):
             yield cache
             return
@@ -92,7 +93,14 @@ class OpsGenieClient:
         schedules = []
         async for schedule_batch in self.get_paginated_resources(ObjectKind.SCHEDULE):
             schedules.extend(schedule_batch)
-        return next((schedule for schedule in schedules if schedule["ownerTeam"]["id"] == team_identifier), {})
+        return next(
+            (
+                schedule
+                for schedule in schedules
+                if schedule["ownerTeam"]["id"] == team_identifier
+            ),
+            {},
+        )
 
     async def get_associated_alerts(
         self, incident_identifier: str
@@ -111,7 +119,11 @@ class OpsGenieClient:
         incidents = []
         async for incident_batch in self.get_paginated_resources(ObjectKind.INCIDENT):
             incidents.extend(incident_batch)
-        return [incident for incident in incidents if service_id in incident["impactedServices"]]
+        return [
+            incident
+            for incident in incidents
+            if service_id in incident["impactedServices"]
+        ]
 
     async def get_impacted_services(
         self, impacted_service_ids: list[str]

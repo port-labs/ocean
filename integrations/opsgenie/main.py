@@ -25,7 +25,7 @@ async def enrich_services_with_team_data(
         team_data, schedule, related_incidents = await asyncio.gather(
             opsgenie_client.get_oncall_team(service["teamId"]),
             opsgenie_client.get_schedule_by_team(service["teamId"]),
-            opsgenie_client.get_incidents_by_service(service["id"])
+            opsgenie_client.get_incidents_by_service(service["id"]),
         )
 
         service["__team"] = team_data
@@ -42,7 +42,7 @@ async def enrich_incident_with_alert_data(
 ) -> dict[str, Any]:
     async with semaphore:
         if not incident["impactedServices"]:
-            return []
+            return incident
         impacted_services = await opsgenie_client.get_impacted_services(
             incident["impactedServices"]
         )
