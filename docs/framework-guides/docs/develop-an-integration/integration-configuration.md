@@ -27,7 +27,7 @@ Here is a brand new `config.yaml` file created as part of the `ocean new` comman
 # This is an example configuration file for the integration service.
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 initializePortResources: true
-scheduledReyncInterval: 1440 # 60 minutes X 24 hours = 1 day
+scheduledResyncInterval: 1440 # 60 minutes X 24 hours = 1 day
 port:
   clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID
   clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET
@@ -57,7 +57,7 @@ By default, this feature value is set to `false`. To enable it, set the value to
 initializePortResources: true
 ```
 
-#### `scheduledReyncInterval` - Run scheduled resync
+#### `scheduledResyncInterval` - Run scheduled resync
 
 This configuration is used to specify the interval in minutes in which the integration should initiate a full resync from the 3rd-party system.
 
@@ -72,7 +72,7 @@ whether there are any changes in the [Port App Config](./trigger-your-integratio
 :::
 
 ```yaml showLineNumbers
-scheduledReyncInterval: 1440 # 60 minutes X 24 hours = 1 day
+scheduledResyncInterval: 1440 # 60 minutes X 24 hours = 1 day
 ```
 
 #### `port` - Port API credentials
