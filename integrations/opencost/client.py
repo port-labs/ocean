@@ -2,6 +2,7 @@ from typing import Any, Optional
 import httpx
 from loguru import logger
 
+
 class OpenCostClient:
     def __init__(self, app_host: str, window: str):
         self.app_host = app_host
