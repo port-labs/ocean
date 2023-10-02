@@ -7,21 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.2 (2023-09-27)
-
-### Improvements
-
-- Bumped ocean to version 0.3.1 (#1)
-
-
-# 0.1.1 (2023-09-13)
-
-### Improvements
-
-- Bumped ocean to 0.3.0 (#1)
-
-# 0.1.0 (2023-08-09)
+# Opsgenie 0.1.0 (2023-09-16)
 
 ### Features
 
-- Implemented Sonarqube integration using Ocean
+- Implemented OpsGenie integration (#0)

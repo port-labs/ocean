@@ -1,13 +1,12 @@
 [tool.poetry]
-name = "newrelic"
-version = "0.1.4"
-description = "New Relic Integration"
-authors = ["Tom Tankilevitch <tomtankilevitch@gmail.com>"]
+name = "opsgenie"
+version = "0.1.0"
+description = "Ocean integration for OpsGenie"
+authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "0.3.1", extras = ["cli"]}
-httpx = "^0.24.1"
+port_ocean = { version = "^0.3.0", extras = ["cli"] }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
