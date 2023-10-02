@@ -4,6 +4,7 @@ from port_ocean.context.ocean import ocean
 from client import OpenCostClient
 import asyncio
 
+from loguru import logger
 
 class ObjectKind(StrEnum):
     COST = "cost"
@@ -33,4 +34,4 @@ async def on_cost_resync(kind: str) -> list[dict[Any, Any]]:
     semaphore = asyncio.Semaphore(5)
     tasks = [process_cost_item(item, semaphore) for item in data]
     results = await asyncio.gather(*tasks)
-    return results
+    return results[0]
