@@ -9,7 +9,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 # 0.1.18 (2023-10-02)
 
-- Change gitlab resync to async batch iteration (#1)
+- Changed gitlab resync to async batch iteration (#1)
 
 
 # 0.1.17 (2023-09-27)
