@@ -1,7 +1,6 @@
 from typing import Any, Optional
 import httpx
 from loguru import logger
-from data import CLOUD_COSTS
 
 class OpenCostClient:
     def __init__(self, app_host: str, window: str):
@@ -42,7 +41,6 @@ class OpenCostClient:
         """
         endpoint = "allocation/compute"
         parameters: dict[str, Any] = {"window": self.window}
-        return CLOUD_COSTS["data"]
-        # return (
-        #     await self.send_api_request(endpoint=endpoint, query_params=parameters)
-        # )["data"]
+        return (
+            await self.send_api_request(endpoint=endpoint, query_params=parameters)
+        )["data"]

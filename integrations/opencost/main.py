@@ -33,5 +33,6 @@ async def on_cost_resync(kind: str) -> list[dict[Any, Any]]:
     data = await client.get_cost_allocation()
     semaphore = asyncio.Semaphore(5)
     tasks = [process_cost_item(item, semaphore) for item in data]
-    results = await asyncio.gather(*tasks)
-    return results[0]
+    cost_data = await asyncio.gather(*tasks)
+    result = [item for sublist in cost_data for item in sublist] ## flatten list
+    return result

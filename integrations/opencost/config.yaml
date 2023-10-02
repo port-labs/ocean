@@ -13,5 +13,4 @@ integration:
   # The type of the integration.
   type: "opencost"
   config:
-    window: "today"
     appHost: "{{ APP_HOST }}"

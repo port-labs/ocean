@@ -3,7 +3,7 @@
         "identifier": "openCostResourceAllocation",
         "description": "This blueprint represents an OpenCost resource allocation in our software catalog",
         "title": "OpenCost Resource Allocation",
-        "icon": "CPU",
+        "icon": "OpenCost",
         "schema": {
           "properties": {
             "cluster": {

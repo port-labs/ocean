@@ -16,7 +16,7 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 # The following script will install an Ocean integration in your K8s cluster using helm
 # integration.identifier: Change the identifier to describe your integration
 # integration.config.appHost: The URL of you OpenCost server. Used to make API calls
-# integration.config.window: Duration of time over which to query. Accepts: words like today, week, month, yesterday, lastweek, lastmonth. If none is provided, it defaults to today
+# integration.config.window: Duration of time over which to query. Accepts: words like today, week, month, yesterday, lastweek, lastmonth. Durations like 30m, 12h, 7d are also accepted by the API. If none is provided, it defaults to today
 
 helm upgrade --install my-opencost-integration port-labs/port-ocean \
 	--set port.clientId="CLIENT_ID"  \
@@ -41,7 +41,7 @@ The mapping should refer to one of the cost objects from the example response: [
     "identifier": "openCostResourceAllocation",
     "description": "This blueprint represents an OpenCost resource allocation in our software catalog",
     "title": "OpenCost Resource Allocation",
-    "icon": "CPU",
+    "icon": "OpenCost",
     "schema": {
         "properties": {
         "cluster": {
