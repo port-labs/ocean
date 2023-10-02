@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.17 (2023-10-02)
+===================
+
+### Features
+
+- Change gitlab resync to async batch iteration (#17)
+
+
 0.1.16 (2023-09-13)
 ===================
 

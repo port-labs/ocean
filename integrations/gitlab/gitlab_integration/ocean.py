@@ -44,17 +44,12 @@ async def on_start() -> None:
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
-async def on_resync(kind: str) -> RAW_RESULT:
-    projects = []
-
+async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in all_tokens_services:
         masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
         logger.info(f"fetching projects for token {masked_token}")
-        result = [project.asdict() for project in service.get_all_projects().values()]
-        logger.info(f"found {len(result)} projects")
-        projects.extend(result)
-
-    return projects
+        async for projects_batch in service.get_all_projects():
+            yield [project.asdict() for project in projects_batch]
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
@@ -75,7 +70,7 @@ async def resync_merge_requests(kind: str) -> RAW_RESULT:
                 project_path = merge_request.references.get("full").rstrip(
                     merge_request.references.get("short")
                 )
-                if service.should_run_for_project(project_path):
+                if service.should_run_for_path(project_path):
                     result.append(merge_request.asdict())
     return result
 
@@ -89,7 +84,7 @@ async def resync_issues(kind: str) -> RAW_RESULT:
                 project_path = issue.references.get("full").rstrip(
                     issue.references.get("short")
                 )
-                if service.should_run_for_project(project_path):
+                if service.should_run_for_path(project_path):
                     issues.append(issue.asdict())
     return issues
 
@@ -97,39 +92,25 @@ async def resync_issues(kind: str) -> RAW_RESULT:
 @ocean.on_resync(ObjectKind.JOB)
 async def resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in all_tokens_services:
-        for project_id, project in service.get_all_projects().items():
-            jobs = project.jobs.list(per_page=100)
-            logger.info(f"Found {len(jobs)} jobs for project {project_id}")
-            yield [job.asdict() for job in jobs]
+        async for projects_batch in service.get_all_projects():
+            for project in projects_batch:
+                async for jobs_batch in service.get_all_jobs(project):
+                    logger.info(
+                        f"Found {len(jobs_batch)} jobs for project {project.path_with_namespace}"
+                    )
+                    yield [job.asdict() for job in jobs_batch]
 
 
 @ocean.on_resync(ObjectKind.PIPELINE)
 async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    from_time = datetime.now() - timedelta(days=14)
-    created_after = from_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-
     for service in all_tokens_services:
-        for project_id, project in service.get_all_projects().items():
-            batch_size = 50
-            page = 1
-            more = True
-
-            while more:
-                # Process the batch of pipelines here
-                pipelines = project.pipelines.list(
-                    page=page, per_page=batch_size, created_after=created_after
-                )
-                logger.info(
-                    f"Found {len(pipelines)} pipelines for page number {page} in project {project_id}"
-                )
-                yield [
-                    {
-                        **pipeline.asdict(),
-                        "__project": project.asdict(),
-                    }
-                    for pipeline in pipelines
-                ]
-
-                # Fetch the next batch
-                page += 1
-                more = len(pipelines) == batch_size
+        async for projects_batch in service.get_all_projects():
+            for project in projects_batch:
+                async for pipelines_batch in service.get_all_pipelines(project):
+                    logger.info(
+                        f"Found {len(pipelines_batch)} pipelines for project {project.path_with_namespace}"
+                    )
+                    yield [
+                        {**pipeline.asdict(), "__project": project.asdict()}
+                        for pipeline in pipelines_batch
+                    ]
