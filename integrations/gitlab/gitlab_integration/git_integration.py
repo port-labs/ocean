@@ -116,9 +116,9 @@ def _get_project_from_cache(project_id: int) -> Project | None:
         if project := token_projects.get(project_id):
             return project
     logger.info(f"Project {project_id} not found in cache, fetching from GitLab")
-    # if project is not found in cache, it means that projects that were already cached are not relevant anymore
-    # as the parsing of the previous project is already finished, so we can clear the cache
-    # this is done to avoid cache overflow
+    # If the project is not found in the cache, it means we have finished collecting information for the previous
+    # project entity and have moved on to the next one. In that case we can remove the previous one from the cache
+    # since we will not need to use it until the next resync operation
     event.attributes[PROJECTS_CACHE_KEY] = {}
     for service in get_cached_all_services():
         if project := service.gitlab_client.projects.get(project_id):
