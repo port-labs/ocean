@@ -20,10 +20,7 @@ async def process_cost_item(
     item: dict[str, Any], semaphore: asyncio.Semaphore
 ) -> list[dict[str, Any]]:
     async with semaphore:
-        simplified_data = []
-        for key, value in item.items():
-            simplified_data.append(value)
-        return simplified_data
+        return [value for value in item.values()]
 
 
 @ocean.on_resync(ObjectKind.COST)
