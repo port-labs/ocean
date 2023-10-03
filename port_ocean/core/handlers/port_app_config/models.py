@@ -17,7 +17,7 @@ class PortResourceConfig(BaseModel):
     class MappingsConfig(BaseModel):
         mappings: EntityMapping
 
-    entity: MappingsConfig
+    entity: Optional[MappingsConfig]
 
 
 class Selector(BaseModel):
