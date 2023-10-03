@@ -9,7 +9,7 @@ class AsyncFetcher:
 
     @staticmethod
     async def fetch(
-        batch_size: int = os.environ.get("GITLAB_BATCH_SIZE", 100),
+        batch_size: int = int(os.environ.get("GITLAB_BATCH_SIZE", 100)),
         fetch_func: typing.Callable = None,  # type: ignore
         validation_func: typing.Callable = None,  # type: ignore
         **kwargs,
