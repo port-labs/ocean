@@ -8,6 +8,7 @@ from loguru import logger
 from pydantic import Field
 from gitlab.v4.objects import Project
 from gitlab_integration.gitlab_service import PROJECTS_CACHE_KEY
+from gitlab_integration.utils import get_cached_all_services
 
 from port_ocean.context.event import event
 from port_ocean.core.handlers import JQEntityProcessor
@@ -21,8 +22,6 @@ class FileEntityProcessor(JQEntityProcessor):
 
     def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         project_id, ref = _validate_project_scope(data)
-        # assuming that the code is being called after event initialization and as part of the GitLab service
-        # initialization
         project = _get_project_from_cache(project_id)
         logger.info(f"Searching for file {pattern} in Project {project_id}, ref {ref}")
 
@@ -113,8 +112,19 @@ def _get_project_from_cache(project_id: int) -> Project | None:
         }
     }
     """
-    for token_projects in event.attributes[PROJECTS_CACHE_KEY].values():
+    for token_projects in event.attributes.get(PROJECTS_CACHE_KEY, {}).values():
         if project := token_projects.get(project_id):
+            return project
+    logger.info(f"Project {project_id} not found in cache, fetching from GitLab")
+    # If the project is not found in the cache, it means we have finished collecting information for the previous
+    # project entity and have moved on to the next one. In that case we can remove the previous one from the cache
+    # since we will not need to use it until the next resync operation
+    event.attributes[PROJECTS_CACHE_KEY] = {}
+    for service in get_cached_all_services():
+        if project := service.gitlab_client.projects.get(project_id):
+            event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).setdefault(
+                service.gitlab_client.private_token, {}
+            )[project_id] = project
             return project
     return None
 
