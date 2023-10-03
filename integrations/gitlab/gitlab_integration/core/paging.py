@@ -10,8 +10,8 @@ class AsyncFetcher:
     @staticmethod
     async def fetch(
         batch_size: int = os.environ.get("GITLAB_BATCH_SIZE", 100),
-        fetch_func: typing.Callable = None,
-        validation_func: typing.Callable = None,
+        fetch_func: typing.Callable = None,  # type: ignore
+        validation_func: typing.Callable = None,  # type: ignore
         **kwargs,
     ) -> typing.AsyncIterator[typing.List[typing.Any]]:
         def fetch_batch(page: int):
