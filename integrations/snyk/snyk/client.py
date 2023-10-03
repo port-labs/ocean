@@ -239,6 +239,7 @@ class SnykClient:
             return user_details
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
+                logger.debug(f"user {user_id} not was not found, skipping...")
                 return {}
             else:
                 raise

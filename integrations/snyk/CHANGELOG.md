@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.2 (2023-10-02)
+# Snyk 0.1.2 (2023-10-02)
 
 ### Improvements
 
 - Try catch 404 error (#2)
 
 
-# Port_Ocean 0.1.1 (2023-09-27)
+# Snyk 0.1.1 (2023-09-27)
 
 ### Improvements
 
