@@ -26,3 +26,4 @@ configurations:
     type: string
     required: false
     description: The SonarQube URL
+    default: https://sonarcloud.io

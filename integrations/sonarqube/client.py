@@ -16,15 +16,6 @@ class SonarQubeClient:
     def __init__(
         self, base_url: str, api_key: str, organization_id: str, app_host: str
     ):
-        """
-        Initialize SonarQubeClient
-
-        :param base_url: SonarQube base URL
-        :param api_key: SonarQube API key
-        :param organization_id: SonarQube organization ID
-        :param app_host: Application host URL
-        :param http_client: httpx.AsyncClient instance
-        """
         self.base_url = base_url or "https://sonarcloud.io"
         self.api_key = api_key
         self.organization_id = organization_id
@@ -53,15 +44,6 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        """
-        Sends an API request to SonarQube
-
-        :param endpoint: API endpoint URL
-        :param method: HTTP method (default: 'GET')
-        :param query_params: Query parameters (default: None)
-        :param json_data: JSON data to send in request body (default: None)
-        :return: Response JSON data
-        """
         try:
             response = await self.http_client.request(
                 method=method,
@@ -86,16 +68,6 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
-        """
-        Sends an API request to SonarQube
-
-        :param endpoint: API endpoint URL
-        :param data_key: Resource key to fetch
-        :param method: HTTP method (default: 'GET')
-        :param query_params: Query parameters (default: None)
-        :param json_data: JSON data to send in request body (default: None)
-        :return: Response JSON data
-        """
         try:
             all_resources = []  # List to hold all fetched resources
 
