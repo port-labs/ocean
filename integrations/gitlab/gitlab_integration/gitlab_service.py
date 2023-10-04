@@ -1,6 +1,6 @@
 import typing
 from typing import List, Tuple, Any, Union, TYPE_CHECKING
-
+from datetime import datetime, timedelta
 import yaml
 from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
@@ -9,6 +9,7 @@ from loguru import logger
 from yaml.parser import ParserError
 
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
+from gitlab_integration.core.paging import AsyncFetcher
 from gitlab_integration.core.utils import does_pattern_apply
 
 from port_ocean.context.event import event
@@ -107,11 +108,11 @@ class GitlabService:
             for entity in self._get_entities_from_git(project, path, commit, ref)
         ]
 
-    def should_run_for_project(self, path_with_namespace: str) -> bool:
-        return any(
-            does_pattern_apply(mapping, path_with_namespace)
-            for mapping in self.group_mapping
-        )
+    def should_run_for_path(self, path: str) -> bool:
+        return any(does_pattern_apply(mapping, path) for mapping in self.group_mapping)
+
+    def should_run_for_project(self, project: Project) -> bool:
+        return self.should_run_for_path(project.path_with_namespace)
 
     def get_root_groups(self) -> List[RESTObject]:
         groups = self.gitlab_client.groups.list(iterator=True)
@@ -175,41 +176,50 @@ class GitlabService:
         else:
             return None
 
-    def get_all_projects(self) -> dict[int, Project]:
+    async def get_all_projects(self) -> typing.AsyncIterator[List[Project]]:
         logger.info("fetching all projects for the token")
-        service_projects = event.attributes.setdefault(PROJECTS_CACHE_KEY, {}).get(
-            self.gitlab_client.private_token, {}
-        )
         port_app_config = typing.cast("GitlabPortAppConfig", event.port_app_config)
-        if service_projects:
-            logger.debug(f"Found {len(service_projects)} projects in cache")
-            return service_projects
 
-        projects: list[Project] = typing.cast(
-            list[Project],
-            self.gitlab_client.projects.list(
-                include_subgroups=True,
-                owned=port_app_config.filter_owned_projects,
-                all=True,
-                visibility=port_app_config.project_visibility_filter,
-            ),
-        )
-        logger.debug(f"Found {len(projects)} projects")
+        async_fetcher = AsyncFetcher(self.gitlab_client)
+        async for projects_batch in async_fetcher.fetch(
+            fetch_func=self.gitlab_client.projects.list,
+            validation_func=self.should_run_for_project,
+            include_subgroups=True,
+            owned=port_app_config.filter_owned_projects,
+            visibility=port_app_config.project_visibility_filter,
+            pagination="offset",
+            order_by="id",
+            sort="asc",
+        ):
+            logger.debug(
+                f"Queried {len(projects_batch)} projects {[project.path_with_namespace for project in projects_batch]}"
+            )
+            yield projects_batch
 
-        filtered_projects = {
-            project.id: project
-            for project in projects
-            if self.should_run_for_project(project.path_with_namespace)
-        }
-        logger.debug(
-            f"Found {len(filtered_projects)} projects after filtering. Projects: "
-            f"{[proj.path_with_namespace for proj in filtered_projects.values()]}"
-        )
-        event.attributes[PROJECTS_CACHE_KEY][
-            self.gitlab_client.private_token
-        ] = filtered_projects
+    async def get_all_jobs(self, project: Project):
+        async_fetcher = AsyncFetcher(self.gitlab_client)
+        async for issues_batch in async_fetcher.fetch(
+            fetch_func=project.jobs.list,
+            # validation_func=self.should_run_for_issue,
+            pagination="offset",
+            order_by="id",
+            sort="asc",
+        ):
+            yield issues_batch
 
-        return filtered_projects
+    async def get_all_pipelines(self, project: Project):
+        from_time = datetime.now() - timedelta(days=14)
+        created_after = from_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        async_fetcher = AsyncFetcher(self.gitlab_client)
+        async for pipelines_batch in async_fetcher.fetch(
+            fetch_func=project.pipelines.list,
+            # validation_func=self.should_run_for_issue,
+            pagination="offset",
+            order_by="id",
+            sort="asc",
+            created_after=created_after,
+        ):
+            yield pipelines_batch
 
     def get_entities_diff(
         self,
