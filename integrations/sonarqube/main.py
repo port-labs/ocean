@@ -23,8 +23,13 @@ def init_sonar_client() -> SonarQubeClient:
 def is_onpremise_deployment() -> bool:
     return ocean.integration_config.get("sonar_url") != "https://sonarcloud.io"
 
+
 def organization_key_missing_for_onpremise() -> bool:
-    return (not ocean.integration_config.get("sonar_organization_id") and is_onpremise_deployment())
+    return (
+        not ocean.integration_config.get("sonar_organization_id")
+        and is_onpremise_deployment()
+    )
+
 
 @ocean.on_resync(ObjectKind.PROJECTS)
 async def on_project_resync(kind: str) -> list[dict[str, Any]]:
