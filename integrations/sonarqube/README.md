@@ -17,7 +17,7 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 # integration.secrets.sonarApiToken: The Sonarqube API token
 # integration.config.appHost: The Sonarqube app host
 # integration.config.sonarUrl: The url of the Sonarqube instance or server. If not specified, the default will be https://sonarcloud.io
-# integration.config.sonarOrganizationId: The Sonarqube organization ID
+# integration.config.sonarOrganizationId: The Sonarqube organization ID. This config variable is required for clients using Sonarcloud. Be sure to provide it in the helm installation script below.
 
 helm upgrade --install my-sonarqube-integration port-labs/port-ocean \
 	--set port.clientId="CLIENT_ID"  \

@@ -23,6 +23,8 @@ def init_sonar_client() -> SonarQubeClient:
 def is_onpremise_deployment() -> bool:
     return ocean.integration_config.get("sonar_url") != "https://sonarcloud.io"
 
+def organization_key_missing_for_onpremise() -> bool:
+    return (not ocean.integration_config.get("sonar_organization_id") and is_onpremise_deployment())
 
 @ocean.on_resync(ObjectKind.PROJECTS)
 async def on_project_resync(kind: str) -> list[dict[str, Any]]:
@@ -85,6 +87,8 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
 
 @ocean.on_start()
 async def on_start() -> None:
+    if organization_key_missing_for_onpremise():
+        logger.warning("Organization key is missing for an on-premise Sonarqube setup")
     ## We are making the real-time subscription of Sonar webhook events optional. That said, we only subscribe to webhook events when the user supplies the app_host config variable
     if ocean.integration_config.get("app_host"):
         sonar_client = init_sonar_client()
