@@ -27,7 +27,6 @@ helm upgrade --install my-sonarqube-integration port-labs/port-ocean \
 	--set integration.type="sonarqube"  \
 	--set integration.eventListener.type="POLLING"  \
 	--set integration.secrets.sonarApiToken="token"  \
-  --set integration.config.sonarOrganizationId="my-organization" \
 ```
 ## Supported Kinds
 As of the latest version `(0.1.3)` of the Sonarqube integration, the analysis object kind is skipped when an on-premise Sonarqube server is being used.

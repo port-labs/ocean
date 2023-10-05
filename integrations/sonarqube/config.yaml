@@ -14,4 +14,4 @@ integration:
   type: "sonarqube"
   config:
     sonarApiToken: "{{ from env SONAR_API_TOKEN }}"
-    sonarOrganizationID: "{{ from env SONAR_ORGANIZATION_ID }}"
+

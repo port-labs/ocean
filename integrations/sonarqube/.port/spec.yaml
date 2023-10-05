@@ -16,7 +16,7 @@ configurations:
     description: The SonarQube API token
   - name: sonarOrganizationId
     type: string
-    required: true
+    required: false
     description: The SonarQube organization ID
   - name: appHost
     type: string
