@@ -25,9 +25,8 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             return
         # mainly for issues newRelicAlert as it has different resync logic than entities
         if not port_resource_configuration.selector.entity_query_filter:
-            logger.debug(
-                "Skipping resync for kind without entity_query_filter",
-                kind=kind,
+            logger.info(
+                f"Skipping resync for kind without entity_query_filter, kind={kind}",
             )
             return
         else:
@@ -74,7 +73,6 @@ async def handle_issues_events(issue: IssueEvent) -> dict[str, bool]:
         async with httpx.AsyncClient() as http_client:
             for entity_guid in issue_record["entityGuids"]:
                 try:
-                    # get the entity from new
                     entity = await EntitiesHandler(http_client).get_entity(
                         entity_guid=entity_guid
                     )
