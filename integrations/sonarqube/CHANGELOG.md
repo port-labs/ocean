@@ -7,20 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.2 (2023-09-27)
+# Sonarqube 0.1.3 (2023-10-04)
+
+### Improvements
+
+- Skip analysis resync for onpremise Sonarqube (#3)
+
+
+# Sonarqube 0.1.2 (2023-09-27)
 
 ### Improvements
 
 - Bumped ocean to version 0.3.1 (#1)
 
 
-# 0.1.1 (2023-09-13)
+# Sonarqube 0.1.1 (2023-09-13)
 
 ### Improvements
 
 - Bumped ocean to 0.3.0 (#1)
 
-# 0.1.0 (2023-08-09)
+# Sonarqube 0.1.0 (2023-08-09)
 
 ### Features
 

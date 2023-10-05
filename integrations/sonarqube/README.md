@@ -1,6 +1,6 @@
 # Sonarqube
 
-Sonarqube project and code quality integration for Port using Port-Ocean Framework
+Sonarqube project and code quality integration for Port using Port-Ocean Framework.
 
 ## Development Requirements
 
@@ -17,7 +17,7 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 # integration.secrets.sonarApiToken: The Sonarqube API token
 # integration.config.appHost: The Sonarqube app host
 # integration.config.sonarUrl: The url of the Sonarqube instance or server. If not specified, the default will be https://sonarcloud.io
-# integration.config.sonarOrganizationId: The Sonarqube organization ID
+# integration.config.sonarOrganizationId: The Sonarqube organization ID. This config variable is required for clients using Sonarcloud. Be sure to provide it in the helm installation script below.
 
 helm upgrade --install my-sonarqube-integration port-labs/port-ocean \
 	--set port.clientId="CLIENT_ID"  \
@@ -27,11 +27,10 @@ helm upgrade --install my-sonarqube-integration port-labs/port-ocean \
 	--set integration.type="sonarqube"  \
 	--set integration.eventListener.type="POLLING"  \
 	--set integration.secrets.sonarApiToken="token"  \
-	--set integration.config.appHost="https://example.com"  \
-    --set integration.config.sonarUrl="https://sonarcloud.io"  \
-    --set integration.config.sonarOrganizationId="my-organization"  \
 ```
 ## Supported Kinds
+As of the latest version `(0.1.3)` of the Sonarqube integration, the analysis object kind is skipped when an on-premise Sonarqube server is being used.
+
 ### Project
 This kind represents a Sonarqube project. Retrieves data from [Sonarqube components](https://next.sonarqube.com/sonarqube/web_api/api/components) and [Sonarqube measures](https://next.sonarqube.com/sonarqube/web_api/api/measures) and [Sonarque branches](https://next.sonarqube.com/sonarqube/web_api/api/project_branches)
 
