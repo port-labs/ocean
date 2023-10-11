@@ -1,0 +1,64 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: service
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name | gsub("[^a-zA-Z0-9@_.:/=-]"; "-") | tostring
+          title: .name
+          blueprint: '"opsGenieService"'
+          properties:
+            description: .description
+            url: .links.web
+            tags: .tags
+            oncallTeam: .__team.name
+            teamMembers: '[.__team.members[].user.username]'
+            oncallUsers: .__oncalls.onCallRecipients
+            numOpenIncidents: '[ .__incidents[] | select(.status == "open")] | length'
+  - kind: alert
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .message
+          blueprint: '"opsGenieAlert"'
+          properties:
+            status: .status
+            acknowledged: .acknowledged
+            responders: .responders
+            priority: .priority
+            sourceName: .source
+            tags: .tags
+            count: .count
+            createdBy: .owner
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            description: .description
+            integration: .integration.name
+          relations:
+            relatedIncident: .__relatedIncident.id
+  - kind: incident
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .message
+          blueprint: '"opsGenieIncident"'
+          properties:
+            status: .status
+            responders: .responders
+            priority: .priority
+            tags: .tags
+            url: .links.web
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            description: .description
+          relations:
+            services: '[.__impactedServices[] | .name | gsub("[^a-zA-Z0-9@_.:/=-]"; "-") | tostring]'
