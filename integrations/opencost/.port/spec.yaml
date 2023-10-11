@@ -1,0 +1,17 @@
+version: v0.1.0
+type: opencost
+description: OpenCost integration for Port Ocean
+icon: OpenCost
+features:
+  - type: exporter
+    section: Cloud Cost
+    resources:
+      - kind: cost
+configurations:
+  - name: window
+    type: string
+    default: today
+    description: Duration of time over which to query. Accepts words like today, week, month, yesterday, lastweek, lastmonth
+  - name: appHost
+    type: string
+    description: The URL of your OpenCost server
