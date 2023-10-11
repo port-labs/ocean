@@ -231,11 +231,18 @@ class SnykClient:
         if cached_details:
             return cached_details
 
-        user_details = await self._send_api_request(
-            url=f"{self.api_url}/user/{user_id}"
-        )
-        event.attributes[f"{CacheKeys.USER}-{user_id}"] = user_details
-        return user_details
+        try:
+            user_details = await self._send_api_request(
+                url=f"{self.api_url}/user/{user_id}"
+            )
+            event.attributes[f"{CacheKeys.USER}-{user_id}"] = user_details
+            return user_details
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.debug(f"user {user_id} not was not found, skipping...")
+                return {}
+            else:
+                raise
 
     async def _get_target_details(self, target_id: str) -> dict[str, Any]:
         cached_details = event.attributes.get(f"{CacheKeys.TARGET}-{target_id}")
