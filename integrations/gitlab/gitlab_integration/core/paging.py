@@ -20,7 +20,7 @@ class AsyncFetcher:
         **kwargs,
     ) -> AsyncIterator[List[T]]:
         def fetch_batch(page_idx: int):
-            logger.info(f"Fetching page {page}. Batch size: {batch_size}")
+            logger.info(f"Fetching page {page_idx}. Batch size: {batch_size}")
             return fetch_func(
                 page=page_idx, per_page=batch_size, get_all=False, **kwargs
             )
