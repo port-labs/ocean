@@ -2,7 +2,6 @@ from typing import Any
 from enum import StrEnum
 from port_ocean.context.ocean import ocean
 from client import OpenCostClient
-import asyncio
 
 
 class ObjectKind(StrEnum):
@@ -16,7 +15,7 @@ def init_client() -> OpenCostClient:
     )
 
 
-async def process_cost_item(item: dict[str, Any]) -> list[dict[str, Any]]:
+def process_cost_item(item: dict[str, Any]) -> list[dict[str, Any]]:
     return [value for value in item.values()]
 
 
@@ -24,7 +23,6 @@ async def process_cost_item(item: dict[str, Any]) -> list[dict[str, Any]]:
 async def on_cost_resync(kind: str) -> list[dict[Any, Any]]:
     client = init_client()
     data = await client.get_cost_allocation()
-    tasks = [process_cost_item(item) for item in data]
-    processed_data = await asyncio.gather(*tasks)
+    processed_data = [process_cost_item(item) for item in data]
     result = [item for sublist in processed_data for item in sublist]  ## flatten list
     return result
