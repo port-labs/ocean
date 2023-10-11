@@ -133,9 +133,11 @@ class GitlabService:
         )
         return self.should_run_for_path(project_path)
 
-    def get_root_groups(self) -> List[RESTObject]:
+    def get_root_groups(self) -> List[Group]:
         groups = self.gitlab_client.groups.list(iterator=True)
-        return [group for group in groups if group.parent_id is None]
+        return typing.cast(
+            List[Group], [group for group in groups if group.parent_id is None]
+        )
 
     def create_webhooks(self) -> list[int | str]:
         root_partial_groups = self.get_root_groups()
@@ -234,14 +236,16 @@ class GitlabService:
     async def get_all_jobs(
         self, project: Project
     ) -> typing.AsyncIterator[List[ProjectPipelineJob]]:
-        async_fetcher = AsyncFetcher(self.gitlab_client)
         logger.info(f"fetching jobs for project {project.path_with_namespace}")
-        async for issues_batch in async_fetcher.fetch(
+        async_fetcher: typing.AsyncIterator[List[ProjectPipelineJob]] = AsyncFetcher(
+            self.gitlab_client
+        ).fetch(
             fetch_func=project.jobs.list,
             pagination="offset",
             order_by="id",
             sort="asc",
-        ):
+        )
+        async for issues_batch in async_fetcher:
             logger.info(
                 f"Queried {len(issues_batch)} jobs {[job.name for job in issues_batch]}"
             )
@@ -252,17 +256,19 @@ class GitlabService:
     ) -> typing.AsyncIterator[List[ProjectPipeline]]:
         from_time = datetime.now() - timedelta(days=14)
         created_after = from_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        async_fetcher = AsyncFetcher(self.gitlab_client)
         logger.info(
             f"Fetching pipelines for project {project.path_with_namespace} created after {created_after}"
         )
-        async for pipelines_batch in async_fetcher.fetch(
+        async_fetcher: typing.AsyncIterator[List[ProjectPipeline]] = AsyncFetcher(
+            self.gitlab_client
+        ).fetch(
             fetch_func=project.pipelines.list,
             pagination="offset",
             order_by="id",
             sort="asc",
             created_after=created_after,
-        ):
+        )
+        async for pipelines_batch in async_fetcher:
             logger.info(
                 f"Queried {len(pipelines_batch)} pipelines {[pipeline.id for pipeline in pipelines_batch]}"
             )
