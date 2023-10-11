@@ -9,9 +9,8 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: my-sonarqube-integration
+  identifier: "my-opencost-integration"
   # The type of the integration.
-  type: "sonarqube"
+  type: "opencost"
   config:
-    sonarApiToken: "{{ from env SONAR_API_TOKEN }}"
-    sonarOrganizationID: "{{ from env SONAR_ORGANIZATION_ID }}"
+    appHost: "{{ APP_HOST }}"

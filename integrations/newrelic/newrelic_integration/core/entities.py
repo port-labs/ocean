@@ -14,6 +14,7 @@ from newrelic_integration.utils import (
     get_port_resource_configuration_by_port_kind,
     render_query,
 )
+from newrelic_integration.core.errors import NewRelicNotFoundError
 
 
 class EntitiesHandler:
@@ -29,6 +30,10 @@ class EntitiesHandler:
             entity_guid=entity_guid,
         )
         entity = response.get("data", {}).get("actor", {}).get("entity", {})
+        if not entity:
+            raise NewRelicNotFoundError(
+                f"No entity found in newrelic for guid {entity_guid}",
+            )
         self._format_tags(entity)
         return entity
 
