@@ -4,7 +4,7 @@ from typing import Any
 import httpx
 from loguru import logger
 
-from integrations.opencost.integration import OpencostResourceConfig
+from integration import OpencostResourceConfig
 from port_ocean.context.event import event
 
 
@@ -13,12 +13,12 @@ class OpenCostClient:
         self.app_host = app_host
         self.http_client = httpx.AsyncClient()
 
-    async def get_cost_allocation(self) -> list[dict[str, list[Any]]]:
+    async def get_cost_allocation(self) -> list[dict[str, Any]]:
         """Calls the OpenCost allocation endpoint to return data for cost and usage
         https://www.opencost.io/docs/integrations/api
         """
         selector = typing.cast(OpencostResourceConfig, event.resource_config).selector
-        params = {
+        params: dict[str, str] = {
             "window": selector.window,
         }
         if selector.aggregate:
