@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -11,19 +12,8 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
 
 
-async def setup_application() -> None:
-    logic_settings = ocean.integration_config
-    sentry_client = SentryClient(
-        logic_settings["sentry_host"],
-        logic_settings["sentry_token"],
-    )
-
-    await sentry_client._get_paginated_projects()
-
-
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    projects = []
     logic_settings = ocean.integration_config
     sentry_client = SentryClient(
         logic_settings["sentry_host"],
@@ -36,7 +26,6 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Resyncing {kind}")
     issues = []
     logic_settings = ocean.integration_config
     sentry_client = SentryClient(
@@ -48,7 +37,9 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         projects = await sentry_client.get_paginated_projects()
         for project in projects:
             issues.extend(
-                await sentry_client.get_issues(organization["slug"], project["slug"])
+                await sentry_client.get_paginated_issues(
+                    organization["slug"], project["slug"]
+                )
             )
 
     logger.info(f"Received issue batch with {len(issues)} issues")
