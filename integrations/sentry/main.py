@@ -1,5 +1,4 @@
 from enum import StrEnum
-from typing import Any
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -24,7 +23,6 @@ async def setup_application() -> None:
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Resyncing {kind}")
     projects = []
     logic_settings = ocean.integration_config
     sentry_client = SentryClient(
@@ -37,7 +35,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
-async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Resyncing {kind}")
     issues = []
     logic_settings = ocean.integration_config
