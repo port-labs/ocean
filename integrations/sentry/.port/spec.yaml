@@ -18,3 +18,7 @@ configurations:
     type: string
     description: "Sentry token"
     sensitive: true
+  - name: sentryOrganization
+    required: true
+    type: string
+    description: "Sentry organization"

@@ -16,3 +16,4 @@ integration:
   config:
     sentryHost: "{{ from env SENTRY_HOST }}"
     sentryToken: "{{ from env SENTRY_TOKEN }}"
+    sentryOrganization: "{{ from env SENTRY_ORGANIZATION }}"
