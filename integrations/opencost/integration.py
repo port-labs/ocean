@@ -2,7 +2,6 @@ import re
 from typing import Literal
 
 from pydantic.fields import Field
-from pydantic.types import constr
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -13,18 +12,37 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.integrations.base import BaseIntegration
 
 
-class DatetimePair(constr):
-    regex = (
-        r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z,\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
-    )
+class DatePairField(str):
+    @classmethod
+    def validate(cls, value):
+        # Regular expression to validate the format of the date pair value
+        regex = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z,\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+        if not re.match(regex, value):
+            raise ValueError(
+                "Invalid date pair format. Use 'YYYY-MM-DDTHH:MM:SSZ,YYYY-MM-DDTHH:MM:SSZ'."
+            )
 
 
-class UnixtimePair(constr):
-    regex = r"^\d+,\d+$"
+class UnixtimePairField(str):
+    @classmethod
+    def validate(cls, value):
+        # Regular expression to validate the format of the unixtime pair value
+        regex = r"^\d+,\d+$"
+        if not re.match(regex, value):
+            raise ValueError(
+                "Invalid unixtime pair format. Use 'X,Y' (X and Y are positive integers)."
+            )
 
 
-class Aggregation(constr):
-    regex = r"^(cluster|node|namespace|controllerKind|controller|service|pod|container|label:name|annotation:name)(,(cluster|node|namespace|controllerKind|controller|service|pod|container|label:name|annotation:name))*$"
+class AggregationField(str):
+    @classmethod
+    def validate(cls, value):
+        # Regular expression to validate the format of the aggregation value
+        regex = r"^(cluster|node|namespace|controllerKind|controller|service|pod|container|label:name|annotation:name)(,(cluster|node|namespace|controllerKind|controller|service|pod|container|label:name|annotation:name))*$"
+        if not re.match(regex, value):
+            raise ValueError(
+                "Invalid aggregation format. Use 'cluster', 'node', 'namespace', 'controllerKind', 'controller', 'service', 'pod', 'container', 'label:name', or 'annotation:name'."
+            )
 
 
 class DurationField(str):
@@ -60,8 +78,8 @@ class OpencostSelector(Selector):
         "30m",
         "12h",
         "7d",
-    ] | DatetimePair | UnixtimePair = Field(default="today")
-    aggregate: Aggregation | None = Field(
+    ] | DatePairField | UnixtimePairField = Field(default="today")
+    aggregate: AggregationField | None = Field(
         description="Field by which to aggregate the results.",
     )
     step: DurationField | None = Field(
