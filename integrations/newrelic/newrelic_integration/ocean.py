@@ -25,13 +25,15 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             return
         # mainly for issues newRelicAlert as it has different resync logic than entities
         if not port_resource_configuration.selector.entity_query_filter:
-            logger.debug(
-                "Skipping resync for kind without entity_query_filter",
-                kind=kind,
+            logger.info(
+                f"Skipping resync for kind without entity_query_filter, kind: {kind}",
             )
             return
         else:
             async with httpx.AsyncClient() as http_client:
+                page_size = 100
+                counter = 0
+                entities = []
                 async for entity in EntitiesHandler(
                     http_client
                 ).list_entities_by_resource_kind(kind):
@@ -43,16 +45,22 @@ async def resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             issue_state=IssueState.ACTIVATED,
                         )
                         entity["__open_issues_count"] = number_of_open_issues
-                    yield entity
+                    counter += 1
+                    entities.append(entity)
+                    # yield the entities in batches to take advantage of the async list generator
+                    if counter == page_size:
+                        counter = 0
+                        yield entities
+                        entities = []
+                if entities:
+                    yield entities
 
 
 @ocean.on_resync(kind="newRelicAlert")
 async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
         async with httpx.AsyncClient() as http_client:
-            issues = await IssuesHandler(http_client).list_issues()
-            for issue in issues:
-                yield issue
+            yield await IssuesHandler(http_client).list_issues()
 
 
 @ocean.router.post("/events")
@@ -65,7 +73,6 @@ async def handle_issues_events(issue: IssueEvent) -> dict[str, bool]:
         async with httpx.AsyncClient() as http_client:
             for entity_guid in issue_record["entityGuids"]:
                 try:
-                    # get the entity from new
                     entity = await EntitiesHandler(http_client).get_entity(
                         entity_guid=entity_guid
                     )

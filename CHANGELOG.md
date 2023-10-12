@@ -7,8 +7,37 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.2.3 (2023-08-17)
-==================
+## 0.3.1 (2023-09-27)
+
+### Bug Fixes
+
+- Fix missing user agent when apply default resources on initialization (PORT-4813)
+
+## 0.3.0 (2023-09-06)
+
+### Deprecations
+
+- Removed the `batch_work_size` configuration. Integrations should use the async generator syntax instead (PORT-4616)
+
+### Features
+
+- Added support for a configurable resync interval for integrations (PORT-4616)
+- Added a new feature that will abort a running resync if a new resync is attempting to start (PORT-4619)
+
+### Improvements
+
+- Changed the way an empty port app config is handled in the `PortAppConfig Handler` (PORT-4483)
+- Added yaml linter (#1)
+- Removed the Ocean version parameter from the integration scaffold template, the version is now queried directly from the Ocean framework library used by the integration (#2)
+- Changed the publish integration workflow to get the integration version from the `pyproject.toml` file of the integration and not from the `spec.yml` file (#3)
+
+### Bug Fixes
+
+- Fixed a bug that rollbacked all blueprints instead of only those created during integration setup, when the setup encountered an issue with blueprint creation
+- Fixed a bug that caused values that resulted with a falsy jq evaluation to convert them to null. The values will now be ingested using their proper falsy representation (0 as 0, empty array as empty array, false as false, etc.)
+- Fixed the injections of parameters to the `config.yaml` file, the injected values will now be wrapped with `""` (#1)
+
+## 0.2.3 (2023-08-17)
 
 ### Features
 
@@ -25,25 +54,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Move Resource Config Selector class to public
 - Handled delete events from change log where there is no after
 
-
-0.2.2 (2023-08-11)
-==================
+## 0.2.2 (2023-08-11)
 
 ### Bug Fixes
 
 - Fixed an issue causing the config yaml providers to not be parsed
 
-
-0.2.1 (2023-08-09)
-==================
+## 0.2.1 (2023-08-09)
 
 ### Bug Fixes
 
 - Fixed an issue causing ocean to convert the integration config objects to camelized objects
 
-
-0.2.0 (2023-08-09)
-==================
+## 0.2.0 (2023-08-09)
 
 ### Breaking Changes
 
@@ -63,17 +86,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Added traceback output to the integration resync method exception log (PORT-4422)
 - Fixed an issue that caused the jq `None` values for relations to become a string with the value `"None"` instead of being interpreted as `null` in JSON
 
-
-0.1.3 (2023-08-02)
-==================
+## 0.1.3 (2023-08-02)
 
 ### Bug Fixes
 
 - Fixed an issue preventing the setup of an integration with config values passed exclusively as environment variables. This fix also enables the option to deploy an integration to AWS ECS using Terraform (PORT-4379)
 
-
-0.1.2 (2023-07-27)
-==================
+## 0.1.2 (2023-07-27)
 
 ### Breaking Changes
 
@@ -93,9 +112,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Fixed a crash when there are no resources in the port-app-config
 
-
-0.1.1 (2023-07-26)
-==================
+## 0.1.1 (2023-07-26)
 
 ### Breaking Changes
 
@@ -112,36 +129,39 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed PortClient using httpx async client from another event loop
 
   (PORT-4306)
+
 - Fixed `ocean new` jinja crash for the config.yaml in the scaffold (PORT-4328)
 - Fixed issue where the integration did not create the integration config on creation (PORT-4341)
 - Fixed an issue with initializePortResources that caused failure for unknown file names on init (PORT-4343)
 
-
-0.1.0 (2023-07-20)
-==================
+## 0.1.0 (2023-07-20)
 
 ### Features
 
 - ### First version changelog
 
   #### Added
+
   - Handlers
+
     - Added entities state applier first port HTTP implementation.
     - Added entity processor first jq implementation.
     - Added port app config first port HTTP implementation.
-  
+
   - Event Listeners
+
     - Added KAFKA event listener.
     - Added SAMPLE event listener.
     - Added WEBHOOK event listener.
 
   - Core
+
     - Added Ocean contexts & contexts global variables.
     - Added validation to the integration config according to its `.port/spec.yaml`.
     - Added a way to specify default resources to be created on installation.
     - Added a new way to return data from the resync using generators.
     - Added provider-based injection for the config yaml.
-  
+
   - CLI
     - Added `ocean list` to list all public integrations in the port-ocean repo.
     - Added `ocean new` to scaffold an Ocean project.

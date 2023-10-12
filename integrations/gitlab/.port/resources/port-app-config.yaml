@@ -7,7 +7,7 @@ resources:
         mappings:
           identifier: .path_with_namespace | gsub(" "; "")
           title: .name
-          blueprint: '"microservice"'
+          blueprint: '"project"'
           properties:
             url: .web_link
             description: .description
@@ -30,7 +30,7 @@ resources:
             description: .description
             link: .web_url
           relations:
-            microservice: .references.full
+            project: .references.full | gsub("!.+"; "")
   - kind: issue
     selector:
       query: 'true'
@@ -50,5 +50,5 @@ resources:
             link: .web_url
             labels: '[.labels[]]'
             object: .
-        relations:
-          microservice: .references.full
+          relations:
+            project: .references.full | gsub("#.+"; "")

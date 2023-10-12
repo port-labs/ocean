@@ -1,24 +1,5 @@
 createMissingRelatedEntities: true
 resources:
-  - kind: newRelicAlert
-    selector:
-      query: 'true'
-      newRelicTypes: ['ISSUE']
-    port:
-      entity:
-        mappings:
-          blueprint: '"newRelicAlert"'
-          identifier: .issueId
-          title: .title[0]
-          properties:
-              priority: .priority
-              state: .state
-              sources: .sources
-              conditionName: .conditionName
-              alertPolicyNames: .policyName
-              activatedAt: .activatedAt
-          relations:
-              newRelicService: ".__APPLICATION.entity_guids + .__SERVICE.entity_guids"
   - kind: newRelicService
     selector:
       query: 'true'
@@ -71,4 +52,22 @@ resources:
             error_rate: .apmSummary.errorRate
             response_time_avg: .apmSummary.responseTimeAverage
             instance_count: .apmSummary.instanceCount
-
+  - kind: newRelicAlert
+    selector:
+      query: 'true'
+      newRelicTypes: ['ISSUE']
+    port:
+      entity:
+        mappings:
+          blueprint: '"newRelicAlert"'
+          identifier: .issueId
+          title: .title[0]
+          properties:
+              priority: .priority
+              state: .state
+              sources: .sources
+              conditionName: .conditionName
+              alertPolicyNames: .policyName
+              activatedAt: .activatedAt
+          relations:
+              newRelicService: ".__APPLICATION.entity_guids + .__SERVICE.entity_guids"

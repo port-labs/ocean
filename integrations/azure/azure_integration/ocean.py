@@ -6,7 +6,6 @@ import fastapi
 from loguru import logger
 from starlette import responses
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from azure.identity.aio import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
@@ -217,25 +216,14 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
                 resource_id=resource_uri,
                 api_version=resource_config.selector.api_version,
             )
+            await ocean.register_raw(resource_type, [resource.as_dict()])  # type: ignore
         except ResourceNotFoundError:
             logger.info(
-                "Resource not found in azure, unregistering from port",
+                "Resource not found in azure, skipping",
                 id=resource_uri,
                 kind=resource_type,
                 api_version=resource_config.selector.api_version,
             )
-            await ocean.unregister(
-                [
-                    Entity(
-                        # remove the quotes from the blueprint name
-                        # TODO: remove this once the port client handles it
-                        blueprint=resource_config.port.entity.mappings.blueprint.strip('"'),  # type: ignore
-                        identifier=resource_uri,
-                    )
-                ]
-            )
-            return fastapi.Response(status_code=http.HTTPStatus.OK)
-    await ocean.register_raw(resource_type, [resource.as_dict()])  # type: ignore
     return fastapi.Response(status_code=http.HTTPStatus.OK)
 
 

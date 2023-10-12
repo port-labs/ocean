@@ -14,7 +14,6 @@ integration:
   # The type of the integration.
   type: "Jira"
   config:
-    appHost: "{{ from env APP_HOST }}"
     jiraHost: "{{ from env JIRA_HOST }}"
     atlassianUserEmail: "{{ from env ATLASSIAN_EMAIL }}"
     atlassianUserToken: "{{ from env ATLASSIAN_TOKEN }}"

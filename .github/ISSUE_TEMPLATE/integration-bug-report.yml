@@ -16,7 +16,7 @@ body:
       description: >
         The version of the integration, can be extracted via the spec.yml file in the .port folder, or the docker container image tag
     validations:
-      required: true      
+      required: true
   - type: textarea
     attributes:
       label: Steps to reproduce
