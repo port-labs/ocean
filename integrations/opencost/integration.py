@@ -83,7 +83,6 @@ class OpencostSelector(Selector):
         description="Field by which to aggregate the results.",
     )
     step: DurationField | None = Field(
-        ...,
         description="Duration of a single allocation set (e.g., '30m', '2h', '1d'). Default is window.",
     )
     resolution: ResolutionField = Field(
@@ -97,7 +96,7 @@ class OpencostResourceConfig(ResourceConfig):
 
 
 class OpencostPortAppConfig(PortAppConfig):
-    resources: list[ResourceConfig] = Field(default_factory=list)
+    resources: list[OpencostResourceConfig] = Field(default_factory=list)
 
 
 class OpencostIntegration(BaseIntegration):
