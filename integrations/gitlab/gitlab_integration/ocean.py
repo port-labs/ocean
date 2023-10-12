@@ -8,7 +8,7 @@ from gitlab_integration.bootstrap import event_handler
 from gitlab_integration.bootstrap import setup_application
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import RAW_RESULT, ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not export live changes from the gitlab"
 
@@ -51,40 +51,25 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
-async def resync_merge_requests(kind: str) -> RAW_RESULT:
+async def resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     updated_after = datetime.now() - timedelta(days=14)
 
-    result = []
     for service in get_cached_all_services():
         for group in service.get_root_groups():
-            merge_requests = group.mergerequests.list(
-                all=True, state="opened"
-            ) + group.mergerequests.list(
-                all=True,
-                state=["closed", "locked", "merged"],
-                updated_after=updated_after.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-            )
-            for merge_request in merge_requests:
-                project_path = merge_request.references.get("full").rstrip(
-                    merge_request.references.get("short")
-                )
-                if service.should_run_for_path(project_path):
-                    result.append(merge_request.asdict())
-    return result
+            async for merge_request_batch in service.get_opened_merge_requests(group):
+                yield [merge_request.asdict() for merge_request in merge_request_batch]
+            async for merge_request_batch in service.get_closed_merge_requests(
+                group, updated_after
+            ):
+                yield [merge_request.asdict() for merge_request in merge_request_batch]
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
-async def resync_issues(kind: str) -> RAW_RESULT:
-    issues = []
+async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
         for group in service.get_root_groups():
-            for issue in group.issues.list(all=True):
-                project_path = issue.references.get("full").rstrip(
-                    issue.references.get("short")
-                )
-                if service.should_run_for_path(project_path):
-                    issues.append(issue.asdict())
-    return issues
+            async for issues_batch in service.get_all_issues(group):
+                yield [issue.asdict() for issue in issues_batch]
 
 
 @ocean.on_resync(ObjectKind.JOB)
@@ -93,9 +78,6 @@ async def resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for projects_batch in service.get_all_projects():
             for project in projects_batch:
                 async for jobs_batch in service.get_all_jobs(project):
-                    logger.info(
-                        f"Found {len(jobs_batch)} jobs for project {project.path_with_namespace}"
-                    )
                     yield [job.asdict() for job in jobs_batch]
 
 
@@ -104,6 +86,9 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
         async for projects_batch in service.get_all_projects():
             for project in projects_batch:
+                logger.info(
+                    f"Fetching pipelines for project {project.path_with_namespace}"
+                )
                 async for pipelines_batch in service.get_all_pipelines(project):
                     logger.info(
                         f"Found {len(pipelines_batch)} pipelines for project {project.path_with_namespace}"
