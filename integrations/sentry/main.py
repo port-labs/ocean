@@ -50,9 +50,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         projects = await sentry_client.get_paginated_projects()
         for project in projects:
             issues.extend(
-                await sentry_client.get_paginated_issues(
-                    organization["slug"], project["slug"]
-                )
+                await sentry_client.get_issues(organization["slug"], project["slug"])
             )
 
     logger.info(f"Received issue batch with {len(issues)} issues")

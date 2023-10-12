@@ -30,7 +30,7 @@ class SentryClient:
         organization_response.raise_for_status()
         return organization_response.json()
 
-    async def get_paginated_issues(
+    async def get_issues(
         self,
         organization_slug: str,
         project_slug: str,
