@@ -1,9 +1,8 @@
 from enum import StrEnum
-from typing import Any
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
-from client.sentry import SentryClient
+from clients.sentry import SentryClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
