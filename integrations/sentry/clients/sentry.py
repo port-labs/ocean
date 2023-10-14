@@ -32,7 +32,7 @@ class SentryClient:
         project_slug: str,
     ) -> list[dict[str, Any]]:
         issue_response = await self.client.get(
-            f"{self.api_url}/projects/{self.organization}/{project_slug}/issues"
+            f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/"
         )
         issue_response.raise_for_status()
         issues = issue_response.json()

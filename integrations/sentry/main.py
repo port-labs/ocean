@@ -19,9 +19,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logic_settings["sentry_token"],
         logic_settings["sentry_organization"],
     )
-    projects = await sentry_client.get_paginated_projects()
-    logger.info(f"Received project batch with {len(projects)} issues")
-    yield projects
+
+    async for projects in sentry_client.get_paginated_projects():
+        logger.info(f"Received ${len(projects)} batch projects")
+        yield projects
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -31,10 +32,11 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = SentryClient(
         logic_settings["sentry_host"],
         logic_settings["sentry_token"],
+        logic_settings["sentry_organization"],
     )
-    projects = await sentry_client.get_paginated_projects()
-    for project in projects:
-        issues.extend(await sentry_client.get_issues(project["slug"]))
 
-    logger.info(f"Received issue batch with {len(issues)} issues")
-    yield issues
+    async for projects in sentry_client.get_paginated_projects():
+        logger.info(f"Received ${len(projects)} batch projects")
+        for project in projects:
+            issues = await sentry_client.get_issues(project["slug"])
+            yield issues
