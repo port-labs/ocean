@@ -1,6 +1,8 @@
 import httpx
 from typing import Any, AsyncGenerator
 
+from loguru import logger
+
 
 class SentryClient:
     def __init__(
@@ -18,21 +20,25 @@ class SentryClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         per_page = 100
         page = 0
+        logger.info("Getting projects from Sentry")
         while True:
             project_response = await self.client.get(
                 f"{self.api_url}/projects/?per_page={per_page}&cursor={page}:1:0"
             )
             project_response.raise_for_status()
             projects = project_response.json()
+            logger.info(f"Got {len(projects)} projects from Sentry")
             yield projects
             page += 1
             if len(projects) < per_page:
                 break
 
     async def get_issues(self, project_slug: str) -> list[dict[str, Any]]:
+        logger.info(f"Getting issues from Sentry for project {project_slug}")
         issue_response = await self.client.get(
             f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/"
         )
         issue_response.raise_for_status()
         issues = issue_response.json()
+        logger.info(f"Got {len(issues)} issues from Sentry for project {project_slug}")
         return issues
