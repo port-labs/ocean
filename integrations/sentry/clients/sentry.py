@@ -3,7 +3,9 @@ from typing import Any, AsyncGenerator
 
 
 class SentryClient:
-    def __init__(self, sentry_base_url, auth_token, sentry_organization) -> None:
+    def __init__(
+        self, sentry_base_url: str, auth_token: str, sentry_organization: str
+    ) -> None:
         self.sentry_base_url = sentry_base_url
         self.auth_token = auth_token
         self.base_headers = {"Authorization": "Bearer " + f"{self.auth_token}"}
@@ -27,10 +29,7 @@ class SentryClient:
             if len(projects) < per_page:
                 break
 
-    async def get_issues(
-        self,
-        project_slug: str,
-    ) -> list[dict[str, Any]]:
+    async def get_issues(self, project_slug: str) -> list[dict[str, Any]]:
         issue_response = await self.client.get(
             f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/"
         )
