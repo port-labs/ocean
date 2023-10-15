@@ -1,4 +1,5 @@
 from typing import Any, Optional, AsyncGenerator, cast
+
 import httpx
 from loguru import logger
 
@@ -97,7 +98,7 @@ class SonarQubeClient:
             return all_resources
 
         except httpx.HTTPStatusError as e:
-            print(
+            logger.info(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
