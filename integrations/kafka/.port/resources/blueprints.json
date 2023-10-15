@@ -1,0 +1,96 @@
+[
+  {
+    "identifier": "cluster",
+    "title": "Cluster",
+    "icon": "Kafka",
+    "schema": {
+      "properties": {
+        "controllerId": {
+          "title": "Controller ID",
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "broker",
+    "title": "Broker",
+    "icon": "Kafka",
+    "schema": {
+      "properties": {
+        "address": {
+          "title": "Address",
+          "type": "string"
+        },
+        "region": {
+          "title": "Region",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
+        }
+      }
+    },
+    "relations": {
+      "cluster": {
+        "target": "cluster",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "topic",
+    "title": "Topic",
+    "icon": "Kafka",
+    "schema": {
+      "properties": {
+        "replicas": {
+          "title": "Replicas",
+          "type": "number"
+        },
+        "partitions": {
+          "title": "Partitions",
+          "type": "number"
+        },
+        "compaction": {
+          "title": "Compaction",
+          "type": "boolean"
+        },
+        "retention": {
+          "title": "Retention",
+          "type": "boolean"
+        },
+        "deleteRetentionTime": {
+          "title": "Delete Retention Time",
+          "type": "number"
+        },
+        "partitionsMetadata": {
+          "title": "Partitions Metadata",
+          "type": "array"
+        },
+        "config": {
+          "title": "Config",
+          "type": "object"
+        }
+      }
+    },
+    "relations": {
+      "cluster": {
+        "target": "cluster",
+        "required": true,
+        "many": false
+      },
+      "brokers": {
+        "target": "broker",
+        "required": false,
+        "many": true
+      }
+    }
+  }
+]
