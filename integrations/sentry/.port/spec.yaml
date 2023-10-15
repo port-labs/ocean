@@ -3,7 +3,7 @@ description: sentry integration for Port Ocean
 icon: Sentry
 features:
   - type: exporter
-    section: Sentry
+    section: APM & Alerting
     resources:
       - kind: project
       - kind: issue
