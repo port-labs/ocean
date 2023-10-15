@@ -98,7 +98,7 @@ class SonarQubeClient:
             return all_resources
 
         except httpx.HTTPStatusError as e:
-            logger.info(
+            logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
