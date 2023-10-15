@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "sentry"
 version = "0.1.0"
-description = "A short description of the project"
-authors = ["Dvir Segev <Your address email <you@example.com>>"]
+description = "Sentry Integration"
+authors = ["Dvir Segev dvir@getport.io"]
 
 [tool.poetry.dependencies]
 python = "^3.11"

@@ -9,4 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.1.0 (2023-10-12)
 
-No significant changes.
+### Features
+
+Added Sentry ocean integration [PORT-4588] (#0)

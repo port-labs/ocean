@@ -1,7 +1,6 @@
-version: v0.1.0
 type: sentry
 description: sentry integration for Port Ocean
-icon: Cookiecutter
+icon: Sentry
 features:
   - type: exporter
     section: Sentry
