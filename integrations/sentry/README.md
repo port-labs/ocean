@@ -30,9 +30,7 @@ helm upgrade --install my-sentry-integration port-labs/port-ocean \
 	--set integration.eventListener.type="POLLING"  \
 	--set integration.config.sentryHost="https://sentry.io"  \
 	--set integration.config.sentryOrganization="org-example"  \
-	--set integration.secrets.sentryToken="<SENTRY_API_TOKEN>"  \
-	--set ingress.enabled=true  \
-	--set ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target"= /
+	--set integration.secrets.sentryToken="<SENTRY_API_TOKEN>"  /
 ```
 
 ## Supported Kinds
@@ -46,8 +44,8 @@ The mapping should refer to one of the projects from the example response: [Sent
 
 ```json
 {
-  "identifier": "project",
-  "title": "project",
+  "identifier": "sentryProject",
+  "title": "Project",
   "icon": "Sentry",
   "schema": {
     "properties": {
@@ -100,7 +98,7 @@ resources:
         mappings:
           identifier: .slug
           title: .name
-          blueprint: '"project"'
+          blueprint: '"sentryProject"'
           properties:
             dateCreated: .dateCreated
             platform: .platform
@@ -119,8 +117,8 @@ The mapping should refer to one of the issues in the example response: [Sentry d
 
 ```json
 {
-  "identifier": "issue",
-  "title": "issue",
+  "identifier": "sentryIssue",
+  "title": "Issue",
   "icon": "Sentry",
   "schema": {
     "properties": {
@@ -146,7 +144,7 @@ The mapping should refer to one of the issues in the example response: [Sentry d
   "relations": {
     "project": {
       "title": "project",
-      "target": "project",
+      "target": "sentryProject",
       "required": false,
       "many": false
     }
@@ -170,7 +168,7 @@ resources:
         mappings:
           identifier: ".id"
           title: ".title"
-          blueprint: '"issue"'
+          blueprint: '"sentryIssue"'
           properties:
             link: ".permalink"
             status: ".status"

@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.0 (2023-10-12)
+# 0.1.0 (2023-10-12)
 
 ### Features
 
-Added Sentry ocean integration [PORT-4588] (#0)
+- Added Sentry ocean integration [PORT-4588] (#0)
