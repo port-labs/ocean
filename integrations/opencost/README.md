@@ -15,7 +15,7 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 ```bash
 # The following script will install an Ocean integration in your K8s cluster using helm
 # integration.identifier: Change the identifier to describe your integration
-# integration.config.appHost: The URL of you OpenCost server. Used to make API calls
+# integration.config.opencostHost: The URL of you OpenCost server. Used to make API calls
 # integration.config.window: Duration of time over which to query. Accepts: words like today, week, month, yesterday, lastweek, lastmonth. Durations like 30m, 12h, 7d are also accepted by the API. If none is provided, it defaults to today
 
 helm upgrade --install my-opencost-integration port-labs/port-ocean \
@@ -25,7 +25,7 @@ helm upgrade --install my-opencost-integration port-labs/port-ocean \
 	--set integration.identifier="my-opencost-integration"  \
 	--set integration.type="opencost"  \
 	--set integration.eventListener.type="POLLING"  \
-	--set integration.config.appHost="https://example.com"
+	--set integration.config.opencostHost="https://example.com"
 ```
 ## Supported Kinds
 
