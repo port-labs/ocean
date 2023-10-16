@@ -1,14 +1,12 @@
 [tool.poetry]
-name = "sonarqube"
-version = "0.1.4"
-description = "SonarQube projects and code quality analysis integration"
-authors = ["Port Team <support@getport.io>"]
+name = "opencost"
+version = "0.1.1"
+description = "Ocean integration for OpenCost"
+authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "0.3.1", extras = ["cli"]}
-rich = "^13.5.2"
-cookiecutter = "^2.3.0"
+port_ocean = { version = "^0.3.0", extras = ["cli"] }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
