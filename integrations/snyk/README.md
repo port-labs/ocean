@@ -45,77 +45,77 @@ To bring this data the integration is using the Snyk REST API in version 2021-08
 
 ```json
 {
-    "identifier": "snykTarget",
-    "title": "Snyk Target",
-    "icon": "Snyk",
-    "schema": {
-        "properties": {
-            "criticalOpenVulnerabilities": {
-                "icon": "Vulnerability",
-                "type": "number",
-                "title": "Open Critical Vulnerabilities"
-            },
-            "highOpenVulnerabilities": {
-                "icon": "Vulnerability",
-                "type": "number",
-                "title": "Open High Vulnerabilities"
-            },
-            "mediumOpenVulnerabilities": {
-                "icon": "Vulnerability",
-                "type": "number",
-                "title": "Open Medium Vulnerabilities"
-            },
-            "lowOpenVulnerabilities": {
-                "icon": "Vulnerability",
-                "type": "number",
-                "title": "Open Low Vulnerabilities"
-            },
-            "origin": {
-                "title": "Target Origin",
-                "type": "string",
-                "enum": [
-                    "artifactory-cr",
-                    "aws-config",
-                    "aws-lambda",
-                    "azure-functions",
-                    "azure-repos",
-                    "bitbucket-cloud",
-                    "bitbucket-server",
-                    "cli",
-                    "cloud-foundry",
-                    "digitalocean-cr",
-                    "docker-hub",
-                    "ecr",
-                    "gcr",
-                    "github",
-                    "github-cr",
-                    "github-enterprise",
-                    "gitlab",
-                    "gitlab-cr",
-                    "google-artifact-cr",
-                    "harbor-cr",
-                    "heroku",
-                    "ibm-cloud",
-                    "kubernetes",
-                    "nexus-cr",
-                    "pivotal",
-                    "quay-cr",
-                    "terraform-cloud"
-                ]
-            }
-        },
-        "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {
-        "snykProjects": {
-            "title": "Snyk Projects",
-            "target": "snykProject",
-            "required": false,
-            "many": true
-        }
-    }
+   "identifier":"snykTarget",
+   "title":"Snyk Target",
+   "icon":"Snyk",
+   "schema":{
+      "properties":{
+         "criticalOpenVulnerabilities":{
+            "icon":"Vulnerability",
+            "type":"number",
+            "title":"Open Critical Vulnerabilities"
+         },
+         "highOpenVulnerabilities":{
+            "icon":"Vulnerability",
+            "type":"number",
+            "title":"Open High Vulnerabilities"
+         },
+         "mediumOpenVulnerabilities":{
+            "icon":"Vulnerability",
+            "type":"number",
+            "title":"Open Medium Vulnerabilities"
+         },
+         "lowOpenVulnerabilities":{
+            "icon":"Vulnerability",
+            "type":"number",
+            "title":"Open Low Vulnerabilities"
+         },
+         "origin":{
+            "title":"Target Origin",
+            "type":"string",
+            "enum":[
+               "artifactory-cr",
+               "aws-config",
+               "aws-lambda",
+               "azure-functions",
+               "azure-repos",
+               "bitbucket-cloud",
+               "bitbucket-server",
+               "cli",
+               "cloud-foundry",
+               "digitalocean-cr",
+               "docker-hub",
+               "ecr",
+               "gcr",
+               "github",
+               "github-cr",
+               "github-enterprise",
+               "gitlab",
+               "gitlab-cr",
+               "google-artifact-cr",
+               "harbor-cr",
+               "heroku",
+               "ibm-cloud",
+               "kubernetes",
+               "nexus-cr",
+               "pivotal",
+               "quay-cr",
+               "terraform-cloud"
+            ]
+         }
+      },
+      "required":[]
+   },
+   "mirrorProperties":{},
+   "calculationProperties":{},
+   "relations":{
+      "snykProjects":{
+         "title":"Snyk Projects",
+         "target":"snykProject",
+         "required":false,
+         "many":true
+      }
+   }
 }
 ```
 </details>
@@ -153,108 +153,108 @@ To bring this data the integration is using the Snyk REST API in version 2021-08
 
 ```json
 {
-    "identifier": "snykProject",
-    "title": "Snyk Project",
-    "icon": "Snyk",
-    "schema": {
-        "properties": {
-            "url": {
-                "type": "string",
-                "title": "URL",
-                "format": "url",
-                "icon": "Snyk"
+   "identifier":"snykProject",
+   "title":"Snyk Project",
+   "icon":"Snyk",
+   "schema":{
+      "properties":{
+         "url":{
+            "type":"string",
+            "title":"URL",
+            "format":"url",
+            "icon":"Snyk"
+         },
+         "owner":{
+            "type":"string",
+            "title":"Owner",
+            "format":"user",
+            "icon":"TwoUsers"
+         },
+         "businessCriticality":{
+            "title":"Business Criticality",
+            "type":"array",
+            "items":{
+               "type":"string",
+               "enum":[
+                  "critical",
+                  "high",
+                  "medium",
+                  "low"
+               ]
             },
-            "owner": {
-                "type": "string",
-                "title": "Owner",
-                "format": "user",
-                "icon": "TwoUsers"
+            "icon":"DefaultProperty"
+         },
+         "environment":{
+            "items":{
+               "type":"string",
+               "enum":[
+                  "frontend",
+                  "backend",
+                  "internal",
+                  "external",
+                  "mobile",
+                  "saas",
+                  "onprem",
+                  "hosted",
+                  "distributed"
+               ]
             },
-            "businessCriticality": {
-                "title": "Business Criticality",
-                "type": "array",
-                "items": {
-                    "type": "string",
-                    "enum": [
-                        "critical",
-                        "high",
-                        "medium",
-                        "low"
-                    ]
-                },
-                "icon": "DefaultProperty"
+            "icon":"Environment",
+            "title":"Environment",
+            "type":"array"
+         },
+         "lifeCycle":{
+            "title":"Life Cycle",
+            "type":"array",
+            "items":{
+               "type":"string",
+               "enum":[
+                  "development",
+                  "sandbox",
+                  "production"
+               ]
             },
-            "environment": {
-                "items": {
-                    "type": "string",
-                    "enum": [
-                        "frontend",
-                        "backend",
-                        "internal",
-                        "external",
-                        "mobile",
-                        "saas",
-                        "onprem",
-                        "hosted",
-                        "distributed"
-                    ]
-                },
-                "icon": "Environment",
-                "title": "Environment",
-                "type": "array"
-            },
-            "lifeCycle": {
-                "title": "Life Cycle",
-                "type": "array",
-                "items": {
-                    "type": "string",
-                    "enum": [
-                        "development",
-                        "sandbox",
-                        "production"
-                    ]
-                },
-                "icon": "DefaultProperty"
-            },
-            "highOpenVulnerabilities": {
-                "icon": "Vulnerability",
-                "type": "number",
-                "title": "Open High Vulnerabilities"
-            },
-            "mediumOpenVulnerabilities": {
-                "icon": "Vulnerability",
-                "type": "number",
-                "title": "Open Medium Vulnerabilities"
-            },
-            "lowOpenVulnerabilities": {
-                "icon": "Vulnerability",
-                "type": "number",
-                "title": "Open Low Vulnerabilities"
-            },
-            "importedBy": {
-                "icon": "TwoUsers",
-                "type": "string",
-                "title": "Imported By",
-                "format": "user"
-            },
-            "tags": {
-                "type": "array",
-                "title": "Tags",
-                "icon": "DefaultProperty"
-            }
-        },
-        "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {
-        "snykVulnerabilities": {
-            "title": "Snyk Vulnerabilities",
-            "target": "snykVulnerability",
-            "required": false,
-            "many": true
-        }
-    }
+            "icon":"DefaultProperty"
+         },
+         "highOpenVulnerabilities":{
+            "icon":"Vulnerability",
+            "type":"number",
+            "title":"Open High Vulnerabilities"
+         },
+         "mediumOpenVulnerabilities":{
+            "icon":"Vulnerability",
+            "type":"number",
+            "title":"Open Medium Vulnerabilities"
+         },
+         "lowOpenVulnerabilities":{
+            "icon":"Vulnerability",
+            "type":"number",
+            "title":"Open Low Vulnerabilities"
+         },
+         "importedBy":{
+            "icon":"TwoUsers",
+            "type":"string",
+            "title":"Imported By",
+            "format":"user"
+         },
+         "tags":{
+            "type":"array",
+            "title":"Tags",
+            "icon":"DefaultProperty"
+         }
+      },
+      "required":[]
+   },
+   "mirrorProperties":{},
+   "calculationProperties":{},
+   "relations":{
+      "snykVulnerabilities":{
+         "title":"Snyk Vulnerabilities",
+         "target":"snykVulnerability",
+         "required":false,
+         "many":true
+      }
+   }
 }
 ```
 </details>
@@ -298,81 +298,81 @@ To bring this data the integration is using the Snyk v1 API.
 
 ```json
 {
-    "identifier": "snykVulnerability",
-    "title": "Snyk Vulnerability",
-    "icon": "Snyk",
-    "schema": {
-        "properties": {
-            "score": {
-                "icon": "Star",
-                "type": "number",
-                "title": "Score"
-            },
-            "packageName": {
-                "type": "string",
-                "title": "Package Name",
-                "icon": "DefaultProperty"
-            },
-            "packageVersions": {
-                "icon": "Package",
-                "title": "Package Versions",
-                "type": "array"
-            },
-            "type": {
-                "type": "string",
-                "title": "Type",
-                "enum": [
-                    "vuln",
-                    "license",
-                    "configuration"
-                ],
-                "icon": "DefaultProperty"
-            },
-            "severity": {
-                "icon": "Alert",
-                "title": "Issue Severity",
-                "type": "string",
-                "enum": [
-                    "low",
-                    "medium",
-                    "high",
-                    "critical"
-                ],
-                "enumColors": {
-                    "low": "green",
-                    "medium": "yellow",
-                    "high": "red",
-                    "critical": "red"
-                }
-            },
-            "url": {
-                "icon": "Link",
-                "type": "string",
-                "title": "Issue URL",
-                "format": "url"
-            },
-            "language": {
-                "type": "string",
-                "title": "Language",
-                "icon": "DefaultProperty"
-            },
-            "publicationTime": {
-                "type": "string",
-                "format": "date-time",
-                "title": "Publication Time",
-                "icon": "DefaultProperty"
-            },
-            "isPatched": {
-                "type": "boolean",
-                "title": "Is Patched",
-                "icon": "DefaultProperty"
+   "identifier":"snykVulnerability",
+   "title":"Snyk Vulnerability",
+   "icon":"Snyk",
+   "schema":{
+      "properties":{
+         "score":{
+            "icon":"Star",
+            "type":"number",
+            "title":"Score"
+         },
+         "packageName":{
+            "type":"string",
+            "title":"Package Name",
+            "icon":"DefaultProperty"
+         },
+         "packageVersions":{
+            "icon":"Package",
+            "title":"Package Versions",
+            "type":"array"
+         },
+         "type":{
+            "type":"string",
+            "title":"Type",
+            "enum":[
+               "vuln",
+               "license",
+               "configuration"
+            ],
+            "icon":"DefaultProperty"
+         },
+         "severity":{
+            "icon":"Alert",
+            "title":"Issue Severity",
+            "type":"string",
+            "enum":[
+               "low",
+               "medium",
+               "high",
+               "critical"
+            ],
+            "enumColors":{
+               "low":"green",
+               "medium":"yellow",
+               "high":"red",
+               "critical":"red"
             }
-        },
-        "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {}
+         },
+         "url":{
+            "icon":"Link",
+            "type":"string",
+            "title":"Issue URL",
+            "format":"url"
+         },
+         "language":{
+            "type":"string",
+            "title":"Language",
+            "icon":"DefaultProperty"
+         },
+         "publicationTime":{
+            "type":"string",
+            "format":"date-time",
+            "title":"Publication Time",
+            "icon":"DefaultProperty"
+         },
+         "isPatched":{
+            "type":"boolean",
+            "title":"Is Patched",
+            "icon":"DefaultProperty"
+         }
+      },
+      "required":[]
+   },
+   "mirrorProperties":{},
+   "calculationProperties":{},
+   "relations":{}
 }
 ```
 </details>
