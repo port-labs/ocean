@@ -40,6 +40,7 @@ class KafkaClient:
                     )
                 except Exception as e:
                     logger.error(f"Failed to describe broker {broker_id}: {e}")
+                    raise e
         return result_brokers
 
     def describe_topics(self) -> list[dict[str, Any]]:
@@ -83,4 +84,5 @@ class KafkaClient:
                 )
             except Exception as e:
                 logger.error(f"Failed to describe topic {topic_name}: {e}")
+                raise e
         return result_topics
