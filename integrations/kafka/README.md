@@ -21,7 +21,7 @@ helm upgrade --install my-kafka-integration port-labs/port-ocean \
 	--set integration.identifier="my-kafka-integration"  \
 	--set integration.type="kafka"  \
 	--set integration.eventListener.type="POLLING"  \
-	--set integration.secrets.clusterConfMapping="{\"local\":{\"bootstrap.servers\": \"localhost:9092\"}}"
+	--set-json integration.secrets.clusterConfMapping='{"local": {"bootstrap.servers": "localhost:9092"}}'
 ```
 
 ## Supported Kinds
