@@ -2,7 +2,7 @@
 name = "sentry"
 version = "0.1.0"
 description = "Sentry Integration"
-authors = ["Dvir Segev <dvir@getport.io">]
+authors = ["Dvir Segev <dvir@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
