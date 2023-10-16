@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Opsgenie 0.1.1 (2023-10-16)
+
+### Improvements
+
+- Align README with configuration file (#1)
+
+
 # Opsgenie 0.1.0 (2023-09-16)
 
 ### Features
