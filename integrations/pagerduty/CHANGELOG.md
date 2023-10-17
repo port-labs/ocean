@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.8 (2023-10-17)
+
+### Bug Fixes
+
+- Fixed default mapping for the oncall user (PORT-4964)
+
+
 # Port_Ocean 0.1.7 (2023-09-27)
 
 ### Improvements
