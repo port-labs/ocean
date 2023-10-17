@@ -1,0 +1,16 @@
+type: kafka
+description: Kafka integration for Port Ocean
+icon: Kafka
+features:
+  - type: exporter
+    section: Event Processing
+    resources:
+      - kind: cluster
+      - kind: broker
+      - kind: topic
+configurations:
+  - name: clusterConfMapping
+    required: true
+    type: object
+    description: "Mapping of Kafka cluster names to Kafka client config. example: {\"my cluster\":{\"bootstrap.servers\": \"localhost:9092\"}}"
+    sensitive: true

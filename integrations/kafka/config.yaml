@@ -1,6 +1,7 @@
 # This is an example configuration file for the integration service.
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 initializePortResources: true
+scheduledResyncInterval: 60
 port:
   clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID
   clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET
@@ -9,9 +10,8 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: "my-pagerduty-integration"
+  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
   # The type of the integration.
-  type: "pagerduty"
+  type: "kafka"
   config:
-    token: "{{ from env PAGERDUTY_TOKEN }}"
-    appHost: "{{ from env APP_HOST }}"
+    clusterConfMapping: "{{ from env CLUSTER_CONF_MAPPING }}"
