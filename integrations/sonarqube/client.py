@@ -15,7 +15,7 @@ class Endpoints:
 
 class SonarQubeClient:
     def __init__(
-        self, base_url: str, api_key: str, organization_id: str, app_host: str
+        self, base_url: str, api_key: str, organization_id: str | None, app_host: str
     ):
         self.base_url = base_url or "https://sonarcloud.io"
         self.api_key = api_key
@@ -102,6 +102,9 @@ class SonarQubeClient:
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
+        except Exception as e:
+            logger.error(f"Error occurred while fetching paginated data: {e}")
+            raise
 
     async def get_components(self) -> list[Any]:
         """
@@ -109,11 +112,14 @@ class SonarQubeClient:
 
         :return: A list of components associated with the specified organization.
         """
+        params = {}
+        if self.organization_id:
+            params["organization"] = self.organization_id
         logger.info(f"Fetching all components in organization: {self.organization_id}")
         response = await self.send_paginated_api_request(
             endpoint=Endpoints.PROJECTS,
             data_key="components",
-            query_params={"organization": self.organization_id},
+            query_params=params,
         )
         return response
 
@@ -328,11 +334,14 @@ class SonarQubeClient:
         for project in projects:
             project_key = project["key"]
             logger.info(f"Fetching existing webhooks in project: {project_key}")
+            params = {}
+            if self.organization_id:
+                params["organization"] = self.organization_id
             webhooks_response = await self.send_api_request(
                 endpoint=f"{webhook_endpoint}/list",
                 query_params={
                     "project": project_key,
-                    "organization": self.organization_id,
+                    **params,
                 },
             )
 
@@ -342,11 +351,15 @@ class SonarQubeClient:
             if any(webhook["url"] == invoke_url for webhook in webhooks):
                 logger.info(f"Webhook already exists in project: {project_key}")
                 continue
+
+            params = {}
+            if self.organization_id:
+                params["organization"] = self.organization_id
             webhooks_to_create.append(
                 {
                     "name": "Port Ocean Webhook",
                     "project": project_key,
-                    "organization": self.organization_id,
+                    **params,
                 }
             )
 

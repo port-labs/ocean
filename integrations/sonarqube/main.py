@@ -1,8 +1,10 @@
 from typing import Any
+
 from loguru import logger
+
+from client import SonarQubeClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from client import SonarQubeClient
 
 
 class ObjectKind:
@@ -15,7 +17,7 @@ def init_sonar_client() -> SonarQubeClient:
     return SonarQubeClient(
         ocean.integration_config.get("sonar_url", "https://sonarcloud.io"),
         ocean.integration_config["sonar_api_token"],
-        ocean.integration_config.get("sonar_organization_id", ""),
+        ocean.integration_config.get("sonar_organization_id", None),
         ocean.integration_config.get("app_host", ""),
     )
 
