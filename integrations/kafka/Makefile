@@ -38,7 +38,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install lint run test clean install/prod
+.SILENT: install install/prod lint run test clean
 
 install:
 	$(call deactivate_virtualenv) && \
@@ -47,7 +47,7 @@ install:
 
 install/prod:
 	$(call install_poetry) && \
-	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
+    poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 lint:
 	$(ACTIVATE) && \
