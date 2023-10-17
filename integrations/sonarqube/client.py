@@ -80,6 +80,7 @@ class SonarQubeClient:
                     params=query_params,
                     json=json_data,
                     headers=self.api_auth_header,
+                    auth=(self.api_key, ""),
                 )
                 response.raise_for_status()
                 response_json = response.json()
@@ -117,12 +118,16 @@ class SonarQubeClient:
         if self.organization_id:
             params["organization"] = self.organization_id
         logger.info(f"Fetching all components in organization: {self.organization_id}")
-        response = await self.send_paginated_api_request(
-            endpoint=Endpoints.PROJECTS,
-            data_key="components",
-            query_params=params,
-        )
-        return response
+        try:
+            response = await self.send_paginated_api_request(
+                endpoint=Endpoints.PROJECTS,
+                data_key="components",
+                query_params=params,
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Error occurred while fetching components: {e}")
+            raise
 
     async def get_single_component(self, project: dict[str, Any]) -> dict[str, Any]:
         """
