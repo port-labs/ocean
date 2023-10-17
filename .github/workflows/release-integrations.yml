@@ -38,6 +38,7 @@ jobs:
 
             # Check if the version exists in the ghcr.io registry
             echo "4 https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version"
+            curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version"
             MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
             
             echo "5"
