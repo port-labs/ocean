@@ -10,7 +10,7 @@ const BUCKET_URL = "https://port-graphical-assets.s3.eu-west-1.amazonaws.com";
 function Index(props): JSX.Element {
     const [integrations, setIntegrations] = useState([]);
 
-    const loadIntegrations = async (integrations) => {
+    const loadIntegrations = async () => {
         try {
             const colorParams = new URLSearchParams({
                 "list-type": '2',
@@ -21,8 +21,13 @@ function Index(props): JSX.Element {
                 prefix: `icons/blueprints`
             })
 
-            const [colorResponse, colorlessResponse] = await Promise.all([fetch(`${BUCKET_URL}?` + colorParams), fetch(`${BUCKET_URL}?` + colorlessParams)])
-            const [colorResult, colorlessResult] = await Promise.all([parseStringPromise(await colorResponse.text()), await parseStringPromise(await colorlessResponse.text())])
+            const [colorResponse, colorlessResponse, integrationsResponse] = await Promise.all([
+                fetch(`${BUCKET_URL}?` + colorParams),
+                fetch(`${BUCKET_URL}?` + colorlessParams),
+                fetch('https://ocean-registry.s3.eu-west-1.amazonaws.com/index.json')
+            ])
+            const integrations = await integrationsResponse.json();
+            const [colorResult, colorlessResult] = await Promise.all([parseStringPromise(await colorResponse.text()), parseStringPromise(await colorlessResponse.text())])
 
             const iconInS3 = [colorResult, colorlessResult].flatMap(item => item.ListBucketResult.Contents.map((content) => {
                 const key = content.Key[0]
@@ -45,9 +50,7 @@ function Index(props): JSX.Element {
     }
 
     useEffect(() => {
-        fetch('https://ocean-registry.s3.eu-west-1.amazonaws.com/index.json').then(async (response) => {
-            await loadIntegrations(await response.json());
-        })
+        (async  () => await loadIntegrations())();
     }, [])
 
     const getIcon = (integration) => {
