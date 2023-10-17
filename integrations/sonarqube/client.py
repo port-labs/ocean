@@ -21,7 +21,9 @@ class SonarQubeClient:
         self.api_key = api_key
         self.organization_id = organization_id
         self.app_host = app_host
-        self.http_client = httpx.AsyncClient(headers=self.api_auth_header)
+        self.http_client = httpx.AsyncClient(
+            headers=self.api_auth_header, auth=(self.api_key, "")
+        )
         self.metrics = [
             "code_smells",
             "coverage",
@@ -34,7 +36,6 @@ class SonarQubeClient:
     @property
     def api_auth_header(self) -> dict[str, Any]:
         return {
-            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
 
