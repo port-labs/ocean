@@ -27,21 +27,15 @@ jobs:
           files=$(find integrations/*/.port -name "spec.yaml")
           for file in $files; do
             # Get the type from ocean-spec.yaml
-            echo "1"
             type=$(yq eval '.type' "$file")
-            echo "2"
             folder=$(dirname "$file")
 
             # Get the version from pyproject.toml
-            echo "3"
             version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
 
             # Check if the version exists in the ghcr.io registry
-            echo "4 https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version"
-            curl -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version"
             MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
             
-            echo "5"
             if [ "$MANIFEST" = "200" ]; then
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
