@@ -11,13 +11,20 @@ from port_ocean.exceptions.core import EntityProcessorException
 
 
 class JQEntityProcessor(BaseEntityProcessor):
+    """Processes and parses entities using JQ expressions.
+
+    This class extends the BaseEntityProcessor and provides methods for processing and
+    parsing entities based on PyJQ queries. It supports compiling and executing PyJQ patterns,
+    searching for data in dictionaries, and transforming data based on object mappings.
+    """
+
     @lru_cache
     def _compile(self, pattern: str) -> Any:
         return jq.compile(pattern)
 
     def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
-            return self._compile(pattern).first(data) or None
+            return self._compile(pattern).first(data)
         except Exception:
             return None
 

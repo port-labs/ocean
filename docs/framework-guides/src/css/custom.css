@@ -1,0 +1,70 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #178087;
+  --ifm-color-primary-dark: #157379;
+  --ifm-color-primary-darker: #146d73;
+  --ifm-color-primary-darkest: #105a5f;
+  --ifm-color-primary-light: #198d94;
+  --ifm-color-primary-lighter: #1a939b;
+  --ifm-color-primary-lightest: #1ea6af;
+  --ifm-code-font-size: 95%;
+}
+
+:root {
+  --ifm-font-family-base: "Inter";
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Lexend";
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme="dark"] {
+  --ifm-color-primary: #3ed0dd;
+  --ifm-color-primary-dark: #26cad9;
+  --ifm-color-primary-darker: #24bfcd;
+  --ifm-color-primary-darkest: #1e9da8;
+  --ifm-color-primary-light: #56d6e1;
+  --ifm-color-primary-lighter: #62d9e3;
+  --ifm-color-primary-lightest: #86e2ea;
+}
+
+.termynal-comment {
+  color: #4a968f;
+  font-style: italic;
+  display: block;
+}
+
+.termy {
+  /* For right to left languages */
+  direction: ltr;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.termy [data-termynal] {
+  white-space: pre-wrap;
+}
+
+:root {
+  --docusaurus-highlighted-code-line-bg: #e6ecf3;
+}
+
+/* If you have a different syntax highlighting theme for dark mode. */
+[data-theme="dark"] {
+  /* Color which works with dark mode syntax highlighting theme */
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+@import url("https://fonts.googleapis.com/css2?family=Lexend&family=Inter");

@@ -6,8 +6,9 @@ from typing import Any, Awaitable, Callable
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.context.event import TriggerType, event_context, EventType
+from port_ocean.context.event import TriggerType, event_context, EventType, event
 from port_ocean.context.ocean import ocean
+from port_ocean.context.resource import resource_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.integrations.mixins.events import EventsMixin
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
@@ -29,6 +30,15 @@ from port_ocean.exceptions.core import OceanAbortException
 
 
 class SyncMixin(HandlerMixin):
+    """Mixin class for synchronization of constructed entities.
+
+    This mixin class extends the functionality of HandlerMixin to provide methods for updating,
+    registering, unregistering, and syncing entities state changes.
+
+    Note:
+        Entities are constructed entities using the Entity class
+    """
+
     def __init__(self) -> None:
         HandlerMixin.__init__(self)
 
@@ -37,6 +47,19 @@ class SyncMixin(HandlerMixin):
         desired_state: EntityDiff,
         user_agent_type: UserAgentType,
     ) -> None:
+        """Update the state difference between two list of entities.
+
+        - Any entities that are in the `before` state but not in the `after` state will be unregistered.
+        - Any entities that are in the `after` state but not in the `before` state will be registered.
+        - Any entities that are in both the `before` and `after` state will be synced.
+
+        Args:
+            desired_state (EntityDiff): The desired state difference of entities.
+            user_agent_type (UserAgentType): The type of user agent.
+
+        Raises:
+            IntegrationNotStartedException: If EntitiesStateApplier class is not initialized.
+        """
         await self.entities_state_applier.apply_diff(
             {"before": desired_state["before"], "after": desired_state["after"]},
             user_agent_type,
@@ -47,12 +70,30 @@ class SyncMixin(HandlerMixin):
         entities: list[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
+        """Upsert entities into Port.
+
+        Args:
+            entities (list[Entity]): List of entities to be registered.
+            user_agent_type (UserAgentType): The type of user agent.
+
+        Raises:
+            IntegrationNotStartedException: If EntitiesStateApplier class is not initialized.
+        """
         await self.entities_state_applier.upsert(entities, user_agent_type)
         logger.info("Finished registering change")
 
     async def unregister(
         self, entities: list[Entity], user_agent_type: UserAgentType
     ) -> None:
+        """Delete entities from Port.
+
+        Args:
+            entities (list[Entity]): List of entities to be unregistered.
+            user_agent_type (UserAgentType): The type of user agent.
+
+        Raises:
+            IntegrationNotStartedException: If EntitiesStateApplier class is not initialized.
+        """
         await self.entities_state_applier.delete(entities, user_agent_type)
         logger.info("Finished unregistering change")
 
@@ -61,6 +102,19 @@ class SyncMixin(HandlerMixin):
         entities: list[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
+        """Synchronize entities' states according to the state in Port.
+
+        The integration fetches the current state of the entities in Port according to the given user_agent_type and
+        compares it to the given desired state. The integration then create/updates/delete the entities to match the
+        desired state.
+
+        Args:
+            entities (list[Entity]): List of entities to be synced.
+            user_agent_type (UserAgentType): The type of user agent.
+
+        Raises:
+            IntegrationNotStartedException: If EntitiesStateApplier class is not initialized.
+        """
         entities_at_port = await ocean.port_client.search_entities(user_agent_type)
 
         await self.entities_state_applier.upsert(entities, user_agent_type)
@@ -72,6 +126,15 @@ class SyncMixin(HandlerMixin):
 
 
 class SyncRawMixin(HandlerMixin, EventsMixin):
+    """Mixin class for synchronization of raw constructed entities.
+
+    This mixin class extends the functionality of HandlerMixin and EventsMixin to provide methods for registering,
+    unregistering, updating, and syncing raw entities' state changes.
+
+    Note:
+        Raw entities are entities with a more primitive structure, usually fetched directly from a resource.
+    """
+
     def __init__(self) -> None:
         HandlerMixin.__init__(self)
         EventsMixin.__init__(self)
@@ -186,10 +249,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return entities_after
 
     async def _register_in_batches(
-        self,
-        resource_config: ResourceConfig,
-        user_agent_type: UserAgentType,
-        batch_work_size: int,
+        self, resource_config: ResourceConfig, user_agent_type: UserAgentType
     ) -> tuple[list[Entity], list[Exception]]:
         results, errors = await self._get_resource_raw_results(resource_config)
         async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
@@ -200,21 +260,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 async_generators.append(result)
 
-        batches = [
-            raw_results[i : i + batch_work_size]
-            for i in range(0, len(raw_results), batch_work_size)
-        ]
-
-        registered_entities_results = await asyncio.gather(
-            *(
-                self._register_resource_raw(resource_config, batch, user_agent_type)
-                for batch in batches
-            )
+        entities = await self._register_resource_raw(
+            resource_config, raw_results, user_agent_type
         )
+
         for generator in async_generators:
             try:
                 async for items in generator:
-                    registered_entities_results.append(
+                    entities.extend(
                         await self._register_resource_raw(
                             resource_config, items, user_agent_type
                         )
@@ -222,7 +275,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except* OceanAbortException as error:
                 errors.append(error)
 
-        entities: list[Entity] = sum(registered_entities_results, [])
         logger.info(
             f"Finished registering change for {len(results)} raw results for kind: {resource_config.kind}. {len(entities)} entities were affected"
         )
@@ -234,6 +286,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
     ) -> list[Entity]:
+        """Register raw entities of a specific kind.
+
+        This method registers raw entities of a specific kind into Port.
+
+        Args:
+            kind (str): The kind of raw entities being registered.
+            results (list[dict[Any, Any]]): The raw entity results to be registered.
+            user_agent_type (UserAgentType): The type of user agent.
+
+        Returns:
+            list[Entity]: A list of registered entities.
+        """
         logger.info(f"Registering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
         resource_mappings = [
@@ -253,6 +317,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
     ) -> list[Entity]:
+        """Unregister raw entities of a specific kind.
+
+        This method unregisters raw entities of a specific kind from Port.
+
+        Args:
+            kind (str): The kind of raw entities being unregistered.
+            results (list[dict[Any, Any]]): The raw entity results to be unregistered.
+            user_agent_type (UserAgentType): The type of user agent.
+
+        Returns:
+            list[Entity]: A list of unregistered entities.
+        """
         logger.info(f"Registering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
         resource_mappings = [
@@ -272,6 +348,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         raw_desired_state: RawEntityDiff,
         user_agent_type: UserAgentType,
     ) -> None:
+        """Update the difference in state for raw entities of a specific kind.
+
+        This method updates the difference in state for raw entities of a specific kind.
+
+        Args:
+            kind (str): The kind of raw entities being updated.
+            raw_desired_state (RawEntityDiff): The desired state difference of raw entities.
+            user_agent_type (UserAgentType): The type of user agent.
+        """
         logger.info(f"Updating state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
         resource_mappings = [
@@ -303,6 +388,17 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType = UserAgentType.exporter,
         silent: bool = True,
     ) -> None:
+        """Perform a full synchronization of raw entities.
+
+        This method performs a full synchronization of raw entities, including registration, unregistration,
+        and state updates.
+
+        Args:
+            _ (dict[Any, Any] | None): Unused parameter.
+            trigger_type (TriggerType): The type of trigger for the synchronization.
+            user_agent_type (UserAgentType): The type of user agent.
+            silent (bool): Whether to raise exceptions or handle them silently.
+        """
         logger.info("Resync was triggered")
 
         async with event_context(EventType.RESYNC, trigger_type=trigger_type):
@@ -311,34 +407,39 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             entities_at_port = await ocean.port_client.search_entities(user_agent_type)
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
-            for resource in app_config.resources:
-                # create event context per resource kind, so resync method could have access to the resource config
-                # as we might have multiple resources with the same kind name
-                async with event_context(
-                    EventType.RESYNC,
-                    trigger_type=trigger_type,
-                    resource_config=resource,
-                    attributes={"resource_kind": resource.kind},
-                ):
-                    creation_results.append(
-                        await self._register_in_batches(
-                            resource, user_agent_type, ocean.config.batch_work_size
+
+            try:
+                for resource in app_config.resources:
+                    # create resource context per resource kind, so resync method could have access to the resource
+                    # config as we might have multiple resources in the same event
+                    async with resource_context(resource):
+                        task = asyncio.get_event_loop().create_task(
+                            self._register_in_batches(resource, user_agent_type)
                         )
-                    )
-            flat_created_entities, errors = zip_and_sum(creation_results) or [[], []]
 
-            if errors:
-                message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
-                error_group = ExceptionGroup(
-                    f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state",
-                    errors,
-                )
-                if not silent:
-                    raise error_group
+                        event.on_abort(lambda: task.cancel())
 
-                logger.error(message, exc_info=error_group)
+                        creation_results.append(await task)
+            except asyncio.CancelledError as e:
+                logger.warning("Resync aborted successfully")
             else:
-                await self.entities_state_applier.delete_diff(
-                    {"before": entities_at_port, "after": flat_created_entities},
-                    user_agent_type,
-                )
+                flat_created_entities, errors = zip_and_sum(creation_results) or [
+                    [],
+                    [],
+                ]
+
+                if errors:
+                    message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
+                    error_group = ExceptionGroup(
+                        f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state",
+                        errors,
+                    )
+                    if not silent:
+                        raise error_group
+
+                    logger.error(message, exc_info=error_group)
+                else:
+                    await self.entities_state_applier.delete_diff(
+                        {"before": entities_at_port, "after": flat_created_entities},
+                        user_agent_type,
+                    )

@@ -1,0 +1,23 @@
+type: sentry
+description: sentry integration for Port Ocean
+icon: Sentry
+features:
+  - type: exporter
+    section: APM & Alerting
+    resources:
+      - kind: project
+      - kind: issue
+configurations:
+  - name: sentryHost
+    required: true
+    type: url
+    description: "Sentry host URL"
+  - name: sentryToken
+    required: true
+    type: string
+    description: "Sentry token"
+    sensitive: true
+  - name: sentryOrganization
+    required: true
+    type: string
+    description: "Sentry organization"

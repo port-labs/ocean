@@ -1,8 +1,7 @@
 from typing import Any
 
-from loguru import logger
-
 from clients.pagerduty import PagerDutyClient
+from loguru import logger
 from port_ocean.context.ocean import ocean
 
 
@@ -17,7 +16,7 @@ async def on_incidents_resync(kind: str) -> list[dict[str, Any]]:
     pager_duty_client = PagerDutyClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
-        ocean.integration_config["app_host"],
+        ocean.integration_config.get("app_host"),
     )
 
     return await pager_duty_client.paginate_request_to_pager_duty(
@@ -31,7 +30,7 @@ async def on_services_resync(kind: str) -> list[dict[str, Any]]:
     pager_duty_client = PagerDutyClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
-        ocean.integration_config["app_host"],
+        ocean.integration_config.get("app_host"),
     )
 
     services = await pager_duty_client.paginate_request_to_pager_duty(
@@ -45,7 +44,7 @@ async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
     pager_duty_client = PagerDutyClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
-        ocean.integration_config["app_host"],
+        ocean.integration_config.get("app_host"),
     )
     event_type = data["event"]["event_type"]
     logger.info(f"Processing Pagerduty webhook for event type: {event_type}")
@@ -74,7 +73,7 @@ async def on_start() -> None:
     pager_duty_client = PagerDutyClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
-        ocean.integration_config["app_host"],
+        ocean.integration_config.get("app_host"),
     )
     logger.info("Subscribing to Pagerduty webhooks")
     await pager_duty_client.create_webhooks_if_not_exists()

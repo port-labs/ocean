@@ -1,0 +1,48 @@
+resources:
+  - kind: cluster
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"cluster"'
+          properties:
+            controllerId: .controller_id
+  - kind: broker
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .cluster_name + "_" + (.id | tostring)
+          title: .cluster_name + " " + (.id | tostring)
+          blueprint: '"broker"'
+          properties:
+            address: .address
+            region: .config."broker.rack"
+            version: .config."inter.broker.protocol.version"
+            config: .config
+          relations:
+            cluster: .cluster_name
+  - kind: topic
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .cluster_name + "_" + .name
+          title: .cluster_name + " " + .name
+          blueprint: '"topic"'
+          properties:
+            replicas: .partitions[0].replicas | length
+            partitions: .partitions | length
+            compaction: .config."cleanup.policy" | contains("compact")
+            retention: .config."cleanup.policy" | contains("delete")
+            deleteRetentionTime: .config."delete.retention.ms"
+            partitionsMetadata: .partitions
+            config: .config
+          relations:
+            cluster: .cluster_name
+            brokers: '[.cluster_name + "_" + (.partitions[].replicas[] | tostring)] | unique'
