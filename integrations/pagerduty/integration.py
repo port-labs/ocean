@@ -74,7 +74,9 @@ class PagerdutyIncidentAPIQueryParams(BaseModel):
 
 class PagerdutyIncidentResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
-        api_query_params: PagerdutyIncidentAPIQueryParams | None
+        api_query_params: PagerdutyIncidentAPIQueryParams | None = Field(
+            alias="apiQueryParams"
+        )
 
     kind: Literal["incidents"]
     selector: PagerdutySelector
@@ -82,7 +84,9 @@ class PagerdutyIncidentResourceConfig(ResourceConfig):
 
 class PagerdutyServiceResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
-        api_query_params: PagerdutyServiceAPIQueryParams | None
+        api_query_params: PagerdutyServiceAPIQueryParams | None = Field(
+            alias="apiQueryParams"
+        )
 
     kind: Literal["services"]
     selector: PagerdutySelector

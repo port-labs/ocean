@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.10 (2023-10-18)
+
+### Improvement
+
+- Changed api query api_query_params key in the port configuration to apiQueryParams (PORT-4965)
+
+
 # Port_Ocean 0.1.9 (2023-10-18)
 
 ### Features
