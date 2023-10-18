@@ -4,11 +4,11 @@ description: Argocd integration for Port Ocean
 icon: Argo
 features:
   - type: exporter
-    section: Git Providers
+    section: Kubernetes Stack
     resources:
-      - kind: projects
-      - kind: applications
-      - kind: deployments
+      - kind: project
+      - kind: application
+      - kind: deployment
 configurations:
   - name: token
     required: true

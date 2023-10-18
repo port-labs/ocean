@@ -48,4 +48,4 @@ resources:
             version: .version
             namespace: .namespace
           relations:
-            application: .application_uid
+            application: .__applicationID
