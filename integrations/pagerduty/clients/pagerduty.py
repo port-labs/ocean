@@ -53,7 +53,9 @@ class PagerDutyClient:
     def api_auth_header(self) -> dict[str, Any]:
         return {"Authorization": f"Token token={self.token}"}
 
-    async def paginate_request_to_pager_duty(self, data_key: str) -> list[Any]:
+    async def paginate_request_to_pager_duty(
+        self, data_key: str, params: dict[str, Any] = None
+    ) -> list[Any]:
         url = f"{self.api_url}/{data_key}"
         all_data = []
         offset = 0
@@ -63,7 +65,9 @@ class PagerDutyClient:
             while has_more_data:
                 try:
                     response = await client.get(
-                        url, params={"offset": offset}, headers=self.api_auth_header
+                        url,
+                        params={"offset": offset, **(params or {})},
+                        headers=self.api_auth_header,
                     )
                     response.raise_for_status()
                     data = response.json()

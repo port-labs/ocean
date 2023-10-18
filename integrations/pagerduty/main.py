@@ -1,13 +1,13 @@
+import typing
 from typing import Any
 
-from clients.pagerduty import PagerDutyClient
 from loguru import logger
+
+from clients.pagerduty import PagerDutyClient
+from integration import ObjectKind
+from integration import PagerdutyIncidentResourceConfig
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-
-
-class ObjectKind:
-    SERVICES = "services"
-    INCIDENTS = "incidents"
 
 
 @ocean.on_resync(ObjectKind.INCIDENTS)
@@ -18,9 +18,13 @@ async def on_incidents_resync(kind: str) -> list[dict[str, Any]]:
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
     )
+    query_params = typing.cast(
+        PagerdutyIncidentResourceConfig, event.resource_config
+    ).selector.api_query_params
 
     return await pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.INCIDENTS
+        data_key=ObjectKind.INCIDENTS,
+        params=query_params.generate_request_params() if query_params else None,
     )
 
 
