@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, AsyncGenerator
 
 import httpx
 from loguru import logger
@@ -54,10 +54,9 @@ class PagerDutyClient:
         return {"Authorization": f"Token token={self.token}"}
 
     async def paginate_request_to_pager_duty(
-        self, data_key: str, params: dict[str, Any] = None
-    ) -> list[Any]:
+        self, data_key: str, params: dict[str, Any] | None = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.api_url}/{data_key}"
-        all_data = []
         offset = 0
         has_more_data = True
 
@@ -71,7 +70,7 @@ class PagerDutyClient:
                     )
                     response.raise_for_status()
                     data = response.json()
-                    all_data.extend(data[data_key])
+                    yield data[data_key]
 
                     has_more_data = data["more"]
                     if has_more_data:
@@ -81,8 +80,6 @@ class PagerDutyClient:
                         f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                     )
                     raise
-
-        return all_data
 
     async def get_singular_from_pager_duty(
         self, object_type: str, identifier: str
@@ -108,15 +105,14 @@ class PagerDutyClient:
                 "Without setting up the webhook, the integration will not export live changes from PagerDuty"
             )
             return
-        all_subscriptions = await self.paginate_request_to_pager_duty(
-            data_key="webhook_subscriptions"
-        )
 
         invoke_url = f"{self.app_host}/integration/webhook"
-
-        for webhook in all_subscriptions:
-            if webhook["delivery_method"]["url"] == invoke_url:
-                return
+        async for subscriptions in self.paginate_request_to_pager_duty(
+            data_key="webhook_subscriptions"
+        ):
+            for webhook in subscriptions:
+                if webhook["delivery_method"]["url"] == invoke_url:
+                    return
 
         body = {
             "webhook_subscription": {

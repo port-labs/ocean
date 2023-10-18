@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Any
 
 from pydantic.fields import Field
 from pydantic.main import BaseModel
@@ -30,7 +30,7 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
     team_ids: list[str] | None
     time_zone: str | None
 
-    def generate_request_params(self) -> dict[str, str]:
+    def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
         if include := value.pop("include", None):
             value["include[]"] = include
@@ -54,7 +54,7 @@ class PagerdutyIncidentAPIQueryParams(BaseModel):
     urgencies: list[Literal["high", "low"]] | None
     user_ids: list[str] | None
 
-    def generate_request_params(self) -> dict[str, str]:
+    def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
         if include := value.pop("include", None):
             value["include[]"] = include
@@ -76,7 +76,7 @@ class PagerdutyIncidentResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyIncidentAPIQueryParams | None
 
-    kind: Literal[ObjectKind.INCIDENTS]
+    kind: Literal["incidents"]
     selector: PagerdutySelector
 
 
@@ -84,14 +84,16 @@ class PagerdutyServiceResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyServiceAPIQueryParams | None
 
-    kind: Literal[ObjectKind.SERVICES]
+    kind: Literal["services"]
     selector: PagerdutySelector
 
 
 class PagerdutyPortAppConfig(PortAppConfig):
     resources: list[
         PagerdutyIncidentResourceConfig | PagerdutyServiceResourceConfig
-    ] = Field(default_factory=list)
+    ] = Field(
+        default_factory=list
+    )  # type: ignore
 
 
 class PagerdutyIntegration(BaseIntegration):

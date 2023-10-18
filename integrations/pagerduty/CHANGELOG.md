@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Extended api query abilities for services & incidents exporting (PORT-4965)
 
+### Improvement
+
+- Used async generator syntax to return exported kinds instead of waiting for all the data (PORT-4965)
+
 
 # Port_Ocean 0.1.8 (2023-10-17)
 
