@@ -4,7 +4,7 @@ from typing import Any
 from loguru import logger
 
 from clients.pagerduty import PagerDutyClient
-from integration import ObjectKind
+from integration import ObjectKind, PagerdutyServiceResourceConfig
 from integration import PagerdutyIncidentResourceConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -36,9 +36,13 @@ async def on_services_resync(kind: str) -> list[dict[str, Any]]:
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
     )
+    query_params = typing.cast(
+        PagerdutyServiceResourceConfig, event.resource_config
+    ).selector.api_query_params
 
     services = await pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.SERVICES
+        data_key=ObjectKind.SERVICES,
+        params=query_params.generate_request_params() if query_params else None,
     )
     return await pager_duty_client.update_oncall_users(services)
 
