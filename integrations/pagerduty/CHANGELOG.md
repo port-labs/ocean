@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.9 (2023-10-18)
+
+### Features
+
+- Extended api query abilities for services & incidents exporting (PORT-4965)
+
+
 # Port_Ocean 0.1.8 (2023-10-17)
 
 ### Bug Fixes
