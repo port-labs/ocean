@@ -1,5 +1,5 @@
 resources:
-  - kind: projects
+  - kind: project
     selector:
       query: "true"
     port:
@@ -11,7 +11,7 @@ resources:
           properties:
             namespace: .metadata.namespace
             createdAt: .metadata.creationTimestamp
-  - kind: applications
+  - kind: application
     selector:
       query: "true"
     port:
@@ -31,7 +31,7 @@ resources:
             createdAt: .metadata.creationTimestamp
           relations:
             project: .spec.project
-  - kind: deployments
+  - kind: deployment
     selector:
       query: "true"
     port:
