@@ -104,6 +104,9 @@ class SonarQubeClient:
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error occurred: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error occurred while fetching paginated data: {e}")
             raise
@@ -323,6 +326,25 @@ class SonarQubeClient:
             if analysis_object.get("analysisId") == analysis_identifier:
                 return analysis_object
         return {}  ## when no data is found
+
+    def sanity_check(self) -> None:
+        try:
+            response = httpx.get(f"{self.base_url}/api/system/status", timeout=5)
+            response.raise_for_status()
+            logger.info("Sonarqube sanity check passed")
+            logger.info(f"Sonarqube status: {response.json().get('status')}")
+            logger.info(f"Sonarqube version: {response.json().get('version')}")
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"Sonarqube failed sanity check. Error: {e.response.status_code} and response text: {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"Sonarqube failed sanity check because of HTTP error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Sonarqube failed sanity check because of error: {e}")
+            raise
 
     async def get_or_create_webhook_url(self) -> None:
         """
