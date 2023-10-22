@@ -15,9 +15,13 @@ class Endpoints:
 
 class SonarQubeClient:
     def __init__(
-        self, base_url: str, api_key: str, organization_id: str | None, app_host: str
+        self,
+        base_url: str,
+        api_key: str,
+        organization_id: str | None,
+        app_host: str | None,
     ):
-        self.base_url = base_url or "https://sonarcloud.io"
+        self.base_url = base_url
         self.api_key = api_key
         self.organization_id = organization_id
         self.app_host = app_host
