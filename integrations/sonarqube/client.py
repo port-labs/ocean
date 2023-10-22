@@ -25,9 +25,7 @@ class SonarQubeClient:
         self.api_key = api_key
         self.organization_id = organization_id
         self.app_host = app_host
-        self.http_client = httpx.AsyncClient(
-            headers=self.api_auth_header, auth=(self.api_key, "")
-        )
+        self.http_client = httpx.AsyncClient(**self.api_auth_params)
         self.metrics = [
             "code_smells",
             "coverage",
@@ -38,9 +36,19 @@ class SonarQubeClient:
         ]
 
     @property
-    def api_auth_header(self) -> dict[str, Any]:
+    def api_auth_params(self) -> dict[str, Any]:
+        if self.organization_id:
+            return {
+                "headers": {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                }
+            }
         return {
-            "Content-Type": "application/json",
+            "auth": (self.api_key, ""),
+            "headers": {
+                "Content-Type": "application/json",
+            },
         }
 
     async def send_api_request(
@@ -56,7 +64,6 @@ class SonarQubeClient:
                 url=f"{self.base_url}/api/{endpoint}",
                 params=query_params,
                 json=json_data,
-                headers=self.api_auth_header,
             )
             response.raise_for_status()
             return response.json()
@@ -83,8 +90,6 @@ class SonarQubeClient:
                     url=f"{self.base_url}/api/{endpoint}",
                     params=query_params,
                     json=json_data,
-                    headers=self.api_auth_header,
-                    auth=(self.api_key, ""),
                 )
                 response.raise_for_status()
                 response_json = response.json()
@@ -109,13 +114,10 @@ class SonarQubeClient:
             )
             raise
         except httpx.HTTPError as e:
-            logger.error(f"HTTP error occurred: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Error occurred while fetching paginated data: {e}")
+            logger.error(f"HTTP occurred while fetching paginated data: {e}")
             raise
 
-    async def get_components(self) -> list[Any]:
+    async def get_components(self) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
 
@@ -340,14 +342,13 @@ class SonarQubeClient:
             logger.info(f"Sonarqube version: {response.json().get('version')}")
         except httpx.HTTPStatusError as e:
             logger.error(
-                f"Sonarqube failed sanity check. Error: {e.response.status_code} and response text: {e.response.text}"
+                f"Sonarqube failed connectivity check to the sonarqube instance because of HTTP error: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
         except httpx.HTTPError as e:
-            logger.error(f"Sonarqube failed sanity check because of HTTP error: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Sonarqube failed sanity check because of error: {e}")
+            logger.error(
+                f"Sonarqube failed connectivity check to the sonarqube instance because of HTTP error: {e}"
+            )
             raise
 
     async def get_or_create_webhook_url(self) -> None:
