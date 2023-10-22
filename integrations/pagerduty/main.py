@@ -1,42 +1,52 @@
+import typing
 from typing import Any
 
-from clients.pagerduty import PagerDutyClient
 from loguru import logger
+
+from clients.pagerduty import PagerDutyClient
+from integration import ObjectKind, PagerdutyServiceResourceConfig
+from integration import PagerdutyIncidentResourceConfig
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-
-
-class ObjectKind:
-    SERVICES = "services"
-    INCIDENTS = "incidents"
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 @ocean.on_resync(ObjectKind.INCIDENTS)
-async def on_incidents_resync(kind: str) -> list[dict[str, Any]]:
+async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
     pager_duty_client = PagerDutyClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
     )
+    query_params = typing.cast(
+        PagerdutyIncidentResourceConfig, event.resource_config
+    ).selector.api_query_params
 
-    return await pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.INCIDENTS
-    )
+    async for incidents in pager_duty_client.paginate_request_to_pager_duty(
+        data_key=ObjectKind.INCIDENTS,
+        params=query_params.generate_request_params() if query_params else None,
+    ):
+        yield incidents
 
 
 @ocean.on_resync(ObjectKind.SERVICES)
-async def on_services_resync(kind: str) -> list[dict[str, Any]]:
+async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
     pager_duty_client = PagerDutyClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
     )
+    query_params = typing.cast(
+        PagerdutyServiceResourceConfig, event.resource_config
+    ).selector.api_query_params
 
-    services = await pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.SERVICES
-    )
-    return await pager_duty_client.update_oncall_users(services)
+    async for services in pager_duty_client.paginate_request_to_pager_duty(
+        data_key=ObjectKind.SERVICES,
+        params=query_params.generate_request_params() if query_params else None,
+    ):
+        yield await pager_duty_client.update_oncall_users(services)
 
 
 @ocean.router.post("/webhook")
