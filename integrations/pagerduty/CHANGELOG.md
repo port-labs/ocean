@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.10 (2023-10-18)
+
+### Improvement
+
+- Changed api query api_query_params key in the port configuration to apiQueryParams (PORT-4965)
+
+
+# Port_Ocean 0.1.9 (2023-10-18)
+
+### Features
+
+- Extended api query abilities for services & incidents exporting (PORT-4965)
+
+### Improvement
+
+- Used async generator syntax to return exported kinds instead of waiting for all the data (PORT-4965)
+
+
+# Port_Ocean 0.1.8 (2023-10-17)
+
+### Bug Fixes
+
+- Fixed default mapping for the oncall user (PORT-4964)
+
+
 # Port_Ocean 0.1.7 (2023-09-27)
 
 ### Improvements
