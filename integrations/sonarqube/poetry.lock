@@ -384,13 +384,13 @@ files = [
 
 [[package]]
 name = "httpcore"
-version = "0.18.0"
+version = "0.17.3"
 description = "A minimal low-level HTTP client."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.7"
 files = [
-    {file = "httpcore-0.18.0-py3-none-any.whl", hash = "sha256:adc5398ee0a476567bf87467063ee63584a8bce86078bf748e48754f60202ced"},
-    {file = "httpcore-0.18.0.tar.gz", hash = "sha256:13b5e5cd1dca1a6636a6aaea212b19f4f85cd88c366a2b82304181b769aab3c9"},
+    {file = "httpcore-0.17.3-py3-none-any.whl", hash = "sha256:c2789b767ddddfa2a5782e3199b2b7f6894540b17b16ec26b2c4d8e103510b87"},
+    {file = "httpcore-0.17.3.tar.gz", hash = "sha256:a6f30213335e34c1ade7be6ec7c47f19f50c56db36abef1a9dfa3815b1cb3888"},
 ]
 
 [package.dependencies]
@@ -405,18 +405,18 @@ socks = ["socksio (==1.*)"]
 
 [[package]]
 name = "httpx"
-version = "0.25.0"
+version = "0.24.1"
 description = "The next generation HTTP client."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.7"
 files = [
-    {file = "httpx-0.25.0-py3-none-any.whl", hash = "sha256:181ea7f8ba3a82578be86ef4171554dd45fec26a02556a744db029a0a27b7100"},
-    {file = "httpx-0.25.0.tar.gz", hash = "sha256:47ecda285389cb32bb2691cc6e069e3ab0205956f681c5b2ad2325719751d875"},
+    {file = "httpx-0.24.1-py3-none-any.whl", hash = "sha256:06781eb9ac53cde990577af654bd990a4949de37a28bdb4a230d434f3a30b9bd"},
+    {file = "httpx-0.24.1.tar.gz", hash = "sha256:5853a43053df830c20f8110c5e69fe44d035d850b2dfe795e196f00fdb774bdd"},
 ]
 
 [package.dependencies]
 certifi = "*"
-httpcore = ">=0.18.0,<0.19.0"
+httpcore = ">=0.15.0,<0.18.0"
 idna = "*"
 sniffio = "*"
 
@@ -800,13 +800,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.3.2.dev1"
+version = "0.3.1"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "port_ocean-0.3.2.dev1-py3-none-any.whl", hash = "sha256:298d5ded687cd6f56601fe51a8459b2a0722fc4db9afbec4a908a917e48b8857"},
-    {file = "port_ocean-0.3.2.dev1.tar.gz", hash = "sha256:8e0736bcaa6a308b54db6934e4668c7d0fa85a0cc1f05e9df4ad8317d1bd8521"},
+    {file = "port_ocean-0.3.1-py3-none-any.whl", hash = "sha256:4705958ff64551c244e9c0e8ef8679e71c24fde767647c071aab003af81591c1"},
+    {file = "port_ocean-0.3.1.tar.gz", hash = "sha256:4f4f18b6194014597dc3894459a81722c4e8f7fc03e03b0266b064bf1a2eebd2"},
 ]
 
 [package.dependencies]
@@ -814,7 +814,7 @@ click = {version = ">=8.1.3,<9.0.0", optional = true, markers = "extra == \"cli\
 confluent-kafka = ">=2.1.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
 fastapi = ">=0.100.0,<0.101.0"
-httpx = "0.25.0"
+httpx = ">=0.24.1,<0.25.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
 pydantic = ">=1.10.8,<2.0.0"
@@ -1387,4 +1387,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "2ddf4eefad16f194114a815a11c05a618d8d36c8a6cdb1ef6d96325e009fb576"
+content-hash = "7f60ddafc7fab8a89ec9f6c3acc95776675b3b00cdf19bc6ea083b3a5a40a18f"
