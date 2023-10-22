@@ -14,7 +14,7 @@ For more information about the installation visit the [Port Ocean helm chart](ht
 # The following script will install an Ocean integration at your K8s cluster using helm
 # integration.identifier: Change the identifier to describe your integration
 # integration.secrets.tokenMapping: Mapping of Gitlab tokens to Port Ocean tokens. example: {"THE_GROUP_TOKEN":["getport-labs/**", "GROUP/PROJECT PATTERN TO RUN FOR"]}
-# integration.config.appHost: The host of the Gitlab instance. If not specified, the default will be https://gitlab.com.
+# integration.config.appHost: The host of the Port Ocean app. Used for setting up the webhooks against the Gitlab.
 # ingress.annotations."nginx\.ingress\.kubernetes\.io/rewrite-target": Change the annotation value and key to match your ingress controller
 
 helm upgrade --install my-gitlab-integration port-labs/port-ocean \
