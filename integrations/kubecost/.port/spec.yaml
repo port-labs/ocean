@@ -1,4 +1,3 @@
-version: v0.1.0
 type: kubecost
 description: kubecost integration for Port Ocean
 icon: Cluster

@@ -86,62 +86,61 @@ class KubecostSelector(Selector):
         default=False,
         description="If true, include external, or out-of-cluster costs in each allocation. Default is false.",
     )
-    filterClusters: str | None = Field(
+    filter_clusters: str | None = Field(alias="filterClusters",
         description="Comma-separated list of clusters to match; e.g. cluster-one,cluster-two will return results from only those two clusters."
     )
-    filterNodes: str | None = Field(
+    filter_nodes: str | None = Field(alias="filterNodes",
         description="Comma-separated list of nodes to match; e.g. node-one,node-two will return results from only those two nodes."
     )
-    filterNamespaces: str | None = Field(
+    filter_namespaces: str | None = Field(alias="filterNamespaces",
         description="Comma-separated list of namespaces to match; e.g. namespace-one,namespace-two will return results from only those two namespaces."
     )
-    filterControllerKinds: str | None = Field(
+    filter_controller_kinds: str | None = Field(alias="filterControllerKinds",
         description="Comma-separated list of controller kinds to match; e.g. deployment, job will return results with only those two controller kinds."
     )
-    filterControllers: str | None = Field(
+    filter_controllers: str | None = Field(alias="filterControllers",
         description="Comma-separated list of controllers to match; e.g. deployment-one,statefulset-two will return results from only those two controllers."
     )
-    filterPods: str | None = Field(
+    filter_pods: str | None = Field(alias="filterPods",
         description="Comma-separated list of pods to match; e.g. pod-one,pod-two will return results from only those two pods."
     )
-    filterAnnotations: str | None = Field(
+    filter_annotations: str | None = Field(alias="filterAnnotations",
         description="Comma-separated list of annotations to match; e.g. name:annotation-one,name:annotation-two will return results with either of those two annotation key-value-pairs."
     )
-    filterLabels: str | None = Field(
+    filter_labels: str | None = Field(alias="filterLabels",
         description="Comma-separated list of annotations to match; e.g. app:cost-analyzer, app:prometheus will return results with either of those two label key-value-pairs."
     )
-    filterServices: str | None = Field(
+    filter_services: str | None = Field(alias="filterServices",
         description="Comma-separated list of services to match; e.g. frontend-one,frontend-two will return results with either of those two services"
     )
-    shareIdle: bool = Field(
+    share_idle: bool = Field(alias="shareIdle",
         default=False,
         description="If true, idle cost is allocated proportionally across all non-idle allocations, per-resource. That is, idle CPU cost is shared with each non-idle allocation's CPU cost, according to the percentage of the total CPU cost represented. Default is false",
     )
-    splitIdle: bool = Field(
+    split_idle: bool = Field(alias="splitIdle",
         default=False,
         description="If true, and shareIdle == false, Idle Allocations are created on a per cluster or per node basis rather than being aggregated into a single idle allocation. Default is false",
     )
-    idleByNode: bool = Field(
+    idle_by_node: bool = Field(alias="idleByNode",
         default=False,
         description="f true, idle allocations are created on a per node basis. Which will result in different values when shared and more idle allocations when split. Default is false.",
     )
-    shareNamespaces: str | None = Field(
+    share_namespaces: str | None = Field(alias="shareNamespaces",
         description="Comma-separated list of namespaces to share; e.g. kube-system, kubecost will share the costs of those two namespaces with the remaining non-idle, unshared allocations."
     )
-    shareLabels: str | None = Field(
+    share_labels: str | None = Field(alias="shareLabels",
         description="Comma-separated list of labels to share; e.g. env:staging, app:test will share the costs of those two label values with the remaining non-idle, unshared allocations."
     )
-    shareCost: float = Field(
+    share_cost: float = Field(alias="shareCost",
         default=0.0,
         description="Floating-point value representing a monthly cost to share with the remaining non-idle, unshared allocations; e.g. 30.42 ($1.00/day == $30.42/month) for the query yesterday (1 day) will split and distribute exactly $1.00 across the allocations. Default is 0.0.",
     )
-    filterInvoiceEntityIDs: str | None = Field(description="Filter for account")
-    filterAccountIDs: str | None = Field(description="GCP only, filter for projectID")
-    filterProviders: str | None = Field(description="Filter for cloud service provider")
-    filterLabel: str | None = Field(
+    filter_invoice_entity_ids: str | None = Field(alias="filterInvoiceEntityIDs", description="Filter for account")
+    filter_account_ids: str | None = Field(alias="filterAccountIDs", description="GCP only, filter for projectID")
+    filter_providers: str | None = Field(alias="filterProviders", description="Filter for cloud service provider")
+    filter_label: str | None = Field(alias="filterLabel",
         description="Filter for a specific label. Does not support filtering for multiple labels at once."
     )
-
 
 class KubecostResourceConfig(ResourceConfig):
     selector: KubecostSelector
