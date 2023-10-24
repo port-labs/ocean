@@ -1,0 +1,15 @@
+version: v0.1.0
+type: kubecost
+description: kubecost integration for Port Ocean
+icon: Cluster
+features:
+  - type: exporter
+    section: Cloud Cost
+    resources:
+      - kind: kubesystem
+      - kind: cloud
+configurations:
+  - name: kubecostHost
+    type: string
+    required: true
+    description: The URL of your Kubecost server, for example http://localhost:9090
