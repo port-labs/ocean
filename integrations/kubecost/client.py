@@ -7,6 +7,7 @@ from loguru import logger
 from integration import KubecostResourceConfig
 from port_ocean.context.event import event
 
+
 class KubeCostClient:
     def __init__(self, app_host: str):
         self.app_host = app_host
@@ -17,7 +18,7 @@ class KubeCostClient:
         https://docs.kubecost.com/apis/apis-overview/api-allocation
         """
         selector = typing.cast(KubecostResourceConfig, event.resource_config).selector
-        params: dict[str, str] = {
+        params: dict[str, Any] = {
             "window": selector.window,
         }
         if selector.aggregate:
@@ -60,7 +61,7 @@ class KubeCostClient:
             params["shareLabels"] = selector.shareLabels
         if selector.shareCost:
             params["shareCost"] = selector.shareCost
- 
+
         try:
             response = await self.http_client.get(
                 url=f"{self.app_host}/model/allocation",
@@ -94,7 +95,7 @@ class KubeCostClient:
             params["filterServices"] = selector.filterServices
         if selector.filterLabel:
             params["filterLabel"] = selector.filterLabel
-   
+
         try:
             response = await self.http_client.get(
                 url=f"{self.app_host}/model/cloudCost/aggregate",
