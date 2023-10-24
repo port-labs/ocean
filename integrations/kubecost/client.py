@@ -4,7 +4,7 @@ from typing import Any
 import httpx
 from loguru import logger
 
-from integration import KubecostResourceConfig
+from integration import KubecostResourceConfig, KubecostSelector
 from port_ocean.context.event import event
 
 
@@ -13,11 +13,11 @@ class KubeCostClient:
         self.app_host = app_host
         self.http_client = httpx.AsyncClient()
 
-    def generate_params(self, selector) -> dict[str, str]:
+    def generate_params(self, selector: KubecostSelector) -> dict[str, str]:
         params = selector.dict(exclude_unset=True, by_alias=True)
-        params.pop('query')
+        params.pop("query")
         return params
-    
+
     async def get_kubesystem_cost_allocation(self) -> list[dict[str, Any]]:
         """Calls the Kubecost allocation endpoint to return data for cost and usage
         https://docs.kubecost.com/apis/apis-overview/api-allocation
