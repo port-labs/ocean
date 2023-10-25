@@ -1,0 +1,32 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .slug
+          title: .name
+          blueprint: '"project"'
+          properties:
+            dateCreated: .dateCreated
+            platform: .platform
+            status: .status
+            link: .organization.links.organizationUrl + "/projects/" + .name
+  - kind: issue
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".id"
+          title: ".title"
+          blueprint: '"issue"'
+          properties:
+            link: ".permalink"
+            status: ".status"
+            isUnhandled: ".isUnhandled"
+          relations:
+            project: ".project.slug"
