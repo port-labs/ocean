@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Read kubecostHost from env (#1)
+- Fixed the config.yml to read the kubecostHost from the environment variables
 
 
 # Kubecost 0.1.0 (2023-10-24)
