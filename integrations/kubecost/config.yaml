@@ -13,4 +13,4 @@ integration:
   # The type of the integration.
   type: "kubecost"
   config:
-    kubecostHost: "{{ from env KUBECOST_HOST }}"
+    kubecostHost: "{{ KUBECOST_HOST }}"
