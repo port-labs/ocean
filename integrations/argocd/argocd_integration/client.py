@@ -35,26 +35,26 @@ class ArgocdClient:
             )
             raise
 
-    async def get_all_projects(self) -> list[dict[str, Any]]:
+    async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
 
-        url = f"{self.api_url}/{ObjectKind.PROJECT}s"
-        cache_key = ObjectKind.PROJECT
+        url = f"{self.api_url}/{resource_kind.value}s"
+        cache_key = resource_kind
 
         if cache := event.attributes.get(cache_key):
             return cache
-        projects = (await self._send_api_request(url=url))["items"]
-        event.attributes[cache_key] = projects
-        return projects
-
+        response_data = (await self._send_api_request(url=url))["items"]
+        event.attributes[cache_key] = response_data
+        return response_data
+    
     async def get_all_applications(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve all ArgoCD applications across all projects. Due to the unavailability of server-side pagination in the ArgoCD REST API, 
-        we can temporary resolve it by filtering with projects. This will solve the issue of having a very huge data in the network call
+        we can temporary resolve it by filtering with projects. This will solve the issue of having a very huge data in one network call
 
         Returns:
             List[dict[str, Any]]: A list of dictionaries representing ArgoCD applications.
         """
-        projects = await self.get_all_projects()
+        projects = await self.get_resources(ObjectKind.PROJECT)
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s"
 
         cache_key = ObjectKind.APPLICATION
@@ -72,30 +72,6 @@ class ArgocdClient:
                 yield applications
                 event.attributes.setdefault(cache_key, []).extend(applications)
 
-    async def get_all_deployments(self) -> list[dict[str, Any]]:
-        """
-        Retrieve a list of ArgoCD deployments. We define deployment as all the resources contained in an application
-
-        Returns:
-            list[dict[str, Any]]: A list of dictionaries representing ArgoCD deployments.
-        """
-        all_deployments = []
-        async for application_batch in self.get_all_applications():
-            for application in application_batch:
-                deployment = self.get_deployment_by_application(application)
-                all_deployments.extend(deployment)
-        
-        logger.error(all_deployments)
-
-        return all_deployments
-
-    def get_deployment_by_application(self, application: dict[str, Any]) -> list[dict[str, Any]]:
-        if application["status"].get("resources"):
-            logger.warning(application["status"]["resources"])
-        deployments_list = []
-        application_id = application["metadata"]["uid"]
-        deployments_list = [{"__applicationID": application_id, **resource} for resource in application["status"].get("resources", [])]
-        return deployments_list
 
     async def get_application_by_name(self, name: str) -> dict[str, Any]:
 

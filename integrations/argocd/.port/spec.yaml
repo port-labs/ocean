@@ -1,4 +1,3 @@
-version: v0.1.0
 type: argocd
 description: Argocd integration for Port Ocean
 icon: Argo
@@ -6,9 +5,9 @@ features:
   - type: exporter
     section: Kubernetes Stack
     resources:
+      - kind: cluster
       - kind: project
       - kind: application
-      - kind: deployment
 configurations:
   - name: token
     required: true
