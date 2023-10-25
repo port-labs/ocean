@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Kubecost 0.1.1 (2023-10-25)
 
-### Improvements
+### Bugfixes
 
 - Fixed the config.yml to read the kubecostHost from the environment variables
 
