@@ -13,11 +13,13 @@ def init_client() -> ArgocdClient:
         ocean.integration_config["server_url"],
     )
 
+
 @ocean.on_resync(ObjectKind.CLUSTER)
 async def on_clusters_resync(kind: str) -> list[dict[Any, Any]]:
     logger.info(f"Listing ArgoCD resource: {kind}")
     argocd_client = init_client()
     return await argocd_client.get_resources(ObjectKind.CLUSTER)
+
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_projects_resync(kind: str) -> list[dict[Any, Any]]:
@@ -34,6 +36,7 @@ async def on_applications_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.debug(f"Received batch with {len(applications)} applications")
         yield applications
 
+
 @ocean.router.post("/webhook")
 async def on_application_event_webhook_handler(request: Request) -> None:
     data = await request.json()
@@ -41,11 +44,13 @@ async def on_application_event_webhook_handler(request: Request) -> None:
     argocd_client = init_client()
 
     if data["action"] == "upsert":
-        application = await argocd_client.get_application_by_name(data["application_name"])
+        application = await argocd_client.get_application_by_name(
+            data["application_name"]
+        )
         await ocean.register_raw(ObjectKind.APPLICATION, [application])
-    
+
     elif data["action"] == "delete":
-        application = await argocd_client.get_application_by_name(data["application_name"])
+        application = await argocd_client.get_application_by_name(
+            data["application_name"]
+        )
         await ocean.unregister_raw(ObjectKind.APPLICATION, [application])
-
-
