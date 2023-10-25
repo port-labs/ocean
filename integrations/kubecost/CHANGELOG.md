@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Kubecost 0.1.1 (2023-10-25)
+
+### Improvements
+
+- Read kubecostHost from env (#1)
+
+
 # Kubecost 0.1.0 (2023-10-24)
 
 ### Features
