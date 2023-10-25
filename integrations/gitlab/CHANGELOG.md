@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.20 (2023-10-24)
+===================
+
+### Bug Fixes
+
+- Fixed wrong useage of project object when checking if it is included in the filter (PORT-5028)
+
+
 0.1.19 (2023-10-11)
 ===================
 
