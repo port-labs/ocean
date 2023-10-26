@@ -9,8 +9,8 @@ from port_ocean.context.event import event
 
 
 class KubeCostClient:
-    def __init__(self, app_host: str):
-        self.app_host = app_host
+    def __init__(self, kubecost_host: str):
+        self.kubecost_host = kubecost_host
         self.http_client = httpx.AsyncClient()
 
     def generate_params(self, selector: KubecostSelector) -> dict[str, str]:
@@ -30,7 +30,7 @@ class KubeCostClient:
 
         try:
             response = await self.http_client.get(
-                url=f"{self.app_host}/model/allocation",
+                url=f"{self.kubecost_host}/model/allocation",
                 params=params,
             )
             response.raise_for_status()
@@ -56,7 +56,7 @@ class KubeCostClient:
 
         try:
             response = await self.http_client.get(
-                url=f"{self.app_host}/model/cloudCost/aggregate",
+                url=f"{self.kubecost_host}/model/cloudCost/aggregate",
                 params=params,
             )
             response.raise_for_status()
@@ -68,4 +68,21 @@ class KubeCostClient:
             raise
         except httpx.HTTPError as e:
             logger.error(f"HTTP occurred while fetching kubecost data: {e}")
+            raise
+
+    def sanity_check(self) -> None:
+        try:
+            response = httpx.get(f"{self.kubecost_host}/model/installInfo", timeout=5)
+            response.raise_for_status()
+            logger.info("Kubecost sanity check passed")
+            logger.info(f"Kubecost version: {response.json().get('version')}")
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"Kubecost failed connectivity check to the Kubecost instance because of HTTP error: {e.response.status_code} and response text: {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(
+                f"Kubecost failed connectivity check to the Kubecost instance because of HTTP error: {e}"
+            )
             raise
