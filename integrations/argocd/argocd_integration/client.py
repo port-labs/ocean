@@ -9,7 +9,7 @@ class ArgocdClient:
     def __init__(self, token: str, server_url: str):
         self.token = token
         self.api_url = f"{server_url}/api/v1"
-        self.http_client = httpx.AsyncClient(headers=self.api_auth_header, verify=False)
+        self.http_client = httpx.AsyncClient(headers=self.api_auth_header)
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
