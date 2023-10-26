@@ -37,6 +37,9 @@ class ArgocdClient:
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP occurred while fetching ArgoCD data {e}")
+            raise
 
     async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
         url = f"{self.api_url}/{resource_kind.value}s"
@@ -59,11 +62,6 @@ class ArgocdClient:
         projects = await self.get_resources(ObjectKind.PROJECT)
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s"
 
-        cache_key = ObjectKind.APPLICATION
-        if cache := event.attributes.get(cache_key):
-            yield cache
-            return
-
         for project in projects:
             project_name = project["metadata"]["name"]
             applications_data = await self._send_api_request(
@@ -72,15 +70,8 @@ class ArgocdClient:
             applications = applications_data["items"]
             if applications:
                 yield applications
-                event.attributes.setdefault(cache_key, []).extend(applications)
 
     async def get_application_by_name(self, name: str) -> dict[str, Any]:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
-
-        cache_key = f"{ObjectKind.APPLICATION}-{name}"
-        if cache := event.attributes.get(cache_key):
-            return cache
-
         application = await self._send_api_request(url=url)
-        event.attributes[cache_key] = application
         return application

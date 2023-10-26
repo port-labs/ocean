@@ -48,9 +48,3 @@ async def on_application_event_webhook_handler(request: Request) -> None:
             data["application_name"]
         )
         await ocean.register_raw(ObjectKind.APPLICATION, [application])
-
-    elif data["action"] == "delete":
-        application = await argocd_client.get_application_by_name(
-            data["application_name"]
-        )
-        await ocean.unregister_raw(ObjectKind.APPLICATION, [application])
