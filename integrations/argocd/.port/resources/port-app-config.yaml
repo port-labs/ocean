@@ -44,7 +44,6 @@ resources:
           properties:
             gitRepo: .spec.source.repoURL
             gitPath: .spec.source.path
-            sourceType: .status.sourceType
             destinationServer: .spec.destination.server
             namespace: .metadata.namespace
             syncStatus: .status.sync.status

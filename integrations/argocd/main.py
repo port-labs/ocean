@@ -1,7 +1,6 @@
 from typing import Any
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from argocd_integration.client import ArgocdClient
 from argocd_integration.utils import ObjectKind
 from fastapi import Request
@@ -14,27 +13,11 @@ def init_client() -> ArgocdClient:
     )
 
 
-@ocean.on_resync(ObjectKind.CLUSTER)
-async def on_clusters_resync(kind: str) -> list[dict[Any, Any]]:
+@ocean.on_resync()
+async def on_resources_resync(kind: str) -> list[dict[Any, Any]]:
     logger.info(f"Listing ArgoCD resource: {kind}")
     argocd_client = init_client()
-    return await argocd_client.get_resources(ObjectKind.CLUSTER)
-
-
-@ocean.on_resync(ObjectKind.PROJECT)
-async def on_projects_resync(kind: str) -> list[dict[Any, Any]]:
-    logger.info(f"Listing ArgoCD resource: {kind}")
-    argocd_client = init_client()
-    return await argocd_client.get_resources(ObjectKind.PROJECT)
-
-
-@ocean.on_resync(ObjectKind.APPLICATION)
-async def on_applications_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing ArgoCD resource: {kind}")
-    argocd_client = init_client()
-    async for applications in argocd_client.get_all_applications():
-        logger.debug(f"Received batch with {len(applications)} applications")
-        yield applications
+    return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
 
 
 @ocean.router.post("/webhook")

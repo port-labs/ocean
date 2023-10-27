@@ -110,10 +110,6 @@
                   "title": "Path",
                   "description": "The path within the Git repository where the application manifests are located"
               },
-              "sourceType": {
-                  "type": "string",
-                  "title": "Source Type"
-              },
               "destinationServer": {
                   "type": "string",
                   "title": "Destination Server",
