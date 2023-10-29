@@ -1,6 +1,6 @@
 type: opencost
 description: OpenCost integration for Port Ocean
-icon: Cluster
+icon: Opencost
 features:
   - type: exporter
     section: Cloud Cost
