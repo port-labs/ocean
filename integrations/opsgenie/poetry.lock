@@ -774,13 +774,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.3.0"
+version = "0.3.2"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "port_ocean-0.3.0-py3-none-any.whl", hash = "sha256:385107475da2b294c190b6e8653b4fc079644310c8be5a5a1fbdf8ee8be56add"},
-    {file = "port_ocean-0.3.0.tar.gz", hash = "sha256:3494c0a1278fb26db34ad531668a8069fb17de2ee10e8af42bd79e791b344cfe"},
+    {file = "port_ocean-0.3.2-py3-none-any.whl", hash = "sha256:568909266773a9887239aa74069ec5b16e2839d0314ed198646eb86efdfd973a"},
+    {file = "port_ocean-0.3.2.tar.gz", hash = "sha256:93dea9f91f1388e2fa4e4ee02f91345ebcb1ce73717ef3e383af3e2105366239"},
 ]
 
 [package.dependencies]
@@ -800,7 +800,7 @@ rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli
 six = ">=1.16.0,<2.0.0"
 urllib3 = ">=1.26.16,<2.0.0"
 uvicorn = ">=0.22.0,<0.23.0"
-werkzeug = ">=2.3.4,<3.0.0"
+werkzeug = ">=2.3.4,<4.0.0"
 
 [package.extras]
 cli = ["click (>=8.1.3,<9.0.0)", "cookiecutter (>=2.1.1,<3.0.0)", "jinja2-time (>=0.2.0,<0.3.0)", "rich (>=13.4.1,<14.0.0)"]
@@ -1340,4 +1340,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "46b5fd228cbf25806c6d62d8a96fade832350c50486cd3c9c399ac6cd1323433"
+content-hash = "a563a7928c1a9c1c14d9da4579f21d05631af5daa54652a89d47c0e724a9899b"
