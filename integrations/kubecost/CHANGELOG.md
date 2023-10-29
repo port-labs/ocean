@@ -11,17 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated integration & blueprint icons to Opencost icon (PORT-5063)
+- Updated integration & blueprint icons to Kubecost icon (PORT-5063)
 
-# OpenCost 0.1.1 (2023-10-11)
+
+# Port_Ocean 0.1.1 (2023-10-26)
 
 ### Improvements
 
-- Modified the way parameters are passed to the query request using the port app config
-- Updated the icon to `Cluster` icon
+- Added a sanity check for the kubecost startup to check for connectivity issues (PORT-5039)
 
-# OpenCost 0.1.0 (2023-10-11)
+### Bug Fixes
+
+- Fixed the config.yml to read the kubecostHost from the environment variables (PORT-5039)
+
+
+# Kubecost 0.1.0 (2023-10-24)
 
 ### Features
 
-- Implemented OpenCost integration (#0)
+- Implemented KubeCost integration (#0)

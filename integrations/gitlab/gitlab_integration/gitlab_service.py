@@ -189,7 +189,7 @@ class GitlabService:
             return project
 
         project = self.gitlab_client.projects.get(project_id)
-        if self.should_run_for_project(project.path_with_namespace):
+        if self.should_run_for_project(project):
             event.attributes[PROJECTS_CACHE_KEY][self.gitlab_client.private_token][
                 project_id
             ] = project
