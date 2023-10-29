@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Features
 
-- Added support for project languages (#1)
+- Added support for project languages (PORT-4749)
 
 
 0.1.20 (2023-10-24)
