@@ -15,13 +15,17 @@ class Endpoints:
 
 class SonarQubeClient:
     def __init__(
-        self, base_url: str, api_key: str, organization_id: str, app_host: str
+        self,
+        base_url: str,
+        api_key: str,
+        organization_id: str | None,
+        app_host: str | None,
     ):
-        self.base_url = base_url or "https://sonarcloud.io"
+        self.base_url = base_url
         self.api_key = api_key
         self.organization_id = organization_id
         self.app_host = app_host
-        self.http_client = httpx.AsyncClient(headers=self.api_auth_header)
+        self.http_client = httpx.AsyncClient(**self.api_auth_params)
         self.metrics = [
             "code_smells",
             "coverage",
@@ -32,10 +36,19 @@ class SonarQubeClient:
         ]
 
     @property
-    def api_auth_header(self) -> dict[str, Any]:
+    def api_auth_params(self) -> dict[str, Any]:
+        if self.organization_id:
+            return {
+                "headers": {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                }
+            }
         return {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
+            "auth": (self.api_key, ""),
+            "headers": {
+                "Content-Type": "application/json",
+            },
         }
 
     async def send_api_request(
@@ -51,7 +64,6 @@ class SonarQubeClient:
                 url=f"{self.base_url}/api/{endpoint}",
                 params=query_params,
                 json=json_data,
-                headers=self.api_auth_header,
             )
             response.raise_for_status()
             return response.json()
@@ -78,7 +90,6 @@ class SonarQubeClient:
                     url=f"{self.base_url}/api/{endpoint}",
                     params=query_params,
                     json=json_data,
-                    headers=self.api_auth_header,
                 )
                 response.raise_for_status()
                 response_json = response.json()
@@ -102,20 +113,30 @@ class SonarQubeClient:
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP occurred while fetching paginated data: {e}")
+            raise
 
-    async def get_components(self) -> list[Any]:
+    async def get_components(self) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
 
         :return: A list of components associated with the specified organization.
         """
+        params = {}
+        if self.organization_id:
+            params["organization"] = self.organization_id
         logger.info(f"Fetching all components in organization: {self.organization_id}")
-        response = await self.send_paginated_api_request(
-            endpoint=Endpoints.PROJECTS,
-            data_key="components",
-            query_params={"organization": self.organization_id},
-        )
-        return response
+        try:
+            response = await self.send_paginated_api_request(
+                endpoint=Endpoints.PROJECTS,
+                data_key="components",
+                query_params=params,
+            )
+            return response
+        except Exception as e:
+            logger.error(f"Error occurred while fetching components: {e}")
+            raise
 
     async def get_single_component(self, project: dict[str, Any]) -> dict[str, Any]:
         """
@@ -312,6 +333,24 @@ class SonarQubeClient:
                 return analysis_object
         return {}  ## when no data is found
 
+    def sanity_check(self) -> None:
+        try:
+            response = httpx.get(f"{self.base_url}/api/system/status", timeout=5)
+            response.raise_for_status()
+            logger.info("Sonarqube sanity check passed")
+            logger.info(f"Sonarqube status: {response.json().get('status')}")
+            logger.info(f"Sonarqube version: {response.json().get('version')}")
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"Sonarqube failed connectivity check to the sonarqube instance because of HTTP error: {e.response.status_code} and response text: {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(
+                f"Sonarqube failed connectivity check to the sonarqube instance because of HTTP error: {e}"
+            )
+            raise
+
     async def get_or_create_webhook_url(self) -> None:
         """
         Get or create webhook URL for projects
@@ -328,11 +367,14 @@ class SonarQubeClient:
         for project in projects:
             project_key = project["key"]
             logger.info(f"Fetching existing webhooks in project: {project_key}")
+            params = {}
+            if self.organization_id:
+                params["organization"] = self.organization_id
             webhooks_response = await self.send_api_request(
                 endpoint=f"{webhook_endpoint}/list",
                 query_params={
                     "project": project_key,
-                    "organization": self.organization_id,
+                    **params,
                 },
             )
 
@@ -342,11 +384,15 @@ class SonarQubeClient:
             if any(webhook["url"] == invoke_url for webhook in webhooks):
                 logger.info(f"Webhook already exists in project: {project_key}")
                 continue
+
+            params = {}
+            if self.organization_id:
+                params["organization"] = self.organization_id
             webhooks_to_create.append(
                 {
                     "name": "Port Ocean Webhook",
                     "project": project_key,
-                    "organization": self.organization_id,
+                    **params,
                 }
             )
 
