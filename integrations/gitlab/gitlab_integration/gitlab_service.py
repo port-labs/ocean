@@ -1,4 +1,3 @@
-import asyncio
 import typing
 from datetime import datetime, timedelta
 from typing import List, Tuple, Any, Union, TYPE_CHECKING
@@ -29,7 +28,6 @@ PROJECTS_CACHE_KEY = "__cache_all_projects"
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import (
         GitlabPortAppConfig,
-        GitlabResourceConfig,
     )
 
 
