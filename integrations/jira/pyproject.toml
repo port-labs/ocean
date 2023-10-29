@@ -6,7 +6,7 @@ authors = ["Mor Paz <mor@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "0.3.1", extras = ["cli"]}
+port_ocean = {version = "0.3.2", extras = ["cli"]}
 httpx = "^0.24.1"
 
 [tool.poetry.group.dev.dependencies]
