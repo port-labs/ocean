@@ -1,7 +1,9 @@
+import asyncio
 import typing
 from datetime import datetime, timedelta
 from typing import List, Tuple, Any, Union, TYPE_CHECKING
 
+import anyio.to_thread
 import yaml
 from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
@@ -25,7 +27,10 @@ from port_ocean.core.models import Entity
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 
 if TYPE_CHECKING:
-    from gitlab_integration.git_integration import GitlabPortAppConfig
+    from gitlab_integration.git_integration import (
+        GitlabPortAppConfig,
+        GitlabResourceConfig,
+    )
 
 
 class GitlabService:
@@ -232,6 +237,13 @@ class GitlabService:
         event.attributes[PROJECTS_CACHE_KEY][self.gitlab_client.private_token] = {
             project.id: project for project in all_projects
         }
+
+    @staticmethod
+    async def async_project_language_wrapper(project: Project) -> dict[str, Any]:
+        languages = await anyio.to_thread.run_sync(project.languages)
+        project_with_languages = project.asdict()
+        project_with_languages["languages"] = languages
+        return project_with_languages
 
     async def get_all_jobs(
         self, project: Project
