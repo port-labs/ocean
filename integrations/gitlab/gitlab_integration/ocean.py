@@ -53,11 +53,11 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 service.async_project_language_wrapper(project)
                 for project in projects_batch
             ]
-            projects_batch = await asyncio.gather(*tasks)
+            projects = await asyncio.gather(*tasks)
             logger.info(
                 f"Finished fetching languages for {len(projects_batch)} projects"
             )
-            yield projects_batch
+            yield projects
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
