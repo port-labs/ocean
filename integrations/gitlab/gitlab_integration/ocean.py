@@ -1,15 +1,12 @@
 import asyncio
-import typing
 from datetime import datetime, timedelta
 from typing import Any
 
 from loguru import logger
-from port_ocean.context.event import event
 from starlette.requests import Request
 
 from gitlab_integration.bootstrap import event_handler
 from gitlab_integration.bootstrap import setup_application
-from gitlab_integration.git_integration import GitlabResourceConfig
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -51,19 +48,15 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
         logger.info(f"fetching projects for token {masked_token}")
         async for projects_batch in service.get_all_projects():
-            resource_config: GitlabResourceConfig = typing.cast(
-                "GitlabResourceConfig", event.resource_config
+            logger.info(f"Fetching languages for {len(projects_batch)} projects")
+            tasks = [
+                service.async_project_language_wrapper(project)
+                for project in projects_batch
+            ]
+            projects_batch = await asyncio.gather(*tasks)
+            logger.info(
+                f"Finished fetching languages for {len(projects_batch)} projects"
             )
-            if resource_config and resource_config.selector.include_project_languages:
-                logger.info(f"Fetching languages for {len(projects_batch)} projects")
-                tasks = [
-                    service.async_project_language_wrapper(project)
-                    for project in projects_batch
-                ]
-                projects_batch = await asyncio.gather(*tasks)
-                logger.info(
-                    f"Finished fetching languages for {len(projects_batch)} projects"
-                )
             yield projects_batch
 
 

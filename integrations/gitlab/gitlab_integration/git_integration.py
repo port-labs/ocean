@@ -14,8 +14,6 @@ from port_ocean.context.event import event
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
-    ResourceConfig,
-    Selector,
 )
 
 
@@ -89,16 +87,6 @@ class GitManipulationHandler(JQEntityProcessor):
         return entity_processor(self.context)._search(data, pattern)
 
 
-class GitlabSelector(Selector):
-    include_project_languages: bool | None = Field(
-        alias="includeProjectLanguages", default=False
-    )
-
-
-class GitlabResourceConfig(ResourceConfig):
-    selector: GitlabSelector
-
-
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str = "main"
@@ -108,7 +96,6 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-    resources: list[GitlabResourceConfig] = Field(default_factory=list)
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

@@ -238,11 +238,11 @@ class GitlabService:
             project.id: project for project in all_projects
         }
 
-    @staticmethod
-    async def async_project_language_wrapper(project: Project) -> dict[str, Any]:
+    @classmethod
+    async def async_project_language_wrapper(cls, project: Project) -> dict[str, Any]:
         languages = await anyio.to_thread.run_sync(project.languages)
         project_with_languages = project.asdict()
-        project_with_languages["languages"] = languages
+        project_with_languages["__languages"] = languages
         return project_with_languages
 
     async def get_all_jobs(
