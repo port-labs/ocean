@@ -2,7 +2,6 @@ import asyncio
 import typing
 from datetime import datetime, timedelta
 from typing import Any
-import anyio
 
 from loguru import logger
 from port_ocean.context.event import event
