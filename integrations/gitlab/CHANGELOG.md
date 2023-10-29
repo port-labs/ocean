@@ -7,7 +7,24 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-  # 0.1.18 (2023-10-02)
+0.1.20 (2023-10-24)
+===================
+
+### Bug Fixes
+
+- Fixed wrong useage of project object when checking if it is included in the filter (PORT-5028)
+
+
+0.1.19 (2023-10-11)
+===================
+
+### Improvements
+
+- Added more logs to the integration to indecate the current state better (PORT-4930)
+- Added pagination to all integration exported types for better performance (PORt-4930)
+
+
+# 0.1.18 (2023-10-02)
 
 - Changed gitlab resync to async batch iteration (#1)
 

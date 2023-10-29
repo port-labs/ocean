@@ -1,6 +1,11 @@
-import os
-import typing
 import asyncio
+import os
+from typing import List, Union, Callable, AsyncIterator, TypeVar
+
+from gitlab.base import RESTObject, RESTObjectList
+from loguru import logger
+
+T = TypeVar("T", bound=RESTObject)
 
 
 class AsyncFetcher:
@@ -9,14 +14,16 @@ class AsyncFetcher:
 
     @staticmethod
     async def fetch(
+        fetch_func: Callable[..., Union[RESTObjectList, List[RESTObject]]],
         batch_size: int = int(os.environ.get("GITLAB_BATCH_SIZE", 100)),
-        fetch_func: typing.Callable = None,  # type: ignore
-        validation_func: typing.Callable = None,  # type: ignore
+        validation_func: Callable[[T], bool] | None = None,
         **kwargs,
-    ) -> typing.AsyncIterator[typing.List[typing.Any]]:
-        def fetch_batch(page: int):
-            batch = fetch_func(page=page, per_page=batch_size, get_all=False, **kwargs)
-            return batch
+    ) -> AsyncIterator[List[T]]:
+        def fetch_batch(page_idx: int):
+            logger.info(f"Fetching page {page_idx}. Batch size: {batch_size}")
+            return fetch_func(
+                page=page_idx, per_page=batch_size, get_all=False, **kwargs
+            )
 
         page = 1
         while True:
@@ -24,7 +31,9 @@ class AsyncFetcher:
                 None, fetch_batch, page
             )
             if not batch:
+                logger.info(f"No more items to fetch after page {page}")
                 break
+            logger.info(f"Queried {len(batch)} items before filtering")
             filtered_batch = []
             for item in batch:
                 if validation_func is None or validation_func(item):

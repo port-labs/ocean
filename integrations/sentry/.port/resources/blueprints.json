@@ -1,0 +1,73 @@
+[
+  {
+    "identifier": "project",
+    "title": "project",
+    "icon": "Sentry",
+    "schema": {
+      "properties": {
+        "dateCreated": {
+          "title": "dateCreated",
+          "type": "string",
+          "format": "date-time"
+        },
+        "platform": {
+          "type": "string",
+          "title": "platform"
+        },
+        "status": {
+          "title": "status",
+          "type": "string",
+          "enum": [
+            "active",
+            "disabled",
+            "pending_deletion",
+            "deletion_in_progress"
+          ]
+        },
+        "link": {
+          "title": "link",
+          "type": "string",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "issue",
+    "title": "issue",
+    "icon": "Sentry",
+    "schema": {
+      "properties": {
+        "link": {
+          "title": "link",
+          "type": "string",
+          "format": "url"
+        },
+        "status": {
+          "title": "status",
+          "type": "string"
+        },
+        "isUnhandled": {
+          "icon": "DefaultProperty",
+          "title": "isUnhandled",
+          "type": "boolean"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "project": {
+        "title": "project",
+        "target": "project",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]

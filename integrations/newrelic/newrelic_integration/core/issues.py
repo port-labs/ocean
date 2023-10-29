@@ -1,10 +1,13 @@
 from enum import Enum
 from typing import Optional, Any, Tuple
+from loguru import logger
 
 import httpx
+
 from port_ocean.context.ocean import ocean
 from pydantic import BaseModel, Field, Extra
 
+from newrelic_integration.core.errors import NewRelicNotFoundError
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.query_templates.issues import (
     LIST_ISSUES_BY_ENTITY_GUIDS_MINIMAL_QUERY,
@@ -56,7 +59,7 @@ class IssuesHandler:
         # key is entity guid and value is the entity type
         # used for caching the entity type for each entity guid and avoid querying it multiple times for
         # the same entity guid for different issues
-        queried_issues: dict[str, str] = {}
+        queried_entities: dict[str, str] = {}
         async for issue in send_paginated_graph_api_request(
             self.http_client,
             LIST_ISSUES_QUERY,
@@ -64,23 +67,39 @@ class IssuesHandler:
             extract_data=self._extract_issues,
             account_id=ocean.integration_config.get("new_relic_account_id"),
         ):
+            # clear the cache if it gets too big
+            if len(queried_entities) > 1000:
+                logger.debug("Clearing queried entities cache")
+                queried_entities.clear()
+
             if state is None or issue["state"] == state.value:
                 # for each related entity we need to get the entity type, so we can add it to the issue
                 # related entities under the right relation key
                 for entity_guid in issue["entityGuids"]:
-                    # if we already queried this entity guid before, we can use the cached relation identifier
-                    if entity_guid not in queried_issues.keys():
-                        entity = await EntitiesHandler(self.http_client).get_entity(
-                            entity_guid
-                        )
-                        queried_issues[entity_guid] = entity["type"]
+                    try:
+                        # if we already queried this entity guid before, we can use the cached relation identifier
+                        if entity_guid not in queried_entities.keys():
+                            entity = await EntitiesHandler(self.http_client).get_entity(
+                                entity_guid
+                            )
+                            queried_entities[entity_guid] = entity["type"]
 
-                    # add the entity guid to the right relation key in the issue
-                    # by the format of .__<type>.entity_guids.[<entity_guid>...]
-                    issue.setdefault(
-                        f"__{queried_issues[entity_guid]}",
-                        {},
-                    ).setdefault("entity_guids", []).append(entity_guid)
+                        # add the entity guid to the right relation key in the issue
+                        # by the format of .__<type>.entity_guids.[<entity_guid>...]
+                        issue.setdefault(
+                            f"__{queried_entities[entity_guid]}",
+                            {},
+                        ).setdefault("entity_guids", []).append(entity_guid)
+                    except NewRelicNotFoundError:
+                        logger.info(
+                            f"Related entity guid {entity_guid} not found in new relic for issue {issue.get('issueId')}, continuing",
+                        )
+                    except Exception as err:
+                        logger.exception(
+                            f"Failed to get entity {entity_guid} for issue event {issue.get('issueId')}, continuing",
+                            entity_guid=entity_guid,
+                            err=str(err),
+                        )
 
                 matching_issues.append(issue)
         return matching_issues
