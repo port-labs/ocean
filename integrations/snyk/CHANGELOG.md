@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Snyk 0.1.4 (2023-10-29)
+
+### Improvements
+
+- Added createMissingRelatedEntities: true flag (#1)
+
+
 # Snyk 0.1.3 (2023-10-16)
 
 ### Improvements

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.8 (2023-10-29)
+
+### Improvements
+
+- Added createMissingRelatedEntities: true flag (#1)
+
+
 0.1.7 (2023-09-27)
 
 ### Improvements
