@@ -2,6 +2,7 @@ import asyncio
 import os
 from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 
+from gitlab import GitlabList, Gitlab
 from gitlab.base import RESTObject, RESTObjectList
 from loguru import logger
 
@@ -9,19 +10,20 @@ T = TypeVar("T", bound=RESTObject)
 
 
 class AsyncFetcher:
-    def __init__(self, gitlab_client):
+    def __init__(self, gitlab_client: Gitlab):
         self.gitlab_client = gitlab_client
 
     @staticmethod
     async def fetch(
         fetch_func: Callable[
-            ..., Union[RESTObjectList, List[RESTObject], List[Dict[str, Any]]]
+            ...,
+            Union[RESTObjectList, List[RESTObject], List[Dict[str, Any]], GitlabList],
         ],
         batch_size: int = int(os.environ.get("GITLAB_BATCH_SIZE", 100)),
         validation_func: Callable[[T], bool] | None = None,
         **kwargs,
     ) -> AsyncIterator[List[T]]:
-        def fetch_batch(page_idx: int):
+        def fetch_batch(page_idx: int) -> List[T]:
             logger.info(f"Fetching page {page_idx}. Batch size: {batch_size}")
             return fetch_func(
                 page=page_idx, per_page=batch_size, get_all=False, **kwargs

@@ -9,7 +9,7 @@ from port_ocean.context.event import event
 
 from gitlab_integration.bootstrap import event_handler
 from gitlab_integration.bootstrap import setup_application
-from gitlab_integration.git_integration import GitlabSelector
+from gitlab_integration.git_integration import GitlabResourceConfig
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -51,24 +51,24 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
         logger.info(f"fetching projects for token {masked_token}")
         async for projects_batch in service.get_all_projects():
-            logger.info(f"Fetching languages for {len(projects_batch)} projects")
-            tasks = [
-                service.async_project_language_wrapper(project)
-                for project in projects_batch
-            ]
+            logger.info(f"Fetching extras for {len(projects_batch)} projects")
+            tasks = []
+            for project in projects_batch:
+                tasks.append(service.enrich_project_with_extras(project))
             projects = await asyncio.gather(*tasks)
-            logger.info(
-                f"Finished fetching languages for {len(projects_batch)} projects"
-            )
+            logger.info(f"Finished fetching extras for {len(projects_batch)} projects")
             yield projects
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
-        selector: GitlabSelector = typing.cast(
-            "GitlabSelector", event.resource_config.selector
+        gitlab_resource_config: GitlabResourceConfig = typing.cast(
+            "GitlabResourceConfig", event.resource_config
         )
+        if not isinstance(gitlab_resource_config, GitlabResourceConfig):
+            return
+        selector = gitlab_resource_config.selector
         async for projects_batch in service.get_all_projects():
             for folder_selector in selector.folders:
                 for project in projects_batch:

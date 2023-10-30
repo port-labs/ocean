@@ -23,11 +23,17 @@ class FileEntityProcessor(JQEntityProcessor):
     prefix = FILE_PROPERTY_PREFIX
 
     def _search(self, data: Dict[str, Any], pattern: str) -> Any:
-        project_id, ref = _validate_project_scope(data)
+        project_id, ref, base_path = _validate_project_scope(data)
         project = _get_project_from_cache(project_id)
-        logger.info(f"Searching for file {pattern} in Project {project_id}, ref {ref}")
 
         file_path = pattern.replace(self.prefix, "")
+        if base_path:
+            file_path = f"{base_path}/{file_path}"
+        if not project:
+            return None
+        logger.info(
+            f"Searching for file {file_path} in Project {project_id}: {project.path_with_namespace}, ref {ref}"
+        )
         return (
             project.files.get(file_path=file_path, ref=ref).decode().decode("utf-8")
             if project
@@ -46,17 +52,30 @@ class SearchEntityProcessor(JQEntityProcessor):
         :param pattern: e.g. search://scope=blobs&&query=filename:port.yml
         :return: True if the search pattern matches, False otherwise
         """
-        project_id, _ = _validate_project_scope(data)
+        project_id, _, base_path = _validate_project_scope(data)
         scope, query = self._parse_search_pattern(pattern)
 
         # assuming that the code is being called after event initialization and as part of the GitLab service
         # initialization
         project = _get_project_from_cache(project_id)
-        logger.info(f"Searching for {query} in Project {project_id}, scope {scope}")
+        if not project:
+            return None
+        base_path_message = f" in base path {base_path}" if base_path else ""
+        logger.info(
+            f"Searching {query} {base_path_message} in Project {project_id}: {project.path_with_namespace}, "
+            f"scope {scope}"
+        )
 
         match = None
         if project:
-            match = bool(project.search(scope=scope, search=query))
+            results = project.search(scope=scope, search=query)
+            if scope == "blobs":
+                for file in results:
+                    if file["path"].startswith(base_path):
+                        match = True
+                        break
+            else:
+                match = bool(results)
         return match
 
     def _parse_search_pattern(self, pattern: str) -> Tuple[str, str]:
@@ -112,7 +131,7 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-    resources: list[GitlabResourceConfig] = Field(default_factory=list)
+    resources: list[GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:
@@ -146,7 +165,17 @@ def _get_project_from_cache(project_id: int) -> Project | None:
     return None
 
 
-def _validate_project_scope(data: Dict[str, Any]) -> Tuple[int, str]:
-    if (project_id := data.get("id")) and (ref := data.get("default_branch")):
-        return project_id, ref
+def _validate_project_scope(data: Dict[str, Any]) -> Tuple[int, str, str]:
+    # repo.id can be set when exporting folders as monorepo from a repo
+    project_id = data.get("repo", {}).get("id") or data.get("id")
+    # __branch is enriched when exporting folders as monorepo from a repo, or when exporting a single repo
+    ref = (
+        data.get("__branch")
+        or data.get("default_branch")
+        or data.get("repo", {}).get("default_branch")
+    )
+    # folder.path is enriched when exporting folders as monorepo from a repo
+    path = data.get("folder", {}).get("path", "")
+    if project_id and ref:
+        return project_id, ref, path
     raise ValueError("Project id and ref are required")

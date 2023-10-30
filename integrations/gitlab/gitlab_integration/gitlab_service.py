@@ -1,3 +1,4 @@
+import asyncio
 import typing
 from datetime import datetime, timedelta
 from typing import List, Tuple, Any, Union, TYPE_CHECKING
@@ -238,10 +239,30 @@ class GitlabService:
 
     @classmethod
     async def async_project_language_wrapper(cls, project: Project) -> dict[str, Any]:
-        languages = await anyio.to_thread.run_sync(project.languages)
-        project_with_languages = project.asdict()
-        project_with_languages["__languages"] = languages
-        return project_with_languages
+        try:
+            languages = await anyio.to_thread.run_sync(project.languages)
+            return {"__languages": languages}
+        except Exception as e:
+            logger.error(
+                f"Failed to get languages for project={project.path_with_namespace}. error={e}"
+            )
+            return {"__languages": {}}
+
+    @classmethod
+    async def enrich_project_with_extras(cls, project: Project) -> dict[str, Any]:
+        tasks = [
+            cls.async_project_language_wrapper(project),
+        ]
+        tasks_extras = await asyncio.gather(*tasks)
+        project_with_extras = project.asdict()
+        project_with_extras.update(
+            **{
+                key: value
+                for task_extras in tasks_extras
+                for key, value in task_extras.items()
+            }
+        )
+        return project_with_extras
 
     async def get_all_folders_in_project_path(
         self, project: Project, folder_selector
@@ -263,7 +284,11 @@ class GitlabService:
                     f" in project {project.path_with_namespace}"
                 )
                 yield [
-                    {"folder": folder, "project": project.asdict()}
+                    {
+                        "folder": folder,
+                        "repo": project.asdict(),
+                        "__branch": branch,
+                    }
                     for folder in repository_tree_batch
                 ]
         except Exception as e:
