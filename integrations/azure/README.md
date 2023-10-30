@@ -2,9 +2,11 @@
 
 An integration used to import Azure resources into Port.
 
-#### Install & use the integration:
+#### Install & use the integration
 
 [Integration documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/azure/installation)
+
+<br/><br/>
 
 #### Develop & improve the integration
 
