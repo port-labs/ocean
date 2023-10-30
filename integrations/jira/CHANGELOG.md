@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.7 (2023-10-30)
+
+### Improvements
+
+- Fixed default mapping to include status done (#1)
+
+
 0.1.6 (2023-10-29)
 
 ### Improvements
