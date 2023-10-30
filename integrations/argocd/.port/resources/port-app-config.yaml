@@ -1,0 +1,53 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: cluster
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"argocdCluster"'
+          properties:
+            namespaces: .namespaces
+            applicationsCount: .info.applicationsCount
+            serverVersion: .serverVersion
+            labels: .labels
+            updatedAt: .connectionState.attemptedAt
+            server: .server
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.name
+          blueprint: '"argocdProject"'
+          properties:
+            namespace: .metadata.namespace
+            createdAt: .metadata.creationTimestamp
+            description: .spec.description
+          relations:
+            cluster: '[.spec.destinations[].name | select(test("^[a-zA-Z0-9@_.:/=-]+$"))]'
+  - kind: application
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.uid
+          title: .metadata.name
+          blueprint: '"argocdApplication"'
+          properties:
+            gitRepo: .spec.source.repoURL
+            gitPath: .spec.source.path
+            destinationServer: .spec.destination.server
+            namespace: .metadata.namespace
+            syncStatus: .status.sync.status
+            healthStatus: .status.health.status
+            createdAt: .metadata.creationTimestamp
+          relations:
+            project: .spec.project
