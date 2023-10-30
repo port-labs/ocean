@@ -1,8 +1,7 @@
 from typing import Any
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from argocd_integration.client import ArgocdClient
-from argocd_integration.utils import ObjectKind
+from client import ArgocdClient, ObjectKind
 from fastapi import Request
 
 
@@ -17,7 +16,12 @@ def init_client() -> ArgocdClient:
 async def on_resources_resync(kind: str) -> list[dict[Any, Any]]:
     logger.info(f"Listing ArgoCD resource: {kind}")
     argocd_client = init_client()
-    return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
+
+    try:
+        return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
+    except ValueError:
+        logger.error(f"Invalid resource kind: {kind}")
+        raise
 
 
 @ocean.router.post("/webhook")

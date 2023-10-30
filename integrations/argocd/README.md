@@ -28,6 +28,12 @@ helm upgrade --install my-argocd-integration port-labs/port-ocean \
 	--set integration.secrets.token="<your-token>"  \
   --set integration.config.serverUrl="<your-server-url>"  \
 ```
+
+### Generating ArgoCD token
+1. Navigate to `<serverURL>/settings/accounts/<user>`. For example, if you access your ArgoCD at `https://localhost:8080/`, you should navigate to `https://localhost:8080/settings/accounts/<user>`.
+2. Under **Tokens**, Click **Generate New** to create a new token.
+
+
 ## Supported Kinds
 
 ### Cluster

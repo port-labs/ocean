@@ -1,18 +1,21 @@
 from typing import Any, Optional
 import httpx
 from loguru import logger
-from argocd_integration.utils import ObjectKind
+from enum import StrEnum
+
+
+class ObjectKind(StrEnum):
+    PROJECT = "project"
+    APPLICATION = "application"
+    CLUSTER = "cluster"
 
 
 class ArgocdClient:
     def __init__(self, token: str, server_url: str):
         self.token = token
         self.api_url = f"{server_url}/api/v1"
-        self.http_client = httpx.AsyncClient(headers=self.api_auth_header)
-
-    @property
-    def api_auth_header(self) -> dict[str, Any]:
-        return {"Authorization": f"Bearer {self.token}"}
+        self.api_auth_header = {"Authorization": f"Bearer {self.token}"}
+        self.http_client = httpx.AsyncClient(headers=self.api_auth_header, verify=False)
 
     async def _send_api_request(
         self,
