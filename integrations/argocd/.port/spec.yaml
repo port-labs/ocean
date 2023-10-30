@@ -15,3 +15,4 @@ configurations:
     sensitive: true
   - name: serverUrl
     type: string
+    required: true
