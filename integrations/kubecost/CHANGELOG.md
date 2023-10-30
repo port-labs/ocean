@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.1 (2023-10-26)
+# Kubecost 0.1.3 (2023-10-29)
+
+### Improvements
+
+- Bumped ocean version to 0.3.2 (#1)
+
+
+# Kubecost 0.1.2 (2023-10-29)
+
+### Improvements
+
+- Updated integration & blueprint icons to Kubecost icon (PORT-5063)
+
+
+# Kubecost 0.1.1 (2023-10-26)
 
 ### Improvements
 
