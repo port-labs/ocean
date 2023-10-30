@@ -65,16 +65,18 @@ class SearchEntityProcessor(JQEntityProcessor):
             f"Searching {query} {base_path_message} in Project {project_id}: {project.path_with_namespace}, "
             f"scope {scope}"
         )
-
         match = None
         if project:
-            results = project.search(scope=scope, search=query)
             if scope == "blobs":
-                for file in results:
-                    if file["path"].startswith(base_path):
-                        match = True
-                        break
+                # if the query does not contain a path filter, we add the base path to the query
+                # this is done to avoid searching the entire project for the file, if the base path is known
+                # having the base path applies to the case where we export a folder as a monorepo
+                if base_path and "path:" not in query:
+                    query = f"{query} path:{base_path}"
+                results = project.search(scope=scope, search=query)
+                match = bool(results)
             else:
+                results = project.search(scope=scope, search=query)
                 match = bool(results)
         return match
 

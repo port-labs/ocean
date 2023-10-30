@@ -4,6 +4,7 @@ from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 
 from gitlab import GitlabList, Gitlab
 from gitlab.base import RESTObject, RESTObjectList
+from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue
 from loguru import logger
 
 T = TypeVar("T", bound=RESTObject)
@@ -17,13 +18,59 @@ class AsyncFetcher:
     async def fetch(
         fetch_func: Callable[
             ...,
-            Union[RESTObjectList, List[RESTObject], List[Dict[str, Any]], GitlabList],
+            Union[
+                RESTObjectList,
+                List[RESTObject],
+                List[ProjectPipelineJob],
+                List[ProjectPipeline],
+                List[Issue],
+                List[Dict[str, Any]],
+                GitlabList,
+                List[Project],
+                List[Union[RESTObject, Dict[str, Any]]],
+            ],
+        ],
+        validation_func: Callable[
+            [
+                Union[
+                    RESTObject,
+                    ProjectPipelineJob,
+                    Issue,
+                    ProjectPipeline,
+                    Dict[str, Any],
+                    Project,
+                ]
+            ],
+            bool,
         ],
         batch_size: int = int(os.environ.get("GITLAB_BATCH_SIZE", 100)),
-        validation_func: Callable[[T], bool] | None = None,
         **kwargs,
-    ) -> AsyncIterator[List[T]]:
-        def fetch_batch(page_idx: int) -> List[T]:
+    ) -> AsyncIterator[
+        Union[
+            List[Union[RESTObject, Dict[str, Any]]],
+            RESTObjectList,
+            List[ProjectPipelineJob],
+            List[ProjectPipeline],
+            List[Issue],
+            List[Project],
+            List[RESTObject],
+            List[Dict[str, Any]],
+            GitlabList,
+        ]
+    ]:
+        def fetch_batch(
+            page_idx: int,
+        ) -> Union[
+            List[Union[RESTObject, Dict[str, Any]]],
+            RESTObjectList,
+            List[ProjectPipelineJob],
+            List[ProjectPipeline],
+            List[Issue],
+            List[Project],
+            List[RESTObject],
+            List[Dict[str, Any]],
+            GitlabList,
+        ]:
             logger.info(f"Fetching page {page_idx}. Batch size: {batch_size}")
             return fetch_func(
                 page=page_idx, per_page=batch_size, get_all=False, **kwargs
