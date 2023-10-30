@@ -5,7 +5,7 @@ from gitlab_integration.core.entities import (
     SEARCH_PROPERTY_PREFIX,
 )
 from loguru import logger
-from pydantic import Field
+from pydantic import Field, BaseModel
 from gitlab.v4.objects import Project
 from gitlab_integration.gitlab_service import PROJECTS_CACHE_KEY
 from gitlab_integration.utils import get_cached_all_services
@@ -14,6 +14,8 @@ from port_ocean.context.event import event
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
+    Selector,
+    ResourceConfig,
 )
 
 
@@ -87,6 +89,20 @@ class GitManipulationHandler(JQEntityProcessor):
         return entity_processor(self.context)._search(data, pattern)
 
 
+class FoldersSelector(BaseModel):
+    path: str
+    repos: List[str] = Field(default_factory=list)
+    branch: str | None = None
+
+
+class GitlabSelector(Selector):
+    folders: List[FoldersSelector] = Field(default_factory=list)
+
+
+class GitlabResourceConfig(ResourceConfig):
+    selector: GitlabSelector
+
+
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str = "main"
@@ -96,6 +112,7 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
+    resources: list[GitlabResourceConfig] = Field(default_factory=list)
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

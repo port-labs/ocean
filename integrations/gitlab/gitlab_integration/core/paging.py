@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import List, Union, Callable, AsyncIterator, TypeVar
+from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 
 from gitlab.base import RESTObject, RESTObjectList
 from loguru import logger
@@ -14,7 +14,9 @@ class AsyncFetcher:
 
     @staticmethod
     async def fetch(
-        fetch_func: Callable[..., Union[RESTObjectList, List[RESTObject]]],
+        fetch_func: Callable[
+            ..., Union[RESTObjectList, List[RESTObject], List[Dict[str, Any]]]
+        ],
         batch_size: int = int(os.environ.get("GITLAB_BATCH_SIZE", 100)),
         validation_func: Callable[[T], bool] | None = None,
         **kwargs,

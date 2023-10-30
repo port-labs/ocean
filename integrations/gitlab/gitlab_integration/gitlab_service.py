@@ -28,6 +28,7 @@ PROJECTS_CACHE_KEY = "__cache_all_projects"
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import (
         GitlabPortAppConfig,
+        FoldersSelector,
     )
 
 
@@ -242,6 +243,36 @@ class GitlabService:
         project_with_languages = project.asdict()
         project_with_languages["__languages"] = languages
         return project_with_languages
+
+    async def get_all_folders_in_project_path(
+        self, project: Project, folder_selector
+    ) -> typing.AsyncIterator[List[dict[str, Any]]]:
+        branch = folder_selector.branch or project.default_branch
+        try:
+            async_fetcher = AsyncFetcher(self.gitlab_client)
+            async for repository_tree_batch in async_fetcher.fetch(
+                fetch_func=project.repository_tree,
+                validation_func=lambda file: file["type"] == "tree",
+                path=folder_selector.path,
+                ref=branch,
+                pagination="keyset",
+                order_by="id",
+                sort="asc",
+            ):
+                logger.info(
+                    f"Found {len(repository_tree_batch)} folders {[folder['path'] for folder in repository_tree_batch]}"
+                    f" in project {project.path_with_namespace}"
+                )
+                yield [
+                    {"folder": folder, "project": project.asdict()}
+                    for folder in repository_tree_batch
+                ]
+        except Exception as e:
+            logger.error(
+                f"Failed to get folders in project={project.path_with_namespace} for path={folder_selector.path} and "
+                f"branch={branch}. error={e}"
+            )
+            return
 
     async def get_all_jobs(
         self, project: Project
