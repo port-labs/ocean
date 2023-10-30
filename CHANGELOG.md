@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.3.2 (2023-10-29)
+
+### Improvements
+
+- createMissingRelatedEntities + deleteDependentEntities are now defaulted to true
+
+
 ## 0.3.1 (2023-09-27)
 
 ### Bug Fixes

@@ -1,1 +1,0 @@
-Improved the integration syntax
