@@ -9,7 +9,7 @@ from port_ocean.context.event import event
 
 from gitlab_integration.bootstrap import event_handler
 from gitlab_integration.bootstrap import setup_application
-from gitlab_integration.git_integration import FoldersSelector, GitlabSelector
+from gitlab_integration.git_integration import GitlabSelector
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE

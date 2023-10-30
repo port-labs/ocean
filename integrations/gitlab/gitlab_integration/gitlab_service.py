@@ -28,7 +28,6 @@ PROJECTS_CACHE_KEY = "__cache_all_projects"
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import (
         GitlabPortAppConfig,
-        FoldersSelector,
     )
 
 
