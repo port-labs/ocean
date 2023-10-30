@@ -115,3 +115,7 @@ clean:
 	rm -rf .tox/
 	rm -rf docs/_build
 	rm -rf dist/
+
+# make bump/integrations VERSION=0.3.2 
+bump/integrations:
+	./scripts/bump-all.sh $(VERSION)
