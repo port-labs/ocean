@@ -1,6 +1,6 @@
 type: kubecost
 description: kubecost integration for Port Ocean
-icon: Cluster
+icon: Kubecost
 features:
   - type: exporter
     section: Cloud Cost

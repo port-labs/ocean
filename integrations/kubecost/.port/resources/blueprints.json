@@ -3,7 +3,7 @@
         "identifier": "kubecostResourceAllocation",
         "description": "This blueprint represents an Kubecost resource allocation in our software catalog",
         "title": "Kubecost Resource Allocation",
-        "icon": "Cluster",
+        "icon": "Kubecost",
         "schema": {
           "properties": {
             "cluster": {
@@ -99,7 +99,7 @@
         "identifier": "kubecostCloudAllocation",
         "description": "This blueprint represents an Kubecost cloud resource allocation in our software catalog",
         "title": "Kubecost Cloud Allocation",
-        "icon": "Cluster",
+        "icon": "Kubecost",
         "schema": {
           "properties": {
             "provider": {

@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -47,7 +48,16 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
         logger.info(f"fetching projects for token {masked_token}")
         async for projects_batch in service.get_all_projects():
-            yield [project.asdict() for project in projects_batch]
+            logger.info(f"Fetching languages for {len(projects_batch)} projects")
+            tasks = [
+                service.async_project_language_wrapper(project)
+                for project in projects_batch
+            ]
+            projects = await asyncio.gather(*tasks)
+            logger.info(
+                f"Finished fetching languages for {len(projects_batch)} projects"
+            )
+            yield projects
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
