@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Fixed default mapping to include status done (#1)
+- Fixed the default mapping to exclude issues with status `Done` (#1)
 
 
 0.1.6 (2023-10-29)
