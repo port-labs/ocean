@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Features
 
-- Added support for project folders (#1)
+- Added support for project folders (PORT-5060)
 
 
 0.1.22 (2023-10-30)
