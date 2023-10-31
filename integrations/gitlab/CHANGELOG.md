@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.23 (2023-10-30)
+===================
+
+### Features
+
+- Added support for project folders (PORT-5060)
+
+
 0.1.22 (2023-10-30)
 ===================
 
