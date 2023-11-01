@@ -64,8 +64,9 @@ def sail(
 
     console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
 
+    override = {}
     if once:
         console.print("Setting event listener to Once")
-        os.environ["OCEAN__EVENT_LISTENER"] = '{"type": "ONCE"}'
+        override["event_listener"] = {"type": "ONCE"}
 
-    run(path, log_level, port, initialize_port_resources)
+    run(path, log_level, port, initialize_port_resources, override)
