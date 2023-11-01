@@ -30,6 +30,10 @@ class PortOceanContext:
         return self.app.config
 
     @property
+    def event_listener_type(self) -> str:
+        return self.app.config.event_listener.type
+
+    @property
     def router(self) -> APIRouter:
         return self.app.integration_router
 
