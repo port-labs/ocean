@@ -47,6 +47,8 @@ class ImmediateEventListener(BaseEventListener):
         Starts the resync process, and exits the application once finished.
         """
 
+        # we use the `repeat_every` decorator to make sure the resync will be triggered, but won't stuck the application
+        # from finishing the startup process which is required to close the application gracefully
         @repeat_every(seconds=0)
         async def resync_and_exit() -> None:
             logger.info("Immediate event listener started")
