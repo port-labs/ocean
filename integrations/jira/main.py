@@ -83,4 +83,9 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean Jira integration")
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
     await setup_application()

@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped ocean version to ^0.4.0 (#1)
+- Bumped ocean version to ^0.4.0 and handle ONCE event listener (#1)
 
 
 0.1.7 (2023-10-30)
