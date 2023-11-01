@@ -27,11 +27,17 @@ async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
 
 @ocean.on_start()
 async def on_start() -> None:
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
     logic_settings = ocean.integration_config
     if not logic_settings.get("app_host"):
         logger.warning(
             f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
         )
+        return
+
     try:
         setup_application(
             logic_settings["token_mapping"],
