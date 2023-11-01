@@ -49,7 +49,7 @@ class ImmediateEventListener(BaseEventListener):
 
         # we use the `repeat_every` decorator to make sure the resync will be triggered, but won't stuck the application
         # from finishing the startup process which is required to close the application gracefully
-        @repeat_every(seconds=0)
+        @repeat_every(seconds=0, max_repetitions=1)
         async def resync_and_exit() -> None:
             logger.info("Immediate event listener started")
             await self.events["on_resync"]({})
