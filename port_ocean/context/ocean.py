@@ -30,10 +30,6 @@ class PortOceanContext:
         return self.app.config
 
     @property
-    def event_listener_type(self) -> str:
-        return self.app.config.event_listener.type
-
-    @property
     def router(self) -> APIRouter:
         return self.app.integration_router
 
@@ -48,6 +44,10 @@ class PortOceanContext:
     @property
     def port_client(self) -> "PortClient":
         return self.app.port_client
+
+    @property
+    def event_listener_type(self) -> str:
+        return self.app.config.event_listener.type
 
     def on_resync(
         self,
