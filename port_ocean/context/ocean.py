@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, TYPE_CHECKING, Any
+from typing import Callable, TYPE_CHECKING, Any, Literal
 
 from fastapi import APIRouter
 from werkzeug.local import LocalProxy, LocalStack
@@ -46,7 +46,7 @@ class PortOceanContext:
         return self.app.port_client
 
     @property
-    def event_listener_type(self) -> str:
+    def event_listener_type(self) -> Literal["WEBHOOK", "KAFKA", "POLLING", "ONCE"]:
         return self.app.config.event_listener.type
 
     def on_resync(
