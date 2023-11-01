@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.0 (2023-10-31)
+
+### Features
+
+- Added support for running ocean integrations once and new ocean sail options to support it. As part of it we added ImmediateEventListener.
+
+
 ## 0.3.2 (2023-10-29)
 
 ### Improvements

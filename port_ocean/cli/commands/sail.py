@@ -33,14 +33,24 @@ from port_ocean.config.settings import LogLevelType
     "--initialize-port-resources",
     "initialize_port_resources",
     type=bool,
+    is_flag=True,
     help="""Set to true to create default resources on installation.
             If not specified, the default value is false.""",
+)
+@click.option(
+    "-O",
+    "--once",
+    "once",
+    type=bool,
+    is_flag=True,
+    help="""specify the option to run the integration once and exit.""",
 )
 def sail(
     path: str,
     log_level: LogLevelType,
     port: int,
     initialize_port_resources: bool | None,
+    once: bool,
 ) -> None:
     """
     Runs the integration in the given PATH. if no PATH is provided, the current directory will be used.
@@ -52,4 +62,10 @@ def sail(
     print_logo()
 
     console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
-    run(path, log_level, port, initialize_port_resources)
+
+    override = {}
+    if once:
+        console.print("Setting event listener to Once")
+        override["event_listener"] = {"type": "ONCE"}
+
+    run(path, log_level, port, initialize_port_resources, override)
