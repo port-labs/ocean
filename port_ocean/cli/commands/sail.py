@@ -46,69 +46,25 @@ from port_ocean.config.settings import LogLevelType
     is_flag=True,
     help="""specify the option to run the integration once and exit.""",
 )
-@click.option(
-    "-d",
-    "--docker",
-    "docker",
-    type=bool,
-    is_flag=True,
-    help="""specify the option to run the integration in a docker container.""",
-)
-@click.option(
-    "-I",
-    "--integration",
-    "integration",
-    type=str,
-    help="""specify the integration to sail with, required only when using docker flag.""",
-)
-@click.option(
-    "-v",
-    "--version",
-    "version",
-    type=str,
-    help="""specify the version of the integration to sail with.
-            If not specified, the latest version will be used. Required only when using docker flag""",
-)
 def sail(
     path: str,
     log_level: LogLevelType,
     port: int,
     initialize_port_resources: bool | None,
     once: bool,
-    docker: bool,
-    integration: str,
-    version: str,
 ) -> None:
     """
     Runs the integration in the given PATH. if no PATH is provided, the current directory will be used.
 
     PATH: Path to the integration.
     """
-    if once and docker:
-        from port_ocean.cli.commands.dockerized import run_once
+    from port_ocean import run
 
-        if not integration:
-            console.print("integration is required when using --docker flag.")
-            return
-        if not version:
-            console.print("version is not specified, using latest version.")
-            version = "latest"
+    print_logo()
 
-        console.print(
-            "Sailing away, starting docking... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️"
-        )
-        run_once(integration, version)
-    else:
-        from port_ocean import run
+    console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
 
-        print_logo()
+    if once:
+        os.environ["OCEAN__EVENT_LISTENER"] = '{"type": "IMMEDIATE"}'
 
-        console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
-
-        if once:
-            os.environ["OCEAN__EVENT_LISTENER"] = '{"type": "IMMEDIATE"}'
-
-        if docker:
-            console.print("docker flag is not supported not when using --once flag.")
-            return
-        run(path, log_level, port, initialize_port_resources)
+    run(path, log_level, port, initialize_port_resources)
