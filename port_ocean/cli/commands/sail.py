@@ -65,7 +65,7 @@ def sail(
     console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
 
     if once:
-        console.print("Setting event listener to IMMEDIATE")
-        os.environ["OCEAN__EVENT_LISTENER"] = '{"type": "IMMEDIATE"}'
+        console.print("Setting event listener to Once")
+        os.environ["OCEAN__EVENT_LISTENER"] = '{"type": "ONCE"}'
 
     run(path, log_level, port, initialize_port_resources)

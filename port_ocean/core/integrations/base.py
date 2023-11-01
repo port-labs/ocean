@@ -74,7 +74,14 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         self.started = True
 
-        async with event_context(EventType.START, trigger_type="machine"):
+        async with event_context(
+            EventType.START,
+            trigger_type="machine",
+            # pass the event listener type to the start event context, so that integrations on start event can
+            # distinguish between different event listeners ( e.g when ONCE event listener is used there in no need to
+            # register webhooks )
+            event_listener_type=self.context.config.event_listener.type,
+        ):
             await asyncio.gather(
                 *(listener() for listener in self.event_strategy["start"])
             )

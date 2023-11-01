@@ -5,8 +5,8 @@ from port_ocean.core.event_listener import (
     HttpEventListener,
     KafkaEventListener,
     PollingEventListener,
-    ImmediateEventListenerSettings,
-    ImmediateEventListener,
+    OnceEventListenerSettings,
+    OnceEventListener,
 )
 from port_ocean.core.event_listener import (
     HttpEventListenerSettings,
@@ -83,11 +83,11 @@ class EventListenerFactory:
                 ), assert_message.format(type(config))
                 event_listener = PollingEventListener(wrapped_events, config)
 
-            case "immediate":
+            case "once":
                 assert isinstance(
-                    config, ImmediateEventListenerSettings
+                    config, OnceEventListenerSettings
                 ), assert_message.format(type(config))
-                event_listener = ImmediateEventListener(wrapped_events, config)
+                event_listener = OnceEventListener(wrapped_events, config)
 
             case _:
                 raise UnsupportedEventListenerTypeException(

@@ -45,6 +45,7 @@ class EventContext:
     event_type: str
     trigger_type: TriggerType = "machine"
     attributes: dict[str, Any] = field(default_factory=dict)
+    event_listener_type: str | None = None
     _aborted: bool = False
     _port_app_config: Optional["PortAppConfig"] = None
     _parent_event: Optional["EventContext"] = None
@@ -125,6 +126,7 @@ async def event_context(
     event_type: str,
     trigger_type: TriggerType = "manual",
     attributes: dict[str, Any] | None = None,
+    event_listener_type: str | None = None,
 ) -> AsyncIterator[EventContext]:
     attributes = attributes or {}
 
@@ -133,6 +135,7 @@ async def event_context(
         event_type,
         trigger_type=trigger_type,
         attributes=attributes,
+        event_listener_type=event_listener_type,
         _parent_event=parent,
         # inherit port app config from parent event, so it can be used in nested events
         _port_app_config=parent.port_app_config if parent else None,

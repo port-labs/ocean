@@ -11,33 +11,33 @@ from port_ocean.core.event_listener.base import (
 from port_ocean.utils import repeat_every
 
 
-class ImmediateEventListenerSettings(EventListenerSettings):
+class OnceEventListenerSettings(EventListenerSettings):
     """
-    Immediate event listener configuration settings.
+    Once event listener configuration settings.
     This class inherits from `EventListenerSettings`, which provides a foundation for creating event listener settings.
     """
 
-    type: Literal["IMMEDIATE"]
+    type: Literal["ONCE"]
 
     def to_request(self) -> dict[str, Any]:
         return {}
 
 
-class ImmediateEventListener(BaseEventListener):
+class OnceEventListener(BaseEventListener):
     """
-    Immediate event listener.
+    Once event listener.
 
     This event listener is used to trigger a resync immediately.
 
     Parameters:
         events (EventListenerEvents): A dictionary containing event types and their corresponding event handlers.
-        event_listener_config (ImmediateEventListenerSettings): The event listener configuration settings.
+        event_listener_config (OnceEventListenerSettings): The event listener configuration settings.
     """
 
     def __init__(
         self,
         events: EventListenerEvents,
-        event_listener_config: ImmediateEventListenerSettings,
+        event_listener_config: OnceEventListenerSettings,
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
@@ -51,9 +51,9 @@ class ImmediateEventListener(BaseEventListener):
         # from finishing the startup process which is required to close the application gracefully
         @repeat_every(seconds=0, max_repetitions=1)
         async def resync_and_exit() -> None:
-            logger.info("Immediate event listener started")
+            logger.info("Once event listener started")
             await self.events["on_resync"]({})
-            logger.info("Immediate event listener finished")
+            logger.info("Once event listener finished")
             logger.info("Exiting application")
             signal.raise_signal(signal.SIGINT)
 

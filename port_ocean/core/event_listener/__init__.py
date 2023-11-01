@@ -11,9 +11,9 @@ from port_ocean.core.event_listener.polling import (
     PollingEventListener,
 )
 
-from port_ocean.core.event_listener.immediate import (
-    ImmediateEventListenerSettings,
-    ImmediateEventListener,
+from port_ocean.core.event_listener.once import (
+    OnceEventListenerSettings,
+    OnceEventListener,
 )
 
 
@@ -21,7 +21,7 @@ EventListenerSettingsType = (
     HttpEventListenerSettings
     | KafkaEventListenerSettings
     | PollingEventListenerSettings
-    | ImmediateEventListenerSettings
+    | OnceEventListenerSettings
 )
 
 __all__ = [
@@ -32,6 +32,6 @@ __all__ = [
     "KafkaEventListenerSettings",
     "PollingEventListener",
     "PollingEventListenerSettings",
-    "ImmediateEventListener",
-    "ImmediateEventListenerSettings",
+    "OnceEventListener",
+    "OnceEventListenerSettings",
 ]
