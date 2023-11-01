@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import click
-import os
 
 from port_ocean.cli.commands.main import cli_start, print_logo, console
 from port_ocean.config.settings import LogLevelType
@@ -64,8 +63,16 @@ def sail(
 
     console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
 
+    override = {}
     if once:
         console.print("Setting event listener to Once")
-        os.environ["OCEAN__EVENT_LISTENER"] = '{"type": "ONCE"}'
+        override = {"event_listener": {"type": "ONCE"}}
+        # os.environ["OCEAN__EVENT_LISTENER"] = '{"type": "ONCE"}'
 
-    run(path, log_level, port, initialize_port_resources)
+    run(
+        path,
+        log_level,
+        port,
+        initialize_port_resources,
+        config_override=override,
+    )

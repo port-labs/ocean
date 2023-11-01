@@ -1,8 +1,8 @@
 from inspect import getmembers
 from typing import Type
-from pydantic import BaseModel
 
 import uvicorn
+from pydantic import BaseModel
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
@@ -27,12 +27,13 @@ def run(
     log_level: LogLevelType = "INFO",
     port: int = 8000,
     initialize_port_resources: bool | None = None,
+    config_override: dict | None = None,
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
 
     setup_logger(application_settings.log_level)
     config_factory = _get_default_config_factory()
-    default_app = create_default_app(path, config_factory)
+    default_app = create_default_app(path, config_factory, config_override)
 
     main_path = f"{path}/main.py" if path else "main.py"
     app_module = load_module(main_path)
