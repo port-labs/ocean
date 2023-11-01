@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import click
-import os
 
 from port_ocean.cli.commands.main import cli_start, print_logo, console
 from port_ocean.config.settings import LogLevelType
