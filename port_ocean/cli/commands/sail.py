@@ -33,7 +33,7 @@ from port_ocean.config.settings import LogLevelType
     "--initialize-port-resources",
     "initialize_port_resources",
     type=bool,
-    help="""Set to true to create default resources on installation.
+    help="""Set to False to not create default resources on installation.
             If not specified, will use the environment variable `OCEAN__INITIALIZE_PORT_RESOURCES` to determine whether 
             to initialize resources""",
 )
