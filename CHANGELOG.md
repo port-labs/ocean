@@ -11,7 +11,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Bug Fixes
 
-- Fixed the `initialize-port-resources` option in `ocean sail` to not be a flag
+- Fixed the `initialize-port-resources` option in `ocean sail` to not be a flag.
+- Changed default of `initialize-port-resources` to `true`.
+- Catch all exceptions in the resync of ONCE event listener,to make sure the application will exit gracefully 
 
 
 ## 0.4.0 (2023-10-31)
