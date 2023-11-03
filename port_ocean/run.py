@@ -44,6 +44,7 @@ def run(
     # Override config with arguments
     if initialize_port_resources is not None:
         app.config.initialize_port_resources = initialize_port_resources
+
     if app.config.initialize_port_resources:
         initialize_defaults(
             app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config

@@ -52,7 +52,11 @@ class OnceEventListener(BaseEventListener):
         @repeat_every(seconds=0, max_repetitions=1)
         async def resync_and_exit() -> None:
             logger.info("Once event listener started")
-            await self.events["on_resync"]({})
+            try:
+                await self.events["on_resync"]({})
+            except Exception:
+                # we catch all exceptions here to make sure the application will exit gracefully
+                logger.exception("Error occurred while resyncing")
             logger.info("Once event listener finished")
             logger.info("Exiting application")
             signal.raise_signal(signal.SIGINT)

@@ -33,9 +33,9 @@ from port_ocean.config.settings import LogLevelType
     "--initialize-port-resources",
     "initialize_port_resources",
     type=bool,
-    is_flag=True,
-    help="""Set to true to create default resources on installation.
-            If not specified, the default value is false.""",
+    help="""Set to False to not create default resources on installation.
+            If not specified, will use the environment variable `OCEAN__INITIALIZE_PORT_RESOURCES` to determine whether 
+            to initialize resources, and if not set, will default to True.""",
 )
 @click.option(
     "-O",
