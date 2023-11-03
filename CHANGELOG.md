@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.1 (2023-11-03)
+
+## Bug Fixes
+
+- Fixed the `initialize-port-resources` option in `ocean sail` to not be a flag
+
+
 ## 0.4.0 (2023-10-31)
 
 ### Features
