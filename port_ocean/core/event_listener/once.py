@@ -54,9 +54,9 @@ class OnceEventListener(BaseEventListener):
             logger.info("Once event listener started")
             try:
                 await self.events["on_resync"]({})
-            except Exception as e:
+            except Exception:
                 # we catch all exceptions here to make sure the application will exit gracefully
-                logger.exception(f"Error occurred while resyncing")
+                logger.exception("Error occurred while resyncing")
             logger.info("Once event listener finished")
             logger.info("Exiting application")
             signal.raise_signal(signal.SIGINT)
