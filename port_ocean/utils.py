@@ -117,8 +117,6 @@ def repeat_every(
                         logger.error(formatted_exception)
                         if raise_exceptions:
                             raise exc
-                        # # if we don't raise the exception, we still need to increment the repetitions counter
-                        # repetitions += 1
                     await asyncio.sleep(seconds)
 
             ensure_future(loop())
