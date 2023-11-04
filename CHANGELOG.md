@@ -23,6 +23,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Removed version field from the spec.yml in the scaffolded integration (Version will be taken from the pyproject.toml) (PORT-5107)
 - Changed the integration type in spec.yml to be the integration slug when scaffolding a new integration (PORT-5107)
 - Added more logs to the ocean package for better debugging of the integration (PORT-4780)
+- Seperated `SyncRawMixin` from `SyncRawMixin` (moved `SyncRawMixin` to `core/integrations/mixins/sync_raw.py`)
+- Improved code readability for `SyncRawMixin`
 
 
 ## 0.4.1 (2023-11-03)
