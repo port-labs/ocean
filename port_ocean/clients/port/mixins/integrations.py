@@ -15,10 +15,12 @@ class IntegrationClientMixin:
     def __init__(
         self,
         integration_identifier: str,
+        integration_version: str,
         auth: PortAuthentication,
         client: httpx.AsyncClient,
     ):
         self.integration_identifier = integration_identifier
+        self.integration_version = integration_version
         self.auth = auth
         self.client = client
 
@@ -48,6 +50,7 @@ class IntegrationClientMixin:
         json = {
             "installationId": self.integration_identifier,
             "installationAppType": _type,
+            "version": self.integration_version,
             "changelogDestination": changelog_destination,
             "config": {},
         }
@@ -73,6 +76,7 @@ class IntegrationClientMixin:
             json["changelogDestination"] = changelog_destination
         if port_app_config:
             json["config"] = port_app_config.to_request()
+        json["version"] = self.integration_version
 
         response = await self.client.patch(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
@@ -99,6 +103,7 @@ class IntegrationClientMixin:
             if (
                 integration["changelogDestination"] != changelog_destination
                 or integration["installationAppType"] != _type
+                or integration.get("version") != self.integration_version
             ):
                 await self.patch_integration(
                     _type, changelog_destination, port_app_config
