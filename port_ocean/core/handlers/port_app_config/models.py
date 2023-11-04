@@ -52,7 +52,10 @@ class PortAppConfig(BaseModel):
             "deleteDependentEntities": self.delete_dependent_entities,
             "createMissingRelatedEntities": self.create_missing_related_entities,
             "enableMergeEntity": self.enable_merge_entity,
-            "resources": [resource.dict(by_alias=True) for resource in self.resources],
+            "resources": [
+                resource.dict(by_alias=True, exclude_none=True, exclude_unset=True)
+                for resource in self.resources
+            ],
         }
 
     class Config:
