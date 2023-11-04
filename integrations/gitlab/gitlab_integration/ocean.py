@@ -1,11 +1,15 @@
+import asyncio
+import typing
 from datetime import datetime, timedelta
 from typing import Any
 
 from loguru import logger
 from starlette.requests import Request
+from port_ocean.context.event import event
 
 from gitlab_integration.bootstrap import event_handler
 from gitlab_integration.bootstrap import setup_application
+from gitlab_integration.git_integration import GitlabResourceConfig
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -23,11 +27,17 @@ async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
 
 @ocean.on_start()
 async def on_start() -> None:
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
     logic_settings = ocean.integration_config
     if not logic_settings.get("app_host"):
         logger.warning(
             f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
         )
+        return
+
     try:
         setup_application(
             logic_settings["token_mapping"],
@@ -47,7 +57,32 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
         logger.info(f"fetching projects for token {masked_token}")
         async for projects_batch in service.get_all_projects():
-            yield [project.asdict() for project in projects_batch]
+            logger.info(f"Fetching extras for {len(projects_batch)} projects")
+            tasks = []
+            for project in projects_batch:
+                tasks.append(service.enrich_project_with_extras(project))
+            projects = await asyncio.gather(*tasks)
+            logger.info(f"Finished fetching extras for {len(projects_batch)} projects")
+            yield projects
+
+
+@ocean.on_resync(ObjectKind.FOLDER)
+async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    for service in get_cached_all_services():
+        gitlab_resource_config: GitlabResourceConfig = typing.cast(
+            "GitlabResourceConfig", event.resource_config
+        )
+        if not isinstance(gitlab_resource_config, GitlabResourceConfig):
+            return
+        selector = gitlab_resource_config.selector
+        async for projects_batch in service.get_all_projects():
+            for folder_selector in selector.folders:
+                for project in projects_batch:
+                    if project.name in folder_selector.repos:
+                        async for folders_batch in service.get_all_folders_in_project_path(
+                            project, folder_selector
+                        ):
+                            yield folders_batch
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)

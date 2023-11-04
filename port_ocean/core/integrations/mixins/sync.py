@@ -400,8 +400,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             silent (bool): Whether to raise exceptions or handle them silently.
         """
         logger.info("Resync was triggered")
-
-        async with event_context(EventType.RESYNC, trigger_type=trigger_type):
+        async with event_context(
+            EventType.RESYNC,
+            trigger_type=trigger_type,
+        ):
             app_config = await self.port_app_config_handler.get_port_app_config()
 
             entities_at_port = await ocean.port_client.search_entities(user_agent_type)

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.9 (2023-11-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.1 (#1)
+
+
+0.1.8 (2023-11-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.0 and handle ONCE event listener (#1)
+
+
+0.1.7 (2023-10-30)
+
+### Improvements
+
+- Fixed the default mapping to exclude issues with status `Done` (#1)
+
+
+0.1.6 (2023-10-29)
+
+### Improvements
+
+- Bumped ocean version to 0.3.2 (#1)
+
+
 0.1.5 (2023-09-27)
 
 ### Improvements

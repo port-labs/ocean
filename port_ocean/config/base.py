@@ -147,9 +147,9 @@ class BaseOceanSettings(BaseSettings):
             **__,
         ):
             return (
+                init_settings,
                 env_settings,
                 lambda s: load_providers(
                     s, env_settings(s), init_settings.init_kwargs["base_path"]
                 ),
-                init_settings,
             )
