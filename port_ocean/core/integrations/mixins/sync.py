@@ -22,11 +22,10 @@ from port_ocean.core.ocean_types import (
     EntityDiff,
     RESYNC_RESULT,
     RAW_RESULT,
-    RESYNC_EVENT_LISTENER,
     ASYNC_GENERATOR_RESYNC_TYPE,
 )
 from port_ocean.core.utils import zip_and_sum
-from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.exceptions.core import OceanAbortException, KindNotImplementedException
 
 
 class SyncMixin(HandlerMixin):
@@ -125,6 +124,17 @@ class SyncMixin(HandlerMixin):
         logger.info("Finished syncing change")
 
 
+def _is_resource_supported(kind: str, resync_event_mapping) -> bool:
+    return bool(resync_event_mapping[kind] or resync_event_mapping[None])
+
+
+def _unsupported_kind_response(
+    kind: str, available_resync_kinds: list[str]
+) -> tuple[RESYNC_RESULT, list[Exception]]:
+    logger.error(f"Kind {kind} is not supported in this integration")
+    return [], [KindNotImplementedException(kind, available_resync_kinds)]
+
+
 class SyncRawMixin(HandlerMixin, EventsMixin):
     """Mixin class for synchronization of raw constructed entities.
 
@@ -142,6 +152,78 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _on_resync(self, kind: str) -> RAW_RESULT:
         raise NotImplementedError("on_resync must be implemented")
 
+    async def _get_resource_raw_results(
+        self, resource_config: ResourceConfig
+    ) -> tuple[RESYNC_RESULT, list[Exception]]:
+        logger.info(f"Fetching {resource_config.kind} resync results")
+
+        if not _is_resource_supported(
+            resource_config.kind, self.event_strategy["resync"]
+        ):
+            return _unsupported_kind_response(
+                resource_config.kind, self.available_resync_kinds
+            )
+
+        fns = self._collect_resync_functions(resource_config)
+
+        results, errors = await self._execute_resync_tasks(fns, resource_config)
+
+        return results, errors
+
+    def _collect_resync_functions(
+        self, resource_config: ResourceConfig
+    ) -> list[Callable[[str], Awaitable[RAW_RESULT]]]:
+        logger.contextualize(kind=resource_config.kind)
+
+        fns = [
+            *self.event_strategy["resync"][resource_config.kind],
+            *self.event_strategy["resync"][None],
+        ]
+
+        if self.__class__._on_resync != SyncRawMixin._on_resync:
+            fns.append(self._on_resync)
+
+        return fns
+
+    async def _execute_resync_tasks(
+        self,
+        fns: list[Callable[[str], Awaitable[RAW_RESULT]]],
+        resource_config: ResourceConfig,
+    ) -> tuple[RESYNC_RESULT, list[RAW_RESULT | Exception]]:
+        tasks = []
+        results = []
+
+        for task in fns:
+            if inspect.isasyncgenfunction(task):
+                results.append(resync_generator_wrapper(task, resource_config.kind))
+            else:
+                task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
+                tasks.append(resync_function_wrapper(task, resource_config.kind))
+
+        logger.info(
+            f"Found {len(tasks) + len(results)} resync tasks for {resource_config.kind}"
+        )
+
+        results_with_error = await asyncio.gather(*tasks, return_exceptions=True)
+        results.extend(
+            sum(
+                [
+                    result
+                    for result in results_with_error
+                    if not isinstance(result, Exception)
+                ]
+            )
+        )
+        errors = [
+            result for result in results_with_error if isinstance(result, Exception)
+        ]
+
+        logger.info(
+            f"Triggered {len(tasks)} tasks for {resource_config.kind}, failed: {len(errors)}"
+        )
+
+        return results, errors
+
     async def _calculate_raw(
         self, raw_diff: list[tuple[ResourceConfig, RawEntityDiff]]
     ) -> list[EntityDiff]:
@@ -152,56 +234,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for mapping, results in raw_diff
             )
         )
-
-    async def _get_resource_raw_results(
-        self, resource_config: ResourceConfig
-    ) -> tuple[RESYNC_RESULT, list[Exception]]:
-        logger.info(f"Fetching {resource_config.kind} resync results")
-        tasks: list[Awaitable[RAW_RESULT]] = []
-        with logger.contextualize(kind=resource_config.kind):
-            fns: list[RESYNC_EVENT_LISTENER] = [
-                *self.event_strategy["resync"][resource_config.kind],
-                *self.event_strategy["resync"][None],
-            ]
-
-            if self.__class__._on_resync != SyncRawMixin._on_resync:
-                fns.append(self._on_resync)
-
-            results: RESYNC_RESULT = []
-            for task in fns:
-                if inspect.isasyncgenfunction(task):
-                    results.append(resync_generator_wrapper(task, resource_config.kind))
-                else:
-                    task = typing.cast(Callable[[str], Awaitable[RAW_RESULT]], task)
-                    tasks.append(resync_function_wrapper(task, resource_config.kind))
-
-            logger.info(
-                f"Found {len(tasks) + len(results)} resync tasks for {resource_config.kind}"
-            )
-
-            results_with_error: list[RAW_RESULT | Exception] = await asyncio.gather(
-                *tasks,
-                return_exceptions=True,
-            )
-            results.extend(
-                sum(
-                    [
-                        result
-                        for result in results_with_error
-                        if not isinstance(result, Exception)
-                    ],
-                    [],
-                )
-            )
-
-            errors = [
-                result for result in results_with_error if isinstance(result, Exception)
-            ]
-
-            logger.info(
-                f"Triggered {len(tasks)} tasks for {resource_config.kind}, failed: {len(errors)}"
-            )
-            return results, errors
 
     async def _register_resource_raw(
         self,

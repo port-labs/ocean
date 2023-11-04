@@ -2,6 +2,7 @@
 
 import click
 
+from port_ocean import __version__, __integration_version__
 from port_ocean.cli.commands.main import cli_start, print_logo, console
 from port_ocean.config.settings import LogLevelType
 
@@ -62,6 +63,8 @@ def sail(
     print_logo()
 
     console.print("Setting sail... ⛵️⚓️⛵️⚓️ All hands on deck! ⚓️")
+    console.print(f"🌊 Ocean version: {__version__}")
+    console.print(f"🚢 Integration version: {__integration_version__}")
 
     override = {}
     if once:
