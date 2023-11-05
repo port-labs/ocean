@@ -116,8 +116,7 @@ jobs:
               console.log(error);
               core.setFailed('Failed to create combined branch - maybe a branch by that name already exists?');
               return;
-            }
-            
+            }            
             let combinedPRs = [];
             let mergeFailedPRs = [];
             for(const { branch, prString } of branchesAndPRStrings) {
@@ -134,8 +133,7 @@ jobs:
                 console.log('Failed to merge branch ' + branch);
                 mergeFailedPRs.push(prString);
               }
-            }
-            
+            }            
             console.log('Creating combined PR');
             const combinedPRsString = combinedPRs.join('\n');
             let body = '? This PR was created by the Combine PRs action by combining the following PRs:\n' + combinedPRsString;
