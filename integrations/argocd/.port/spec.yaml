@@ -1,0 +1,18 @@
+type: argocd
+description: Argocd integration for Port Ocean
+icon: Argo
+features:
+  - type: exporter
+    section: Kubernetes Stack
+    resources:
+      - kind: cluster
+      - kind: project
+      - kind: application
+configurations:
+  - name: token
+    required: true
+    type: string
+    sensitive: true
+  - name: serverUrl
+    type: string
+    required: true

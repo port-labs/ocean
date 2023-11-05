@@ -44,3 +44,4 @@ class ObjectKind:
     MERGE_REQUEST = "merge-request"
     PIPELINE = "pipeline"
     PROJECT = "project"
+    FOLDER = "folder"
