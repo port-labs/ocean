@@ -1,47 +1,7 @@
 # {{cookiecutter.integration_name}}
 
-{{cookiecutter.integration_short_description}}
+An integration used to import {{cookiecutter.integration_name}} resources into Port.
 
-## Development Requirements
+#### Install & use the integration - [Integration documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/) *Replace this link with a link to this integration's documentation*
 
-- Python3.11.0
-- Poetry (Python Package Manager)
-- Port-Ocean
-
-## Installation
-
-```sh
-make install
-```
-
-## Runnning Localhost
-```sh
-make run
-```
-or
-```sh
-ocean sail
-```
-
-## Running Tests
-
-`make test`
-
-## Access Swagger Documentation
-
-> <http://localhost:8080/docs>
-
-## Access Redoc Documentation
-
-> <http://localhost:8080/redoc>
-
-
-## Folder Structure
-The {{cookiecutter.integration_name}} integration suggested folder structure is as follows:
-
-```
-{{cookiecutter.integration_name}}/
-├─ main.py
-├─ pyproject.toml
-└─ Dockerfile
-```
+#### Develop & improve the integration - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)

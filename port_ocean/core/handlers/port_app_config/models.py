@@ -33,10 +33,10 @@ class ResourceConfig(BaseModel):
 class PortAppConfig(BaseModel):
     enable_merge_entity: bool = Field(alias="enableMergeEntity", default=False)
     delete_dependent_entities: bool = Field(
-        alias="deleteDependentEntities", default=False
+        alias="deleteDependentEntities", default=True
     )
     create_missing_related_entities: bool = Field(
-        alias="createMissingRelatedEntities", default=False
+        alias="createMissingRelatedEntities", default=True
     )
     resources: list[ResourceConfig] = Field(default_factory=list)
 

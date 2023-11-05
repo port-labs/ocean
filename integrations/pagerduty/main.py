@@ -80,6 +80,10 @@ async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
 
 @ocean.on_start()
 async def on_start() -> None:
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
     pager_duty_client = PagerDutyClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],

@@ -74,7 +74,10 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         self.started = True
 
-        async with event_context(EventType.START, trigger_type="machine"):
+        async with event_context(
+            EventType.START,
+            trigger_type="machine",
+        ):
             await asyncio.gather(
                 *(listener() for listener in self.event_strategy["start"])
             )
