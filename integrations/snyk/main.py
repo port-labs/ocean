@@ -124,6 +124,10 @@ async def on_vulnerability_webhook_handler(request: Request) -> None:
 
 @ocean.on_start()
 async def on_start() -> None:
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
     ## check if user provided webhook secret or app_host. These variable are required to create webhook subscriptions. If the user did not provide them, we ignore creating webhook subscriptions
     if ocean.integration_config.get("app_host") and ocean.integration_config.get(
         "webhook_secret"

@@ -123,6 +123,10 @@ async def handle_firehydrant_webhook(webhook_data: dict[str, Any]) -> None:
 
 @ocean.on_start()
 async def on_start() -> None:
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook subscription because the event listener is ONCE")
+        return
+
     ## We are making the subscription of webhook optional. It will be triggered only when the user specifies the app_host variable
     if ocean.integration_config.get("app_host"):
         logger.info("Subscribing to Firehydrant webhooks")
