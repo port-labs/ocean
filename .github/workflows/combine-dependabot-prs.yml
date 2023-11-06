@@ -136,10 +136,10 @@ jobs:
             }
             console.log('Creating combined PR');
             const combinedPRsString = combinedPRs.join('\n');
-            let body = '? This PR was created by the Combine PRs action by combining the following PRs:\n' + combinedPRsString;
+            let body = '✅This PR was created by the Combine PRs action by combining the following PRs:\n' + combinedPRsString;
             if(mergeFailedPRs.length > 0) {
               const mergeFailedPRsString = mergeFailedPRs.join('\n');
-              body += '\n\n?? The following PRs were left out due to merge conflicts:\n' + mergeFailedPRsString
+              body += '\n\n⚠️The following PRs were left out due to merge conflicts:\n' + mergeFailedPRsString
             }
             await github.rest.pulls.create({
               owner: context.repo.owner,
