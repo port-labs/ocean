@@ -98,6 +98,12 @@ async def on_start() -> None:
     sonar_client.sanity_check()
     if organization_key_missing_for_onpremise():
         logger.warning("Organization key is missing for an on-premise Sonarqube setup")
-    ## We are making the real-time subscription of Sonar webhook events optional. That said, we only subscribe to webhook events when the user supplies the app_host config variable
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    # We are making the real-time subscription of Sonar webhook events optional. That said,
+    # we only subscribe to webhook events when the user supplies the app_host config variable
     if ocean.integration_config.get("app_host"):
         await sonar_client.get_or_create_webhook_url()
