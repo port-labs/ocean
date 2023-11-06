@@ -1,3 +1,5 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
 resources:
   - kind: project
     selector:

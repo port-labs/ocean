@@ -1,7 +1,9 @@
+import asyncio
 import typing
 from datetime import datetime, timedelta
 from typing import List, Tuple, Any, Union, TYPE_CHECKING
 
+import anyio.to_thread
 import yaml
 from gitlab import Gitlab, GitlabList
 from gitlab.base import RESTObject
@@ -25,7 +27,9 @@ from port_ocean.core.models import Entity
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 
 if TYPE_CHECKING:
-    from gitlab_integration.git_integration import GitlabPortAppConfig
+    from gitlab_integration.git_integration import (
+        GitlabPortAppConfig,
+    )
 
 
 class GitlabService:
@@ -118,20 +122,35 @@ class GitlabService:
     def should_run_for_path(self, path: str) -> bool:
         return any(does_pattern_apply(mapping, path) for mapping in self.group_mapping)
 
-    def should_run_for_project(self, project: Project) -> bool:
-        return self.should_run_for_path(project.path_with_namespace)
+    def should_run_for_project(
+        self,
+        project: typing.Union[RESTObject | dict[str, Any] | Project],
+    ) -> bool:
+        if isinstance(project, Project):
+            return self.should_run_for_path(project.path_with_namespace)
+        return False
 
-    def should_run_for_merge_request(self, merge_request: MergeRequest) -> bool:
-        project_path = merge_request.references.get("full").rstrip(
-            merge_request.references.get("short")
-        )
-        return self.should_run_for_path(project_path)
+    def should_run_for_merge_request(
+        self,
+        merge_request: typing.Union[RESTObject, dict[str, Any], Project, MergeRequest],
+    ) -> bool:
+        if type(merge_request) == MergeRequest:
+            project_path = merge_request.references.get("full").rstrip(
+                merge_request.references.get("short")
+            )
+            return self.should_run_for_path(project_path)
+        return False
 
-    def should_run_for_issue(self, issue: Issue) -> bool:
-        project_path = issue.references.get("full").rstrip(
-            issue.references.get("short")
-        )
-        return self.should_run_for_path(project_path)
+    def should_run_for_issue(
+        self,
+        issue: typing.Union[RESTObject, dict[str, Any], Project, MergeRequest, Issue],
+    ) -> bool:
+        if type(issue) == Issue:
+            project_path = issue.references.get("full").rstrip(
+                issue.references.get("short")
+            )
+            return self.should_run_for_path(project_path)
+        return False
 
     def get_root_groups(self) -> List[Group]:
         groups = self.gitlab_client.groups.list(iterator=True)
@@ -189,7 +208,7 @@ class GitlabService:
             return project
 
         project = self.gitlab_client.projects.get(project_id)
-        if self.should_run_for_project(project.path_with_namespace):
+        if self.should_run_for_project(project):
             event.attributes[PROJECTS_CACHE_KEY][self.gitlab_client.private_token][
                 project_id
             ] = project
@@ -212,7 +231,6 @@ class GitlabService:
             yield cached_projects.values()
             return
 
-        all_projects = []
         async for projects_batch in async_fetcher.fetch(
             fetch_func=self.gitlab_client.projects.list,
             validation_func=self.should_run_for_project,
@@ -223,56 +241,138 @@ class GitlabService:
             order_by="id",
             sort="asc",
         ):
+            projects: List[Project] = typing.cast(List[Project], projects_batch)
             logger.info(
-                f"Queried {len(projects_batch)} projects {[project.path_with_namespace for project in projects_batch]}"
+                f"Queried {len(projects)} projects {[project.path_with_namespace for project in projects]}"
             )
-            all_projects.extend(projects_batch)
-            yield projects_batch
+            cached_projects = event.attributes[PROJECTS_CACHE_KEY][
+                self.gitlab_client.private_token
+            ]
+            cached_projects.update({project.id: project for project in projects})
+            yield projects
 
-        event.attributes[PROJECTS_CACHE_KEY][self.gitlab_client.private_token] = {
-            project.id: project for project in all_projects
-        }
+    @classmethod
+    async def async_project_language_wrapper(cls, project: Project) -> dict[str, Any]:
+        try:
+            languages = await anyio.to_thread.run_sync(project.languages)
+            return {"__languages": languages}
+        except Exception as e:
+            logger.warning(
+                f"Failed to get languages for project={project.path_with_namespace}. error={e}"
+            )
+            return {"__languages": {}}
+
+    @classmethod
+    async def enrich_project_with_extras(cls, project: Project) -> dict[str, Any]:
+        tasks = [
+            cls.async_project_language_wrapper(project),
+        ]
+        tasks_extras = await asyncio.gather(*tasks)
+        project_with_extras = project.asdict()
+        project_with_extras.update(
+            **{
+                key: value
+                for task_extras in tasks_extras
+                for key, value in task_extras.items()
+            }
+        )
+        return project_with_extras
+
+    @staticmethod
+    def validate_file_is_directory(
+        file: Union[RESTObject, dict[str, Any], Project]
+    ) -> bool:
+        if isinstance(file, dict):
+            return file["type"] == "tree"
+        return False
+
+    async def get_all_folders_in_project_path(
+        self, project: Project, folder_selector
+    ) -> typing.AsyncIterator[List[dict[str, Any]]]:
+        branch = folder_selector.branch or project.default_branch
+        try:
+            async_fetcher = AsyncFetcher(self.gitlab_client)
+            async for repository_tree_batch in async_fetcher.fetch(
+                fetch_func=project.repository_tree,
+                validation_func=self.validate_file_is_directory,
+                path=folder_selector.path,
+                ref=branch,
+                pagination="keyset",
+                order_by="id",
+                sort="asc",
+            ):
+                repository_tree_files: List[dict[str, Any]] = typing.cast(
+                    List[dict[str, Any]], repository_tree_batch
+                )
+                logger.info(
+                    f"Found {len(repository_tree_files)} folders {[folder['path'] for folder in repository_tree_files]}"
+                    f" in project {project.path_with_namespace}"
+                )
+                yield [
+                    {
+                        "folder": folder,
+                        "repo": project.asdict(),
+                        "__branch": branch,
+                    }
+                    for folder in repository_tree_files
+                ]
+        except Exception as e:
+            logger.error(
+                f"Failed to get folders in project={project.path_with_namespace} for path={folder_selector.path} and "
+                f"branch={branch}. error={e}"
+            )
+            return
 
     async def get_all_jobs(
         self, project: Project
     ) -> typing.AsyncIterator[List[ProjectPipelineJob]]:
+        def should_run_for_job(_: Union[RESTObject, dict[str, Any], Project]) -> bool:
+            return True
+
         logger.info(f"fetching jobs for project {project.path_with_namespace}")
-        async_fetcher: typing.AsyncIterator[List[ProjectPipelineJob]] = AsyncFetcher(
-            self.gitlab_client
-        ).fetch(
+        async_fetcher = AsyncFetcher(self.gitlab_client)
+        async for pipeline_jobs_batch in async_fetcher.fetch(
             fetch_func=project.jobs.list,
+            validation_func=should_run_for_job,
             pagination="offset",
             order_by="id",
             sort="asc",
-        )
-        async for issues_batch in async_fetcher:
+        ):
+            pipeline_jobs = typing.cast(List[ProjectPipelineJob], pipeline_jobs_batch)
+
             logger.info(
-                f"Queried {len(issues_batch)} jobs {[job.name for job in issues_batch]}"
+                f"Queried {len(pipeline_jobs)} jobs {[job.name for job in pipeline_jobs]}"
             )
-            yield issues_batch
+            yield pipeline_jobs
 
     async def get_all_pipelines(
         self, project: Project
     ) -> typing.AsyncIterator[List[ProjectPipeline]]:
         from_time = datetime.now() - timedelta(days=14)
         created_after = from_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+        def should_run_for_pipeline(
+            _: Union[RESTObject, dict[str, Any], Project]
+        ) -> bool:
+            return True
+
         logger.info(
             f"Fetching pipelines for project {project.path_with_namespace} created after {created_after}"
         )
-        async_fetcher: typing.AsyncIterator[List[ProjectPipeline]] = AsyncFetcher(
-            self.gitlab_client
-        ).fetch(
+        async_fetcher = AsyncFetcher(self.gitlab_client)
+        async for pipelines_batch in async_fetcher.fetch(
             fetch_func=project.pipelines.list,
+            validation_func=should_run_for_pipeline,
             pagination="offset",
             order_by="id",
             sort="asc",
             created_after=created_after,
-        )
-        async for pipelines_batch in async_fetcher:
+        ):
+            pipelines = typing.cast(List[ProjectPipeline], pipelines_batch)
             logger.info(
-                f"Queried {len(pipelines_batch)} pipelines {[pipeline.id for pipeline in pipelines_batch]}"
+                f"Queried {len(pipelines)} pipelines {[pipeline.id for pipeline in pipelines]}"
             )
-            yield pipelines_batch
+            yield pipelines
 
     async def get_opened_merge_requests(
         self, group: Group
@@ -286,7 +386,10 @@ class GitlabService:
             sort="desc",
             state="opened",
         ):
-            yield merge_request_batch
+            merge_requests: List[MergeRequest] = typing.cast(
+                List[MergeRequest], merge_request_batch
+            )
+            yield merge_requests
 
     async def get_closed_merge_requests(
         self, group: Group, updated_after: datetime
@@ -301,7 +404,10 @@ class GitlabService:
             state=["closed", "locked", "merged"],
             updated_after=updated_after.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         ):
-            yield merge_request_batch
+            merge_requests: List[MergeRequest] = typing.cast(
+                List[MergeRequest], merge_request_batch
+            )
+            yield merge_requests
 
     async def get_all_issues(self, group: Group) -> typing.AsyncIterator[List[Issue]]:
         async_fetcher = AsyncFetcher(self.gitlab_client)
@@ -312,7 +418,8 @@ class GitlabService:
             order_by="created_at",
             sort="desc",
         ):
-            yield issues_batch
+            issues: List[Issue] = typing.cast(List[Issue], issues_batch)
+            yield issues
 
     def get_entities_diff(
         self,

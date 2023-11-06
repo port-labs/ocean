@@ -35,7 +35,7 @@ class EntityClientMixin:
                 "upsert": "true",
                 "merge": str(request_options.get("merge", False)).lower(),
                 "create_missing_related_entities": str(
-                    request_options.get("create_missing_related_entities", False)
+                    request_options.get("create_missing_related_entities", True)
                 ).lower(),
                 "validation_only": str(validation_only).lower(),
             },
@@ -64,7 +64,7 @@ class EntityClientMixin:
             headers=await self.auth.headers(user_agent_type),
             params={
                 "delete_dependents": str(
-                    request_options.get("delete_dependent_entities", False)
+                    request_options.get("delete_dependent_entities", True)
                 ).lower()
             },
         )
@@ -150,7 +150,7 @@ class EntityClientMixin:
             {
                 "merge": options.get("merge", False),
                 "create_missing_related_entities": options.get(
-                    "create_missing_related_entities", False
+                    "create_missing_related_entities", True
                 ),
                 "validation_only": True,
             },
