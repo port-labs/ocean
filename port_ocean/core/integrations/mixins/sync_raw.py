@@ -105,7 +105,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     result
                     for result in results_with_error
                     if not isinstance(result, Exception)
-                ]
+                ],
+                [],
             )
         )
         errors = [
