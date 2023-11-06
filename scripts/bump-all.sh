@@ -27,7 +27,7 @@ for folder in "$(pwd)"/integrations/*; do
         (cd "$folder" && source .venv/bin/activate && poetry add port-ocean@$VERSION -E cli)
 
         echo "Run towncrier create"
-        (cd "$folder" && source .venv/bin/activate && towncrier create --content "Bumped ocean version to $VERSION" 1.improvement.md && git add . && git commit -m "Bumped ocean version to $VERSION")
+        (cd "$folder" && source .venv/bin/activate && towncrier create --content "Bumped ocean version to $VERSION" 1.improvement.md)
         
         echo "Run towncrier build"
         current_version=$(cd $folder && source .venv/bin/activate && poetry version --short)
@@ -46,6 +46,6 @@ for folder in "$(pwd)"/integrations/*; do
         echo "New version: $new_version"
         
         echo "Run towncrier build to increment the patcb version"
-        (cd "$folder" && source .venv/bin/activate && towncrier build --yes --version $new_version)
+        (cd "$folder" && source .venv/bin/activate && towncrier build --yes --version $new_version && rm changelog/1.improvement.md && git add . && git commit -m "Bumped ocean version to $VERSION for $(basename "$folder")")
     fi
 done

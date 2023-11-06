@@ -1,5 +1,5 @@
 from inspect import getmembers
-from typing import Type
+from typing import Type, Dict, Any
 from pydantic import BaseModel
 
 import uvicorn
@@ -27,12 +27,13 @@ def run(
     log_level: LogLevelType = "INFO",
     port: int = 8000,
     initialize_port_resources: bool | None = None,
+    config_override: Dict[str, Any] | None = None,
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
 
     setup_logger(application_settings.log_level)
     config_factory = _get_default_config_factory()
-    default_app = create_default_app(path, config_factory)
+    default_app = create_default_app(path, config_factory, config_override)
 
     main_path = f"{path}/main.py" if path else "main.py"
     app_module = load_module(main_path)
@@ -43,6 +44,7 @@ def run(
     # Override config with arguments
     if initialize_port_resources is not None:
         app.config.initialize_port_resources = initialize_port_resources
+
     if app.config.initialize_port_resources:
         initialize_defaults(
             app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config

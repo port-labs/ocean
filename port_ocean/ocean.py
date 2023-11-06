@@ -1,7 +1,7 @@
 import asyncio
 import sys
 import threading
-from typing import Callable
+from typing import Callable, Any, Dict
 
 from fastapi import FastAPI, APIRouter
 from loguru import logger
@@ -29,12 +29,15 @@ class Ocean:
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
         integration_router: APIRouter | None = None,
         config_factory: Callable[..., BaseModel] | None = None,
+        config_override: Dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()
         self.fast_api_app.middleware("http")(request_handler)
 
-        self.config = IntegrationConfiguration(base_path="./")
+        self.config = IntegrationConfiguration(
+            base_path="./", **(config_override or {})
+        )
         if config_factory:
             self.config.integration.config = config_factory(
                 **self.config.integration.config
