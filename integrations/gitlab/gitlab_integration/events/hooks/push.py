@@ -1,6 +1,7 @@
 import typing
 from typing import Any
 
+from loguru import logger
 from gitlab.v4.objects import Project
 from gitlab_integration.core.utils import generate_ref
 from gitlab_integration.events.hooks.base import HookHandler
@@ -37,10 +38,13 @@ class PushHook(HookHandler):
                 after,
                 config.branch,
             )
+            # update the entities diff found in the `config.spec_path` file the user configured
             await ocean.update_diff(
                 {"before": entities_before, "after": entities_after},
                 UserAgentType.gitops,
             )
-            return
-
-        await ocean.register_raw(ObjectKind.PROJECT, [gitlab_project.asdict()])
+            # update information regarding the project as well
+            logger.info(
+                f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
+            )
+            await ocean.register_raw(ObjectKind.PROJECT, [gitlab_project.asdict()])
