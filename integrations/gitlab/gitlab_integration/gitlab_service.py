@@ -13,6 +13,7 @@ from gitlab.v4.objects import (
     Issue,
     Group,
     ProjectPipeline,
+    GroupMergeRequest,
     ProjectPipelineJob,
 )
 from loguru import logger
@@ -124,33 +125,27 @@ class GitlabService:
 
     def should_run_for_project(
         self,
-        project: typing.Union[RESTObject | dict[str, Any] | Project],
+        project: Project,
     ) -> bool:
-        if isinstance(project, Project):
-            return self.should_run_for_path(project.path_with_namespace)
-        return False
+        return self.should_run_for_path(project.path_with_namespace)
 
     def should_run_for_merge_request(
         self,
-        merge_request: typing.Union[RESTObject, dict[str, Any], Project, MergeRequest],
+        merge_request: typing.Union[MergeRequest, GroupMergeRequest],
     ) -> bool:
-        if type(merge_request) == MergeRequest:
-            project_path = merge_request.references.get("full").rstrip(
-                merge_request.references.get("short")
-            )
-            return self.should_run_for_path(project_path)
-        return False
+        project_path = merge_request.references.get("full").rstrip(
+            merge_request.references.get("short")
+        )
+        return self.should_run_for_path(project_path)
 
     def should_run_for_issue(
         self,
-        issue: typing.Union[RESTObject, dict[str, Any], Project, MergeRequest, Issue],
+        issue: Issue,
     ) -> bool:
-        if type(issue) == Issue:
-            project_path = issue.references.get("full").rstrip(
-                issue.references.get("short")
-            )
-            return self.should_run_for_path(project_path)
-        return False
+        project_path = issue.references.get("full").rstrip(
+            issue.references.get("short")
+        )
+        return self.should_run_for_path(project_path)
 
     def get_root_groups(self) -> List[Group]:
         groups = self.gitlab_client.groups.list(iterator=True)
