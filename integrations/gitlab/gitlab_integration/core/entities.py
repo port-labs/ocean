@@ -20,9 +20,9 @@ def generate_entity_from_port_yaml(
             gitlab_file = project.files.get(file_path=str(file_meta), ref=ref)
 
             if file_meta.suffix == JSON_SUFFIX:
-                properties[key] = json.loads(gitlab_file.decode())
+                properties[key] = json.loads(gitlab_file.decode().decode("utf-8"))
             else:
-                properties[key] = gitlab_file.decode()
+                properties[key] = gitlab_file.decode().decode("utf-8")
         else:
             properties[key] = value
 

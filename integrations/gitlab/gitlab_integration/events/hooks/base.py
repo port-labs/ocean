@@ -34,6 +34,9 @@ class HookHandler(ABC):
         project = self.gitlab_service.get_project(project_id)
 
         if project:
+            logger.info(
+                f"Handling hook {event} for project {project.path_with_namespace}"
+            )
             await self._on_hook(group_id, body, project)
             logger.info(f"Finished handling {event}")
         else:
