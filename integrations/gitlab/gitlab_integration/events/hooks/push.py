@@ -41,5 +41,6 @@ class PushHook(HookHandler):
                 {"before": entities_before, "after": entities_after},
                 UserAgentType.gitops,
             )
+            return
 
         await ocean.register_raw(ObjectKind.PROJECT, [gitlab_project.asdict()])
