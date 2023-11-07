@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.26 (2023-11-07)
+===================
+
+### Bug Fixes
+
+- Fixed a bug of not finding merge requests on hook event (#1)
+- Fixed a bug of sending binary data when `file://` is configured in `port.yml` (#2)
+- Fixed a bug of type validation that caused skipping merge requests on resync (#3)
+
+
 0.1.25 (2023-11-03)
 ===================
 
