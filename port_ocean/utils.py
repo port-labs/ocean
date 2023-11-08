@@ -10,6 +10,7 @@ from types import ModuleType
 from typing import Callable, Any, Coroutine
 from uuid import uuid4
 
+import tomli
 import yaml
 from loguru import logger
 from starlette.concurrency import run_in_threadpool
@@ -32,6 +33,15 @@ def get_function_location(func: Callable[..., Any]) -> str:
     file_path = inspect.getsourcefile(func)
     line_number = inspect.getsourcelines(func)[1]
     return f"{file_path}:{line_number}"
+
+
+def get_integration_version() -> str:
+    try:
+        with open("./pyproject.toml", "rb") as toml_file:
+            pyproject_data = tomli.load(toml_file)
+            return pyproject_data["tool"]["poetry"]["version"]
+    except (FileNotFoundError, KeyError):
+        return ""
 
 
 def get_spec_file(path: Path = Path(".")) -> dict[str, Any] | None:

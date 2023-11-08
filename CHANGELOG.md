@@ -7,6 +7,26 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.2 (2023-11-04)
+
+### Features
+
+- Added the current integration version to the port requests for future features and better debugging (PORT-4310)
+
+### Bug Fixes
+
+- Added the `install/prod` command to the integration scaffold template as was intended (PORT-5107)
+- Changed the serializing of the port app config so when initializing it there wont be any None or default values displayed in the UI (PORT-5108)
+
+### Improvements
+
+- Removed version field from the spec.yml in the scaffolded integration (Version will be taken from the pyproject.toml) (PORT-5107)
+- Changed the integration type in spec.yml to be the integration slug when scaffolding a new integration (PORT-5107)
+- Added more logs to the ocean package for better debugging of the integration (PORT-4780)
+- Seperated `SyncRawMixin` from `SyncRawMixin` (moved `SyncRawMixin` to `core/integrations/mixins/sync_raw.py`)
+- Improved code readability for `SyncRawMixin`
+
+
 ## 0.4.1 (2023-11-03)
 
 ### Bug Fixes

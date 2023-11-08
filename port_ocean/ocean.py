@@ -20,6 +20,7 @@ from port_ocean.context.ocean import (
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.middlewares import request_handler
 from port_ocean.utils import repeat_every
+from port_ocean.version import __integration_version__
 
 
 class Ocean:
@@ -50,6 +51,7 @@ class Ocean:
             client_secret=self.config.port.client_secret,
             integration_identifier=self.config.integration.identifier,
             integration_type=self.config.integration.type,
+            integration_version=__integration_version__,
         )
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)

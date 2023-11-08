@@ -5,7 +5,6 @@ from port_ocean.clients.port.mixins.blueprints import BlueprintClientMixin
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
 from port_ocean.clients.port.mixins.integrations import IntegrationClientMixin
 from port_ocean.clients.port.mixins.migrations import MigrationClientMixin
-
 from port_ocean.clients.port.types import (
     KafkaCreds,
 )
@@ -26,6 +25,7 @@ class PortClient(
         client_secret: str,
         integration_identifier: str,
         integration_type: str,
+        integration_version: str,
     ):
         self.api_url = f"{base_url}/v1"
         self.client = async_client
@@ -36,10 +36,11 @@ class PortClient(
             self.api_url,
             integration_identifier,
             integration_type,
+            integration_version,
         )
         EntityClientMixin.__init__(self, self.auth, self.client)
         IntegrationClientMixin.__init__(
-            self, integration_identifier, self.auth, self.client
+            self, integration_identifier, integration_version, self.auth, self.client
         )
         BlueprintClientMixin.__init__(self, self.auth, self.client)
         MigrationClientMixin.__init__(self, self.auth, self.client)

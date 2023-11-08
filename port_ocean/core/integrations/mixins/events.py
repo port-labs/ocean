@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+from loguru import logger
+
 from port_ocean.core.ocean_types import (
     IntegrationEventsCallbacks,
     START_EVENT_LISTENER,
@@ -26,6 +28,10 @@ class EventsMixin:
             "resync": defaultdict(list),
         }
 
+    @property
+    def available_resync_kinds(self) -> list[str]:
+        return list(self.event_strategy["resync"].keys())
+
     def on_start(self, func: START_EVENT_LISTENER) -> START_EVENT_LISTENER:
         """Register a function as a listener for the "start" event.
 
@@ -35,6 +41,7 @@ class EventsMixin:
         Returns:
             START_EVENT_LISTENER: The input function, unchanged.
         """
+        logger.debug(f"Registering {func} as a start event listener")
         self.event_strategy["start"].append(func)
         return func
 
@@ -50,5 +57,9 @@ class EventsMixin:
         Returns:
             RESYNC_EVENT_LISTENER: The input function, unchanged.
         """
+        if kind is None:
+            logger.debug(f"Registering resync event listener any kind")
+        else:
+            logger.info(f"Registering resync event listener for kind {kind}")
         self.event_strategy["resync"][kind].append(func)
         return func
