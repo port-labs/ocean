@@ -122,7 +122,6 @@ class KafkaConsumer(BaseConsumer):
                                 ).start()
                                 logger.info(f"thread {thread_name} started")
 
-                            # self._handle_message(msg)
                         except Exception as process_error:
                             logger.exception(
                                 "Failed process message"
