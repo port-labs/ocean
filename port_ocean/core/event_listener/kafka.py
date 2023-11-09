@@ -4,7 +4,7 @@ import sys
 import threading
 from typing import Any, Literal
 
-from confluent_kafka import Message
+from confluent_kafka import Message  # type: ignore
 from loguru import logger
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
