@@ -9,6 +9,7 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
     ocean,
 )
+from port_ocean.context.utils import wrap_method_with_context
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
     EventListenerEvents,
@@ -100,17 +101,6 @@ class KafkaEventListener(BaseEventListener):
 
         return False
 
-    async def _handle_message(self, message: dict[Any, Any], topic: str) -> None:
-        """
-        A private method that handles incoming Kafka messages.
-        If the message should be processed (determined by `_should_be_processed`), it triggers the corresponding event handler.
-        """
-        if not self._should_be_processed(message, topic):
-            return
-
-        if "change.log" in topic and message is not None:
-            await self.events["on_resync"](message)
-
     def _wrapped_start(
         self, context: PortOceanContext, func: Callable[[], None]
     ) -> Callable[[], None]:
@@ -131,12 +121,13 @@ class KafkaEventListener(BaseEventListener):
         It creates a KafkaConsumer instance with the given configuration and starts it in a separate thread.
         """
         consumer = KafkaConsumer(
-            msg_process=self._handle_message,
+            msg_process=self.events["on_resync"],  # type: ignore
+            should_be_processed_func=self._should_be_processed,
             config=await self._get_kafka_config(),
             org_id=self.org_id,
         )
         logger.info("Starting Kafka consumer")
         threading.Thread(
             name="ocean_kafka_consumer",
-            target=self._wrapped_start(ocean, consumer.start),
+            target=wrap_method_with_context(func=consumer.start),
         ).start()

@@ -2,6 +2,7 @@ import asyncio
 import json
 import signal
 import sys
+import threading
 from typing import Any, Callable, Awaitable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
@@ -9,6 +10,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 from port_ocean.consumers.base_consumer import BaseConsumer
+from port_ocean.context.utils import wrap_method_with_context
 
 
 class KafkaConsumerConfig(BaseModel):
@@ -26,6 +28,7 @@ class KafkaConsumer(BaseConsumer):
     def __init__(
         self,
         msg_process: Callable[[dict[Any, Any], str], Awaitable[None]],
+        should_be_processed_func: Callable[[dict[Any, Any], str], bool],
         config: KafkaConsumerConfig,
         org_id: str,
     ) -> None:
@@ -37,6 +40,7 @@ class KafkaConsumer(BaseConsumer):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
         self.msg_process = msg_process
+        self.should_be_processed_func = should_be_processed_func
         if config.kafka_security_enabled:
             kafka_config = {
                 "bootstrap.servers": config.brokers,
@@ -98,7 +102,27 @@ class KafkaConsumer(BaseConsumer):
                                 "Process message "
                                 f"from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}"
                             )
-                            self._handle_message(msg)
+                            message = json.loads(msg.value().decode())
+                            topic = msg.topic()
+                            if (
+                                self.should_be_processed_func(message, topic)
+                                and "change.log" in topic
+                                and message is not None
+                            ):
+                                thread_name = f"resync_thread_{msg.offset()}"
+                                logger.info(
+                                    f"spawning thread {thread_name} to start resync"
+                                )
+                                threading.Thread(
+                                    name=thread_name,
+                                    target=wrap_method_with_context(
+                                        func=self._handle_message
+                                    ),
+                                    args=(msg,),
+                                ).start()
+                                logger.info(f"thread {thread_name} started")
+
+                            # self._handle_message(msg)
                         except Exception as process_error:
                             logger.exception(
                                 "Failed process message"
