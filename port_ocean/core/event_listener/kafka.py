@@ -2,7 +2,7 @@ import asyncio
 import json
 import sys
 import threading
-from typing import Any, Callable, Literal, Awaitable
+from typing import Any, Literal
 
 from confluent_kafka import Message
 from loguru import logger

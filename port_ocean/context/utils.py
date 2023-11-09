@@ -1,7 +1,6 @@
-from typing import Callable, Any, Awaitable, TypeVar
+from typing import Callable
 
 from port_ocean.context.ocean import (
-    PortOceanContext,
     initialize_port_ocean_context,
     ocean,
 )

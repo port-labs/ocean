@@ -1,16 +1,11 @@
-import asyncio
-import json
 import signal
-import sys
-import threading
-from typing import Any, Callable, Awaitable
+from typing import Any, Callable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
 from loguru import logger
 from pydantic import BaseModel
 
 from port_ocean.consumers.base_consumer import BaseConsumer
-from port_ocean.context.utils import wrap_method_with_context
 
 
 class KafkaConsumerConfig(BaseModel):
