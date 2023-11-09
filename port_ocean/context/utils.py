@@ -1,4 +1,4 @@
-from typing import Callable, Any
+from typing import Callable, Any, Awaitable, TypeVar
 
 from port_ocean.context.ocean import (
     PortOceanContext,
@@ -8,9 +8,9 @@ from port_ocean.context.ocean import (
 
 
 def wrap_method_with_context(
-    func: Callable[[], None] | Callable[[Any], None],
+    func: Callable[..., None],
     context: PortOceanContext | None = None,
-) -> Callable[[], None]:
+) -> Callable[..., None]:
     """
     A method that wraps a method and initializing the PortOceanContext and invoking the given function.
 

@@ -27,8 +27,7 @@ class KafkaConsumerConfig(BaseModel):
 class KafkaConsumer(BaseConsumer):
     def __init__(
         self,
-        msg_process: Callable[[dict[Any, Any], str], Awaitable[None]],
-        should_be_processed_func: Callable[[dict[Any, Any], str], bool],
+        msg_process: Callable[[Message], None],
         config: KafkaConsumerConfig,
         org_id: str,
     ) -> None:
@@ -40,7 +39,6 @@ class KafkaConsumer(BaseConsumer):
         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
         self.msg_process = msg_process
-        self.should_be_processed_func = should_be_processed_func
         if config.kafka_security_enabled:
             kafka_config = {
                 "bootstrap.servers": config.brokers,
@@ -59,23 +57,6 @@ class KafkaConsumer(BaseConsumer):
             }
 
         self.consumer = Consumer(kafka_config)
-
-    def _handle_message(self, raw_msg: Message) -> None:
-        message = json.loads(raw_msg.value().decode())
-        topic = raw_msg.topic()
-
-        async def try_wrapper() -> None:
-            try:
-                await self.msg_process(message, topic)
-            except Exception as e:
-                _type, _, tb = sys.exc_info()
-                logger.opt(exception=(_type, None, tb)).error(
-                    f"Failed to process message: {str(e)}"
-                )
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(try_wrapper())
 
     def start(self) -> None:
         try:
@@ -102,25 +83,7 @@ class KafkaConsumer(BaseConsumer):
                                 "Process message "
                                 f"from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}"
                             )
-                            message = json.loads(msg.value().decode())
-                            topic = msg.topic()
-                            if (
-                                self.should_be_processed_func(message, topic)
-                                and "change.log" in topic
-                                and message is not None
-                            ):
-                                thread_name = f"resync_thread_{msg.offset()}"
-                                logger.info(
-                                    f"spawning thread {thread_name} to start resync"
-                                )
-                                threading.Thread(
-                                    name=thread_name,
-                                    target=wrap_method_with_context(
-                                        func=self._handle_message
-                                    ),
-                                    args=(msg,),
-                                ).start()
-                                logger.info(f"thread {thread_name} started")
+                            self.msg_process(msg)
 
                         except Exception as process_error:
                             logger.exception(

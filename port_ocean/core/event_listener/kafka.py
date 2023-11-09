@@ -1,12 +1,14 @@
+import asyncio
+import json
+import sys
 import threading
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, Awaitable
 
+from confluent_kafka import Message
 from loguru import logger
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.ocean import (
-    PortOceanContext,
-    initialize_port_ocean_context,
     ocean,
 )
 from port_ocean.context.utils import wrap_method_with_context
@@ -101,19 +103,48 @@ class KafkaEventListener(BaseEventListener):
 
         return False
 
-    def _wrapped_start(
-        self, context: PortOceanContext, func: Callable[[], None]
-    ) -> Callable[[], None]:
+    def _handle_thread(self, message: dict[Any, Any]) -> None:
         """
-        A method that wraps the `start` method, initializing the PortOceanContext and invoking the given function.
+        A private method that handles incoming Kafka messages in a separate thread.
+        It triggers the `on_resync` event handler.
         """
-        ocean_app = context.app
 
-        def wrapper() -> None:
-            initialize_port_ocean_context(ocean_app=ocean_app)
-            func()
+        async def try_wrapper() -> None:
+            try:
+                await self.events["on_resync"](message)
+            except Exception as e:
+                _type, _, tb = sys.exc_info()
+                logger.opt(exception=(_type, None, tb)).error(
+                    f"Failed to process message: {str(e)}"
+                )
 
-        return wrapper
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(try_wrapper())
+
+    def _handle_message(self, raw_msg: Message) -> None:
+        """
+        A private method that handles incoming Kafka messages.
+        If the message should be processed (determined by `_should_be_processed`), it triggers the corresponding event handler.
+
+        Spawning a thread to handle the message allows the Kafka consumer to continue polling for new messages.
+        Using wrap_method_with_context ensures that the thread has access to the current context.
+        """
+        message = json.loads(raw_msg.value().decode())
+        topic = raw_msg.topic()
+
+        if not self._should_be_processed(message, topic):
+            return
+
+        if "change.log" in topic and message is not None:
+            thread_name = f"ocean_event_handler_{raw_msg.offset()}"
+            logger.info(f"spawning thread {thread_name} to start resync")
+            threading.Thread(
+                name=thread_name,
+                target=wrap_method_with_context(self._handle_thread),
+                args=(message,),
+            ).start()
+            logger.info(f"thread {thread_name} started")
 
     async def start(self) -> None:
         """
@@ -121,8 +152,7 @@ class KafkaEventListener(BaseEventListener):
         It creates a KafkaConsumer instance with the given configuration and starts it in a separate thread.
         """
         consumer = KafkaConsumer(
-            msg_process=self.events["on_resync"],  # type: ignore
-            should_be_processed_func=self._should_be_processed,
+            msg_process=self._handle_message,
             config=await self._get_kafka_config(),
             org_id=self.org_id,
         )
