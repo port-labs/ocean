@@ -103,7 +103,7 @@ class KafkaEventListener(BaseEventListener):
 
         return False
 
-    def _handle_thread(self, message: dict[Any, Any]) -> None:
+    def _resync_in_new_event_loop(self, message: dict[Any, Any]) -> None:
         """
         A private method that handles incoming Kafka messages in a separate thread.
         It triggers the `on_resync` event handler.
@@ -141,7 +141,7 @@ class KafkaEventListener(BaseEventListener):
             logger.info(f"spawning thread {thread_name} to start resync")
             threading.Thread(
                 name=thread_name,
-                target=wrap_method_with_context(self._handle_thread),
+                target=wrap_method_with_context(self._resync_in_new_event_loop),
                 args=(message,),
             ).start()
             logger.info(f"thread {thread_name} started")
