@@ -9,18 +9,14 @@ from port_ocean.context.ocean import (
 
 def wrap_method_with_context(
     func: Callable[..., None],
-    context: PortOceanContext | None = None,
 ) -> Callable[..., None]:
     """
     A method that wraps a method and initializing the PortOceanContext and invoking the given function.
 
     :param func: The function to be wrapped.
-    :param context: The PortOceanContext to be used, if None, the current PortOceanContext will be used.
     """
-    if context is None:
-        ocean_app = ocean.app
-    else:
-        ocean_app = context.app
+    # assign the current ocean app to a variable
+    ocean_app = ocean.app
 
     def wrapper(*args, **kwargs) -> None:  # type: ignore
         initialize_port_ocean_context(ocean_app=ocean_app)
