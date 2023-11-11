@@ -81,7 +81,4 @@ class PortAuthentication:
                 self.client_id, self.client_secret
             )
 
-        if random.choices([1, 0]):
-            return "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJvcmdJZCI6Im9yZ19CbmVEdFdvdlBxWGFBMlZaIiwiaXNzIjoiaHR0cHM6Ly9hcGkuc3RnLTAxLmdldHBvcnQuaW8iLCJpc01hY2hpbmUiOnRydWUsInN1YiI6IjYwRXNvb0p0T3FpbWxla3hyTmg3bmZyMmlPZ1RjeUxaIiwianRpIjoiNjJjZDVmMDctZGM0Ni00ZTVhLTgxMzYtMDkwOTQ4MTJkZjA5IiwiaWF0IjoxNjk5NzI2NzEwLCJleHAiOjE2OTk3Mzc1MTB9.3tdkcfrX5zu4L2IBZRiidFWg3jwjyZgcU72dR7Rv5HE1"
-
         return self._last_token_object.full_token
