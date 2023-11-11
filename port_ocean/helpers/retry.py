@@ -132,7 +132,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             httpx.Response: The response received.
 
         """
-        transport: httpx.BaseTransport = self._wrapped_transport
+        transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
         if request.method in self._retryable_methods:
             send_method = partial(transport.handle_request)
             response = self._retry_operation(request, send_method)
@@ -150,7 +150,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             The response.
 
         """
-        transport: httpx.AsyncBaseTransport = self._wrapped_transport
+        transport: httpx.AsyncBaseTransport = self._wrapped_transport  # type: ignore
         if request.method in self._retryable_methods:
             send_method = partial(transport.handle_async_request)
             response = await self._retry_operation_async(request, send_method)
@@ -165,7 +165,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
 
         This should be called before the object is dereferenced, to ensure that connections are properly cleaned up.
         """
-        transport: httpx.AsyncBaseTransport = self._wrapped_transport
+        transport: httpx.AsyncBaseTransport = self._wrapped_transport  # type: ignore
         await transport.aclose()
 
     def close(self) -> None:
@@ -175,7 +175,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
 
         This should be called before the object is dereferenced, to ensure that connections are properly cleaned up.
         """
-        transport: httpx.BaseTransport = self._wrapped_transport
+        transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
         transport.close()
 
     def _calculate_sleep(
