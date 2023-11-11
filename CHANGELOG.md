@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.3 (2023-11-09)
+
+### Bug Fixes
+
+- Fixed kafka consumer to poll messages asynchronously, to avoid max poll timeout when running long resyncs (PORT-5160)
+
 ## 0.4.2 (2023-11-04)
 
 ### Features
