@@ -218,12 +218,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         remaining_attempts = self._max_attempts
         attempts_made = 0
         while True:
+            response: httpx.Response
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 if self._logger:
                     self._logger.warning(
                         f"Request {request.method} {request.url} failed with status code:"
-                        f" {response.status_code}, retrying in {sleep_time} seconds."  # type: ignore
+                        f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
                     )
                 await asyncio.sleep(sleep_time)
             response = await send_method(request)
@@ -244,12 +245,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         remaining_attempts = self._max_attempts
         attempts_made = 0
         while True:
+            response: httpx.Response
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 if self._logger:
                     self._logger.warning(
                         f"Request {request.method} {request.url} failed with status code:"
-                        f" {response.status_code}, retrying in {sleep_time} seconds."  # type: ignore
+                        f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
                     )
                 time.sleep(sleep_time)
             response = send_method(request)
