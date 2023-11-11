@@ -67,6 +67,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         respect_retry_after_header: bool = True,
         retryable_methods: Iterable[str] | None = None,
         retry_status_codes: Iterable[int] | None = None,
+        logger: Any | None = None,
     ) -> None:
         """
         Initializes the instance of RetryTransport class with the given parameters.
@@ -95,6 +96,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             retry_status_codes (Iterable[int], optional):
                 The HTTP status codes that can be retried.
                 Defaults to [429, 502, 503, 504].
+            logger (Any): The logger to use for logging retries.
         """
         self._wrapped_transport = wrapped_transport
         if jitter_ratio < 0 or jitter_ratio > 0.5:
@@ -117,6 +119,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         )
         self._jitter_ratio = jitter_ratio
         self._max_backoff_wait = max_backoff_wait
+        self._logger = logger
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """
@@ -216,7 +219,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         while True:
             if attempts_made > 0:
-                await asyncio.sleep(self._calculate_sleep(attempts_made, {}))
+                sleep_time = self._calculate_sleep(attempts_made, {})
+                if self._logger:
+                    self._logger.warning(
+                        f"Request {request.method} {request.url} failed with status code:"
+                        f" {response.status_code}, retrying in {sleep_time} seconds."  # type: ignore
+                    )
+                await asyncio.sleep(sleep_time)
             response = await send_method(request)
             if (
                 remaining_attempts < 1
@@ -236,7 +245,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         while True:
             if attempts_made > 0:
-                time.sleep(self._calculate_sleep(attempts_made, {}))
+                sleep_time = self._calculate_sleep(attempts_made, {})
+                if self._logger:
+                    self._logger.warning(
+                        f"Request {request.method} {request.url} failed with status code:"
+                        f" {response.status_code}, retrying in {sleep_time} seconds."  # type: ignore
+                    )
+                time.sleep(sleep_time)
             response = send_method(request)
             if (
                 remaining_attempts < 1
