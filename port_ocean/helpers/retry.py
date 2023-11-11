@@ -7,7 +7,7 @@ from http import HTTPStatus
 from typing import Any, Callable, Coroutine, Iterable, Mapping, Union
 
 import httpx
-from dateutil.parser import isoparse
+from dateutil.parser import isoparse  # type: ignore
 
 
 # Adapted from https://github.com/encode/httpx/issues/108#issuecomment-1434439481
