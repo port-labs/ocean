@@ -16,7 +16,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Fixed kafka consumer to poll messages asynchronously, to avoid max poll timeout when running long resyncs (PORT-5160)
-- Fixed a bug where the port token gets expired (PORT-5161)
+- Fixed a bug where the expiration of a Port token is not properly handled (PORT-5161)
 - Fixed a bug where the `retry_every` didn't count failed runs as repetitions (PORT-5161) 
 
 ## 0.4.2 (2023-11-04)
