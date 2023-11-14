@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Features
 
-- Added `RetryTransport` as a helper for retrying requests for integrations to use (PORT-5161)
+- Added `RetryTransport` as a helper for retrying requests that integrations can use (PORT-5161)
 
 ### Bug Fixes
 
