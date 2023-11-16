@@ -5,7 +5,7 @@ from loguru import logger
 from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.port.utils import handle_status_code, retry_on_http_status
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -32,6 +32,7 @@ class IntegrationClientMixin:
         )
         return response
 
+    @retry_on_http_status(status_code=401)
     async def get_current_integration(
         self, should_raise: bool = True, should_log: bool = True
     ) -> dict[str, Any]:
@@ -39,6 +40,7 @@ class IntegrationClientMixin:
         handle_status_code(response, should_raise, should_log)
         return response.json()["integration"]
 
+    @retry_on_http_status(status_code=401)
     async def create_integration(
         self,
         _type: str,
@@ -61,6 +63,7 @@ class IntegrationClientMixin:
         )
         handle_status_code(response)
 
+    @retry_on_http_status(status_code=401)
     async def patch_integration(
         self,
         _type: str | None = None,
@@ -85,6 +88,7 @@ class IntegrationClientMixin:
         )
         handle_status_code(response)
 
+    @retry_on_http_status(status_code=401)
     async def initialize_integration(
         self,
         _type: str,

@@ -114,12 +114,13 @@ def repeat_every(
                 if wait_first:
                     await asyncio.sleep(seconds)
                 while max_repetitions is None or repetitions < max_repetitions:
+                    # count the repetition even if an exception is raised
+                    repetitions += 1
                     try:
                         if is_coroutine:
                             await func()  # type: ignore
                         else:
                             await run_in_threadpool(func)
-                        repetitions += 1
                     except Exception as exc:
                         formatted_exception = "".join(
                             format_exception(type(exc), exc, exc.__traceback__)

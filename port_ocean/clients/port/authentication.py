@@ -72,6 +72,10 @@ class PortAuthentication:
     @property
     async def token(self) -> str:
         if not self._last_token_object or self._last_token_object.expired:
+            msg = "Token expired, fetching new token"
+            if not self._last_token_object:
+                msg = "No token found, fetching new token"
+            logger.info(msg)
             self._last_token_object = await self._get_token(
                 self.client_id, self.client_secret
             )
