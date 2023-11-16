@@ -1,0 +1,24 @@
+type: jenkins
+description: Jenkins integration for Port Ocean
+icon: Jenkins
+features:
+  - type: exporter
+    section: Git Providers # Should be one of the available sections in Port
+    resources:
+      - kind: jenkinsJob
+      - kind: jenkinsBuild
+configurations:
+  - name: jenkinsHost
+    description: "The host of the Jenkins server"
+    required: true
+    type: url
+  - name: jenkinsUser
+    required: true
+    type: string
+    description: "Jenkins username"
+    sensitive: true
+  - name: jenkinsPassword
+    required: true
+    type: string
+    description: "Jenkins password"
+
