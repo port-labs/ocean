@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.28 (2023-11-16)
+===================
+
+### Bug Fixes
+
+- Aligned default resources and mapping with port docs examples (#1)
+
 0.1.27 (2023-11-08)
 ===================
 

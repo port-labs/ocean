@@ -3,21 +3,24 @@ deleteDependentEntities: true
 resources:
   - kind: project
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
           identifier: .path_with_namespace | gsub(" "; "")
           title: .name
-          blueprint: '"project"'
+          blueprint: '"repository"'
           properties:
-            url: .web_link
+            url: .web_url
+            readme: file://README.md
             description: .description
+            language: .__languages | to_entries | max_by(.value) | .key
             namespace: .namespace.name
-            full_path: .namespace.full_path
+            fullPath: .namespace.full_path
+            defaultBranch: .default_branch
   - kind: merge-request
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -32,10 +35,10 @@ resources:
             description: .description
             link: .web_url
           relations:
-            project: .references.full | gsub("!.+"; "")
+            repository: .references.full | gsub("!.+"; "")
   - kind: issue
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -50,7 +53,6 @@ resources:
             updatedAt: .updated_at
             description: .description
             link: .web_url
-            labels: '[.labels[]]'
-            object: .
+            labels: "[.labels[]]"
           relations:
-            project: .references.full | gsub("#.+"; "")
+            repository: .references.full | gsub("#.+"; "")
