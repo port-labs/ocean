@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 0.1.28 (2023-11-16)
 ===================
 
-### Bug Fixes
+### Improvements
 
 - Aligned default resources and mapping with port docs examples (#1)
 
