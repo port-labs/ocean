@@ -5,12 +5,12 @@ from typing import Any, AsyncGenerator
 
 from loguru import logger
 
-from core.utils import convert_timestamp_to_utc_dt
+from core.utils import convert_timestamp_to_utc_dt, url_encode_str
 
 
 class JenkinsClient:
     def __init__(
-            self, jenkins_base_url: str, jenkins_user: str, jenkins_password: str
+        self, jenkins_base_url: str, jenkins_user: str, jenkins_password: str
     ) -> None:
         self.jenkins_base_url = jenkins_base_url
 
@@ -25,13 +25,15 @@ class JenkinsClient:
         while True:
             # Parameters for pagination
             params = {
-                'tree': f'jobs[name,url,description,displayName,fullDisplayName,fullName]'
+                "tree": f"jobs[name,url,description,displayName,fullDisplayName,fullName]"
             }
             encoded_params = urlencode(params)
 
-            job_response = await self.client.get(f"{self.jenkins_base_url}/api/json?{encoded_params}")
+            job_response = await self.client.get(
+                f"{self.jenkins_base_url}/api/json?{encoded_params}"
+            )
             job_response.raise_for_status()
-            jobs = job_response.json()['jobs']
+            jobs = job_response.json()["jobs"]
 
             # If there are no more jobs, exit the loop
             if not jobs:
@@ -43,9 +45,11 @@ class JenkinsClient:
                 {
                     "type": "item.updated",
                     "data": job,
-                    "url": urlparse(job.get("url")).path.lstrip('/'),  # since blueprint expects path rather host
+                    "url": urlparse(job.get("url")).path.lstrip(
+                        "/"
+                    ),  # since blueprint expects path rather host
                     "fullUrl": job.get("url"),
-                    "time": job.get("timestamp")
+                    "time": job.get("timestamp"),
                 }
                 for job in jobs
             ]
@@ -60,7 +64,7 @@ class JenkinsClient:
         logger.info(f"Getting builds from Jenkins for job {job_name}")
 
         params = {
-            'tree': f'builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]'
+            "tree": f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"
         }
         encoded_params = urlencode(params)
 
@@ -74,12 +78,12 @@ class JenkinsClient:
         transformed_builds = [
             {
                 "type": "run.finalize",
-                "source": f"job/{job_name}/",
+                "source": url_encode_str(f"job/{job_name}/"),
                 "url": build.get("url", None),
                 "data": {
                     **build,
-                    "timestamp": convert_timestamp_to_utc_dt(build.get("timestamp"))
-                }
+                    "timestamp": convert_timestamp_to_utc_dt(build.get("timestamp")),
+                },
             }
             for build in builds
         ]

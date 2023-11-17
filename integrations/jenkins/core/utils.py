@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse, quote
 
 from loguru import logger
 
@@ -17,14 +17,16 @@ def sanitize_url(url):
     sanitized_fragment = parsed_url.fragment.strip()
 
     # Reconstruct the sanitized URL
-    sanitized_url = urlunparse((
-        sanitized_scheme,
-        sanitized_netloc,
-        sanitized_path,
-        sanitized_params,
-        sanitized_query,
-        sanitized_fragment
-    ))
+    sanitized_url = urlunparse(
+        (
+            sanitized_scheme,
+            sanitized_netloc,
+            sanitized_path,
+            sanitized_params,
+            sanitized_query,
+            sanitized_fragment,
+        )
+    )
 
     return sanitized_url
 
@@ -35,7 +37,13 @@ def convert_timestamp_to_utc_dt(timestamp) -> [str, None]:
         dt_object = datetime.fromtimestamp(timestamp / 1000.0, tz=timezone.utc)
 
         # Format datetime object as a string
-        formatted_string = dt_object.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+        formatted_string = dt_object.strftime("%Y-%m-%dT%H:%M:%S.%f%z")
         return formatted_string
     except Exception as e:
         logger.exception(e)
+
+
+def url_encode_str(input_string) -> str:
+    # Use the quote function to URL encode the string
+    encoded_string = quote(input_string)
+    return encoded_string
