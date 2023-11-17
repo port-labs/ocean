@@ -5,8 +5,8 @@ features:
   - type: exporter
     section: Git Providers # Should be one of the available sections in Port
     resources:
-      - kind: jenkinsJob
-      - kind: jenkinsBuild
+      - kind: job
+      - kind: build
 configurations:
   - name: jenkinsHost
     description: "The host of the Jenkins server"
@@ -21,4 +21,5 @@ configurations:
     required: true
     type: string
     description: "Jenkins password"
+    sensitive: true
 
