@@ -1,6 +1,6 @@
 [
     {
-        "identifier": "jenkinsJob",
+        "identifier": "job",
         "description": "This blueprint represents a job event from Jenkins",
         "title": "Jenkins Job",
         "icon": "Jenkins",
@@ -43,7 +43,7 @@
         "relations": {}
     },
     {
-        "identifier": "jenkinsBuild",
+        "identifier": "build",
         "description": "This blueprint represents a build event from Jenkins",
         "title": "Jenkins Build",
         "icon": "Jenkins",
@@ -81,9 +81,9 @@
         "mirrorProperties": {},
         "calculationProperties": {},
         "relations": {
-            "jenkinsJob": {
+            "job": {
                 "title": "Jenkins Job",
-                "target": "jenkinsJob",
+                "target": "job",
                 "required": false,
                 "many": false
             }

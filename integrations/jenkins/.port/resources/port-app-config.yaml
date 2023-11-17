@@ -9,7 +9,7 @@ resources:
         mappings:
           identifier: '.url | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
           title: .data.displayName
-          blueprint: '"jenkinsJob"'
+          blueprint: '"job"'
           properties:
             jobName: .data.fullName
             url: .url
@@ -24,11 +24,11 @@ resources:
         mappings:
           identifier: '.data.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g")'
           title: .data.displayName
-          blueprint: '"jenkinsBuild"'
+          blueprint: '"build"'
           properties:
             buildStatus: .data.result,
             buildUrl: .url,
             buildDuration: .data.duration,
             timestamp: .data.timestamp
           relations:
-            jenkinsJob: '.source | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
+            job: '.source | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
