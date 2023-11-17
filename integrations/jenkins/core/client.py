@@ -13,10 +13,8 @@ class JenkinsClient:
             self, jenkins_base_url: str, jenkins_user: str, jenkins_password: str
     ) -> None:
         self.jenkins_base_url = jenkins_base_url
-        self.jenkins_user = jenkins_user
-        self.jenkins_password = jenkins_password
 
-        auth = (self.jenkins_user, self.jenkins_password)
+        auth = (jenkins_user, jenkins_password)
         self.client = httpx.AsyncClient(auth=auth)
 
     async def get_jobs(self) -> AsyncGenerator[list[dict[str, Any]], None]:

@@ -1,12 +1,10 @@
 from enum import StrEnum
 from typing import List, Optional, Union
-from datetime import datetime, timezone
 
-from loguru import logger
-from port_ocean.context.ocean import ocean
+from core.utils import sanitize_url, convert_timestamp_to_utc_dt
 from pydantic import BaseModel
 
-from core.utils import sanitize_url
+from port_ocean.context.ocean import ocean
 
 
 class ObjectKind(StrEnum):
@@ -65,21 +63,14 @@ class JenkinsBuild(BaseModel):
 
     @property
     def time_as_datetime(self):
-        try:
-            # Convert timestamp to datetime object
-            dt_object = datetime.fromtimestamp(self.timestamp / 1000.0, tz=timezone.utc)
-
-            # Format datetime object as a string
-            formatted_string = dt_object.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
-            return formatted_string
-        except Exception as e:
-            logger.exception(e)
+        return convert_timestamp_to_utc_dt(self.timestamp)
 
 
 class JenkinsJob(BaseModel):
     """
     A jenkins job could have many more attributes but these are expected in every item
     """
+
     _class: str
     actions: List[Optional[dict]]
     description: str
@@ -108,7 +99,6 @@ class JenkinsEvent(BaseModel):
         self.fullUrl = self.construct_full_url()
 
     def construct_full_url(self):
-        # Replace this with your logic to construct the full URL based on available information
         return sanitize_url(f"{ocean.integration_config['jenkins_host']}/{self.url}")
 
     @property
