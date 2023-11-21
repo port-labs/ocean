@@ -7,6 +7,31 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.28 (2023-11-16)
+===================
+
+### Improvements
+
+- Aligned default resources and mapping with Port docs examples (#1)
+
+0.1.27 (2023-11-08)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.2 (#1)
+
+
+0.1.26 (2023-11-07)
+===================
+
+### Bug Fixes
+
+- Fixed a bug caused status code 404 when trying to sync merge requests on hook event (#1)
+- Fixed a bug that caused reading file with GitOps to fail (#2)
+- Fixed a bug of type validation that caused skipping merge requests on resync (#3)
+
+
 0.1.25 (2023-11-03)
 ===================
 

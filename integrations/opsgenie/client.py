@@ -3,6 +3,7 @@ import httpx
 from loguru import logger
 from utils import ObjectKind, RESOURCE_API_VERSIONS
 from port_ocean.context.event import event
+from port_ocean.helpers.retry import RetryTransport
 
 
 PAGE_SIZE = 50
@@ -12,7 +13,13 @@ class OpsGenieClient:
     def __init__(self, token: str, api_url: str):
         self.token = token
         self.api_url = api_url
-        self.http_client = httpx.AsyncClient(headers=self.api_auth_header)
+        self.http_client = httpx.AsyncClient(
+            transport=RetryTransport(
+                httpx.AsyncHTTPTransport(),
+                logger=logger,
+            ),
+            headers=self.api_auth_header,
+        )
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
