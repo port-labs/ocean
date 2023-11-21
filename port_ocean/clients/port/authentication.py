@@ -33,6 +33,7 @@ class PortAuthentication:
         api_url: str,
         integration_identifier: str,
         integration_type: str,
+        integration_version: str,
     ):
         self.client = client
         self.api_url = api_url
@@ -40,6 +41,7 @@ class PortAuthentication:
         self.client_secret = client_secret
         self.integration_identifier = integration_identifier
         self.integration_type = integration_type
+        self.integration_version = integration_version
         self._last_token_object: TokenResponse | None = None
 
     async def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
@@ -53,7 +55,7 @@ class PortAuthentication:
         return TokenResponse(**response.json())
 
     def user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
-        user_agent = f"port-ocean/{self.integration_type}/{self.integration_identifier}"
+        user_agent = f"port-ocean/{self.integration_type}/{self.integration_version}/{self.integration_identifier}"
         if user_agent_type:
             user_agent += f"/{user_agent_type.value or UserAgentType.exporter.value}"
 
@@ -70,6 +72,10 @@ class PortAuthentication:
     @property
     async def token(self) -> str:
         if not self._last_token_object or self._last_token_object.expired:
+            msg = "Token expired, fetching new token"
+            if not self._last_token_object:
+                msg = "No token found, fetching new token"
+            logger.info(msg)
             self._last_token_object = await self._get_token(
                 self.client_id, self.client_secret
             )

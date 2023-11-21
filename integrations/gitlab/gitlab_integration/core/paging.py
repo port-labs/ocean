@@ -31,16 +31,7 @@ class AsyncFetcher:
             ],
         ],
         validation_func: Callable[
-            [
-                Union[
-                    RESTObject,
-                    ProjectPipelineJob,
-                    Issue,
-                    ProjectPipeline,
-                    Dict[str, Any],
-                    Project,
-                ]
-            ],
+            [Any],
             bool,
         ],
         batch_size: int = int(os.environ.get("GITLAB_BATCH_SIZE", 100)),

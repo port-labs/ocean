@@ -5,7 +5,7 @@ from loguru import logger
 from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.port.utils import handle_status_code, retry_on_http_status
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -15,10 +15,12 @@ class IntegrationClientMixin:
     def __init__(
         self,
         integration_identifier: str,
+        integration_version: str,
         auth: PortAuthentication,
         client: httpx.AsyncClient,
     ):
         self.integration_identifier = integration_identifier
+        self.integration_version = integration_version
         self.auth = auth
         self.client = client
 
@@ -30,6 +32,7 @@ class IntegrationClientMixin:
         )
         return response
 
+    @retry_on_http_status(status_code=401)
     async def get_current_integration(
         self, should_raise: bool = True, should_log: bool = True
     ) -> dict[str, Any]:
@@ -37,6 +40,7 @@ class IntegrationClientMixin:
         handle_status_code(response, should_raise, should_log)
         return response.json()["integration"]
 
+    @retry_on_http_status(status_code=401)
     async def create_integration(
         self,
         _type: str,
@@ -48,6 +52,7 @@ class IntegrationClientMixin:
         json = {
             "installationId": self.integration_identifier,
             "installationAppType": _type,
+            "version": self.integration_version,
             "changelogDestination": changelog_destination,
             "config": {},
         }
@@ -58,6 +63,7 @@ class IntegrationClientMixin:
         )
         handle_status_code(response)
 
+    @retry_on_http_status(status_code=401)
     async def patch_integration(
         self,
         _type: str | None = None,
@@ -73,6 +79,7 @@ class IntegrationClientMixin:
             json["changelogDestination"] = changelog_destination
         if port_app_config:
             json["config"] = port_app_config.to_request()
+        json["version"] = self.integration_version
 
         response = await self.client.patch(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
@@ -81,6 +88,7 @@ class IntegrationClientMixin:
         )
         handle_status_code(response)
 
+    @retry_on_http_status(status_code=401)
     async def initialize_integration(
         self,
         _type: str,
@@ -99,6 +107,7 @@ class IntegrationClientMixin:
             if (
                 integration["changelogDestination"] != changelog_destination
                 or integration["installationAppType"] != _type
+                or integration.get("version") != self.integration_version
             ):
                 await self.patch_integration(
                     _type, changelog_destination, port_app_config

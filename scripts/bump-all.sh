@@ -24,7 +24,7 @@ for folder in "$(pwd)"/integrations/*; do
         (cd "$folder" && source .venv/bin/activate)
 
         echo "Bump the version ocean version using Poetry"
-        (cd "$folder" && source .venv/bin/activate && poetry add port-ocean@$VERSION -E cli)
+        (cd "$folder" && source .venv/bin/activate && poetry add port-ocean@$VERSION -E cli --no-cache)
 
         echo "Run towncrier create"
         (cd "$folder" && source .venv/bin/activate && towncrier create --content "Bumped ocean version to $VERSION" 1.improvement.md)

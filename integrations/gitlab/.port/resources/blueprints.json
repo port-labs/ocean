@@ -1,29 +1,46 @@
 [
   {
-    "identifier": "project",
-    "title": "Project",
-    "icon": "GitLab",
+    "identifier": "repository",
+    "title": "Repository",
+    "icon": "Microservice",
     "schema": {
       "properties": {
         "url": {
           "title": "URL",
-          "format": "url",
-          "type": "string"
+          "type": "string",
+          "format": "url"
+        },
+        "readme": {
+          "title": "README",
+          "type": "string",
+          "format": "markdown"
         },
         "description": {
           "title": "Description",
+          "type": "string"
+        },
+        "language": {
+          "title": "Language",
           "type": "string"
         },
         "namespace": {
           "title": "Namespace",
           "type": "string"
         },
-        "full_path": {
+        "fullPath": {
           "title": "Full Path",
           "type": "string"
+        },
+        "defaultBranch": {
+          "title": "Default Branch",
+          "type": "string"
         }
-      }
-    }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
   },
   {
     "identifier": "mergeRequest",
@@ -38,12 +55,7 @@
         "status": {
           "title": "Status",
           "type": "string",
-          "enum": [
-            "opened",
-            "closed",
-            "merged",
-            "locked"
-          ],
+          "enum": ["opened", "closed", "merged", "locked"],
           "enumColors": {
             "opened": "yellow",
             "closed": "red",
@@ -74,9 +86,9 @@
       }
     },
     "relations": {
-      "project": {
-        "target": "project",
-        "required": true,
+      "repository": {
+        "target": "repository",
+        "required": false,
         "many": false
       }
     }
@@ -119,10 +131,7 @@
         "status": {
           "title": "Status",
           "type": "string",
-          "enum": [
-            "opened",
-            "closed"
-          ],
+          "enum": ["opened", "closed"],
           "enumColors": {
             "opened": "green",
             "closed": "purple"
@@ -138,8 +147,9 @@
       }
     },
     "relations": {
-      "project": {
-        "target": "project",
+      "repository": {
+        "target": "repository",
+        "title": "Repository",
         "required": true,
         "many": false
       }

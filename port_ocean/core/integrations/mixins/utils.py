@@ -6,9 +6,15 @@ from loguru import logger
 from port_ocean.core.ocean_types import (
     ASYNC_GENERATOR_RESYNC_TYPE,
     RAW_RESULT,
+    RESYNC_EVENT_LISTENER,
+    RESYNC_RESULT,
 )
 from port_ocean.core.utils import validate_result
-from port_ocean.exceptions.core import RawObjectValidationException, OceanAbortException
+from port_ocean.exceptions.core import (
+    RawObjectValidationException,
+    OceanAbortException,
+    KindNotImplementedException,
+)
 
 
 @contextmanager
@@ -53,3 +59,16 @@ async def resync_generator_wrapper(
             raise ExceptionGroup(
                 "At least one of the resync generator iterations failed", errors
             )
+
+
+def is_resource_supported(
+    kind: str, resync_event_mapping: dict[str | None, list[RESYNC_EVENT_LISTENER]]
+) -> bool:
+    return bool(resync_event_mapping[kind] or resync_event_mapping[None])
+
+
+def unsupported_kind_response(
+    kind: str, available_resync_kinds: list[str]
+) -> tuple[RESYNC_RESULT, list[Exception]]:
+    logger.error(f"Kind {kind} is not supported in this integration")
+    return [], [KindNotImplementedException(kind, available_resync_kinds)]

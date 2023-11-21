@@ -1,8 +1,5 @@
-import asyncio
-import json
 import signal
-import sys
-from typing import Any, Callable, Awaitable
+from typing import Any, Callable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
 from loguru import logger
@@ -25,7 +22,7 @@ class KafkaConsumerConfig(BaseModel):
 class KafkaConsumer(BaseConsumer):
     def __init__(
         self,
-        msg_process: Callable[[dict[Any, Any], str], Awaitable[None]],
+        msg_process: Callable[[Message], None],
         config: KafkaConsumerConfig,
         org_id: str,
     ) -> None:
@@ -56,23 +53,6 @@ class KafkaConsumer(BaseConsumer):
 
         self.consumer = Consumer(kafka_config)
 
-    def _handle_message(self, raw_msg: Message) -> None:
-        message = json.loads(raw_msg.value().decode())
-        topic = raw_msg.topic()
-
-        async def try_wrapper() -> None:
-            try:
-                await self.msg_process(message, topic)
-            except Exception as e:
-                _type, _, tb = sys.exc_info()
-                logger.opt(exception=(_type, None, tb)).error(
-                    f"Failed to process message: {str(e)}"
-                )
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(try_wrapper())
-
     def start(self) -> None:
         try:
             logger.info("Start consumer...")
@@ -98,7 +78,8 @@ class KafkaConsumer(BaseConsumer):
                                 "Process message "
                                 f"from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}"
                             )
-                            self._handle_message(msg)
+                            self.msg_process(msg)
+
                         except Exception as process_error:
                             logger.exception(
                                 "Failed process message"
