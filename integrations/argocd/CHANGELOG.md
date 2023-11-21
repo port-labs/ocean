@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.4 (2023-11-21)
+
+### Bug Fixes
+
+- Fixed blueprint URL property mismatch (#4)
+
+
 <<<<<<< HEAD
 # Port_Ocean 0.1.3 (2023-11-21)
 
