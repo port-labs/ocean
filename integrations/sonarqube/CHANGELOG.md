@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added handling for retry mechanism for sonarqube client (#1)
+- Added retry mechanism for sonarqube client (#1)
 
 # Port_Ocean 0.1.10 (2023-11-21)
 
