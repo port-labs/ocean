@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "opsgenie"
-version = "0.1.7"
+version = "0.1.6"
 description = "Ocean integration for OpsGenie"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
