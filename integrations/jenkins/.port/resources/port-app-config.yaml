@@ -1,0 +1,33 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: job
+    selector:
+      query:  .type | startswith("item")
+    port:
+      entity:
+        mappings:
+          identifier: '.url | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
+          title: .data.display_name
+          blueprint: '"jenkinsJob"'
+          properties:
+            jobName: .data.full_name
+            url: .url
+            jobStatus: .type | split(\".\") | last
+            timestamp: .time
+  - kind: build
+    selector:
+      query: .type | startswith("run")
+    port:
+      entity:
+        mappings:
+          identifier: '.data.full_display_name | sub(" "; "-"; "g") | sub("#"; ""; "g")'
+          title: .data.display_name
+          blueprint: '"jenkinsBuild"'
+          properties:
+            buildStatus: .data.result,
+            buildUrl: .url,
+            buildDuration: .data.duration,
+            timestamp: .data.timestamp
+          relations:
+            job: '.source | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'

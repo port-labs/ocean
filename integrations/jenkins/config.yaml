@@ -1,0 +1,19 @@
+# This is an example configuration file for the integration service.
+# Please copy this file to config.yaml file in the integration folder and edit it to your needs.
+
+initializePortResources: true
+port:
+  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID, if both are set, the environment variable will be used.
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET, if both are set, the environment variable will be used.
+# The event listener to use for the integration service.
+eventListener:
+  type: POLLING
+integration:
+  # The identifier of this integration instance.
+  identifier: "portOceanJenkinsIntegration"
+  # The type of the integration.
+  type: "jenkins"
+  config:
+    jenkinsHost: "{{ from env JENKINS_HOST }}"
+    jenkinsUser: "{{ from env JENKINS_USER }}"
+    jenkinsPassword: "{{ from env JENKINS_PASSWORD }}"
