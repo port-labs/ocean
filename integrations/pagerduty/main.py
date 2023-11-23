@@ -11,14 +11,18 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
-@ocean.on_resync(ObjectKind.INCIDENTS)
-async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Pagerduty resource: {kind}")
-    pager_duty_client = PagerDutyClient(
+def initialize_client() -> PagerDutyClient:
+    return PagerDutyClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
     )
+
+
+@ocean.on_resync(ObjectKind.INCIDENTS)
+async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    logger.info(f"Listing Pagerduty resource: {kind}")
+    pager_duty_client = initialize_client()
     query_params = typing.cast(
         PagerdutyIncidentResourceConfig, event.resource_config
     ).selector.api_query_params
@@ -33,11 +37,7 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SERVICES)
 async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
-    pager_duty_client = PagerDutyClient(
-        ocean.integration_config["token"],
-        ocean.integration_config["api_url"],
-        ocean.integration_config.get("app_host"),
-    )
+    pager_duty_client = initialize_client()
     query_params = typing.cast(
         PagerdutyServiceResourceConfig, event.resource_config
     ).selector.api_query_params
@@ -51,11 +51,7 @@ async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/webhook")
 async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
-    pager_duty_client = PagerDutyClient(
-        ocean.integration_config["token"],
-        ocean.integration_config["api_url"],
-        ocean.integration_config.get("app_host"),
-    )
+    pager_duty_client = initialize_client()
     event_type = data["event"]["event_type"]
     logger.info(f"Processing Pagerduty webhook for event type: {event_type}")
     if event_type in pager_duty_client.service_delete_events:
@@ -84,10 +80,6 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    pager_duty_client = PagerDutyClient(
-        ocean.integration_config["token"],
-        ocean.integration_config["api_url"],
-        ocean.integration_config.get("app_host"),
-    )
+    pager_duty_client = initialize_client()
     logger.info("Subscribing to Pagerduty webhooks")
     await pager_duty_client.create_webhooks_if_not_exists()

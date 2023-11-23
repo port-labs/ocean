@@ -142,25 +142,19 @@ class PagerDutyClient:
     async def get_oncall_user(
         self, *escalation_policy_ids: str
     ) -> list[dict[str, Any]]:
-        url = f"{self.api_url}/oncalls"
+        params = {
+            "escalation_policy_ids[]": ",".join(escalation_policy_ids),
+            "include[]": "users",
+        }
+        oncalls = []
 
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.get(
-                    url,
-                    params={
-                        "escalation_policy_ids[]": ",".join(escalation_policy_ids),
-                        "include[]": "users",
-                    },
-                    headers=self.api_auth_header,
-                )
-                response.raise_for_status()
-                return response.json()["oncalls"]
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-                )
-                raise
+        async for oncall_batch in self.paginate_request_to_pager_duty(
+            data_key="oncalls", params=params
+        ):
+            logger.info(f"Received oncalls with batch size {len(oncall_batch)}")
+            oncalls.extend(oncall_batch)
+
+        return oncalls
 
     async def update_oncall_users(
         self, services: list[dict[str, Any]]
