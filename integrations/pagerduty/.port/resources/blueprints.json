@@ -16,9 +16,13 @@
               "format": "url"
             },
             "oncall": {
+              "icon": "DefaultProperty",
               "title": "On Call",
-              "type": "string",
-              "format": "user"
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "user"
+              }
             }
           },
           "required": []
