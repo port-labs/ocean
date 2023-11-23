@@ -7,7 +7,6 @@ authors = ["Ayodeji Adeoti <adeoti.15.jude@gmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.11"
 port_ocean = { version = "^0.4.3", extras = ["cli"] }
-pytest-asyncio = "^0.21.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
@@ -103,4 +102,3 @@ exclude = '''
 '''
 [tool.pytest.ini_options]
 python_files = ["test_*.py", "*_test.py", "testing/python/*.py"]
-asyncio_mode = "auto"
