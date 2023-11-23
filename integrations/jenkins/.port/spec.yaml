@@ -1,0 +1,35 @@
+type: jenkins
+description: jenkins integration for Port Ocean
+icon: Jenkins # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Git Providers # Should be one of the available sections in Port
+    resources:
+      - kind: job
+      - kind: build
+configurations:
+  - name: jenkinsUsername
+    required: true
+    type: string
+    sensitive: true
+    description: "The username to use for the Jenkins API"
+  - name: jenkinsPassword
+    required: true
+    type: string
+    sensitive: true
+    description: "The password to use for the Jenkins API"
+  - name: jenkinsHost
+    required: true
+    type: string
+    sensitive: true
+    description: "The host url where Jenkins is located on the server"
+  - name: jenkinsBuildsBatchSize
+    required: false
+    type: string
+    sensitive: false
+    description: "The number of builds to fetch per batch"
+  - name: jenkinsJobsBatchSize
+    required: false
+    type: string
+    sensitive: false
+    description: "The number of jobs to fetch per batch"

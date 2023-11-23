@@ -1,0 +1,38 @@
+[
+  {
+    "blueprint": "job",
+    "filter": '.body.type | startswith("item")',
+    "entity":
+      {
+        "identifier": '.body.url | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]',
+        "title": ".body.data.displayName",
+        "properties":
+          {
+            "name": ".name",
+            "url": ".url",
+            "status": ".status",
+            "timestamp": ".timestamp",
+          },
+      },
+  },
+  {
+    "blueprint": "build",
+    "filter": '.body.type | startswith("run")',
+    "entity": {
+        "identifier": '.body.data.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g")',
+        "title": ".body.data.displayName",
+        "properties":
+          {
+            "id": ".id",
+            "name": ".name",
+            "status": ".status",
+            "url": ".url",
+            "duration": ".duration",
+            "timestamp": ".timestamp",
+          },
+        # "relations": {
+        #   "job": ".body.source | tostring | sub(\"%20\"; \"-\"; \"g\") | sub(\"/\"; \"-\"; \"g\") | .[:-1]"
+        # }
+      },
+  },
+]

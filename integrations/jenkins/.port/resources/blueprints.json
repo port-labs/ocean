@@ -1,0 +1,92 @@
+[
+  {
+    "identifier": "job",
+    "description": "This blueprint represents a job event from Jenkins",
+    "title": "Jenkins Job",
+    "icon": "Jenkins",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Job Name"
+        },
+        "status": {
+          "type": "string",
+          "title": "Last Build Status",
+          "enum": ["SUCCESS", "FAILURE", "UNSTABLE"],
+          "enumColors": {
+            "SUCCESS": "green",
+            "FAILURE": "red",
+            "UNSTABLE": "yellow"
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Timestamp",
+          "description": "Last updated timestamp of the job"
+        },
+        "url": {
+          "type": "string",
+          "title": "Project URL"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "build",
+    "description": "This blueprint represents a build event from Jenkins",
+    "title": "Jenkins Build",
+    "icon": "Jenkins",
+    "schema": {
+      "properties": {
+        "id": {
+            "type": "string",
+            "title": "Build ID",
+            "description": "ID of the build"
+        },
+        "name": {
+          "type": "string",
+          "title": "Build name",
+          "description": "Full display name of the build"
+        },
+        "status": {
+          "type": "string",
+          "title": "Build Status",
+          "enum": ["SUCCESS", "FAILURE", "UNSTABLE"],
+          "enumColors": {
+            "SUCCESS": "green",
+            "FAILURE": "red",
+            "UNSTABLE": "yellow"
+          }
+        },
+        "url": {
+          "type": "string",
+          "title": "Build URL",
+          "description": "URL to the build"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Timestamp",
+          "description": "Last updated timestamp of the build"
+        },
+        "duration": {
+          "type": "string",
+          "title": "Build Duration",
+          "description": "Duration of the build"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      
+    }
+  }
+]

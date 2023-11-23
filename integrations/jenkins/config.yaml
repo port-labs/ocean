@@ -1,0 +1,17 @@
+port:
+  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET
+# The event listener to use for the integration service.
+eventListener:
+  type: POLLING
+integration:
+  # The identifier of this integration instance.
+  identifier: "my_jenkins_integration"
+  # The type of the integration.
+  type: "jenkins"
+  config:
+    jenkinsUsername: "{{ from env JENKINS_USERNAME }}"
+    jenkinsPassword: "{{ from env JENKINS_PASSWORD }}"
+    jenkinsHost: "{{ from env JEKINS_HOST }}"
+    jenkinsBuildsBatchSize: "{{ from env JENKINS_BUILDS_BATCH_SIZE }}"
+    jenkinsJobsBatchSize: "{{ from env JENKINS_JOBS_BATCH_SIZE }}"
