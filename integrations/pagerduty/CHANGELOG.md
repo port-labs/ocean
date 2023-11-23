@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.1.16 (2023-11-23)
 
-### Improvements
+### Bug Fixes
 
-- Paginate oncalls (#16)
+- Fixed incomplete oncall list over the `Service` kind by adding pagination support to the request
 
 
 # Port_Ocean 0.1.15 (2023-11-21)
