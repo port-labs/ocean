@@ -2,6 +2,7 @@ from typing import Any, Optional, AsyncGenerator, cast
 
 import httpx
 from loguru import logger
+from port_ocean.helpers.retry import RetryTransport
 
 
 class Endpoints:
@@ -25,7 +26,13 @@ class SonarQubeClient:
         self.api_key = api_key
         self.organization_id = organization_id
         self.app_host = app_host
-        self.http_client = httpx.AsyncClient(**self.api_auth_params)
+        self.http_client = httpx.AsyncClient(
+            transport=RetryTransport(
+                httpx.AsyncHTTPTransport(),
+                logger=logger,
+            ),
+            **self.api_auth_params,
+        )
         self.metrics = [
             "code_smells",
             "coverage",
