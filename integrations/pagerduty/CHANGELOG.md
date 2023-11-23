@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added retry mechanism for pagerduty client (#17)
+- Added retry handler to the pagerduty client to handle connection errors and rate limiting (#1)
 
 
 # Port_Ocean 0.1.16 (2023-11-23)
