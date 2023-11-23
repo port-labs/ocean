@@ -10,12 +10,14 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+
 def initialize_client() -> PagerDutyClient:
     return PagerDutyClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
     )
+
 
 @ocean.on_resync(ObjectKind.INCIDENTS)
 async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:

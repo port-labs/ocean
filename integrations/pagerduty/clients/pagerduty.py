@@ -142,16 +142,18 @@ class PagerDutyClient:
     async def get_oncall_user(
         self, *escalation_policy_ids: str
     ) -> list[dict[str, Any]]:
-        params={
+        params = {
             "escalation_policy_ids[]": ",".join(escalation_policy_ids),
             "include[]": "users",
         }
         oncalls = []
 
-        async for oncall_batch in self.paginate_request_to_pager_duty(data_key="oncalls", params=params):
+        async for oncall_batch in self.paginate_request_to_pager_duty(
+            data_key="oncalls", params=params
+        ):
             logger.info(f"Received oncalls with batch size {len(oncall_batch)}")
             oncalls.extend(oncall_batch)
-        
+
         return oncalls
 
     async def update_oncall_users(
