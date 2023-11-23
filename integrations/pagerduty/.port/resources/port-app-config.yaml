@@ -11,7 +11,7 @@ resources:
           properties:
             status: .status
             url: .html_url
-            oncall: .__oncall_user[0].user.email
+            oncall: '[.__oncall_user[].user.email]'
   - kind: incidents
     selector:
       query: 'true'
