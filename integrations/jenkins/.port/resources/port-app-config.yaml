@@ -8,12 +8,12 @@ resources:
       entity:
         mappings:
           identifier: '.url | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
-          title: .data.displayName
+          title: .displayName
           blueprint: '"job"'
           properties:
-            jobName: .data.fullName
+            jobName: .fullName
             url: .url
-            jobStatus: .type | split(\".\") | last
+            jobStatus: . | split(\".\") | last
             timestamp: .time
   - kind: build
     selector:
@@ -21,13 +21,13 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.data.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g")'
-          title: .data.displayName
+          identifier: '.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g")'
+          title: .displayName
           blueprint: '"build"'
           properties:
-            buildStatus: .data.result,
+            buildStatus: .result,
             buildUrl: .url,
-            buildDuration: .data.duration,
-            timestamp: .data.timestamp
+            buildDuration: .duration,
+            timestamp: .timestamp
           relations:
             job: '.source | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
