@@ -63,12 +63,16 @@ class JenkinsConnector:
         """
         job_name = job_data.get('name')
         job_status = await self.get_job_status(job_name)  # Await the asynchronous call
+        display_name = job_data.get('displayName')  # Access displayName directly
+        full_name = job_data.get('fullName')  # Access fullName directly
 
         return {
             "jobName": job_name,
             "jobStatus": job_status,
             "timestamp": job_data.get('timestamp'),
-            "url": job_data.get('url')
+            "url": job_data.get('url'),
+            "displayName": display_name,
+            "fullName": full_name
         }
 
     def format_build(self, build_data):
@@ -81,6 +85,8 @@ class JenkinsConnector:
         Returns:
         - dict: Formatted build details.
         """
+        display_name = build_data.get('displayName')
+        full_display_name = build_data.get('fullDisplayName')
         timestamp = build_data.get('timestamp')
         if timestamp:
             timestamp = self.convert_time_to_datetime(timestamp)
@@ -89,7 +95,9 @@ class JenkinsConnector:
             "buildStatus": build_data.get('result', 'UNSTABLE'),
             "buildUrl": build_data.get('url', ''),
             "timestamp": timestamp,
-            "buildDuration": build_data.get('duration')
+            "buildDuration": build_data.get('duration'),
+            "displayName": display_name,
+            "fullDisplayName": full_display_name
         }
 
     async def get_jenkins_jobs(self):

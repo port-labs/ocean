@@ -3,7 +3,7 @@ deleteDependentEntities: true
 resources:
   - kind: job
     selector:
-      query:  .type | startswith("item")
+      query: "true"
     port:
       entity:
         mappings:
@@ -17,7 +17,7 @@ resources:
             timestamp: .time
   - kind: build
     selector:
-      query: .type | startswith("run")
+      query: "true"
     port:
       entity:
         mappings:
