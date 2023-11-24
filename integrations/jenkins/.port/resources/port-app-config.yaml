@@ -9,7 +9,7 @@ resources:
         mappings:
           identifier: '.url | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
           title: .displayName
-          blueprint: '"job"'
+          blueprint: '"jenkinsJob"'
           properties:
             jobName: .fullName
             url: .url
@@ -23,7 +23,7 @@ resources:
         mappings:
           identifier: '.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g")'
           title: .displayName
-          blueprint: '"build"'
+          blueprint: '"jenkinsBuild"'
           properties:
             buildStatus: .result,
             buildUrl: .url,
