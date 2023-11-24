@@ -34,14 +34,7 @@
       "required": []
     },
     "mirrorProperties": {},
-    "calculationProperties": {
-      "jobUrl": {
-        "title": "Job Full URL",
-        "calculation": "'https://your_jenkins_url/' + .properties.url",
-        "type": "string",
-        "format": "url"
-      }
-    },
+    "calculationProperties": {},
     "relations": {}
   },
   {
