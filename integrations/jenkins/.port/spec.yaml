@@ -21,7 +21,7 @@ configurations:
   - name: jenkinsHost
     required: true
     type: string
-    sensitive: true
+    sensitive: false
     description: "The host url where Jenkins is located on the server"
   - name: jenkinsBuildsBatchSize
     required: false

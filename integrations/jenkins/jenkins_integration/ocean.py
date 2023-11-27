@@ -40,7 +40,7 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield builds
 
 
-@ocean.on_resync(ObjectKind.BUILD)
+@ocean.on_resync(ObjectKind.JOB)
 async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logic_settings = ocean.integration_config
     jenkins_client = JenkinsClient(

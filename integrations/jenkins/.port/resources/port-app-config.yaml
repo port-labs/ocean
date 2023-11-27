@@ -1,38 +1,37 @@
-[
-  {
-    "blueprint": "job",
-    "filter": '.body.type | startswith("item")',
-    "entity":
-      {
-        "identifier": '.body.url | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]',
-        "title": ".body.data.displayName",
-        "properties":
-          {
-            "name": ".name",
-            "url": ".url",
-            "status": ".status",
-            "timestamp": ".timestamp",
-          },
-      },
-  },
-  {
-    "blueprint": "build",
-    "filter": '.body.type | startswith("run")',
-    "entity": {
-        "identifier": '.body.data.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g")',
-        "title": ".body.data.displayName",
-        "properties":
-          {
-            "id": ".id",
-            "name": ".name",
-            "status": ".status",
-            "url": ".url",
-            "duration": ".duration",
-            "timestamp": ".timestamp",
-          },
-        # "relations": {
-        #   "job": ".body.source | tostring | sub(\"%20\"; \"-\"; \"g\") | sub(\"/\"; \"-\"; \"g\") | .[:-1]"
-        # }
-      },
-  },
-]
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: job
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          blueprint: '"job"'
+          identifier: .url
+          title: .name
+          properties:
+            name: .name
+            url: .url
+            status: .status
+            timestamp: .timestamp
+  - kind: build
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          blueprint: build
+          identifier: .url
+          identifier: .url
+          title: .name
+          properties:
+            id: .id
+            name: .name
+            status: .status
+            url: .url
+            timestamp: .timestamp
+            duration: .duration
+            jobUrl: .jobUrl
+          relations:
+            job: .jobUrl

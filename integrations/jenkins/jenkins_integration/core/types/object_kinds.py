@@ -15,6 +15,7 @@ class JenkinsBuild(TypedDict):
     timestamp: str
     url: str
     duration: str
+    jobUrl: str
 
 
 class JenkinsJob(TypedDict):

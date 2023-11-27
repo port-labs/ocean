@@ -2,6 +2,9 @@ from datetime import datetime
 from typing import Any, AsyncGenerator
 from pydantic import HttpUrl
 import httpx
+from jenkins_integration.utils import (
+    produce_job_url_from_build_url,
+)
 
 from jenkins_integration.core.types.api_responses import (
     BuildAPIResponse,
@@ -47,6 +50,7 @@ class JenkinsClient:
                 ).isoformat(),
                 "url": build["url"],
                 "duration": (f"{round(build['duration'] / 1000, 2)} seconds"),
+                "jobUrl": produce_job_url_from_build_url(build["url"]),
             }
             for build in builds
         ]

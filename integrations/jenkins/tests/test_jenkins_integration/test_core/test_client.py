@@ -58,6 +58,7 @@ def test_raw_builds_can_be_transformed() -> None:
             "timestamp": "2023-11-22T10:43:40.946000",
             "url": "http://localhost:8080/job/Stuff%20jub/3/",
             "duration": "0.27 seconds",
+            "jobUrl": "http://localhost:8080/job/Stuff%20jub/",
         },
         {
             "id": "2",
@@ -66,6 +67,7 @@ def test_raw_builds_can_be_transformed() -> None:
             "timestamp": "2023-11-22T10:43:32.959000",
             "url": "http://localhost:8080/job/Stuff%20jub/2/",
             "duration": "0.25 seconds",
+            "jobUrl": "http://localhost:8080/job/Stuff%20jub/",
         },
     ]
     assert JenkinsClient._transform_builds(raw_builds) == expected_builds
