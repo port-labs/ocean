@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
 
-def _get_http_client_context(port_client: PortClient) -> httpx.AsyncClient:
+def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
         client = httpx.AsyncClient(
@@ -30,7 +30,7 @@ def _get_http_client_context(port_client: PortClient) -> httpx.AsyncClient:
 _port_internal_async_client: httpx.AsyncClient
 
 
-def get_internal_http_client(port_client: PortClient) -> httpx.AsyncClient:
+def get_internal_http_client(port_client: "PortClient") -> httpx.AsyncClient:
     global _port_internal_async_client
     if _port_internal_async_client is None:
         _port_internal_async_client = LocalProxy(

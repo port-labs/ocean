@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class TokenRetryTransport(RetryTransport):
-    def __init__(self, port_client: PortClient, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, port_client: "PortClient", *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.port_client = port_client
 

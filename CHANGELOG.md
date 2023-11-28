@@ -7,6 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.4 (2023-11-29)
+
+
+### Features
+
+- Added a httpx client that recreate itself on new threads using localproxy & localstack bundled with the `RetryTransport` transport featured in 0.4.3 (PORT-5333)
+
+### Improvements
+
+- Added `TokenRetryTransport` to the port client httpx client to handle connection errors and create new access tokens when the token is expiring while requesting (PORT-5333)
+- Removed the retry handler decorator from the port client. Now using the `TokenRetryTransport` (PORT-5333_2)
+- Handled `CycleError` for cyclic dependency in entities with better error message and ocean exception class (PORT-5333_3)
+
+
 ## 0.4.3 (2023-11-09)
 
 ### Features
