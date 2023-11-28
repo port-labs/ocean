@@ -178,6 +178,12 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
         transport.close()
 
+    def _should_retry(self, response: httpx.Response) -> bool:
+        return response.status_code in self._retry_status_codes
+
+    async def _should_retry_async(self, response: httpx.Response) -> bool:
+        return response.status_code in self._retry_status_codes
+
     def _calculate_sleep(
         self, attempts_made: int, headers: Union[httpx.Headers, Mapping[str, str]]
     ) -> float:
@@ -228,10 +234,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     )
                 await asyncio.sleep(sleep_time)
             response = await send_method(request)
-            if (
-                remaining_attempts < 1
-                or response.status_code not in self._retry_status_codes
-            ):
+            if remaining_attempts < 1 or (await self._should_retry_async(response)):
                 return response
             await response.aclose()
             attempts_made += 1
@@ -255,10 +258,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     )
                 time.sleep(sleep_time)
             response = send_method(request)
-            if (
-                remaining_attempts < 1
-                or response.status_code not in self._retry_status_codes
-            ):
+            if remaining_attempts < 1 or self._should_retry(response):
                 return response
             response.close()
             attempts_made += 1
