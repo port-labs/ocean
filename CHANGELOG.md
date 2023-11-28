@@ -17,8 +17,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Added `TokenRetryTransport` to the port client httpx client to handle connection errors and create new access tokens when the token is expiring while requesting (PORT-5333)
-- Removed the retry handler decorator from the port client. Now using the `TokenRetryTransport` (PORT-5333_2)
-- Handled `CycleError` for cyclic dependency in entities with better error message and ocean exception class (PORT-5333_3)
+- Removed the retry handler decorator from the port client. Now using the `TokenRetryTransport` (PORT-5333)
+- Handled `CycleError` for cyclic dependency in entities with better error message and ocean exception class (PORT-5333)
 
 
 ## 0.4.3 (2023-11-09)
