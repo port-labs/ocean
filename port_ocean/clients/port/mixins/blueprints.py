@@ -5,7 +5,7 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.clients.port.utils import handle_status_code, retry_on_http_status
+from port_ocean.clients.port.utils import handle_status_code
 from port_ocean.core.models import Blueprint
 
 
@@ -14,7 +14,6 @@ class BlueprintClientMixin:
         self.auth = auth
         self.client = client
 
-    @retry_on_http_status(status_code=401)
     async def get_blueprint(self, identifier: str) -> Blueprint:
         logger.info(f"Fetching blueprint with id: {identifier}")
         response = await self.client.get(
@@ -24,7 +23,6 @@ class BlueprintClientMixin:
         handle_status_code(response)
         return Blueprint.parse_obj(response.json()["blueprint"])
 
-    @retry_on_http_status(status_code=401)
     async def create_blueprint(
         self,
         raw_blueprint: dict[str, Any],
@@ -39,7 +37,6 @@ class BlueprintClientMixin:
         if response.is_success:
             return response.json()["blueprint"]
 
-    @retry_on_http_status(status_code=401)
     async def patch_blueprint(
         self,
         identifier: str,
@@ -55,7 +52,6 @@ class BlueprintClientMixin:
         )
         handle_status_code(response)
 
-    @retry_on_http_status(status_code=401)
     async def delete_blueprint(
         self,
         identifier: str,
@@ -85,7 +81,6 @@ class BlueprintClientMixin:
             handle_status_code(response, should_raise)
             return response.json().get("migrationId", "")
 
-    @retry_on_http_status(status_code=401)
     async def create_action(
         self, blueprint_identifier: str, action: dict[str, Any]
     ) -> None:
@@ -98,7 +93,6 @@ class BlueprintClientMixin:
 
         handle_status_code(response)
 
-    @retry_on_http_status(status_code=401)
     async def create_scorecard(
         self,
         blueprint_identifier: str,

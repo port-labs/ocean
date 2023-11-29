@@ -3,6 +3,8 @@ from typing import Any, Optional, AsyncGenerator, cast
 import httpx
 from loguru import logger
 
+from port_ocean.utils import http_async_client
+
 
 class Endpoints:
     PROJECTS = "components/search_projects"
@@ -25,7 +27,9 @@ class SonarQubeClient:
         self.api_key = api_key
         self.organization_id = organization_id
         self.app_host = app_host
-        self.http_client = httpx.AsyncClient(**self.api_auth_params)
+        self.http_client = http_async_client
+        self.http_client.headers.update(self.api_auth_params["headers"])
+
         self.metrics = [
             "code_smells",
             "coverage",

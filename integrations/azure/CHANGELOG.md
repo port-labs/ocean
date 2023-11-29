@@ -1,3 +1,17 @@
+0.1.13 (2023-11-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.4 (#1)
+
+
+0.1.12 (2023-11-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.3 (#1)
+
+
 0.1.11 (2023-11-08)
 
 ### Improvements
