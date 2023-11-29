@@ -5,7 +5,7 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
-from port_ocean.clients.port.utils import handle_status_code, retry_on_http_status
+from port_ocean.clients.port.utils import handle_status_code
 from port_ocean.core.models import Entity
 
 
@@ -14,7 +14,6 @@ class EntityClientMixin:
         self.auth = auth
         self.client = client
 
-    @retry_on_http_status(status_code=401)
     async def upsert_entity(
         self,
         entity: Entity,
@@ -50,7 +49,6 @@ class EntityClientMixin:
             )
         handle_status_code(response, should_raise)
 
-    @retry_on_http_status(status_code=401)
     async def delete_entity(
         self,
         entity: Entity,
@@ -80,7 +78,6 @@ class EntityClientMixin:
 
         handle_status_code(response, should_raise)
 
-    @retry_on_http_status(status_code=401)
     async def validate_entity_exist(self, identifier: str, blueprint: str) -> None:
         logger.info(f"Validating entity {identifier} of blueprint {blueprint} exists")
 
@@ -96,7 +93,6 @@ class EntityClientMixin:
             )
         handle_status_code(response)
 
-    @retry_on_http_status(status_code=401)
     async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
         query = {
             "combinator": "and",
@@ -122,7 +118,6 @@ class EntityClientMixin:
         handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
-    @retry_on_http_status(status_code=401)
     async def search_dependent_entities(self, entity: Entity) -> list[Entity]:
         body = {
             "combinator": "and",
@@ -146,7 +141,6 @@ class EntityClientMixin:
 
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
-    @retry_on_http_status(status_code=401)
     async def validate_entity_payload(
         self, entity: Entity, options: RequestOptions
     ) -> None:
