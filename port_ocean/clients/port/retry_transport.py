@@ -21,12 +21,18 @@ class TokenRetryTransport(RetryTransport):
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
         if response.status_code == HTTPStatus.UNAUTHORIZED:
+            self._logger.info(
+                "Got unauthorized response, trying to refresh token before retrying"
+            )
             await self._handle_unauthorized(response)
             return True
         return await super()._should_retry_async(response)
 
     def _should_retry(self, response: httpx.Response) -> bool:
         if response.status_code == HTTPStatus.UNAUTHORIZED:
+            self._logger.info(
+                "Got unauthorized response, trying to refresh token before retrying"
+            )
             asyncio.get_running_loop().run_until_complete(
                 self._handle_unauthorized(response)
             )
