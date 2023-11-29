@@ -6,12 +6,13 @@ from loguru import logger
 
 from integration import KubecostResourceConfig, KubecostSelector
 from port_ocean.context.event import event
+from port_ocean.utils import http_async_client
 
 
 class KubeCostClient:
     def __init__(self, kubecost_host: str):
         self.kubecost_host = kubecost_host
-        self.http_client = httpx.AsyncClient()
+        self.http_client = http_async_client
 
     def generate_params(self, selector: KubecostSelector) -> dict[str, str]:
         params = selector.dict(exclude_unset=True, by_alias=True)
