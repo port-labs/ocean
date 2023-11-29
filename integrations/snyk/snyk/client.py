@@ -3,6 +3,7 @@ from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
 import httpx
+from httpx import Timeout
 from loguru import logger
 
 from port_ocean.context.event import event
@@ -33,7 +34,7 @@ class SnykClient:
         self.webhook_secret = webhook_secret
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
-        self.http_client.timeout = 30
+        self.http_client.timeout = Timeout(30)
         self.snyk_api_version = "2023-08-21"
 
     @property
