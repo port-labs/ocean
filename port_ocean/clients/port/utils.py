@@ -27,7 +27,7 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
     return client
 
 
-_port_internal_async_client: httpx.AsyncClient
+_port_internal_async_client: httpx.AsyncClient = None  # type: ignore
 
 
 def get_internal_http_client(port_client: "PortClient") -> httpx.AsyncClient:
