@@ -2,7 +2,8 @@ from typing import Any, AsyncGenerator
 
 import httpx
 from loguru import logger
-from port_ocean.helpers.retry import RetryTransport
+
+from port_ocean.utils import http_async_client
 
 
 class PagerDutyClient:
@@ -10,13 +11,8 @@ class PagerDutyClient:
         self.token = token
         self.api_url = api_url
         self.app_host = app_host
-        self.http_client = httpx.AsyncClient(
-            transport=RetryTransport(
-                httpx.AsyncHTTPTransport(),
-                logger=logger,
-            ),
-            **self.api_auth_param,
-        )
+        self.http_client = http_async_client
+        self.http_client.headers.update(self.api_auth_param["headers"])
 
     @property
     def incident_upsert_events(self) -> list[str]:
