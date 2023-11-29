@@ -6,12 +6,13 @@ from loguru import logger
 
 from integration import OpencostResourceConfig
 from port_ocean.context.event import event
+from port_ocean.utils import http_async_client
 
 
 class OpenCostClient:
     def __init__(self, app_host: str):
         self.app_host = app_host
-        self.http_client = httpx.AsyncClient()
+        self.http_client = http_async_client
 
     async def get_cost_allocation(self) -> list[dict[str, Any]]:
         """Calls the OpenCost allocation endpoint to return data for cost and usage

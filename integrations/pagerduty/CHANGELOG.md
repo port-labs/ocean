@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.18 (2023-11-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.4 (#1)
+- Changed the httpx client to be the ocean's client for better connection error handling and request retries
+
+
+# Port_Ocean 0.1.17 (2023-11-23)
+
+### Improvements
+
+- Added retry handler to the pagerduty client to handle connection errors and rate limiting (#1)
+
+
 # Port_Ocean 0.1.16 (2023-11-23)
 
 ### Bug Fixes

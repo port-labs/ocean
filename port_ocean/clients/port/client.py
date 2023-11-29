@@ -10,8 +10,7 @@ from port_ocean.clients.port.types import (
 )
 from port_ocean.clients.port.utils import (
     handle_status_code,
-    async_client,
-    retry_on_http_status,
+    get_internal_http_client,
 )
 from port_ocean.exceptions.clients import KafkaCredentialsNotFound
 
@@ -32,7 +31,7 @@ class PortClient(
         integration_version: str,
     ):
         self.api_url = f"{base_url}/v1"
-        self.client = async_client
+        self.client = get_internal_http_client(self)
         self.auth = PortAuthentication(
             self.client,
             client_id,
@@ -49,7 +48,6 @@ class PortClient(
         BlueprintClientMixin.__init__(self, self.auth, self.client)
         MigrationClientMixin.__init__(self, self.auth, self.client)
 
-    @retry_on_http_status(status_code=401)
     async def get_kafka_creds(self) -> KafkaCreds:
         logger.info("Fetching organization kafka credentials")
         response = await self.client.get(
@@ -66,7 +64,6 @@ class PortClient(
 
         return credentials
 
-    @retry_on_http_status(status_code=401)
     async def get_org_id(self) -> str:
         logger.info("Fetching organization id")
 
