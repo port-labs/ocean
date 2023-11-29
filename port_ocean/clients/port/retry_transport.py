@@ -19,8 +19,16 @@ class TokenRetryTransport(RetryTransport):
         token = await self.port_client.auth.token
         response.headers["Authorization"] = f"Bearer {token}"
 
+    def is_token_error(self, response: httpx.Response) -> bool:
+        return (
+            response.status_code == HTTPStatus.UNAUTHORIZED
+            and "/auth/access_token" not in str(response.request.url)
+            and self.port_client.auth.last_token_object is not None
+            and self.port_client.auth.last_token_object.expired
+        )
+
     async def _should_retry_async(self, response: httpx.Response) -> bool:
-        if response.status_code == HTTPStatus.UNAUTHORIZED:
+        if self.is_token_error(response):
             if self._logger:
                 self._logger.info(
                     "Got unauthorized response, trying to refresh token before retrying"
@@ -30,7 +38,7 @@ class TokenRetryTransport(RetryTransport):
         return await super()._should_retry_async(response)
 
     def _should_retry(self, response: httpx.Response) -> bool:
-        if response.status_code == HTTPStatus.UNAUTHORIZED:
+        if self.is_token_error(response):
             if self._logger:
                 self._logger.info(
                     "Got unauthorized response, trying to refresh token before retrying"

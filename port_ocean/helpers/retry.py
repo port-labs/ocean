@@ -234,6 +234,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     )
                 await asyncio.sleep(sleep_time)
             response = await send_method(request)
+            response.request = request
             if remaining_attempts < 1 or not (await self._should_retry_async(response)):
                 return response
             await response.aclose()
@@ -258,6 +259,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     )
                 time.sleep(sleep_time)
             response = send_method(request)
+            response.request = request
             if remaining_attempts < 1 or not self._should_retry(response):
                 return response
             response.close()
