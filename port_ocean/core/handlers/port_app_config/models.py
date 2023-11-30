@@ -31,7 +31,7 @@ class ResourceConfig(BaseModel):
 
 
 class PortAppConfig(BaseModel):
-    enable_merge_entity: bool = Field(alias="enableMergeEntity", default=False)
+    enable_merge_entity: bool = Field(alias="enableMergeEntity", default=True)
     delete_dependent_entities: bool = Field(
         alias="deleteDependentEntities", default=True
     )
