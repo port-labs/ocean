@@ -13,8 +13,9 @@ resources:
           properties:
             name: .name
             url: .url
-            status: .status
-            timestamp: .timestamp
+            status: .lastBuild.result
+            timestamp: '.timestamp |= (. / 1000 | strftime("%Y-%m-%d %H:%M:%S %Z"))'
+
   - kind: build
     selector:
       query: "true"
@@ -24,14 +25,14 @@ resources:
           blueprint: build
           identifier: .url
           identifier: .url
-          title: .name
+          title: .fullDisplayName
           properties:
             id: .id
-            name: .name
-            status: .status
+            name: .fullDisplayName
+            status: .result
             url: .url
-            timestamp: .timestamp
-            duration: .duration
-            jobUrl: .jobUrl
+            timestamp: '.timestamp |= (. / 1000 | strftime("%Y-%m-%d %H:%M:%S %Z"))'
+            duration: '.duration |= (. / 1000 | sprintf("%.2fsec"))'
+            jobUrl: '.url |= (. | sub("/[0-9]+/$"; ""))'
           relations:
-            job: .jobUrl
+            job: '.url |= (. | sub("/[0-9]+/$"; ""))'
