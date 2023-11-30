@@ -1,10 +1,14 @@
 # Jenkins
 
-An integration used to import Jenkins resources into Port.
+Our Jenkins integration allows you to import `jobs` and `builds` from your Jenkins server into Port, according to your mapping and definition.
 
-#### Install & use the integration - [Integration documentation](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/) *Replace this link with a link to this integration's documentation*
+### Common use cases
+Our Jenkins integration makes it easy to fill the software catalog with data directly from your Jenkins server, for example:
 
-#### Develop & improve the integration - [Ocean integration development documentation](https://ocean.getport.io/develop-an-integration/)
+- Map all of the jobs and builds in your Jenkins server;
+- Watch for Jenkins object changes (create/update/delete) in real-time, and automatically apply the changes to your entities in Port
+
+#### Installation
 
 
 ### Modes

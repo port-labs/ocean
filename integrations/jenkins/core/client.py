@@ -16,7 +16,7 @@ class JenkinsClient:
         self.client = httpx.AsyncClient(auth=auth)
 
     async def get_jobs(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        page_size = 1
+        page_size = 100
         page = 0
         logger.info("Getting jobs from Jenkins")
 
