@@ -42,9 +42,7 @@ class JenkinsClient:
 
                 logger.info(f"Got {len(jobs)} jobs from Jenkins")
 
-                garnished_jobs = [{**d, "type": "item.updated"} for d in jobs]
-
-                yield garnished_jobs
+                yield jobs
                 page += 1
 
                 if len(jobs) < page_size:
@@ -75,7 +73,7 @@ class JenkinsClient:
 
             logger.info(f"Got {len(builds)} builds from Jenkins for job {job_name}")
 
-            garnished_builds = [{**d, "source": quote(f"job/{job_name}/"), "type": "run.finalize"} for d in builds]
+            garnished_builds = [{**d, "source": quote(f"job/{job_name}/")} for d in builds]
 
             return garnished_builds
         except httpx.HTTPStatusError as e:
