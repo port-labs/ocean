@@ -14,10 +14,3 @@ def retrieve_batch_size_config_value(
             f"key '{config_key}' is not specified by user, using default value instead"
         )
         return default_value
-
-
-def produce_job_url_from_build_url(build_url: str) -> str:
-    splitted_build = build_url.split("/")
-    if build_url[-1] == "/":  # means the url ends with a slash
-        return "/".join(splitted_build[:-2]) + "/"
-    return "/".join(splitted_build[:-1]) + "/"

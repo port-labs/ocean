@@ -1,6 +1,6 @@
-from typing import TypedDict
+from typing import Literal, TypedDict
 
-from jenkins_integration.core.types.api_responses import BuildResult
+BuildResult = Literal["SUCCESS", "FAILURE", "UNSTABLE"]
 
 
 class ObjectKind:

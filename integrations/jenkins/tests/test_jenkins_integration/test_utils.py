@@ -1,8 +1,4 @@
-import pytest
-from jenkins_integration.utils import (
-    produce_job_url_from_build_url,
-    retrieve_batch_size_config_value,
-)
+from jenkins_integration.utils import retrieve_batch_size_config_value
 
 
 def test_retrieve_batch_size_config_value_with_empty_string_will_provide_default_value() -> (
@@ -49,28 +45,3 @@ def test_retrieve_batch_size_config_value_with_letter_will_provide_default_value
         retrieve_batch_size_config_value(settings, config_key, default_value)
         == default_value
     )
-
-
-@pytest.mark.parametrize(
-    ["build_url", "expected_job_url"],
-    [
-        (
-            "https://jenkins.example.com/job/job-name/1/",
-            "https://jenkins.example.com/job/job-name/",
-        ),
-        (
-            "https://jenkins.example.com/job/job-name/1",
-            "https://jenkins.example.com/job/job-name/",
-        ),
-        (
-            "https://jenkins.example.com/job/job-name/122",
-            "https://jenkins.example.com/job/job-name/",
-        ),
-        (
-            "https://jenkins.example.com/job/job-name/122/",
-            "https://jenkins.example.com/job/job-name/",
-        ),
-    ],
-)
-def test_build_url_can_produce_job_url(build_url: str, expected_job_url: str) -> None:
-    assert produce_job_url_from_build_url(build_url) == expected_job_url

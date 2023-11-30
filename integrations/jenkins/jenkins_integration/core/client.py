@@ -1,17 +1,8 @@
-from datetime import datetime
 from typing import Any, AsyncGenerator
-from pydantic import HttpUrl
-import httpx
-from jenkins_integration.utils import (
-    produce_job_url_from_build_url,
-)
 
-from jenkins_integration.core.types.api_responses import (
-    BuildAPIResponse,
-    BuildListAPIResponse,
-    JobAPIResponse,
-    JobListAPIResponse,
-)
+import httpx
+from loguru import logger
+from pydantic import HttpUrl
 
 
 class JenkinsClient:
@@ -21,39 +12,6 @@ class JenkinsClient:
         basic_auth = (username, password)
         self.client = httpx.AsyncClient(auth=basic_auth)
         self.host = host
-
-    @staticmethod
-    def _transform_jobs(jobs: list[JobAPIResponse]) -> list[dict[str, Any]]:
-        return [
-            {
-                "name": job["name"],
-                "status": job["lastBuild"]["result"],
-                # Jenkins timestamps are in milliseconds
-                "timestamp": datetime.utcfromtimestamp(
-                    job["lastBuild"]["timestamp"] / 1000
-                ).isoformat(),
-                "url": job["url"],
-            }
-            for job in jobs
-        ]
-
-    @staticmethod
-    def _transform_builds(builds: list[BuildAPIResponse]) -> list[dict[str, Any]]:
-        return [
-            {
-                "id": build["id"],
-                "name": build["fullDisplayName"],
-                "status": build["result"],
-                # Jenkins timestamps are in milliseconds
-                "timestamp": datetime.utcfromtimestamp(
-                    build["timestamp"] / 1000
-                ).isoformat(),
-                "url": build["url"],
-                "duration": (f"{round(build['duration'] / 1000, 2)} seconds"),
-                "jobUrl": produce_job_url_from_build_url(build["url"]),
-            }
-            for build in builds
-        ]
 
     async def get_jobs(
         self, batch_size: int
@@ -71,16 +29,22 @@ class JenkinsClient:
                     f"{{{starting_job_count},{ending_job_count}}}"
                 ),
             }
-            response = await self.client.get(endpoint, params=query_params)
-            response.raise_for_status()
-            data: JobListAPIResponse = response.json()
-            jobs = data["jobs"]
+            try:
+                response = await self.client.get(endpoint, params=query_params)
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                logger.error("Error occurred while fetching jobs")
+                logger.error(f"Error: {e.response.status_code}: {e.response.text}")
+                jobs_found = False
+                continue
+            data: dict[str, Any] = response.json()
+            jobs: list[dict[str, Any]] = data["jobs"]
 
             if not jobs:
                 jobs_found = False
                 continue
 
-            yield self._transform_jobs(jobs)
+            yield jobs
 
             if len(jobs) < batch_size:
                 jobs_found = False
@@ -104,16 +68,23 @@ class JenkinsClient:
                     f"{{{starting_build_count},{ending_build_count}}}"
                 ),
             }
-            response = await self.client.get(endpoint, params=query_params)
-            response.raise_for_status()
-            data: BuildListAPIResponse = response.json()
-            builds = data["builds"]
+            try:
+                response = await self.client.get(endpoint, params=query_params)
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                logger.error("Error occurred while fetching builds")
+                logger.error(f"Error: {e.response.status_code}: {e.response.text}")
+                builds_found = False
+                continue
+
+            data: dict[str, Any] = response.json()
+            builds: list[dict[str, Any]] = data["builds"]
 
             if not builds:
                 builds_found = False
                 continue
 
-            yield self._transform_builds(builds)
+            yield builds
 
             if len(builds) < batch_size:
                 builds_found = False

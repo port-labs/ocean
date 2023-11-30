@@ -1,9 +1,10 @@
 from loguru import logger
-from jenkins_integration.core.client import JenkinsClient
-from jenkins_integration.utils import retrieve_batch_size_config_value
-from jenkins_integration.core.types.object_kinds import ObjectKind
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from jenkins_integration.core.client import JenkinsClient
+from jenkins_integration.core.types import ObjectKind
+from jenkins_integration.utils import retrieve_batch_size_config_value
 
 
 @ocean.on_resync(ObjectKind.BUILD)
