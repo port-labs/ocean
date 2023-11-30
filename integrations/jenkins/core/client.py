@@ -70,23 +70,40 @@ class JenkinsClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP occurred while fetching Jenkins data {e}")
             raise
+        except Exception as e:
+            logger.error(f"Unexpected error occurred: {e}")
+            raise
 
     async def get_builds(self, job_name: str) -> list[dict[str, Any]]:
+        """
+        Fetches builds from Jenkins for a given job name.
+
+        Args:
+            job_name (str): The name of the Jenkins job to fetch builds for.
+
+        Returns:
+            list[dict[str, Any]]: A list of builds, where each build is a dictionary
+            containing information about the build.
+        """
         logger.info(f"Getting builds from Jenkins for job {job_name}")
         try:
-            params = {
-                "tree": f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"
-            }
-            encoded_params = urlencode(params)
+            # Construct the URL for the Jenkins API request
+            url = f"{self.jenkins_base_url}/job/{job_name}/api/json"
+            params = {"tree": f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"}
 
-            build_response = await self.client.get(
-                f"{self.jenkins_base_url}/job/{job_name}/api/json?{encoded_params}"
-            )
+            # Encode the parameters for the API request
+            encoded_params = urlencode(params)
+            request_url = f"{url}?{encoded_params}"
+
+            # Send the API request to Jenkins
+            build_response = await self.client.get(request_url)
             build_response.raise_for_status()
             builds = build_response.json().get("builds", [])
+
+            # Log the number of builds retrieved
             logger.info(f"Got {len(builds)} builds from Jenkins for job {job_name}")
 
-            # put data in event-like json schema
+            # Transform the build data into the desired format
             # makes blueprint mapping easy
             transformed_builds = [
                 {
@@ -109,4 +126,6 @@ class JenkinsClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP occurred while fetching Jenkins data {e}")
             raise
-        
+        except Exception as e:
+            logger.error(f"Unexpected error occurred: {e}")
+            raise
