@@ -7,6 +7,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.5 (2023-11-30)
+
+
+### Features
+
+- Added handling for transport errors like connection timeout error for outbound requests from ocean integrations and core (PORT-5369)
+- Changed port request option `merge` to be true by default (PORT-5396)
+
+### Improvements
+
+- Changed the port request options defaults to be constructed in the port app config model instead of setting the defaults in many places (PORT-5369)
+
+
 ## 0.4.4 (2023-11-29)
 
 

@@ -67,10 +67,8 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                 *(
                     self.context.port_client.validate_entity_payload(
                         entity,
-                        {
-                            "merge": config.enable_merge_entity,
-                            "create_missing_related_entities": config.create_missing_related_entities,
-                        },
+                        config.enable_merge_entity,
+                        create_missing_related_entities=config.create_missing_related_entities,
                     )
                     for entity in modified_or_created_entities
                 )
