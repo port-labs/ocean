@@ -30,7 +30,7 @@ class JenkinsConnector:
         return datetime.utcfromtimestamp(time_in_seconds)
 
     async def get_job_status(self, job_name):
-         """
+        """
         Get the status of a specific Jenkins job.
 
         Args:
@@ -43,16 +43,22 @@ class JenkinsConnector:
         - Exception: If failed to retrieve the job status.
         """
         job_url = f'{self.jenkins_base_url}/job/{job_name}/api/json'
-        response = await self.httpx_client.get(job_url)
+        try:
+            response = await self.httpx_client.get(job_url)
 
-        if response.status_code == 200:
-            job_data = response.json()
-            return job_data['lastBuild']['building']
-        else:
-            raise Exception(f"Failed to retrieve job status: {response.status_code}")
+            if response.status_code == 200:
+                job_data = response.json()
+                return job_data['lastBuild']['building']
+            else:
+                response.raise_for_status()  # Raise an error for non-2xx status codes
+
+        except httpx.HTTPError as http_err:
+            raise Exception(f"Failed to retrieve job status for {job_name}: {http_err}") from None
+        except Exception as err:
+            raise Exception(f"An error occurred while fetching job status: {err}") from None
 
     async def format_job(self, job_data):
-         """
+        """
         Format Jenkins job data.
 
         Args:
@@ -76,7 +82,7 @@ class JenkinsConnector:
         }
 
     def format_build(self, build_data):
-         """
+        """
         Format Jenkins build data.
 
         Args:
@@ -107,17 +113,34 @@ class JenkinsConnector:
         Returns:
         - list: List of formatted Jenkins job details.
         """
+        jobs = []
         job_url = f'{self.jenkins_base_url}/api/json?tree=jobs[name,url,description,displayName,fullDisplayName,fullName]'
-        response = await self.httpx_client.get(job_url)
+        start_index = 0
 
-        if response.status_code == 200:
-            result = response.json().get('jobs', [])
-            jobs = [await self.format_job(job_data) for job_data in result]
-            return jobs if result else []
-        return None
+        while True:
+            try:
+                response = await self.httpx_client.get(f'{job_url}&start={start_index}')
+                
+                if response.status_code == 200:
+                    result = response.json().get('jobs', [])
+                    formatted_jobs = [await self.format_job(job_data) for job_data in result]
+                    jobs.extend(formatted_jobs)
+                    start_index += len(result)
+                    
+                    if not result:
+                        break
+                else:
+                    response.raise_for_status()  # Raise an error for non-2xx status codes
+            
+            except httpx.HTTPError as http_err:
+                raise Exception(f"Failed to retrieve Jenkins jobs: {http_err}") from None
+            except Exception as err:
+                raise Exception(f"An error occurred while fetching Jenkins jobs: {err}") from None
+
+        return jobs
 
     async def get_jenkins_builds(self, job):
-         """
+        """
         Retrieve Jenkins builds for a specific job.
 
         Args:
@@ -126,12 +149,27 @@ class JenkinsConnector:
         Returns:
         - list: List of formatted Jenkins build details.
         """
-        job_name = job['name']
+        builds = []
+        job_name = job['jobName']
         build_url = f'{self.jenkins_base_url}/job/{job_name}/api/json?tree=builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]'
-        response = await self.httpx_client.get(build_url)
+        start_index = 0
 
-        if response.status_code == 200:
-            result = response.json().get('builds', [])
-            builds = [self.format_build(build_data) for build_data in result]
-            return builds if result else []
-        return None
+        while True:
+            try:
+                response = await self.httpx_client.get(f'{build_url}&start={start_index}')
+                
+                if response.status_code == 200:
+                    result = response.json().get('builds', [])
+                    formatted_builds = [self.format_build(build_data) for build_data in result]
+                    builds.extend(formatted_builds)
+                    start_index += len(result)
+                    
+                    if not result:
+                        break
+                else:
+                    response.raise_for_status()  # Raise an error for non-2xx status codes
+            
+            except httpx.HTTPError as http_err:
+                raise Exception(f"Failed to retrieve Jenkins builds: {http_err}") from None
+            except Exception as err:
+                raise Exception(f"An error occurred while fetching Jenkins builds: {err}") from None
