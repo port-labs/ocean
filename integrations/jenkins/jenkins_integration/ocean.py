@@ -58,12 +58,3 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for jobs in jenkins_client.get_jobs(JOBS_BATCH_SIZE):
         logger.info(f"Retrieved {len(jobs)} jobs from Jenkins")
         yield jobs
-
-
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
-@ocean.on_start()
-async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting integration")
