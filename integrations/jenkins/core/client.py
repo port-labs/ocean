@@ -16,16 +16,20 @@ class JenkinsClient:
         self.client = httpx.AsyncClient(auth=auth)
 
     async def get_jobs(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        per_page = 100
+        page_size = 1
         page = 0
         logger.info("Getting jobs from Jenkins")
 
         try:
             while True:
+                start_idx = page_size * page
+                end_idx = start_idx + page_size
+
                 params = {
-                    "tree": f"jobs[name,url,description,displayName,fullDisplayName,fullName]"
+                    "tree": f"jobs[name,url,description,displayName,fullDisplayName,fullName]{{{start_idx},{end_idx}}}"
                 }
                 encoded_params = urlencode(params)
+                logger.info(params)
 
                 job_response = await self.client.get(
                     f"{self.jenkins_base_url}/api/json?{encoded_params}"
@@ -43,7 +47,7 @@ class JenkinsClient:
                 yield garnished_jobs
                 page += 1
 
-                if len(jobs) < per_page:
+                if len(jobs) < page_size:
                     break
         except httpx.HTTPStatusError as e:
             logger.error(
@@ -61,7 +65,7 @@ class JenkinsClient:
         logger.info(f"Getting builds from Jenkins for job {job_name}")
         try:
             url = f"{self.jenkins_base_url}/job/{job_name}/api/json"
-            params = {"tree": f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"}
+            params = {"tree": "builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"}
             encoded_params = urlencode(params)
             request_url = f"{url}?{encoded_params}"
 
@@ -72,7 +76,6 @@ class JenkinsClient:
             logger.info(f"Got {len(builds)} builds from Jenkins for job {job_name}")
 
             garnished_builds = [{**d, "source": quote(f"job/{job_name}/"), "type": "run.finalize"} for d in builds]
-            logger.info(garnished_builds)
 
             return garnished_builds
         except httpx.HTTPStatusError as e:
