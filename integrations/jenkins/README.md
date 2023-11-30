@@ -46,6 +46,11 @@ resources:
       entity:
         mappings:
           identifier: '.url | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
+          title: .displayName
+          blueprint: '"jenkinsJob"'
+          properties:
+            jobName: .fullName
+            url: .url
 ```
 
 The integration makes use of the [JQ JSON processor](https://stedolan.github.io/jq/manual/) to select, modify, concatenate, transform and perform other operations on existing fields and values from Jira's API events.
