@@ -270,7 +270,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     ) -> httpx.Response:
         remaining_attempts = self._max_attempts
         attempts_made = 0
-        response: httpx.Response | None
+        response: httpx.Response | None = None
         error: Exception | None = None
         while True:
             if attempts_made > 0:
