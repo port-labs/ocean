@@ -42,6 +42,8 @@ class JenkinsClient:
 
                 logger.info(f"Got {len(jobs)} jobs from Jenkins")
 
+                # put data in event-like json schema
+                # makes blueprint mapping easy
                 transformed = [
                     {
                         "type": "item.updated",
@@ -84,6 +86,8 @@ class JenkinsClient:
             builds = build_response.json().get("builds", [])
             logger.info(f"Got {len(builds)} builds from Jenkins for job {job_name}")
 
+            # put data in event-like json schema
+            # makes blueprint mapping easy
             transformed_builds = [
                 {
                     "type": "run.finalize",
