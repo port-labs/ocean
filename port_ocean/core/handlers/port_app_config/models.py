@@ -45,6 +45,7 @@ class PortAppConfig(BaseModel):
             "delete_dependent_entities": self.delete_dependent_entities,
             "create_missing_related_entities": self.create_missing_related_entities,
             "merge": self.enable_merge_entity,
+            "validation_only": False,
         }
 
     def to_request(self) -> dict[str, Any]:
