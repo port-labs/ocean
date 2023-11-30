@@ -15,7 +15,6 @@ resources:
             url: .url
             jobStatus: .type | split(\".\") | last
             timestamp: .time
-#            jobFullUrl: .fullUrl
   - kind: build
     selector:
       query: .type | startswith("run")
@@ -29,6 +28,6 @@ resources:
             buildStatus: .data.result,
             buildUrl: .url,
             buildDuration: .data.duration,
-            timestamp: .data.timestamp
+            timestamp: .time
           relations:
             job: '.source | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
