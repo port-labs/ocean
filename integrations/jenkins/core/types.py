@@ -12,79 +12,9 @@ class ObjectKind(StrEnum):
     JOB = "job"
 
 
-class TimerTriggerCause(BaseModel):
-    _class: str
-    shortDescription: str
-
-
-class BuildData(BaseModel):
-    _class: str
-    buildsByBranchName: dict
-    lastBuiltRevision: dict
-    remoteUrls: List[str]
-    scmName: str
-
-
-class RunDisplayAction(BaseModel):
-    _class: str
-
-
-class ChangeLogSet(BaseModel):
-    _class: str
-    items: List[dict]
-    kind: str
-
-
-class JenkinsBuild(BaseModel):
-    _class: str
-    actions: List[Optional[dict]]
-    artifacts: List[Optional[dict]]
-    building: bool
-    description: Optional[str]
-    displayName: str
-    duration: int
-    estimatedDuration: int
-    executor: dict
-    fullDisplayName: str
-    id: str
-    inProgress: bool
-    keepLog: bool
-    number: int
-    queueId: int
-    result: str
-    timestamp: int | str
-    builtOn: str
-    changeSet: Optional[dict]
-    culprits: List[Optional[dict]]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(**kwargs)
-        self.timestamp = self.time_as_datetime
-
-    @property
-    def time_as_datetime(self):
-        return convert_timestamp_to_utc_dt(self.timestamp)
-
-
-class JenkinsJob(BaseModel):
-    """
-    A jenkins job could have many more attributes but these are expected in every item
-    """
-
-    _class: str
-    actions: List[Optional[dict]]
-    description: str
-    displayName: str
-    displayNameOrNull: str
-    fullDisplayName: str
-    fullName: str
-    name: str
-    healthReport: List[Optional[dict]]
-
-
 class JenkinsEvent(BaseModel):
     metaData: Optional[dict]
-    data: Union[JenkinsBuild, JenkinsBuild, dict]
+    data: dict
     dataType: str
     urlData: str
     id: str
