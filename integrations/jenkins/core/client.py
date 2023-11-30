@@ -59,23 +59,39 @@ class JenkinsClient:
             logger.error(f"Unexpected error occurred: {e}")
             raise
 
-    async def get_builds(self, job_name: str) -> list[dict[str, Any]]:
+    async def get_builds(self, job_name: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+        page_size = 100
+        page = 0
+
         logger.info(f"Getting builds from Jenkins for job {job_name}")
         try:
-            url = f"{self.jenkins_base_url}/job/{job_name}/api/json"
-            params = {"tree": "builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"}
-            encoded_params = urlencode(params)
-            request_url = f"{url}?{encoded_params}"
+            while True:
+                start_idx = page_size * page
+                end_idx = start_idx + page_size
 
-            build_response = await self.client.get(request_url)
-            build_response.raise_for_status()
-            builds = build_response.json().get("builds", [])
+                # Parameters for pagination
+                params = {"tree": f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]{{{start_idx},{end_idx}}}"}
+                encoded_params = urlencode(params)
+                request_url = f"{self.jenkins_base_url}/job/{job_name}/api/json?{encoded_params}"
 
-            logger.info(f"Got {len(builds)} builds from Jenkins for job {job_name}")
+                build_response = await self.client.get(request_url)
+                build_response.raise_for_status()
+                builds = build_response.json().get("builds", [])
 
-            garnished_builds = [{**d, "source": quote(f"job/{job_name}/")} for d in builds]
+                # If there are no more builds, exit the loop
+                if not builds:
+                    break
 
-            return garnished_builds
+                logger.info(f"Got {len(builds)} builds from Jenkins for job {job_name}")
+
+                garnished_builds = [{**d, "source": quote(f"job/{job_name}/")} for d in builds]
+
+                yield garnished_builds
+                page += 1
+
+                if len(garnished_builds) < page_size:
+                    break
+
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"

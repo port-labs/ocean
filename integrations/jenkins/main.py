@@ -31,8 +31,8 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for jobs in jenkins_client.get_jobs():
         logger.info(f"Received ${len(jobs)} jobs")
         for job in jobs:
-            builds = await jenkins_client.get_builds(job["name"])
-            yield builds
+            async for builds in jenkins_client.get_builds(job["name"]):
+                yield builds
 
 
 @ocean.router.post("/events")
