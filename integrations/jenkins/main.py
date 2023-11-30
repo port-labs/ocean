@@ -1,7 +1,8 @@
+from typing import Any
 from loguru import logger
 
 from core.client import JenkinsClient
-from core.types import JenkinsEvent, ObjectKind
+from core.types import ObjectKind
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -30,20 +31,18 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for jobs in jenkins_client.get_jobs():
         logger.info(f"Received ${len(jobs)} jobs")
         for job in jobs:
-            builds = await jenkins_client.get_builds(job["data"]["name"])
+            builds = await jenkins_client.get_builds(job["name"])
             yield builds
 
 
 @ocean.router.post("/events")
-async def handle_events(event: JenkinsEvent) -> dict[str, bool]:
+async def handle_events(event: dict[str, Any]) -> dict[str, bool]:
     logger.info(
-        f"{event.kind}: Received {event.dataType} event {event.id} | {event.type}"
+        f'Received {event["dataType"]} event {event["id"]} | {event["type"]}'
     )
 
-    if event.type in ["run.initialize", "run.started"]:
+    if event["type"] in ["run.initialize", "run.started"]:
         return {"ok": True}
 
-    event_record = event.dict(by_alias=True)
-
-    await ocean.register_raw(event.kind, [event_record])
+    await ocean.register_raw(ObjectKind.get_object_kind(event["type"]), [event])
     return {"ok": True}

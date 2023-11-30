@@ -1,11 +1,9 @@
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, quote
 
 import httpx
 from typing import Any, AsyncGenerator
 
 from loguru import logger
-
-from core.utils import convert_timestamp_to_utc_dt, url_encode_str
 
 
 class JenkinsClient:
@@ -24,7 +22,6 @@ class JenkinsClient:
 
         try:
             while True:
-                # Parameters for pagination
                 params = {
                     "tree": f"jobs[name,url,description,displayName,fullDisplayName,fullName]"
                 }
@@ -36,28 +33,14 @@ class JenkinsClient:
                 job_response.raise_for_status()
                 jobs = job_response.json()["jobs"]
 
-                # If there are no more jobs, exit the loop
                 if not jobs:
                     break
 
                 logger.info(f"Got {len(jobs)} jobs from Jenkins")
 
-                # put data in event-like json schema
-                # makes blueprint mapping easy
-                transformed = [
-                    {
-                        "type": "item.updated",
-                        "data": job,
-                        "url": urlparse(job.get("url")).path.lstrip(
-                            "/"
-                        ),  # since blueprint expects path rather host
-                        "fullUrl": job.get("url"),
-                        "time": job.get("timestamp"),
-                    }
-                    for job in jobs
-                ]
+                garnished_jobs = [{**d, "type": "item.updated"} for d in jobs]
 
-                yield transformed
+                yield garnished_jobs
                 page += 1
 
                 if len(jobs) < per_page:
@@ -75,49 +58,23 @@ class JenkinsClient:
             raise
 
     async def get_builds(self, job_name: str) -> list[dict[str, Any]]:
-        """
-        Fetches builds from Jenkins for a given job name.
-
-        Args:
-            job_name (str): The name of the Jenkins job to fetch builds for.
-
-        Returns:
-            list[dict[str, Any]]: A list of builds, where each build is a dictionary
-            containing information about the build.
-        """
         logger.info(f"Getting builds from Jenkins for job {job_name}")
         try:
-            # Construct the URL for the Jenkins API request
             url = f"{self.jenkins_base_url}/job/{job_name}/api/json"
             params = {"tree": f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"}
-
-            # Encode the parameters for the API request
             encoded_params = urlencode(params)
             request_url = f"{url}?{encoded_params}"
 
-            # Send the API request to Jenkins
             build_response = await self.client.get(request_url)
             build_response.raise_for_status()
             builds = build_response.json().get("builds", [])
 
-            # Log the number of builds retrieved
             logger.info(f"Got {len(builds)} builds from Jenkins for job {job_name}")
 
-            # Transform the build data into the desired format
-            # makes blueprint mapping easy
-            transformed_builds = [
-                {
-                    "type": "run.finalize",
-                    "source": url_encode_str(f"job/{job_name}/"),
-                    "url": build.get("url", None),
-                    "data": {
-                        **build,
-                        "timestamp": convert_timestamp_to_utc_dt(build.get("timestamp")),
-                    },
-                }
-                for build in builds
-            ]
-            return transformed_builds
+            garnished_builds = [{**d, "source": quote(f"job/{job_name}/"), "type": "run.finalize"} for d in builds]
+            logger.info(garnished_builds)
+
+            return garnished_builds
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"

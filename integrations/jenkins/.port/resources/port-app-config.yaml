@@ -7,12 +7,12 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.url | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
-          title: .data.displayName
+          identifier: 'if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
+          title: '(.data.displayName // .displayName)'
           blueprint: '"job"'
           properties:
-            jobName: .data.fullName
-            url: .url
+            jobName: '.data.fullName // .fullName'
+            url: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
             jobStatus: .type | split(\".\") | last
             timestamp: .time
   - kind: build
@@ -21,13 +21,13 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.data.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g")'
-          title: .data.displayName
+          identifier: '(.data.fullDisplayName // .fullDisplayName) | sub(" "; "-"; "g") | sub("#"; ""; "g")'
+          title: '.data.displayName // .displayName'
           blueprint: '"build"'
           properties:
-            buildStatus: .data.result,
-            buildUrl: .url,
-            buildDuration: .data.duration,
-            timestamp: .time
+            buildStatus: '.data.result // .result'
+            buildUrl: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
+            buildDuration: '.data.duration // .duration'
+            timestamp: '(.time // .timestamp) as $input | if $input | type == "number" then ($input / 1000 | todate) else $input end'
           relations:
-            job: '.source | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
+            job: '(.source) as $input | if $input | contains("://") then ($input | split("://")[1] | sub("^.*?/"; "")) else $input end | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
