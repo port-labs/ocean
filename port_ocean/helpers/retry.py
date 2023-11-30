@@ -196,7 +196,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         elif self._logger and error:
             self._logger.warning(
                 f"Request {request.method} {request.url} failed with exception:"
-                f" {error}, retrying in {sleep_time} seconds."
+                f" {type(error).__name__} - {str(error) or 'No error message'}, retrying in {sleep_time} seconds."
             )
 
     async def _should_retry_async(self, response: httpx.Response) -> bool:
@@ -241,9 +241,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     ) -> httpx.Response:
         remaining_attempts = self._max_attempts
         attempts_made = 0
+        response: httpx.Response | None = None
+        error: Exception | None = None
         while True:
-            response: httpx.Response | None = None
-            error: Exception | None = None
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_failure(request, sleep_time, response, error)
@@ -270,9 +270,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     ) -> httpx.Response:
         remaining_attempts = self._max_attempts
         attempts_made = 0
+        response: httpx.Response | None
+        error: Exception | None = None
         while True:
-            response: httpx.Response | None = None
-            error: Exception | None = None
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_failure(request, sleep_time, response, error)
