@@ -1,8 +1,8 @@
 import base64
 import typing
-from asyncio import Timeout
 from typing import Any, AsyncGenerator
 
+from httpx import Timeout
 from jira.overrides import JiraResourceConfig
 from loguru import logger
 from port_ocean.context.event import event
