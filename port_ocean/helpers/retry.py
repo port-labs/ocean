@@ -248,6 +248,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_failure(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
+
+            error = None
+            response = None
             try:
                 response = await send_method(request)
                 response.request = request
@@ -277,6 +280,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_failure(request, sleep_time, response, error)
                 time.sleep(sleep_time)
+
+            error = None
+            response = None
             try:
                 response = send_method(request)
                 response.request = request
