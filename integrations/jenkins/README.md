@@ -5,7 +5,6 @@ An integration used to import Jenkins resources into Port.
 ## Common use cases
 
 - Define mappings for Jenkins jobs and builds within your project's environment.
-- Monitor real-time changes in Jenkins objects (creation, updates, deletions) and seamlessly synchronize these changes with corresponding entities in Port.
 
 ## installation
 
