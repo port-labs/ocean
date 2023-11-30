@@ -41,8 +41,5 @@ async def handle_events(event: dict[str, Any]) -> dict[str, bool]:
         f'Received {event["dataType"]} event {event["id"]} | {event["type"]}'
     )
 
-    if event["type"] in ["run.initialize", "run.started"]:
-        return {"ok": True}
-
     await ocean.register_raw(ObjectKind.get_object_kind_for_event(event["type"]), [event])
     return {"ok": True}

@@ -13,7 +13,7 @@ resources:
           properties:
             jobName: '.data.fullName // .fullName'
             url: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
-            jobStatus: .type | split(\".\") | last
+            jobStatus: '.type | if . then split(".") | last else "created" end'
             timestamp: .time
   - kind: build
     selector:
