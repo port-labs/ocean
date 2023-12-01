@@ -28,7 +28,7 @@
         },
         "url": {
           "type": "string",
-          "title": "Project URL"
+          "title": "Job URL"
         }
       },
       "required": []

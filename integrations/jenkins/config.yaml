@@ -12,6 +12,6 @@ integration:
   config:
     jenkinsUsername: "{{ from env JENKINS_USERNAME }}"
     jenkinsPassword: "{{ from env JENKINS_PASSWORD }}"
-    jenkinsHost: "{{ from env JEKINS_HOST }}"
+    jenkinsHost: "{{ from env JENKINS_HOST }}"
     jenkinsBuildsBatchSize: "{{ from env JENKINS_BUILDS_BATCH_SIZE }}"
     jenkinsJobsBatchSize: "{{ from env JENKINS_JOBS_BATCH_SIZE }}"

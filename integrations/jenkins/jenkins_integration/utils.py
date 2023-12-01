@@ -9,7 +9,7 @@ def retrieve_batch_size_config_value(
     logger.info(f"Retrieving optional config key '{config_key}'")
     try:
         return int(settings[config_key])
-    except ValueError:
+    except (ValueError, TypeError):
         logger.info(
             f"key '{config_key}' is not specified by user, using default value instead"
         )

@@ -22,8 +22,7 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: build
-          identifier: .url
+          blueprint: '"build"'
           identifier: .url
           title: .fullDisplayName
           properties:
