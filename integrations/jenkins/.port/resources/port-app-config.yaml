@@ -13,7 +13,7 @@ resources:
           properties:
             jobName: '.data.fullName // .fullName'
             url: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
-            jobStatus: '.type | if . then split(".") | last else "created" end'
+            jobStatus: '.type | split(".") | last'
             timestamp: .time
   - kind: build
     selector:
@@ -30,4 +30,4 @@ resources:
             buildDuration: '.data.duration // .duration'
             timestamp: '(.time // .timestamp) as $input | if $input | type == "number" then ($input / 1000 | todate) else $input end'
           relations:
-            job: '(.source) as $input | if $input | contains("://") then ($input | split("://")[1] | sub("^.*?/"; "")) else $input end | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
+            job: '(.source // .url) as $input | if $input | contains("://") then ($input | split("://")[1] | sub("^.*?/"; "")) else $input end | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1] | sub("-[0-9]+$"; "")'

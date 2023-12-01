@@ -69,7 +69,6 @@ class JenkinsClient:
                 start_idx = page_size * page
                 end_idx = start_idx + page_size
 
-                # Parameters for pagination
                 params = {"tree": f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]{{{start_idx},{end_idx}}}"}
                 encoded_params = urlencode(params)
                 request_url = f"{self.jenkins_base_url}/job/{job_name}/api/json?{encoded_params}"
@@ -78,18 +77,15 @@ class JenkinsClient:
                 build_response.raise_for_status()
                 builds = build_response.json().get("builds", [])
 
-                # If there are no more builds, exit the loop
                 if not builds:
                     break
 
                 logger.info(f"Got {len(builds)} builds from Jenkins for job {job_name}")
 
-                garnished_builds = [{**d, "source": quote(f"job/{job_name}/")} for d in builds]
-
-                yield garnished_builds
+                yield builds
                 page += 1
 
-                if len(garnished_builds) < page_size:
+                if len(builds) < page_size:
                     break
 
         except httpx.HTTPStatusError as e:
