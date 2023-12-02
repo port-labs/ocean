@@ -8,7 +8,7 @@ resources:
       entity:
         mappings:
           blueprint: '"job"'
-          identifier: .name
+          identifier: '.name |= (. | sub("#[0-9]+ *$"; "") | gsub("[^a-zA-Z0-9]"; "-"))'
           title: .name
           properties:
             name: .name
@@ -34,4 +34,4 @@ resources:
             duration: '.duration |= (. / 1000 | sprintf("%.2fsec"))'
             job: '.url |= (. | sub("/[0-9]+/$"; ""))'
           relations:
-            job: '.url |= (. | sub("/[0-9]+/$"; ""))'
+            job: '.fullDisplayName |= (. | sub("#[0-9]+ *$"; "") | gsub("[^a-zA-Z0-9]"; "-"))'
