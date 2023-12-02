@@ -2,9 +2,16 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from jenkins_integration.core.client import JenkinsClient
-from jenkins_integration.core.types import ObjectKind
-from jenkins_integration.utils import retrieve_batch_size_config_value
+from .client import JenkinsClient
+
+BUILDS_BATCH_SIZE = 100
+
+JOBS_BATCH_SIZE = 100
+
+
+class ObjectKind:
+    BUILD = "build"
+    JOB = "job"
 
 
 @ocean.on_resync(ObjectKind.BUILD)
@@ -14,14 +21,6 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logic_settings["jenkins_username"],
         logic_settings["jenkins_password"],
         logic_settings["jenkins_host"],
-    )
-
-    BUILDS_BATCH_SIZE = retrieve_batch_size_config_value(
-        logic_settings, "jenkins_builds_batch_size", 100
-    )
-
-    JOBS_BATCH_SIZE = retrieve_batch_size_config_value(
-        logic_settings, "jenkins_jobs_batch_size", 100
     )
 
     logger.info("Retrieving Jenkins jobs")
@@ -48,10 +47,6 @@ async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logic_settings["jenkins_username"],
         logic_settings["jenkins_password"],
         logic_settings["jenkins_host"],
-    )
-
-    JOBS_BATCH_SIZE = retrieve_batch_size_config_value(
-        logic_settings, "jenkins_jobs_batch_number", 100
     )
 
     logger.info("Retrieving Jenkins jobs")

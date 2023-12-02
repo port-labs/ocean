@@ -6,8 +6,6 @@ from pydantic import HttpUrl
 
 
 class JenkinsClient:
-    ...
-
     def __init__(self, username: str, password: str, host: HttpUrl) -> None:
         basic_auth = (username, password)
         self.client = httpx.AsyncClient(auth=basic_auth)

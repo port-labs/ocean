@@ -80,7 +80,7 @@
           "title": "Build Duration",
           "description": "Duration of the build"
         },
-        "jobUrl": {
+        "job": {
           "type": "string",
           "title": "Job URL",
           "description": "URL to the job"
@@ -91,7 +91,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "jobUrl": {
+      "job": {
         "title": "Jenkins Job",
         "target": "job",
         "required": false,

@@ -38,8 +38,6 @@ This table summarizes the available parameters for the installation. Set them as
 | integration.secrets.jenkinsUsername       | Your Jenkins username                                                                                                 | ✅       |
 | integration.secrets.jenkinsPassword       | Your Jenkins password                                                                                                 | ✅       |
 | integration.config.jenkinsHost            | The host URL for your Jenkins installation                                                                            | ✅       |
-| integration.config.jenkinsBuildsBatchSize | The number of builds that will be loaded per batch. Defaults to 100                                                   | ❌       |
-| integration.config.jenkinsJobsBatchSize   | The number of jobs that will be loaded per batch. Defaults to 100                                                     | ❌       |
 | integration.config.appHost                | The host of the Port Ocean app. Used to set up the integration endpoint as the target for webhooks created in Jenkins | ❌       |
 | scheduledResyncInterval                   | The number of minutes between each resync                                                                             | ❌       |
 | initializePortResources                   | Default true, When set to true the integration will create default blueprints and the port App config Mapping         | ❌       |
@@ -56,8 +54,6 @@ helm upgrade --install my-jenkins-integration port-labs/port-ocean \
 	--set integration.type="jenkins"  \
 	--set integration.eventListener.type="POLLING" \
 	--set integration.config.jenkinsHost="string"  \
-	--set integration.config.jenkinsBuildsBatchSize="int"  \
-	--set integration.config.jenkinsJobsBatchSize="int"  \
 	--set integration.secrets.jenkinsUsername="string"  \
 	--set integration.secrets.jenkinsPassword="string"  \
 
@@ -75,16 +71,14 @@ Make sure to configure the following [Github Secrets](https://docs.github.com/en
 
 | Parameters                                              | Descriptions                                                                                                       | Required |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
-| OCEAN**PORT**CLIENT_ID                                  | Your port client id                                                                                                | ✅       |
-| OCEAN**PORT**CLIENT_SECRET                              | Your port client secret                                                                                            | ✅       |
-| OCEAN**PORT**BASE_URL                                   | Your port base url, relevant only if not using the default port app                                                | ❌       |
-| OCEAN**INTEGRATION**IDENTIFIER                          | Change the identifier to describe your integration                                                                 | ❌       |
+| OCEAN\_\_PORT\_\_CLIENT_ID                                  | Your port client id                                                                                                | ✅       |
+| OCEAN\_\_PORT\_\_CLIENT_SECRET                              | Your port client secret                                                                                            | ✅       |
+| OCEAN\_\_PORT\_\_BASE_URL                                   | Your port base url, relevant only if not using the default port app                                                | ❌       |
+| OCEAN\_\_INTEGRATION\_\_IDENTIFIER                          | Change the identifier to describe your integration                                                                 | ❌       |
 | OCEAN\_\_INITIALIZE_PORT_RESOURCES                      | Default true, When set to false the integration will not create default blueprints and the port App config Mapping | ❌       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_USERNAME          | Your Jenkins username                                                                                              | ✅       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_PASSWORD          | Your Jenkins password                                                                                              | ✅       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_HOST              | The host URL for your Jenkins installation                                                                         | ✅       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_BUILDS_BATCH_SIZE | The number of builds that will be loaded per batch. Defaults to 100                                                | ❌       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_JOBS_BATCH_SIZE   | The number of jobs that will be loaded per batch. Defaults to 100                                                  | ❌       |
+| OCEAN\_\_INTEGRATION\_\_CONFIG\_\_JENKINS_USERNAME          | Your Jenkins username                                                                                              | ✅       |
+| OCEAN\_\_INTEGRATION\_\_CONFIG\_\_JENKINS_PASSWORD          | Your Jenkins password                                                                                              | ✅       |
+| OCEAN\_\_INTEGRATION\_\_CONFIG\_\_JENKINS_HOST              | The host URL for your Jenkins installation                                                                         | ✅       |
 
 Here is an example for `jenkins-integration.yml` workflow file:
 
@@ -115,8 +109,6 @@ jobs:
           -e OCEAN__INTEGRATION__CONFIG__JENKINS_HOST=${{ secrets.OCEAN__INTEGRATION__CONFIG__JENKINS_HOST }} \
           -e OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME=${{ secrets.OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME }} \
           -e OCEAN__INTEGRATION__CONFIG__JENKINS_PASSWORD=${{ secrets.OCEAN__INTEGRATION__CONFIG__JENKINS_PASSWORD }} \
-          -e OCEAN__INTEGRATION__CONFIG__JENKINS_BUILDS_BATCH_SIZE=${{ secrets.OCEAN__INTEGRATION__CONFIG__JENKINS_BUILDS_BATCH_SIZE }} \
-          -e OCEAN__INTEGRATION__CONFIG__JENKINS_JOBS_BATCH_SIZE=${{ secrets.OCEAN__INTEGRATION__CONFIG__JENKINS_JOBS_BATCH_SIZE }} \
           -e OCEAN__PORT__CLIENT_ID=${{ secrets.OCEAN__PORT__CLIENT_ID }} \
           -e OCEAN__PORT__CLIENT_SECRET=${{ secrets.OCEAN__PORT__CLIENT_SECRET }} \
           $image_name
@@ -134,16 +126,14 @@ Make sure to configure the following [Jenkins Credentials](https://www.jenkins.i
 
 | Parameters                                              | Descriptions                                                                                                       | Required |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
-| OCEAN**PORT**CLIENT_ID                                  | Your port client id                                                                                                | ✅       |
-| OCEAN**PORT**CLIENT_SECRET                              | Your port client secret                                                                                            | ✅       |
-| OCEAN**PORT**BASE_URL                                   | Your port base url, relevant only if not using the default port app                                                | ❌       |
-| OCEAN**INTEGRATION**IDENTIFIER                          | Change the identifier to describe your integration                                                                 | ❌       |
+| OCEAN\_\_PORT\_\_CLIENT_ID                                  | Your port client id                                                                                                | ✅       |
+| OCEAN\_\_PORT\_\_CLIENT_SECRET                              | Your port client secret                                                                                            | ✅       |
+| OCEAN\_\_PORT\_\_BASE_URL                                   | Your port base url, relevant only if not using the default port app                                                | ❌       |
+| OCEAN\_\_INTEGRATION\_\_IDENTIFIER                          | Change the identifier to describe your integration                                                                 | ❌       |
 | OCEAN\_\_INITIALIZE_PORT_RESOURCES                      | Default true, When set to false the integration will not create default blueprints and the port App config Mapping | ❌       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_USERNAME          | Your Jenkins username                                                                                              | ✅       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_PASSWORD          | Your Jenkins password                                                                                              | ✅       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_HOST              | The host URL for your Jenkins installation                                                                         | ✅       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_BUILDS_BATCH_SIZE | The number of builds that will be loaded per batch. Defaults to 100                                                | ❌       |
-| OCEAN**INTEGRATION**CONFIG\_\_JENKINS_JOBS_BATCH_SIZE   | The number of jobs that will be loaded per batch. Defaults to 100                                                  | ❌       |
+| OCEAN\_\_INTEGRATION\_\_CONFIG\_\_JENKINS_USERNAME          | Your Jenkins username                                                                                              | ✅       |
+| OCEAN\_\_INTEGRATION\_\_CONFIG\_\_JENKINS_PASSWORD          | Your Jenkins password                                                                                              | ✅       |
+| OCEAN\_\_INTEGRATION\_\_CONFIG\_\_JENKINS_HOST              | The host URL for your Jenkins installation                                                                         | ✅       |
 
 Here is an example for Jenkinsfile groovy pipeline file:
 
@@ -159,8 +149,6 @@ pipeline {
                         string(credentialsId: 'OCEAN__INTEGRATION__CONFIG__JENKINS_HOST', variable: 'OCEAN__INTEGRATION__CONFIG__JENKINS_HOST'),
                         string(credentialsId: 'OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME', variable: 'OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME'),
                         string(credentialsId: 'OCEAN__INTEGRATION__CONFIG__JENKINS_PASSWORD', variable: 'OCEAN__INTEGRATION__CONFIG__JENKINS_PASSWORD'),
-                        int(credentialsId: 'OCEAN__INTEGRATION__CONFIG__JENKINS_BUILDS_BATCH_SIZE', variable: 'OCEAN__INTEGRATION__CONFIG__JENKINS_BUILDS_BATCH_SIZE'),
-                        int(credentialsId: 'OCEAN__INTEGRATION__CONFIG__JENKINS_JOBS_BATCH_SIZE', variable: 'OCEAN__INTEGRATION__CONFIG__JENKINS_JOBS_BATCH_SIZE'),
                         string(credentialsId: 'OCEAN__PORT__CLIENT_ID', variable: 'OCEAN__PORT__CLIENT_ID'),
                         string(credentialsId: 'OCEAN__PORT__CLIENT_SECRET', variable: 'OCEAN__PORT__CLIENT_SECRET'),
                     ]) {
@@ -175,10 +163,6 @@ pipeline {
                                 -e OCEAN__INTEGRATION__CONFIG__JENKINS_HOST=$OCEAN__INTEGRATION__CONFIG__JENKINS_HOST \
                                 -e OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME=$OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME \
                                 -e OCEAN__INTEGRATION__CONFIG__JENKINS_PASSWORD=$OCEAN__INTEGRATION__CONFIG__JENKINS_PASSWORD \
-                                -e
-                                // Both batch sizes config can be left out if you wish to use the default.
-                                OCEAN__INTEGRATION__CONFIG__JENKINS_BUILDS_BATCH_SIZE=$OCEAN__INTEGRATION__CONFIG__JENKINS_BUILDS_BATCH_SIZE \
-                                -e OCEAN__INTEGRATION__CONFIG__JENKINS_JOBS_BATCH_SIZE=$OCEAN__INTEGRATION__CONFIG__JENKINS_JOBS_BATCH_SIZE \
                                 -e OCEAN__PORT__CLIENT_ID=$OCEAN__PORT__CLIENT_ID \
                                 -e OCEAN__PORT__CLIENT_SECRET=$OCEAN__PORT__CLIENT_SECRET \
                                 $image_name
@@ -409,7 +393,7 @@ resources:
         "title": "Build Duration",
         "description": "Duration of the build"
       },
-      "jobUrl": {
+      "job": {
         "type": "string",
         "title": "Job URL",
         "description": "URL to the job"
@@ -420,7 +404,7 @@ resources:
   "mirrorProperties": {},
   "calculationProperties": {},
   "relations": {
-    "jobUrl": {
+    "job": {
       "title": "Jenkins Job",
       "target": "job",
       "required": false,
@@ -452,7 +436,7 @@ resources:
             url: .url
             timestamp: '.timestamp |= (. / 1000 | strftime("%Y-%m-%d %H:%M:%S %Z"))'
             duration: '.duration |= (. / 1000 | sprintf("%.2fsec"))'
-            jobUrl: '.url |= (. | sub("/[0-9]+/$"; ""))'
+            job: '.url |= (. | sub("/[0-9]+/$"; ""))'
           relations:
             job: '.url |= (. | sub("/[0-9]+/$"; ""))'
 ```

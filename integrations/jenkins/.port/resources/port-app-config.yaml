@@ -8,7 +8,7 @@ resources:
       entity:
         mappings:
           blueprint: '"job"'
-          identifier: .url
+          identifier: .name
           title: .name
           properties:
             name: .name
@@ -23,7 +23,7 @@ resources:
       entity:
         mappings:
           blueprint: '"build"'
-          identifier: .url
+          identifier: .fullDisplayName
           title: .fullDisplayName
           properties:
             id: .id
@@ -32,6 +32,6 @@ resources:
             url: .url
             timestamp: '.timestamp |= (. / 1000 | strftime("%Y-%m-%d %H:%M:%S %Z"))'
             duration: '.duration |= (. / 1000 | sprintf("%.2fsec"))'
-            jobUrl: '.url |= (. | sub("/[0-9]+/$"; ""))'
+            job: '.url |= (. | sub("/[0-9]+/$"; ""))'
           relations:
             job: '.url |= (. | sub("/[0-9]+/$"; ""))'
