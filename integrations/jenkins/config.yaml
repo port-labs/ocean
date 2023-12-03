@@ -1,0 +1,17 @@
+initializePortResources: true
+port:
+  # The event listener to use for the integration service.
+  orgId: "{{ from env PORT_ORG_ID }}"
+  clientId: "{{ from env PORT_CLIENT_ID }}" 
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" 
+eventListener:
+  type: POLLING
+integration:
+  # The identifier of this integration instance.
+  identifier: "jenkins"
+  # The type of the integration.
+  type: "jenkins"
+  config:
+    jenkinsHost: "{{ from env JENKINS_HOST }}"
+    jenkinsUsername: "{{ from env JENKINS_USERNAME}}"
+    jenkinsToken: "{{ from env JENKINS_TOKEN }}"

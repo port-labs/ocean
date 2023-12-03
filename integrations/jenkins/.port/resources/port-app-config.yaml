@@ -1,0 +1,32 @@
+resources:
+  - kind: job
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: .name
+          blueprint: '"jenkinsJob"'
+          properties:
+            jobName: .name
+            jobIsBuildable: .buildable
+            jobUrl: .url
+            description: .description
+
+  - kind: build
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .fullDisplayName
+          blueprint: '"jenkinsBuild"'
+          properties:
+            buildStatus: .result
+            buildUrl: .url
+            timestamp: .timestamp | (todateiso8601 | gsub("T"; " ") | sub("\\.[0-9]+Z$"; "") | sub("^(?<year>[0-9]{4})-(?<month>[0-9]{2})-(?<day>[0-9]{2})"; .day + "/" + .month + "/" + .year) | sub(" (?<hour>[0-9]{2}:[0-9]{2}):[0-9]{2}"; " " + .hour))|gsub("Z";"")
+            buildDuration: .duration
+          relations:
+            jenkinsJob: .fullDisplayName | split(" ")[0]
