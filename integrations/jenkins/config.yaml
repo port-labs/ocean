@@ -13,5 +13,5 @@ integration:
   type: "jenkins"
   config:
     jenkinsHost: "{{ from env JENKINS_HOST }}"
-    jenkinsUsername: "{{ from env JENKINS_USERNAME}}"
+    jenkinsUsername: "{{ from env JENKINS_USERNAME}}" 
     jenkinsToken: "{{ from env JENKINS_TOKEN }}"
