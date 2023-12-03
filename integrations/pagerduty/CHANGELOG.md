@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.21 (2023-12-03)
+
+### Improvements
+
+- Updated the get oncall users params for proper parsing
+
 # Port_Ocean 0.1.20 (2023-11-30)
 
 ### Improvements
