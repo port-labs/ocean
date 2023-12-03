@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.1.21 (2023-12-03)
 
-### Improvements
+### Bug Fixes
 
-- Updated the get oncall users params for proper parsing
+- Fixed an issue where get_oncall_users only returned 1 on call instead of everyone (#251)
 
 # Port_Ocean 0.1.20 (2023-11-30)
 
