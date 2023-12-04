@@ -14,7 +14,6 @@ A `Build` represents a build executed as part of a Jenkins job. Each build holds
 
 ## Common use cases
 
-- Map your monitored projects and issues into Port.
 - Synchronization of CI/CD Pipelines : Automatically synchronize and build data from Jenkins into Port for centralized tracking and management.
 - Monitoring Build Statuses : Keep track of build outcomes (Success, Failure, Unstable) and durations, providing insights into the health and performance of your software development processes.
 
