@@ -7,6 +7,42 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.6 (2023-12-04)
+
+
+### Bug Fixes
+
+- Fixed a bug that triggered the integration to update during the initialization process when the integration already existed and the organization lacked default blueprints (PORT-5378).
+- Fixed an issue where setting integration type or identifier that contains a capital letter will not show the integration in the UI (PORT-5399)
+
+
+## 0.4.5 (2023-11-30)
+
+
+### Features
+
+- Added handling for transport errors like connection timeout error for outbound requests from ocean integrations and core (PORT-5369)
+- Changed port request option `merge` to be true by default (PORT-5396)
+
+### Improvements
+
+- Changed the port request options defaults to be constructed in the port app config model instead of setting the defaults in many places (PORT-5369)
+
+
+## 0.4.4 (2023-11-29)
+
+
+### Features
+
+- Added a httpx client that recreate itself on new threads using localproxy & localstack bundled with the `RetryTransport` transport featured in 0.4.3 (PORT-5333)
+
+### Improvements
+
+- Added `TokenRetryTransport` to the port client httpx client to handle connection errors and create new access tokens when the token is expiring while requesting (PORT-5333)
+- Removed the retry handler decorator from the port client. Now using the `TokenRetryTransport` (PORT-5333)
+- Handled `CycleError` for cyclic dependency in entities with better error message and ocean exception class (PORT-5333)
+
+
 ## 0.4.3 (2023-11-09)
 
 ### Features

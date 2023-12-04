@@ -2,12 +2,12 @@ import base64
 import typing
 from typing import Any, AsyncGenerator
 
-import httpx
-from loguru import logger
-
+from httpx import Timeout
 from jira.overrides import JiraResourceConfig
+from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
@@ -44,7 +44,9 @@ class JiraClient:
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
-        self.client = httpx.AsyncClient(headers=self.base_headers)
+        self.client = http_async_client
+        self.client.headers.update(self.base_headers)
+        self.client.timeout = Timeout(30)
 
     async def _get_paginated_projects(self, params: dict[str, Any]) -> dict[str, Any]:
         project_response = await self.client.get(

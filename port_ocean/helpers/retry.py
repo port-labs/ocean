@@ -178,6 +178,30 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
         transport.close()
 
+    def _should_retry(self, response: httpx.Response) -> bool:
+        return response.status_code in self._retry_status_codes
+
+    def _log_failure(
+        self,
+        request: httpx.Request,
+        sleep_time: float,
+        response: httpx.Response | None,
+        error: Exception | None,
+    ) -> None:
+        if self._logger and response:
+            self._logger.warning(
+                f"Request {request.method} {request.url} failed with status code:"
+                f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
+            )
+        elif self._logger and error:
+            self._logger.warning(
+                f"Request {request.method} {request.url} failed with exception:"
+                f" {type(error).__name__} - {str(error) or 'No error message'}, retrying in {sleep_time} seconds."
+            )
+
+    async def _should_retry_async(self, response: httpx.Response) -> bool:
+        return response.status_code in self._retry_status_codes
+
     def _calculate_sleep(
         self, attempts_made: int, headers: Union[httpx.Headers, Mapping[str, str]]
     ) -> float:
@@ -217,23 +241,28 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     ) -> httpx.Response:
         remaining_attempts = self._max_attempts
         attempts_made = 0
+        response: httpx.Response | None = None
+        error: Exception | None = None
         while True:
-            response: httpx.Response
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
-                if self._logger:
-                    self._logger.warning(
-                        f"Request {request.method} {request.url} failed with status code:"
-                        f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
-                    )
+                self._log_failure(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
-            response = await send_method(request)
-            if (
-                remaining_attempts < 1
-                or response.status_code not in self._retry_status_codes
-            ):
-                return response
-            await response.aclose()
+
+            error = None
+            response = None
+            try:
+                response = await send_method(request)
+                response.request = request
+                if remaining_attempts < 1 or not (
+                    await self._should_retry_async(response)
+                ):
+                    return response
+                await response.aclose()
+            except httpx.HTTPError as e:
+                error = e
+                if remaining_attempts < 1:
+                    raise
             attempts_made += 1
             remaining_attempts -= 1
 
@@ -244,22 +273,25 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     ) -> httpx.Response:
         remaining_attempts = self._max_attempts
         attempts_made = 0
+        response: httpx.Response | None = None
+        error: Exception | None = None
         while True:
-            response: httpx.Response
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
-                if self._logger:
-                    self._logger.warning(
-                        f"Request {request.method} {request.url} failed with status code:"
-                        f" {response.status_code}, retrying in {sleep_time} seconds."  # noqa: F821
-                    )
+                self._log_failure(request, sleep_time, response, error)
                 time.sleep(sleep_time)
-            response = send_method(request)
-            if (
-                remaining_attempts < 1
-                or response.status_code not in self._retry_status_codes
-            ):
-                return response
-            response.close()
+
+            error = None
+            response = None
+            try:
+                response = send_method(request)
+                response.request = request
+                if remaining_attempts < 1 or not self._should_retry(response):
+                    return response
+                response.close()
+            except httpx.HTTPError as e:
+                error = e
+                if remaining_attempts < 1:
+                    raise
             attempts_made += 1
             remaining_attempts -= 1

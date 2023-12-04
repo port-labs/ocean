@@ -1,10 +1,13 @@
 import asyncio
 from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
+
 import httpx
+from httpx import Timeout
 from loguru import logger
 
 from port_ocean.context.event import event
+from port_ocean.utils import http_async_client
 
 
 class CacheKeys(StrEnum):
@@ -29,7 +32,9 @@ class SnykClient:
         self.org_id = org_id
         self.rest_api_url = f"{api_url}/rest"
         self.webhook_secret = webhook_secret
-        self.http_client = httpx.AsyncClient(headers=self.api_auth_header, timeout=30)
+        self.http_client = http_async_client
+        self.http_client.headers.update(self.api_auth_header)
+        self.http_client.timeout = Timeout(30)
         self.snyk_api_version = "2023-08-21"
 
     @property

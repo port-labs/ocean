@@ -1,3 +1,0 @@
-# Integrations 
-
-::: core.integrations.base

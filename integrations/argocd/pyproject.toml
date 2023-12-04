@@ -1,12 +1,16 @@
 [tool.poetry]
 name = "argocd"
+<<<<<<< HEAD
 version = "0.1.4"
+=======
+version = "0.1.7"
+>>>>>>> 5f93f2a7f0c6933b7a2704b083bc8d1adb93afb2
 description = "Argo CD integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.4.2", extras = ["cli"]}
+port_ocean = {version = "^0.4.6", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
