@@ -44,7 +44,7 @@ Set them as you wish in the script below, then copy it and run it in your termin
 | `integration.eventListener.type`        | The event listener type                                                                                       | ✅       |
 | `integration.secrets.jenkinsToken`      | The Jenkins API token token                                                                                   | ✅       |
 | `integration.config.jenkinsHost`        | The Jenkins host. For example https://jenkins.io                                                              | ✅       |
-| `integration.config.jenkinsOrganization`| The Jenkins organization slug                                                                                 | ✅       |
+| `integration.config.jenkinsUsername`    | The Jenkins username 	                                                                                  | ✅       |
 | `scheduledResyncInterval`               | The number of minutes between each resync                                                                     | ❌       |
 | `initializePortResources`               | Default true, When set to true the integration will create default blueprints and the port App config Mapping | ❌       |
 
@@ -62,7 +62,7 @@ helm upgrade --install jenkins port-labs/port-ocean \
 	--set integration.eventListener.type="POLLING"  \
 	--set integration.config.jenkinsHost="https://jenkins.io"  \
 	--set integration.secrets.jenkinsToken="string"  \
-	--set integration.config.jenkinsOrganization="string"
+	--set integration.config.jenkinsUsername="string"
 ```
 
 </TabItem>
@@ -82,7 +82,7 @@ Make sure to configure the following [Github Secrets](https://docs.github.com/en
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
 | `OCEAN__INTEGRATION__CONFIG__JENKINS_TOKEN`       | The Jenkins API token                                                                                               | ✅       |
 | `OCEAN__INTEGRATION__CONFIG__JENKINS_HOST`        | The Jenkins host. For example https://jenkins.io                                                                     | ✅       |
-| `OCEAN__INTEGRATION__CONFIG__JENKINS_ORGANIZATION`| The Jenkins organization slug                                                                                       | ✅       |
+| `OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME`    | The Jenkins username                                                                                       | ✅       |
 | `OCEAN__INITIALIZE_PORT_RESOURCES`                | Default true, When set to false the integration will not create default blueprints and the port App config Mapping | ❌       |
 | `OCEAN__INTEGRATION__IDENTIFIER`                  | Change the identifier to describe your integration, if not set will use the default one                            | ❌       |
 | `OCEAN__PORT__CLIENT_ID`                          | Your port client id                                                                                                | ✅       |
@@ -119,7 +119,7 @@ jobs:
           -e OCEAN__INITIALIZE_PORT_RESOURCES=true \
           -e OCEAN__INTEGRATION__CONFIG__JENKINS_TOKEN=${{ secrets.OCEAN__INTEGRATION__CONFIG__JENKINS_TOKEN }} \
           -e OCEAN__INTEGRATION__CONFIG__JENKINS_HOST=${{ secrets.OCEAN__INTEGRATION__CONFIG__JENKINS_HOST }} \
-          -e OCEAN__INTEGRATION__CONFIG__JENKINS_ORGANIZATION=${{ secrets.OCEAN__INTEGRATION__CONFIG__JENKINS_ORGANIZATION }} \
+          -e OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME=${{ secrets.OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME }} \
           -e OCEAN__PORT__CLIENT_ID=${{ secrets.OCEAN__PORT__CLIENT_ID }} \
           -e OCEAN__PORT__CLIENT_SECRET=${{ secrets.OCEAN__PORT__CLIENT_SECRET }} \
           $image_name
@@ -142,7 +142,7 @@ Make sure to configure the following [Jenkins Credentials](https://www.jenkins.i
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | `OCEAN__INTEGRATION__CONFIG__JENKINS_TOKEN`       | The Jenkins API token                                                                                                                                             | ✅       |
 | `OCEAN__INTEGRATION__CONFIG__JENKINS_HOST`        | The Jenkins host. For example https://jenkins.io                                                                                                                   | ✅       |
-| `OCEAN__INTEGRATION__CONFIG__JENKINS_ORGANIZATION`| The Jenkins organization slug                                                                                                                                     | ✅       |
+| `OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME`| The Jenkins username                                                                                                                                     | ✅       |
 | `OCEAN__INITIALIZE_PORT_RESOURCES`                | Default true, When set to false the integration will not create default blueprints and the port App config Mapping                                               | ❌       |
 | `OCEAN__INTEGRATION__IDENTIFIER`                  | Change the identifier to describe your integration, if not set will use the default one                                                                          | ❌       |
 | `OCEAN__PORT__CLIENT_ID`                          | Your port client id ([How to get the credentials](https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/api/#find-your-port-credentials))     | ✅       |
@@ -164,7 +164,7 @@ pipeline {
                     withCredentials([
                         string(credentialsId: 'OCEAN__INTEGRATION__CONFIG__JENKINS_TOKEN', variable: 'OCEAN__INTEGRATION__CONFIG__J_TOKEN'),
                         string(credentialsId: 'OCEAN__INTEGRATION__CONFIG__JENKINS_HOST', variable: 'OCEAN__INTEGRATION__CONFIG__JENKINS_HOST'),
-                        string(credentialsId: 'OCEAN__INTEGRATION__CONFIG__JENKINS_ORGANIZATION', variable: 'OCEAN__INTEGRATION__CONFIG__JENKINS_ORGANIZATION'),
+                        string(credentialsId: 'OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME', variable: 'OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME'),
                         string(credentialsId: 'OCEAN__PORT__CLIENT_ID', variable: 'OCEAN__PORT__CLIENT_ID'),
                         string(credentialsId: 'OCEAN__PORT__CLIENT_SECRET', variable: 'OCEAN__PORT__CLIENT_SECRET'),
                     ]) {
@@ -178,7 +178,7 @@ pipeline {
                                 -e OCEAN__INITIALIZE_PORT_RESOURCES=true \
                                 -e OCEAN__INTEGRATION__CONFIG__JENKINS_TOKEN=$OCEAN__INTEGRATION__CONFIG__JENKINS_TOKEN \
                                 -e OCEAN__INTEGRATION__CONFIG__JENKINS_HOST=$OCEAN__INTEGRATION__CONFIG__JENKINS_HOST \
-                                -e OCEAN__INTEGRATION__CONFIG__JENKINS_ORGANIZATION=$OCEAN__INTEGRATION__CONFIG__JENKINS_ORGANIZATION \
+                                -e OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME=$OCEAN__INTEGRATION__CONFIG__JENKINS_USERNAME \
                                 -e OCEAN__PORT__CLIENT_ID=$OCEAN__PORT__CLIENT_ID \
                                 -e OCEAN__PORT__CLIENT_SECRET=$OCEAN__PORT__CLIENT_SECRET \
                                 $image_name
