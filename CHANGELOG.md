@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.5 (2023-12-04)
+
+
+### Bug Fixes
+
+- Fixed an issue causing the the integration to update when running the initialization of the integration when integration already exists and there are not blueprints (PORT-5378)
+- Fixed an issue where setting integration type or identifier that contains a capital leter will not show the integration in the UI (PORT-5399)
+
+
 ## 0.4.5 (2023-11-30)
 
 
