@@ -6,11 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-# Port_Ocean 0.1.4 (2023-11-21)
+
+# Port_Ocean 0.1.8 (2023-12-04)
 
 ### Bug Fixes
 
-- Fixed blueprint URL property mismatch (#3)
+- Updated ArgoCD application gitRepo property format from URL to string, allowing for various formats and resolving sync errors with private repositories (#8)
 
 
 # Port_Ocean 0.1.7 (2023-12-04)
