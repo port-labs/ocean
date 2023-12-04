@@ -33,11 +33,10 @@ class IntegrationSettings(BaseModel, extra=Extra.allow):
     type: str
     config: dict[str, Any]
 
-    @validator(
-        "identifier", "type"
-    )
+    @validator("identifier", "type")
     def validate_lower(cls, v: str) -> str:
         return v.lower()
+
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     initialize_port_resources: bool = True
