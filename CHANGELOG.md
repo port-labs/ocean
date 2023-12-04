@@ -13,7 +13,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Fixed a bug that triggered the integration to update during the initialization process when the integration already existed and the organization lacked default blueprints (PORT-5378).
-- Fixed an issue where setting integration type or identifier that contains a capital leter will not show the integration in the UI (PORT-5399)
+- Fixed an issue where setting integration type or identifier that contains a capital letter will not show the integration in the UI (PORT-5399)
 
 
 ## 0.4.5 (2023-11-30)
