@@ -153,8 +153,11 @@ class PagerDutyClient:
     async def get_oncall_user(
         self, *escalation_policy_ids: str
     ) -> list[dict[str, Any]]:
+        logger.info(
+            f"Fetching who is oncall for escalation poilices: {','.join(escalation_policy_ids)}"
+        )
         params = {
-            "escalation_policy_ids[]": ",".join(escalation_policy_ids),
+            "escalation_policy_ids[]": escalation_policy_ids,
             "include[]": "users",
         }
         oncalls = []
@@ -163,6 +166,7 @@ class PagerDutyClient:
             data_key="oncalls", params=params
         ):
             logger.info(f"Received oncalls with batch size {len(oncall_batch)}")
+            logger.info(f"Listing received oncalls data: {oncall_batch}")
             oncalls.extend(oncall_batch)
 
         return oncalls
@@ -170,7 +174,10 @@ class PagerDutyClient:
     async def update_oncall_users(
         self, services: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        logger.info("Fetching and matching who is on-call for services")
+        services_names = [service["name"] for service in services]
+        logger.info(
+            f"Fetching and matching who is on-call for {len(services)} services: {services_names}"
+        )
         oncall_users = await self.get_oncall_user(
             *[service["escalation_policy"]["id"] for service in services]
         )

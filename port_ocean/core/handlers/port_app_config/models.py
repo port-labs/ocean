@@ -31,7 +31,7 @@ class ResourceConfig(BaseModel):
 
 
 class PortAppConfig(BaseModel):
-    enable_merge_entity: bool = Field(alias="enableMergeEntity", default=False)
+    enable_merge_entity: bool = Field(alias="enableMergeEntity", default=True)
     delete_dependent_entities: bool = Field(
         alias="deleteDependentEntities", default=True
     )
@@ -45,6 +45,7 @@ class PortAppConfig(BaseModel):
             "delete_dependent_entities": self.delete_dependent_entities,
             "create_missing_related_entities": self.create_missing_related_entities,
             "merge": self.enable_merge_entity,
+            "validation_only": False,
         }
 
     def to_request(self) -> dict[str, Any]:

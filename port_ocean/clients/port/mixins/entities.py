@@ -21,7 +21,7 @@ class EntityClientMixin:
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
     ) -> None:
-        validation_only = request_options.get("validation_only", False)
+        validation_only = request_options["validation_only"]
         logger.info(
             f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
         )
@@ -33,9 +33,9 @@ class EntityClientMixin:
             headers=headers,
             params={
                 "upsert": "true",
-                "merge": str(request_options.get("merge", False)).lower(),
+                "merge": str(request_options["merge"]).lower(),
                 "create_missing_related_entities": str(
-                    request_options.get("create_missing_related_entities", True)
+                    request_options["create_missing_related_entities"]
                 ).lower(),
                 "validation_only": str(validation_only).lower(),
             },
@@ -64,7 +64,7 @@ class EntityClientMixin:
             headers=await self.auth.headers(user_agent_type),
             params={
                 "delete_dependents": str(
-                    request_options.get("delete_dependent_entities", True)
+                    request_options["delete_dependent_entities"]
                 ).lower()
             },
         )
@@ -142,16 +142,15 @@ class EntityClientMixin:
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
     async def validate_entity_payload(
-        self, entity: Entity, options: RequestOptions
+        self, entity: Entity, merge: bool, create_missing_related_entities: bool
     ) -> None:
         logger.info(f"Validating entity {entity.identifier}")
         await self.upsert_entity(
             entity,
             {
-                "merge": options.get("merge", False),
-                "create_missing_related_entities": options.get(
-                    "create_missing_related_entities", True
-                ),
+                "merge": merge,
+                "create_missing_related_entities": create_missing_related_entities,
+                "delete_dependent_entities": False,
                 "validation_only": True,
             },
         )

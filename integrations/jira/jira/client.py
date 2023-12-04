@@ -2,9 +2,9 @@ import base64
 import typing
 from typing import Any, AsyncGenerator
 
+from httpx import Timeout
 from jira.overrides import JiraResourceConfig
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
@@ -46,6 +46,7 @@ class JiraClient:
 
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
+        self.client.timeout = Timeout(30)
 
     async def _get_paginated_projects(self, params: dict[str, Any]) -> dict[str, Any]:
         project_response = await self.client.get(

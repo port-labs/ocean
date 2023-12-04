@@ -10,9 +10,9 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: "portOceanJiraIntegration"
+  identifier: my-jira-integration
   # The type of the integration.
-  type: "Jira"
+  type: "jira"
   config:
     jiraHost: "{{ from env JIRA_HOST }}"
     atlassianUserEmail: "{{ from env ATLASSIAN_EMAIL }}"
