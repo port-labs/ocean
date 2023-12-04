@@ -30,24 +30,14 @@ class JenkinsClient:
 
         while True:
 
-            jobs_url = urljoin(self.base_url, f"api/json?tree=jobs[name,url,color,description]{{{current_start},{limit}}}")
+            jobs_url = urljoin(self.base_url, f"api/json?tree=jobs[name,url,color,buildable,description,fullName]{{{current_start},{limit}}}")
             response = await self.client.get(jobs_url)
             response.raise_for_status()
             paginated_jobs = response.json().get('jobs', [])
 
             logger.info(f"Fetched {len(paginated_jobs)} jobs from Jenkins")
-            
-            job_details_list = []
 
-            for job in paginated_jobs:
-                job_details_url = urljoin(job['url'], "api/json")
-                job_details_response = await self.client.get(job_details_url)
-                job_details_response.raise_for_status()
-                job_details = job_details_response.json()
-
-                job_details_list.append(job_details)
-
-                yield job_details_list
+            yield paginated_jobs
 
             if len(paginated_jobs) < limit:
                 break

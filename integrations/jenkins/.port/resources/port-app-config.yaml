@@ -9,7 +9,6 @@ resources:
           title: .name
           blueprint: '"jenkinsJob"'
           properties:
-            jobName: .name
             jobIsBuildable: .buildable
             jobUrl: .url
             description: .description

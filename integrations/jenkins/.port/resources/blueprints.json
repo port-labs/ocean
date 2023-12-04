@@ -35,10 +35,6 @@
               "type": "number",
               "title": "Build Duration",
               "description": "Duration of the build"
-            },
-            "color": {
-              "type": "string",
-              "description": "jenkins job color"
             }
           },
           "required": []
@@ -62,10 +58,6 @@
         "icon": "Jenkins",
         "schema": {
           "properties": {
-            "jobName": {
-              "type": "string",
-              "title": "Job Name"
-            },
             "jobIsBuildable": {
               "type": "boolean",
               "title": "Buildable",
@@ -79,6 +71,10 @@
             "jobUrl": {
               "type": "string",
               "description": "Url of jenkins job"
+            },
+            "color": {
+              "type": "string",
+              "description": "jenkins job color"
             }
           },
           "required": []
