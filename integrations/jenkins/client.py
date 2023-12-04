@@ -27,22 +27,28 @@ class JenkinsClient:
         """
                 
         current_start = start   
+        try:
+            while True:
 
-        while True:
+                jobs_url = urljoin(self.base_url, f"api/json?tree=jobs[name,url,color,buildable,description,fullName]{{{current_start},{limit}}}")
+                response = await self.client.get(jobs_url)
+                response.raise_for_status()
+                paginated_jobs = response.json().get('jobs', [])
 
-            jobs_url = urljoin(self.base_url, f"api/json?tree=jobs[name,url,color,buildable,description,fullName]{{{current_start},{limit}}}")
-            response = await self.client.get(jobs_url)
-            response.raise_for_status()
-            paginated_jobs = response.json().get('jobs', [])
+                logger.info(f"Fetched {len(paginated_jobs)} jobs from Jenkins")
 
-            logger.info(f"Fetched {len(paginated_jobs)} jobs from Jenkins")
+                yield paginated_jobs
 
-            yield paginated_jobs
+                if len(paginated_jobs) < limit:
+                    break
 
-            if len(paginated_jobs) < limit:
-                break
+                current_start += limit
 
-            current_start += limit
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
+        
+        except httpx.HTTPError as e:
+            logger.error(f"An error occured while fetching jenkins data: {e}")
 
 
     async def get_paginated_builds(self, job_url: str,start = 0,limit = 50) -> AsyncGenerator[list[dict], None]:
@@ -58,31 +64,38 @@ class JenkinsClient:
 
         current_start = start 
         
-        while True:
+        try:
+            while True:
 
-            builds_url = urljoin(job_url, f"api/json?tree=builds[number,url,result]{{{current_start},{limit}}}")
-            response = await self.client.get(builds_url)
-            response.raise_for_status()
+                builds_url = urljoin(job_url, f"api/json?tree=builds[number,url,result]{{{current_start},{limit}}}")
+                response = await self.client.get(builds_url)
+                response.raise_for_status()
 
-            paginated_builds = response.json().get('builds', [])
+                paginated_builds = response.json().get('builds', [])
 
-            logger.info(f"Fetched {len(paginated_builds)} builds from Jenkins")
+                logger.info(f"Fetched {len(paginated_builds)} builds from Jenkins")
 
-            build_details_list = []
+                build_details_list = []
 
-            for build in paginated_builds:
-                build_details_url = urljoin(build['url'], "api/json")
-                build_details_response = await self.client.get(build_details_url)
-                build_details_response.raise_for_status()
-                build_details = build_details_response.json()
-                build_details_list.append(build_details)
+                for build in paginated_builds:
+                    build_details_url = urljoin(build['url'], "api/json")
+                    build_details_response = await self.client.get(build_details_url)
+                    build_details_response.raise_for_status()
+                    build_details = build_details_response.json()
+                    build_details_list.append(build_details)
 
-            yield build_details_list           
+                yield build_details_list           
 
-            if len(paginated_builds) < limit:
-                break
+                if len(paginated_builds) < limit:
+                    break
 
-            current_start += limit
+                current_start += limit
+                
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
+        
+        except httpx.HTTPError as e:
+            logger.error(f"An error occured while fetching jenkins data: {e}")
 
 
     async def close(self):
