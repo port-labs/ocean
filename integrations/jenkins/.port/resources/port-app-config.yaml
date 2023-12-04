@@ -13,6 +13,7 @@ resources:
             jobIsBuildable: .buildable
             jobUrl: .url
             description: .description
+            color: .color
 
   - kind: build
     selector:

@@ -35,6 +35,10 @@
               "type": "number",
               "title": "Build Duration",
               "description": "Duration of the build"
+            },
+            "color": {
+              "type": "string",
+              "description": "jenkins job color"
             }
           },
           "required": []

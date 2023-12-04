@@ -2,8 +2,8 @@ type: jenkins
 description: Jenkins Integration for Port Ocean
 icon: Jenkins # Should be one of the available icons in Port
 features:
-  - type: webhook
-    section: Custom integrations
+  - type: exporter
+    section: CI/CD Pipeline
     resources:
       - kind: job
       - kind: build

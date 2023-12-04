@@ -12,7 +12,7 @@ class JenkinsClient:
         auth = (username, token)
         self.client = httpx.AsyncClient(auth=auth)
 
-    async def get_paginated_jobs(self) -> AsyncGenerator[list[dict], None]:
+    async def get_paginated_jobs(self,start:int = 0,limit:int = 50) -> AsyncGenerator[list[dict], None]:
         """
             Initialize the JenkinsClient.
 
@@ -26,25 +26,36 @@ class JenkinsClient:
                 client (httpx.AsyncClient): An asynchronous HTTP client for making requests.
         """
                 
-        start = 0
-        limit = 50  
-
-        jobs_url = urljoin(self.base_url,"api/json")
-        response = await self.client.get(jobs_url)
-        response.raise_for_status()
-        all_jobs = response.json().get('jobs', [])
+        current_start = start   
 
         while True:
-            paginated_jobs = all_jobs[start:start + limit]
+
+            jobs_url = urljoin(self.base_url, f"api/json?tree=jobs[name,url,color,description]{{{current_start},{limit}}}")
+            response = await self.client.get(jobs_url)
+            response.raise_for_status()
+            paginated_jobs = response.json().get('jobs', [])
+
             logger.info(f"Fetched {len(paginated_jobs)} jobs from Jenkins")
-            yield paginated_jobs
+            
+            job_details_list = []
+
+            for job in paginated_jobs:
+                job_details_url = urljoin(job['url'], "api/json")
+                job_details_response = await self.client.get(job_details_url)
+                job_details_response.raise_for_status()
+                job_details = job_details_response.json()
+
+                job_details_list.append(job_details)
+
+                yield job_details_list
 
             if len(paginated_jobs) < limit:
                 break
-            start += limit
+
+            current_start += limit
 
 
-    async def get_paginated_builds(self, job_url: str) -> AsyncGenerator[list[dict], None]:
+    async def get_paginated_builds(self, job_url: str,start = 0,limit = 50) -> AsyncGenerator[list[dict], None]:
         """
             Asynchronously fetches builds for a specific Jenkins job in a paginated manner.
             Args:
@@ -55,22 +66,20 @@ class JenkinsClient:
                 HTTPError: If the request to the Jenkins API fails.
         """
 
-        start = 0
-        limit = 50 
-
-        builds_url = urljoin(job_url,"api/json?tree=builds[number,url,result]")
-        response = await self.client.get(builds_url)
-        response.raise_for_status()
-
-        all_builds = response.json().get('builds', [])
+        current_start = start 
         
         while True:
 
-            paginated_builds = all_builds[start:start + limit]
+            builds_url = urljoin(job_url, f"api/json?tree=builds[number,url,result]{{{current_start},{limit}}}")
+            response = await self.client.get(builds_url)
+            response.raise_for_status()
+
+            paginated_builds = response.json().get('builds', [])
 
             logger.info(f"Fetched {len(paginated_builds)} builds from Jenkins")
 
             build_details_list = []
+
             for build in paginated_builds:
                 build_details_url = urljoin(build['url'], "api/json")
                 build_details_response = await self.client.get(build_details_url)
@@ -82,7 +91,8 @@ class JenkinsClient:
 
             if len(paginated_builds) < limit:
                 break
-            start += limit
+
+            current_start += limit
 
 
     async def close(self):
