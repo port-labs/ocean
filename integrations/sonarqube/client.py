@@ -130,7 +130,6 @@ class SonarQubeClient:
         params = {}
         if self.organization_id:
             params["organization"] = self.organization_id
-
         logger.info(f"Fetching all components in organization: {self.organization_id}")
         try:
             response = await self.send_paginated_api_request(
