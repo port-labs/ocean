@@ -127,9 +127,16 @@ class SonarQubeClient:
 
         :return: A list of components associated with the specified organization.
         """
-        params = {}
-        if self.organization_id:
-            params["organization"] = self.organization_id
+        
+        # Check if using SonarCloud and organization_id is not specified
+        if self.base_url == "https://sonarcloud.io":
+            if not self.organization_id:
+                logger.warning("Skipping component retrieval. Please specify organization_id for SonarCloud.")
+                return []
+            params = {"organization": self.organization_id}
+        else:
+            params = {}
+
         logger.info(f"Fetching all components in organization: {self.organization_id}")
         try:
             response = await self.send_paginated_api_request(
