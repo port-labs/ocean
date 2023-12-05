@@ -132,8 +132,6 @@ class SonarQubeClient:
         params = {}
         if self.organization_id:
             params["organization"] = self.organization_id
-        else:
-            params = {}
 
         logger.info(f"Fetching all components in organization: {self.organization_id}")
         try:

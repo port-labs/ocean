@@ -32,11 +32,13 @@ def organization_key_missing_for_onpremise() -> bool:
         and is_onpremise_deployment()
     )
 
+
 def organization_key_missing_for_sonarcloud() -> bool:
     return (
         not ocean.integration_config.get("sonar_organization_id")
         and not is_onpremise_deployment()
     )
+
 
 @ocean.on_resync(ObjectKind.PROJECTS)
 async def on_project_resync(kind: str) -> list[dict[str, Any]]:
@@ -99,11 +101,13 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
 
 @ocean.on_start()
 async def on_start() -> None:
+    if organization_key_missing_for_sonarcloud():
+        raise ValueError(
+            "Organization ID is required for SonarCloud. Please specify a valid sonarOrganizationId in the configuration file"
+        )
+
     sonar_client = init_sonar_client()
     sonar_client.sanity_check()
-
-    if organization_key_missing_for_sonarcloud():
-        raise ValueError("Organization ID is required for SonarCloud. Please provide a valid sonarOrganizationId in the configuration file")
 
     if organization_key_missing_for_onpremise():
         logger.warning("Organization key is missing for an on-premise Sonarqube setup")
