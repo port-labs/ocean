@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.7 (2023-12-05)
+
+
+### Improvements
+
+- Allowing POST requests for getting port tokens to be retryable (PORT-5442)
+
+### Bug Fixes
+
+- Changed the default limitations and timeouts for requests to Port in order to handle PoolTimeout error caused by a large amout of requests sent in parallel (PORT-5442)
+
+
 ## 0.4.6 (2023-12-04)
 
 

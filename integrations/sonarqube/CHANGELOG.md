@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.1.15 (2023-12-05)
 
-### Bug Fixes
+### Improvements
 
-- Enhanced get_components method to skip fetching projects when organization_id is not specified for SonarCloud. (#15)
+- Bumped ocean version to ^0.4.7 (#1)
 
 
 # Port_Ocean 0.1.14 (2023-12-04)
