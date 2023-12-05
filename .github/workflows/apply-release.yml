@@ -1,0 +1,43 @@
+name: Apply release
+
+on:
+  workflow_run:
+    workflows:
+      - Release framework
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  create_branch_and_open_pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Get package version
+        run: |
+          version=$(poetry search port-ocean | grep port-ocean | sed 's/.*(\(.*\))/\1/')
+          pr_name="Release ${version}"
+          branch_name="release-${version}"
+          echo "Branch Name: $branch_name"
+          echo "PR Name: $pr_name"
+          git checkout -b $branch_name
+
+      - name: Apply changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          ./scripts/bump-all.sh
+          
+          git push origin $branch_name
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Propose changes"
+          title: $pr_name
+          body: "This pull request includes changes made in the feature branch."
