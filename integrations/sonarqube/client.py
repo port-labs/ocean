@@ -127,11 +127,13 @@ class SonarQubeClient:
 
         :return: A list of components associated with the specified organization.
         """
-        
+
         # Check if using SonarCloud and organization_id is not specified
         if self.base_url == "https://sonarcloud.io":
             if not self.organization_id:
-                logger.warning("Skipping component retrieval. Please specify organization_id for SonarCloud.")
+                logger.warning(
+                    "Skipping component retrieval. Please specify organization_id for SonarCloud."
+                )
                 return []
             params = {"organization": self.organization_id}
         else:
