@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.16 (2023-12-05)
+
+### Bug Fixes
+
+- Update startup code to skip initializing integration resources when organization_id is not specified for SonarCloud. (#16)
+
+
 # Port_Ocean 0.1.15 (2023-12-05)
 
 ### Improvements
