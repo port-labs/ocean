@@ -127,8 +127,6 @@ class SonarQubeClient:
 
         :return: A list of components associated with the specified organization.
         """
-
-        # Check if using SonarCloud and organization_id is not specified
         params = {}
         if self.organization_id:
             params["organization"] = self.organization_id
