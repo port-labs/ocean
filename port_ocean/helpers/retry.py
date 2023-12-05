@@ -263,7 +263,6 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                     return response
                 await response.aclose()
             except httpx.HTTPError as e:
-                httpx.PoolTimeout
                 error = e
                 if remaining_attempts < 1:
                     raise
