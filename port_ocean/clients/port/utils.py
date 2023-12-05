@@ -12,6 +12,19 @@ if TYPE_CHECKING:
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
 
+# In case the framework sends more requests to port in parallel then allowed by the limits, a PoolTimeout exception will
+# be raised.
+# Raising defaults for the timeout, in addition to the limits, will allow request to wait for a connection for a longer
+# period of time, before raising an exception.
+# We don't want to set the max_connections too highly, as it will cause the application to run out of memory.
+# We also don't want to set the max_keepalive_connections too highly, as it will cause the application to run out of
+# available connections.
+PORT_HTTP_CLIENT_TIMEOUT = httpx.Timeout(10.0)
+PORT_HTTP_CLIENT_CONNECTIONS_LIMIT = httpx.Limits(
+    max_connections=200, max_keepalive_connections=50
+)
+
+
 def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
@@ -20,7 +33,9 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
                 port_client,
                 httpx.AsyncHTTPTransport(),
                 logger=logger,
-            )
+            ),
+            timeout=PORT_HTTP_CLIENT_TIMEOUT,
+            limits=PORT_HTTP_CLIENT_CONNECTIONS_LIMIT,
         )
         _http_client.push(client)
 

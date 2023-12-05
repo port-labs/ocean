@@ -151,7 +151,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
 
         """
         transport: httpx.AsyncBaseTransport = self._wrapped_transport  # type: ignore
-        if request.method in self._retryable_methods:
+        if self._is_retryable_method(request):
             send_method = partial(transport.handle_async_request)
             response = await self._retry_operation_async(request, send_method)
         else:
@@ -177,6 +177,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         """
         transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
         transport.close()
+
+    def _is_retryable_method(self, request: httpx.Request) -> bool:
+        return request.method in self._retryable_methods
 
     def _should_retry(self, response: httpx.Response) -> bool:
         return response.status_code in self._retry_status_codes
