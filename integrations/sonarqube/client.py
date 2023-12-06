@@ -1,5 +1,5 @@
 from typing import Any, Optional, AsyncGenerator, cast
-
+import base64
 import httpx
 from loguru import logger
 
@@ -48,9 +48,14 @@ class SonarQubeClient:
                     "Content-Type": "application/json",
                 }
             }
+
+        auth_message = f"{self.api_key}:"
+        auth_bytes = auth_message.encode("ascii")
+        b64_bytes = base64.b64encode(auth_bytes)
+        b64_message = b64_bytes.decode("ascii")
         return {
-            "auth": (self.api_key, ""),
             "headers": {
+                "Authorization": f"Basic {b64_message}",
                 "Content-Type": "application/json",
             },
         }
