@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.17 (2023-12-06)
+
+### Bug Fixes
+
+- Corrected SonarQube On-Premise authentication to resolve 401 error codes previously experienced by users. This fix now properly utilizes Basic authentication (#17)
+
+
 # Port_Ocean 0.1.16 (2023-12-05)
 
 ### Bug Fixes
