@@ -29,9 +29,9 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
+
           ./scripts/bump-all.sh
-          
+
           git push origin $branch_name
 
       - name: Open pull request
