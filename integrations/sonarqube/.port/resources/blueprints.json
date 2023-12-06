@@ -12,6 +12,7 @@
         },
         "link": {
           "type": "string",
+          "format": "url",
           "title": "Link",
           "icon": "Link"
         },
@@ -139,6 +140,7 @@
         },
         "link": {
           "type": "string",
+          "format": "url",
           "icon": "Link",
           "title": "Link"
         },
