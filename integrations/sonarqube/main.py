@@ -90,7 +90,7 @@ async def on_start() -> None:
     if not ocean.integration_config.get("sonar_organization_id"):
         if not is_onpremise_deployment():
             raise ValueError(
-                "Organization ID is required for SonarCloud. Please specify a valid sonarOrganizationId in the configuration file"
+                "Organization ID is required for SonarCloud. Please specify a valid sonarOrganizationId"
             )
         logger.warning("Organization key is missing for an on-premise Sonarqube setup")
 
