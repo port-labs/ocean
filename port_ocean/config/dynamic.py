@@ -1,23 +1,26 @@
 import json
-from typing import Type, Any, Optional
+from typing import Type, Any, Optional, Callable
 
 from humps import decamelize
-from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as, validator
-from pydantic.fields import ModelField
+from pydantic import (
+    BaseModel,
+    AnyUrl,
+    create_model,
+    Extra,
+    field_validator,
+    TypeAdapter,
+)
 
 
 class Configuration(BaseModel, extra=Extra.allow):
     name: str
     type: str
     required: bool = False
-    default: Optional[Any]
+    default: Optional[Any] = None
 
 
-def dynamic_parse(value: Any, field: ModelField) -> Any:
-    should_json_load = issubclass(field.annotation, dict) or issubclass(
-        field.annotation, list
-    )
-    if isinstance(value, str) and should_json_load:
+def dict_parse_validator(value: Any) -> Any:
+    if isinstance(value, str):
         try:
             return json.loads(value)
         except json.JSONDecodeError:
@@ -25,8 +28,20 @@ def dynamic_parse(value: Any, field: ModelField) -> Any:
     return value
 
 
+def _create_validators(
+    fields: dict[str, tuple[Any, Any]]
+) -> dict[str, Callable[..., Any]]:
+    validators = {}
+    for field_name, (field_type, default) in fields.items():
+        if issubclass(field_type, dict) or issubclass(field_type, list):
+            validators[field_name] = classmethod(
+                field_validator(field_name, mode="before")(dict_parse_validator)  # type: ignore
+            )
+    return validators
+
+
 def default_config_factory(configurations: Any) -> Type[BaseModel]:
-    configurations = parse_obj_as(list[Configuration], configurations)
+    configurations = TypeAdapter(list[Configuration]).validate_python(configurations)
     fields: dict[str, tuple[Any, Any]] = {}
 
     for config in configurations:
@@ -48,15 +63,15 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
 
         default = ... if config.required else None
         if config.default is not None:
-            default = parse_obj_as(field_type, config.default)
+            default = TypeAdapter(field_type).validate_python(config.default)
         fields[decamelize(config.name)] = (
             field_type,
             default,
         )
 
-    dynamic_model = create_model(  # type: ignore
-        __model_name="Config",
-        **fields,
-        __validators__={"dynamic_parse": validator("*", pre=True)(dynamic_parse)},
+    dynamic_model = create_model(
+        "Config",
+        __validators__=_create_validators(fields),
+        fields=fields,
     )
     return dynamic_model

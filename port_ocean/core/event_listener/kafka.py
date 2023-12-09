@@ -8,9 +8,6 @@ from confluent_kafka import Message  # type: ignore
 from loguru import logger
 
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
-from port_ocean.context.ocean import (
-    ocean,
-)
 from port_ocean.context.utils import wrap_method_with_context
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
@@ -78,6 +75,8 @@ class KafkaEventListener(BaseEventListener):
         If Kafka security is enabled, it fetches Kafka credentials using the ocean.port_client.get_kafka_creds() method.
         Otherwise, it returns the KafkaConsumerConfig object parsed from the event_listener_config.
         """
+        from port_ocean.context.ocean import ocean
+
         if self.event_listener_config.kafka_security_enabled:
             creds = await ocean.port_client.get_kafka_creds()
             return KafkaConsumerConfig(

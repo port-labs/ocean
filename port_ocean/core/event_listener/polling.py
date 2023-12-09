@@ -2,7 +2,6 @@ from typing import Literal, Any
 
 from loguru import logger
 
-from port_ocean.context.ocean import ocean
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
     EventListenerEvents,
@@ -61,6 +60,8 @@ class PollingEventListener(BaseEventListener):
 
         @repeat_every(seconds=self.event_listener_config.interval)
         async def resync() -> None:
+            from port_ocean.context.ocean import ocean
+
             logger.info(
                 f"Polling event listener iteration after {self.event_listener_config.interval}. Checking for changes"
             )

@@ -46,7 +46,7 @@ class Ocean:
         self.integration_router = integration_router or APIRouter()
 
         self.port_client = PortClient(
-            base_url=self.config.port.base_url,
+            base_url=str(self.config.port.base_url),
             client_id=self.config.port.client_id,
             client_secret=self.config.port.client_secret,
             integration_identifier=self.config.integration.identifier,

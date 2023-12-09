@@ -5,9 +5,9 @@ from pydantic.fields import Field
 
 
 class Entity(BaseModel):
-    identifier: Any
-    blueprint: Any
-    title: Any
+    identifier: Any = None
+    blueprint: Any = None
+    title: Any = None
     team: str | None | list[Any] = []
     properties: dict[str, Any] = {}
     relations: dict[str, Any] = {}
@@ -17,13 +17,13 @@ class BlueprintRelation(BaseModel):
     many: bool
     required: bool
     target: str
-    title: str | None
+    title: str | None = None
 
 
 class Blueprint(BaseModel):
     identifier: str
-    title: str | None
-    team: str | None
+    title: str | None = None
+    team: str | None = None
     properties_schema: dict[str, Any] = Field(alias="schema")
     relations: dict[str, BlueprintRelation]
 

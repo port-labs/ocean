@@ -1,11 +1,14 @@
 import json
 from pathlib import Path
-from typing import Type, Any, TypedDict, Optional
+from typing import Type, Any, Optional
 
 import httpx
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 from starlette import status
+
+# Using this one instead of typing.TypedDict because of https://errors.pydantic.dev/2.5/u/typed-dict-version
+from typing_extensions import TypedDict
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -29,9 +32,7 @@ class Defaults(BaseModel):
     port_app_config: Optional[PortAppConfig] = Field(
         default=None, alias="port-app-config"
     )
-
-    class Config:
-        allow_population_by_field_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 async def is_integration_exists(port_client: PortClient) -> bool:
@@ -90,7 +91,7 @@ def get_port_integration_defaults(
 
     default_jsons = {}
     allowed_file_names = [
-        field_model.alias for _, field_model in Defaults.__fields__.items()
+        field_model.alias for _, field_model in Defaults.model_fields.items()
     ]
     for path in defaults_dir.iterdir():
         if path.stem in allowed_file_names:

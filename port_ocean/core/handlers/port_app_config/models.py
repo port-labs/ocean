@@ -1,13 +1,13 @@
 from typing import Optional, Any
 
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 
 from port_ocean.clients.port.types import RequestOptions
 
 
 class EntityMapping(BaseModel):
     identifier: str
-    title: str | None
+    title: str | None = None
     blueprint: str
     properties: dict[str, str] = Field(default_factory=dict)
     relations: dict[str, str] = Field(default_factory=dict)
@@ -59,6 +59,4 @@ class PortAppConfig(BaseModel):
             ],
         }
 
-    class Config:
-        allow_population_by_field_name = True
-        validate_assignment = True
+    model_config = ConfigDict(populate_by_name=True, validate_assignment=True)

@@ -4,7 +4,6 @@ from fastapi import APIRouter
 from loguru import logger
 from pydantic import AnyHttpUrl
 
-from port_ocean.context.ocean import ocean
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
     EventListenerEvents,
@@ -29,7 +28,7 @@ class HttpEventListenerSettings(EventListenerSettings):
     def to_request(self) -> dict[str, Any]:
         return {
             **super().to_request(),
-            "url": self.app_host + "/resync",
+            "url": str(self.app_host) + "/resync",
         }
 
 
@@ -58,6 +57,8 @@ class HttpEventListener(BaseEventListener):
         Starts the HTTP event listener.
         It sets up an APIRouter to handle the `/resync` endpoint and registers the "on_resync" event handler.
         """
+        from port_ocean.context.ocean import ocean
+
         logger.info("Setting up HTTP Event Listener")
         target_channel_router = APIRouter()
 

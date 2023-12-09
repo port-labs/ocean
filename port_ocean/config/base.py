@@ -6,18 +6,28 @@ from typing import Any
 
 import yaml
 from humps import decamelize
-from pydantic import BaseSettings
-from pydantic.env_settings import EnvSettingsSource, InitSettingsSource
-from pydantic.main import ModelMetaclass, BaseModel
+from pydantic.fields import FieldInfo
+from pydantic.main import BaseModel
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+    PydanticBaseSettingsSource,
+)
+from pydantic_settings.sources import (
+    InitSettingsSource,
+    EnvSettingsSource,
+    DotEnvSettingsSource,
+    SecretsSettingsSource,
+)
 
 PROVIDER_WRAPPER_PATTERN = r"{{ from (.*) }}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
 
 
 def read_yaml_config_settings_source(
-    settings: "BaseOceanSettings", base_path: str
+    settings: type[BaseSettings], base_path: str
 ) -> str:
-    yaml_file = getattr(settings.__config__, "yaml_file", "")
+    yaml_file = getattr(settings, "yaml_file", "")
 
     assert yaml_file, "Settings.yaml_file not properly configured"
     path = Path(base_path, yaml_file)
@@ -52,7 +62,7 @@ def load_from_config_provider(config_provider: str) -> Any:
 
 
 def parse_providers(
-    settings_model: BaseModel | ModelMetaclass,
+    settings_model: type[BaseModel],
     config: dict[str, Any],
     existing_data: dict[str, Any],
 ) -> dict[str, Any]:
@@ -61,8 +71,9 @@ def parse_providers(
     """
     for key, value in config.items():
         if isinstance(value, dict) and settings_model is not None:
-            # If the value is of type ModelMetaClass then its a nested model, and we need to parse it
+            # If the value is of type BaseModel then its nested model, and we need to parse it
             # If the value is of type primitive dict then we need to decamelize the keys and not recurse into the values because its no longer part of the model
+            _type = settings_model.__annotations__[key]
             _type = settings_model.__annotations__[key]
             is_primitive_dict_type = _type is dict or (
                 isinstance(_type, GenericAlias) and _type.__origin__ is dict
@@ -94,7 +105,7 @@ def parse_providers(
 
 
 def decamelize_config(
-    settings_model: BaseModel | ModelMetaclass, config: dict[str, Any]
+    settings_model: type[BaseModel], config: dict[str, Any]
 ) -> dict[str, Any]:
     """
     Normalizing the config yaml file to work with snake_case and getting only the data that is missing for the settings
@@ -103,7 +114,7 @@ def decamelize_config(
     for key, value in config.items():
         decamelize_key = decamelize(key)
         if isinstance(value, dict) and settings_model is not None:
-            # If the value is ModelMetaClass typed then its a nested model, and we need to parse it
+            # If the value is BaseModel typed then its nested model, and we need to parse it
             # If the value is a primitive dict then we need to decamelize the keys and not recurse into the values because its no longer part of the model
             _type = settings_model.__annotations__[decamelize_key]
             is_primitive_dict_type = _type is dict or (
@@ -119,37 +130,62 @@ def decamelize_config(
     return result
 
 
-def load_providers(
-    settings: "BaseOceanSettings", existing_values: dict[str, Any], base_path: str
-) -> dict[str, Any]:
-    yaml_content = read_yaml_config_settings_source(settings, base_path)
-    data = yaml.safe_load(yaml_content)
-    snake_case_config = decamelize_config(settings, data)
-    return parse_providers(settings, snake_case_config, existing_values)
+class MyCustomSource(PydanticBaseSettingsSource):
+    def __init__(
+        self,
+        settings_cls: type[BaseSettings],
+        env_settings: EnvSettingsSource,
+        base_path: str,
+    ):
+        super().__init__(settings_cls)
+        self.settings_cls = settings_cls
+        self.config = settings_cls.model_config
+        self.base_path = base_path
+        self.env_settings = env_settings
+
+    def get_field_value(
+        self, field: FieldInfo, field_name: str
+    ) -> tuple[Any, str, bool]:
+        # Nothing to do here. Only implement the return statement to make mypy happy
+        return None, "", False
+
+    def __call__(self) -> dict[str, Any]:
+        current_settings_value = self.env_settings()
+        yaml_content = read_yaml_config_settings_source(
+            self.settings_cls, self.base_path
+        )
+        data = yaml.safe_load(yaml_content)
+        snake_case_config = decamelize_config(self.settings_cls, data)
+
+        return parse_providers(
+            self.settings_cls, snake_case_config, current_settings_value
+        )
 
 
 class BaseOceanSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="OCEAN__",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_nested_delimiter="__",
+    )
+
+    yaml_file: Path = Path("./config.yaml")
     base_path: str
 
-    class Config:
-        yaml_file = "./config.yaml"
-        env_prefix = "OCEAN__"
-        env_nested_delimiter = "__"
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-
-        @classmethod
-        def customise_sources(  # type: ignore
-            cls,
-            init_settings: InitSettingsSource,
-            env_settings: EnvSettingsSource,
-            *_,
-            **__,
-        ):
-            return (
-                init_settings,
-                env_settings,
-                lambda s: load_providers(
-                    s, env_settings(s), init_settings.init_kwargs["base_path"]
-                ),
-            )
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: InitSettingsSource,  # type: ignore
+        env_settings: EnvSettingsSource,  # type: ignore
+        dotenv_settings: DotEnvSettingsSource,  # type: ignore
+        file_secret_settings: SecretsSettingsSource,  # type: ignore
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            env_settings,
+            MyCustomSource(
+                settings_cls, env_settings, init_settings.init_kwargs["base_path"]
+            ),
+        )
