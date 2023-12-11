@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.9 (2023-12-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.7 (#1)
+
+
+# Port_Ocean 0.1.8 (2023-12-04)
+
+### Bug Fixes
+
+- Updated ArgoCD application gitRepo property format from URL to string, allowing for various formats and resolving sync errors with private repositories (#8)
+
+
+# Port_Ocean 0.1.7 (2023-12-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.6 (#1)
+
+
+# Port_Ocean 0.1.6 (2023-11-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.5 (#1)
+
+
 # Port_Ocean 0.1.5 (2023-11-29)
 
 ### Improvements

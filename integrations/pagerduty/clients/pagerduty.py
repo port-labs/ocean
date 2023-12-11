@@ -157,7 +157,7 @@ class PagerDutyClient:
             f"Fetching who is oncall for escalation poilices: {','.join(escalation_policy_ids)}"
         )
         params = {
-            "escalation_policy_ids[]": ",".join(escalation_policy_ids),
+            "escalation_policy_ids[]": escalation_policy_ids,
             "include[]": "users",
         }
         oncalls = []
