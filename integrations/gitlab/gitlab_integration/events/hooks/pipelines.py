@@ -9,9 +9,8 @@ from port_ocean.context.ocean import ocean
 
 class Pipelines(HookHandler):
     events = ["Pipeline Hook"]
+    system_events = ["pipeline"]
 
-    async def _on_hook(
-        self, group_id: str, body: dict[str, Any], gitlab_project: Project
-    ) -> None:
+    async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
         pipeline = gitlab_project.pipelines.get(body["object_attributes"]["id"])
         await ocean.register_raw(ObjectKind.PIPELINE, [pipeline.asdict()])

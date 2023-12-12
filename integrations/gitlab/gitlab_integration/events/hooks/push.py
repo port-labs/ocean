@@ -15,10 +15,9 @@ from port_ocean.context.ocean import ocean
 
 class PushHook(HookHandler):
     events = ["Push Hook"]
+    system_events = ["push"]
 
-    async def _on_hook(
-        self, group_id: str, body: dict[str, Any], gitlab_project: Project
-    ) -> None:
+    async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
         before, after, ref = body.get("before"), body.get("after"), body.get("ref")
 
         if before is None or after is None or ref is None:
