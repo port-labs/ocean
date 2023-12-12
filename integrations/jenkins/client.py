@@ -1,4 +1,4 @@
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode
 
 import httpx
 from typing import Any, AsyncGenerator
@@ -59,7 +59,9 @@ class JenkinsClient:
             logger.error(f"Unexpected error occurred: {e}")
             raise
 
-    async def get_builds(self, job_name: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_builds(
+        self, job_name: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         page_size = 100
         page = 0
 
@@ -69,9 +71,13 @@ class JenkinsClient:
                 start_idx = page_size * page
                 end_idx = start_idx + page_size
 
-                params = {"tree": f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]{{{start_idx},{end_idx}}}"}
+                params = {
+                    "tree": f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]{{{start_idx},{end_idx}}}"
+                }
                 encoded_params = urlencode(params)
-                request_url = f"{self.jenkins_base_url}/job/{job_name}/api/json?{encoded_params}"
+                request_url = (
+                    f"{self.jenkins_base_url}/job/{job_name}/api/json?{encoded_params}"
+                )
 
                 build_response = await self.client.get(request_url)
                 build_response.raise_for_status()

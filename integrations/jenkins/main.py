@@ -1,10 +1,24 @@
 from typing import Any
 from loguru import logger
+from enum import StrEnum
 
-from core.client import JenkinsClient
-from core.types import ObjectKind
+from client import JenkinsClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+
+class ObjectKind(StrEnum):
+    JOB = "job"
+    BUILD = "build"
+
+    @staticmethod
+    def get_object_kind_for_event(obj_type: str):
+        if obj_type.startswith("item"):
+            return ObjectKind.JOB
+        elif obj_type.startswith("run"):
+            return ObjectKind.BUILD
+        else:
+            return None
 
 
 def init_client() -> JenkinsClient:
@@ -37,9 +51,9 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/events")
 async def handle_events(event: dict[str, Any]) -> dict[str, bool]:
-    logger.info(
-        f'Received {event["dataType"]} event {event["id"]} | {event["type"]}'
-    )
+    logger.info(f'Received {event["dataType"]} event {event["id"]} | {event["type"]}')
 
-    await ocean.register_raw(ObjectKind.get_object_kind_for_event(event["type"]), [event])
+    await ocean.register_raw(
+        ObjectKind.get_object_kind_for_event(event["type"]), [event]
+    )
     return {"ok": True}
