@@ -1,0 +1,16 @@
+type: terraform
+description: terraform integration for Port Ocean
+icon: Cookiecutter # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Git Providers # Should be one of the available sections in Port
+    resources:
+      - kind: <ResourceName1>
+      - kind: <ResourceName2>
+configurations:
+  - name: myGitToken
+    required: true
+    type: string
+    sensitive: true
+  - name: someApplicationUrl
+    type: url
