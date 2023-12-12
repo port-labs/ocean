@@ -195,7 +195,7 @@ class GitlabService:
                     return
         except Exception:
             logger.error(
-                f"Failed to check if system hook exists, skipping trying to create, to avoid duplicates"
+                "Failed to check if system hook exists, skipping trying to create, to avoid duplicates"
             )
             return
 
@@ -213,7 +213,7 @@ class GitlabService:
             )
             logger.debug(f"Created system hook with id {resp.get_id()}")
         except Exception:
-            logger.error(f"Failed to create system hook")
+            logger.error("Failed to create system hook")
 
     def get_project(self, project_id: int) -> Project | None:
         """
