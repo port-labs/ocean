@@ -43,7 +43,6 @@
                   "title": "Server",
                   "description": "The API server URL of the Kubernetes cluster",
                   "type": "string",
-                  "format": "url",
                   "icon": "DefaultProperty"
               }
           },
@@ -100,7 +99,6 @@
           "properties": {
               "gitRepo": {
                   "type": "string",
-                  "format": "url",
                   "icon": "Git",
                   "title": "Repository URL",
                   "description": "The URL of the Git repository containing the application source code"
@@ -112,8 +110,7 @@
               },
               "destinationServer": {
                   "type": "string",
-                  "title": "Destination Server",
-                  "format": "url"
+                  "title": "Destination Server"
               },
               "namespace": {
                   "type": "string",
