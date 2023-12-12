@@ -8,21 +8,14 @@ from gitlab_integration.gitlab_service import GitlabService
 
 
 class HookHandler(ABC):
+    events: List[str] = []
+    system_events: List[str] = []
+
     def __init__(
         self,
         gitlab_service: GitlabService,
     ):
         self.gitlab_service = gitlab_service
-
-    @property
-    @abstractmethod
-    def events(self) -> List[str]:
-        return []
-
-    @property
-    @abstractmethod
-    def system_events(self) -> List[str]:
-        return []
 
     @abstractmethod
     async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
