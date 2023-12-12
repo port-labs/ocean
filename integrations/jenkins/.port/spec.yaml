@@ -17,9 +17,9 @@ configurations:
     type: string
     description: "Jenkins username"
     sensitive: true
-  - name: jenkinsPassword
+  - name: jenkinsToken
     required: true
     type: string
-    description: "Jenkins password"
+    description: "Jenkins token"
     sensitive: true
 

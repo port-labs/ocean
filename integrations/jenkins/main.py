@@ -25,7 +25,7 @@ def init_client() -> JenkinsClient:
     return JenkinsClient(
         ocean.integration_config["jenkins_host"],
         ocean.integration_config["jenkins_user"],
-        ocean.integration_config["jenkins_password"],
+        ocean.integration_config["jenkins_token"],
     )
 
 

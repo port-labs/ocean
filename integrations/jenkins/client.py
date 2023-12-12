@@ -1,19 +1,20 @@
 from urllib.parse import urlencode
-
-import httpx
 from typing import Any, AsyncGenerator
+from port_ocean.utils import http_async_client
 
 from loguru import logger
 
 
 class JenkinsClient:
     def __init__(
-        self, jenkins_base_url: str, jenkins_user: str, jenkins_password: str
+        self, jenkins_base_url: str, jenkins_user: str, jenkins_token: str
     ) -> None:
         self.jenkins_base_url = jenkins_base_url
 
-        auth = (jenkins_user, jenkins_password)
-        self.client = httpx.AsyncClient(auth=auth)
+        auth = (jenkins_user, jenkins_token)
+
+        self.client = http_async_client
+        self.client.auth = auth
 
     async def get_jobs(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         page_size = 100
@@ -47,14 +48,6 @@ class JenkinsClient:
 
                 if len(jobs) < page_size:
                     break
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-            )
-            raise
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP occurred while fetching Jenkins data {e}")
-            raise
         except Exception as e:
             logger.error(f"Unexpected error occurred: {e}")
             raise
@@ -93,15 +86,6 @@ class JenkinsClient:
 
                 if len(builds) < page_size:
                     break
-
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-            )
-            raise
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP occurred while fetching Jenkins data {e}")
-            raise
         except Exception as e:
             logger.error(f"Unexpected error occurred: {e}")
             raise
