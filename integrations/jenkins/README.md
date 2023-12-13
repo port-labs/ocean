@@ -195,12 +195,12 @@ resources:
       entity:
         mappings:
           identifier: 'if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
-          title: '(.data.displayName // .displayName)'
+          title: .displayName
           blueprint: '"job"'
           properties:
-            jobName: '.data.fullName // .fullName'
+            jobName: .fullName
             url: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
-            jobStatus: .type | split(\".\") | last
+            jobStatus: '.color as $input | if $input == "notbuilt" then "created" else "updated" end'
             timestamp: .time
 ```
 
@@ -267,12 +267,12 @@ You will be able to see realtime `build` data after you have successfully config
         entity:
           mappings: # Mappings between one Jenkins object to a Port entity. Each value is a JQ query.
             identifier: 'if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
-            title: '(.data.displayName // .displayName)'
+            title: .displayName
             blueprint: '"job"'
             properties:
-               jobName: '.data.fullName // .fullName'
+               jobName: .fullName
                url: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
-               jobStatus: .type | split(\".\") | last
+               jobStatus: '.color as $input | if $input == "notbuilt" then "created" else "updated" end'
                timestamp: .time
         # highlight-end
     - kind: job # In this instance cost is mapped again with a different filter
@@ -363,19 +363,19 @@ createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
   - kind: job
-      selector:
+    selector:
       query:  "true"
-      port:
+    port:
       entity:
-      mappings:
-      identifier: 'if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
-      title: '(.data.displayName // .displayName)'
-      blueprint: '"job"'
-      properties:
-      jobName: '.data.fullName // .fullName'
-      url: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
-      jobStatus: .type | split(\".\") | last
-      timestamp: .time
+        mappings:
+          identifier: 'if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
+          title: .displayName
+          blueprint: '"job"'
+          properties:
+            jobName: .fullName
+            url: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
+            jobStatus: '.color as $input | if $input == "notbuilt" then "created" else "updated" end'
+            timestamp: .time
 ```
 
 </details>
@@ -450,16 +450,16 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '(.data.fullDisplayName // .fullDisplayName) | sub(" "; "-"; "g") | sub("#"; ""; "g")'
-          title: '.data.displayName // .displayName'
+          identifier: '.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g")'
+          title: .displayName
           blueprint: '"build"'
           properties:
-            buildStatus: '.data.result // .result'
+            buildStatus: .result
             buildUrl: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
-            buildDuration: '.data.duration // .duration'
-            timestamp: '(.time // .timestamp) as $input | if $input | type == "number" then ($input / 1000 | todate) else $input end'
+            buildDuration: .duration
+            timestamp: '.timestamp as $input | if $input | type == "number" then ($input / 1000 | todate) else $input end'
           relations:
-            job: '(.source) as $input | if $input | contains("://") then ($input | split("://")[1] | sub("^.*?/"; "")) else $input end | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
+            job: '.url as $input | if $input | contains("://") then ($input | split("://")[1] | sub("^.*?/"; "")) else $input end | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1] | sub("-[0-9]+$"; "")'
 ```
 
 </details>
@@ -481,9 +481,9 @@ Here is an example of the payload structure from Jenkins:
    "description":"The hauora app",
    "displayName":"Hauora App",
    "fullDisplayName":"Hauora App",
-   "fullName":"Haoura MultiBranch",
-   "name":"Haoura MultiBranch",
-   "url":"http://localhost:8080/job/Haoura%20MultiBranch/"
+   "fullName":"Haoura",
+   "name":"Haoura",
+   "url":"http://localhost:8080/job/Haoura/"
 }
 ```
 
