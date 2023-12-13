@@ -7,7 +7,7 @@ from loguru import logger
 from starlette.requests import Request
 from port_ocean.context.event import event
 
-from gitlab_integration.bootstrap import event_handler
+from gitlab_integration.bootstrap import event_handler, system_event_handler
 from gitlab_integration.bootstrap import setup_application
 from gitlab_integration.git_integration import GitlabResourceConfig
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
@@ -20,9 +20,21 @@ NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not e
 @ocean.router.post("/hook/{group_id}")
 async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
+    with logger.contextualize(event_id=event_id):
+        body = await request.json()
+        await event_handler.notify(event_id, body)
+        return {"ok": True}
+
+
+@ocean.router.post("/system/hook")
+async def handle_system_webhook(request: Request) -> dict[str, Any]:
     body = await request.json()
-    await event_handler.notify(event_id, group_id, body)
-    return {"ok": True}
+    # some system hooks have event_type instead of event_name in the body, such as merge_request events
+    event_name = body.get("event_name") or body.get("event_type")
+    with logger.contextualize(event_name=event_name):
+        logger.debug("Handling system hook")
+        await system_event_handler.notify(event_name, body)
+        return {"ok": True}
 
 
 @ocean.on_start()
@@ -43,6 +55,7 @@ async def on_start() -> None:
             logic_settings["token_mapping"],
             logic_settings["gitlab_host"],
             logic_settings["app_host"],
+            logic_settings["use_system_hook"],
         )
     except Exception as e:
         logger.warning(
