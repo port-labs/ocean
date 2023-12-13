@@ -9,9 +9,8 @@ from port_ocean.context.ocean import ocean
 
 class Job(HookHandler):
     events = ["Job Hook"]
+    system_events = ["job"]
 
-    async def _on_hook(
-        self, group_id: str, body: dict[str, Any], gitlab_project: Project
-    ) -> None:
+    async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
         job = gitlab_project.jobs.get(body["build_id"])
         await ocean.register_raw(ObjectKind.JOB, [job.asdict()])

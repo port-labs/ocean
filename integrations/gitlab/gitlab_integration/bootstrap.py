@@ -1,6 +1,9 @@
+from typing import Type, List
+
 from gitlab import Gitlab
 
-from gitlab_integration.events.event_handler import EventHandler
+from gitlab_integration.events.event_handler import EventHandler, SystemEventHandler
+from gitlab_integration.events.hooks.base import HookHandler
 from gitlab_integration.events.hooks.issues import Issues
 from gitlab_integration.events.hooks.jobs import Job
 from gitlab_integration.events.hooks.merge_request import MergeRequest
@@ -9,6 +12,7 @@ from gitlab_integration.events.hooks.push import PushHook
 from gitlab_integration.gitlab_service import GitlabService
 
 event_handler = EventHandler()
+system_event_handler = SystemEventHandler()
 
 
 def setup_listeners(gitlab_service: GitlabService, webhook_id: str | int) -> None:
@@ -24,12 +28,37 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str | int) -> Non
         event_handler.on(event_ids, handler.on_hook)
 
 
+def setup_system_listeners(gitlab_clients: list[GitlabService]) -> None:
+    handlers: List[Type[HookHandler]] = [
+        PushHook,
+        MergeRequest,
+        Job,
+        Issues,
+        Pipelines,
+    ]
+    for handler in handlers:
+        system_event_handler.on(handler)
+
+    for gitlab_service in gitlab_clients:
+        system_event_handler.add_client(gitlab_service)
+
+
 def setup_application(
-    token_mapping: dict[str, list[str]], gitlab_host: str, app_host: str
+    token_mapping: dict[str, list[str]],
+    gitlab_host: str,
+    app_host: str,
+    use_system_hook: bool,
 ) -> None:
+    clients = []
     for token, group_mapping in token_mapping.items():
         gitlab_client = Gitlab(gitlab_host, token)
         gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
-        webhook_ids = gitlab_service.create_webhooks()
-        for webhook_id in webhook_ids:
-            setup_listeners(gitlab_service, webhook_id)
+        clients.append(gitlab_service)
+        if use_system_hook:
+            gitlab_service.create_system_hook()
+        else:
+            webhook_ids = gitlab_service.create_webhooks()
+            for webhook_id in webhook_ids:
+                setup_listeners(gitlab_service, webhook_id)
+    if use_system_hook:
+        setup_system_listeners(clients)

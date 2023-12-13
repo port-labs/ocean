@@ -186,6 +186,33 @@ class GitlabService:
 
         return webhook_ids
 
+    def create_system_hook(self) -> None:
+        logger.debug("Checking if system hook already exists")
+        try:
+            for hook in self.gitlab_client.hooks.list(iterator=True):
+                if hook.url == f"{self.app_host}/integration/system/hook":
+                    logger.debug("System hook already exists, no need to create")
+                    return
+        except Exception:
+            logger.error(
+                "Failed to check if system hook exists, skipping trying to create, to avoid duplicates"
+            )
+            return
+
+        logger.debug("Creating system hook")
+        try:
+            resp = self.gitlab_client.hooks.create(
+                {
+                    "url": f"{self.app_host}/integration/system/hook",
+                    "push_events": True,
+                    "merge_requests_events": True,
+                    "repository_update_events": False,
+                }
+            )
+            logger.debug(f"Created system hook with id {resp.get_id()}")
+        except Exception:
+            logger.error("Failed to create system hook")
+
     def get_project(self, project_id: int) -> Project | None:
         """
         Returns project if it should be processed, None otherwise
