@@ -8,60 +8,48 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 class ObjectKind(StrEnum):
     WORKSPACE = "workspace"
-    RUN = "runs"
+    RUN = "run"
 
 
 def init_terraform_client() -> TerraformClient:
     """
-    Intialize Jenkins Client
+    Intialize Terraform Client
     """
     config = ocean.integration_config
-
+    
     jenkins_client = TerraformClient(
-                        config["terraform_host"],
-                        config["terraform_organization"],
-                        config["token_token"])
+                    config["terraform_host"],
+                    config["terraform_token"],
+                    config["terraform_organization"],
+                    )
 
     return jenkins_client
 
 
+async def setup_application():
+        
+    config = ocean.integration_config
+    app_host = config.get("app_host",None)
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
-@ocean.on_resync()
-async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-    return []
+    if not app_host:
+        logger.warning(
+            "No app host provided, skipping webhook creation. "
+            "Without setting up the webhook, the integration will not export live changes from Terraform"
+        )
+        return
+
+    terraform_client = init_terraform_client()
+    terraform_client.create_workspace_webhook(app_host=app_host)
 
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
 @ocean.on_resync(ObjectKind.WORKSPACE)
 async def resync_workspaces(kind: str) -> list[dict[Any, Any]]:
     terraform_client = init_terraform_client()
 
     async for workspace in terraform_client.get_paginated_workspaces():
-        logger.info(f"Received ${len(workspace)} batch workspaces")
+        logger.info(f"Received {len(workspace)} batch workspaces")
         yield workspace
 
-
-
-
-# @ocean.on_resync(ObjectKind.RUN)
-# async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-#     terraform_client = init_terraform_client()
-
-#     async for workspaces in terraform_client.get_paginated_workspaces():
-#         logger.info(f"Received ${len(workspace)} batch runs")
-#         for workspace in workspaces:
-#             async for runs in terraform_client.get_paginated_runs_for_workspace(workspace_id)
-#                 yield runs
 
 
 @ocean.on_resync(ObjectKind.RUN)
@@ -69,18 +57,18 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
 
     async for workspaces in terraform_client.get_paginated_workspaces():
-        logger.info(f"Received ${len(workspace)} batch runs")
+        logger.info(f"Received {len(workspaces)} batch runs")
         for workspace in workspaces:
-            runs = await terraform_client.get_runs(workspace['id'])
-            yield runs
+            async for runs in terraform_client.get_paginated_runs_for_workspace(workspace['id']):
+                yield runs
 
 
-
-
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting integration")
+    logger.info("Starting Port Ocean Terraform integration")
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    await setup_application()

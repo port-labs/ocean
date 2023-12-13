@@ -154,3 +154,4 @@ cython_debug/
 
 #Temporal
 clientsync.py
+/changelog/*.md
