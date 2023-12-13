@@ -18,7 +18,7 @@ class EventHandler:
 
     async def notify(self, event: str, body: dict[str, Any]) -> Awaitable[Any]:
         return asyncio.gather(
-            *(observer(event, body) for observer in self._observers[event])
+            *(observer(event, body) for observer in self._observers.get(event, []))
         )
 
 
@@ -41,7 +41,7 @@ class SystemEventHandler:
             *(
                 hook_handler(client).on_hook(event, body)
                 for client in self._clients
-                for hook_handler in self._hook_handlers[event]
+                for hook_handler in self._hook_handlers.get(event, [])
             ),
             return_exceptions=True,
         )

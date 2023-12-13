@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added support for system hooks (#5220)
+- Added support for system hooks, this capability can be enabled using the useSystemHook flag. Enabling this capability will create system hooks instead of group webhooks (PORT-5220)
 
 
 0.1.33 (2023-12-05)

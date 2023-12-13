@@ -20,9 +20,10 @@ NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not e
 @ocean.router.post("/hook/{group_id}")
 async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
-    body = await request.json()
-    await event_handler.notify(event_id, body)
-    return {"ok": True}
+    with logger.contextualize(event_id=event_id):
+        body = await request.json()
+        await event_handler.notify(event_id, body)
+        return {"ok": True}
 
 
 @ocean.router.post("/system/hook")
@@ -30,8 +31,10 @@ async def handle_system_webhook(request: Request) -> dict[str, Any]:
     body = await request.json()
     # some system hooks have event_type instead of event_name in the body, such as merge_request events
     event_name = body.get("event_name") or body.get("event_type")
-    await system_event_handler.notify(event_name, body)
-    return {"ok": True}
+    with logger.contextualize(event_name=event_name):
+        logger.debug(f"Handling system hook")
+        await system_event_handler.notify(event_name, body)
+        return {"ok": True}
 
 
 @ocean.on_start()
