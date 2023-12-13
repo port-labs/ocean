@@ -206,6 +206,7 @@ class GitlabService:
                     "url": f"{self.app_host}/integration/system/hook",
                     "push_events": True,
                     "merge_requests_events": True,
+                    "repository_update_events": False,
                 }
             )
             logger.debug(f"Created system hook with id {resp.get_id()}")
