@@ -23,13 +23,12 @@ class JenkinsClient:
         cache_key = "jenkins_jobs_and_builds"
 
         if cache := event.attributes.get(cache_key):
-            logger.info(f"picking from cache: {len(cache)}")
+            logger.info("picking from cache")
             yield cache
             return
 
         page_size = 100
         page = 0
-        logger.info("Getting jobs and builds from Jenkins")
 
         all_jobs = []
 
@@ -70,7 +69,7 @@ class JenkinsClient:
         Get either a job or build using the url from the event e.g.
 
         Job: job/JobName/
-        Build: job/JobName/34
+        Build: job/JobName/34/
         """
         response = await self.client.get(
             f"{self.jenkins_base_url}/{resource_url}api/json"

@@ -4,7 +4,6 @@ from enum import StrEnum
 
 from client import JenkinsClient
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 class ObjectKind(StrEnum):
