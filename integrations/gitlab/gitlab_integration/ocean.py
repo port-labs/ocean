@@ -32,7 +32,7 @@ async def handle_system_webhook(request: Request) -> dict[str, Any]:
     # some system hooks have event_type instead of event_name in the body, such as merge_request events
     event_name = body.get("event_name") or body.get("event_type")
     with logger.contextualize(event_name=event_name):
-        logger.debug(f"Handling system hook")
+        logger.debug("Handling system hook")
         await system_event_handler.notify(event_name, body)
         return {"ok": True}
 
