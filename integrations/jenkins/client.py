@@ -1,5 +1,7 @@
 from urllib.parse import urlencode
 from typing import Any, AsyncGenerator
+
+from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
 from loguru import logger
@@ -18,9 +20,18 @@ class JenkinsClient:
     async def get_all_jobs_and_builds(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        cache_key = "jenkins_jobs_and_builds"
+
+        if cache := event.attributes.get(cache_key):
+            logger.info(f"picking from cache: {len(cache)}")
+            yield cache
+            return
+
         page_size = 100
         page = 0
         logger.info("Getting jobs and builds from Jenkins")
+
+        all_jobs = []
 
         try:
             while True:
@@ -28,7 +39,7 @@ class JenkinsClient:
                 end_idx = start_idx + page_size
 
                 params = {
-                    "tree": f"jobs[name,url,description,displayName,fullDisplayName,fullName,builds[id,number,url,"
+                    "tree": f"jobs[name,url,description,displayName,fullDisplayName,fullName,allBuilds[id,number,url,"
                     f"result,duration,timestamp,displayName,fullDisplayName]]{{{start_idx},{end_idx}}}"
                 }
 
@@ -42,12 +53,14 @@ class JenkinsClient:
                     break
 
                 logger.info(f"Got {len(jobs)} jobs from Jenkins")
+                all_jobs.extend(jobs)
 
                 yield jobs
                 page += 1
 
                 if len(jobs) < page_size:
                     break
+            event.attributes[cache_key] = all_jobs
         except Exception as e:
             logger.error(f"Unexpected error occurred: {e}")
             raise

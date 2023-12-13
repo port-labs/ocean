@@ -37,7 +37,7 @@ async def on_resync(kind: str) -> None:
         if kind == ObjectKind.JOB:
             yield _jobs
         elif kind == ObjectKind.BUILD:
-            yield [build for job in _jobs for build in job["builds"]]
+            yield [build for job in _jobs for build in job["allBuilds"]]
 
 
 @ocean.router.post("/events")
