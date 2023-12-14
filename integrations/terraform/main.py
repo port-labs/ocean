@@ -1,0 +1,74 @@
+from enum import StrEnum
+from typing import Any
+from client import TerraformClient
+from port_ocean.context.ocean import ocean
+from loguru import logger
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+
+class ObjectKind(StrEnum):
+    WORKSPACE = "workspace"
+    RUN = "run"
+
+
+def init_terraform_client() -> TerraformClient:
+    """
+    Intialize Terraform Client
+    """
+    config = ocean.integration_config
+    
+    jenkins_client = TerraformClient(
+                    config["terraform_host"],
+                    config["terraform_token"],
+                    config["terraform_organization"],
+                    )
+
+    return jenkins_client
+
+
+async def setup_application():
+        
+    config = ocean.integration_config
+    app_host = config.get("app_host",None)
+
+    if not app_host:
+        logger.warning(
+            "No app host provided, skipping webhook creation. "
+            "Without setting up the webhook, the integration will not export live changes from Terraform"
+        )
+        return
+
+    terraform_client = init_terraform_client()
+    terraform_client.create_workspace_webhook(app_host=app_host)
+
+
+@ocean.on_resync(ObjectKind.WORKSPACE)
+async def resync_workspaces(kind: str) -> list[dict[Any, Any]]:
+    terraform_client = init_terraform_client()
+
+    async for workspace in terraform_client.get_paginated_workspaces():
+        logger.info(f"Received {len(workspace)} batch workspaces")
+        yield workspace
+
+
+
+@ocean.on_resync(ObjectKind.RUN)
+async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+
+    async for workspaces in terraform_client.get_paginated_workspaces():
+        logger.info(f"Received {len(workspaces)} batch runs")
+        for workspace in workspaces:
+            async for runs in terraform_client.get_paginated_runs_for_workspace(workspace['id']):
+                yield runs
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    logger.info("Starting Port Ocean Terraform integration")
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    await setup_application()
