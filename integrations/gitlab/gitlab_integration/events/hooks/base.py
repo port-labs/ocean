@@ -8,24 +8,20 @@ from gitlab_integration.gitlab_service import GitlabService
 
 
 class HookHandler(ABC):
+    events: List[str] = []
+    system_events: List[str] = []
+
     def __init__(
         self,
         gitlab_service: GitlabService,
     ):
         self.gitlab_service = gitlab_service
 
-    @property
     @abstractmethod
-    def events(self) -> List[str]:
-        return []
-
-    @abstractmethod
-    async def _on_hook(
-        self, group_id: str, body: dict[str, Any], gitlab_project: Project
-    ) -> None:
+    async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
         pass
 
-    async def on_hook(self, event: str, group_id: str, body: dict[str, Any]) -> None:
+    async def on_hook(self, event: str, body: dict[str, Any]) -> None:
         logger.info(f"Handling {event}")
 
         project_id = (
@@ -37,7 +33,7 @@ class HookHandler(ABC):
             logger.info(
                 f"Handling hook {event} for project {project.path_with_namespace}"
             )
-            await self._on_hook(group_id, body, project)
+            await self._on_hook(body, project)
             logger.info(f"Finished handling {event}")
         else:
             logger.info(
