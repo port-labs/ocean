@@ -8,10 +8,11 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: "terraform"
+  identifier: "my-terraform-integration"
   # The type of the integration.
   type: "terraform"
   config:
     terraformHost: "{{ from env TERRAFORM_HOST }}"
     terraformOrganization: "{{ from env TERRAFORM_ORGANIZATION}}"
     terraformToken: "{{ from env TERRAFORM_TOKEN }}"
+    appHost: "{{ from env APP_HOST }}"

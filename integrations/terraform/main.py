@@ -17,19 +17,18 @@ def init_terraform_client() -> TerraformClient:
     """
     config = ocean.integration_config
     
-    jenkins_client = TerraformClient(
+    terraform_client = TerraformClient(
                     config["terraform_host"],
                     config["terraform_token"],
                     config["terraform_organization"],
                     )
 
-    return jenkins_client
+    return terraform_client
 
 
 async def setup_application():
         
-    config = ocean.integration_config
-    app_host = config.get("app_host",None)
+    app_host = ocean.integration_config.get("app_host")
 
     if not app_host:
         logger.warning(
@@ -39,7 +38,25 @@ async def setup_application():
         return
 
     terraform_client = init_terraform_client()
-    terraform_client.create_workspace_webhook(app_host=app_host)
+    await terraform_client.create_workspace_webhook(app_host=app_host)
+
+
+
+@ocean.router.post("/webhook")
+async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    terraform_client = init_terraform_client()
+
+    # logger.info(f"Received Terraform webhook event: {data}")
+
+    run_id = data["run_id"]
+    logger.info(f"Processing Terraform run event for run : {run_id}")
+
+    run = await terraform_client.get_single_run(run_id)
+    await ocean.register_raw(ObjectKind.RUN, [run])
+
+    logger.info("Terraform webhook event processed")
+    return {"ok": True}
+
 
 
 @ocean.on_resync(ObjectKind.WORKSPACE)

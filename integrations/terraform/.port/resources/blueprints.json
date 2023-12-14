@@ -49,15 +49,6 @@
               "title": "Latest Change",
               "description": "Timestamp of the latest change in the workspace"
             }
-          },
-          "required": ["workspaceName", "createdAt", "terraformVersion"]
-        },
-        "relations": {
-          "terraformRun": {
-            "title": "Terraform Run",
-            "target": "terraformRun",
-            "required": false,
-            "many": true
           }
         }
       },
@@ -122,8 +113,7 @@
         "title": "Run Source",
         "description": "The source of the run initiation"
       }
-    },
-    "required": ["runId", "createdAt", "status", "terraformVersion"]
+    }
   },
   "relations": {
     "terraformWorkspace": {
@@ -134,5 +124,4 @@
     }
   }
 }
-
 ]

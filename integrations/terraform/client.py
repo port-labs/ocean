@@ -1,51 +1,43 @@
-# from port_ocean.utils import http_async_client as httpx
 import httpx
 from typing import List, Dict, Any, AsyncGenerator
 from loguru import logger
 
 
-TERRAFORM_WEBHOOK_EVENTS = [
-    "run:created",
-    "run:planning",
-    "jira:issue_deleted",
-    "run:needs_attention",
-    "run:applying",
-    "run:completed",
-    "run:errored",
-    "assessment:drifted",
-    "assessment:failed",
-    "workspace:auto_destro_reminder",
-    "workspace:auto_destroy_run_results"
-]
+TERRAFORM_WEBHOOK_EVENTS = ['run:applying',
+                            'run:completed',
+                            'run:created', 
+                            'run:errored', 
+                            'run:needs_attention',
+                            'run:planning']
 
+PAGE_SIZE = 100
 
 class TerraformClient:
 
     def __init__(self, terraform_base_url: str, auth_token: str, organization: str) -> None:
         self.terraform_base_url = terraform_base_url
-        self.auth_token = auth_token
-        self.base_headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/vnd.api+json"}
+        self.base_headers = {"Authorization": f"Bearer {auth_token}", "Content-Type": "application/vnd.api+json"}
         self.api_url = f"{self.terraform_base_url}/api/v2"
         self.organization = organization
         self.client = httpx.AsyncClient(headers=self.base_headers)
 
+
     async def get_paginated_workspaces(self) -> List[Dict[str, any]]:
 
         try:        
-            per_page = 100
             page = 1
 
             logger.info("Getting workspaces from Terraform")
             while True:
                 workspace_response = await self.client.get(
-                    f"{self.api_url}/organizations/{self.organization}/workspaces?page[number]={page}&page[size]={per_page}"
+                    f"{self.api_url}/organizations/{self.organization}/workspaces?page[number]={page}&page[size]={PAGE_SIZE}"
                 )
                 workspace_response.raise_for_status()
                 workspaces_data = workspace_response.json()
                 workspaces = workspaces_data.get('data', [])
                 yield workspaces
 
-                if len(workspaces) < per_page:
+                if len(workspaces) < PAGE_SIZE:
                     break
                 page += 1
 
@@ -56,23 +48,37 @@ class TerraformClient:
             logger.error(f"An error occured while fetching terraform data: {e}")
 
 
+    async def get_single_workspace(self, workspace_id: str) -> Dict[str, Any]:
+        try:
+
+            logger.info(f"Getting details for run {workspace_id}")
+            response = await self.client.get(f"{self.api_url}/workspaces/{workspace_id}")
+            response.raise_for_status()
+            return response.json().get('data', [])
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
+        
+        except httpx.HTTPError as e:
+            logger.error(f"An error occured while fetching terraform data: {e}")
+    
+
     async def get_paginated_runs_for_workspace(self, workspace_id: str) -> AsyncGenerator[Dict[str, Any], None]:
         
         try:
-            per_page = 100
             page = 1
 
             logger.info(f"Getting runs for workspace {workspace_id} from Terraform")
             while True:
                 run_response = await self.client.get(
-                    f"{self.api_url}/workspaces/{workspace_id}/runs?page[number]={page}&page[size]={per_page}"
+                    f"{self.api_url}/workspaces/{workspace_id}/runs?page[number]={page}&page[size]={PAGE_SIZE}"
                 )
                 run_response.raise_for_status()
                 runs_data = run_response.json()
                 runs = runs_data.get('data', [])
                 yield runs
 
-                if len(runs) < per_page:
+                if len(runs) < PAGE_SIZE:
                     break
                 page += 1
 
@@ -83,11 +89,25 @@ class TerraformClient:
             logger.error(f"An error occured while fetching terraform data: {e}")
 
 
+    async def get_single_run(self, run_id: str) -> Dict[str, Any]:
+        try:
+            run_url = f"{self.api_url}/runs/{run_id}"
+            response = await self.client.get(run_url)
+            response.raise_for_status()
+            return response.json().get('data', [])
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
+        
+        except httpx.HTTPError as e:
+            logger.error(f"An error occured while fetching terraform data: {e}")
+    
+
     async def create_workspace_webhook(self,app_host:str) -> None:
 
         try:
 
-            webhook_target_url = app_host
+            webhook_target_url = f"{app_host}/integration/webhook"
 
             async for workspaces in self.get_paginated_workspaces():
 
@@ -101,7 +121,7 @@ class TerraformClient:
                     existing_configs = existing_configs_response.json()
 
                     for config in existing_configs.get('data', []):          
-                        if config.get('attributes', {}).get('url', '') == webhook_target_url:
+                        if config['attributes']['url'] == webhook_target_url:
                             logger.info("Webhook already exists for this workspace")
                             return
 
