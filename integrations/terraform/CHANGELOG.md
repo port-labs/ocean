@@ -7,4 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.0 (2023-12-14)
 
+### Features
+
+- Added terraform ocean integration (0.1.0)
+
+### Improvements
+
+- created incoming webhook endpoint for ingesting runs (0.1.0)
+- on startup, create terraform webhook if not already created (0.1.0)
