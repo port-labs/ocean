@@ -9,10 +9,9 @@ from port_ocean.context.ocean import ocean
 
 class MergeRequest(HookHandler):
     events = ["Merge Request Hook"]
+    system_events = ["merge_request"]
 
-    async def _on_hook(
-        self, group_id: str, body: dict[str, Any], gitlab_project: Project
-    ) -> None:
+    async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
         merge_requests = gitlab_project.mergerequests.get(
             body["object_attributes"]["iid"]
         )

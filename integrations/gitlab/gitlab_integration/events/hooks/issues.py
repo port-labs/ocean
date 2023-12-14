@@ -9,9 +9,8 @@ from port_ocean.context.ocean import ocean
 
 class Issues(HookHandler):
     events = ["Issue Hook"]
+    system_events = ["issue"]
 
-    async def _on_hook(
-        self, group_id: str, body: dict[str, Any], gitlab_project: Project
-    ) -> None:
+    async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
         issue = gitlab_project.issues.get(body["object_attributes"]["id"])
         await ocean.register_raw(ObjectKind.ISSUE, [issue.asdict()])
