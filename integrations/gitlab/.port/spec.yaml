@@ -23,3 +23,8 @@ configurations:
     type: url
     default: https://gitlab.com
     description: The host of the Gitlab instance. If not specified, the default will be https://gitlab.com.
+  - name: useSystemHook
+    required: false
+    type: boolean
+    description: If set to true, will use system hook instead of project hooks.
+    default: false
