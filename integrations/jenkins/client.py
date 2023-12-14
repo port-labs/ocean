@@ -38,8 +38,8 @@ class JenkinsClient:
                 end_idx = start_idx + page_size
 
                 params = {
-                    "tree": f"jobs[name,url,description,displayName,fullDisplayName,fullName,allBuilds[id,number,url,"
-                    f"result,duration,timestamp,displayName,fullDisplayName]]{{{start_idx},{end_idx}}}"
+                    "tree": f"jobs[name,url,description,displayName,fullDisplayName,fullName,builds[id,number,url,"
+                    f"result,duration,timestamp,displayName,fullDisplayName]{{0,50}}]{{{start_idx},{end_idx}}}"
                 }
 
                 job_response = await self.client.get(
