@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.8 (2023-12-13)
+
+
+### Bug Fixes
+
+- Fixed the incorrect search of entities by datasource, which was causing entities from older versions not to be deleted. (PORT-5583)
+
+
 ## 0.4.7 (2023-12-05)
 
 
