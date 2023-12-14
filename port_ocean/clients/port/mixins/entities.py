@@ -99,12 +99,12 @@ class EntityClientMixin:
             "rules": [
                 {
                     "property": "$datasource",
-                    "operator": "beginsWith",
+                    "operator": "contains",
                     "value": f"port-ocean/{self.auth.integration_type}/",
                 },
                 {
                     "property": "$datasource",
-                    "operator": "endsWith",
+                    "operator": "contains",
                     "value": f"/{self.auth.integration_identifier}/{user_agent_type.value}",
                 },
             ],

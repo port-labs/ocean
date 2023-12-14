@@ -55,7 +55,7 @@ class PortAuthentication:
         return TokenResponse(**response.json())
 
     def user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
-        user_agent = f"port-ocean/{self.integration_type}/{self.integration_version}/{self.integration_identifier}"
+        user_agent = f"port-ocean/{self.integration_type}/{self.integration_identifier}"
         if user_agent_type:
             user_agent += f"/{user_agent_type.value or UserAgentType.exporter.value}"
 
