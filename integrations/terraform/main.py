@@ -46,13 +46,17 @@ async def setup_application():
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     terraform_client = init_terraform_client()
 
-    # logger.info(f"Received Terraform webhook event: {data}")
-
     run_id = data["run_id"]
     logger.info(f"Processing Terraform run event for run : {run_id}")
 
     run = await terraform_client.get_single_run(run_id)
     await ocean.register_raw(ObjectKind.RUN, [run])
+
+    workspace_id = data['workspace_id']
+    logger.info(f"Processing Terraform run event for workspace : {workspace_id}")
+
+    workspace = await terraform_client.get_single_workspace(workspace_id)
+    await ocean.register_raw(ObjectKind.WORKSPACE, [workspace])
 
     logger.info("Terraform webhook event processed")
     return {"ok": True}

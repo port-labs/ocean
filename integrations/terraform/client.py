@@ -21,6 +21,20 @@ class TerraformClient:
         self.organization = organization
         self.client = httpx.AsyncClient(headers=self.base_headers)
 
+    async def get_single_workspace(self, workspace_id: str) -> Dict[str, Any]:
+        
+        try:
+            workspace_url = f"{self.api_url}/workspaces/{workspace_id}"
+            response = await self.client.get(workspace_url)
+            response.raise_for_status()
+            return response.json().get('data', {})
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
+        
+        except httpx.HTTPError as e:
+            logger.error(f"An error occured while fetching terraform data: {e}")
+
 
     async def get_paginated_workspaces(self) -> List[Dict[str, any]]:
 
@@ -41,21 +55,6 @@ class TerraformClient:
                     break
                 page += 1
 
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
-        
-        except httpx.HTTPError as e:
-            logger.error(f"An error occured while fetching terraform data: {e}")
-
-
-    async def get_single_workspace(self, workspace_id: str) -> Dict[str, Any]:
-        try:
-
-            logger.info(f"Getting details for run {workspace_id}")
-            response = await self.client.get(f"{self.api_url}/workspaces/{workspace_id}")
-            response.raise_for_status()
-            return response.json().get('data', [])
-        
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
         
@@ -94,58 +93,52 @@ class TerraformClient:
             run_url = f"{self.api_url}/runs/{run_id}"
             response = await self.client.get(run_url)
             response.raise_for_status()
-            return response.json().get('data', [])
+            return response.json().get('data', {})
         
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
         
         except httpx.HTTPError as e:
             logger.error(f"An error occured while fetching terraform data: {e}")
-    
 
-    async def create_workspace_webhook(self,app_host:str) -> None:
 
+    async def create_workspace_webhook(self, app_host: str) -> None:
         try:
-
             webhook_target_url = f"{app_host}/integration/webhook"
 
             async for workspaces in self.get_paginated_workspaces():
-
                 for workspace in workspaces:
-
                     notification_config_url = f"{self.api_url}/workspaces/{workspace['id']}/notification-configurations"
 
-                    # Check existing webhook configurations
                     existing_configs_response = await self.client.get(notification_config_url)
                     existing_configs_response.raise_for_status()
-                    existing_configs = existing_configs_response.json()
+                    existing_configs = existing_configs_response.json().get('data', [])
 
-                    for config in existing_configs.get('data', []):          
+                    for config in existing_configs:
                         if config['attributes']['url'] == webhook_target_url:
-                            logger.info("Webhook already exists for this workspace")
-                            return
+                            logger.info(f"Webhook already exists for workspace {workspace['id']}")
+                            break
 
-                    # Create new webhook configuration
-                    webhook_body = {
-                        "data": {
-                            "type": "notification-configurations",
-                            "attributes": {
-                                "destination-type": "generic", 
-                                "enabled": True,
-                                "name": "port integration webhook",
-                                "url": webhook_target_url,
-                                "triggers": TERRAFORM_WEBHOOK_EVENTS
+                    else:
+                        webhook_body = {
+                            "data": {
+                                "type": "notification-configurations",
+                                "attributes": {
+                                    "destination-type": "generic", 
+                                    "enabled": True,
+                                    "name": "port integration webhook",
+                                    "url": webhook_target_url,
+                                    "triggers": TERRAFORM_WEBHOOK_EVENTS
+                                }
                             }
                         }
-                    }
 
-                    webhook_create_response = await self.client.post(notification_config_url, json=webhook_body)
-                    webhook_create_response.raise_for_status()
-                    logger.info(f"Ocean real time webhook created for Terraform workspace - {workspace['id']}")
-        
-        
+                        webhook_create_response = await self.client.post(notification_config_url, json=webhook_body)
+                        webhook_create_response.raise_for_status()
+                        logger.info(f"Webhook created for Terraform workspace {workspace['id']}")
+
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
-        
+            logger.error(f"HTTP error for workspace {workspace.get('id', 'unknown')}: Status {e.response.status_code}, Response: {e.response.text}")
         except httpx.HTTPError as e:
-            logger.error(f"An error occured while fetching terraform data: {e}")
+            logger.error(f"Error fetching Terraform data: {e}")
+
