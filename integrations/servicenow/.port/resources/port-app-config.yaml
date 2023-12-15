@@ -50,4 +50,3 @@ resources:
             createdBy: .sys_created_by
             isActive: .active
             priority: .priority
-
