@@ -39,7 +39,7 @@ Set them as you wish in the script below, then copy it and run it in your termin
 | `integration.type`                      | The integration type                                                                                          | ✅       |
 | `integration.eventListener.type`        | The event listener type                                                                                       | ✅       |
 | `integration.config.terraformToken`     | The Terraform API token                                                                                       | ✅       |
-| `integration.config.terraformHost`      | The Terraform host, e.g., https://app.terraform.io"io                                                            | ✅       |
+| `integration.config.terraformHost`      | The Terraform host, e.g., https://app.terraform.io                                                         | ✅       |
 |`integration.config.terraformOrganization`| The Terraform Organization ID |  ✅  |
 | `scheduledResyncInterval`               | The number of minutes between each resync                                                                     | ❌       |
 | `initializePortResources`               | Default true, When set to true the integration will create default blueprints and the port App config Mapping | ❌       |
@@ -79,7 +79,7 @@ Make sure to configure the following [Github Secrets](https://docs.github.com/en
 | Parameter                                         | Description                                                                                                        | Required |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
 | `OCEAN__INTEGRATION__CONFIG__TERRAFORM_TOKEN`       | The Terraform API token                                                                                               | ✅       |
-| `OCEAN__INTEGRATION__CONFIG__TERRAFORM_HOST`        | The Terraform host. For example https://app.terraform.io"io                                                                     | ✅       |
+| `OCEAN__INTEGRATION__CONFIG__TERRAFORM_HOST`        | The Terraform host. For example https://app.terraform.io                                                                     | ✅       |
 | `OCEAN__INTEGRATION__CONFIG__TERRAFORM_ORGANIZATION`    | The Terraform username                                                                                       | ✅       |
 | `OCEAN__INITIALIZE_PORT_RESOURCES`                | Default true, When set to false the integration will not create default blueprints and the port App config Mapping | ❌       |
 | `OCEAN__INTEGRATION__IDENTIFIER`                  | Change the identifier to describe your integration, if not set will use the default one                            | ❌       |
