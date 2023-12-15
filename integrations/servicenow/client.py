@@ -10,8 +10,11 @@ from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 100
 
+
 class ServicenowClient:
-    def __init__(self, servicenow_host: str, servicenow_username: str, servicenow_password: str):
+    def __init__(
+        self, servicenow_host: str, servicenow_username: str, servicenow_password: str
+    ):
         self.servicenow_host = servicenow_host
         self.servicenow_username = servicenow_username
         self.servicenow_password = servicenow_password
@@ -32,33 +35,34 @@ class ServicenowClient:
             },
         }
 
-    async def get_paginated_resource(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-
+    async def get_paginated_resource(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         selector = typing.cast(ServicenowResourceConfig, event.resource_config).selector
 
         offset = 0
 
         while True:
-
             params: dict[str, Any] = {
                 "sysparm_offset": offset * PAGE_SIZE,
                 "sysparm_limit": PAGE_SIZE,
-                "sysparm_query": "ORDERBYsys_created_on"
+                "sysparm_query": "ORDERBYsys_created_on",
             }
 
             try:
                 response = await self.http_client.get(
-                    url=f"{self.servicenow_host}/api/now/table/{selector.path}", params=params
+                    url=f"{self.servicenow_host}/api/now/table/{selector.path}",
+                    params=params,
                 )
                 response.raise_for_status()
                 records = response.json().get("result", [])
-                
+
                 if not records:
                     break
 
                 yield records
 
-                total_records = int(response.headers.get('X-Total-Count', 0))
+                total_records = int(response.headers.get("X-Total-Count", 0))
                 if (offset + 1) * PAGE_SIZE >= total_records:
                     break
 

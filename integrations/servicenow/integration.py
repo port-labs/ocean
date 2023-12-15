@@ -8,8 +8,10 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 
+
 class ServicenowSelector(Selector):
     path: str = Field(description="Servicenow Table API path to fetch data from")
+
 
 class ServicenowResourceConfig(ResourceConfig):
     selector: ServicenowSelector
