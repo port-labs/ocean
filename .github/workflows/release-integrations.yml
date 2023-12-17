@@ -50,7 +50,7 @@ jobs:
     needs: prepare-matrix
     strategy:
       matrix:
-        integration: ${{needs.prepare-matrix.outputs.matrix}}
+        integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     steps:
       - name: Check out code
         uses: actions/checkout@v2
