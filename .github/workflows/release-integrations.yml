@@ -39,7 +39,7 @@ jobs:
             integrations_to_release+=($type)
           done
           echo ${integrations_to_release[@]}
-          echo "INTEGRATIONS_MATRIX=$(printf '%s\n' "${bash_array[@]}" | jq -R -c 'split(" "))" >> $GITHUB_OUTPUT
+          echo "INTEGRATIONS_MATRIX=$(echo $bash_array | jq -R -c 'split(" "))" >> $GITHUB_OUTPUT
 
   release-integration:
     runs-on: ubuntu-latest
