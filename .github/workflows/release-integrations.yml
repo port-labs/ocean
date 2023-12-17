@@ -39,6 +39,7 @@ jobs:
             if [ "$MANIFEST" = "200" ]; then
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
+              echo "$MANIFEST"
               integrations_to_release+=($file)
             fi
           done
