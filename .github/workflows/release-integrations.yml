@@ -60,7 +60,7 @@ jobs:
           password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
       - name: Build and push Docker image
         run: |
-          echo ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
+          echo ${{needs.prepare-matrix.outputs.matrix}}
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           current_integration_spec=${{ matrix.integration }}
           
