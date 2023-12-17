@@ -39,7 +39,7 @@ jobs:
             integrations_to_release+=($type)
           done
           echo ${integrations_to_release[@]}
-          echo "INTEGRATIONS_MATRIX=$integrations_to_release" >> $GITHUB_OUTPUT
+          echo "INTEGRATIONS_MATRIX=$(integrations_to_release[@])" >> $GITHUB_OUTPUT
 
   release-integration:
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
           password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
       - name: Build and push Docker image
         run: |
-          echo ${{needs.prepare-matrix.outputs.matrix[@]}}
+          echo ${{needs.prepare-matrix.outputs.matrix}}
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           current_integration_spec=${{ matrix.integration }}
           
