@@ -39,7 +39,7 @@ jobs:
             integrations_to_release+=($type)
             echo "Found integration $type with version $version"
           done
-          echo $integrations_to_release
+          echo ${#integrations_to_release[@]}
           echo $files
           echo "INTEGRATIONS_MATRIX=$integrations_to_release" >> $GITHUB_OUTPUT
 
