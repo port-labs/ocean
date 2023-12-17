@@ -36,11 +36,7 @@ jobs:
             # Check if the version exists in the ghcr.io registry
             MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
 
-            # if [ "$MANIFEST" = "200" ]; then
-            #   echo "Image already exists in $repository: port-ocean-$type:$version"
-            # else
             integrations_to_release+=("$type")
-            # fi
           done
           echo $integrations_to_release
           echo $files
