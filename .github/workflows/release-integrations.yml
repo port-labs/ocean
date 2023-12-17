@@ -40,6 +40,7 @@ jobs:
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
               echo "$MANIFEST"
+              echo "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version"
               integrations_to_release+=($file)
             fi
           done
