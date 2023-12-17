@@ -64,10 +64,11 @@ jobs:
         run: |
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           current_integration_spec=${{ matrix.integration }}
-          cat $current_integration_spec
           
           type=$(yq eval '.type' "$file")
+          echo "Building integration $type"
           folder=$(dirname "$file")
+          echo "Folder: $folder"
           
           dockerfile_path=integrations/_infra/Dockerfile
           if test -e $folder/../Dockerfile; then
