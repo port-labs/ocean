@@ -36,7 +36,7 @@ jobs:
             # Check if the version exists in the ghcr.io registry
             MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
 
-            integrations_to_release+=$type
+            integrations_to_release+=($type)
             echo "Found integration $type with version $version"
           done
           echo $integrations_to_release
