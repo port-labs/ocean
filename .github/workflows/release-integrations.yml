@@ -37,10 +37,11 @@ jobs:
             MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
 
             integrations_to_release+=($type)
-            echo "Found integration $type with version $version"
           done
           echo ${#integrations_to_release[@]}
-          echo "INTEGRATIONS_MATRIX=$integrations_to_release" >> $GITHUB_OUTPUT
+          echo ${integrations_to_release[@]}
+          echo $(printf '%s\n' "${bash_array[@]}" | jq -R . | jq -s .)
+          echo "INTEGRATIONS_MATRIX=$(printf '%s\n' "${bash_array[@]}" | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
 
   release-integration:
     runs-on: ubuntu-latest
