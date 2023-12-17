@@ -40,7 +40,6 @@ jobs:
             echo "Found integration $type with version $version"
           done
           echo ${#integrations_to_release[@]}
-          echo $files
           echo "INTEGRATIONS_MATRIX=$integrations_to_release" >> $GITHUB_OUTPUT
 
   release-integration:
@@ -51,7 +50,7 @@ jobs:
     needs: prepare-matrix
     strategy:
       matrix:
-        integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
+        integration: ${{needs.prepare-matrix.outputs.matrix}}
     steps:
       - name: Check out code
         uses: actions/checkout@v2
