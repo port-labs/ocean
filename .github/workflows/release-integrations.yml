@@ -38,8 +38,7 @@ jobs:
 
             integrations_to_release+=($type)
           done
-          echo $(echo $integrations_to_release | jq -R -c 'split(" ")')
-          echo "INTEGRATIONS_MATRIX=$(echo $integrations_to_release | jq -R -c 'split(" "))'" >> $GITHUB_OUTPUT
+          echo $(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')
 
   release-integration:
     runs-on: ubuntu-latest
