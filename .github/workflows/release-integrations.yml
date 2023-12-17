@@ -40,8 +40,8 @@ jobs:
           done
           echo ${#integrations_to_release[@]}
           echo ${integrations_to_release[@]}
-          echo $(printf '%s\n' "${bash_array[@]}" | jq -R . | jq -s .)
-          echo "INTEGRATIONS_MATRIX=$(printf '%s\n' "${bash_array[@]}" | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
+          echo $(printf '%s\n' "${integrations_to_release[@]}" | jq -R . | jq -s .)
+          echo "INTEGRATIONS_MATRIX=$(printf '%s\n' "${integrations_to_release[@]}" | jq -R . | jq -s .)" >> $GITHUB_OUTPUT
 
   release-integration:
     runs-on: ubuntu-latest
