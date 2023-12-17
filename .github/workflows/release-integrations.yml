@@ -90,48 +90,48 @@ jobs:
             # If 'version' contains only digits and dots, build with both 'latest' and version tags
             docker buildx build -f $dockerfile_path -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" --build-arg="BUILD_CONTEXT=$folder/.." .
           fi
-#          docker push "ghcr.io/port-labs/port-ocean-$type" --all-tags
+          docker push "ghcr.io/port-labs/port-ocean-$type" --all-tags
 
-#  upload-specs:
-#    runs-on: ubuntu-latest
-#    permissions:
-#      packages: write
-#      contents: read
-#    needs: prepare-matrix
-#    steps:
-#      - name: Check out code
-#        uses: actions/checkout@v2
-#      - name: Configure AWS Credentials 🔒
-#        id: aws-credentials
-#        uses: aws-actions/configure-aws-credentials@v2
-#        with:
-#          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#          aws-region: ${{ secrets.AWS_REGION }}
-#      - name: Upload specifications to s3
-#        run: |
-#          # Temporary file to store the concatenated YAML content
-#          temp_file="temp.yaml"
-#
-#          # Output file name
-#          output_file="index.json"
-#
-#          # AWS S3 bucket details
-#          aws_s3_bucket="ocean-registry"
-#
-#          # Find all ocean-spec.yaml files under the specified directory
-#          find integrations/*/.port -type f -name "spec.yaml" > file_list.txt
-#
-#          # Concatenate the YAML files into a temporary file
-#          while IFS= read -r file; do
-#          # Extract the version from pyproject.toml
-#          integration_dir=$(dirname "$file")
-#          version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
-#
-#          echo "- " >> "$temp_file"
-#          sed 's/^/  /' "$file" >> "$temp_file"
-#          echo "  version: $version" >> "$temp_file"
-#          done < file_list.txt
-#
-#          yq -j . < "$temp_file" > "$output_file"
-#          aws s3 cp "$output_file" "s3://$aws_s3_bucket/$output_file"
+  upload-specs:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    needs: prepare-matrix
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Configure AWS Credentials 🔒
+        id: aws-credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Upload specifications to s3
+        run: |
+          # Temporary file to store the concatenated YAML content
+          temp_file="temp.yaml"
+
+          # Output file name
+          output_file="index.json"
+
+          # AWS S3 bucket details
+          aws_s3_bucket="ocean-registry"
+
+          # Find all ocean-spec.yaml files under the specified directory
+          find integrations/*/.port -type f -name "spec.yaml" > file_list.txt
+
+          # Concatenate the YAML files into a temporary file
+          while IFS= read -r file; do
+          # Extract the version from pyproject.toml
+          integration_dir=$(dirname "$file")
+          version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+
+          echo "- " >> "$temp_file"
+          sed 's/^/  /' "$file" >> "$temp_file"
+          echo "  version: $version" >> "$temp_file"
+          done < file_list.txt
+
+          yq -j . < "$temp_file" > "$output_file"
+          aws s3 cp "$output_file" "s3://$aws_s3_bucket/$output_file"
