@@ -48,9 +48,9 @@ jobs:
       packages: write
       contents: read
     needs: [prepare-matrix]
-#    strategy:
-#      matrix:
-#        integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
+    strategy:
+      matrix:
+        integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -62,7 +62,6 @@ jobs:
           password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
       - name: Build and push Docker image
         run: |
-          echo ${{ needs.prepare-matrix.outputs.matrix }}
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           current_integration_spec=${{ matrix.integration }}
           
