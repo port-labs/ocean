@@ -65,9 +65,9 @@ jobs:
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           current_integration_spec=${{ matrix.integration }}
           
-          type=$(yq eval '.type' "$file")
+          type=$(yq eval '.type' "$current_integration_spec")
           echo "Building integration $type"
-          folder=$(dirname "$file")
+          folder=$(dirname "$current_integration_spec")
           echo "Folder: $folder"
           
           dockerfile_path=integrations/_infra/Dockerfile
