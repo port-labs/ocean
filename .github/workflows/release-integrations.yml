@@ -66,9 +66,9 @@ jobs:
           current_integration_spec=${{ matrix.integration }}
           
           type=$(yq eval '.type' "$current_integration_spec")
-          echo "Building integration $type"
           folder=$(dirname "$current_integration_spec")
-          echo "Folder: $folder"
+          
+          version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
           
           dockerfile_path=integrations/_infra/Dockerfile
           if test -e $folder/../Dockerfile; then
