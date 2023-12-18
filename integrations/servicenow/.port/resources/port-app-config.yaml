@@ -1,8 +1,7 @@
 resources:
-  - kind: group
+  - kind: sys_user_group
     selector:
       query: 'true'
-      path: 'sys_user_group'
     port:
       entity:
         mappings:
@@ -14,10 +13,9 @@ resources:
             isActive: .active
             createdOn: '.sys_created_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
             createdBy: .sys_created_by
-  - kind: catalog
+  - kind: sc_catalog
     selector:
       query: 'true'
-      path: 'sc_catalog'
     port:
       entity:
         mappings:
@@ -32,7 +30,6 @@ resources:
   - kind: incident
     selector:
       query: 'true'
-      path: 'incident'
     port:
       entity:
         mappings:

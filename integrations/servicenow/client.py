@@ -1,15 +1,16 @@
-import typing
 from typing import Any, AsyncGenerator
 import base64
 import httpx
 from loguru import logger
-
-from integration import ServicenowResourceConfig
-from port_ocean.context.event import event
+from enum import StrEnum
 from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 100
 
+class ObjectKind(StrEnum):
+    GROUP = "sys_user_group"
+    CATALOG = "sc_catalog"
+    INCIDENT = "incident"
 
 class ServicenowClient:
     def __init__(
@@ -36,9 +37,8 @@ class ServicenowClient:
         }
 
     async def get_paginated_resource(
-        self,
+        self, resource_kind: ObjectKind
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        selector = typing.cast(ServicenowResourceConfig, event.resource_config).selector
 
         offset = 0
 
@@ -48,10 +48,9 @@ class ServicenowClient:
                 "sysparm_limit": PAGE_SIZE,
                 "sysparm_query": "ORDERBYsys_created_on",
             }
-
             try:
                 response = await self.http_client.get(
-                    url=f"{self.servicenow_host}/api/now/table/{selector.path}",
+                    url=f"{self.servicenow_host}/api/now/table/{resource_kind}",
                     params=params,
                 )
                 response.raise_for_status()
@@ -60,11 +59,13 @@ class ServicenowClient:
                 if not records:
                     break
 
-                yield records
-
-                total_records = int(response.headers.get("X-Total-Count", 0))
-                if (offset + 1) * PAGE_SIZE >= total_records:
+                total_rows = int(response.headers.get("X-Total-Count", 0))
+                queried_rows = (offset * PAGE_SIZE) + len(records)
+                if queried_rows > total_rows:
                     break
+
+                logger.info(f"Queried {queried_rows} from a total of {total_rows} {resource_kind}")
+                yield records
 
                 offset += 1
 
@@ -76,3 +77,20 @@ class ServicenowClient:
             except httpx.HTTPError as e:
                 logger.error(f"HTTP occurred while fetching Servicenow data: {e}")
                 raise
+
+    async def sanity_check(self) -> None:
+        try:
+            response = await self.http_client.get(f"{self.servicenow_host}/api/now/table/cmdb_ci_app_server?sysparm_limit=1")
+            response.raise_for_status()
+            logger.info("Servicenow sanity check passed")
+            logger.info(f"Servicenow application server name: {response.json().get('result', [])[0].get('name')}")
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"Servicenow failed connectivity check to the Servicenow instance because of HTTP error: {e.response.status_code} and response text: {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(
+                f"Servicenow failed connectivity check to the Servicenow instance because of HTTP error: {e}"
+            )
+            raise
