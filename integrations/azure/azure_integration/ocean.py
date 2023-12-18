@@ -220,7 +220,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
             await ocean.register_raw(resource_type, [resource.as_dict()])  # type: ignore
         except ResourceNotFoundError:
             logger.info(
-                "Resource not found in azure, skipping",
+                "Resource not found in azure, unregistering from port",
                 id=resource_uri,
                 kind=resource_type,
                 api_version=resource_config.selector.api_version,
