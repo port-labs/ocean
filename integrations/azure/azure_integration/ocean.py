@@ -6,7 +6,7 @@ import fastapi
 from loguru import logger
 from starlette import responses
 
-from azure_integration.overrides import AzurePortAppConfig
+from azure_integration.overrides import AzurePortAppConfig, AzureResourceConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
@@ -199,7 +199,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
         )
         return fastapi.Response(status_code=http.HTTPStatus.NOT_FOUND)
 
-    matching_resource_configs = [
+    matching_resource_configs: typing.List[AzureResourceConfig] = [
         resource
         for resource in typing.cast(AzurePortAppConfig, event.port_app_config).resources
         if resource.kind == resource_type
@@ -226,7 +226,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
                     resource_id=resource_uri,
                     api_version=resource_config.selector.api_version,
                 )
-                await ocean.register_raw(resource_type, [resource.as_dict()])  # type: ignore
+                await ocean.register_raw(resource_type, [dict(resource.as_dict())])
             except ResourceNotFoundError:
                 logger.info(
                     "Resource not found in azure, unregistering from port",

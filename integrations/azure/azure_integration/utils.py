@@ -7,7 +7,7 @@ from port_ocean.context.ocean import ocean
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
-from azure_integration.overrides import AzurePortAppConfig, AzureResourceConfig
+from azure_integration.overrides import AzureResourceConfig
 
 
 BATCH_SIZE = 20
