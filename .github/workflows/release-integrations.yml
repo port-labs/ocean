@@ -96,7 +96,7 @@ jobs:
     permissions:
       packages: write
       contents: read
-    needs: prepare-matrix
+    needs: release-integration
     steps:
       - name: Check out code
         uses: actions/checkout@v2
