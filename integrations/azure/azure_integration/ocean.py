@@ -213,7 +213,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
 
     async with resource_client_context() as client:
         for resource_config in matching_resource_configs:
-            blueprint = resource_config.port.entity.mappings.blueprint.strip('"')
+            blueprint = resource_config.port.entity.mappings.blueprint.strip('"')  # type: ignore
             logger.debug(
                 "Querying full resource",
                 id=resource_uri,
