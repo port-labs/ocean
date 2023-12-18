@@ -11,6 +11,7 @@ configurations:
   - name: terraformHost
     required: true
     type: url
+    default: https://app.terraform.io
   - name: terraformOrganization
     required: true
     type: string
