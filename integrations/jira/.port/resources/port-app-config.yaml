@@ -30,6 +30,9 @@ resources:
             assignee: .fields.assignee.displayName
             reporter: .fields.reporter.displayName
             creator: .fields.creator.displayName
+            priority: .fields.priority.id
+            created: .fields.created
+            updated: .fields.updated
           relations:
             project: .fields.project.key
             parentIssue: .fields.parent.key
