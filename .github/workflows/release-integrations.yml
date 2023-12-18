@@ -35,8 +35,8 @@ jobs:
 
             # Check if the version exists in the ghcr.io registry
             docker manifest inspect ghcr.io/port-labs/port-ocean-$type:$version > /dev/null 2>&1
-            rc=$? 
-            
+            rc=$?
+
             if [ $rc -eq 0 ]; then
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
@@ -70,12 +70,12 @@ jobs:
         run: |
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           current_integration_spec=${{ matrix.integration }}
-          
+
           type=$(yq eval '.type' "$current_integration_spec")
           folder=$(dirname "$current_integration_spec")
-          
+
           version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
-          
+
           dockerfile_path=integrations/_infra/Dockerfile
           if test -e $folder/../Dockerfile; then
             dockerfile_path=$folder/../Dockerfile
