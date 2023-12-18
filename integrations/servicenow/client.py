@@ -7,10 +7,12 @@ from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 100
 
+
 class ObjectKind(StrEnum):
     GROUP = "sys_user_group"
     CATALOG = "sc_catalog"
     INCIDENT = "incident"
+
 
 class ServicenowClient:
     def __init__(
@@ -39,7 +41,6 @@ class ServicenowClient:
     async def get_paginated_resource(
         self, resource_kind: ObjectKind
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         offset = 0
 
         while True:
@@ -64,7 +65,9 @@ class ServicenowClient:
                 if queried_rows > total_rows:
                     break
 
-                logger.info(f"Queried {queried_rows} from a total of {total_rows} {resource_kind}")
+                logger.info(
+                    f"Queried {queried_rows} from a total of {total_rows} {resource_kind}"
+                )
                 yield records
 
                 offset += 1
@@ -80,10 +83,14 @@ class ServicenowClient:
 
     async def sanity_check(self) -> None:
         try:
-            response = await self.http_client.get(f"{self.servicenow_host}/api/now/table/cmdb_ci_app_server?sysparm_limit=1")
+            response = await self.http_client.get(
+                f"{self.servicenow_host}/api/now/table/cmdb_ci_app_server?sysparm_limit=1"
+            )
             response.raise_for_status()
             logger.info("Servicenow sanity check passed")
-            logger.info(f"Servicenow application server name: {response.json().get('result', [])[0].get('name')}")
+            logger.info(
+                f"Servicenow application server name: {response.json().get('result', [])[0].get('name')}"
+            )
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"Servicenow failed connectivity check to the Servicenow instance because of HTTP error: {e.response.status_code} and response text: {e.response.text}"
