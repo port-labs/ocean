@@ -28,16 +28,6 @@ def get_integration_subscription_id() -> str:
     return subscription_id
 
 
-async def get_port_resource_configuration_by_kind(
-    kind: str,
-) -> AzureResourceConfig | None:
-    app_config = typing.cast(AzurePortAppConfig, event.port_app_config)
-    for resource in app_config.resources:
-        if resource.kind == kind:
-            return resource
-    return None
-
-
 def get_current_resource_config() -> AzureResourceConfig:
     """
     Returns the current resource config, accessible only inside an event context
