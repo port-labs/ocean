@@ -22,3 +22,4 @@ configurations:
   - name: appHost
     type: url
     required: false
+    
