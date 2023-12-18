@@ -1,4 +1,4 @@
-# Terraform
+# Terraform Cloud
 
 An integration used to import Terraform Cloud resources into Port.
 
