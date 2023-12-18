@@ -26,7 +26,7 @@ def init_terraform_client() -> TerraformClient:
     return terraform_client
 
 
-async def setup_application():
+async def setup_application()->Any:
         
     app_host = ocean.integration_config.get("app_host")
 
