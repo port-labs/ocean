@@ -1,18 +1,16 @@
 initializePortResources: true
 port:
-  # The event listener to use for the integration service.
-  orgId: "{{ from env PORT_ORG_ID }}"
-  clientId: "{{ from env PORT_CLIENT_ID }}"
-  clientSecret: "{{ from env PORT_CLIENT_SECRET }}"
+  orgId: '{{ from env PORT_ORG_ID }}'
+  clientId: '{{ from env PORT_CLIENT_ID }}'
+  clientSecret: '{{ from env PORT_CLIENT_SECRET }}'
 eventListener:
   type: POLLING
 integration:
-  # The identifier of this integration instance.
-  identifier: "my-terraform-integration"
-  # The type of the integration.
-  type: "terraform"
+  identifier: my-terraform-integration
+  type: 'terraform cloud'
   config:
-    terraformHost: "{{ from env TERRAFORM_HOST }}"
-    terraformOrganization: "{{ from env TERRAFORM_ORGANIZATION}}"
-    terraformToken: "{{ from env TERRAFORM_TOKEN }}"
-    appHost: "{{ from env APP_HOST }}"
+    terraformHost: '{{ from env TERRAFORM_HOST }}'
+    terraformOrganization: '{{ from env TERRAFORM_ORGANIZATION}}'
+    terraformToken: '{{ from env TERRAFORM_TOKEN }}'
+    appHost: '{{ from env APP_HOST }}'
+Transform: AWS::Serverless-2016-10-31
