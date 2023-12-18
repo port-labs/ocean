@@ -49,7 +49,7 @@ jobs:
 
   release-integration:
     runs-on: ubuntu-latest
-    if: prepare-matrix.outputs.matrix != '[]'
+    if: needs.prepare-matrix.outputs.matrix != '[]'
     permissions:
       packages: write
       contents: read
