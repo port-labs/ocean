@@ -1,5 +1,6 @@
 import typing
 from typing import Any
+import asyncio
 
 from loguru import logger
 
@@ -10,6 +11,8 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+CONCURRENT_REQUESTS = 5
+
 
 def initialize_client() -> PagerDutyClient:
     return PagerDutyClient(
@@ -19,10 +22,23 @@ def initialize_client() -> PagerDutyClient:
     )
 
 
+async def enrich_incident_with_analytics_data(
+    client: PagerDutyClient,
+    semaphore: asyncio.Semaphore,
+    incident: dict[str, Any],
+) -> dict[str, Any]:
+    async with semaphore:
+        analytics_data = await client.get_incident_analytics(incident["id"])
+        incident["__analytics"] = analytics_data
+        return incident
+
+
 @ocean.on_resync(ObjectKind.INCIDENTS)
 async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
     pager_duty_client = initialize_client()
+    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+
     query_params = typing.cast(
         PagerdutyIncidentResourceConfig, event.resource_config
     ).selector.api_query_params
@@ -31,7 +47,13 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         data_key=ObjectKind.INCIDENTS,
         params=query_params.generate_request_params() if query_params else None,
     ):
-        yield incidents
+        logger.info(f"Received batch with {len(incidents)} incidents")
+        tasks = [
+            enrich_incident_with_analytics_data(pager_duty_client, semaphore, incident)
+            for incident in incidents
+        ]
+        enriched_incidents = await asyncio.gather(*tasks)
+        yield enriched_incidents
 
 
 @ocean.on_resync(ObjectKind.SERVICES)
@@ -62,7 +84,11 @@ async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
         response = await pager_duty_client.get_singular_from_pager_duty(
             object_type=ObjectKind.INCIDENTS, identifier=incident_id
         )
-        await ocean.register_raw(ObjectKind.INCIDENTS, [response["incident"]])
+        analytics_data = await pager_duty_client.get_incident_analytics(
+            incident_id=incident_id
+        )
+        incident_data = {**response["incident"], "__analytics": analytics_data}
+        await ocean.register_raw(ObjectKind.INCIDENTS, [incident_data])
 
     elif event_type in pager_duty_client.service_upsert_events:
         service_id = data["event"]["data"]["id"]

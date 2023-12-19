@@ -191,3 +191,27 @@ class PagerDutyClient:
                 if user["escalation_policy"]["id"] == escalation_policy_id
             ]
         return services
+
+    async def get_incident_analytics(self, incident_id: str) -> dict[str, Any]:
+        logger.info(f"Fetching analytics for incident: {incident_id}")
+        url = f"{self.api_url}/analytics/raw/incidents/{incident_id}"
+
+        try:
+            response = await self.http_client.get(url)
+            response.raise_for_status()
+            data = response.json()
+            return data
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.error(
+                    f"Incident {incident_id} analytics data was not found, skipping..."
+                )
+                return {}
+
+            logger.error(
+                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP occurred while fetching incident analytics data: {e}")
+            raise

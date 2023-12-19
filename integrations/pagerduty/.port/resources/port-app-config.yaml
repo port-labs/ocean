@@ -29,5 +29,6 @@ resources:
             escalation_policy: .escalation_policy.summary
             created_at: .created_at
             updated_at: .updated_at
+            analytics: .__analytics
           relations:
             pagerdutyService: .service.id
