@@ -5,6 +5,7 @@ from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.clients.port.retry_transport import TokenRetryTransport
+from port_ocean.context.ocean import ocean
 
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
@@ -29,6 +30,7 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
         client = httpx.AsyncClient(
+            proxies=ocean.app.application_settings.http_proxies,
             transport=TokenRetryTransport(
                 port_client,
                 httpx.AsyncHTTPTransport(),

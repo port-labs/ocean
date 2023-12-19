@@ -11,6 +11,7 @@ from starlette.types import Scope, Receive, Send
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
+    ApplicationSettings,
 )
 from port_ocean.context.ocean import (
     PortOceanContext,
@@ -31,8 +32,12 @@ class Ocean:
         integration_router: APIRouter | None = None,
         config_factory: Callable[..., BaseModel] | None = None,
         config_override: Dict[str, Any] | None = None,
+        application_settings: ApplicationSettings | None = None,
     ):
         initialize_port_ocean_context(self)
+        self.application_settings = (
+            application_settings if application_settings else ApplicationSettings()
+        )
         self.fast_api_app = app or FastAPI()
         self.fast_api_app.middleware("http")(request_handler)
 

@@ -9,6 +9,7 @@ LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
 
 class ApplicationSettings(BaseSettings):
+    http_proxies: str | dict[str, None | str] | None = None
     log_level: LogLevelType = "INFO"
     port: int = 8000
 

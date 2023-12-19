@@ -5,6 +5,7 @@ from typing import Type, Any, Dict
 
 from pydantic import BaseModel
 
+from port_ocean.config.settings import ApplicationSettings
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.ocean import Ocean
 from port_ocean.utils import load_module
@@ -29,6 +30,7 @@ def create_default_app(
     path: str | None = None,
     config_factory: Type[BaseModel] | None = None,
     config_override: Dict[str, Any] | None = None,
+    application_settings: ApplicationSettings | None = None,
 ) -> Ocean:
     sys.path.append(".")
     try:
@@ -39,6 +41,7 @@ def create_default_app(
         integration_class = None
 
     return Ocean(
+        application_settings=application_settings,
         integration_class=integration_class,
         config_factory=config_factory,
         config_override=config_override,
