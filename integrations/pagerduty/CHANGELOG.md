@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.1.25 (2023-12-19)
 
-### Improvements
+### Features
 
 - Added support for exporting PagerDuty schedules (#25)
 
