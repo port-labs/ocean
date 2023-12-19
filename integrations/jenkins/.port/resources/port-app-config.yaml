@@ -1,7 +1,7 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
-  - kind: job
+  - kind: jenkinsJob
     selector:
       query:  "true"
     port:
@@ -9,21 +9,23 @@ resources:
         mappings:
           identifier: 'if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
           title: .displayName
-          blueprint: '"job"'
+          blueprint: '"jenkinsJob"'
           properties:
             jobName: .fullName
             url: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
             jobStatus: '.color as $input | if $input == "notbuilt" then "created" else "updated" end'
             timestamp: .time
-  - kind: build
+          relations:
+            jobs: '.jobs | map(if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1])'
+  - kind: jenkinsBuild
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: '.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g")'
+          identifier: '.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g") | sub("»"; ""; "g") '
           title: .displayName
-          blueprint: '"build"'
+          blueprint: '"jenkinsBuild"'
           properties:
             buildStatus: .result
             buildUrl: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'

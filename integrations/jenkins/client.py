@@ -1,10 +1,9 @@
-from urllib.parse import urlencode
 from typing import Any, AsyncGenerator
+
+from loguru import logger
 
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
-
-from loguru import logger
 
 
 class JenkinsClient:
@@ -38,12 +37,13 @@ class JenkinsClient:
                 end_idx = start_idx + page_size
 
                 params = {
-                    "tree": f"jobs[name,url,description,displayName,fullDisplayName,fullName,builds[id,number,url,"
-                    f"result,duration,timestamp,displayName,fullDisplayName]{{0,50}}]{{{start_idx},{end_idx}}}"
+                    "tree": f"jobs[name,url,displayName,fullName,color,jobs[name,color,fullName,displayName,url],"
+                    f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"
+                    f"{{0,50}}]{{{start_idx},{end_idx}}}"
                 }
 
                 job_response = await self.client.get(
-                    f"{self.jenkins_base_url}/api/json?{urlencode(params)}"
+                    f"{self.jenkins_base_url}/api/json", params=params
                 )
                 job_response.raise_for_status()
                 jobs = job_response.json()["jobs"]

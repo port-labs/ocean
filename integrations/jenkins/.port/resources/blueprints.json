@@ -1,6 +1,6 @@
 [
     {
-        "identifier": "job",
+        "identifier": "jenkinsJob",
         "description": "This blueprint represents a job event from Jenkins",
         "title": "Jenkins Job",
         "icon": "Jenkins",
@@ -29,21 +29,23 @@
                 "url": {
                     "type": "string",
                     "title": "Project URL"
-                },
-                "jobFullUrl": {
-                    "type": "string",
-                    "title": "Job Full URL",
-                    "format": "url"
                 }
             },
             "required": []
         },
         "mirrorProperties": {},
         "calculationProperties": {},
-        "relations": {}
+        "relations": {
+            "jobs": {
+                "title": "Pipelines",
+                "target": "jenkinsJob",
+                "required": false,
+                "many": true
+            }
+        }
     },
     {
-        "identifier": "build",
+        "identifier": "jenkinsBuild",
         "description": "This blueprint represents a build event from Jenkins",
         "title": "Jenkins Build",
         "icon": "Jenkins",
@@ -83,7 +85,7 @@
         "relations": {
             "job": {
                 "title": "Jenkins Job",
-                "target": "job",
+                "target": "jenkinsJob",
                 "required": false,
                 "many": false
             }

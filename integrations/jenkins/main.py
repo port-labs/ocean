@@ -7,8 +7,8 @@ from port_ocean.context.ocean import ocean
 
 
 class ObjectKind(StrEnum):
-    JOB = "job"
-    BUILD = "build"
+    JOB = "jenkinsJob"
+    BUILD = "jenkinsBuild"
 
     @staticmethod
     def get_object_kind_for_event(obj_type: str):
