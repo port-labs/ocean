@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.17 (2023-12-18)
+
+### Improvements
+
+- Updated the Jira issue blueprint by adding entity properties including created datetime, updated datetime and priority (#17)
+
+
+0.1.16 (2023-12-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.8 (#1)
+
+
 0.1.15 (2023-12-05)
 
 ### Improvements
