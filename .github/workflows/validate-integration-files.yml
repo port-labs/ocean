@@ -63,12 +63,12 @@ jobs:
         bp_icons=($(find integrations/** -name 'blueprints.json' -not -path "**/.venv/*" | xargs -I {} jq -r '.[] | .. | .icon?' {} | grep -v '^null$' | sort -u | tr '[:upper:]' '[:lower:]'))
         merged_set=($(printf "%s\n" "${icons[@]}" "${bp_icons[@]}" | sort -u))
         
-        for icon in $merged_set; do
+        for icon in "${merged_set[@]}"; do
           echo "Checking $icon icon"
           echo "$color_results" | grep -c "$icon"
           echo "$colorless_results" | grep -c "$icon"
           if [ $(echo "$color_results" | grep -c "$icon") -eq 0 ] && [ $(echo "$colorless_results" | grep -c "$icon") -eq 0 ]; then
-            echo "ERROR: $icon icon is missing in icons pool"
-            exit 1
+              echo "ERROR: $icon icon is missing in icons pool"
+              exit 1
           fi
         done
