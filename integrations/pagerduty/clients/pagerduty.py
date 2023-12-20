@@ -203,7 +203,7 @@ class PagerDutyClient:
             return data
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.error(
+                logger.debug(
                     f"Incident {incident_id} analytics data was not found, skipping..."
                 )
                 return {}
@@ -211,7 +211,7 @@ class PagerDutyClient:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
-            raise
+            return {}
         except httpx.HTTPError as e:
             logger.error(f"HTTP occurred while fetching incident analytics data: {e}")
-            raise
+            return {}
