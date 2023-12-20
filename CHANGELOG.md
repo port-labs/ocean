@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.10 (2023-12-20)
+
+
+### Improvements
+
+- Changed deprecated `poetry lock --check` in the make files to `poetry check --lock`
+
+
+## 0.4.9 (2023-12-19)
+
+
+### Improvements
+
+- Added a way to create the integration without the Dockerfile and .dockerignore to use the global Docker files when scaffolding a new integration.
+
+
 ## 0.4.8 (2023-12-13)
 
 
