@@ -87,11 +87,11 @@ class ServicenowClient:
             )
         except httpx.HTTPStatusError as e:
             logger.error(
-                f"Servicenow failed connectivity check to the Servicenow instance because of HTTP error: {e.response.status_code} and response text: {e.response.text}"
+                f"Integration failed to connect to Servicenow instance as part of sanity check due to HTTP error: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
-        except httpx.HTTPError as e:
+        except httpx.HTTPError:
             logger.exception(
-                f"Servicenow failed connectivity check to the Servicenow instance because of HTTP error: {e}"
+                "Integration failed to connect to Servicenow instance as part of sanity check due to HTTP error"
             )
             raise
