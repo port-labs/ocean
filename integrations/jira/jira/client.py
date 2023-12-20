@@ -1,4 +1,3 @@
-import base64
 import typing
 from typing import Any, AsyncGenerator
 
