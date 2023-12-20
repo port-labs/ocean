@@ -91,5 +91,37 @@
             "many": true
           }
         }
+      },
+      {
+        "identifier": "pagerdutySchedule",
+        "description": "This blueprint represents a PagerDuty schedule in our software catalog",
+        "title": "PagerDuty Schedule",
+        "icon": "pagerduty",
+        "schema": {
+          "properties": {
+            "url": {
+              "title": "Schedule URL",
+              "type": "string",
+              "format": "url"
+            },
+            "timezone": {
+              "title": "Timezone",
+              "type": "string"
+            },
+            "description": {
+              "title": "Description",
+              "type": "string"
+            },
+            "users": {
+              "title": "Users",
+              "type": "array"
+            }
+          },
+          "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
       }
 ]
