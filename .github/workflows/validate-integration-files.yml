@@ -1,0 +1,34 @@
+name: Validate integration files
+
+on:
+  pull_request:
+    paths:
+      - 'integrations/**'
+
+jobs:
+  check_directories:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Get changed directories
+      run: |
+        changed_dirs=$(git diff --name-only ${{ github.base_ref }}...${{ github.sha }} | grep '/' | cut -d'/' -f 1 | sort -u)
+        echo "Changed directories: $changed_dirs"
+
+    - name: Extract ocean package and version
+      run: |
+        for dir in $changed_dirs; do
+          pyproject_file=$(find $dir -name 'pyproject.toml')
+          if [ -n "$pyproject_file" ]; then
+            ocean_package=$(awk -F= '/^\[tool\.poetry\.dependencies\]/{flag=1;next}/^\[.*\]/{flag=0}flag' $pyproject_file | grep '^ocean' | cut -d'=' -f 2 | tr -d ' ' | tr -d '"')
+            ocean_version=$(awk -F= '/^\[tool\.poetry\.dependencies\]/{flag=1;next}/^\[.*\]/{flag=0}flag' $pyproject_file | grep '^ocean' | cut -d'=' -f 3 | tr -d ' ' | tr -d '"')
+
+            if [ -n "$ocean_package" ] && [ -n "$ocean_version" ]; then
+              echo "Found ocean package in $pyproject_file: $ocean_package@$ocean_version"
+              # Further actions or validation can be performed here
+            fi
+          fi
+        done
