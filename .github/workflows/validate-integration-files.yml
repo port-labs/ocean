@@ -27,13 +27,13 @@ jobs:
           pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
           if [ -n "$pyproject_file" ]; then
             installed_version=$(toml get  tool.poetry.dependencies.port_ocean.version --toml-path $pyproject_file)
-            echo "Installed version of port-ocean in $pyproject_file is $installed_version"
-            echo "Latest version of port-ocean is $package_version"
             is_version_updated=$(python -c "from packaging import version;print(version.parse('$installed_version'.lstrip('^')) >= version.parse('$package_version'))")
             
             if [ "$is_version_updated" = "False" ]; then
-              echo "Version of port-ocean in $pyproject_file is not updated"
+              echo "ERROR: Ocean version in $pyproject_file is not updated to latest version -> $package_version"
               exit 1
-            fi            
+            else
+              echo "Ocean version is valid in $pyproject_file"
+            fi      
           fi
         done
