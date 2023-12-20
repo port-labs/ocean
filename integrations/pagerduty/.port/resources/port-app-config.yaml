@@ -32,3 +32,17 @@ resources:
             analytics: .__analytics
           relations:
             pagerdutyService: .service.id
+  - kind: schedules
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"pagerdutySchedule"'
+          properties:
+            url: .html_url
+            timezone: .time_zone
+            description: .description
+            users: '[.users[].summary]'

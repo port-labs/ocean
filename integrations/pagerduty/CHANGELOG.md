@@ -6,12 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
 # Port_Ocean 0.1.26 (2023-12-19)
 
 ### Improvements
 
 - Improved on the PagerDuty incident object by adding analytics data (#26)
+
+
+# Port_Ocean 0.1.25 (2023-12-19)
+
+### Features
+
+- Added support for exporting PagerDuty schedules (#25)
 
 
 # Port_Ocean 0.1.24 (2023-12-14)
