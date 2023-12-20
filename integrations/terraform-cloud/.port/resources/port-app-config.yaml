@@ -10,6 +10,7 @@ resources:
           blueprint: '"terraformWorkspace"'
           properties:
             workspaceName: .attributes.name
+            organization : .relationships.organization.data.id
             createdAt: .attributes."created-at"
             updatedAt: .attributes."updated-at"
             terraformVersion: .attributes."terraform-version"
@@ -38,5 +39,48 @@ resources:
             appliedAt: .attributes."status-timestamps"."applied-at"
             plannedAt: .attributes."status-timestamps"."planned-at"
             source: .attributes.source
-          relations: 
+          relations:
             terraformWorkspace: .relationships.workspace.data.id
+
+  - kind: state-version
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: (.type | | sub("-";" ";"i"))  + .relationships.workspace.data.id
+          blueprint: '"terraformStateVersion"'
+          properties:
+            createdAt: .attributes."created-at"
+            serial: .attributes.serial
+            status: .attributes.status
+            resourcesAdded: .attributes."resources-added"
+            resourcesChanged: .attributes."resources-changed"
+            resourcesDestroyed: .attributes."resources-destroyed"
+            hostedStateDownloadUrl: .attributes."hosted-state-download-url"
+            hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
+            description: .attributes.description
+            vcsCommitUrl: .attributes."vcs-commit-url"
+            outputData: .relationships.output.data
+            outputDataUrl:
+          relations:
+            terraformCloudWorkspace: .relationships.workspace.data.id
+
+  - kind: state-version-output
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"terraformStateVersionOutput"'
+          properties:
+            outputId: .id
+            outputName: .attributes.name
+            sensitive: .attributes.sensitive
+            type: .attributes.type
+            value: (if .attributes.sensitive then "Sensitive Value" else .attributes.value end)
+            detailedType: .attributes."detailed-type"
+            selfLink: .links.self

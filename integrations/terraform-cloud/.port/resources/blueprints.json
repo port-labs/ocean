@@ -1,6 +1,6 @@
 [
     {
-        "identifier": "terraformWorkspace",
+        "identifier": "terraformCloudWorkspace",
         "description": "This blueprint represents a workspace in Terraform Cloud",
         "title": "Terraform Cloud Workspace",
         "icon": "Terraform",
@@ -10,6 +10,11 @@
               "type": "string",
               "title": "Workspace Name",
               "description": "The name of the Terraform cloud workspace"
+            },
+            "organization":{
+              "type":"string",
+              "title":"Organization",
+              "description":"The organization within which the workspace belongs to"
             },
             "createdAt": {
               "type": "string",
@@ -25,7 +30,7 @@
             },
             "terraformVersion": {
               "type": "string",
-              "title": "Terraform Version",
+              "title": "Terraform Cloud Version",
               "description": "Version of Terraform cloud used by the workspace"
             },
             "locked": {
@@ -54,16 +59,16 @@
       },
 
 {
-  "identifier": "terraformRun",
+  "identifier": "terraformCloudRun",
   "description": "This blueprint represents a run in Terraform cloud",
-  "title": "Terraform Run",
+  "title": "Terraform Cloud Run",
   "icon": "Terraform",
   "schema": {
     "properties": {
       "runId": {
         "type": "string",
         "title": "Run ID",
-        "description": "The unique identifier of the Terraform run"
+        "description": "The unique identifier of the Terraform cloud run"
       },
       "createdAt": {
         "type": "string",
@@ -93,7 +98,7 @@
       },
       "terraformVersion": {
         "type": "string",
-        "title": "Terraform Version",
+        "title": "Terraform Cloud Version",
         "description": "Version of Terraform cloud used in the run"
       },
       "appliedAt": {
@@ -117,12 +122,139 @@
   },
   "relations": {
     "terraformWorkspace": {
+      "title": "Terraform Cloud Workspace",
+      "target": "terraformCloudWorkspace",
+      "required": true,
+      "many": false
+    }
+  }
+},
+
+{
+  "identifier": "terraformCloudStateVersion",
+  "description": "This blueprint represents a version of a Terraform state version",
+  "title": "Terraform Cloud State Versions",
+  "icon": "Terraform",
+  "schema": {
+    "properties": {
+      "id": {
+        "type": "string",
+        "title": "State Version ID",
+        "description": "Unique identifier for the state version"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "title": "Creation Time",
+        "description": "Timestamp when the state version was created"
+      },
+      "serial": {
+        "type": "number",
+        "title": "Serial Number",
+        "description": "A unique identifier for this version within the workspace"
+      },
+      "status": {
+        "type": "string",
+        "title": "Status",
+        "description": "The current status of the state version (e.g., 'queued', 'finished')"
+      },
+      "resourcesAdded": {
+        "type": "number",
+        "title": "Resources Added",
+        "description": "Number of resources added in this state version"
+      },
+      "resourcesChanged": {
+        "type": "number",
+        "title": "Resources Changed",
+        "description": "Number of resources changed in this state version"
+      },
+      "resourcesDestroyed": {
+        "type": "number",
+        "title": "Resources Destroyed",
+        "description": "Number of resources destroyed in this state version"
+      },
+      "hostedStateDownloadUrl":{
+        "type":"string",
+        "title":"Download Url",
+        "description":"Hosted state version download url "
+      },
+      "hostedJsonDownloadUrl":{
+        "type":"string",
+        "title":"Download Url",
+        "description":"Url for downloading state version in json format"
+      },
+      "outputData":{
+        "type":"array",
+        "title":"Output",
+        "description":"output returned from state version"
+      },
+      "description": {
+        "type": "string",
+        "title": "Description",
+        "description": "Description or notes about the state version"
+      },
+      "vcsCommitUrl": {
+        "type": "string",
+        "title": "VCS Commit URL",
+        "description": "URL of the VCS commit that triggered this state version"
+      }
+    }
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "terraformWorkspace": {
       "title": "Terraform Workspace",
       "target": "terraformWorkspace",
       "required": true,
       "many": false
     }
   }
+},
+{
+  "identifier": "terraformCloudStateVersionOutput",
+  "description": "This blueprint represents the output of a Terraform state version",
+  "title": "Terraform State Version Output",
+  "icon": "Terraform",
+  "schema": {
+    "properties": {
+      "outputId": {
+        "type": "string",
+        "title": "Output ID",
+        "description": "Unique identifier for the state version output"
+      },
+      "outputName": {
+        "type": "string",
+        "title": "Output Name",
+        "description": "The name of the output variable"
+      },
+      "sensitive": {
+        "type": "boolean",
+        "title": "Sensitive",
+        "description": "Indicates whether the output is sensitive"
+      },
+      "type": {
+        "type": "string",
+        "title": "Type",
+        "description": "The data type of the output (e.g., 'string', 'number')"
+      },
+      "value": {
+        "type": "string",
+        "title": "Value",
+        "description": "The value of the output"
+      },
+      "detailedType": {
+        "type": "string",
+        "title": "Detailed Type",
+        "description": "More detailed type information of the output"
+      },
+      "selfLink": {
+        "type": "string",
+        "title": "Self Link",
+        "description": "API link for the state version output"
+      }
+    }
+  }
 }
 ]
-
