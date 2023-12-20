@@ -1,4 +1,4 @@
-type: jira
+type: argocd
 description: Argocd integration for Port Ocean
 icon: Argo
 features:
