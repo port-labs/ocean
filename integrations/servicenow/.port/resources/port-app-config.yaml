@@ -1,0 +1,49 @@
+resources:
+  - kind: sys_user_group
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .sys_id
+          title: .name
+          blueprint: '"servicenowGroup"'
+          properties:
+            description: .description
+            isActive: .active
+            createdOn: '.sys_created_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            createdBy: .sys_created_by
+  - kind: sc_catalog
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .sys_id
+          title: .title
+          blueprint: '"servicenowCatalog"'
+          properties:
+            description: .description
+            isActive: .active
+            createdOn: '.sys_created_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            createdBy: .sys_created_by
+  - kind: incident
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .number | tostring
+          title: .short_description
+          blueprint: '"servicenowIncident"'
+          properties:
+            category: .category
+            reopenCount: .reopen_count
+            severity: .severity
+            assignedTo: .assigned_to.link
+            urgency: .urgency
+            contactType: .contact_type
+            createdOn: '.sys_created_on | (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            createdBy: .sys_created_by
+            isActive: .active
+            priority: .priority
