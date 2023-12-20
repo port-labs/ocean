@@ -34,37 +34,24 @@ class ServicenowClient:
     async def get_paginated_resource(
         self, resource_kind: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        offset = 0
+        params: dict[str, Any] = {
+            "sysparm_limit": PAGE_SIZE,
+            "sysparm_query": "ORDERBYsys_created_on",
+        }
+        url = f"{self.servicenow_url}/api/now/table/{resource_kind}"
 
-        while True:
-            params: dict[str, Any] = {
-                "sysparm_offset": offset * PAGE_SIZE,
-                "sysparm_limit": PAGE_SIZE,
-                "sysparm_query": "ORDERBYsys_created_on",
-            }
+        while url:
             try:
                 response = await self.http_client.get(
-                    url=f"{self.servicenow_url}/api/now/table/{resource_kind}",
+                    url=url,
                     params=params,
                 )
                 response.raise_for_status()
                 records = response.json().get("result", [])
 
-                if not records:
-                    break
-
-                total_rows = int(response.headers.get("X-Total-Count", 0))
-                queried_rows = (offset * PAGE_SIZE) + len(records)
-
-                logger.info(
-                    f"Queried {queried_rows} from a total of {total_rows} {resource_kind}"
-                )
                 yield records
 
-                if queried_rows >= total_rows:
-                    break
-
-                offset += 1
+                url = self.extract_next_link(response.headers.get("Link", ""))
 
             except httpx.HTTPStatusError as e:
                 logger.error(
@@ -95,3 +82,13 @@ class ServicenowClient:
                 "Integration failed to connect to Servicenow instance as part of sanity check due to HTTP error"
             )
             raise
+
+    def extract_next_link(self, link_header: str) -> str:
+        """
+        Extracts the 'next' link from the Link header.
+        """
+        links = [link.strip() for link in link_header.split(",")]
+        for link in links:
+            if 'rel="next"' in link:
+                return link.split(";")[0].strip("<>")
+        return ""
