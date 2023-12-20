@@ -15,6 +15,10 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Install toml-cli
+      run: |
+        pip install toml-cli
+
     - name: Check Ocean version 🌊
       run: |
         changed_dirs=$(git diff --name-only origin/main origin/${{ github.head_ref }} | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
