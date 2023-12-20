@@ -13,7 +13,8 @@
           "description": "URL to the project in Jira"
         }
       }
-    }
+    },
+    "calculationProperties": {}
   },
   {
     "identifier": "issue",
@@ -59,9 +60,27 @@
           "type": "string",
           "description": "The user that created to the issue",
           "format": "user"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "string",
+          "description": "The priority of the issue"
+        },
+        "created": {
+          "title": "Created At",
+          "type": "string",
+          "description": "The created datetime of the issue",
+          "format": "date-time"
+        },
+        "updated": {
+          "title": "Updated At",
+          "type": "string",
+          "description": "The updated datetime of the issue",
+          "format": "date-time"
         }
       }
     },
+    "calculationProperties": {},
     "relations": {
       "project": {
         "target": "project",

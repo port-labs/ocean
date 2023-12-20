@@ -7,6 +7,7 @@ features:
     resources:
       - kind: incidents
       - kind: services
+      - kind: schedules
 configurations:
   - name: token
     required: true

@@ -15,6 +15,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 class ObjectKind:
     SERVICES = "services"
     INCIDENTS = "incidents"
+    SCHEDULES = "schedules"
 
 
 class PagerdutyServiceAPIQueryParams(BaseModel):
@@ -37,6 +38,16 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
         if team_ids := value.pop("team_ids", None):
             value["team_ids[]"] = team_ids
 
+        return value
+
+
+class PagerdutyScheduleAPIQueryParams(BaseModel):
+    include: list[Literal["escalation_policies", "users"]] | None
+
+    def generate_request_params(self) -> dict[str, Any]:
+        value = self.dict(exclude_none=True)
+        if include := value.pop("include", None):
+            value["include[]"] = include
         return value
 
 
@@ -92,9 +103,21 @@ class PagerdutyServiceResourceConfig(ResourceConfig):
     selector: PagerdutySelector
 
 
+class PagerdutyScheduleResourceConfig(ResourceConfig):
+    class PagerdutySelector(Selector):
+        api_query_params: PagerdutyScheduleAPIQueryParams | None = Field(
+            alias="apiQueryParams"
+        )
+
+    kind: Literal["schedules"]
+    selector: PagerdutySelector
+
+
 class PagerdutyPortAppConfig(PortAppConfig):
     resources: list[
-        PagerdutyIncidentResourceConfig | PagerdutyServiceResourceConfig
+        PagerdutyIncidentResourceConfig
+        | PagerdutyServiceResourceConfig
+        | PagerdutyScheduleResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore
