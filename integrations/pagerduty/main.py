@@ -48,12 +48,12 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=query_params.generate_request_params() if query_params else None,
     ):
         logger.info(f"Received batch with {len(incidents)} incidents")
-        tasks = [
+        futures = [
             enrich_incident_with_analytics_data(pager_duty_client, semaphore, incident)
             for incident in incidents
         ]
-        enriched_incidents = await asyncio.gather(*tasks)
-        yield enriched_incidents
+        for future in asyncio.as_completed(futures):
+            yield [await future]
 
 
 @ocean.on_resync(ObjectKind.SERVICES)
@@ -98,17 +98,15 @@ async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
     elif event_type in pager_duty_client.incident_upsert_events:
         incident_id = data["event"]["data"]["id"]
 
-        response_task = pager_duty_client.get_singular_from_pager_duty(
+        incident = await pager_duty_client.get_singular_from_pager_duty(
             object_type=ObjectKind.INCIDENTS, identifier=incident_id
         )
-        analytics_task = pager_duty_client.get_incident_analytics(
-            incident_id=incident_id
+
+        semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+        enriched_incident = await enrich_incident_with_analytics_data(
+            pager_duty_client, semaphore, incident["incident"]
         )
-
-        response, analytics_data = await asyncio.gather(response_task, analytics_task)
-
-        incident_data = {**response["incident"], "__analytics": analytics_data}
-        await ocean.register_raw(ObjectKind.INCIDENTS, [incident_data])
+        await ocean.register_raw(ObjectKind.INCIDENTS, [enriched_incident])
 
     elif event_type in pager_duty_client.service_upsert_events:
         service_id = data["event"]["data"]["id"]
