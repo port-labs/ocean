@@ -4,14 +4,15 @@ from enum import StrEnum
 
 from client import JenkinsClient
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 class ObjectKind(StrEnum):
-    JOB = "jenkinsJob"
-    BUILD = "jenkinsBuild"
+    JOB = "job"
+    BUILD = "build"
 
     @staticmethod
-    def get_object_kind_for_event(obj_type: str):
+    def get_object_kind_for_event(obj_type: str) -> str | None:
         if obj_type.startswith("item"):
             return ObjectKind.JOB
         elif obj_type.startswith("run"):
@@ -29,7 +30,7 @@ def init_client() -> JenkinsClient:
 
 
 @ocean.on_resync()
-async def on_resync(kind: str) -> None:
+async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     jenkins_client = init_client()
 
     async for _jobs in jenkins_client.get_all_jobs_and_builds():

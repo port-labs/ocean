@@ -13,11 +13,12 @@
                 "jobStatus": {
                     "type": "string",
                     "title": "Job Status",
-                    "enum": ["created", "updated", "deleted"],
+                    "enum": ["created", "unknown", "passing", "failing"],
                     "enumColors": {
-                        "created": "green",
-                        "updated": "yellow",
-                        "deleted": "red"
+                        "passing": "green",
+                        "created": "darkGray",
+                        "failing": "red",
+                        "unknown": "orange"
                     }
                 },
                 "timestamp": {

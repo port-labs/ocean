@@ -1,9 +1,9 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
-  - kind: jenkinsJob
+  - kind: job
     selector:
-      query:  "true"
+      query: "true"
     port:
       entity:
         mappings:
@@ -12,12 +12,12 @@ resources:
           blueprint: '"jenkinsJob"'
           properties:
             jobName: .fullName
-            url: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
-            jobStatus: '.color as $input | if $input == "notbuilt" then "created" else "updated" end'
+            url: .url
+            jobStatus: '.color as $c | {"notbuilt": "created", "blue": "passing", "red": "failing"}[$c // "updated"]'
             timestamp: .time
           relations:
             jobs: '.jobs | map(if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1])'
-  - kind: jenkinsBuild
+  - kind: build
     selector:
       query: "true"
     port:
@@ -28,8 +28,8 @@ resources:
           blueprint: '"jenkinsBuild"'
           properties:
             buildStatus: .result
-            buildUrl: '.url | if test("://") then sub("^[^/]+//[^/]+"; "") else . end'
+            buildUrl: .url
             buildDuration: .duration
-            timestamp: '.timestamp as $input | if $input | type == "number" then ($input / 1000 | todate) else $input end'
+            timestamp: '.timestamp / 1000 | todate'
           relations:
             job: '.url as $input | if $input | contains("://") then ($input | split("://")[1] | sub("^.*?/"; "")) else $input end | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1] | sub("-[0-9]+$"; "")'

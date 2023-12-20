@@ -1,4 +1,5 @@
 from typing import Any, AsyncGenerator
+import httpx
 
 from loguru import logger
 
@@ -11,10 +12,8 @@ class JenkinsClient:
         self, jenkins_base_url: str, jenkins_user: str, jenkins_token: str
     ) -> None:
         self.jenkins_base_url = jenkins_base_url
-        auth = (jenkins_user, jenkins_token)
-
         self.client = http_async_client
-        self.client.auth = auth
+        self.client.auth = httpx.BasicAuth(jenkins_user, jenkins_token)
 
     async def get_all_jobs_and_builds(
         self,
