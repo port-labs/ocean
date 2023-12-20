@@ -91,17 +91,22 @@ async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
     pager_duty_client = initialize_client()
     event_type = data["event"]["event_type"]
     logger.info(f"Processing Pagerduty webhook for event type: {event_type}")
+
     if event_type in pager_duty_client.service_delete_events:
         await ocean.unregister_raw(ObjectKind.SERVICES, [data["event"]["data"]])
 
     elif event_type in pager_duty_client.incident_upsert_events:
         incident_id = data["event"]["data"]["id"]
-        response = await pager_duty_client.get_singular_from_pager_duty(
+
+        response_task = pager_duty_client.get_singular_from_pager_duty(
             object_type=ObjectKind.INCIDENTS, identifier=incident_id
         )
-        analytics_data = await pager_duty_client.get_incident_analytics(
+        analytics_task = pager_duty_client.get_incident_analytics(
             incident_id=incident_id
         )
+
+        response, analytics_data = await asyncio.gather(response_task, analytics_task)
+
         incident_data = {**response["incident"], "__analytics": analytics_data}
         await ocean.register_raw(ObjectKind.INCIDENTS, [incident_data])
 
