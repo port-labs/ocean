@@ -13,22 +13,19 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Get changed directories
+    - name: Check Ocean version 🌊
       run: |
-        changed_dirs=$(git diff --name-only ${{ github.base_ref }}...${{ github.sha }} | grep '/' | cut -d'/' -f 1 | sort -u)
-        echo "Changed directories: $changed_dirs"
-
-    - name: Extract ocean package and version
-      run: |
+        changed_dirs=$(git diff --name-only ${{ github.base_ref }}...${{ github.sha }} | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
+        package_version=$(pip show port-ocean | awk '/Version:/ {print $2}')
         for dir in $changed_dirs; do
-          pyproject_file=$(find $dir -name 'pyproject.toml')
+          pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
           if [ -n "$pyproject_file" ]; then
-            ocean_package=$(awk -F= '/^\[tool\.poetry\.dependencies\]/{flag=1;next}/^\[.*\]/{flag=0}flag' $pyproject_file | grep '^ocean' | cut -d'=' -f 2 | tr -d ' ' | tr -d '"')
-            ocean_version=$(awk -F= '/^\[tool\.poetry\.dependencies\]/{flag=1;next}/^\[.*\]/{flag=0}flag' $pyproject_file | grep '^ocean' | cut -d'=' -f 3 | tr -d ' ' | tr -d '"')
-
-            if [ -n "$ocean_package" ] && [ -n "$ocean_version" ]; then
-              echo "Found ocean package in $pyproject_file: $ocean_package@$ocean_version"
-              # Further actions or validation can be performed here
-            fi
+            installed_version=$(toml get  tool.poetry.dependencies.port_ocean.version --toml-path $pyproject_file))
+            is_version_updated=$(python -c "from packaging import version;print(version.parse('$installed_version'.lstrip('^')) >= version.parse('$package_version'))")
+            
+            if [ "$is_version_updated" = "False" ]; then
+              echo "Version of port-ocean in $pyproject_file is not updated"
+              exit 1
+            fi            
           fi
         done
