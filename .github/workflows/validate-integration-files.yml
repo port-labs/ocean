@@ -6,7 +6,7 @@ on:
       - 'integrations/**'
 
 jobs:
-  check_directories:
+  validate-files:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,6 +27,8 @@ jobs:
           pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
           if [ -n "$pyproject_file" ]; then
             installed_version=$(toml get  tool.poetry.dependencies.port_ocean.version --toml-path $pyproject_file)
+            echo "Installed version of port-ocean in $pyproject_file is $installed_version"
+            echo "Latest version of port-ocean is $package_version"
             is_version_updated=$(python -c "from packaging import version;print(version.parse('$installed_version'.lstrip('^')) >= version.parse('$package_version'))")
             
             if [ "$is_version_updated" = "False" ]; then
