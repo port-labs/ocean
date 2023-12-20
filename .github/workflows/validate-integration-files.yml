@@ -42,12 +42,31 @@ jobs:
       run: |
         for integration in $(find integrations -name 'spec.yaml' -not -path "**/.venv/*"); do
           integration_type=$(yq -r '.type' $integration)
-          if [ -z "$integration_type" ]; then
-            echo "ERROR: $integration is missing type"
-            exit 1
-          fi
+
           if [ $(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.type' {} | grep -c $integration_type) -gt 1 ]; then
             echo "ERROR: $integration_type integration type is duplicated please check your spec.yaml file"
+            exit 1
+          fi
+        done
+
+    - name: Validate icons
+      run: |
+        S3_BUCKET="port-graphical-assets"
+        S3_ICONS_COLOR_URL="https://$S3_BUCKET.s3.amazonaws.com?prefix=icons/blueprintsColor/"
+        color_results=$(curl -s "$S3_ICONS_COLOR_URL" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
+        
+        S3_ICONS_URL="https://$S3_BUCKET.s3.amazonaws.com?prefix=icons/blueprints/"
+        colorless_results=$(curl -s "$S3_ICONS_URL" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
+        
+        # All integration icons
+        icons=($(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.icon' {} | tr '[:upper:]' '[:lower:]'))
+        bp_icons=($(find integrations/** -name 'blueprints.json' -not -path "**/.venv/*" | xargs -I {} jq -r '.[] | .. | .icon?' {} | grep -v '^null$' | sort -u | tr '[:upper:]' '[:lower:]'))
+        merged_set=($(printf "%s\n" "${icons[@]}" "${bp_icons[@]}" | sort -u))
+        
+        for icon in $merged_set; do
+          name=$(echo "$icon" | tr '[:upper:]' '[:lower:]')
+          if [ $(echo "$color_results" | grep -c "$name") -eq 0 ] && [ $(echo "$colorless_results" | grep -c "$name") -eq 0 ]; then
+            echo "ERROR: $name icon is missing in icons pool"
             exit 1
           fi
         done
