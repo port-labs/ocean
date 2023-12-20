@@ -66,5 +66,6 @@ jobs:
         for icon in "${merged_set[@]}"; do
           if [ $(echo "$color_results" | grep -c "$icon") -eq 0 ] && [ $(echo "$colorless_results" | grep -c "$icon") -eq 0 ]; then
               echo "ERROR: $icon icon is missing in icons pool"
+              exit 1
           fi
         done
