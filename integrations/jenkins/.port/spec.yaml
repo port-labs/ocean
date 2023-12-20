@@ -22,4 +22,3 @@ configurations:
     type: string
     description: "Jenkins token"
     sensitive: true
-
