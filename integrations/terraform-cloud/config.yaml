@@ -10,6 +10,5 @@ integration:
   type: terraform-cloud
   config:
     terraformHost: '{{ from env TERRAFORM_HOST }}'
-    terraformOrganization: '{{ from env TERRAFORM_ORGANIZATION}}'
     terraformToken: '{{ from env TERRAFORM_TOKEN }}'
     appHost: '{{ from env APP_HOST }}'

@@ -55,9 +55,16 @@
               "description": "Timestamp of the latest change in the workspace"
             }
           }
+        },
+        "relations": {
+          "terraformCloudStateVersion": {
+            "title": "Current State Version",
+            "target": "terraformCloudStateVersion",
+            "required": true,
+            "many": false
+          }
         }
       },
-
 {
   "identifier": "terraformCloudRun",
   "description": "This blueprint represents a run in Terraform cloud",
@@ -202,15 +209,7 @@
   },
   "mirrorProperties": {},
   "calculationProperties": {},
-  "aggregationProperties": {},
-  "relations": {
-    "terraformWorkspace": {
-      "title": "Terraform Workspace",
-      "target": "terraformWorkspace",
-      "required": true,
-      "many": false
-    }
-  }
+  "aggregationProperties": {}
 },
 {
   "identifier": "terraformCloudStateVersionOutput",
@@ -255,6 +254,14 @@
         "description": "API link for the state version output"
       }
     }
-  }
+  },
+  "relations": {
+    "terraformCloudStateVersion": {
+      "title": "Terraform State Version",
+      "target": "terraformCloudStateVersion",
+      "required": true,
+      "many": false
+    }
+}
 }
 ]

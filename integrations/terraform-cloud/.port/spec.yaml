@@ -7,14 +7,13 @@ features:
     resources:
       - kind: workspace
       - kind: run
+      - kind: state-version
+      - kind: state-version-output
 configurations:
   - name: terraformHost
     required: true
     type: url
     default: https://app.terraform.io
-  - name: terraformOrganization
-    required: true
-    type: string
   - name: terraformToken
     type: string
     required: true

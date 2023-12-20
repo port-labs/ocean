@@ -23,7 +23,6 @@ def init_terraform_client() -> TerraformClient:
     terraform_client = TerraformClient(
                     config["terraform_host"],
                     config["terraform_token"],
-                    config["terraform_organization"],
                     )
 
     return terraform_client
@@ -92,12 +91,21 @@ async def resync_runs(kind:str)-> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
 
     async for state_versions_output in terraform_client.get_state_version_outputs_for_workspace():
+            logger.info(f"Received {len(state_versions_output)} batch state version outputs")
             yield state_versions_output
 
 
+@ocean.on_resync(ObjectKind.STATE_VERSION)
+async def resync_runs(kind:str)->ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+
+    async for state_versions in terraform_client.get_state_version_for_workspace():
+        async for state_version in state_versions:
+            yield state_version
+
 
 @ocean.on_start()
-async def on_start() -> None:
+async def on_start()-> None:
     logger.info("Starting Port Ocean Terraform integration")
 
     if ocean.event_listener_type == "ONCE":

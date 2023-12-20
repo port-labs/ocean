@@ -1,3 +1,5 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
 resources:
   - kind: workspace
     selector:
@@ -18,6 +20,8 @@ resources:
             executionMode: .attributes."execution-mode"
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
+          relationship:
+            terraformCloudStateVersion: .__currentStateVersion.id
 
   - kind: run
     selector:
@@ -63,7 +67,6 @@ resources:
             description: .attributes.description
             vcsCommitUrl: .attributes."vcs-commit-url"
             outputData: .relationships.output.data
-            outputDataUrl:
           relations:
             terraformCloudWorkspace: .relationships.workspace.data.id
 
@@ -84,3 +87,5 @@ resources:
             value: (if .attributes.sensitive then "Sensitive Value" else .attributes.value end)
             detailedType: .attributes."detailed-type"
             selfLink: .links.self
+          relations:
+            terraformCloudStateVersion: .relations
