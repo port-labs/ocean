@@ -2,7 +2,7 @@ from typing import Any
 from loguru import logger
 from enum import StrEnum
 
-from client import JenkinsClient
+from client import JenkinsClient, parse_job_name
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -37,7 +37,11 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if kind == ObjectKind.JOB:
             yield _jobs
         elif kind == ObjectKind.BUILD:
-            yield [build for job in _jobs for build in job.get("builds", [])]
+            yield [
+                {**build, "__jobName": job["name"]}
+                for job in _jobs
+                for build in job.get("builds", [])
+            ]
 
 
 @ocean.router.post("/events")
@@ -49,6 +53,9 @@ async def handle_events(event: dict[str, Any]) -> dict[str, bool]:
 
     if kind:
         resource = await jenkins_client.get_single_resource(event["url"])
+        if kind == ObjectKind.BUILD:
+            # the only way to get the job name is from the build url
+            resource = {**resource, "__jobName": parse_job_name(resource["url"])}
         await ocean.register_raw(kind, [resource])
 
     logger.info("Webhook event processed")

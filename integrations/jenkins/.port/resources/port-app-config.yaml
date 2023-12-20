@@ -7,7 +7,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: 'if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1]'
+          identifier: .name | sub(" "; "-"; "g")
           title: .displayName
           blueprint: '"jenkinsJob"'
           properties:
@@ -16,14 +16,14 @@ resources:
             jobStatus: '.color as $c | {"notbuilt": "created", "blue": "passing", "red": "failing"}[$c // "updated"]'
             timestamp: .time
           relations:
-            jobs: '.jobs | map(if .url | contains("://") then (.url | split("://")[1] | sub("^.*?/"; "")) else .url end | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1])'
+            jobs: '. as $body | $body.jobs | map($body.name + " " + .name  | sub(" "; "-"; "g")) '
   - kind: build
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: '.fullDisplayName | sub(" "; "-"; "g") | sub("#"; ""; "g") | sub("»"; ""; "g") '
+          identifier: '.__jobName + "-" + .id | sub(" "; "-"; "g")'
           title: .displayName
           blueprint: '"jenkinsBuild"'
           properties:
@@ -32,4 +32,4 @@ resources:
             buildDuration: .duration
             timestamp: '.timestamp / 1000 | todate'
           relations:
-            job: '.url as $input | if $input | contains("://") then ($input | split("://")[1] | sub("^.*?/"; "")) else $input end | tostring | sub("%20"; "-"; "g") | sub("/"; "-"; "g") | .[:-1] | sub("-[0-9]+$"; "")'
+            parentJob: '.__jobName | sub(" "; "-"; "g")'

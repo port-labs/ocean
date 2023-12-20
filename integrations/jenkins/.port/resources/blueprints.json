@@ -84,7 +84,7 @@
         "mirrorProperties": {},
         "calculationProperties": {},
         "relations": {
-            "job": {
+            "parentJob": {
                 "title": "Jenkins Job",
                 "target": "jenkinsJob",
                 "required": false,
