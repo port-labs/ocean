@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.9 (2023-12-20)
+
+### Bug Fixes
+
+- Changed the way we upsert and delete bulk of entities from the catalog to be batched rather than spawning all requests at once (#1)
+
+
 ## 0.4.8 (2023-12-13)
 
 
