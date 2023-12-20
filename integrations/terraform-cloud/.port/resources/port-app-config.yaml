@@ -1,0 +1,89 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: workspace
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"terraformWorkspace"'
+          properties:
+            workspaceName: .attributes.name
+            organization : .relationships.organization.data.id
+            createdAt: .attributes."created-at"
+            updatedAt: .attributes."updated-at"
+            terraformVersion: .attributes."terraform-version"
+            locked: .attributes.locked
+            executionMode: .attributes."execution-mode"
+            resourceCount: .attributes."resource-count"
+            latestChangeAt: .attributes."latest-change-at"
+          relationship:
+            terraformCloudStateVersion: .__currentStateVersion.id
+
+  - kind: run
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.message
+          blueprint: '"terraformRun"'
+          properties:
+            runId: .id
+            createdAt: .attributes."created-at"
+            status: .attributes.status
+            hasChanges: .attributes."has-changes"
+            isDestroy: .attributes."is-destroy"
+            message: .attributes.message
+            terraformVersion: .attributes."terraform-version"
+            appliedAt: .attributes."status-timestamps"."applied-at"
+            plannedAt: .attributes."status-timestamps"."planned-at"
+            source: .attributes.source
+          relations:
+            terraformWorkspace: .relationships.workspace.data.id
+
+  - kind: state-version
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .id
+          blueprint: '"terraformStateVersion"'
+          properties:
+            createdAt: .attributes."created-at"
+            serial: .attributes.serial
+            status: .attributes.status
+            resourcesAdded: .attributes."resources-added"
+            resourcesChanged: .attributes."resources-changed"
+            resourcesDestroyed: .attributes."resources-destroyed"
+            hostedStateDownloadUrl: .attributes."hosted-state-download-url"
+            hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
+            description: .attributes.description
+            vcsCommitUrl: .attributes."vcs-commit-url"
+            outputData: .relationships.output.data
+          relations:
+            terraformCloudWorkspace: .relationships.workspace.data.id
+
+  - kind: state-version-output
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"terraformStateVersionOutput"'
+          properties:
+            sensitive: .attributes.sensitive
+            type: .attributes.type
+            value: (if .attributes.sensitive then "Sensitive Value" else .attributes.value end)
+            detailedType: .attributes."detailed-type"
+            selfLink: .links.self
+          relations:
+            terraformCloudStateVersion: .__stateVersion.id
