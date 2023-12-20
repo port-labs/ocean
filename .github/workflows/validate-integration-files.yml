@@ -15,9 +15,9 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install toml-cli
+    - name: Setup
       run: |
-        pip install toml-cli
+        pip install toml-cli yq
 
     - name: Check Ocean version 🌊
       run: |
@@ -35,5 +35,19 @@ jobs:
             else
               echo "Ocean version is valid in $pyproject_file"
             fi      
+          fi
+        done
+
+    - name: Validate integration not duplicated
+      run: |
+        for integration in $(find integrations -name 'spec.yaml' -not -path "**/.venv/*"); do
+          integration_type=$(yq -r '.type' $integration)
+          if [ -z "$integration_type" ]; then
+            echo "ERROR: $integration is missing type"
+            exit 1
+          fi
+          if [ $(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.type' {} | grep -c $integration_type) -gt 1 ]; then
+            echo "ERROR: $integration_type is duplicated"
+            exit 1
           fi
         done
