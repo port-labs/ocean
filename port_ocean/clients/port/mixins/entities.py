@@ -1,9 +1,12 @@
+import asyncio
+from itertools import islice
 from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
+from port_ocean.clients.port.consts import PORT_HTTP_MAX_CONNECTIONS_LIMIT
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
 from port_ocean.clients.port.utils import handle_status_code
 from port_ocean.core.models import Entity
@@ -49,6 +52,30 @@ class EntityClientMixin:
             )
         handle_status_code(response, should_raise)
 
+    async def batch_upsert_entities(
+        self,
+        entities: list[Entity],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+        should_raise: bool = True,
+    ) -> None:
+        iterable_entities = iter(entities)
+        while batch := tuple(
+            islice(iterable_entities, PORT_HTTP_MAX_CONNECTIONS_LIMIT)
+        ):
+            await asyncio.gather(
+                *(
+                    self.upsert_entity(
+                        entity,
+                        request_options,
+                        user_agent_type,
+                        should_raise,
+                    )
+                    for entity in batch
+                ),
+                return_exceptions=True,
+            )
+
     async def delete_entity(
         self,
         entity: Entity,
@@ -77,6 +104,30 @@ class EntityClientMixin:
             )
 
         handle_status_code(response, should_raise)
+
+    async def batch_delete_entities(
+        self,
+        entities: list[Entity],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+        should_raise: bool = True,
+    ) -> None:
+        iterable_entities = iter(entities)
+        while batch := tuple(
+            islice(iterable_entities, PORT_HTTP_MAX_CONNECTIONS_LIMIT)
+        ):
+            await asyncio.gather(
+                *(
+                    self.delete_entity(
+                        entity,
+                        request_options,
+                        user_agent_type,
+                        should_raise,
+                    )
+                    for entity in batch
+                ),
+                return_exceptions=True,
+            )
 
     async def validate_entity_exist(self, identifier: str, blueprint: str) -> None:
         logger.info(f"Validating entity {identifier} of blueprint {blueprint} exists")
