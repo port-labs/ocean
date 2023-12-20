@@ -33,7 +33,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .number
+          identifier: .number | tostring
           title: .short_description
           blueprint: '"servicenowIncident"'
           properties:

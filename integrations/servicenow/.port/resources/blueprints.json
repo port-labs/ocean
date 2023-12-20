@@ -11,8 +11,7 @@
             },
             "isActive": {
               "title": "Is active",
-              "type": "boolean",
-              "default": true
+              "type": "boolean"
             },
             "createdOn": {
               "title": "Created On",
@@ -43,8 +42,7 @@
         },
         "isActive": {
           "title": "Is Active",
-          "type": "boolean",
-          "default": true
+          "type": "boolean"
         },
         "createdOn": {
           "title": "Created On",
@@ -105,8 +103,7 @@
         },
         "isActive": {
             "title": "Is Active",
-            "type": "boolean",
-            "default": true
+            "type": "boolean"
         },
         "priority": {
             "title": "Priority",
