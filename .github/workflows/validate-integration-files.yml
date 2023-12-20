@@ -15,6 +15,7 @@ jobs:
 
     - name: Check Ocean version 🌊
       run: |
+        git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
         changed_dirs=$(git diff --name-only ${{ github.base_ref }}...${{ github.sha }} | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
         package_version=$(pip show port-ocean | awk '/Version:/ {print $2}')
         for dir in $changed_dirs; do
