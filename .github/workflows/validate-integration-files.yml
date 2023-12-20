@@ -19,7 +19,7 @@ jobs:
       run: |
         git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
         git fetch origin ${{ github.head_ref }}:${{ github.head_ref }}
-        changed_dirs=$(git diff --name-only ${{ github.base_ref }}...${{ github.sha }} | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
+        changed_dirs=$(git diff --name-only origin/main origin/${{ github.head_ref }} | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
         package_version=$(curl -s https://pypi.org/pypi/port-ocean/json | jq '.info.version')
         for dir in $changed_dirs; do
           pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
