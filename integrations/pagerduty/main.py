@@ -11,8 +11,6 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-CONCURRENT_REQUESTS = 5
-
 
 def initialize_client() -> PagerDutyClient:
     return PagerDutyClient(
@@ -22,22 +20,26 @@ def initialize_client() -> PagerDutyClient:
     )
 
 
-async def enrich_incident_with_analytics_data(
+async def enrich_incidents_with_analytics_data(
     client: PagerDutyClient,
-    semaphore: asyncio.Semaphore,
-    incident: dict[str, Any],
-) -> dict[str, Any]:
-    async with semaphore:
-        analytics_data = await client.get_incident_analytics(incident["id"])
-        incident["__analytics"] = analytics_data
-        return incident
+    incidents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    analytics_data = await asyncio.gather(
+        *[client.get_incident_analytics(incident["id"]) for incident in incidents]
+    )
+
+    enriched_incidents = [
+        {**incident, "__analytics": analytics}
+        for incident, analytics in zip(incidents, analytics_data)
+    ]
+
+    return enriched_incidents
 
 
 @ocean.on_resync(ObjectKind.INCIDENTS)
 async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
     pager_duty_client = initialize_client()
-    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
 
     query_params = typing.cast(
         PagerdutyIncidentResourceConfig, event.resource_config
@@ -48,12 +50,10 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=query_params.generate_request_params() if query_params else None,
     ):
         logger.info(f"Received batch with {len(incidents)} incidents")
-        futures = [
-            enrich_incident_with_analytics_data(pager_duty_client, semaphore, incident)
-            for incident in incidents
-        ]
-        for future in asyncio.as_completed(futures):
-            yield [await future]
+        enriched_incident_batch = await enrich_incidents_with_analytics_data(
+            pager_duty_client, incidents
+        )
+        yield enriched_incident_batch
 
 
 @ocean.on_resync(ObjectKind.SERVICES)
@@ -102,11 +102,10 @@ async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
             object_type=ObjectKind.INCIDENTS, identifier=incident_id
         )
 
-        semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
-        enriched_incident = await enrich_incident_with_analytics_data(
-            pager_duty_client, semaphore, incident["incident"]
+        enriched_incident = await enrich_incidents_with_analytics_data(
+            pager_duty_client, [incident["incident"]]
         )
-        await ocean.register_raw(ObjectKind.INCIDENTS, [enriched_incident])
+        await ocean.register_raw(ObjectKind.INCIDENTS, enriched_incident)
 
     elif event_type in pager_duty_client.service_upsert_events:
         service_id = data["event"]["data"]["id"]
