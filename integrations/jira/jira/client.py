@@ -102,7 +102,9 @@ class JiraClient:
         total_projects = (await self._get_paginated_projects(params))["total"]
 
         if total_projects == 0:
-            logger.warning("Project query returned 0 projects, did you provide the correct Jira API credentials?")
+            logger.warning(
+                "Project query returned 0 projects, did you provide the correct Jira API credentials?"
+            )
 
         params["maxResults"] = PAGE_SIZE
         while params["startAt"] <= total_projects:
@@ -132,7 +134,9 @@ class JiraClient:
         total_issues = (await self._get_paginated_issues(params))["total"]
 
         if total_issues == 0:
-            logger.warning("Issue query returned 0 issues, did you provide the correct Jira API credentials and JQL query?")
+            logger.warning(
+                "Issue query returned 0 issues, did you provide the correct Jira API credentials and JQL query?"
+            )
 
         params["maxResults"] = PAGE_SIZE
         while params["startAt"] <= total_issues:
