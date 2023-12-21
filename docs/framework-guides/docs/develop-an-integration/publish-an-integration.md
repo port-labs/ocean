@@ -18,7 +18,6 @@ This guide assumes that you already went through the [quickstart](../getting-sta
   - `mypy` for type checking.
   - `ruff` for code quality analysis.
   - `poetry check` for dependency checks.
-  - `poetry lock` to update the `pyproject.toml` file.
 
 :::note
 

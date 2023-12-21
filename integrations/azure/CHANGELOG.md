@@ -1,3 +1,10 @@
+0.1.19 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.10 (#1)
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

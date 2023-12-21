@@ -11,8 +11,8 @@ if TYPE_CHECKING:
 
 
 class TokenRetryTransport(RetryTransport):
-    def __init__(self, port_client: "PortClient", *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, port_client: "PortClient", **kwargs: Any) -> None:
+        super().__init__(**kwargs)
         self.port_client = port_client
 
     def _is_retryable_method(self, request: httpx.Request) -> bool:
