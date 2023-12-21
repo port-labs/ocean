@@ -28,12 +28,11 @@ class EntityClientMixin:
         should_raise: bool = True,
     ) -> None:
         validation_only = request_options["validation_only"]
-        logger.info(
-            f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
-        )
-        headers = await self.auth.headers(user_agent_type)
-
         async with self.semaphore:
+            logger.info(
+                f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
+            )
+            headers = await self.auth.headers(user_agent_type)
             response = await self.client.post(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
                 json=entity.dict(exclude_unset=True, by_alias=True),
@@ -83,10 +82,10 @@ class EntityClientMixin:
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
     ) -> None:
-        logger.info(
-            f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
-        )
         async with self.semaphore:
+            logger.info(
+                f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
+            )
             response = await self.client.delete(
                 f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
                 headers=await self.auth.headers(user_agent_type),
