@@ -14,10 +14,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Added a way to create the integration without the Dockerfile and .dockerignore to use the global Docker files when scaffolding a new integration.
 
-### Bug Fixes
-
-- Changed the way we upsert and delete bulk of entities from the catalog to be batched rather than spawning all requests at once (#1)
-
 
 ## 0.4.8 (2023-12-13)
 
