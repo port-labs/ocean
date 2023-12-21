@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Moved the number of open incidents (numOpenIncidents) calculation from the opsGenieService blueprint to utilize the aggregationProperties capabilities in Ocean (#14)
 
+
 # Port_Ocean 0.1.13 (2023-12-21)
 
 ### Improvements
