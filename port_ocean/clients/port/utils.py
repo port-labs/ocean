@@ -9,13 +9,13 @@ from port_ocean.clients.port.retry_transport import TokenRetryTransport
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
 
-# In case the framework sends more requests to port in parallel then allowed by the limits,
-# a PoolTimeout exception will be raised.
-# Raising defaults for the timeout, in addition to the limits, will allow request to wait for a connection
-# for a longer period of time, before raising an exception.
-# We don't want to set the max_connection too highly, as it will cause the application to run out of memory.
-# We also don't want to set the max_keepalive_connections too highly, as it will cause the application to
-# run out of available connections.
+# In case the framework sends more requests to port in parallel then allowed by the limits, a PoolTimeout exception will
+# be raised.
+# Raising defaults for the timeout, in addition to the limits, will allow request to wait for a connection for a longer
+# period of time, before raising an exception.
+# We don't want to set the max_connections too highly, as it will cause the application to run out of memory.
+# We also don't want to set the max_keepalive_connections too highly, as it will cause the application to run out of
+# available connections.
 PORT_HTTP_MAX_CONNECTIONS_LIMIT = 200
 PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS = 50
 PORT_HTTP_TIMEOUT = 10.0
