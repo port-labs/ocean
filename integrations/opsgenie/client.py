@@ -118,16 +118,6 @@ class OpsGenieClient:
         event.attributes[cache_key] = associated_alerts
         return associated_alerts
 
-    async def get_incidents_by_service(self, service_id: str) -> list[dict[str, Any]]:
-        incidents = []
-        async for incident_batch in self.get_paginated_resources(ObjectKind.INCIDENT):
-            incidents.extend(incident_batch)
-        return [
-            incident
-            for incident in incidents
-            if service_id in incident["impactedServices"]
-        ]
-
     async def get_impacted_services(
         self, impacted_service_ids: list[str]
     ) -> list[dict[str, Any]]:
