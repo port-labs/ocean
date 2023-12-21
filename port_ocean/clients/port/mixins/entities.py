@@ -101,7 +101,7 @@ class EntityClientMixin:
             if response.is_error:
                 if response.status_code == 404:
                     logger.info(
-                        f"Weren't able to delete entity: {entity.identifier} of blueprint: {entity.blueprint},"
+                        f"Failed to delete entity: {entity.identifier} of blueprint: {entity.blueprint},"
                         f" as it was already deleted from port"
                     )
                     return
