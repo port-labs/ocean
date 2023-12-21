@@ -1,14 +1,13 @@
 type: terraform-cloud
 description: terraform cloud integration for Port Ocean
-icon: Terraform # Should be one of the available icons in Port
+icon: Terraform 
 features:
   - type: exporter
-    section: IaC # Should be one of the available sections in Port
+    section: IaC
     resources:
       - kind: workspace
       - kind: run
       - kind: state-version
-      - kind: state-version-output
 configurations:
   - name: terraformHost
     required: true
@@ -21,4 +20,3 @@ configurations:
   - name: appHost
     type: url
     required: false
-    

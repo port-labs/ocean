@@ -200,8 +200,7 @@ class TerraformClient:
                                                  page=page,
                                                  workspace_id=workspace_name,
                                                  organization_id=organization_id)
-                        
-                        # state_versions_url = f"{self.api_url}/state-versions?page[number]={page}&page[size]={PAGE_SIZE}&filter[workspace][name]={workspace_name}&filter[organization][name]={organization_id}"
+
                         response = await self.client.get(url)
                         response.raise_for_status()
                         state_versions_data = response.json()

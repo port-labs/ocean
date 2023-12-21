@@ -11,7 +11,7 @@ resources:
           title: .attributes.name
           blueprint: '"terraformWorkspace"'
           properties:
-            organization : .relationships.organization.data.id
+            organization: .relationships.organization.data.id
             createdAt: .attributes."created-at"
             updatedAt: .attributes."updated-at"
             terraformVersion: .attributes."terraform-version"
@@ -20,7 +20,7 @@ resources:
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
           relationship:
-            terraformCloudStateVersion: .relationships.current-state-version.data.id
+            terraformCloudStateVersion: .relationships."current-state-version.data.id"
 
   - kind: run
     selector:
