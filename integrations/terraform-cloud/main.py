@@ -96,4 +96,4 @@ async def on_start()-> None:
         return
 
     terraform_client = init_terraform_client()
-    await terraform_client.create_workspace_webhook(app_host=app_host)
+    await terraform_client.create_workspace_webhook(app_host=ocean.integration_config.get("app_host"))
