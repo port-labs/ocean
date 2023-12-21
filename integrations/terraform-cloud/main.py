@@ -10,7 +10,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class ObjectKind(StrEnum):
     WORKSPACE = "workspace"
     RUN = "run"
-    STATE_VERSION_OUTPUT = "state-version-output"
     STATE_VERSION = "state-version"
 
 
@@ -28,19 +27,6 @@ def init_terraform_client() -> TerraformClient:
     return terraform_client
 
 
-async def setup_application()->Any:
-        
-    app_host = ocean.integration_config.get("app_host")
-
-    if not app_host:
-        logger.warning(
-            "No app host provided, skipping webhook creation. "
-            "Without setting up the webhook, the integration will not export live changes from Terraform"
-        )
-        return
-
-    terraform_client = init_terraform_client()
-    await terraform_client.create_workspace_webhook(app_host=app_host)
 
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
@@ -86,22 +72,12 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 yield runs
 
 
-@ocean.on_resync(ObjectKind.STATE_VERSION_OUTPUT)
-async def resync_runs(kind:str)-> ASYNC_GENERATOR_RESYNC_TYPE:
-    terraform_client = init_terraform_client()
-
-    async for state_versions_output in terraform_client.get_state_version_outputs_for_workspace():
-            logger.info(f"Received {len(state_versions_output)} batch state version outputs")
-            yield state_versions_output
-
-
 @ocean.on_resync(ObjectKind.STATE_VERSION)
 async def resync_runs(kind:str)->ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
 
     async for state_versions in terraform_client.get_state_version_for_workspace():
-        async for state_version in state_versions:
-            yield state_version
+            yield state_versions
 
 
 @ocean.on_start()
@@ -112,4 +88,12 @@ async def on_start()-> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    await setup_application()
+    if not ocean.integration_config.get("app_host"):
+        logger.warning(
+            "No app host provided, skipping webhook creation. "
+            "Without setting up the webhook, the integration will not export live changes from Terraform"
+        )
+        return
+
+    terraform_client = init_terraform_client()
+    await terraform_client.create_workspace_webhook(app_host=ocean.integration_config.get("app_host"))

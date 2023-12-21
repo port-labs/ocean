@@ -153,4 +153,5 @@ dmypy.json
 cython_debug/
 
 #Temporal
-clientsync
+clientsync.py
+ignoreclient.py

@@ -11,7 +11,6 @@ resources:
           title: .attributes.name
           blueprint: '"terraformWorkspace"'
           properties:
-            workspaceName: .attributes.name
             organization : .relationships.organization.data.id
             createdAt: .attributes."created-at"
             updatedAt: .attributes."updated-at"
@@ -21,7 +20,7 @@ resources:
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
           relationship:
-            terraformCloudStateVersion: .__currentStateVersion.id
+            terraformCloudStateVersion: .relationships.current-state-version.data.id
 
   - kind: run
     selector:
@@ -33,7 +32,6 @@ resources:
           title: .attributes.message
           blueprint: '"terraformRun"'
           properties:
-            runId: .id
             createdAt: .attributes."created-at"
             status: .attributes.status
             hasChanges: .attributes."has-changes"
@@ -54,7 +52,7 @@ resources:
         mappings:
           identifier: .id
           title: .id
-          blueprint: '"terraformStateVersion"'
+          blueprint: '"terraformCloudStateVersion"'
           properties:
             createdAt: .attributes."created-at"
             serial: .attributes.serial
@@ -69,21 +67,3 @@ resources:
             outputData: .relationships.output.data
           relations:
             terraformCloudWorkspace: .relationships.workspace.data.id
-
-  - kind: state-version-output
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .attributes.name
-          blueprint: '"terraformStateVersionOutput"'
-          properties:
-            sensitive: .attributes.sensitive
-            type: .attributes.type
-            value: (if .attributes.sensitive then "Sensitive Value" else .attributes.value end)
-            detailedType: .attributes."detailed-type"
-            selfLink: .links.self
-          relations:
-            terraformCloudStateVersion: .__stateVersion.id
