@@ -213,7 +213,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
 
     async with resource_client_context() as client:
         for resource_config in matching_resource_configs:
-            blueprint = resource_config.port.entity.mappings.blueprint.strip('"')  # type: ignore
+            blueprint = resource_config.port.entity.mappings.blueprint.strip('"')
             logger.debug(
                 "Querying full resource",
                 id=resource_uri,
@@ -238,7 +238,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
                 await ocean.unregister(
                     [
                         Entity(
-                            blueprint=resource_config.port.entity.mappings.blueprint.strip(  # type: ignore
+                            blueprint=resource_config.port.entity.mappings.blueprint.strip(
                                 '"'
                             ),
                             identifier=resource_uri,
