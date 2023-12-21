@@ -22,11 +22,13 @@ jobs:
 
     - name: Setup
       run: |
-        pip install toml-cli yq
+        pip install toml-cli yq packaging
 
     - name: Check Ocean version 🌊
       run: |
-        changed_dirs=$(git diff --name-only origin/main origin/${{ github.head_ref }} | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
+        git remote add ocean-origin https://github.com/port-labs/ocean.git
+        git fetch ocean-origin
+        changed_dirs=$(git diff --name-only ocean-origin/main HEAD | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
         package_version=$(curl -s https://pypi.org/pypi/port-ocean/json | jq -r '.info.version')
         for dir in $changed_dirs; do
           pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
