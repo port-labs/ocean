@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Wrapped the httpx async client with implementation that overrides the default transport class with custom transport to apply all default httpx features that are ignored when passing a custom transport instance. This allows the missing behevior of the http (proxy environment variable)[https://www.python-httpx.org/environment_variables/#proxies] (PORT-5676)
+- Wrapped the httpx async client with implementation that overrides the default transport class with custom transport to apply all default httpx features that are ignored when passing a custom transport instance. This allows the missing behevior of the http [proxy environment variable](https://www.python-httpx.org/environment_variables/#proxies) (PORT-5676)
 - Changed deprecated `poetry lock --check` in the make files to `poetry check` (PORT-5711)
 
 ### Bug Fixes
