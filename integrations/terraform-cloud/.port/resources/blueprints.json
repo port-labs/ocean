@@ -6,11 +6,6 @@
     "icon": "Terraform",
     "schema": {
       "properties": {
-        "id": {
-          "type": "string",
-          "title": "State Version ID",
-          "description": "Unique identifier for the state version"
-        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
@@ -69,6 +64,7 @@
         }
       }
     },
+    "relations":{},
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {}
@@ -81,11 +77,6 @@
         "icon": "Terraform",
         "schema": {
           "properties": {
-            "workspaceName": {
-              "type": "string",
-              "title": "Workspace Name",
-              "description": "The name of the Terraform cloud workspace"
-            },
             "organization":{
               "type":"string",
               "title":"Organization",
@@ -147,11 +138,6 @@
   "icon": "Terraform",
   "schema": {
     "properties": {
-      "runId": {
-        "type": "string",
-        "title": "Run ID",
-        "description": "The unique identifier of the Terraform cloud run"
-      },
       "createdAt": {
         "type": "string",
         "format": "date-time",

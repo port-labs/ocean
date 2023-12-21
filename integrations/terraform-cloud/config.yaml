@@ -6,7 +6,7 @@ port:
 eventListener:
   type: POLLING
 integration:
-  identifier: my-terraform-integration
+  identifier: my-terraform-cloud-integration
   type: terraform-cloud
   config:
     terraformHost: '{{ from env TERRAFORM_HOST }}'
