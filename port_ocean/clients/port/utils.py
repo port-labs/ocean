@@ -5,14 +5,15 @@ from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.clients.port.retry_transport import TokenRetryTransport
-from port_ocean.clients.port.consts import (
-    PORT_HTTP_MAX_CONNECTIONS_LIMIT,
-    PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS,
-    PORT_HTTP_TIMEOUT,
-)
 
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
+
+
+PORT_HTTP_MAX_CONNECTIONS_LIMIT = 200
+PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS = 50
+PORT_HTTP_TIMEOUT = 10.0
+
 
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
