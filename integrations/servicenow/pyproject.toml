@@ -1,13 +1,12 @@
 [tool.poetry]
-name = "Jira"
-version = "0.1.18"
-description = "Integration to bring information from Jira into Port"
-authors = ["Mor Paz <mor@getport.io>"]
+name = "servicenow"
+version = "0.1.0"
+description = "Service Now Ocean Integration"
+authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.4.7", extras = ["cli"]}
-httpx = "^0.24.1"
+port_ocean = { version = "^0.4.8", extras = ["cli"] }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
@@ -20,6 +19,7 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
+package = "port_ocean"
 
   [[tool.towncrier.type]]
   directory = "breaking"

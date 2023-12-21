@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+v0.1.18 (2023-12-20)
+
+### Improvements
+
+- Updated authentication method to use built-in basic auth function
+- Added warning message when 0 issues or projects are queried from the Jira API
+
+
 0.1.17 (2023-12-18)
 
 ### Improvements
