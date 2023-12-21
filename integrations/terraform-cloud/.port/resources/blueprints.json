@@ -196,48 +196,5 @@
       "many": false
     }
   }
-},
-{
-  "identifier": "terraformCloudStateVersionOutput",
-  "description": "This blueprint represents the output of a Terraform state version output",
-  "title": "Terraform State Version Output",
-  "icon": "Terraform",
-  "schema": {
-    "properties": {
-      "sensitive": {
-        "type": "boolean",
-        "title": "Sensitive",
-        "description": "Indicates whether the output is sensitive"
-      },
-      "type": {
-        "type": "string",
-        "title": "Type",
-        "description": "The data type of the output (e.g., 'string', 'number')"
-      },
-      "value": {
-        "type": "string",
-        "title": "Value",
-        "description": "The value of the output"
-      },
-      "detailedType": {
-        "type": "string",
-        "title": "Detailed Type",
-        "description": "More detailed type information of the output"
-      },
-      "selfLink": {
-        "type": "string",
-        "title": "Self Link",
-        "description": "API link for the state version output"
-      }
-    }
-  },
-  "relations": {
-    "terraformCloudStateVersion": {
-      "title": "Terraform State Version",
-      "target": "terraformCloudStateVersion",
-      "required": true,
-      "many": false
-    }
-}
 }
 ]

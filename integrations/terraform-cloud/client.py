@@ -15,7 +15,6 @@ TERRAFORM_WEBHOOK_EVENTS = ['run:applying',
 class CacheKeys(StrEnum):
     WORKSPACES = "workspace"
     RUNS = "run"
-    STATE_VERSION_OUTPUTS = "state-version-output"
     STATE_VERSION = "state-version"
 
 
@@ -57,6 +56,13 @@ class TerraformClient:
 
     async def get_paginated_workspaces(self) -> List[Dict[str, any]]:
 
+        cache_key = CacheKeys.WORKSPACES
+
+        if cache := event.attributes.get(cache_key):
+            logger.info("Fetching paginated workspaces from cache")
+            yield cache
+            return
+
         all_workspaces = []
 
         try:        
@@ -69,7 +75,6 @@ class TerraformClient:
 
                     url = await self.build_api_url(endpoint= f"organizations/{organization[id]}",page=page)
                     workspace_response = await self.client.get(
-                        # f"{self.api_url}/organizations/{organization['id']}/workspaces?page[number]={page}&page[size]={PAGE_SIZE}"
                         url
                     )
                     workspace_response.raise_for_status()
@@ -83,6 +88,8 @@ class TerraformClient:
 
                     page += 1
                     all_workspaces.extend(workspaces)
+            
+            event.attributes[cache_key] = all_workspaces
 
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
@@ -102,10 +109,7 @@ class TerraformClient:
                                                page=page 
                                                )
                 
-                run_response = await self.client.get(
-                    # f"{self.api_url}/workspaces/{workspace_id}/runs?page[number]={page}&page[size]={PAGE_SIZE}"
-                    url
-                )
+                run_response = await self.client.get(url)
                 run_response.raise_for_status()
                 runs_data = run_response.json()
                 runs = runs_data.get('data', [])
@@ -180,13 +184,6 @@ class TerraformClient:
     async def get_state_version_for_workspace(self) -> AsyncGenerator[Dict[str, Any], None]:
         try:
 
-            cache_key = CacheKeys.STATE_VERSION
-
-            if cache := event.attributes.get(cache_key):
-                logger.info("Fetching paginated workspaces from cache")
-                yield cache
-                return
-
             logger.info("Getting state versions for all workspaces")
 
             async for workspaces in self.get_paginated_workspaces():
@@ -218,8 +215,6 @@ class TerraformClient:
 
                         all_state_versions.extend(workspaces)
 
-                    event.attributes[cache_key] = all_state_versions
-
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error for state versions: Status {e.response.status_code}, Response: {e.response.text}")
         except httpx.HTTPError as e:
@@ -245,37 +240,6 @@ class TerraformClient:
         except httpx.HTTPError as e:
             logger.error(f"Error fetching terraform data: {e}")
 
-        
-
-    async def get_state_version_outputs_for_workspace(self)-> AsyncGenerator[Dict[str, Any], None]:
-        try:
-
-            page = 1
-            while True:
-
-                async for state_versions in self.get_state_version_for_workspace():
-                    for state_version in state_versions:
-                        logger.info("Getting state version outputs for all workspaces")
-                        #state_version_outputs_url = f"{self.api_url}/state-versions/{state_version['id']}/outputs?page[number]={page}&page[size]={PAGE_SIZE}"
-                        url = self.build_api_url(endpoint= f"state-versions/{state_version['id']}/outputs",page=page)
-                        response = await self.client.get(url)
-                        response.raise_for_status()
-                        state_version_outputs_data = response.json()
-                        state_version_outputs = state_version_outputs_data.get('data', [])
-
-                        for state_version_output in state_version_outputs:
-                            state_version_output['__stateVersion'] = state_version
-
-                        yield state_version_outputs
-
-                        if len(state_version_outputs) < PAGE_SIZE:
-                            break
-                        page += 1
-        
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error for state versions: Status {e.response.status_code}, Response: {e.response.text}")
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching terraform data: {e}")
 
 
     async def get_terraform_data(self,url):

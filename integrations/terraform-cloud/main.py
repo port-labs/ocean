@@ -10,7 +10,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class ObjectKind(StrEnum):
     WORKSPACE = "workspace"
     RUN = "run"
-    STATE_VERSION_OUTPUT = "state-version-output"
     STATE_VERSION = "state-version"
 
 
@@ -71,15 +70,6 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for workspace in workspaces:
             async for runs in terraform_client.get_paginated_runs_for_workspace(workspace['id']):
                 yield runs
-
-
-@ocean.on_resync(ObjectKind.STATE_VERSION_OUTPUT)
-async def resync_runs(kind:str)-> ASYNC_GENERATOR_RESYNC_TYPE:
-    terraform_client = init_terraform_client()
-
-    async for state_versions_output in terraform_client.get_state_version_outputs_for_workspace():
-            logger.info(f"Received {len(state_versions_output)} batch state version outputs")
-            yield state_versions_output
 
 
 @ocean.on_resync(ObjectKind.STATE_VERSION)
