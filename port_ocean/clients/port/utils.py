@@ -5,6 +5,7 @@ from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.clients.port.retry_transport import TokenRetryTransport
+from port_ocean.helpers.async_client import OceanAsyncClient
 
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
@@ -27,12 +28,9 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
-        client = httpx.AsyncClient(
-            transport=TokenRetryTransport(
-                port_client,
-                httpx.AsyncHTTPTransport(),
-                logger=logger,
-            ),
+        client = OceanAsyncClient(
+            TokenRetryTransport,
+            transport_kwargs={"port_client": port_client},
             timeout=httpx.Timeout(PORT_HTTP_TIMEOUT),
             limits=httpx.Limits(
                 max_connections=PORT_HTTP_MAX_CONNECTIONS_LIMIT,

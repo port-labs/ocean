@@ -3,6 +3,7 @@ import inspect
 from asyncio import ensure_future
 from functools import wraps
 from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 from time import time
 from traceback import format_exception
 from types import ModuleType
@@ -13,10 +14,10 @@ import httpx
 import tomli
 import yaml
 from loguru import logger
-from pathlib import Path
 from starlette.concurrency import run_in_threadpool
 from werkzeug.local import LocalStack, LocalProxy
 
+from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryTransport
 
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
@@ -25,12 +26,7 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 def _get_http_client_context() -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
-        client = httpx.AsyncClient(
-            transport=RetryTransport(
-                httpx.AsyncHTTPTransport(),
-                logger=logger,
-            )
-        )
+        client = OceanAsyncClient(RetryTransport)
         _http_client.push(client)
 
     return client
