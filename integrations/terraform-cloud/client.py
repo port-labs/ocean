@@ -239,17 +239,3 @@ class TerraformClient:
             logger.error(f"HTTP error for state versions: Status {e.response.status_code}, Response: {e.response.text}")
         except httpx.HTTPError as e:
             logger.error(f"Error fetching terraform data: {e}")
-
-
-
-    async def get_terraform_data(self,url):
-        try:
-            response = await self.client.get(url)
-            response.raise_for_status()
-            response_json = response.json()
-            response_data = response_json.get('data', [])
-            return response_data
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error for state versions: Status {e.response.status_code}, Response: {e.response.text}")
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching terraform data: {e}")
