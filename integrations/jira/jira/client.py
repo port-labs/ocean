@@ -1,8 +1,7 @@
-import base64
 import typing
 from typing import Any, AsyncGenerator
 
-from httpx import Timeout
+from httpx import Timeout, BasicAuth
 from jira.overrides import JiraResourceConfig
 from loguru import logger
 from port_ocean.context.event import event
@@ -33,20 +32,23 @@ class JiraClient:
         self.jira_email = jira_email
         self.jira_token = jira_token
 
-        auth_message = f"{self.jira_email}:{self.jira_token}"
-        auth_bytes = auth_message.encode("ascii")
-        b64_bytes = base64.b64encode(auth_bytes)
-        b64_message = b64_bytes.decode("ascii")
-        auth_value = f"Basic {b64_message}"
-
-        self.base_headers = {"Authorization": auth_value}
+        self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
 
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
         self.client = http_async_client
-        self.client.headers.update(self.base_headers)
+        self.client.auth = self.jira_api_auth
         self.client.timeout = Timeout(30)
+
+    @staticmethod
+    def _generate_base_req_params(
+        maxResults: int = 0, startAt: int = 0
+    ) -> dict[str, Any]:
+        return {
+            "maxResults": maxResults,
+            "startAt": startAt,
+        }
 
     async def _get_paginated_projects(self, params: dict[str, Any]) -> dict[str, Any]:
         project_response = await self.client.get(
@@ -95,12 +97,14 @@ class JiraClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
 
-        params: dict[str, Any] = {
-            "maxResults": 0,
-            "startAt": 0,
-        }
+        params = self._generate_base_req_params()
 
         total_projects = (await self._get_paginated_projects(params))["total"]
+
+        if total_projects == 0:
+            logger.warning(
+                "Project query returned 0 projects, did you provide the correct Jira API credentials?"
+            )
 
         params["maxResults"] = PAGE_SIZE
         while params["startAt"] <= total_projects:
@@ -119,17 +123,20 @@ class JiraClient:
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
 
-        params: dict[str, Any] = {
-            "maxResults": 0,
-            "startAt": 0,
-        }
+        params = self._generate_base_req_params()
 
         config = typing.cast(JiraResourceConfig, event.resource_config)
 
         if config.selector.jql:
             params["jql"] = config.selector.jql
+            logger.info(f"Found JQL filter: {config.selector.jql}")
 
         total_issues = (await self._get_paginated_issues(params))["total"]
+
+        if total_issues == 0:
+            logger.warning(
+                "Issue query returned 0 issues, did you provide the correct Jira API credentials and JQL query?"
+            )
 
         params["maxResults"] = PAGE_SIZE
         while params["startAt"] <= total_issues:
