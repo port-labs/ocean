@@ -5,37 +5,38 @@ from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.clients.port.retry_transport import TokenRetryTransport
+from port_ocean.helpers.async_client import OceanAsyncClient
 
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
 
-_http_client: LocalStack[httpx.AsyncClient] = LocalStack()
-
-
-# In case the framework sends more requests to port in parallel then allowed by the limits, a PoolTimeout exception will
+# In case the framework sends more requests to port in parallel than allowed by the limits, a PoolTimeout exception will
 # be raised.
 # Raising defaults for the timeout, in addition to the limits, will allow request to wait for a connection for a longer
 # period of time, before raising an exception.
-# We don't want to set the max_connections too highly, as it will cause the application to run out of memory.
-# We also don't want to set the max_keepalive_connections too highly, as it will cause the application to run out of
-# available connections.
-PORT_HTTP_CLIENT_TIMEOUT = httpx.Timeout(10.0)
-PORT_HTTP_CLIENT_CONNECTIONS_LIMIT = httpx.Limits(
-    max_connections=200, max_keepalive_connections=50
+# The max_connections value can't be too high, as it will cause the application to run out of memory.
+# The max_keepalive_connections can't be too high, as it will cause the application to run out of available connections.
+PORT_HTTP_MAX_CONNECTIONS_LIMIT = 200
+PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS = 50
+PORT_HTTP_TIMEOUT = 10.0
+
+PORT_HTTPX_TIMEOUT = httpx.Timeout(PORT_HTTP_TIMEOUT)
+PORT_HTTPX_LIMITS = httpx.Limits(
+    max_connections=PORT_HTTP_MAX_CONNECTIONS_LIMIT,
+    max_keepalive_connections=PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS,
 )
+
+_http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
 
 def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
-        client = httpx.AsyncClient(
-            transport=TokenRetryTransport(
-                port_client,
-                httpx.AsyncHTTPTransport(),
-                logger=logger,
-            ),
-            timeout=PORT_HTTP_CLIENT_TIMEOUT,
-            limits=PORT_HTTP_CLIENT_CONNECTIONS_LIMIT,
+        client = OceanAsyncClient(
+            TokenRetryTransport,
+            transport_kwargs={"port_client": port_client},
+            timeout=PORT_HTTPX_TIMEOUT,
+            limits=PORT_HTTPX_LIMITS,
         )
         _http_client.push(client)
 

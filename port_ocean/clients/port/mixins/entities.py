@@ -1,3 +1,4 @@
+import asyncio
 from urllib.parse import quote_plus
 
 import httpx
@@ -5,7 +6,10 @@ from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.types import RequestOptions, UserAgentType
-from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.clients.port.utils import (
+    handle_status_code,
+    PORT_HTTP_MAX_CONNECTIONS_LIMIT,
+)
 from port_ocean.core.models import Entity
 
 
@@ -13,6 +17,10 @@ class EntityClientMixin:
     def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
         self.auth = auth
         self.client = client
+        # Semaphore is used to limit the number of concurrent requests to port, to avoid overloading it.
+        # The number of concurrent requests is set to 90% of the max connections limit, to leave some room for other
+        # requests that are not related to entities.
+        self.semaphore = asyncio.Semaphore(round(0.9 * PORT_HTTP_MAX_CONNECTIONS_LIMIT))
 
     async def upsert_entity(
         self,
@@ -22,24 +30,24 @@ class EntityClientMixin:
         should_raise: bool = True,
     ) -> None:
         validation_only = request_options["validation_only"]
-        logger.info(
-            f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
-        )
-        headers = await self.auth.headers(user_agent_type)
-
-        response = await self.client.post(
-            f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
-            json=entity.dict(exclude_unset=True, by_alias=True),
-            headers=headers,
-            params={
-                "upsert": "true",
-                "merge": str(request_options["merge"]).lower(),
-                "create_missing_related_entities": str(
-                    request_options["create_missing_related_entities"]
-                ).lower(),
-                "validation_only": str(validation_only).lower(),
-            },
-        )
+        async with self.semaphore:
+            logger.info(
+                f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
+            )
+            headers = await self.auth.headers(user_agent_type)
+            response = await self.client.post(
+                f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities",
+                json=entity.dict(exclude_unset=True, by_alias=True),
+                headers=headers,
+                params={
+                    "upsert": "true",
+                    "merge": str(request_options["merge"]).lower(),
+                    "create_missing_related_entities": str(
+                        request_options["create_missing_related_entities"]
+                    ).lower(),
+                    "validation_only": str(validation_only).lower(),
+                },
+            )
 
         if response.is_error:
             logger.error(
@@ -49,6 +57,26 @@ class EntityClientMixin:
             )
         handle_status_code(response, should_raise)
 
+    async def batch_upsert_entities(
+        self,
+        entities: list[Entity],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+        should_raise: bool = True,
+    ) -> None:
+        await asyncio.gather(
+            *(
+                self.upsert_entity(
+                    entity,
+                    request_options,
+                    user_agent_type,
+                    should_raise=should_raise,
+                )
+                for entity in entities
+            ),
+            return_exceptions=True,
+        )
+
     async def delete_entity(
         self,
         entity: Entity,
@@ -56,27 +84,54 @@ class EntityClientMixin:
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
     ) -> None:
-        logger.info(
-            f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
-        )
-        response = await self.client.delete(
-            f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
-            headers=await self.auth.headers(user_agent_type),
-            params={
-                "delete_dependents": str(
-                    request_options["delete_dependent_entities"]
-                ).lower()
-            },
-        )
-
-        if response.is_error:
-            logger.error(
-                f"Error deleting "
-                f"entity: {entity.identifier} of "
-                f"blueprint: {entity.blueprint}"
+        async with self.semaphore:
+            logger.info(
+                f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
+            )
+            response = await self.client.delete(
+                f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
+                headers=await self.auth.headers(user_agent_type),
+                params={
+                    "delete_dependents": str(
+                        request_options["delete_dependent_entities"]
+                    ).lower()
+                },
             )
 
-        handle_status_code(response, should_raise)
+            if response.is_error:
+                if response.status_code == 404:
+                    logger.info(
+                        f"Failed to delete entity: {entity.identifier} of blueprint: {entity.blueprint},"
+                        f" as it was already deleted from port"
+                    )
+                    return
+                logger.error(
+                    f"Error deleting "
+                    f"entity: {entity.identifier} of "
+                    f"blueprint: {entity.blueprint}"
+                )
+
+            handle_status_code(response, should_raise)
+
+    async def batch_delete_entities(
+        self,
+        entities: list[Entity],
+        request_options: RequestOptions,
+        user_agent_type: UserAgentType | None = None,
+        should_raise: bool = True,
+    ) -> None:
+        await asyncio.gather(
+            *(
+                self.delete_entity(
+                    entity,
+                    request_options,
+                    user_agent_type,
+                    should_raise=should_raise,
+                )
+                for entity in entities
+            ),
+            return_exceptions=True,
+        )
 
     async def validate_entity_exist(self, identifier: str, blueprint: str) -> None:
         logger.info(f"Validating entity {identifier} of blueprint {blueprint} exists")

@@ -7,11 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.12 (2023-12-20)
+# Port_Ocean 0.1.14 (2023-12-21)
 
 ### Improvements
 
-- Moved the number of open incidents calculation to the new aggregationProperties capabilities on the opsGenieService blueprint (#12)
+- Moved the number of open incidents (numOpenIncidents) calculation from the opsGenieService blueprint to utilize the aggregationProperties capabilities in Ocean (#14)
+
+# Port_Ocean 0.1.13 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.11 (#1)
+
+
+# Port_Ocean 0.1.12 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.10 (#1)
 
 
 # Port_Ocean 0.1.11 (2023-12-14)
