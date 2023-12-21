@@ -33,6 +33,7 @@ def deconstruct_blueprints_to_creation_steps(
 
         blueprint.pop("calculationProperties", {})
         blueprint.pop("mirrorProperties", {})
+        blueprint.pop("aggregationProperties", {})
         with_relations.append(blueprint.copy())
 
         blueprint.pop("teamInheritance", {})
