@@ -22,7 +22,7 @@ jobs:
 
     - name: Setup
       run: |
-        pip install toml-cli yq
+        pip install toml-cli yq packaging
 
     - name: Check Ocean version 🌊
       run: |
