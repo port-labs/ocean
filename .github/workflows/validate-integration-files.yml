@@ -26,7 +26,7 @@ jobs:
 
     - name: Check Ocean version 🌊
       run: |
-        git remote add ocean-origin git@github.com:port-labs/ocean.git
+        git remote add ocean-origin https://github.com/port-labs/ocean.git
         git fetch ocean-origin
         changed_dirs=$(git diff --name-only ocean-origin/main HEAD | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
         package_version=$(curl -s https://pypi.org/pypi/port-ocean/json | jq -r '.info.version')
