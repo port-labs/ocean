@@ -91,7 +91,7 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
 
-    async for state_versions_batch in terraform_client.get_paginated_state_version():
+    async for state_versions_batch in terraform_client.get_paginated_state_versions():
         logger.info(f"Received batch with {len(state_versions_batch)} {kind}")
 
         enriched_state_versions_batch = await enrich_state_versions_with_output_data(

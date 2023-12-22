@@ -76,8 +76,8 @@ class TerraformClient:
 
     async def get_paginated_organizations(self) -> list[dict[str, Any]]:
         logger.info("Fetching organizations")
-        organizations = await self.get_paginated_resources("organizations")
-        return organizations
+        async for organizations in self.get_paginated_resources("organizations"):
+            yield organizations
 
     async def get_single_workspace(self, workspace_id: str) -> dict[str, Any]:
         logger.info(f"Fetching workspace with ID: {workspace_id}")
@@ -104,7 +104,7 @@ class TerraformClient:
             return
 
         all_workspaces = []
-        async for organizations in await self.get_paginated_organizations():
+        async for organizations in self.get_paginated_organizations():
             for organization in organizations:
                 organization_id = organization['id']
                 endpoint = f"organizations/{organization_id}/workspaces"
@@ -122,7 +122,8 @@ class TerraformClient:
 
         endpoint = f"workspaces/{workspace_id}/runs"
 
-        return await self.get_paginated_resources(endpoint)
+        async for runs in self.get_paginated_resources(endpoint):
+            yield runs
 
 
     async def get_paginated_state_versions(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -139,7 +140,8 @@ class TerraformClient:
                     "filter[organization][name]": organization_name,
                 }
 
-                return await self.get_paginated_resources("state-versions", filter_params)
+                async for state_versions in self.get_paginated_resources("state-versions", filter_params):
+                    yield state_versions
 
 
 
