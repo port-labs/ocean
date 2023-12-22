@@ -15,7 +15,7 @@ class MigrationClientMixin:
 
     async def wait_for_migration_to_complete(
         self,
-        migration_id: list[str],
+        migration_id: str,
         interval: int = 5,
     ) -> Migration:
         logger.info(
