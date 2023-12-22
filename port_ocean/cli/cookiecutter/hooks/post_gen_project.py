@@ -2,7 +2,7 @@ import os
 
 
 def delete_docker_files():
-    if "{{ cookiecutter.public_integration }}" == "True":
+    if "{{ cookiecutter.remove_docker_files }}" == "True":
         os.remove("Dockerfile")
         os.remove(".dockerignore")
 
