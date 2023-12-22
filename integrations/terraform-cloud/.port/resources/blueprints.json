@@ -40,17 +40,17 @@
         "hostedStateDownloadUrl":{
           "type":"string",
           "title":"Download Url",
-          "description":"Hosted state version download url "
+          "description":"Hosted terraform state version download url "
         },
         "hostedJsonDownloadUrl":{
           "type":"string",
           "title":"Download Url",
-          "description":"Url for downloading state version in json format"
+          "description":"Url for downloading terraform state version in json format"
         },
-        "outputData":{
+        "outputs":{
           "type":"array",
           "title":"Output",
-          "description":"output returned from state version"
+          "description":"terraform state version outputs"
         },
         "description": {
           "type": "string",
@@ -123,13 +123,16 @@
           }
         },
         "relations": {
-          "terraformCloudStateVersion": {
+          "currentStateVersion": {
             "title": "Current State Version",
             "target": "terraformCloudStateVersion",
             "required": true,
             "many": false
           }
-        }
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {}
       },
 {
   "identifier": "terraformCloudRun",
@@ -189,12 +192,15 @@
     }
   },
   "relations": {
-    "terraformCloudWorkspace": {
-      "title": "Terraform Cloud Workspace",
+    "workspace": {
+      "title": "Workspace",
       "target": "terraformCloudWorkspace",
       "required": true,
       "many": false
     }
-  }
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {}
 }
 ]
