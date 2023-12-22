@@ -6,7 +6,7 @@ eventListener:
   type: POLLING
 integration:
   identifier: my-terraform-cloud-integration
-  type: terraform_cloud
+  type: terraform-cloud
   config:
     terraformHost: '{{ from env TERRAFORM_HOST }}'
     terraformToken: '{{ from env TERRAFORM_TOKEN }}'

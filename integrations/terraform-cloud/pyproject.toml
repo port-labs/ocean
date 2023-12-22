@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "Terraform Cloud"
+name = "terraform-cloud"
 version = "0.1.0"
 description = "Terraform Ocean Integration"
 authors = ["Isaac <isaac@getport.io>"]

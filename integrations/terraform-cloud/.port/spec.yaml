@@ -1,4 +1,4 @@
-type: terraform_cloud
+type: terraform-cloud
 description: terraform cloud integration for Port Ocean
 icon: Terraform 
 features:
