@@ -1,7 +1,8 @@
-import httpx
 from typing import Any, AsyncGenerator
 
 from loguru import logger
+
+from port_ocean.utils import http_async_client
 
 
 class SentryClient:
@@ -13,7 +14,8 @@ class SentryClient:
         self.base_headers = {"Authorization": "Bearer " + f"{self.auth_token}"}
         self.api_url = f"{self.sentry_base_url}/api/0"
         self.organization = sentry_organization
-        self.client = httpx.AsyncClient(headers=self.base_headers)
+        self.client = http_async_client
+        self.client.headers.update(self.base_headers)
 
     async def get_paginated_projects(
         self,

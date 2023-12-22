@@ -7,6 +7,91 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.11 (2023-12-21)
+
+### Improvements
+
+- Added handling for aggregation properties when initializing the integration, so it will patch the aggregation properties after creating the relations (PORT-5717)
+- Changed entity property in the `portResourceConfig` to be required instead of optional, as we don't support creation of blueprints as part of the app config (PORT-4549) 
+
+
+## 0.4.10 (2023-12-21)
+
+
+### Improvements
+
+- Wrapped the httpx async client with implementation that overrides the default transport class with custom transport to apply all default httpx features that are ignored when passing a custom transport instance. This allows the missing behevior of the http [proxy environment variable](https://www.python-httpx.org/environment_variables/#proxies) (PORT-5676)
+- Changed deprecated `poetry lock --check` in the make files to `poetry check` (PORT-5711)
+
+### Bug Fixes
+
+- Changed the way we upsert and delete bulk of entities from the catalog to be batched rather than spawning all requests at once
+
+
+## 0.4.9 (2023-12-19)
+
+
+### Improvements
+
+- Added a way to create the integration without the Dockerfile and .dockerignore to use the global Docker files when scaffolding a new integration.
+
+
+## 0.4.8 (2023-12-13)
+
+
+### Bug Fixes
+
+- Fixed the incorrect search of entities by datasource, which was causing entities from older versions not to be deleted. (PORT-5583)
+
+
+## 0.4.7 (2023-12-05)
+
+
+### Improvements
+
+- Allowing POST requests for getting port tokens to be retryable (PORT-5442)
+
+### Bug Fixes
+
+- Changed the default limitations and timeouts for requests to Port in order to handle PoolTimeout error caused by a large amout of requests sent in parallel (PORT-5442)
+
+
+## 0.4.6 (2023-12-04)
+
+
+### Bug Fixes
+
+- Fixed a bug that triggered the integration to update during the initialization process when the integration already existed and the organization lacked default blueprints (PORT-5378).
+- Fixed an issue where setting integration type or identifier that contains a capital letter will not show the integration in the UI (PORT-5399)
+
+
+## 0.4.5 (2023-11-30)
+
+
+### Features
+
+- Added handling for transport errors like connection timeout error for outbound requests from ocean integrations and core (PORT-5369)
+- Changed port request option `merge` to be true by default (PORT-5396)
+
+### Improvements
+
+- Changed the port request options defaults to be constructed in the port app config model instead of setting the defaults in many places (PORT-5369)
+
+
+## 0.4.4 (2023-11-29)
+
+
+### Features
+
+- Added a httpx client that recreate itself on new threads using localproxy & localstack bundled with the `RetryTransport` transport featured in 0.4.3 (PORT-5333)
+
+### Improvements
+
+- Added `TokenRetryTransport` to the port client httpx client to handle connection errors and create new access tokens when the token is expiring while requesting (PORT-5333)
+- Removed the retry handler decorator from the port client. Now using the `TokenRetryTransport` (PORT-5333)
+- Handled `CycleError` for cyclic dependency in entities with better error message and ocean exception class (PORT-5333)
+
+
 ## 0.4.3 (2023-11-09)
 
 ### Features

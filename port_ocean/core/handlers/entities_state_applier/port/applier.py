@@ -67,10 +67,8 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                 *(
                     self.context.port_client.validate_entity_payload(
                         entity,
-                        {
-                            "merge": config.enable_merge_entity,
-                            "create_missing_related_entities": config.create_missing_related_entities,
-                        },
+                        config.enable_merge_entity,
+                        create_missing_related_entities=config.create_missing_related_entities,
                     )
                     for entity in modified_or_created_entities
                 )
@@ -160,17 +158,11 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     ) -> None:
         logger.info(f"Upserting {len(entities)} entities")
         if event.port_app_config.create_missing_related_entities:
-            await asyncio.gather(
-                *(
-                    self.context.port_client.upsert_entity(
-                        entity,
-                        event.port_app_config.get_port_request_options(),
-                        user_agent_type,
-                        should_raise=False,
-                    )
-                    for entity in entities
-                ),
-                return_exceptions=True,
+            await self.context.port_client.batch_upsert_entities(
+                entities,
+                event.port_app_config.get_port_request_options(),
+                user_agent_type,
+                should_raise=False,
             )
         else:
             ordered_created_entities = reversed(
@@ -190,16 +182,11 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     ) -> None:
         logger.info(f"Deleting {len(entities)} entities")
         if event.port_app_config.delete_dependent_entities:
-            await asyncio.gather(
-                *(
-                    self.context.port_client.delete_entity(
-                        entity,
-                        event.port_app_config.get_port_request_options(),
-                        user_agent_type,
-                        should_raise=False,
-                    )
-                    for entity in entities
-                )
+            await self.context.port_client.batch_delete_entities(
+                entities,
+                event.port_app_config.get_port_request_options(),
+                user_agent_type,
+                should_raise=False,
             )
         else:
             ordered_deleted_entities = order_by_entities_dependencies(entities)

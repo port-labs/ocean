@@ -7,6 +7,84 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.37 (2023-12-21)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.11 (#1)
+
+
+0.1.36 (2023-12-21)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.10 (#1)
+
+
+0.1.35 (2023-12-14)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.8 (#1)
+
+
+0.1.34 (2023-12-12)
+
+### Improvements
+
+- Added support for system hooks, this capability can be enabled using the useSystemHook flag. Enabling this capability will create system hooks instead of group webhooks (PORT-5220)
+
+
+0.1.33 (2023-12-05)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.7 (#1)
+
+
+0.1.32 (2023-12-04)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.6 (#1)
+
+
+0.1.31 (2023-11-30)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.5 (#1)
+
+
+0.1.30 (2023-11-29)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.4 (#1)
+
+
+0.1.29 (2023-11-21)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.3 (#1)
+
+
+0.1.28 (2023-11-16)
+===================
+
+### Improvements
+
+- Aligned default resources and mapping with Port docs examples (#1)
+
 0.1.27 (2023-11-08)
 ===================
 
