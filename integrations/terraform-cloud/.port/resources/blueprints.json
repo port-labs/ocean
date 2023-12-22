@@ -114,6 +114,9 @@
             }
          }
       },
+      "mirrorProperties":{},
+      "calculationProperties":{},
+      "aggregationProperties":{},
       "relations":{
          "currentStateVersion":{
             "title":"Current State Version",
@@ -180,6 +183,9 @@
             }
          }
       },
+      "mirrorProperties":{},
+      "calculationProperties":{},
+      "aggregationProperties":{},
       "relations":{
          "terraformCloudWorkspace":{
             "title":"Terraform Cloud Workspace",
