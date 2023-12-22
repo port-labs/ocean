@@ -51,11 +51,7 @@
                },
                "title": "Oncall Users",
                "description": "Who is on call for this service"
-            },
-            "numOpenIncidents": {
-               "title": "Number of Open Incidents",
-               "type": "number"
-             }
+            }
          },
          "required": []
       },
@@ -67,6 +63,27 @@
             "description": "Size of the team",
             "calculation": ".properties.teamMembers | length",
             "type": "number"
+         }
+      },
+      "aggregationProperties":{
+         "numberOfOpenIncidents":{
+            "title":"Number of open incidents",
+            "type":"number",
+            "target":"opsGenieIncident",
+            "query":{
+               "combinator":"and",
+               "rules":[
+                  {
+                     "property":"status",
+                     "operator":"=",
+                     "value":"open"
+                  }
+               ]
+            },
+            "calculationSpec":{
+               "calculationBy":"entities",
+               "func":"count"
+            }
          }
       },
       "relations": {}

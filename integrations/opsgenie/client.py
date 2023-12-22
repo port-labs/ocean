@@ -1,10 +1,11 @@
 from typing import Any, AsyncGenerator, Optional
+
 import httpx
 from loguru import logger
-from utils import ObjectKind, RESOURCE_API_VERSIONS
-from port_ocean.context.event import event
-from port_ocean.helpers.retry import RetryTransport
 
+from port_ocean.context.event import event
+from port_ocean.utils import http_async_client
+from utils import ObjectKind, RESOURCE_API_VERSIONS
 
 PAGE_SIZE = 50
 
@@ -13,13 +14,8 @@ class OpsGenieClient:
     def __init__(self, token: str, api_url: str):
         self.token = token
         self.api_url = api_url
-        self.http_client = httpx.AsyncClient(
-            transport=RetryTransport(
-                httpx.AsyncHTTPTransport(),
-                logger=logger,
-            ),
-            headers=self.api_auth_header,
-        )
+        self.http_client = http_async_client
+        self.http_client.headers.update(self.api_auth_header)
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -121,16 +117,6 @@ class OpsGenieClient:
         associated_alerts = (await self._get_single_resource(url))["data"]
         event.attributes[cache_key] = associated_alerts
         return associated_alerts
-
-    async def get_incidents_by_service(self, service_id: str) -> list[dict[str, Any]]:
-        incidents = []
-        async for incident_batch in self.get_paginated_resources(ObjectKind.INCIDENT):
-            incidents.extend(incident_batch)
-        return [
-            incident
-            for incident in incidents
-            if service_id in incident["impactedServices"]
-        ]
 
     async def get_impacted_services(
         self, impacted_service_ids: list[str]

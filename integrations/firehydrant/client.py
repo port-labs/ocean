@@ -1,8 +1,11 @@
 from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator, Union
+
 import httpx
 from loguru import logger
+
 from port_ocean.context.event import event
+from port_ocean.utils import http_async_client
 from utils import ObjectKind, RESOURCE_API_PATH_MAPPER
 
 PAGE_SIZE = 50
@@ -24,7 +27,8 @@ class FirehydrantClient:
         self.base_url = base_url
         self.api_key = api_key
         self.app_host = app_host
-        self.http_client = httpx.AsyncClient(headers=self.api_auth_header)
+        self.http_client = http_async_client
+        self.http_client.headers.update(self.api_auth_header)
 
     @property
     def api_auth_header(self) -> dict[str, Any]:

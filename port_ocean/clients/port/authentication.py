@@ -42,7 +42,7 @@ class PortAuthentication:
         self.integration_identifier = integration_identifier
         self.integration_type = integration_type
         self.integration_version = integration_version
-        self._last_token_object: TokenResponse | None = None
+        self.last_token_object: TokenResponse | None = None
 
     async def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
         logger.info(f"Fetching access token for clientId: {client_id}")
@@ -71,13 +71,13 @@ class PortAuthentication:
 
     @property
     async def token(self) -> str:
-        if not self._last_token_object or self._last_token_object.expired:
+        if not self.last_token_object or self.last_token_object.expired:
             msg = "Token expired, fetching new token"
-            if not self._last_token_object:
+            if not self.last_token_object:
                 msg = "No token found, fetching new token"
             logger.info(msg)
-            self._last_token_object = await self._get_token(
+            self.last_token_object = await self._get_token(
                 self.client_id, self.client_secret
             )
 
-        return self._last_token_object.full_token
+        return self.last_token_object.full_token

@@ -1,7 +1,9 @@
 from typing import Any, Optional, AsyncGenerator, cast
-
+import base64
 import httpx
 from loguru import logger
+
+from port_ocean.utils import http_async_client
 
 
 class Endpoints:
@@ -25,7 +27,9 @@ class SonarQubeClient:
         self.api_key = api_key
         self.organization_id = organization_id
         self.app_host = app_host
-        self.http_client = httpx.AsyncClient(**self.api_auth_params)
+        self.http_client = http_async_client
+        self.http_client.headers.update(self.api_auth_params["headers"])
+
         self.metrics = [
             "code_smells",
             "coverage",
@@ -44,9 +48,14 @@ class SonarQubeClient:
                     "Content-Type": "application/json",
                 }
             }
+
+        auth_message = f"{self.api_key}:"
+        auth_bytes = auth_message.encode("ascii")
+        b64_bytes = base64.b64encode(auth_bytes)
+        b64_message = b64_bytes.decode("ascii")
         return {
-            "auth": (self.api_key, ""),
             "headers": {
+                "Authorization": f"Basic {b64_message}",
                 "Content-Type": "application/json",
             },
         }

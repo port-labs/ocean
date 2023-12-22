@@ -1,7 +1,10 @@
+from enum import StrEnum
 from typing import Any, Optional
+
 import httpx
 from loguru import logger
-from enum import StrEnum
+
+from port_ocean.utils import http_async_client
 
 
 class ObjectKind(StrEnum):
@@ -15,7 +18,8 @@ class ArgocdClient:
         self.token = token
         self.api_url = f"{server_url}/api/v1"
         self.api_auth_header = {"Authorization": f"Bearer {self.token}"}
-        self.http_client = httpx.AsyncClient(headers=self.api_auth_header, verify=False)
+        self.http_client = http_async_client
+        self.http_client.headers.update(self.api_auth_header)
 
     async def _send_api_request(
         self,

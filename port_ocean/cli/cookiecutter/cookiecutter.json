@@ -5,6 +5,7 @@
     "full_name": "Your name",
     "email": "Your address email <you@example.com>",
     "release_date": "{% now 'local' %}",
+    "remove_docker_files": false,
     "_extensions": [
         "jinja2_time.TimeExtension",
         "extensions.VersionExtension"

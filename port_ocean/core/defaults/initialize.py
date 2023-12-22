@@ -8,12 +8,11 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import ocean
+from port_ocean.core.defaults.common import Defaults, get_port_integration_defaults
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
-
-from port_ocean.core.defaults.common import Defaults, get_port_integration_defaults
 
 
 def deconstruct_blueprints_to_creation_steps(
@@ -34,6 +33,7 @@ def deconstruct_blueprints_to_creation_steps(
 
         blueprint.pop("calculationProperties", {})
         blueprint.pop("mirrorProperties", {})
+        blueprint.pop("aggregationProperties", {})
         with_relations.append(blueprint.copy())
 
         blueprint.pop("teamInheritance", {})
@@ -111,7 +111,7 @@ async def _create_resources(
             )
         )
 
-        await port_client.initialize_integration(
+        await port_client.create_integration(
             integration_config.integration.type,
             integration_config.event_listener.to_request(),
             port_app_config=defaults.port_app_config,

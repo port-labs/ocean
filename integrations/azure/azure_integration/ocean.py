@@ -5,7 +5,11 @@ from cloudevents.pydantic import CloudEvent
 import fastapi
 from loguru import logger
 from starlette import responses
+
+from azure_integration.overrides import AzurePortAppConfig, AzureResourceConfig
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from azure.identity.aio import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
@@ -16,7 +20,6 @@ from azure_integration.utils import (
     ResourceKindsWithSpecialHandling,
     resource_client_context,
     get_integration_subscription_id,
-    get_port_resource_configuration_by_kind,
     resolve_resource_type_from_resource_uri,
     batch_resources_iterator,
     is_sub_resource,
@@ -196,8 +199,12 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
         )
         return fastapi.Response(status_code=http.HTTPStatus.NOT_FOUND)
 
-    resource_config = await get_port_resource_configuration_by_kind(resource_type)
-    if not resource_config:
+    matching_resource_configs: typing.List[AzureResourceConfig] = [
+        resource
+        for resource in typing.cast(AzurePortAppConfig, event.port_app_config).resources
+        if resource.kind == resource_type
+    ]
+    if not matching_resource_configs:
         logger.debug(
             "Resource type not found in port app config, update port app config to include the resource type",
             resource_type=resource_type,
@@ -205,25 +212,39 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
         return fastapi.Response(status_code=http.HTTPStatus.NOT_FOUND)
 
     async with resource_client_context() as client:
-        logger.debug(
-            "Querying full resource",
-            id=resource_uri,
-            kind=resource_type,
-            api_version=resource_config.selector.api_version,
-        )
-        try:
-            resource = await client.resources.get_by_id(
-                resource_id=resource_uri,
-                api_version=resource_config.selector.api_version,
-            )
-            await ocean.register_raw(resource_type, [resource.as_dict()])  # type: ignore
-        except ResourceNotFoundError:
-            logger.info(
-                "Resource not found in azure, skipping",
+        for resource_config in matching_resource_configs:
+            blueprint = resource_config.port.entity.mappings.blueprint.strip('"')
+            logger.debug(
+                "Querying full resource",
                 id=resource_uri,
                 kind=resource_type,
                 api_version=resource_config.selector.api_version,
+                blueprint=blueprint,
             )
+            try:
+                resource = await client.resources.get_by_id(
+                    resource_id=resource_uri,
+                    api_version=resource_config.selector.api_version,
+                )
+                await ocean.register_raw(resource_type, [dict(resource.as_dict())])
+            except ResourceNotFoundError:
+                logger.info(
+                    "Resource not found in azure, unregistering from port",
+                    id=resource_uri,
+                    kind=resource_type,
+                    api_version=resource_config.selector.api_version,
+                    blueprint=blueprint,
+                )
+                await ocean.unregister(
+                    [
+                        Entity(
+                            blueprint=resource_config.port.entity.mappings.blueprint.strip(
+                                '"'
+                            ),
+                            identifier=resource_uri,
+                        )
+                    ]
+                )
     return fastapi.Response(status_code=http.HTTPStatus.OK)
 
 

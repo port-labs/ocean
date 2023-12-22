@@ -9,7 +9,14 @@ from port_ocean.cli.utils import cli_root_path
 
 @cli_start.command()
 @click.argument("path", default=".", type=click.Path(exists=True))
-def new(path: str) -> None:
+@click.option(
+    "--remove-docker-files",
+    "remove_docker_files",
+    is_flag=True,
+    default=False,
+    help="Remove Docker files from the generated project. (Used for contributing to Ocean)",
+)
+def new(path: str, remove_docker_files: bool) -> None:
     """
     Scaffold a new integration in the given PATH.
 
@@ -24,6 +31,9 @@ def new(path: str) -> None:
     result = cookiecutter(
         f"{cli_root_path}/cookiecutter",
         output_dir=path,
+        extra_context={
+            "remove_docker_files": remove_docker_files,
+        },
     )
     name = result.split("/")[-1]
 

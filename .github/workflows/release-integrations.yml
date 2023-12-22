@@ -6,11 +6,57 @@ on:
   workflow_dispatch:
 
 jobs:
-  release-all:
+  prepare-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.prepare-matrix.outputs.INTEGRATIONS_MATRIX }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.DOCKER_MACHINE_USER }}
+          password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+      - name: Prepare matrix
+        id: prepare-matrix
+        run: |
+          integrations_to_release=()
+          # Get the list of integrations
+          files=$(find integrations/*/.port -name "spec.yaml")
+          for file in $files; do
+            # Get the type from ocean-spec.yaml
+            type=$(yq eval '.type' "$file")
+            folder=$(dirname "$file")
+
+            # Get the version from pyproject.toml
+            version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
+
+            # Check if the version exists in the ghcr.io registry
+            rc=0
+            docker manifest inspect ghcr.io/port-labs/port-ocean-$type:$version > /dev/null 2>&1 || rc=$?
+
+            if [ $rc -eq 0 ]; then
+              echo "Image already exists in $repository: port-ocean-$type:$version"
+            else
+              integrations_to_release+=($file)
+            fi
+          done
+          echo $(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')
+          echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
+
+
+  release-integration:
+    runs-on: ubuntu-latest
+    if: needs.prepare-matrix.outputs.matrix != '[]'
     permissions:
       packages: write
       contents: read
+    needs: [prepare-matrix]
+    strategy:
+      matrix:
+        integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -23,34 +69,38 @@ jobs:
       - name: Build and push Docker image
         run: |
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
+          current_integration_spec=${{ matrix.integration }}
 
-          files=$(find integrations/*/.port -name "spec.yaml")
-          for file in $files; do
-            # Get the type from ocean-spec.yaml
-            type=$(yq eval '.type' "$file")
-            folder=$(dirname "$file")
+          type=$(yq eval '.type' "$current_integration_spec")
+          folder=$(dirname "$current_integration_spec")
 
-            # Get the version from pyproject.toml
-            version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
+          version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
 
-            # Check if the version exists in the ghcr.io registry
-            MANIFEST=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${GHCR_TOKEN}" "https://ghcr.io/v2/port-labs/port-ocean-$type/manifests/$version")
+          dockerfile_path=integrations/_infra/Dockerfile
+          if test -e $folder/../Dockerfile; then
+            dockerfile_path=$folder/../Dockerfile
+          fi
+          # Check if the 'version' variable contains any character other than digits and "."
 
-            if [ "$MANIFEST" = "200" ]; then
-              echo "Image already exists in $repository: port-ocean-$type:$version"
-            else
-              # Check if the 'version' variable contains any character other than digits and "."
-              if [[ ! "$version" =~ ^[0-9.]+$ ]]; then
-                # If 'version' contains non-numeric and non-dot characters, skip building 'latest' tag
-                echo "Version contains non-numeric characters. Building without 'latest' tag."
-                docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" "$folder/.."
-              else
-                # If 'version' contains only digits and dots, build with both 'latest' and version tags
-                docker build -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" "$folder/.."
-              fi
-              docker push "ghcr.io/port-labs/port-ocean-$type" --all-tags
-            fi
-          done
+          if [[ ! "$version" =~ ^[0-9.]+$ ]]; then
+            # If 'version' contains non-numeric and non-dot characters, skip building 'latest' tag
+            echo "Version contains non-numeric characters. Building without 'latest' tag."
+            docker buildx build -f $dockerfile_path -t "ghcr.io/port-labs/port-ocean-$type:$version" --build-arg="BUILD_CONTEXT=$folder/.." .
+          else
+            # If 'version' contains only digits and dots, build with both 'latest' and version tags
+            docker buildx build -f $dockerfile_path -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" --build-arg="BUILD_CONTEXT=$folder/.." .
+          fi
+          docker push "ghcr.io/port-labs/port-ocean-$type" --all-tags
+
+  upload-specs:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    needs: release-integration
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
       - name: Configure AWS Credentials 🔒
         id: aws-credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -74,13 +124,13 @@ jobs:
 
           # Concatenate the YAML files into a temporary file
           while IFS= read -r file; do
-              # Extract the version from pyproject.toml
-              integration_dir=$(dirname "$file")
-              version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+          # Extract the version from pyproject.toml
+          integration_dir=$(dirname "$file")
+          version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-              echo "- " >> "$temp_file"
-              sed 's/^/  /' "$file" >> "$temp_file"
-              echo "  version: $version" >> "$temp_file"
+          echo "- " >> "$temp_file"
+          sed 's/^/  /' "$file" >> "$temp_file"
+          echo "  version: $version" >> "$temp_file"
           done < file_list.txt
 
           yq -j . < "$temp_file" > "$output_file"

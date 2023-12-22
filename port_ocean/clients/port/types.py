@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TypedDict, NotRequired
+from typing import TypedDict
 
 
 class UserAgentType(Enum):
@@ -18,11 +18,9 @@ KafkaCreds = TypedDict(
 RequestOptions = TypedDict(
     "RequestOptions",
     {
-        "merge": NotRequired[bool],
-        "create_missing_related_entities": NotRequired[bool],
-        "delete_dependent_entities": NotRequired[bool],
-        "validation_only": NotRequired[bool],
-        "upsert": NotRequired[bool],
-        "user_agent": NotRequired[str],
+        "merge": bool,
+        "create_missing_related_entities": bool,
+        "delete_dependent_entities": bool,
+        "validation_only": bool,
     },
 )

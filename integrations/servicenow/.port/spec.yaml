@@ -1,0 +1,22 @@
+type: servicenow
+description: Servicenow integration for Port Ocean
+icon: Servicenow  # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Incident Management  # Should be one of the available sections in Port
+    resources:
+      - kind: sys_user_group
+      - kind: sc_catalog
+      - kind: incident
+configurations:
+  - name: servicenowUrl
+    required: true
+    type: url
+  - name: servicenowUsername
+    required: true
+    type: string
+    sensitive: false
+  - name: servicenowPassword
+    required: true
+    type: string
+    sensitive: true

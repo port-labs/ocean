@@ -7,6 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.20 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.11 (#1)
+
+
+0.1.19 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.10 (#1)
+
+
+v0.1.18 (2023-12-20)
+
+### Improvements
+
+- Updated authentication method to use built-in basic auth function
+- Added warning message when 0 issues or projects are queried from the Jira API
+
+
+0.1.17 (2023-12-18)
+
+### Improvements
+
+- Updated the Jira issue blueprint by adding entity properties including created datetime, updated datetime and priority (#17)
+
+
+0.1.16 (2023-12-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.8 (#1)
+
+
+0.1.15 (2023-12-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.7 (#1)
+
+
+0.1.14 (2023-12-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.6 (#1)
+
+
+0.1.13 (2023-11-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.5 (#1)
+- Changed http client default timeout to 30 seconds
+
+
+0.1.12 (2023-11-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.4 (#1)
+- Changed the httpx client to be the ocean's client for better connection error handling and request retries
+
+
+0.1.11 (2023-11-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.3 (#1)
+
+
 0.1.10 (2023-11-08)
 
 ### Improvements

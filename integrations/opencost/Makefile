@@ -3,8 +3,7 @@ ACTIVATE := . .venv/bin/activate
 define run_checks
 	exit_code=0; \
 	cd $1; \
-	poetry check || exit_code=$$?;\
-  	poetry lock --check || exit_code=$$?;\
+  	poetry check || exit_code=$$?;\
 	mypy . || exit_code=$$?; \
 	ruff . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
