@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.11 (2023-12-22)
+
+
+### Bug Fixes
+
+- Fixed `ocean new` scaffolding error `'collections.OrderedDict object' has no attribute 'public_integration'` (PORT-5728)
+
+
 ## 0.4.10 (2023-12-21)
 
 
