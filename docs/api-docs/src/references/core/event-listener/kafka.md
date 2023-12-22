@@ -1,1 +1,0 @@
-::: core.event_listener.kafka
