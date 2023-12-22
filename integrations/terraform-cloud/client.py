@@ -125,14 +125,22 @@ class TerraformClient:
         return await self.get_paginated_resources(endpoint)
 
 
-    async def get_paginated_state_versions(self, workspace_name: str, organization_name: str) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info(f"Fetching state versions for workspace {workspace_name}")
-        filter_params = {
-            "filter[workspace][name]": workspace_name,
-            "filter[organization][name]": organization_name,
-        }
-        async for state_versions in self.get_paginated_resources("state-versions", filter_params):
-            yield state_versions
+    async def get_paginated_state_versions(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+
+        async for workspaces in self.get_paginated_workspaces():
+            for workspace in workspaces:
+
+                workspace_name = workspace["attributes"]["name"]
+                organization_name = workspace["relationships"]["organization"]["data"]["id"]
+
+                logger.info(f"Fetching state versions for workspace {workspace_name}")
+                filter_params = {
+                    "filter[workspace][name]": workspace_name,
+                    "filter[organization][name]": organization_name,
+                }
+
+                return self.get_paginated_resources("state-versions", filter_params):
+
 
 
     async def create_workspace_webhook(self, app_host: str) -> None:
