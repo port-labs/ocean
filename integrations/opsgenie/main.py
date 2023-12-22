@@ -22,14 +22,12 @@ async def enrich_services_with_team_data(
     service: dict[str, Any],
 ) -> dict[str, Any]:
     async with semaphore:
-        team_data, schedule, related_incidents = await asyncio.gather(
+        team_data, schedule = await asyncio.gather(
             opsgenie_client.get_oncall_team(service["teamId"]),
             opsgenie_client.get_schedule_by_team(service["teamId"]),
-            opsgenie_client.get_incidents_by_service(service["id"]),
         )
 
         service["__team"] = team_data
-        service["__incidents"] = related_incidents
         if schedule:
             service["__oncalls"] = await opsgenie_client.get_oncall_user(schedule["id"])
         return service

@@ -33,6 +33,7 @@ def deconstruct_blueprints_to_creation_steps(
 
         blueprint.pop("calculationProperties", {})
         blueprint.pop("mirrorProperties", {})
+        blueprint.pop("aggregationProperties", {})
         with_relations.append(blueprint.copy())
 
         blueprint.pop("teamInheritance", {})
@@ -69,7 +70,7 @@ async def _create_resources(
     created_blueprints = [
         result["identifier"]
         for result in create_results
-        if not isinstance(result, Exception)
+        if not isinstance(result, BaseException)
     ]
 
     if errors:
