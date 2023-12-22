@@ -27,15 +27,14 @@ class BlueprintClientMixin:
         self,
         raw_blueprint: dict[str, Any],
         user_agent_type: UserAgentType | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         logger.info(f"Creating blueprint with id: {raw_blueprint.get('identifier')}")
         headers = await self.auth.headers(user_agent_type)
         response = await self.client.post(
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
         handle_status_code(response)
-        if response.is_success:
-            return response.json()["blueprint"]
+        return response.json()["blueprint"]
 
     async def patch_blueprint(
         self,
