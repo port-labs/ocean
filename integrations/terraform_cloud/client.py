@@ -178,7 +178,7 @@ class TerraformClient:
                             }
                         }
                         await self.send_api_request(
-                            endpoint=notification_config_url, json_data=webhook_body
+                            endpoint=notification_config_url, json_data=webhook_body,method='POST'
                         )
                         logger.info(
                             f"Webhook created for Terraform workspace {workspace['id']}"
