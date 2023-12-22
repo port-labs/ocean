@@ -70,7 +70,7 @@ async def _create_resources(
     created_blueprints = [
         result["identifier"]
         for result in create_results
-        if not isinstance(result, Exception)
+        if not isinstance(result, BaseException)
     ]
 
     if errors:
