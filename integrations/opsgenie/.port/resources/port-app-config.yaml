@@ -17,7 +17,6 @@ resources:
             oncallTeam: .__team.name
             teamMembers: '[.__team.members[].user.username]'
             oncallUsers: .__oncalls.onCallRecipients
-            numOpenIncidents: '[ .__incidents[] | select(.status == "open")] | length'
   - kind: alert
     selector:
       query: 'true'

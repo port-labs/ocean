@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -17,7 +17,7 @@ class PortResourceConfig(BaseModel):
     class MappingsConfig(BaseModel):
         mappings: EntityMapping
 
-    entity: Optional[MappingsConfig]
+    entity: MappingsConfig
 
 
 class Selector(BaseModel):
