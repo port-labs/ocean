@@ -139,7 +139,7 @@ class TerraformClient:
                     "filter[organization][name]": organization_name,
                 }
 
-                return self.get_paginated_resources("state-versions", filter_params):
+                return self.get_paginated_resources("state-versions", filter_params)
 
 
 
