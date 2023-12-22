@@ -61,17 +61,6 @@ async def resync_workspaces(kind: str) -> list[dict[Any, Any]]:
         yield workspace
 
 
-# @ocean.on_resync(ObjectKind.RUN)
-# async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-#     terraform_client = init_terraform_client()
-
-#     async for workspaces in terraform_client.get_paginated_workspaces():
-#         logger.info(f"Received {len(workspaces)} batch runs")
-#         for workspace in workspaces:
-#             async for runs in terraform_client.get_paginated_runs_for_workspace(workspace['id']):
-#                 yield runs
-
-
 @ocean.on_resync(ObjectKind.RUN)
 async def resync_runs(kind:str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
