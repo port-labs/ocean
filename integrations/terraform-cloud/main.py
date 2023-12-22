@@ -3,7 +3,7 @@ from typing import Any
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
 from loguru import logger
-from asyncio import gather
+import asyncio
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
@@ -20,8 +20,8 @@ def init_terraform_client() -> TerraformClient:
     config = ocean.integration_config
     
     terraform_client = TerraformClient(
-                    config["terraform_host"],
-                    config["terraform_token"],
+                    config["terraform_cloud_host"],
+                    config["terraform_cloud_token"],
                     )
 
     return terraform_client
@@ -38,12 +38,12 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     workspace_id = data['workspace_id']
     logger.info(f"Processing Terraform run event for workspace: {workspace_id}")
 
-    run, workspace = await gather(
+    run, workspace = await asyncio.gather(
         terraform_client.get_single_run(run_id),
         terraform_client.get_single_workspace(workspace_id)
     )
 
-    await gather(
+    await asyncio.gather(
         ocean.register_raw(ObjectKind.RUN, [run]),
         ocean.register_raw(ObjectKind.WORKSPACE, [workspace])
     )
@@ -61,23 +61,69 @@ async def resync_workspaces(kind: str) -> list[dict[Any, Any]]:
         yield workspace
 
 
-@ocean.on_resync(ObjectKind.RUN)
-async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    terraform_client = init_terraform_client()
+# @ocean.on_resync(ObjectKind.RUN)
+# async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+#     terraform_client = init_terraform_client()
 
+#     async for workspaces in terraform_client.get_paginated_workspaces():
+#         logger.info(f"Received {len(workspaces)} batch runs")
+#         for workspace in workspaces:
+#             async for runs in terraform_client.get_paginated_runs_for_workspace(workspace['id']):
+#                 yield runs
+
+
+@ocean.on_resync(ObjectKind.RUN)
+async def resync_runs(kind:str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+    
     async for workspaces in terraform_client.get_paginated_workspaces():
         logger.info(f"Received {len(workspaces)} batch runs")
-        for workspace in workspaces:
-            async for runs in terraform_client.get_paginated_runs_for_workspace(workspace['id']):
-                yield runs
+
+        async with asyncio.BoundedSemaphore(5):
+            tasks = [
+                terraform_client.get_paginated_runs_for_workspace(workspace['id'])
+                for workspace in workspaces
+            ]
+
+        output_batches = await asyncio.gather(*tasks)
+        yield output_batches
+
+        
+
+## Enriches the state version with output
+async def enrich_state_versions_with_output_data(
+    http_client: TerraformClient, state_versions: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    async with asyncio.BoundedSemaphore(5):
+
+        tasks = [
+            http_client.get_state_version_output(state_version["id"])
+            for state_version in state_versions]
+
+        output_batches = await asyncio.gather(*tasks)
+        
+        enriched_state_versions = [
+            {**state_version, "__output": output}
+            for state_version, output in zip(state_versions, output_batches)
+        ]
+
+        return enriched_state_versions
 
 
 @ocean.on_resync(ObjectKind.STATE_VERSION)
-async def resync_runs(kind:str)->ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
 
-    async for state_versions in terraform_client.get_state_version_for_workspace():
-            yield state_versions
+    async for state_versions_batch in terraform_client.get_paginated_state_version():
+        logger.info(f"Received batch with {len(state_versions_batch)} {kind}")
+
+        # Enrich state versions with output data in parallel
+        enriched_state_versions_batch = await enrich_state_versions_with_output_data(
+            terraform_client, state_versions_batch
+        )
+
+        yield enriched_state_versions_batch
+
 
 
 @ocean.on_start()
@@ -96,4 +142,4 @@ async def on_start()-> None:
         return
 
     terraform_client = init_terraform_client()
-    await terraform_client.create_workspace_webhook(app_host=ocean.integration_config.get("app_host"))
+    await terraform_client.create_workspace_webhook(app_host=ocean.integration_config["app_host"])

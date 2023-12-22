@@ -1,14 +1,32 @@
+# initializePortResources: true
+# port:
+#   orgId: '{{ from env PORT_ORG_ID }}'
+#   clientId: '{{ from env PORT_CLIENT_ID }}'
+#   clientSecret: '{{ from env PORT_CLIENT_SECRET }}'
+# eventListener:
+#   type: POLLING
+# integration:
+#   identifier: my-terraform-cloud-integration
+#   type: terraform-cloud
+#   config:
+#     terraformCloudHost: '{{ from env TERRAFORM_CLOUD_HOST }}'
+#     terraformCloudToken: '{{ from env TERRAFORM_CLOUD_TOKEN }}'
+#     appHost: '{{ from env APP_HOST }}'
+
+
 initializePortResources: true
 port:
-  orgId: '{{ from env PORT_ORG_ID }}'
-  clientId: '{{ from env PORT_CLIENT_ID }}'
-  clientSecret: '{{ from env PORT_CLIENT_SECRET }}'
+  # The event listener to use for the integration service.
+  orgId: "org_X7mr3YufDQf6gJKw" #"{{ from env PORT_ORG_ID }}"
+  clientId: "9BSlAex5gW8JRt6OwB93f7W5fxtiduCF" #"{{ from env PORT_CLIENT_ID }}"
+  clientSecret: "ZEPtwlXHZ1fgRJdDi89NCiaJkpyseY7C3lx5IehjtwN3lbcmN377K9AhCTLut6fD" #"{{ from env PORT_CLIENT_SECRET }}"
 eventListener:
   type: POLLING
 integration:
-  identifier: my-terraform-cloud-integration
-  type: terraform-cloud
+  # The identifier of this integration instance.
+  identifier: "terraform"
+  # The type of the integration.
+  type: "terraform"
   config:
-    terraformHost: '{{ from env TERRAFORM_HOST }}'
-    terraformToken: '{{ from env TERRAFORM_TOKEN }}'
-    appHost: '{{ from env APP_HOST }}'
+    terraformCloudHost: "https://app.terraform.io" #"{{ from env TERRAFORM_HOST }}"
+    terraformCloudToken: "GM7G9YPjNhsvBA.atlasv1.9L9s5MVlQqbSDypd2WLW6AYUdDVIQQcCNhfxR4MxuqPzbHTzWsLylTLxJn2YHGfExi0" #"{{ from env TERRAFORM_TOKEN }}"

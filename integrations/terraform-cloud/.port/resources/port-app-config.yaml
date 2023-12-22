@@ -9,7 +9,7 @@ resources:
         mappings:
           identifier: .id
           title: .attributes.name
-          blueprint: '"terraformWorkspace"'
+          blueprint: '"terraformCloudWorkspace"'
           properties:
             organization: .relationships.organization.data.id
             createdAt: .attributes."created-at"
@@ -30,7 +30,7 @@ resources:
         mappings:
           identifier: .id
           title: .attributes.message
-          blueprint: '"terraformRun"'
+          blueprint: '"terraformCloudRun"'
           properties:
             createdAt: .attributes."created-at"
             status: .attributes.status
@@ -64,6 +64,6 @@ resources:
             hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
             description: .attributes.description
             vcsCommitUrl: .attributes."vcs-commit-url"
-            outputData: .relationships.output.data
+            outputs: .__outputs.data
           relations:
             terraformCloudWorkspace: .relationships.workspace.data.id

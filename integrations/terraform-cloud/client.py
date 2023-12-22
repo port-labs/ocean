@@ -56,13 +56,6 @@ class TerraformClient:
 
     async def get_paginated_workspaces(self) -> List[Dict[str, any]]:
 
-        cache_key = CacheKeys.WORKSPACES
-
-        if cache := event.attributes.get(cache_key):
-            logger.info("Fetching paginated workspaces from cache")
-            yield cache
-            return
-
         all_workspaces = []
 
         try:        
@@ -88,8 +81,6 @@ class TerraformClient:
 
                     page += 1
                     all_workspaces.extend(workspaces)
-            
-            event.attributes[cache_key] = all_workspaces
 
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error with status code : {e.response.status_code} and response text: {e.response.text}")
@@ -221,7 +212,7 @@ class TerraformClient:
 
 
 
-    async def get_organizations(self)-> List[Dict[str, Any], None]:
+    async def get_organizations(self)-> List[Dict[str, Any]]:
         
         try:
             logger.info("Getting organizations from terraform")
