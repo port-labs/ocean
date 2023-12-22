@@ -1,4 +1,4 @@
-type: terraform-cloud
+type: terraform_cloud
 description: terraform cloud integration for Port Ocean
 icon: Terraform 
 features:
@@ -9,11 +9,11 @@ features:
       - kind: run
       - kind: state-version
 configurations:
-  - name: terraformCloudHost
+  - name: terraformHost
     required: true
     type: url
     default: https://app.terraform.io
-  - name: terraformCloudToken
+  - name: terraformToken
     type: string
     required: true
     sensitive: true

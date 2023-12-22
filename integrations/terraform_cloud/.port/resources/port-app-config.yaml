@@ -19,9 +19,8 @@ resources:
             executionMode: .attributes."execution-mode"
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
-          relationship:
-            terraformCloudStateVersion: .relationships."current-state-version.data.id"
-
+          relations:
+            currentStateVersion: .relationships."current-state-version".data.id
   - kind: run
     selector:
       query: "true"
@@ -42,8 +41,7 @@ resources:
             plannedAt: .attributes."status-timestamps"."planned-at"
             source: .attributes.source
           relations:
-            terraformWorkspace: .relationships.workspace.data.id
-
+            terraformCloudWorkspace: .relationships.workspace.data.id
   - kind: state-version
     selector:
       query: "true"
@@ -57,13 +55,9 @@ resources:
             createdAt: .attributes."created-at"
             serial: .attributes.serial
             status: .attributes.status
-            resourcesAdded: .attributes."resources-added"
-            resourcesChanged: .attributes."resources-changed"
-            resourcesDestroyed: .attributes."resources-destroyed"
+            size: .attributes.size
+            isResourcesProcessed: .attributes."resources-processed"
             hostedStateDownloadUrl: .attributes."hosted-state-download-url"
             hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
-            description: .attributes.description
             vcsCommitUrl: .attributes."vcs-commit-url"
-            outputs: .__outputs.data
-          relations:
-            terraformCloudWorkspace: .relationships.workspace.data.id
+            outputData: .__output
