@@ -5,13 +5,11 @@ import httpx
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.port_app_config.models import PortAppConfig
-
-
 from port_ocean.core.defaults.common import (
     get_port_integration_defaults,
     is_integration_exists,
 )
+from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
 def clean_defaults(
@@ -40,7 +38,7 @@ async def _clean_defaults(
         return None
 
     try:
-        migration_ids = await asyncio.gather(
+        delete_result = await asyncio.gather(
             *(
                 port_client.delete_blueprint(
                     blueprint["identifier"], should_raise=True, delete_entities=force
@@ -55,7 +53,7 @@ async def _clean_defaults(
             )
             return None
 
-        migration_ids = [migration_id for migration_id in migration_ids if migration_id]
+        migration_ids = [migration_id for migration_id in delete_result if migration_id]
 
         if migration_ids and len(migration_ids) > 0 and not wait:
             logger.info(
