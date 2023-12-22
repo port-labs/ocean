@@ -1,14 +1,13 @@
 initializePortResources: true
 port:
-  orgId: '{{ from env PORT_ORG_ID }}'
   clientId: '{{ from env PORT_CLIENT_ID }}'
   clientSecret: '{{ from env PORT_CLIENT_SECRET }}'
 eventListener:
   type: POLLING
 integration:
   identifier: my-terraform-cloud-integration
-  type: terraform-cloud
+  type: terraform_cloud
   config:
-    terraformCloudHost: '{{ from env TERRAFORM_CLOUD_HOST }}'
-    terraformCloudToken: '{{ from env TERRAFORM_CLOUD_TOKEN }}'
+    terraformHost: '{{ from env TERRAFORM_HOST }}'
+    terraformToken: '{{ from env TERRAFORM_TOKEN }}'
     appHost: '{{ from env APP_HOST }}'
