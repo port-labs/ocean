@@ -79,12 +79,12 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
             tasks = [fetch_runs_for_workspace(workspace) for workspace in workspaces]
             for completed_task in asyncio.as_completed(tasks):
-                runs = await completed_task
-                for run in runs:
-                    yield run
+                workspace_runs = await completed_task
+                for runs in workspace_runs:
+                    yield runs
 
-    async for runs in fetch_runs_for_all_workspaces():
-        yield runs
+    async for run_batch in fetch_runs_for_all_workspaces():
+        yield run_batch
 
 
 @ocean.on_resync(ObjectKind.STATE_VERSION)
