@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "project",
+    "identifier": "jiraProject",
     "title": "Jira Project",
     "icon": "Jira",
     "description": "A Jira project",
@@ -17,7 +17,7 @@
     "calculationProperties": {}
   },
   {
-    "identifier": "issue",
+    "identifier": "jiraIssue",
     "title": "Jira Issue",
     "icon": "Jira",
     "schema": {
