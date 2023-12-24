@@ -12,6 +12,7 @@ v0.1.21 (2023-12-24)
 ### Improvements
 
 - Updated default blueprints and config mapping to include integration name as blueprint identifier prefix
+- Bumped ocean version to ^0.4.12 (#1)
 
 
 0.1.20 (2023-12-21)

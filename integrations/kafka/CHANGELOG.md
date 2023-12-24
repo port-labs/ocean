@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Updated default blueprints and config mapping to include integration name as blueprint identifier prefix
+- Bumped ocean version to ^0.4.12 (#1)
 
 
 # Port_Ocean 0.1.12 (2023-12-21)
