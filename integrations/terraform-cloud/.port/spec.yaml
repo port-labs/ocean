@@ -9,11 +9,11 @@ features:
       - kind: run
       - kind: state-version
 configurations:
-  - name: terraformHost
+  - name: terraformCloudHost
     required: true
     type: url
     default: https://app.terraform.io
-  - name: terraformToken
+  - name: terraformCloudToken
     type: string
     required: true
     sensitive: true

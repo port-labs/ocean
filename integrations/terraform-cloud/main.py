@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any
+from typing import Any,List,Dict
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
 from loguru import logger
@@ -21,8 +21,8 @@ def init_terraform_client() -> TerraformClient:
     config = ocean.integration_config
 
     terraform_client = TerraformClient(
-        config["terraform_host"],
-        config["terraform_token"],
+        config["terraform_cloud_host"],
+        config["terraform_cloud_token"],
     )
 
     return terraform_client
@@ -30,7 +30,7 @@ def init_terraform_client() -> TerraformClient:
 
 ## Enriches the state version with output
 async def enrich_state_versions_with_output_data(
-    http_client: TerraformClient, state_versions: list[dict[str, Any]]
+    http_client: TerraformClient, state_versions: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     async with asyncio.BoundedSemaphore(30):
         tasks = [
@@ -63,7 +63,7 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
 
-    async def fetch_runs_for_workspace(workspace: dict[str, Any]) -> list[Any]:
+    async def fetch_runs_for_workspace(workspace: dict[str, Any]) -> List[Dict[str, Any]]:
         return [
             run
             async for run in terraform_client.get_paginated_runs_for_workspace(
