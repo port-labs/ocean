@@ -14,7 +14,7 @@ These configurations are passed to the client using environment varaibles.
 
 ## Proxy configuration
 
-### `HTTP_PROXY`,`HTTPS_PROXY` & `ALL_PROXY`
+### `HTTP_PROXY`, `HTTPS_PROXY` & `ALL_PROXY`
 `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` are environment variables used to specify a proxy server for handling HTTP, HTTPS, or all types of requests, respectively. The values assigned to these settings should be the URL of the proxy server.
 
 For example:
