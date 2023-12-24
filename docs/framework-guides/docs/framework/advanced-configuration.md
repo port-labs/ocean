@@ -33,6 +33,8 @@ For example:
 NO_PROXY=http://127.0.0.1,google.com
 ```
 
+For more information take a look at the HTTPX [proxy configuration documentation](https://www.python-httpx.org/environment_variables/#proxies).
+
 ## SSL Environment Configuration
 
 `SSLKEYLOGFILE`, `SSL_CERT_DIR`, and `SSL_CERT_FILE` are environment variables that control various aspects of SSL (Secure Sockets Layer) communication.
@@ -62,3 +64,5 @@ SSL_CERT_FILE=/path/to/cacert.pem
 ```
 
 These variables provide fine-grained control over SSL/TLS configurations in environments where default settings are not sufficient or need customization for specific requirements.
+
+For more information take a look at the HTTPX [SSL configuration documentation](https://www.python-httpx.org/environment_variables/#sslkeylogfile).
