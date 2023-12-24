@@ -1,11 +1,13 @@
+import asyncio
+from asyncio import gather
 from enum import StrEnum
-from typing import Any,List,Dict
+from typing import Any, List, Dict
+
+from loguru import logger
+
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
-from loguru import logger
-from asyncio import gather
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-import asyncio
 
 
 class ObjectKind(StrEnum):
@@ -63,7 +65,9 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
 
-    async def fetch_runs_for_workspace(workspace: dict[str, Any]) -> List[Dict[str, Any]]:
+    async def fetch_runs_for_workspace(
+        workspace: dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         return [
             run
             async for run in terraform_client.get_paginated_runs_for_workspace(
