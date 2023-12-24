@@ -9,7 +9,7 @@ resources:
         mappings:
           identifier: .path_with_namespace | gsub(" "; "")
           title: .name
-          blueprint: '"repository"'
+          blueprint: '"gitlabRepository"'
           properties:
             url: .web_url
             readme: file://README.md
@@ -26,7 +26,7 @@ resources:
         mappings:
           identifier: .id | tostring
           title: .title
-          blueprint: '"mergeRequest"'
+          blueprint: '"gitlabMergeRequest"'
           properties:
             creator: .author.name
             status: .state
@@ -44,7 +44,7 @@ resources:
         mappings:
           identifier: .id | tostring
           title: .title
-          blueprint: '"issue"'
+          blueprint: '"gitlabIssue"'
           properties:
             creator: .author.name
             status: .state

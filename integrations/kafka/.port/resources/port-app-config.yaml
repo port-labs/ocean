@@ -7,7 +7,7 @@ resources:
         mappings:
           identifier: .name
           title: .name
-          blueprint: '"cluster"'
+          blueprint: '"kafkaCluster"'
           properties:
             controllerId: .controller_id
   - kind: broker
@@ -18,7 +18,7 @@ resources:
         mappings:
           identifier: .cluster_name + "_" + (.id | tostring)
           title: .cluster_name + " " + (.id | tostring)
-          blueprint: '"broker"'
+          blueprint: '"kafkaBroker"'
           properties:
             address: .address
             region: .config."broker.rack"
@@ -34,7 +34,7 @@ resources:
         mappings:
           identifier: .cluster_name + "_" + .name
           title: .cluster_name + " " + .name
-          blueprint: '"topic"'
+          blueprint: '"kafkaTopic"'
           properties:
             replicas: .partitions[0].replicas | length
             partitions: .partitions | length

@@ -10,7 +10,7 @@ resources:
           # lowercase only the resourceGroups namespace so other azure resources will be able to relate to it
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"resourceGroup"'
+          blueprint: '"azureResourceGroup"'
           properties:
             location: .location
             # the provisioning state property is returned in lower case when using the SDK and in camelCase when using the REST API
@@ -28,7 +28,7 @@ resources:
           # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"containerApp"'
+          blueprint: '"azureContainerApp"'
           properties:
             location: .location
             provisioningState: .properties.provisioningState
@@ -50,7 +50,7 @@ resources:
           # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"aks"'
+          blueprint: '"azureAks"'
           properties:
             location: .location
             provisioningState: .properties.provisioningState
@@ -86,7 +86,7 @@ resources:
           # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"loadBalancer"'
+          blueprint: '"azureLoadBalancer"'
           properties:
             location: .location
             provisioningState: .properties.provisioningState
@@ -111,7 +111,7 @@ resources:
           # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"storageAccount"'
+          blueprint: '"azureStorageAccount"'
           properties:
             location: .location
             provisioningState: .properties.provisioningState
@@ -139,7 +139,7 @@ resources:
         mappings:
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"storageContainer"'
+          blueprint: '"azureStorageContainer"'
           properties:
             publicAccess: .properties.publicAccess
             hasImmutabilityPolicy: .properties.hasImmutabilityPolicy
@@ -166,7 +166,7 @@ resources:
           # lowercase only the resourceGroups namespace and name to align how azure API returns the resource group reference
           identifier: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | join("/")'
           title: .name
-          blueprint: '"virtualMachine"'
+          blueprint: '"azureVirtualMachine"'
           properties:
             location: .location
             provisioningState: .properties.provisioningState
