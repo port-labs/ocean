@@ -1,6 +1,6 @@
 type: terraform-cloud
 description: terraform cloud integration for Port Ocean
-icon: Terraform 
+icon: Terraform
 features:
   - type: exporter
     section: IaC
