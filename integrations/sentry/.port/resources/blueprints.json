@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "project",
+    "identifier": "sentryProject",
     "title": "project",
     "icon": "Sentry",
     "schema": {
@@ -37,7 +37,7 @@
     "relations": {}
   },
   {
-    "identifier": "issue",
+    "identifier": "sentryIssue",
     "title": "issue",
     "icon": "Sentry",
     "schema": {
