@@ -69,10 +69,10 @@ The Ocean framework supports [advanced configuration](../framework/advanced-conf
 1. Using Helm's `--set` flag:
 ```sh showLineNumbers
 helm upgrade --install <MY_INSTALLATION_NAME> port-labs/port-ocean \
-	# Standard installation flags
-	# ...
-	--set extraEnv[0].name=HTTP_PROXY \
-	--set extraEnv[0].value=http://my-proxy.com:1111
+  # Standard installation flags
+  # ...
+  --set extraEnv[0].name=HTTP_PROXY \
+  --set extraEnv[0].value=http://my-proxy.com:1111
 ```
 
 2. The Helm `values.yaml` file:
@@ -80,6 +80,6 @@ helm upgrade --install <MY_INSTALLATION_NAME> port-labs/port-ocean \
 # The rest of the configuration
 # ...
 extraEnvs:
-	- name: HTTP_PROXY
-	  value: http://my-proxy.com:1111
+  - name: HTTP_PROXY
+    value: http://my-proxy.com:1111
 ```
