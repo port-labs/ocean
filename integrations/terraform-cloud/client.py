@@ -2,6 +2,8 @@ import httpx
 from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from port_ocean.context.event import event
+from urllib.parse import urlparse, parse_qs, urlunparse, urlencode
+
 
 TERRAFORM_WEBHOOK_EVENTS = [
     "run:applying",
@@ -31,10 +33,11 @@ class TerraformClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
+        
         logger.info(f"Requesting Terraform Cloud data for endpoint: {endpoint}")
         try:
             url = f"{self.api_url}/{endpoint}"
-            logger.debug(f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}")
+            logger.info(f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}")
             response = await self.client.request(
                 method=method,
                 url=url,
@@ -44,7 +47,6 @@ class TerraformClient:
             response.raise_for_status()
 
             logger.info(f"Successfully retrieved data for endpoint: {endpoint}")
-            logger.debug(f"Response: {response.json()}")
 
             return response.json()
 
@@ -66,13 +68,22 @@ class TerraformClient:
             response = await self.send_api_request(endpoint=next_url, query_params=params)
             resources = response.get("data", [])
 
-            logger.info(f"Fetched {len(resources)} resources from {next_url}")
+            pagination_meta = response.get("meta", {}).get("pagination", {} )
+
+            current_page = pagination_meta.get("current-page", "Unknown")
+            total_pages = pagination_meta.get("total-pages", "Unknown")
+            total_count = pagination_meta.get("total-count", "Unknown")
+
+            logger.info(f"Fetched {total_count} resources from {next_url} - Page {current_page} of {total_pages}... ")
             yield resources
 
-            next_url = response.get("links", {}).get("next", "")
+            next_url = response.get("links", {}).get("next", '')
             if not next_url:
-                logger.debug(f"No more pages to fetch for {endpoint}")
+                logger.info(f"No more pages to fetch for {endpoint}")
                 break
+
+            next_url = next_url.replace(self.api_url+'/','')
+            params = None
 
     async def get_paginated_organizations(self) -> list[dict[str, Any]]:
         logger.info("Fetching organizations")
@@ -104,15 +115,20 @@ class TerraformClient:
             return
 
         all_workspaces = []
+        logger.info("Starting to fetch workspaces across all organizations")
         async for organizations in self.get_paginated_organizations():
             for organization in organizations:
                 organization_id = organization['id']
+                logger.info(f"Fetching workspaces for organization ID: {organization_id}")
                 endpoint = f"organizations/{organization_id}/workspaces"
                 async for workspaces in self.get_paginated_resources(endpoint):
+                    num_workspaces = len(workspaces)
+                    logger.info(f"Retrieved {num_workspaces} workspaces for organization ID: {organization_id}")
                     all_workspaces.extend(workspaces)
                     yield workspaces
 
         event.attributes[cache_key] = workspaces
+        logger.info(f"Total workspaces retrieved across all organizations: {len(all_workspaces)}")
 
 
     async def get_paginated_runs_for_workspace(
@@ -124,7 +140,6 @@ class TerraformClient:
 
         async for runs in self.get_paginated_resources(endpoint):
             yield runs
-
 
     async def get_paginated_state_versions(self) -> AsyncGenerator[list[dict[str, Any]], None]:
 
@@ -153,6 +168,8 @@ class TerraformClient:
                 endpoint = f"workspaces/{workspace_id}/notification-configurations"
                 notifications_response = await self.send_api_request(endpoint=endpoint)
                 existing_configs = notifications_response.get("data", [])
+
+                print(f"notification url - {webhook_target_url}")
 
                 webhook_exists = any(config["attributes"]["url"] == webhook_target_url for config in existing_configs)
                 if webhook_exists:
