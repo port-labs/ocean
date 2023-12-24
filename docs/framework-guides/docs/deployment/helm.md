@@ -62,3 +62,24 @@ the [integration configuration](../develop-an-integration/integration-configurat
 More information about the available event listener types and optional configurations can be found in
 the [event listeners](../framework/features/event-listener.md) guide.
 :::
+
+## Advanced configruation
+The Ocean framework supports [advanced configuration](../framework/advanced-configuration.md) using environment variables. The Ocean Helm chart allows setting these variables using Helm parameters. This can be done in one of two ways:
+
+1. Using Helm's `--set` flag:
+```sh showLineNumbers
+helm upgrade --install <MY_INSTALLATION_NAME> port-labs/port-ocean \
+  # Standard installation flags
+  # ...
+  --set extraEnv[0].name=HTTP_PROXY \
+  --set extraEnv[0].value=http://my-proxy.com:1111
+```
+
+2. The Helm `values.yaml` file:
+```yaml showLineNumbers
+# The rest of the configuration
+# ...
+extraEnvs:
+  - name: HTTP_PROXY
+    value: http://my-proxy.com:1111
+```
