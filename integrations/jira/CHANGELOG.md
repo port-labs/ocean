@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+v0.1.21 (2023-12-24)
+
+### Improvements
+
+- Updated default blueprints and config mapping to include integration name as blueprint identifier prefix
+
+
 0.1.20 (2023-12-21)
 
 ### Improvements
