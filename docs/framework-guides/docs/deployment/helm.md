@@ -65,6 +65,7 @@ the [event listeners](../framework/features/event-listener.md) guide.
 
 ## Advanced configruation
 The Ocean framework supports [advanced configuration](../framework/advances-configuration.md) using environment variables. The Ocean Helm chart allows setting these variables using Helm parameters. This can be done in one of two ways:
+
 1. Using Helm's `--set` flag:
 ```sh showLineNumbers
 helm upgrade --install <MY_INSTALLATION_NAME> port-labs/port-ocean \

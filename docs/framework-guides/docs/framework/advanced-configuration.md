@@ -6,6 +6,7 @@ sidebar_position: 3
 
 # ⚙️ Advanced configuration
 The Ocean framework is based on a Python HTTP client called [HTTPX](https://www.python-httpx.org/). The HTTPX client provides out-of-the-box configuration capabilites, which allows configuring the client to work with:
+
 - Self-signed certificates.
 - Proxies.
 
