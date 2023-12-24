@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "cluster",
+    "identifier": "kafkaCluster",
     "title": "Cluster",
     "icon": "Kafka",
     "schema": {
@@ -13,7 +13,7 @@
     }
   },
   {
-    "identifier": "broker",
+    "identifier": "kafkaBroker",
     "title": "Broker",
     "icon": "Kafka",
     "schema": {
@@ -45,7 +45,7 @@
     }
   },
   {
-    "identifier": "topic",
+    "identifier": "kafkaTopic",
     "title": "Topic",
     "icon": "Kafka",
     "schema": {
