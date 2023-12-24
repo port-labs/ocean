@@ -169,8 +169,6 @@ class TerraformClient:
                 notifications_response = await self.send_api_request(endpoint=endpoint)
                 existing_configs = notifications_response.get("data", [])
 
-                print(f"notification url - {webhook_target_url}")
-
                 webhook_exists = any(config["attributes"]["url"] == webhook_target_url for config in existing_configs)
                 if webhook_exists:
                     logger.info(f"Webhook already exists for workspace {workspace_id}")
