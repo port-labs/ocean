@@ -9,7 +9,7 @@ resources:
         mappings:
           identifier: .id
           title: .attributes.name
-          blueprint: '"terraformCloudWorkspace"'
+          blueprint: '"terrafomCloudWorkspace"'
           properties:
             organization: .relationships.organization.data.id
             createdAt: .attributes."created-at"
