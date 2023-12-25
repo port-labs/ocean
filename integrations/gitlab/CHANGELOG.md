@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+v0.1.39 (2023-12-25)
+====================
+
+### Improvements
+
+- Fix stale relation identifiers in default blueprints (port-5799)
+
+
 v0.1.38 (2023-12-24)
 ====================
 

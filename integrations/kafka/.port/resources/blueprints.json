@@ -38,7 +38,7 @@
     },
     "relations": {
       "cluster": {
-        "target": "cluster",
+        "target": "kafkaCluster",
         "required": true,
         "many": false
       }
@@ -82,12 +82,12 @@
     },
     "relations": {
       "cluster": {
-        "target": "cluster",
+        "target": "kafkaCluster",
         "required": true,
         "many": false
       },
       "brokers": {
-        "target": "broker",
+        "target": "kafkaBroker",
         "required": false,
         "many": true
       }
