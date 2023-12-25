@@ -83,20 +83,20 @@
     "calculationProperties": {},
     "relations": {
       "project": {
-        "target": "project",
+        "target": "jiraProject",
         "title": "Project",
         "description": "The Jira project that contains this issue",
         "required": false,
         "many": false
       },
       "parentIssue": {
-        "target": "issue",
+        "target": "jiraIssue",
         "title": "Parent Issue",
         "required": false,
         "many": false
       },
       "subtasks": {
-        "target": "issue",
+        "target": "jiraIssue",
         "title": "Subtasks",
         "required": false,
         "many": true
