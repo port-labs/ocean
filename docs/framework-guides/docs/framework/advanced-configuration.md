@@ -20,7 +20,7 @@ These configurations are passed to the client using environment varaibles.
 For example:
 ```sh showLineNumbers
 HTTP_PROXY=http://my-proxy.com:1111
-HTTS_PROXY=http://my-proxy.com:2222
+HTTPS_PROXY=http://my-proxy.com:2222
 ALL_PROXY=http://my-proxy.com:3333
 ```
 
