@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean v0.1.14 (2023-12-25)
+
+### Improvements
+
+- Fix stale relation identifiers in default blueprints (port-5799)
+
+
 # Port_Ocean v0.1.13 (2023-12-24)
 
 ### Improvements

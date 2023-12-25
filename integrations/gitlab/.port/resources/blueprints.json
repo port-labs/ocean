@@ -87,7 +87,7 @@
     },
     "relations": {
       "repository": {
-        "target": "repository",
+        "target": "gitlabRepository",
         "required": false,
         "many": false
       }
@@ -148,7 +148,7 @@
     },
     "relations": {
       "repository": {
-        "target": "repository",
+        "target": "gitlabRepository",
         "title": "Repository",
         "required": true,
         "many": false

@@ -70,7 +70,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false
@@ -168,7 +168,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false
@@ -231,7 +231,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false
@@ -323,7 +323,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false
@@ -384,7 +384,7 @@
     "calculationProperties": {},
     "relations": {
       "storageAccount": {
-        "target": "storageAccount",
+        "target": "azureStorageAccount",
         "title": "Storage Account",
         "required": false,
         "many": false
@@ -461,7 +461,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false
