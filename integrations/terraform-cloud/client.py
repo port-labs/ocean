@@ -93,7 +93,7 @@ class TerraformClient:
             next_url = next_url.replace(self.api_url + "/", "")
             params = None
 
-    async def get_paginated_organizations(self) -> AsyncGenerator[dict[str, Any]]:
+    async def get_paginated_organizations(self) -> AsyncGenerator[dict[str, Any],None]:
         logger.info("Fetching organizations")
         async for organizations in self.get_paginated_resources("organizations"):
             yield organizations
@@ -101,7 +101,7 @@ class TerraformClient:
     async def get_single_workspace(self, workspace_id: str) -> dict[str, Any]:
         logger.info(f"Fetching workspace with ID: {workspace_id}")
         workspace = await self.send_api_request(endpoint=f"workspaces/{workspace_id}")
-        return workspace.get("data")
+        return workspace.get("data",{})
 
     async def get_single_run(self, run_id: str) -> dict[str, Any]:
         logger.info(f"Fetching run with ID: {run_id}")
