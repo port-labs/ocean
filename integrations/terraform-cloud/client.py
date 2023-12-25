@@ -18,8 +18,8 @@ PAGE_SIZE = 100
 
 
 class TerraformClient:
-    def __init__(self, terraform_base_url: str, auth_token: str) -> None:
-        self.terraform_base_url = terraform_base_url
+    def __init__(self, auth_token: str) -> None:
+        self.terraform_base_url = "https://app.terraform.io"
         self.base_headers = {
             "Authorization": f"Bearer {auth_token}",
             "Content-Type": "application/vnd.api+json",
