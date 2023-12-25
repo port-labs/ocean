@@ -1,3 +1,10 @@
+v0.1.22 (2023-12-25)
+
+### Improvements
+
+- Fix stale relation identifiers in default blueprints (port-5799)
+
+
 v0.1.21 (2023-12-24)
 
 ### Improvements
