@@ -67,7 +67,7 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async def fetch_runs_for_workspace(
         workspace: dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    ) -> List[List[Dict[str, Any]]]:
         return [
             run
             async for run in terraform_client.get_paginated_runs_for_workspace(

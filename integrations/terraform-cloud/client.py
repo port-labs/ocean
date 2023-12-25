@@ -93,7 +93,7 @@ class TerraformClient:
             next_url = next_url.replace(self.api_url + "/", "")
             params = None
 
-    async def get_paginated_organizations(self) -> list[dict[str, Any]]:
+    async def get_paginated_organizations(self) -> AsyncGenerator[dict[str, Any]]:
         logger.info("Fetching organizations")
         async for organizations in self.get_paginated_resources("organizations"):
             yield organizations
