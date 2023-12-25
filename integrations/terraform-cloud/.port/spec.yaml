@@ -1,0 +1,22 @@
+type: terraform-cloud
+description: terraform cloud integration for Port Ocean
+icon: Terraform
+features:
+  - type: exporter
+    section: IaC
+    resources:
+      - kind: workspace
+      - kind: run
+      - kind: state-version
+configurations:
+  - name: terraformCloudHost
+    required: true
+    type: url
+    default: https://app.terraform.io
+  - name: terraformCloudToken
+    type: string
+    required: true
+    sensitive: true
+  - name: appHost
+    type: url
+    required: false
