@@ -9,7 +9,7 @@ resources:
         mappings:
           identifier: .slug
           title: .name
-          blueprint: '"project"'
+          blueprint: '"sentryProject"'
           properties:
             dateCreated: .dateCreated
             platform: .platform
@@ -23,7 +23,7 @@ resources:
         mappings:
           identifier: ".id"
           title: ".title"
-          blueprint: '"issue"'
+          blueprint: '"sentryIssue"'
           properties:
             link: ".permalink"
             status: ".status"

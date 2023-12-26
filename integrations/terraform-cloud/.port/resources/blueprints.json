@@ -1,0 +1,198 @@
+[
+   {
+      "identifier":"terraformCloudStateVersion",
+      "description":"This blueprint represents a version of a Terraform state version",
+      "title":"Terraform Cloud State Versions",
+      "icon":"Terraform",
+      "schema":{
+         "properties":{
+            "createdAt":{
+               "type":"string",
+               "format":"date-time",
+               "title":"Creation Time",
+               "description":"Timestamp when the state version was created"
+            },
+            "serial":{
+               "type":"number",
+               "title":"Serial Number",
+               "description":"A unique identifier for this version within the workspace"
+            },
+            "status":{
+               "type":"string",
+               "title":"Status",
+               "description":"The current status of the state version (e.g., 'queued', 'finished')"
+            },
+            "size":{
+               "type":"number",
+               "title":"Size",
+               "description":"The size of the resources"
+            },
+            "isResourcesProcessed":{
+               "type":"boolean",
+               "title":"Is Resources Processed",
+               "description":"Whethere the resources has been processed"
+            },
+            "hostedStateDownloadUrl":{
+               "type":"string",
+               "title":"Download Url",
+               "format":"url",
+               "description":"Hosted state version download url "
+            },
+            "hostedJsonDownloadUrl":{
+               "type":"string",
+               "title":"Download Url",
+               "format":"url",
+               "description":"Url for downloading state version in json format"
+            },
+            "outputData":{
+               "type":"array",
+               "title":"Output",
+               "description":"output returned from state version"
+            },
+            "vcsCommitUrl":{
+               "type":"string",
+               "title":"VCS Commit URL",
+               "format":"url",
+               "description":"URL of the VCS commit that triggered this state version"
+            }
+         }
+      },
+      "relations":{},
+      "mirrorProperties":{},
+      "calculationProperties":{},
+      "aggregationProperties":{}
+   },
+   {
+      "identifier":"terraformCloudWorkspace",
+      "description":"This blueprint represents a workspace in Terraform Cloud",
+      "title":"Terraform Cloud Workspace",
+      "icon":"Terraform",
+      "schema":{
+         "properties":{
+            "organization":{
+               "type":"string",
+               "title":"Organization",
+               "description":"The organization within which the workspace belongs to"
+            },
+            "createdAt":{
+               "type":"string",
+               "format":"date-time",
+               "title":"Creation Time",
+               "description":"The creation timestamp of the workspace"
+            },
+            "updatedAt":{
+               "type":"string",
+               "format":"date-time",
+               "title":"Last Updated",
+               "description":"The last update timestamp of the workspace"
+            },
+            "terraformVersion":{
+               "type":"string",
+               "title":"Terraform Cloud Version",
+               "description":"Version of Terraform cloud used by the workspace"
+            },
+            "locked":{
+               "type":"boolean",
+               "title":"Locked Status",
+               "description":"Indicates whether the workspace is locked"
+            },
+            "executionMode":{
+               "type":"string",
+               "title":"Execution Mode",
+               "description":"The execution mode of the workspace"
+            },
+            "resourceCount":{
+               "type":"number",
+               "title":"Resource Count",
+               "description":"Number of resources managed by the workspace"
+            },
+            "latestChangeAt":{
+               "type":"string",
+               "format":"date-time",
+               "title":"Latest Change",
+               "description":"Timestamp of the latest change in the workspace"
+            }
+         }
+      },
+      "mirrorProperties":{},
+      "calculationProperties":{},
+      "aggregationProperties":{},
+      "relations":{
+         "currentStateVersion":{
+            "title":"Current State Version",
+            "target":"terraformCloudStateVersion",
+            "required":false,
+            "many":false
+         }
+      }
+   },
+   {
+      "identifier":"terraformCloudRun",
+      "description":"This blueprint represents a run in Terraform cloud",
+      "title":"Terraform Cloud Run",
+      "icon":"Terraform",
+      "schema":{
+         "properties":{
+            "createdAt":{
+               "type":"string",
+               "format":"date-time",
+               "title":"Creation Time",
+               "description":"The creation timestamp of the run"
+            },
+            "status":{
+               "type":"string",
+               "title":"Run Status",
+               "description":"The current status of the run"
+            },
+            "hasChanges":{
+               "type":"boolean",
+               "title":"Has Changes",
+               "description":"Indicates whether the run has changes"
+            },
+            "isDestroy":{
+               "type":"boolean",
+               "title":"Is Destroy",
+               "description":"Indicates whether the run is a destroy operation"
+            },
+            "message":{
+               "type":"string",
+               "title":"Run Message",
+               "description":"Message associated with the run"
+            },
+            "terraformVersion":{
+               "type":"string",
+               "title":"Terraform Cloud Version",
+               "description":"Version of Terraform cloud used in the run"
+            },
+            "appliedAt":{
+               "type":"string",
+               "format":"date-time",
+               "title":"Applied Time",
+               "description":"Timestamp when the run was applied"
+            },
+            "plannedAt":{
+               "type":"string",
+               "format":"date-time",
+               "title":"Planned Time",
+               "description":"Timestamp when the run was planned"
+            },
+            "source":{
+               "type":"string",
+               "title":"Run Source",
+               "description":"The source of the run initiation"
+            }
+         }
+      },
+      "mirrorProperties":{},
+      "calculationProperties":{},
+      "aggregationProperties":{},
+      "relations":{
+         "terraformCloudWorkspace":{
+            "title":"Terraform Cloud Workspace",
+            "target":"terraformCloudWorkspace",
+            "required":false,
+            "many":false
+         }
+      }
+   }
+]

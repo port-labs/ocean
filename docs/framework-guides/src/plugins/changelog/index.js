@@ -5,10 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-const path = require('path');
-const fs = require('fs-extra');
-const pluginContentBlog = require('@docusaurus/plugin-content-blog');
-const {aliasedSitePath, docuHash, normalizeUrl} = require('@docusaurus/utils');
+import path from 'path';
+import fs from 'fs-extra';
+import pluginContentBlog from '@docusaurus/plugin-content-blog';
+import {aliasedSitePath, docuHash, normalizeUrl} from '@docusaurus/utils';
+
 /**
  * Multiple versions may be published on the same day, causing the order to be
  * the reverse. Therefore, our publish time has a "fake hour" to order them.
@@ -89,9 +90,8 @@ ${content.replace(/####/g, '##')}`,
  * @param {import('@docusaurus/types').LoadContext} context
  * @returns {import('@docusaurus/types').Plugin}
  */
-async function ChangelogPlugin(context, options) {
-
-  const generateDir = path.join(context.siteDir, '.docusaurus/changelog/source');
+export default async function ChangelogPlugin(context, options) {
+  const generateDir = path.join(context.siteDir, 'changelog/source');
   const blogPlugin = await pluginContentBlog.default(context, {
     ...options,
     path: generateDir,
@@ -111,14 +111,13 @@ async function ChangelogPlugin(context, options) {
         .map(processSection)
         .filter(Boolean);
       await Promise.all(
-        sections.map((section) => {
+        sections.map((section) =>
           fs.outputFile(
             path.join(generateDir, `${section.title}.md`),
             section.content,
-          )}
+          ),
         ),
       );
-
       const authorsPath = path.join(generateDir, 'authors.json');
       await fs.outputFile(authorsPath, JSON.stringify(authorsMap, null, 2));
       const content = await blogPlugin.loadContent();
@@ -140,7 +139,7 @@ async function ChangelogPlugin(context, options) {
         'default',
       );
       // Redirect the metadata path to our folder
-      const mdxLoader = config.module.rules[0].use[1];
+      const mdxLoader = config.module.rules[0].use[0];
       mdxLoader.options.metadataPath = (mdxPath) => {
         // Note that metadataPath must be the same/in-sync as
         // the path from createData for each MDX.
@@ -159,6 +158,4 @@ async function ChangelogPlugin(context, options) {
   };
 }
 
-ChangelogPlugin.validateOptions = pluginContentBlog.validateOptions;
-
-module.exports = ChangelogPlugin;
+export const {validateOptions} = pluginContentBlog;
