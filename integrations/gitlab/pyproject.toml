@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitlab"
-version = "0.1.39"
+version = "0.1.40"
 description = "Gitlab integration for Port using Port-Ocean Framework"
 authors = ["Yair Siman-Tov <yair@getport.io>"]
 
