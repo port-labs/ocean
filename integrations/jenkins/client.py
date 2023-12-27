@@ -1,29 +1,11 @@
 from typing import Any, AsyncGenerator, Optional
-from urllib.parse import unquote, urlparse
+from urllib.parse import urlparse
 import httpx
 
 from loguru import logger
 
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
-
-
-def parse_job_name(url: str) -> str:
-    parsed_url = urlparse(url)
-    path_segments = parsed_url.path.split("/")
-
-    # Find all indices of '/job' in the path_segments
-    job_indices = [i for i, segment in enumerate(path_segments) if segment == "job"]
-
-    # Get the strings after each occurrence of '/job'
-    job_strings = [
-        unquote(path_segments[i + 1]) for i in job_indices if i + 1 < len(path_segments)
-    ]
-
-    # Concatenate the strings
-    concatenated_string = "".join(job_strings)
-
-    return concatenated_string.lower()
 
 
 class JenkinsClient:
@@ -57,7 +39,7 @@ class JenkinsClient:
             raise
 
     async def fetch_jobs_and_builds_from_api(
-        self, parent_job: Optional[dict] = None
+        self, parent_job: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         page_size = 5
         page = 0

@@ -2,7 +2,7 @@ from typing import Any
 from loguru import logger
 from enum import StrEnum
 
-from client import JenkinsClient, parse_job_name
+from client import JenkinsClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
