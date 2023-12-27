@@ -13,7 +13,7 @@ resources:
           properties:
             jobName: .name
             url: .url
-            jobStatus: '.color as $c | {"notbuilt": "created", "blue": "passing", "red": "failing"}[$c // "updated"]'
+            jobStatus: '{"notbuilt": "created", "blue": "passing", "red": "failing"}[.color // "updated"]'
             timestamp: .time
             parentJob: .__parentJob
   - kind: build
