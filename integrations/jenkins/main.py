@@ -37,11 +37,7 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         if kind == ObjectKind.JOB:
             yield _jobs
         elif kind == ObjectKind.BUILD:
-            yield [
-                {**build, "__jobName": job["name"]}
-                for job in _jobs
-                for build in job.get("builds", [])
-            ]
+            yield [build for job in _jobs for build in job.get("builds", [])]
 
 
 @ocean.router.post("/events")
@@ -53,9 +49,6 @@ async def handle_events(event: dict[str, Any]) -> dict[str, bool]:
 
     if kind:
         resource = await jenkins_client.get_single_resource(event["url"])
-        if kind == ObjectKind.BUILD:
-            # the only way to get the job name is from the build url
-            resource = {**resource, "__jobName": parse_job_name(resource["url"])}
         await ocean.register_raw(kind, [resource])
 
     logger.info("Webhook event processed")

@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 from urllib.parse import unquote, urlparse
 import httpx
 
@@ -21,9 +21,9 @@ def parse_job_name(url: str) -> str:
     ]
 
     # Concatenate the strings
-    concatenated_string = "-".join(job_strings)
+    concatenated_string = "".join(job_strings)
 
-    return concatenated_string
+    return concatenated_string.lower()
 
 
 class JenkinsClient:
@@ -44,43 +44,68 @@ class JenkinsClient:
             yield cache
             return
 
-        page_size = 100
-        page = 0
-
         all_jobs = []
 
         try:
-            while True:
-                start_idx = page_size * page
-                end_idx = start_idx + page_size
-
-                params = {
-                    "tree": f"jobs[name,url,displayName,fullName,color,jobs[name,color,fullName,displayName,url],"
-                    f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"
-                    f"{{0,50}}]{{{start_idx},{end_idx}}}"
-                }
-
-                job_response = await self.client.get(
-                    f"{self.jenkins_base_url}/api/json", params=params
-                )
-                job_response.raise_for_status()
-                jobs = job_response.json()["jobs"]
-
-                if not jobs:
-                    break
-
-                logger.info(f"Got {len(jobs)} jobs from Jenkins")
+            async for jobs in self.fetch_jobs_and_builds_from_api():
                 all_jobs.extend(jobs)
 
-                yield jobs
-                page += 1
-
-                if len(jobs) < page_size:
-                    break
+            yield all_jobs
             event.attributes[cache_key] = all_jobs
         except Exception as e:
             logger.error(f"Unexpected error occurred: {e}")
             raise
+
+    async def fetch_jobs_and_builds_from_api(
+        self, parent_job: Optional[dict] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        page_size = 5
+        page = 0
+        job_batch = []
+
+        while True:
+            start_idx = page_size * page
+            end_idx = start_idx + page_size
+
+            params = {
+                "tree": f"jobs[name,url,displayName,fullName,color,jobs[name,color,fullName,displayName,url],"
+                f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"
+                f"{{0,50}}]{{{start_idx},{end_idx}}}"
+            }
+
+            if parent_job:
+                job_path = urlparse(parent_job["url"]).path
+                base_url = f"{self.jenkins_base_url}{urlparse(job_path).path}"
+            else:
+                base_url = self.jenkins_base_url
+
+            job_response = await self.client.get(f"{base_url}/api/json", params=params)
+            job_response.raise_for_status()
+            jobs = job_response.json()["jobs"]
+
+            if not jobs:
+                break
+
+            for job in jobs:
+                if parent_job:
+                    parent_job["__jobsCount"] = len(parent_job["jobs"])
+                    job["__parentJob"] = {
+                        key: value
+                        for key, value in parent_job.items()
+                        if parent_job and key != "jobs"
+                    }
+
+                if "builds" not in job:
+                    # Recursively fetch child jobs only if no builds key
+                    async for child_jobs in self.fetch_jobs_and_builds_from_api(job):
+                        job_batch.extend(child_jobs)
+                else:
+                    job_batch.append(job)
+
+            yield job_batch
+            page += 1
+            if len(jobs) < page_size:
+                break
 
     async def get_single_resource(self, resource_url: str) -> dict[str, Any]:
         """
