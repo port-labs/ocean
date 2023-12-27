@@ -7,23 +7,26 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .name | sub(" "; "-"; "g")
-          title: .displayName
+          identifier: .fullName | gsub(" "; "") | gsub("/"; "-") | ascii_downcase
+          title: .fullName
           blueprint: '"jenkinsJob"'
           properties:
-            jobName: .fullName
+            jobName: .name
             url: .url
             jobStatus: '.color as $c | {"notbuilt": "created", "blue": "passing", "red": "failing"}[$c // "updated"]'
             timestamp: .time
-          relations:
-            jobs: '. as $body | $body.jobs | map($body.name + " " + .name  | sub(" "; "-"; "g")) '
+            parentJob: .__parentJob
   - kind: build
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: '.__jobName + "-" + .id | sub(" "; "-"; "g")'
+          identifier: |
+            def parseURL:
+                  capture("^((?<scheme>[^:/?#]+):)?(//(?<authority>(?<domain>[^/?#:]*)(:(?<port>[0-9]*))?))?((?<path>[^?#]*))?(\\?(?<query>([^#]*)))?(#(?<fragment>(.*)))?");
+            
+            .url | parseURL | .path | gsub("%20"; "")  | gsub("/job/"; "/") | ascii_downcase | gsub("/"; "-") | gsub("^[/\\-]+|[/\\-]+$"; "")
           title: .displayName
           blueprint: '"jenkinsBuild"'
           properties:
@@ -31,5 +34,10 @@ resources:
             buildUrl: .url
             buildDuration: .duration
             timestamp: '.timestamp / 1000 | todate'
+            previousBuild: .previousBuild.url
           relations:
-            parentJob: '.__jobName | sub(" "; "-"; "g")'
+            parentJob: |
+              def parseURL:
+                    capture("^((?<scheme>[^:/?#]+):)?(//(?<authority>(?<domain>[^/?#:]*)(:(?<port>[0-9]*))?))?((?<path>[^?#]*))?(\\?(?<query>([^#]*)))?(#(?<fragment>(.*)))?");
+              
+              .url | parseURL | .path | gsub("%20"; "")  | gsub("/job/"; "/") | ascii_downcase | gsub("/"; "-") | gsub("^[/\\-]+|[/\\-]+$"; "") | gsub("-[0-9]+$"; "")

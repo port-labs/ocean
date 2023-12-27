@@ -8,7 +8,7 @@
             "properties": {
                 "jobName": {
                     "type": "string",
-                    "title": "Project Name"
+                    "title": "Job Name"
                 },
                 "jobStatus": {
                     "type": "string",
@@ -30,20 +30,17 @@
                 "url": {
                     "type": "string",
                     "title": "Project URL"
+                },
+                "parentJob": {
+                    "type": "object",
+                    "title": "Parent Job"
                 }
             },
             "required": []
         },
         "mirrorProperties": {},
         "calculationProperties": {},
-        "relations": {
-            "jobs": {
-                "title": "Pipelines",
-                "target": "jenkinsJob",
-                "required": false,
-                "many": true
-            }
-        }
+        "relations": {}
     },
     {
         "identifier": "jenkinsBuild",
@@ -77,6 +74,11 @@
                     "type": "number",
                     "title": "Build Duration",
                     "description": "Duration of the build"
+                },
+                "previousBuild": {
+                    "type": "string",
+                    "title": "Previous Build URL",
+                    "description": "URL to the previous build"
                 }
             },
             "required": []
