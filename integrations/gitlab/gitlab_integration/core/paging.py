@@ -69,9 +69,13 @@ class AsyncFetcher:
 
         page = 1
         while True:
-            batch = await asyncio.get_running_loop().run_in_executor(
-                None, fetch_batch, page
-            )
+            try:
+                batch = await asyncio.get_running_loop().run_in_executor(
+                    None, fetch_batch, page
+                )
+            except Exception:
+                logger.exception(f"Failed to fetch batch for page {page}")
+                break
             if not batch:
                 logger.info(f"No more items to fetch after page {page}")
                 break
