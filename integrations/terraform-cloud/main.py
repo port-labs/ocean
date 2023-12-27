@@ -23,6 +23,7 @@ def init_terraform_client() -> TerraformClient:
     config = ocean.integration_config
 
     terraform_client = TerraformClient(
+        config["terraform_cloud_host"],
         config["terraform_cloud_token"],
     )
 
