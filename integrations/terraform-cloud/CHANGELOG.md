@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.2 (2023-12-27)
+
+### Features
+
+- Allowing clients to pass the terraformCloudParameter for self hosted terraform cloud (PORT-5858)
+
+
 # Port_Ocean 0.1.1 (2023-12-14)
 
 ### Improvement
