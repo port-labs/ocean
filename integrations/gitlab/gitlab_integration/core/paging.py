@@ -76,7 +76,7 @@ class AsyncFetcher:
                     None, fetch_batch, page
                 )
             except gitlab.exceptions.GitlabListError as err:
-                if err.response_code == 403:
+                if err.response_code in (403, 404):
                     logger.warning(f"Failed to access resource, error={err}")
                     break
             if not batch:
