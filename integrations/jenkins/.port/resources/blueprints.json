@@ -1,0 +1,97 @@
+[
+    {
+        "identifier": "jenkinsJob",
+        "description": "This blueprint represents a job event from Jenkins",
+        "title": "Jenkins Job",
+        "icon": "Jenkins",
+        "schema": {
+            "properties": {
+                "jobName": {
+                    "type": "string",
+                    "title": "Job Name"
+                },
+                "jobStatus": {
+                    "type": "string",
+                    "title": "Job Status",
+                    "enum": ["created", "unknown", "passing", "failing"],
+                    "enumColors": {
+                        "passing": "green",
+                        "created": "darkGray",
+                        "failing": "red",
+                        "unknown": "orange"
+                    }
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Timestamp",
+                    "description": "Last updated timestamp of the job"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "Project URL"
+                },
+                "parentJob": {
+                    "type": "object",
+                    "title": "Parent Job"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "jenkinsBuild",
+        "description": "This blueprint represents a build event from Jenkins",
+        "title": "Jenkins Build",
+        "icon": "Jenkins",
+        "schema": {
+            "properties": {
+                "buildStatus": {
+                    "type": "string",
+                    "title": "Build Status",
+                    "enum": ["SUCCESS", "FAILURE", "UNSTABLE"],
+                    "enumColors": {
+                        "SUCCESS": "green",
+                        "FAILURE": "red",
+                        "UNSTABLE": "yellow"
+                    }
+                },
+                "buildUrl": {
+                    "type": "string",
+                    "title": "Build URL",
+                    "description": "URL to the build"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Timestamp",
+                    "description": "Last updated timestamp of the build"
+                },
+                "buildDuration": {
+                    "type": "number",
+                    "title": "Build Duration",
+                    "description": "Duration of the build"
+                },
+                "previousBuild": {
+                    "type": "string",
+                    "title": "Previous Build URL",
+                    "description": "URL to the previous build"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+            "parentJob": {
+                "title": "Jenkins Job",
+                "target": "jenkinsJob",
+                "required": false,
+                "many": false
+            }
+        }
+    }
+]

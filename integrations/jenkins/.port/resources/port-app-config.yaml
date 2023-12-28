@@ -1,0 +1,43 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: job
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .fullName | gsub(" "; "") | gsub("/"; "-") | ascii_downcase
+          title: .fullName
+          blueprint: '"jenkinsJob"'
+          properties:
+            jobName: .name
+            url: .url
+            jobStatus: '{"notbuilt": "created", "blue": "passing", "red": "failing"}[.color // "updated"]'
+            timestamp: .time
+            parentJob: .__parentJob
+  - kind: build
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: |
+            def parseURL:
+                  capture("^((?<scheme>[^:/?#]+):)?(//(?<authority>(?<domain>[^/?#:]*)(:(?<port>[0-9]*))?))?((?<path>[^?#]*))?(\\?(?<query>([^#]*)))?(#(?<fragment>(.*)))?");
+            
+            .url | parseURL | .path | gsub("%20"; "")  | gsub("/job/"; "/") | ascii_downcase | gsub("/"; "-") | gsub("^[/\\-]+|[/\\-]+$"; "")
+          title: .displayName
+          blueprint: '"jenkinsBuild"'
+          properties:
+            buildStatus: .result
+            buildUrl: .url
+            buildDuration: .duration
+            timestamp: '.timestamp / 1000 | todate'
+            previousBuild: .previousBuild.url
+          relations:
+            parentJob: |
+              def parseURL:
+                    capture("^((?<scheme>[^:/?#]+):)?(//(?<authority>(?<domain>[^/?#:]*)(:(?<port>[0-9]*))?))?((?<path>[^?#]*))?(\\?(?<query>([^#]*)))?(#(?<fragment>(.*)))?");
+              
+              .url | parseURL | .path | gsub("%20"; "")  | gsub("/job/"; "/") | ascii_downcase | gsub("/"; "-") | gsub("^[/\\-]+|[/\\-]+$"; "") | gsub("-[0-9]+$"; "")
