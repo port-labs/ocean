@@ -1,7 +1,8 @@
 from typing import Any, AsyncGenerator, Optional
 
-import httpx
+from port_ocean.utils import http_async_client
 from loguru import logger
+import httpx
 
 from port_ocean.context.event import event
 
@@ -25,7 +26,8 @@ class TerraformClient:
             "Content-Type": "application/vnd.api+json",
         }
         self.api_url = f"{self.terraform_base_url}/api/v2"
-        self.client = httpx.AsyncClient(headers=self.base_headers)
+        self.client = http_async_client
+        self.client.headers.update(self.base_headers)
 
     async def send_api_request(
         self,
@@ -148,6 +150,25 @@ class TerraformClient:
             f"Total workspaces retrieved across all organizations: {len(all_workspaces)}"
         )
 
+    async def get_paginated_projects(self)-> AsyncGenerator[list[dict[str, Any]], None]:
+        
+        logger.info("Starting to fetch projects across all organizations")
+        async for organizations in self.get_paginated_organizations():
+            for organization in organizations:
+                organization_id = organization["id"]
+                logger.info(
+                    f"Fetching projects for organization ID: {organization_id}"
+                )
+                endpoint = f"/organizations/{organization_id}/projects"
+                async for projects in self.get_paginated_resources(endpoint):
+                    num_projects = len(projects)
+                    logger.info(
+                        f"Retrieved {num_projects} projects for organization ID: {organization_id}"
+                    )
+
+                    yield projects
+
+
     async def get_paginated_runs_for_workspace(
         self, workspace_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -157,6 +178,7 @@ class TerraformClient:
 
         async for runs in self.get_paginated_resources(endpoint):
             yield runs
+
 
     async def get_paginated_state_versions(
         self,

@@ -123,9 +123,42 @@
             "target":"terraformCloudStateVersion",
             "required":false,
             "many":false
-         }
+         },
+         "project":{"title":"Terraform Cloud Project",
+          "target":"terraformCloudProject",
+          "required":false,
+          "many":false}
       }
    },
+   {
+      "identifier": "terraformCloudProject",
+      "description": "This blueprint represents a project in Terraform Cloud",
+      "title": "Terraform Cloud Project",
+      "icon": "Terraform",
+      "schema": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Project Name",
+            "description": "The name of the Terraform Cloud project"
+          },
+          "permissions": {
+            "type": "object",
+            "title": "Permissions",
+            "description": "The permisssions on the project"
+          },
+          "organizationId": {
+            "type": "string",
+            "title": "Organization ID",
+            "description": "The ID of the organization the project belongs to"
+          }
+        }
+      },
+      "relations":{},
+      "mirrorProperties":{},
+      "calculationProperties":{},
+      "aggregationProperties":{}
+    },
    {
       "identifier":"terraformCloudRun",
       "description":"This blueprint represents a run in Terraform cloud",
