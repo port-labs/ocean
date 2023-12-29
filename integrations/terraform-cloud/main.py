@@ -14,7 +14,7 @@ class ObjectKind(StrEnum):
     WORKSPACE = "workspace"
     RUN = "run"
     STATE_VERSION = "state-version"
-    PROJECT="project"
+    PROJECT = "project"
 
 
 def init_terraform_client() -> TerraformClient:
@@ -52,6 +52,7 @@ async def enrich_state_versions_with_output_data(
         ]
 
         return enriched_state_versions
+
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
