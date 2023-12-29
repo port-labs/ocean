@@ -59,7 +59,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
     async for project in terraform_client.get_paginated_projects():
         logger.info(f"Received {len(project)} batch {kind}s")
-        yield project
+        yield project 
 
 
 @ocean.on_resync(ObjectKind.WORKSPACE)
