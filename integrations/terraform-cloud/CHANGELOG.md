@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.1 (2023-12-29)
+
+### Features
+
+- Added Support for Terraform Project (0.1.1)
+
+### Improvements
+
+- Fixed bug failing Terraform Workspaces sync (0.1.1)
+- Rate Limit Exception Handling (0.1.1)
+
+
 # Port_Ocean 0.1.0 (2023-12-14)
 
 ### Features
