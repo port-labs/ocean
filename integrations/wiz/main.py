@@ -1,41 +1,49 @@
-from typing import Any
+from enum import StrEnum
 
+from loguru import logger
+
+from client import WizClient
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
+class ObjectKind(StrEnum):
+    PROJECT = "project"
+    ISSUE = "issue"
+    SERVICE_TICKET = "serviceTicket"
+    CONTROL = "control"
+
+
+def init_client() -> WizClient:
+    return WizClient(
+        ocean.integration_config["api_url"],
+        ocean.integration_config["client_id"],
+        ocean.integration_config["client_secret"],
+        ocean.integration_config["token_url"],
+    )
+
+
 @ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-    return []
+async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    wiz_client = init_client()
 
-
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
-
-
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
-@ocean.on_start()
-async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting integration")
+    async for _issues in wiz_client.get_issues():
+        logger.info(f"Received {len(_issues)} issues")
+        if kind == ObjectKind.ISSUE:
+            yield _issues
+        elif kind == ObjectKind.PROJECT:
+            yield [
+                project for issue in _issues for project in issue.get("projects", [])
+            ]
+        elif kind == ObjectKind.CONTROL:
+            yield [
+                issue["sourceRule"]
+                for issue in _issues
+                if issue.get("sourceRule") is not None
+            ]
+        elif kind == ObjectKind.SERVICE_TICKET:
+            yield [
+                ticket
+                for issue in _issues
+                for ticket in issue.get("serviceTickets", [])
+            ]

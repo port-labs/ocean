@@ -1,0 +1,64 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizProject"'
+          identifier: .id
+          title: .name
+          properties:
+            slug: .slug
+            businessUnit: .businessUnit
+            businessImpact: .riskProfile.businessImpact
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizIssue"'
+          identifier: .id
+          title: .entitySnapshot.name + " | " + .entitySnapshot.type
+          properties:
+            # https://integrate.wiz.io/reference/issues-query#:~:text=Direct%20a%20user%20to%20an%20Issue%20in%20Wiz
+            url: .id as $id | "https://app.wiz.io/issues#~(issue~'" + $id + ")"
+            status: .status
+            severity: .severity
+            type: .type
+            notes: .notes
+            vulnerability: .entitySnapshot
+            createdAt: .createdAt
+            updatedAt: .updatedAt
+            statusChangedAt: .statusChangedAt
+            resolvedAt: .resolvedAt
+          relations:
+            projects: .projects | map(.id)
+            serviceTickets: .serviceTickets | (.externalId)
+            control: .sourceRule.id
+  - kind: control
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizControl"'
+          identifier: .id
+          title: .name
+          properties:
+            controlDescription: .controlDescription
+            resolutionRecommendation: .resolutionRecommendation
+  - kind: serviceTicket
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizServiceTicket"'
+          identifier: .externalId
+          title: .name
+          properties:
+            url: .url
