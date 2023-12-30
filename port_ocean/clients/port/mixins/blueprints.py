@@ -105,3 +105,16 @@ class BlueprintClientMixin:
         )
 
         handle_status_code(response)
+
+    async def create_page(
+        self,
+        page: dict[str, Any],
+    ) -> None:
+        logger.info(f"Creating page: {page}")
+        response = await self.client.post(
+            f"{self.auth.api_url}/pages",
+            json=page,
+            headers=await self.auth.headers(),
+        )
+
+        handle_status_code(response)

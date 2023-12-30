@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.13 (2023-12-30)
+
+### Features
+
+- Added capability to create pages as part of the integration setup (PORT-5689)
+
 ## 0.4.12 (2023-12-22)
 
 

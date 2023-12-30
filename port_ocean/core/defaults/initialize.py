@@ -111,6 +111,10 @@ async def _create_resources(
             )
         )
 
+        await asyncio.gather(
+            *(port_client.create_page(page) for page in defaults.pages),
+        )
+
         await port_client.create_integration(
             integration_config.integration.type,
             integration_config.event_listener.to_request(),
