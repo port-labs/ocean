@@ -10,6 +10,7 @@ from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import ocean
 from port_ocean.core.defaults.common import Defaults, get_port_integration_defaults
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from port_ocean.core.models import Blueprint
 from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
@@ -55,6 +56,27 @@ async def _create_resources(
     creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
         defaults.blueprints
     )
+
+    blueprints_results = await asyncio.gather(
+        *(
+            port_client.get_blueprint(blueprint["identifier"])
+            for blueprint in creation_stage
+        ),
+        return_exceptions=True,
+    )
+
+    existing_blueprints = [
+        result.identifier
+        for result in blueprints_results
+        if not isinstance(result, httpx.HTTPStatusError)
+        and isinstance(result, Blueprint)
+    ]
+
+    if existing_blueprints:
+        logger.warning(
+            f"Blueprints already exist: {existing_blueprints}. Skipping integration default creation..."
+        )
+        return
 
     create_results = await asyncio.gather(
         *(
