@@ -73,7 +73,7 @@ async def _create_resources(
     ]
 
     if existing_blueprints:
-        logger.warning(
+        logger.info(
             f"Blueprints already exist: {existing_blueprints}. Skipping integration default creation..."
         )
         return
