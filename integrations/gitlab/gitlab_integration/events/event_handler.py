@@ -2,6 +2,8 @@ import asyncio
 from collections import defaultdict
 from typing import Awaitable, Callable, Any, Type
 
+import fastapi
+
 from gitlab_integration.events.hooks.base import HookHandler
 from gitlab_integration.gitlab_service import GitlabService
 
@@ -16,7 +18,9 @@ class EventHandler:
         for event in events:
             self._observers[event].append(observer)
 
-    async def notify(self, event: str, body: dict[str, Any]) -> Awaitable[Any]:
+    async def notify(self, request: fastapi.Request, group_id: str) -> Awaitable[Any]:
+        event = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
+        body = await request.json()
         return asyncio.gather(
             *(observer(event, body) for observer in self._observers.get(event, []))
         )
@@ -34,14 +38,17 @@ class SystemEventHandler:
     def add_client(self, client: GitlabService) -> None:
         self._clients.append(client)
 
-    async def notify(self, event: str, body: dict[str, Any]) -> Awaitable[Any]:
+    async def notify(self, request: fastapi.Request) -> Awaitable[Any]:
+        body = await request.json()
+        # some system hooks have event_type instead of event_name in the body, such as merge_request events
+        event_name = body.get("event_name") or body.get("event_type")
         # best effort to notify using all clients, as we don't know which one of the clients have the permission to
         # access the project
         return asyncio.gather(
             *(
-                hook_handler(client).on_hook(event, body)
+                hook_handler(client).on_hook(event_name, body)
                 for client in self._clients
-                for hook_handler in self._hook_handlers.get(event, [])
+                for hook_handler in self._hook_handlers.get(event_name, [])
             ),
             return_exceptions=True,
         )
