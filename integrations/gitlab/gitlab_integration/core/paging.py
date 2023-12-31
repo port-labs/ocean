@@ -2,6 +2,7 @@ import asyncio
 import os
 from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 
+import gitlab.exceptions
 from gitlab import GitlabList, Gitlab
 from gitlab.base import RESTObject, RESTObjectList
 from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue
@@ -69,9 +70,15 @@ class AsyncFetcher:
 
         page = 1
         while True:
-            batch = await asyncio.get_running_loop().run_in_executor(
-                None, fetch_batch, page
-            )
+            batch = None
+            try:
+                batch = await asyncio.get_running_loop().run_in_executor(
+                    None, fetch_batch, page
+                )
+            except gitlab.exceptions.GitlabListError as err:
+                if err.response_code in (403, 404):
+                    logger.warning(f"Failed to access resource, error={err}")
+                    break
             if not batch:
                 logger.info(f"No more items to fetch after page {page}")
                 break
