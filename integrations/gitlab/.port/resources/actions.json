@@ -1,0 +1,114 @@
+[
+  {
+    "blueprint": "service",
+    "data": [
+      {
+        "identifier": "gitlab_scaffold_service",
+        "title": "Scaffold Service",
+        "icon": "Microservice",
+        "userInputs": {
+          "properties": {
+            "service_name": {
+              "title": "Service Name",
+              "description": "The new service's name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "service_name"
+          ],
+          "order": [
+            "service_name"
+          ]
+        },
+        "invocationMethod": {
+          "type": "GITLAB",
+          "omitPayload": false,
+          "omitUserInputs": true,
+          "projectName": "-",
+          "groupName": "-",
+          "agent": true
+        },
+        "trigger": "CREATE",
+        "description": "To complete setting up this action, please follow following guide:  [Setup scaffold service action ->](https://docs.getport.io/guides-and-tutorials/scaffold-a-new-service/)",
+        "requiredApproval": false
+      },
+      {
+        "identifier": "gitlab_send_scorecard_reminder",
+        "title": "Send scorecard reminder",
+        "userInputs": {
+          "properties": {},
+          "required": []
+        },
+        "invocationMethod": {
+          "type": "GITLAB",
+          "omitPayload": false,
+          "omitUserInputs": true,
+          "projectName": "-",
+          "groupName": "-",
+          "agent": true
+        },
+        "trigger": "CREATE",
+        "description": "To complete setting up this action, please follow following guide:  [Setup send scorecard reminder action ->](https://docs.getport.io/)",
+        "requiredApproval": false
+      },
+      {
+        "identifier": "gitlab_enrich_service",
+        "title": "Enrich service",
+        "icon": "Git",
+        "userInputs": {
+          "properties": {
+            "type": {
+              "icon": "BlankPage",
+              "title": "Type",
+              "description": "The service's type",
+              "type": "string",
+              "enum": [
+                "backend",
+                "frontend",
+                "integation"
+              ],
+              "enumColors": {
+                "backend": "lightGray",
+                "frontend": "lightGray",
+                "integation": "lightGray"
+              }
+            },
+            "lifecycle": {
+              "icon": "CICD",
+              "title": "Lifecycle",
+              "description": "The service's lifecycle state",
+              "type": "string",
+              "enum": [
+                "Production",
+                "Experimental",
+                "Deprecated"
+              ],
+              "enumColors": {
+                "Production": "green",
+                "Experimental": "orange",
+                "Deprecated": "red"
+              }
+            }
+          },
+          "required": [],
+          "order": [
+            "type",
+            "lifecycle"
+          ]
+        },
+        "invocationMethod": {
+          "type": "GITLAB",
+          "omitPayload": false,
+          "omitUserInputs": true,
+          "projectName": "-",
+          "groupName": "-",
+          "agent": true
+        },
+        "trigger": "DAY-2",
+        "description": "To complete setting up this action, please follow following guide:  (Setup enrich service action ->)[https://docs.getport.io/guides-and-tutorials/let-developers-enrich-services-using-gitops/]",
+        "requiredApproval": false
+      }
+    ]
+  }
+]

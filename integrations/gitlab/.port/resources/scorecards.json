@@ -1,0 +1,69 @@
+[
+  {
+    "blueprint": "service",
+    "data": [{
+      "identifier": "ProductionReadiness",
+      "title": "Production Readiness",
+      "rules": [
+        {
+          "identifier": "hasReadme",
+          "title": "Has a readme",
+          "level": "Bronze",
+          "query": {
+            "combinator": "and",
+            "conditions": [
+              {
+                "operator": "isNotEmpty",
+                "property": "readme"
+              }
+            ]
+          }
+        },
+        {
+          "identifier": "isSupportedLanguage",
+          "title": "Is a supported language",
+          "level": "Silver",
+          "query": {
+            "combinator": "or",
+            "conditions": [
+              {
+                "operator": "=",
+                "property": "language",
+                "value": "Python"
+              },
+              {
+                "operator": "=",
+                "property": "language",
+                "value": "JavaScript"
+              },
+              {
+                "operator": "=",
+                "property": "language",
+                "value": "React"
+              },
+              {
+                "operator": "=",
+                "property": "language",
+                "value": "GoLang"
+              }
+            ]
+          }
+        },
+        {
+          "identifier": "hasTeam",
+          "title": "Has Team",
+          "level": "Gold",
+          "query": {
+            "combinator": "and",
+            "conditions": [
+              {
+                "operator": "isNotEmpty",
+                "property": "$team"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]}
+]
