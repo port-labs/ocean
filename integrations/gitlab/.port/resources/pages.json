@@ -142,19 +142,15 @@
             "columns": [
               {
                 "id": "gitlabHasReadmeEntitiesPieChart",
-                "size": 3
+                "size": 4
               },
               {
                 "id": "gitlabIsSupLangEntitiesPieChart",
-                "size": 3
+                "size": 4
               },
               {
                 "id": "gitlabHasTeamEntitiesPieChart",
-                "size": 3
-              },
-              {
-                "id": "gitlabHasSlackChannelEntitiesPieChart",
-                "size": 3
+                "size": 4
               }
             ]
           }
@@ -270,23 +266,6 @@
             "type": "entities-pie-chart",
             "property": "scorecard-rule#ProductionReadiness#hasTeam",
             "title": "Has Team",
-            "icon": "Star",
-            "dataset": {
-              "combinator": "and",
-              "rules": [
-                {
-                  "property": "$blueprint",
-                  "operator": "=",
-                  "value": "service"
-                }
-              ]
-            }
-          },
-          {
-            "id": "gitlabHasSlackChannelEntitiesPieChart",
-            "type": "entities-pie-chart",
-            "property": "scorecard-rule#ProductionReadiness#hasSlackChannel",
-            "title": "Has a Slack channel",
             "icon": "Star",
             "dataset": {
               "combinator": "and",
