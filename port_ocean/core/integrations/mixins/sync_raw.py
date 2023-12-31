@@ -370,7 +370,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.error(message, exc_info=error_group)
                 else:
                     logger.info(
-                        f"Starting resync diff calculation, entities at port before resync: {len(entities_at_port)}, entities created: {len(flat_created_entities)}"
+                        f"Starting resync diff calculation, number of entities at Port before resync: {len(entities_at_port)}, number of entities created: {len(flat_created_entities)}"
                     )
                     await self.entities_state_applier.delete_diff(
                         {"before": entities_at_port, "after": flat_created_entities},
