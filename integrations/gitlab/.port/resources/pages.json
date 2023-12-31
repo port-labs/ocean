@@ -145,7 +145,7 @@
                 "size": 4
               },
               {
-                "id": "gitlabIsSupLangEntitiesPieChart",
+                "id": "gitlabUseSupLangEntitiesPieChart",
                 "size": 4
               },
               {
@@ -245,9 +245,9 @@
             }
           },
           {
-            "id": "gitlabIsSupLangEntitiesPieChart",
+            "id": "gitlabUseSupLangEntitiesPieChart",
             "type": "entities-pie-chart",
-            "property": "scorecard-rule#ProductionReadiness#isSupportedLanguage",
+            "property": "scorecard-rule#ProductionReadiness#usesASupportedLanguage",
             "title": "Is a supported language",
             "icon": "Star",
             "dataset": {

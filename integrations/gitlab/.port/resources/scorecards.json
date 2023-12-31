@@ -20,8 +20,8 @@
           }
         },
         {
-          "identifier": "isSupportedLanguage",
-          "title": "Is a supported language",
+          "identifier": "usesASupportedLanguage",
+          "title": "Uses a supported language",
           "level": "Silver",
           "query": {
             "combinator": "or",
