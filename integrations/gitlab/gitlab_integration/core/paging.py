@@ -37,7 +37,7 @@ class AsyncFetcher:
             [Any],
             bool,
         ],
-        batch_size: int | None,
+        batch_size: int | None = None,
         **kwargs,
     ) -> AsyncIterator[
         Union[
