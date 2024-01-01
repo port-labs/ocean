@@ -248,7 +248,7 @@
             "id": "gitlabUseSupLangEntitiesPieChart",
             "type": "entities-pie-chart",
             "property": "scorecard-rule#ProductionReadiness#usesASupportedLanguage",
-            "title": "Is a supported language",
+            "title": "Uses a supported language",
             "icon": "Star",
             "dataset": {
               "combinator": "and",
