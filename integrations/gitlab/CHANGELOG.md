@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.42 (2024-01-01)
+===================
+
+### Features
+
+- Added onboarding templates, including blueprints, scorecards, actions and pages (#1)
+
+
 0.1.41 (2024-01-01)
 ===================
 
