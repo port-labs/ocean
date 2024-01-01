@@ -14,6 +14,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Added onboarding templates, including blueprints, scorecards, actions and pages (#1)
 
+### Improvements
+
+- Changed the batch size configuration to be part of the gitlab integration configuration, instead of only environment variable (#2)
+- Added special handling for project resync batch size to 10, to reduce the time it takes to show data in the UI (#3)
+
 
 0.1.41 (2024-01-01)
 ===================

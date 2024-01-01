@@ -8,6 +8,8 @@ from gitlab.base import RESTObject, RESTObjectList
 from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue
 from loguru import logger
 
+from port_ocean.context.ocean import ocean
+
 T = TypeVar("T", bound=RESTObject)
 
 
@@ -35,7 +37,7 @@ class AsyncFetcher:
             [Any],
             bool,
         ],
-        batch_size: int = int(os.environ.get("GITLAB_BATCH_SIZE", 100)),
+        batch_size: int | None,
         **kwargs,
     ) -> AsyncIterator[
         Union[
@@ -50,6 +52,9 @@ class AsyncFetcher:
             GitlabList,
         ]
     ]:
+        if batch_size is None:
+            batch_size = ocean.integration_config["batch_size"]
+
         def fetch_batch(
             page_idx: int,
         ) -> Union[

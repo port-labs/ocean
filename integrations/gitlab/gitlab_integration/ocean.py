@@ -69,7 +69,10 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
         masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
         logger.info(f"fetching projects for token {masked_token}")
-        async for projects_batch in service.get_all_projects():
+        # resync small batches of projects, so data will appear asap to the user.
+        # projects takes more time than other resources as it has extra enrichment performed for each entity
+        # such as languages, `file://` and `search://`
+        async for projects_batch in service.get_all_projects(batch_size=10):
             logger.info(f"Fetching extras for {len(projects_batch)} projects")
             tasks = []
             for project in projects_batch:
