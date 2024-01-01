@@ -34,6 +34,7 @@
       },
       {
         "identifier": "gitlab_send_scorecard_reminder",
+        "icon": "Slack",
         "title": "Send scorecard reminder",
         "userInputs": {
           "properties": {},
@@ -47,7 +48,7 @@
           "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
         },
         "trigger": "CREATE",
-        "description": "To complete setting up this action, please follow following guide:  [Setup send scorecard reminder action ->](https://docs.getport.io/)",
+        "description": "To complete setting up this action, please follow following guide:  [Setup send scorecard reminder action ->](https://docs.getport.io/guides-and-tutorials/setup-slack-reminders)",
         "requiredApproval": false
       },
       {
@@ -108,6 +109,7 @@
       },
       {
         "identifier": "gitlab_create_s3_bucket",
+        "icon": "S3",
         "title": "Create s3 bucket",
         "userInputs": {
           "properties": {
