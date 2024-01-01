@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "sentry"
-version = "0.1.14"
+version = "0.1.15"
 description = "Sentry Integration"
 authors = ["Dvir Segev <dvir@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.4.12", extras = ["cli"]}
+port_ocean = {version = "^0.4.13", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"

@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.41 (2024-01-01)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.13 (#1)
+
+### Bug Fixes
+
+- Fixed handling not found error when trying to get tree for commit sha of newly created project (#1)
+
+
 v0.1.40 (2023-12-27)
 ====================
 

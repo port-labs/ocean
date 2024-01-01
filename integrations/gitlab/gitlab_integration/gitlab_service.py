@@ -83,7 +83,7 @@ class GitlabService:
         try:
             files = project.repository_tree(ref=commit_sha, all=True)
         except GitlabError as err:
-            if err.response_code != "404":
+            if err.response_code != 404:
                 raise err
 
             logger.warning(
