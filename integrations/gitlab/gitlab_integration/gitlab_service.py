@@ -252,7 +252,7 @@ class GitlabService:
             return None
 
     async def get_all_projects(
-        self, batch_size: int | None
+        self, batch_size: int | None = None
     ) -> typing.AsyncIterator[List[Project]]:
         logger.info("fetching all projects for the token")
         port_app_config: GitlabPortAppConfig = typing.cast(
