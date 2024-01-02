@@ -7,7 +7,7 @@ port:
   baseUrl: "{{ from env PORT_BASE_URL }}"   # Can be loaded via environment variable: PORT_BASE_URL
 # The event listener to use for the integration service.
 eventListener:
-   type: POLLING
+  type: POLLING
 integration:
   # The identifier of this integration instance.
   identifier: "{{ from env INTEGRATION_IDENTIFIER }}"

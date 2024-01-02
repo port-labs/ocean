@@ -11,22 +11,22 @@ resources:
           identifier: .name
           title: .name
           properties:
-              cluster: .properties.cluster
-              namespace: .properties.namespace
-              startDate: .start
-              endDate: .end
-              cpuCoreHours: .cpuCoreHours
-              cpuCost: .cpuCost
-              cpuEfficiency: .cpuEfficiency
-              gpuHours: .gpuHours
-              gpuCost: .gpuCost
-              networkCost: .networkCost
-              loadBalancerCost: .loadBalancerCost
-              pvCost: .pvCost
-              ramBytes: .ramBytes
-              ramCost: .ramCost
-              ramEfficiency: .ramEfficiency
-              sharedCost: .sharedCost
-              externalCost: .externalCost
-              totalCost: .totalCost
-              totalEfficiency: .totalEfficiency
+            cluster: .properties.cluster
+            namespace: .properties.namespace
+            startDate: .start
+            endDate: .end
+            cpuCoreHours: .cpuCoreHours
+            cpuCost: .cpuCost
+            cpuEfficiency: .cpuEfficiency
+            gpuHours: .gpuHours
+            gpuCost: .gpuCost
+            networkCost: .networkCost
+            loadBalancerCost: .loadBalancerCost
+            pvCost: .pvCost
+            ramBytes: .ramBytes
+            ramCost: .ramCost
+            ramEfficiency: .ramEfficiency
+            sharedCost: .sharedCost
+            externalCost: .externalCost
+            totalCost: .totalCost
+            totalEfficiency: .totalEfficiency
