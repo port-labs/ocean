@@ -130,6 +130,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         logger.info("Upserting modified entities")
         await self.upsert(diff.modified, user_agent_type)
 
+        logger.info("Deleting diff entities")
         await self._delete_diff(
             diff.deleted, diff.created + diff.modified, user_agent_type
         )
@@ -149,6 +150,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         )
         await self._validate_entity_diff(diff)
 
+        logger.info("Deleting diff entities")
         await self._delete_diff(
             diff.deleted, diff.created + diff.modified, user_agent_type
         )

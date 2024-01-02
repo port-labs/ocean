@@ -2,6 +2,7 @@ import asyncio
 from typing import Type, Any
 
 import httpx
+from starlette import status
 from loguru import logger
 
 from port_ocean.clients.port.client import PortClient
@@ -10,6 +11,7 @@ from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import ocean
 from port_ocean.core.defaults.common import Defaults, get_port_integration_defaults
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+from port_ocean.core.models import Blueprint
 from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
@@ -52,9 +54,37 @@ async def _create_resources(
     defaults: Defaults,
     integration_config: IntegrationConfiguration,
 ) -> None:
+    response = await port_client._get_current_integration()
+    if response.status_code == status.HTTP_404_NOT_FOUND:
+        logger.info("Integration doesn't exist, creating new integration")
+    else:
+        logger.info("Integration already exists, skipping integration creation...")
+        return
+
     creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
         defaults.blueprints
     )
+
+    blueprints_results = await asyncio.gather(
+        *(
+            port_client.get_blueprint(blueprint["identifier"], should_log=False)
+            for blueprint in creation_stage
+        ),
+        return_exceptions=True,
+    )
+
+    existing_blueprints = [
+        result.identifier
+        for result in blueprints_results
+        if not isinstance(result, httpx.HTTPStatusError)
+        and isinstance(result, Blueprint)
+    ]
+
+    if existing_blueprints:
+        logger.info(
+            f"Blueprints already exist: {existing_blueprints}. Skipping integration default creation..."
+        )
+        return
 
     create_results = await asyncio.gather(
         *(
@@ -81,7 +111,7 @@ async def _create_resources(
                 )
 
         raise AbortDefaultCreationError(created_blueprints, errors)
-
+    created_pages = []
     try:
         for patch_stage in blueprint_patches:
             await asyncio.gather(
@@ -111,16 +141,42 @@ async def _create_resources(
             )
         )
 
+        create_pages_result = await asyncio.gather(
+            *(port_client.create_page(page) for page in defaults.pages),
+            return_exceptions=True,
+        )
+
+        created_pages = [
+            result.get("identifier", "")
+            for result in create_pages_result
+            if not isinstance(result, BaseException)
+        ]
+
+        pages_errors = [
+            result for result in create_pages_result if isinstance(result, Exception)
+        ]
+
+        if pages_errors:
+            for error in pages_errors:
+                if isinstance(error, httpx.HTTPStatusError):
+                    logger.warning(
+                        f"Failed to create resources: {error.response.text}. Rolling back changes..."
+                    )
+
+            raise AbortDefaultCreationError(
+                created_blueprints, pages_errors, created_pages
+            )
+
         await port_client.create_integration(
             integration_config.integration.type,
             integration_config.event_listener.to_request(),
             port_app_config=defaults.port_app_config,
         )
-    except httpx.HTTPStatusError as e:
+    except httpx.HTTPStatusError as err:
         logger.error(
-            f"Failed to create resources: {e.response.text}. Rolling back changes..."
+            f"Failed to create resources: {err.response.text}. Rolling back changes..."
         )
-        raise AbortDefaultCreationError(created_blueprints, [e])
+        raise AbortDefaultCreationError(created_blueprints, [err], created_pages)
 
 
 async def _initialize_defaults(
@@ -133,6 +189,7 @@ async def _initialize_defaults(
         return None
 
     try:
+        logger.info("Found default resources, starting creation process")
         await _create_resources(port_client, defaults, integration_config)
     except AbortDefaultCreationError as e:
         logger.warning(
@@ -148,6 +205,18 @@ async def _initialize_defaults(
                 for identifier in e.blueprints_to_rollback
             )
         )
+        if e.pages_to_rollback:
+            logger.warning(
+                f"Failed to create resources. Rolling back pages : {e.pages_to_rollback}"
+            )
+            await asyncio.gather(
+                *(
+                    port_client.delete_page(
+                        identifier,
+                    )
+                    for identifier in e.pages_to_rollback
+                )
+            )
 
         raise ExceptionGroup(str(e), e.errors)
 
