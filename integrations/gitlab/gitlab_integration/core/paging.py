@@ -1,5 +1,4 @@
 import asyncio
-import os
 from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 
 import gitlab.exceptions
@@ -9,6 +8,8 @@ from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issu
 from loguru import logger
 
 T = TypeVar("T", bound=RESTObject)
+
+DEFAULT_PAGINATION_PAGE_SIZE = 100
 
 
 class AsyncFetcher:
@@ -35,7 +36,7 @@ class AsyncFetcher:
             [Any],
             bool,
         ],
-        batch_size: int = int(os.environ.get("GITLAB_BATCH_SIZE", 100)),
+        page_size: int = DEFAULT_PAGINATION_PAGE_SIZE,
         **kwargs,
     ) -> AsyncIterator[
         Union[
@@ -63,9 +64,9 @@ class AsyncFetcher:
             List[Dict[str, Any]],
             GitlabList,
         ]:
-            logger.info(f"Fetching page {page_idx}. Batch size: {batch_size}")
+            logger.info(f"Fetching page {page_idx}. Page size: {page_size}")
             return fetch_func(
-                page=page_idx, per_page=batch_size, get_all=False, **kwargs
+                page=page_idx, per_page=page_size, get_all=False, **kwargs
             )
 
         page = 1
