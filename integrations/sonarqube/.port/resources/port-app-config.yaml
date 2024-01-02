@@ -11,18 +11,18 @@ resources:
           identifier: .key
           title: .name
           properties:
-              organization: .organization
-              link: .__link
-              lastAnalysisStatus: .__branch.status.qualityGateStatus
-              lastAnalysisDate: .__branch.analysisDate
-              numberOfBugs: .__measures[]? | select(.metric == "bugs") | .value
-              numberOfCodeSmells: .__measures[]? | select(.metric == "code_smells") | .value
-              numberOfVulnerabilities: .__measures[]? | select(.metric == "vulnerabilities") | .value
-              numberOfHotSpots: .__measures[]? | select(.metric == "security_hotspots") | .value
-              numberOfDuplications: .__measures[]? | select(.metric == "duplicated_files") | .value
-              coverage: .__measures[]? | select(.metric == "coverage") | .value
-              mainBranch: .__branch.name
-              tags: .tags
+            organization: .organization
+            link: .__link
+            lastAnalysisStatus: .__branch.status.qualityGateStatus
+            lastAnalysisDate: .__branch.analysisDate
+            numberOfBugs: .__measures[]? | select(.metric == "bugs") | .value
+            numberOfCodeSmells: .__measures[]? | select(.metric == "code_smells") | .value
+            numberOfVulnerabilities: .__measures[]? | select(.metric == "vulnerabilities") | .value
+            numberOfHotSpots: .__measures[]? | select(.metric == "security_hotspots") | .value
+            numberOfDuplications: .__measures[]? | select(.metric == "duplicated_files") | .value
+            coverage: .__measures[]? | select(.metric == "coverage") | .value
+            mainBranch: .__branch.name
+            tags: .tags
   - kind: analysis
     selector:
       query: 'true'
@@ -33,12 +33,12 @@ resources:
           identifier: .analysisId
           title: .__commit.message // .analysisId
           properties:
-              branch: .__branchName
-              fixedIssues: .measures.violations_fixed
-              newIssues: .measures.violations_added
-              coverage: .measures.coverage_change
-              duplications: .measures.duplicated_lines_density_change
-              createdAt: .__analysisDate
+            branch: .__branchName
+            fixedIssues: .measures.violations_fixed
+            newIssues: .measures.violations_added
+            coverage: .measures.coverage_change
+            duplications: .measures.duplicated_lines_density_change
+            createdAt: .__analysisDate
           relations:
             sonarQubeProject: .__project
   - kind: issues
@@ -51,12 +51,12 @@ resources:
           identifier: .key
           title: .message
           properties:
-              type: .type
-              severity: .severity
-              link: .__link
-              status: .status
-              assignees: .assignee
-              tags: .tags
-              createdAt: .creationDate
+            type: .type
+            severity: .severity
+            link: .__link
+            status: .status
+            assignees: .assignee
+            tags: .tags
+            createdAt: .creationDate
           relations:
             sonarQubeProject: .project
