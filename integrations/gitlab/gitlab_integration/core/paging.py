@@ -36,7 +36,7 @@ class AsyncFetcher:
             [Any],
             bool,
         ],
-        page_size: int | None = None,
+        page_size: int = DEFAULT_PAGINATION_PAGE_SIZE,
         **kwargs,
     ) -> AsyncIterator[
         Union[
@@ -51,9 +51,6 @@ class AsyncFetcher:
             GitlabList,
         ]
     ]:
-        if page_size is None:
-            page_size = DEFAULT_PAGINATION_PAGE_SIZE
-
         def fetch_batch(
             page_idx: int,
         ) -> Union[
