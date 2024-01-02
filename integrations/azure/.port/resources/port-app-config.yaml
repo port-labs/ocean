@@ -77,9 +77,9 @@ resources:
             resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
   - kind: Microsoft.Network/loadBalancers
     selector:
-        query: "true"
-        # azure resource api version to query
-        apiVersion: '2023-02-01'
+      query: "true"
+      # azure resource api version to query
+      apiVersion: '2023-02-01'
     port:
       entity:
         mappings:
@@ -102,9 +102,9 @@ resources:
             resourceGroup: '.id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase | .[:5] |join("/")'
   - kind: Microsoft.Storage/storageAccounts
     selector:
-        query: "true"
-        # azure resource api version to query
-        apiVersion: '2023-01-01'
+      query: "true"
+      # azure resource api version to query
+      apiVersion: '2023-01-01'
     port:
       entity:
         mappings:
@@ -131,9 +131,9 @@ resources:
 
   - kind: Microsoft.Storage/storageAccounts/blobServices/containers
     selector:
-        query: "true"
-        # azure resource api version to query
-        apiVersion: '2023-01-01'
+      query: "true"
+      # azure resource api version to query
+      apiVersion: '2023-01-01'
     port:
       entity:
         mappings:
@@ -157,9 +157,9 @@ resources:
 
   - kind: Microsoft.Compute/virtualMachines
     selector:
-        query: "true"
-        # azure resource api version to query
-        apiVersion: '2023-03-01'
+      query: "true"
+      # azure resource api version to query
+      apiVersion: '2023-03-01'
     port:
       entity:
         mappings:

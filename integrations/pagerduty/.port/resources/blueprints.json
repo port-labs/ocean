@@ -1,127 +1,130 @@
 [
-    {
-        "identifier": "pagerdutyService",
-        "description": "This blueprint represents a PagerDuty service in our software catalog",
-        "title": "PagerDuty Service",
-        "icon": "pagerduty",
-        "schema": {
-          "properties": {
-            "status": {
-              "title": "Status",
-              "type": "string"
-            },
-            "url": {
-              "title": "URL",
-              "type": "string",
-              "format": "url"
-            },
-            "oncall": {
-              "title": "On Call",
-              "type": "array",
-              "items": {
-                "type": "string",
-                "format": "user"
-              }
-            }
-          },
-          "required": []
+  {
+    "identifier": "pagerdutyService",
+    "description": "This blueprint represents a PagerDuty service in our software catalog",
+    "title": "PagerDuty Service",
+    "icon": "pagerduty",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string"
         },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "relations": {}
-      },
-      {
-        "identifier": "pagerdutyIncident",
-        "description": "This blueprint represents a PagerDuty incident in our software catalog",
-        "title": "PagerDuty Incident",
-        "icon": "pagerduty",
-        "schema": {
-          "properties": {
-            "status": {
-              "type": "string",
-              "title": "Incident Status",
-              "enum": [
-                "triggered",
-                "annotated",
-                "acknowledged",
-                "reassigned",
-                "escalated",
-                "reopened",
-                "resolved"
-              ]
-            },
-            "url": {
-              "type": "string",
-              "format": "url",
-              "title": "Incident URL"
-            },
-            "urgency": {
-              "type": "string",
-              "title": "Incident Urgency",
-              "enum": ["high", "low"]
-            },
-            "responder": {
-              "type": "string",
-              "title": "Assignee"
-            },
-            "escalation_policy": {
-              "type": "string",
-              "title": "Escalation Policy"
-            },
-            "created_at": {
-                "title": "Create At",
-                "type": "string",
-                "format": "date-time"
-              },
-            "updated_at": {
-                "title": "Updated At",
-                "type": "string",
-                "format": "date-time"
-              }
-          },
-          "required": []
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
         },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "relations": {
-          "pagerdutyService": {
-            "title": "PagerDuty Service",
-            "target": "pagerdutyService",
-            "required": false,
-            "many": true
+        "oncall": {
+          "title": "On Call",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "user"
           }
         }
       },
-      {
-        "identifier": "pagerdutySchedule",
-        "description": "This blueprint represents a PagerDuty schedule in our software catalog",
-        "title": "PagerDuty Schedule",
-        "icon": "pagerduty",
-        "schema": {
-          "properties": {
-            "url": {
-              "title": "Schedule URL",
-              "type": "string",
-              "format": "url"
-            },
-            "timezone": {
-              "title": "Timezone",
-              "type": "string"
-            },
-            "description": {
-              "title": "Description",
-              "type": "string"
-            },
-            "users": {
-              "title": "Users",
-              "type": "array"
-            }
-          },
-          "required": []
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "pagerdutyIncident",
+    "description": "This blueprint represents a PagerDuty incident in our software catalog",
+    "title": "PagerDuty Incident",
+    "icon": "pagerduty",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Incident Status",
+          "enum": [
+            "triggered",
+            "annotated",
+            "acknowledged",
+            "reassigned",
+            "escalated",
+            "reopened",
+            "resolved"
+          ]
         },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "aggregationProperties": {},
-        "relations": {}
+        "url": {
+          "type": "string",
+          "format": "url",
+          "title": "Incident URL"
+        },
+        "urgency": {
+          "type": "string",
+          "title": "Incident Urgency",
+          "enum": [
+            "high",
+            "low"
+          ]
+        },
+        "responder": {
+          "type": "string",
+          "title": "Assignee"
+        },
+        "escalation_policy": {
+          "type": "string",
+          "title": "Escalation Policy"
+        },
+        "created_at": {
+          "title": "Create At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "pagerdutyService": {
+        "title": "PagerDuty Service",
+        "target": "pagerdutyService",
+        "required": false,
+        "many": true
       }
+    }
+  },
+  {
+    "identifier": "pagerdutySchedule",
+    "description": "This blueprint represents a PagerDuty schedule in our software catalog",
+    "title": "PagerDuty Schedule",
+    "icon": "pagerduty",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Schedule URL",
+          "type": "string",
+          "format": "url"
+        },
+        "timezone": {
+          "title": "Timezone",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "users": {
+          "title": "Users",
+          "type": "array"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  }
 ]
