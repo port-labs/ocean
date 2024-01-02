@@ -26,6 +26,7 @@ class Defaults(BaseModel):
     blueprints: list[dict[str, Any]] = []
     actions: list[Preset] = []
     scorecards: list[Preset] = []
+    pages: list[dict[str, Any]] = []
     port_app_config: Optional[PortAppConfig] = Field(
         default=None, alias="port-app-config"
     )
@@ -108,6 +109,7 @@ def get_port_integration_defaults(
         blueprints=default_jsons.get("blueprints", []),
         actions=default_jsons.get("actions", []),
         scorecards=default_jsons.get("scorecards", []),
+        pages=default_jsons.get("pages", []),
         port_app_config=port_app_config_class(
             **default_jsons.get("port-app-config", {})
         ),

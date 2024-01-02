@@ -352,6 +352,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully")
             else:
+                logger.info("Starting resync diff calculation")
                 flat_created_entities, errors = zip_and_sum(creation_results) or [
                     [],
                     [],
@@ -368,6 +369,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                     logger.error(message, exc_info=error_group)
                 else:
+                    logger.info(
+                        f"Running resync diff calculation, number of entities at Port before resync: {len(entities_at_port)}, number of entities created during sync: {len(flat_created_entities)}"
+                    )
                     await self.entities_state_applier.delete_diff(
                         {"before": entities_at_port, "after": flat_created_entities},
                         user_agent_type,

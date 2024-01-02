@@ -194,35 +194,35 @@
           "title": "Provisioning State",
           "type": "string",
           "enum": [
-              "Succeeded",
-              "Updating",
-              "Deleting",
-              "Failed"
+            "Succeeded",
+            "Updating",
+            "Deleting",
+            "Failed"
           ]
         },
         "frontendIpResourceIds": {
-            "title": "Frontend IP Resource IDs",
-            "type": "array"
+          "title": "Frontend IP Resource IDs",
+          "type": "array"
         },
         "backendAddressPoolsResourceIds": {
-            "title": "Backend Address Pools Resource IDs",
-            "type": "array"
+          "title": "Backend Address Pools Resource IDs",
+          "type": "array"
         },
         "loadBalancingRulesResourceIds": {
-            "title": "Load Balancing Rules Resource IDs",
-            "type": "array"
+          "title": "Load Balancing Rules Resource IDs",
+          "type": "array"
         },
         "probesResourceIds": {
-            "title": "Probes Resource IDs",
-            "type": "array"
+          "title": "Probes Resource IDs",
+          "type": "array"
         },
         "inboundNatRulesResourceIds": {
-            "title": "Inbound NAT Rules Resource IDs",
-            "type": "array"
+          "title": "Inbound NAT Rules Resource IDs",
+          "type": "array"
         },
         "inboundNatPoolsResourceIds": {
-            "title": "Inbound NAT Pools Resource IDs",
-            "type": "array"
+          "title": "Inbound NAT Pools Resource IDs",
+          "type": "array"
         }
       },
       "required": []
@@ -243,7 +243,7 @@
     "description": "This blueprint represents an Azure Storage Account in our software catalog",
     "title": "Storage Account",
     "icon": "Azure",
-    "schema" : {
+    "schema": {
       "properties": {
         "location": {
           "title": "Location",
@@ -253,9 +253,9 @@
           "title": "Provisioning State",
           "type": "string",
           "enum": [
-              "Creating",
-              "ResolvingDNS",
-              "Succeeded"
+            "Creating",
+            "ResolvingDNS",
+            "Succeeded"
           ]
         },
         "creationTime": {
@@ -288,8 +288,8 @@
           "title": "Status of Primary",
           "type": "string",
           "enum": [
-                "available",
-                "unavailable"
+            "available",
+            "unavailable"
           ],
           "enumColors": {
             "unavailable": "red",
@@ -300,8 +300,8 @@
           "title": "Status of Secondary",
           "type": "string",
           "enum": [
-                "available",
-                "unavailable"
+            "available",
+            "unavailable"
           ],
           "enumColors": {
             "unavailable": "red",

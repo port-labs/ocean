@@ -63,11 +63,11 @@ resources:
           identifier: .issueId
           title: .title[0]
           properties:
-              priority: .priority
-              state: .state
-              sources: .sources
-              conditionName: .conditionName
-              alertPolicyNames: .policyName
-              activatedAt: .activatedAt
+            priority: .priority
+            state: .state
+            sources: .sources
+            conditionName: .conditionName
+            alertPolicyNames: .policyName
+            activatedAt: .activatedAt
           relations:
-              newRelicService: ".__APPLICATION.entity_guids + .__SERVICE.entity_guids"
+            newRelicService: ".__APPLICATION.entity_guids + .__SERVICE.entity_guids"
