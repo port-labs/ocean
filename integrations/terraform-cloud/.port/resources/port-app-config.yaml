@@ -14,7 +14,6 @@ resources:
             name: .attributes.name
             permissions: .attributes.permissions
             organizationId: .relationships.organization.data.id
-            
   - kind: workspace
     selector:
       query: "true"
@@ -36,7 +35,6 @@ resources:
           relations:
             currentStateVersion: .relationships."current-state-version".data.id
             project: .relationships.project.data.id
-
   - kind: state-version
     selector:
       query: "true"
@@ -56,7 +54,6 @@ resources:
             hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
             vcsCommitUrl: .attributes."vcs-commit-url"
             outputData: .__output
-
   - kind: run
     selector:
       query: "true"
