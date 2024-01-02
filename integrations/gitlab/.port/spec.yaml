@@ -28,8 +28,3 @@ configurations:
     type: boolean
     description: If set to true, will use system hook instead of project hooks.
     default: false
-  - name: batchSize
-    required: false
-    type: integer
-    description: The number of projects to process in a batch.
-    default: 100
