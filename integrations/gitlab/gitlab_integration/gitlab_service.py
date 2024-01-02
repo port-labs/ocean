@@ -5,7 +5,7 @@ from typing import List, Tuple, Any, Union, TYPE_CHECKING
 
 import anyio.to_thread
 import yaml
-from gitlab import Gitlab, GitlabList
+from gitlab import Gitlab, GitlabList, GitlabError
 from gitlab.base import RESTObject
 from gitlab.v4.objects import (
     Project,
@@ -51,7 +51,8 @@ class GitlabService:
         return False
 
     def _create_group_webhook(self, group: RESTObject) -> None:
-        group.hooks.create(
+        logger.info(f"Creating webhook for {group.get_id()}")
+        resp = group.hooks.create(
             {
                 "url": f"{self.app_host}/integration/hook/{group.get_id()}",
                 "push_events": True,
@@ -63,6 +64,9 @@ class GitlabService:
                 "tag_push_events": True,
                 "confidential_issues_events": True,
             }
+        )
+        logger.info(
+            f"Created webhook for {group.get_id()}, id={resp.id}, url={resp.url}"
         )
 
     def _get_changed_files_between_commits(
@@ -76,7 +80,16 @@ class GitlabService:
     ) -> list[str]:
         if not isinstance(path, list):
             path = [path]
-        files = project.repository_tree(ref=commit_sha, all=True)
+        try:
+            files = project.repository_tree(ref=commit_sha, all=True)
+        except GitlabError as err:
+            if err.response_code != 404:
+                raise err
+
+            logger.warning(
+                f"Failed to retrieve project tree for commit sha: {commit_sha} as it was not found."
+            )
+            files = []
         return [
             file["path"]
             for file in files
@@ -155,7 +168,7 @@ class GitlabService:
 
     def create_webhooks(self) -> list[int | str]:
         root_partial_groups = self.get_root_groups()
-        logger.debug("Getting all the root groups to create webhooks for")
+        logger.info("Getting all the root groups to create webhooks for")
         # Filter out root groups that are not in the group mapping and creating webhooks for the rest
         filtered_partial_groups = [
             group
@@ -165,19 +178,19 @@ class GitlabService:
                 for mapping in self.group_mapping
             )
         ]
-        logger.debug(
+        logger.info(
             f"Creating webhooks for the root groups. Groups: {[group.attributes['full_path'] for group in filtered_partial_groups]}"
         )
         webhook_ids = []
         for partial_group in filtered_partial_groups:
             group_id = partial_group.get_id()
             if group_id is None:
-                logger.debug(
+                logger.info(
                     f"Group {partial_group.attributes['full_path']} has no id. skipping..."
                 )
             else:
                 if self._is_exists(partial_group):
-                    logger.debug(
+                    logger.info(
                         f"Webhook already exists for group {partial_group.get_id()}"
                     )
                 else:
@@ -187,11 +200,11 @@ class GitlabService:
         return webhook_ids
 
     def create_system_hook(self) -> None:
-        logger.debug("Checking if system hook already exists")
+        logger.info("Checking if system hook already exists")
         try:
             for hook in self.gitlab_client.hooks.list(iterator=True):
                 if hook.url == f"{self.app_host}/integration/system/hook":
-                    logger.debug("System hook already exists, no need to create")
+                    logger.info("System hook already exists, no need to create")
                     return
         except Exception:
             logger.error(
@@ -199,7 +212,7 @@ class GitlabService:
             )
             return
 
-        logger.debug("Creating system hook")
+        logger.info("Creating system hook")
         try:
             resp = self.gitlab_client.hooks.create(
                 {
@@ -209,7 +222,7 @@ class GitlabService:
                     "repository_update_events": False,
                 }
             )
-            logger.debug(f"Created system hook with id {resp.get_id()}")
+            logger.info(f"Created system hook with id {resp.get_id()}")
         except Exception:
             logger.error("Failed to create system hook")
 

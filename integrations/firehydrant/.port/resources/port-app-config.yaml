@@ -11,10 +11,10 @@ resources:
           identifier: .id
           title: .name
           properties:
-              description: .description
-              activeIncidents: .active_incidents | length
-              createdAt: .created_at
-              updatedAt: .updated_at
+            description: .description
+            activeIncidents: .active_incidents | length
+            createdAt: .created_at
+            updatedAt: .updated_at
   - kind: service
     selector:
       query: 'true'
@@ -25,18 +25,18 @@ resources:
           identifier: .id
           title: .name
           properties:
-              description: .description
-              slug: .slug
-              links: .links[].href_url
-              labels: .labels
-              owner: .owner.name
-              activeIncidents: .active_incidents | length
-              meanTimeToAcknowledge: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "acknowledged")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
-              meanTimeToDetect: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "detected")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
-              meanTimeToMitigate: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "mitigated")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
-              meanTimeToResolve: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "resolved")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
-              createdAt: .created_at
-              updatedAt: .updated_at
+            description: .description
+            slug: .slug
+            links: .links[].href_url
+            labels: .labels
+            owner: .owner.name
+            activeIncidents: .active_incidents | length
+            meanTimeToAcknowledge: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "acknowledged")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
+            meanTimeToDetect: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "detected")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
+            meanTimeToMitigate: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "mitigated")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
+            meanTimeToResolve: '[(.__incidents.milestones[] | map(select(.type == "started" or .type == "resolved")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null)] | add / length / 3600 | floor'
+            createdAt: .created_at
+            updatedAt: .updated_at
   - kind: incident
     selector:
       query: 'true'
@@ -47,17 +47,17 @@ resources:
           identifier: .id
           title: .name
           properties:
-              url: .incident_url
-              priority: .priority
-              severity: .severity
-              tags: .tag_list
-              currentMilestone: .current_milestone
-              functionalities: .functionalities[].name
-              description: .description
-              customerImpact: .customers_impacted
-              commander: .role_assignments[] | select(.incident_role.name == "Commander") | .user.email
-              createdBy: .created_by.email
-              createdAt: .created_at
+            url: .incident_url
+            priority: .priority
+            severity: .severity
+            tags: .tag_list
+            currentMilestone: .current_milestone
+            functionalities: .functionalities[].name
+            description: .description
+            customerImpact: .customers_impacted
+            commander: .role_assignments[] | select(.incident_role.name == "Commander") | .user.email
+            createdBy: .created_by.email
+            createdAt: .created_at
           relations:
             environment: .environments | map(.id)
             service: .services | map(.id)
@@ -71,21 +71,21 @@ resources:
           identifier: .id
           title: .name
           properties:
-              url: .incident.incident_url
-              tags: .tag_list
-              services: .incident.services[].name
-              environments: .incident.environments[].name
-              functionalities: .incident.functionalities[].name
-              description: .incident.description
-              customerImpact: .incident.customers_impacted
-              commander: .incident.role_assignments[] | select(.incident_role.name == "Commander") | .user.email
-              createdBy: .incident.created_by.email
-              resolvedAt: .incident.milestones[] | select(.type == "resolved") | .created_at
-              createdAt: .incident.created_at
-              publishedAt: .incident.milestones[] | select(.type == "postmortem_completed") | .created_at
-              duration: (.incident.milestones | map(select(.type == "started" or .type == "resolved")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null) | ./3600 | floor
-              completedTasks: .__incident.tasks | map(select(.state == "done")) | length
-              incompletedTasks: .__incident.tasks | map(select(.state != "done")) | length
-              questions: ".questions | map({question: .title, answer: .body})"
+            url: .incident.incident_url
+            tags: .tag_list
+            services: .incident.services[].name
+            environments: .incident.environments[].name
+            functionalities: .incident.functionalities[].name
+            description: .incident.description
+            customerImpact: .incident.customers_impacted
+            commander: .incident.role_assignments[] | select(.incident_role.name == "Commander") | .user.email
+            createdBy: .incident.created_by.email
+            resolvedAt: .incident.milestones[] | select(.type == "resolved") | .created_at
+            createdAt: .incident.created_at
+            publishedAt: .incident.milestones[] | select(.type == "postmortem_completed") | .created_at
+            duration: (.incident.milestones | map(select(.type == "started" or .type == "resolved")) | sort_by(.occurred_at) | group_by(.type) | map(.[0].occurred_at) | select(length == 2) | ([.[1], .[0]] | map(sub("\\.\\d+Z$"; "Z") | fromdate)) | .[1] - .[0] // null) | ./3600 | floor
+            completedTasks: .__incident.tasks | map(select(.state == "done")) | length
+            incompletedTasks: .__incident.tasks | map(select(.state != "done")) | length
+            questions: ".questions | map({question: .title, answer: .body})"
           relations:
             incident: .incident.id

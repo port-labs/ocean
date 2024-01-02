@@ -10,69 +10,69 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Setup
-      run: |
-        pip install toml-cli yq packaging
+      - name: Setup
+        run: |
+          pip install toml-cli yq packaging
 
-    - name: Check Ocean version 🌊
-      run: |
-        git remote add ocean-origin https://github.com/port-labs/ocean.git
-        git fetch ocean-origin
-        changed_dirs=$(git diff --name-only ocean-origin/main HEAD | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
-        package_version=$(curl -s https://pypi.org/pypi/port-ocean/json | jq -r '.info.version')
-        for dir in $changed_dirs; do
-          pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
-          if [ -n "$pyproject_file" ]; then
-            installed_version=$(toml get  tool.poetry.dependencies.port_ocean.version --toml-path $pyproject_file)
-            is_version_updated=$(python -c "from packaging import version;print(version.parse('$installed_version'.lstrip('^')) >= version.parse('$package_version'))")
+      - name: Check Ocean version 🌊
+        run: |
+          git remote add ocean-origin https://github.com/port-labs/ocean.git
+          git fetch ocean-origin
+          changed_dirs=$(git diff --name-only ocean-origin/main HEAD | grep 'integrations/' | cut -d'/' -f 1,2 | sort -u)
+          package_version=$(curl -s https://pypi.org/pypi/port-ocean/json | jq -r '.info.version')
+          for dir in $changed_dirs; do
+            pyproject_file=$(find $dir -name 'pyproject.toml' -not -path "**/.venv/*")
+            if [ -n "$pyproject_file" ]; then
+              installed_version=$(toml get  tool.poetry.dependencies.port_ocean.version --toml-path $pyproject_file)
+              is_version_updated=$(python -c "from packaging import version;print(version.parse('$installed_version'.lstrip('^')) >= version.parse('$package_version'))")
 
-            if [ "$is_version_updated" = "False" ]; then
-              echo "ERROR: Ocean version in $pyproject_file is not updated to latest version -> $package_version"
-              exit 1
-            else
-              echo "Ocean version is valid in $pyproject_file"
+              if [ "$is_version_updated" = "False" ]; then
+                echo "ERROR: Ocean version in $pyproject_file is not updated to latest version -> $package_version"
+                exit 1
+              else
+                echo "Ocean version is valid in $pyproject_file"
+              fi
             fi
-          fi
-        done
+          done
 
-    - name: Validate integration not duplicated
-      run: |
-        for integration in $(find integrations -name 'spec.yaml' -not -path "**/.venv/*"); do
-          integration_type=$(yq -r '.type' $integration)
+      - name: Validate integration not duplicated
+        run: |
+          for integration in $(find integrations -name 'spec.yaml' -not -path "**/.venv/*"); do
+            integration_type=$(yq -r '.type' $integration)
 
-          if [ $(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.type' {} | grep -c $integration_type) -gt 1 ]; then
-            echo "ERROR: $integration_type integration type is duplicated please check your spec.yaml file"
-            exit 1
-          fi
-        done
-
-    - name: Validate icons
-      run: |
-        S3_BUCKET="port-graphical-assets"
-        S3_ICONS_COLOR_URL="https://$S3_BUCKET.s3.amazonaws.com?prefix=icons/blueprintsColor/"
-        color_results=$(curl -s "$S3_ICONS_COLOR_URL" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
-
-        S3_ICONS_URL="https://$S3_BUCKET.s3.amazonaws.com?prefix=icons/blueprints/"
-        colorless_results=$(curl -s "$S3_ICONS_URL" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
-
-        # All integration icons
-        icons=($(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.icon' {} | tr '[:upper:]' '[:lower:]'))
-        bp_icons=($(find integrations/** -name 'blueprints.json' -not -path "**/.venv/*" | xargs -I {} jq -r '.[] | .. | .icon?' {} | grep -v '^null$' | sort -u | tr '[:upper:]' '[:lower:]'))
-        merged_set=($(printf "%s\n" "${icons[@]}" "${bp_icons[@]}" | sort -u))
-
-        for icon in "${merged_set[@]}"; do
-          if [ $(echo "$color_results" | grep -c "$icon") -eq 0 ] && [ $(echo "$colorless_results" | grep -c "$icon") -eq 0 ]; then
-              echo "ERROR: $icon icon is missing in icons pool"
+            if [ $(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.type' {} | grep -c $integration_type) -gt 1 ]; then
+              echo "ERROR: $integration_type integration type is duplicated please check your spec.yaml file"
               exit 1
-          fi
-        done
+            fi
+          done
+
+      - name: Validate icons
+        run: |
+          S3_BUCKET="port-graphical-assets"
+          S3_ICONS_COLOR_URL="https://$S3_BUCKET.s3.amazonaws.com?prefix=icons/blueprintsColor/"
+          color_results=$(curl -s "$S3_ICONS_COLOR_URL" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
+
+          S3_ICONS_URL="https://$S3_BUCKET.s3.amazonaws.com?prefix=icons/blueprints/"
+          colorless_results=$(curl -s "$S3_ICONS_URL" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
+
+          # All integration icons
+          icons=($(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.icon' {} | tr '[:upper:]' '[:lower:]'))
+          bp_icons=($(find integrations/** -name 'blueprints.json' -not -path "**/.venv/*" | xargs -I {} jq -r '.[] | .. | .icon?' {} | grep -v '^null$' | sort -u | tr '[:upper:]' '[:lower:]'))
+          merged_set=($(printf "%s\n" "${icons[@]}" "${bp_icons[@]}" | sort -u))
+
+          for icon in "${merged_set[@]}"; do
+            if [ $(echo "$color_results" | grep -c "$icon") -eq 0 ] && [ $(echo "$colorless_results" | grep -c "$icon") -eq 0 ]; then
+                echo "ERROR: $icon icon is missing in icons pool"
+                exit 1
+            fi
+          done

@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "repository",
+    "identifier": "gitlabRepository",
     "title": "Repository",
     "icon": "Microservice",
     "schema": {
@@ -43,7 +43,7 @@
     "relations": {}
   },
   {
-    "identifier": "mergeRequest",
+    "identifier": "gitlabMergeRequest",
     "title": "Merge Request",
     "icon": "GitVersion",
     "schema": {
@@ -87,14 +87,14 @@
     },
     "relations": {
       "repository": {
-        "target": "repository",
+        "target": "gitlabRepository",
         "required": false,
         "many": false
       }
     }
   },
   {
-    "identifier": "issue",
+    "identifier": "gitlabIssue",
     "title": "Issue",
     "icon": "GitLab",
     "schema": {
@@ -148,7 +148,7 @@
     },
     "relations": {
       "repository": {
-        "target": "repository",
+        "target": "gitlabRepository",
         "title": "Repository",
         "required": true,
         "many": false

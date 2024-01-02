@@ -1,3 +1,25 @@
+0.1.23 (2024-01-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.13 (#1)
+
+
+v0.1.22 (2023-12-25)
+
+### Improvements
+
+- Fix stale relation identifiers in default blueprints (port-5799)
+
+
+v0.1.21 (2023-12-24)
+
+### Improvements
+
+- Updated default blueprints and config mapping to include integration name as blueprint identifier prefix
+- Bumped ocean version to ^0.4.12 (#1)
+
+
 0.1.20 (2023-12-21)
 
 ### Improvements
