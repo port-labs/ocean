@@ -33,7 +33,7 @@ def init_client() -> SnykClient:
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
-        ocean.integration_config["organization_id"],
+        ocean.integration_config.get("groups"),
         ocean.integration_config.get("webhook_secret"),
     )
 
@@ -43,7 +43,10 @@ async def process_project_issues(
 ) -> list[dict[str, Any]]:
     snyk_client = init_client()
     async with semaphore:
-        return await snyk_client.get_issues(project["id"])
+        organization_id = (
+            project.get("relationships", {}).get("organization", {}).get("data", {}).get("id")
+        )
+        return await snyk_client.get_issues(organization_id, project["id"])
 
 
 @ocean.on_resync(ObjectKind.TARGET)
@@ -105,17 +108,18 @@ async def on_vulnerability_webhook_handler(request: Request) -> None:
 
         snyk_client = init_client()
 
-        project = data["project"]
-        project_details = await snyk_client.get_single_project(project["id"])
+        project_id = data["project"]["id"]
+        organization_id = data["org"]["id"]
+        project_details = await snyk_client.get_single_project(organization_id, project_id)
 
         tasks = [
             ocean.register_raw(
-                ObjectKind.ISSUE, await snyk_client.get_issues(project["id"])
+                ObjectKind.ISSUE, await snyk_client.get_issues(organization_id, project_id)
             ),
             ocean.register_raw(ObjectKind.PROJECT, [project_details]),
             ocean.register_raw(
                 ObjectKind.TARGET,
-                [await snyk_client.get_single_target_by_project_id(project["id"])],
+                [await snyk_client.get_single_target_by_project_id(organization_id, project_id)],
             ),
         ]
 

@@ -14,4 +14,4 @@ integration:
   type: "snyk"
   config:
     token: "{{ from env SNYK_API_TOKEN }}"
-    organizationId: "{{ from env SNYK_ORG_ID }}"
+    group: "{{ from env SNYK_GROUPS }}"
