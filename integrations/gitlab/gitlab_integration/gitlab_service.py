@@ -251,9 +251,7 @@ class GitlabService:
         else:
             return None
 
-    async def get_all_projects(
-        self, batch_size: int | None = None
-    ) -> typing.AsyncIterator[List[Project]]:
+    async def get_all_projects(self) -> typing.AsyncIterator[List[Project]]:
         logger.info("fetching all projects for the token")
         port_app_config: GitlabPortAppConfig = typing.cast(
             "GitlabPortAppConfig", event.port_app_config
@@ -277,7 +275,6 @@ class GitlabService:
             pagination="offset",
             order_by="id",
             sort="asc",
-            batch_size=batch_size,
         ):
             projects: List[Project] = typing.cast(List[Project], projects_batch)
             logger.info(

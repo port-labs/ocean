@@ -11,6 +11,8 @@ from port_ocean.context.ocean import ocean
 
 T = TypeVar("T", bound=RESTObject)
 
+DEFAULT_PAGINATION_PAGE_SIZE = 100
+
 
 class AsyncFetcher:
     def __init__(self, gitlab_client: Gitlab):
@@ -36,7 +38,7 @@ class AsyncFetcher:
             [Any],
             bool,
         ],
-        batch_size: int | None = None,
+        page_size: int | None = None,
         **kwargs,
     ) -> AsyncIterator[
         Union[
@@ -51,8 +53,8 @@ class AsyncFetcher:
             GitlabList,
         ]
     ]:
-        if batch_size is None:
-            batch_size = ocean.integration_config["batch_size"]
+        if page_size is None:
+            page_size = DEFAULT_PAGINATION_PAGE_SIZE
 
         def fetch_batch(
             page_idx: int,
@@ -67,9 +69,9 @@ class AsyncFetcher:
             List[Dict[str, Any]],
             GitlabList,
         ]:
-            logger.info(f"Fetching page {page_idx}. Batch size: {batch_size}")
+            logger.info(f"Fetching page {page_idx}. Page size: {page_size}")
             return fetch_func(
-                page=page_idx, per_page=batch_size, get_all=False, **kwargs
+                page=page_idx, per_page=page_size, get_all=False, **kwargs
             )
 
         page = 1
