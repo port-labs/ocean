@@ -7,8 +7,6 @@ from gitlab.base import RESTObject, RESTObjectList
 from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue
 from loguru import logger
 
-from port_ocean.context.ocean import ocean
-
 T = TypeVar("T", bound=RESTObject)
 
 DEFAULT_PAGINATION_PAGE_SIZE = 100
