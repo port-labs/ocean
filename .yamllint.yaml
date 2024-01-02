@@ -24,5 +24,3 @@ rules:
 
   # ignore document start marker
   document-start: disable
-
-  new-line-at-end-of-file: disable
