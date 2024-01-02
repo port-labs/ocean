@@ -4,9 +4,10 @@ from typing import Any, AsyncGenerator
 
 import httpx
 from loguru import logger
+from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.context.event import event
-from port_ocean.utils import http_async_client
+from port_ocean.utils import http_async_client, get_time
 
 PAGE_SIZE = 50
 AUTH0_URLS = ["https://auth.wiz.io/oauth/token", "https://auth0.gov.wiz.io/oauth/token"]
@@ -124,9 +125,23 @@ query IssuesTable(
 """
 
 
+class TokenResponse(BaseModel):
+    access_token: str = Field(alias="access_token")
+    expires_in: int = Field(alias="expires_in")
+    token_type: str = Field(alias="token_type")
+    _retrieved_time: int = PrivateAttr(get_time())
+
+    @property
+    def expired(self) -> bool:
+        return self._retrieved_time + self.expires_in < get_time()
+
+    @property
+    def full_token(self) -> str:
+        return f"{self.token_type} {self.access_token}"
+
+
 class CacheKeys(StrEnum):
     ISSUES = "wiz_issues"
-    TOKENS = "wiz_tokens"
 
 
 class WizClient:
@@ -137,16 +152,16 @@ class WizClient:
         self.client_id = client_id
         self.client_secret = client_secret
         self.token_url = token_url
+        self.last_token_object: TokenResponse | None = None
 
         self.http_client = http_async_client
-        self.http_client.headers.update(self.api_auth_header)
 
     @property
-    def api_auth_header(self) -> dict[str, Any]:
-        access_token = self.get_token()
+    async def api_auth_headers(self) -> dict[str, Any]:
+        token = self._get_token()
 
         return {
-            "Authorization": f"Bearer {access_token}",
+            "Authorization": token.full_token,
             "Content-Type": "application/json",
         }
 
@@ -169,39 +184,29 @@ class WizClient:
             "client_secret": self.client_secret,
         }
 
-    def get_token(self) -> str:
+    def _get_token(self) -> TokenResponse:
         try:
-            if cached_token_object := event.attributes.get(CacheKeys.TOKENS):
-                if not self.is_token_expired(cached_token_object):
-                    return cached_token_object["access_token"]
-
             response = httpx.post(
                 self.token_url,
                 data=self.auth_params,
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
             response.raise_for_status()
-
-            token_result = response.json()
-
-            # Calculate and add expiry date to the token_result
-            expiry_in_seconds = token_result.get("expires_in", 0)
-            expiry_datetime = datetime.utcnow() + timedelta(seconds=expiry_in_seconds)
-            token_result["expiry_date"] = expiry_datetime.isoformat()
-
-            event.attributes[CacheKeys.TOKENS] = token_result
-
-            return token_result["access_token"]
+            return TokenResponse(**response.json())
         except Exception as e:
-            print(e)
+            logger.exception(e)
             raise
 
-    def is_token_expired(self, token_object: Any) -> bool:
-        expiry_date_str = token_object.get("expiry_date")
-        if expiry_date_str:
-            expiry_date = datetime.fromisoformat(expiry_date_str)
-            return expiry_date <= datetime.utcnow()
-        return True
+    @property
+    async def token(self) -> str:
+        if not self.last_token_object or not self.last_token_object.is_valid:
+            msg = "Wiz Token expired or invalid, fetching new token"
+            logger.info(msg)
+            self.last_token_object = await self._get_token(
+                self.client_id, self.client_secret
+            )
+
+        return self.last_token_object.token
 
     async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Fetching issues from Wiz API")
@@ -222,7 +227,7 @@ class WizClient:
             response = await self.http_client.post(
                 url=self.api_url,
                 json=json_data,
-                headers=self.api_auth_header,
+                headers=await self.api_auth_headers,
             )
             response.raise_for_status()
             response_json = response.json()
@@ -238,3 +243,4 @@ class WizClient:
 
         except httpx.HTTPError as e:
             logger.error(f"Error while fetching issues: {str(e)}")
+            raise
