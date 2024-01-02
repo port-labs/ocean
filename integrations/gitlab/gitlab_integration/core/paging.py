@@ -1,5 +1,4 @@
 import asyncio
-import os
 from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 
 import gitlab.exceptions
