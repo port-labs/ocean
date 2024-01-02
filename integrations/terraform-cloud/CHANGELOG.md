@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added Support for Terraform Project (0.1.3)
+- Added Support for Terraform Project [PORT-5876]
 
 ### Improvements
 
-- Fixed bug failing Terraform Workspaces sync (0.1.3)
-- Introduced http_async_client for handling unexpected rate limit errors (0.1.3)
+- Fixed bug failing Terraform Workspaces sync
+- Introduced http_async_client for handling unexpected rate limit errors
 
 # Port_Ocean 0.1.2 (2024-01-01)
 
@@ -40,6 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added terraform cloud ocean integration (0.1.0)
-- created incoming webhook endpoint for ingesting runs (0.1.0)
-- on startup, create terraform cloud webhook if not already created (0.1.0)
+- Added terraform cloud ocean integration 
+- created incoming webhook endpoint for ingesting runs
+- on startup, create terraform cloud webhook if not already created
