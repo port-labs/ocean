@@ -66,7 +66,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
     async for workspaces in terraform_client.get_paginated_workspaces():
-        logger.info(f"Received {len(workspace)} batch {kind}s")
+        logger.info(f"Received {len(workspaces)} batch {kind}s")
         yield workspaces
 
 
