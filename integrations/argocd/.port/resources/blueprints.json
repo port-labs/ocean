@@ -1,174 +1,174 @@
 [
   {
-      "identifier": "argocdCluster",
-      "description": "This blueprint represents an ArgoCD cluster",
-      "title": "ArgoCD Cluster",
-      "icon": "Argo",
-      "schema": {
-          "properties": {
-              "namespaces": {
-                  "items": {
-                      "type": "string"
-                  },
-                  "icon": "DefaultProperty",
-                  "title": "Namespace",
-                  "type": "array",
-                  "description": "Holds list of namespaces which are accessible in that cluster."
-              },
-              "applicationsCount": {
-                  "title": "Applications Count",
-                  "type": "number",
-                  "description": "The number of applications managed by Argo CD on the cluster",
-                  "icon": "DefaultProperty"
-              },
-              "serverVersion": {
-                  "title": "Server Version",
-                  "type": "string",
-                  "description": "Contains information about the Kubernetes version of the cluster",
-                  "icon": "DefaultProperty"
-              },
-              "labels": {
-                  "title": "Labels",
-                  "type": "object",
-                  "description": "Contains information about cluster metadata",
-                  "icon": "DefaultProperty"
-              },
-              "updatedAt": {
-                  "icon": "DefaultProperty",
-                  "title": "Updated At",
-                  "type": "string",
-                  "format": "date-time"
-              },
-              "server": {
-                  "title": "Server",
-                  "description": "The API server URL of the Kubernetes cluster",
-                  "type": "string",
-                  "icon": "DefaultProperty"
-              }
+    "identifier": "argocdCluster",
+    "description": "This blueprint represents an ArgoCD cluster",
+    "title": "ArgoCD Cluster",
+    "icon": "Argo",
+    "schema": {
+      "properties": {
+        "namespaces": {
+          "items": {
+            "type": "string"
           },
-          "required": []
+          "icon": "DefaultProperty",
+          "title": "Namespace",
+          "type": "array",
+          "description": "Holds list of namespaces which are accessible in that cluster."
+        },
+        "applicationsCount": {
+          "title": "Applications Count",
+          "type": "number",
+          "description": "The number of applications managed by Argo CD on the cluster",
+          "icon": "DefaultProperty"
+        },
+        "serverVersion": {
+          "title": "Server Version",
+          "type": "string",
+          "description": "Contains information about the Kubernetes version of the cluster",
+          "icon": "DefaultProperty"
+        },
+        "labels": {
+          "title": "Labels",
+          "type": "object",
+          "description": "Contains information about cluster metadata",
+          "icon": "DefaultProperty"
+        },
+        "updatedAt": {
+          "icon": "DefaultProperty",
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "server": {
+          "title": "Server",
+          "description": "The API server URL of the Kubernetes cluster",
+          "type": "string",
+          "icon": "DefaultProperty"
+        }
       },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "relations": {}
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
   },
   {
-      "identifier": "argocdProject",
-      "description": "This blueprint represents an ArgoCD Project",
-      "title": "ArgoCD Project",
-      "icon": "Argo",
-      "schema": {
-          "properties": {
-              "namespace": {
-                  "title": "Namespace",
-                  "type": "string",
-                  "icon": "DefaultProperty"
-              },
-              "createdAt": {
-                  "title": "Created At",
-                  "type": "string",
-                  "format": "date-time",
-                  "icon": "DefaultProperty"
-              },
-              "description": {
-                  "title": "Description",
-                  "description": "Project description",
-                  "type": "string",
-                  "icon": "DefaultProperty"
-              }
-          },
-          "required": []
+    "identifier": "argocdProject",
+    "description": "This blueprint represents an ArgoCD Project",
+    "title": "ArgoCD Project",
+    "icon": "Argo",
+    "schema": {
+      "properties": {
+        "namespace": {
+          "title": "Namespace",
+          "type": "string",
+          "icon": "DefaultProperty"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time",
+          "icon": "DefaultProperty"
+        },
+        "description": {
+          "title": "Description",
+          "description": "Project description",
+          "type": "string",
+          "icon": "DefaultProperty"
+        }
       },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "relations": {
-          "cluster": {
-              "title": "Cluster",
-              "target": "argocdCluster",
-              "required": false,
-              "many": true
-          }
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "cluster": {
+        "title": "Cluster",
+        "target": "argocdCluster",
+        "required": false,
+        "many": true
       }
+    }
   },
   {
-      "identifier": "argocdApplication",
-      "description": "This blueprint represents an ArgoCD Application",
-      "title": "ArgoCD Application",
-      "icon": "Argo",
-      "schema": {
-          "properties": {
-              "gitRepo": {
-                  "type": "string",
-                  "icon": "Git",
-                  "title": "Repository URL",
-                  "description": "The URL of the Git repository containing the application source code"
-              },
-              "gitPath": {
-                  "type": "string",
-                  "title": "Path",
-                  "description": "The path within the Git repository where the application manifests are located"
-              },
-              "destinationServer": {
-                  "type": "string",
-                  "title": "Destination Server"
-              },
-              "namespace": {
-                  "type": "string",
-                  "title": "Namespace"
-              },
-              "syncStatus": {
-                  "type": "string",
-                  "title": "Sync Status",
-                  "enum": [
-                      "Synced",
-                      "OutOfSync",
-                      "Unknown"
-                  ],
-                  "enumColors": {
-                      "Synced": "green",
-                      "OutOfSync": "red",
-                      "Unknown": "lightGray"
-                  },
-                  "description": "The sync status of the application"
-              },
-              "healthStatus": {
-                  "type": "string",
-                  "title": "Health Status",
-                  "enum": [
-                      "Healthy",
-                      "Missing",
-                      "Suspended",
-                      "Degraded",
-                      "Progressing",
-                      "Unknown"
-                  ],
-                  "enumColors": {
-                      "Healthy": "green",
-                      "Missing": "yellow",
-                      "Suspended": "purple",
-                      "Degraded": "red",
-                      "Progressing": "blue",
-                      "Unknown": "lightGray"
-                  },
-                  "description": "The health status of the application"
-              },
-              "createdAt": {
-                  "title": "Created At",
-                  "type": "string",
-                  "format": "date-time"
-              }
+    "identifier": "argocdApplication",
+    "description": "This blueprint represents an ArgoCD Application",
+    "title": "ArgoCD Application",
+    "icon": "Argo",
+    "schema": {
+      "properties": {
+        "gitRepo": {
+          "type": "string",
+          "icon": "Git",
+          "title": "Repository URL",
+          "description": "The URL of the Git repository containing the application source code"
+        },
+        "gitPath": {
+          "type": "string",
+          "title": "Path",
+          "description": "The path within the Git repository where the application manifests are located"
+        },
+        "destinationServer": {
+          "type": "string",
+          "title": "Destination Server"
+        },
+        "namespace": {
+          "type": "string",
+          "title": "Namespace"
+        },
+        "syncStatus": {
+          "type": "string",
+          "title": "Sync Status",
+          "enum": [
+            "Synced",
+            "OutOfSync",
+            "Unknown"
+          ],
+          "enumColors": {
+            "Synced": "green",
+            "OutOfSync": "red",
+            "Unknown": "lightGray"
           },
-          "required": []
+          "description": "The sync status of the application"
+        },
+        "healthStatus": {
+          "type": "string",
+          "title": "Health Status",
+          "enum": [
+            "Healthy",
+            "Missing",
+            "Suspended",
+            "Degraded",
+            "Progressing",
+            "Unknown"
+          ],
+          "enumColors": {
+            "Healthy": "green",
+            "Missing": "yellow",
+            "Suspended": "purple",
+            "Degraded": "red",
+            "Progressing": "blue",
+            "Unknown": "lightGray"
+          },
+          "description": "The health status of the application"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "relations": {
-          "project": {
-              "title": "Project",
-              "target": "argocdProject",
-              "required": false,
-              "many": false
-          }
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "argocdProject",
+        "required": false,
+        "many": false
       }
+    }
   }
 ]

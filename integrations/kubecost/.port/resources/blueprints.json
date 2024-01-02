@@ -1,166 +1,166 @@
 [
-    {
-        "identifier": "kubecostResourceAllocation",
-        "description": "This blueprint represents an Kubecost resource allocation in our software catalog",
-        "title": "Kubecost Resource Allocation",
-        "icon": "Kubecost",
-        "schema": {
-          "properties": {
-            "cluster": {
-              "type": "string",
-              "title": "Cluster"
-            },
-            "namespace": {
-              "type": "string",
-              "title": "Namespace"
-            },
-            "startDate": {
-              "title": "Start Date",
-              "type": "string",
-              "format": "date-time"
-            },
-            "endDate": {
-              "title": "End Date",
-              "type": "string",
-              "format": "date-time"
-            },
-            "cpuCoreHours": {
-              "title": "CPU Core Hours",
-              "type": "number"
-            },
-            "cpuCost": {
-              "title": "CPU Cost",
-              "type": "number"
-            },
-            "cpuEfficiency": {
-              "title": "CPU Efficiency",
-              "type": "number"
-            },
-            "gpuHours": {
-              "title": "GPU Hours",
-              "type": "number"
-            },
-            "gpuCost": {
-              "title": "GPU Cost",
-              "type": "number"
-            },
-            "networkCost": {
-              "title": "Network Cost",
-              "type": "number"
-            },
-            "loadBalancerCost": {
-              "title": "Load Balancer Cost",
-              "type": "number"
-            },
-            "pvCost": {
-              "title": "PV Cost",
-              "type": "number"
-            },
-            "pvBytes": {
-                "title": "PV Bytes",
-                "type": "number"
-              },
-            "ramBytes": {
-              "title": "RAM Bytes",
-              "type": "number"
-            },
-            "ramCost": {
-              "title": "RAM Cost",
-              "type": "number"
-            },
-            "ramEfficiency": {
-              "title": "RAM Efficiency",
-              "type": "number"
-            },
-            "sharedCost": {
-              "title": "Shared Cost",
-              "type": "number"
-            },
-            "externalCost": {
-              "title": "External Cost",
-              "type": "number"
-            },
-            "totalCost": {
-              "title": "Total Cost",
-              "type": "number"
-            },
-            "totalEfficiency": {
-              "title": "Total Efficiency",
-              "type": "number"
-            }
-          },
-          "required": []
+  {
+    "identifier": "kubecostResourceAllocation",
+    "description": "This blueprint represents an Kubecost resource allocation in our software catalog",
+    "title": "Kubecost Resource Allocation",
+    "icon": "Kubecost",
+    "schema": {
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "title": "Cluster"
         },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "relations": {}
+        "namespace": {
+          "type": "string",
+          "title": "Namespace"
+        },
+        "startDate": {
+          "title": "Start Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "title": "End Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "cpuCoreHours": {
+          "title": "CPU Core Hours",
+          "type": "number"
+        },
+        "cpuCost": {
+          "title": "CPU Cost",
+          "type": "number"
+        },
+        "cpuEfficiency": {
+          "title": "CPU Efficiency",
+          "type": "number"
+        },
+        "gpuHours": {
+          "title": "GPU Hours",
+          "type": "number"
+        },
+        "gpuCost": {
+          "title": "GPU Cost",
+          "type": "number"
+        },
+        "networkCost": {
+          "title": "Network Cost",
+          "type": "number"
+        },
+        "loadBalancerCost": {
+          "title": "Load Balancer Cost",
+          "type": "number"
+        },
+        "pvCost": {
+          "title": "PV Cost",
+          "type": "number"
+        },
+        "pvBytes": {
+          "title": "PV Bytes",
+          "type": "number"
+        },
+        "ramBytes": {
+          "title": "RAM Bytes",
+          "type": "number"
+        },
+        "ramCost": {
+          "title": "RAM Cost",
+          "type": "number"
+        },
+        "ramEfficiency": {
+          "title": "RAM Efficiency",
+          "type": "number"
+        },
+        "sharedCost": {
+          "title": "Shared Cost",
+          "type": "number"
+        },
+        "externalCost": {
+          "title": "External Cost",
+          "type": "number"
+        },
+        "totalCost": {
+          "title": "Total Cost",
+          "type": "number"
+        },
+        "totalEfficiency": {
+          "title": "Total Efficiency",
+          "type": "number"
+        }
+      },
+      "required": []
     },
-    {
-        "identifier": "kubecostCloudAllocation",
-        "description": "This blueprint represents an Kubecost cloud resource allocation in our software catalog",
-        "title": "Kubecost Cloud Allocation",
-        "icon": "Kubecost",
-        "schema": {
-          "properties": {
-            "provider": {
-              "type": "string",
-              "title": "Provider"
-            },
-            "accountID": {
-              "type": "string",
-              "title": "Account ID"
-            },
-            "invoiceEntityID": {
-              "type": "string",
-              "title": "Invoice Entity ID"
-            },
-            "startDate": {
-              "title": "Start Date",
-              "type": "string",
-              "format": "date-time"
-            },
-            "endDate": {
-              "title": "End Date",
-              "type": "string",
-              "format": "date-time"
-            },
-            "listCost": {
-              "title": "List Cost Value",
-              "type": "number"
-            },
-            "listCostPercent": {
-              "title": "List Cost Percent",
-              "type": "number"
-            },
-            "netCost": {
-              "title": "Net Cost Value",
-              "type": "number"
-            },
-            "netCostPercent": {
-              "title": "Net Cost Percent",
-              "type": "number"
-            },
-            "amortizedNetCost": {
-              "title": "Amortized Net Cost",
-              "type": "number"
-            },
-            "amortizedNetCostPercent": {
-              "title": "Amortized Net Cost Percent",
-              "type": "number"
-            },
-            "invoicedCost": {
-              "title": "Invoice Cost",
-              "type": "number"
-            },
-            "invoicedCostPercent": {
-              "title": "Invoice Cost Percent",
-              "type": "number"
-            }
-          },
-          "required": []
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "kubecostCloudAllocation",
+    "description": "This blueprint represents an Kubecost cloud resource allocation in our software catalog",
+    "title": "Kubecost Cloud Allocation",
+    "icon": "Kubecost",
+    "schema": {
+      "properties": {
+        "provider": {
+          "type": "string",
+          "title": "Provider"
         },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "relations": {}
-      }
+        "accountID": {
+          "type": "string",
+          "title": "Account ID"
+        },
+        "invoiceEntityID": {
+          "type": "string",
+          "title": "Invoice Entity ID"
+        },
+        "startDate": {
+          "title": "Start Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "title": "End Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "listCost": {
+          "title": "List Cost Value",
+          "type": "number"
+        },
+        "listCostPercent": {
+          "title": "List Cost Percent",
+          "type": "number"
+        },
+        "netCost": {
+          "title": "Net Cost Value",
+          "type": "number"
+        },
+        "netCostPercent": {
+          "title": "Net Cost Percent",
+          "type": "number"
+        },
+        "amortizedNetCost": {
+          "title": "Amortized Net Cost",
+          "type": "number"
+        },
+        "amortizedNetCostPercent": {
+          "title": "Amortized Net Cost Percent",
+          "type": "number"
+        },
+        "invoicedCost": {
+          "title": "Invoice Cost",
+          "type": "number"
+        },
+        "invoicedCostPercent": {
+          "title": "Invoice Cost Percent",
+          "type": "number"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  }
 ]

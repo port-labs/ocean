@@ -1,249 +1,249 @@
 [
-   {
-      "identifier": "opsGenieService",
-      "description": "This blueprint represents an OpsGenie service in our software catalog",
-      "title": "OpsGenie Service",
-      "icon": "OpsGenie",
-      "schema": {
-         "properties": {
-            "description": {
-               "type": "string",
-               "title": "Description",
-               "icon": "DefaultProperty"
-            },
-            "url": {
-               "title": "URL",
-               "type": "string",
-               "description": "URL to the service",
-               "format": "url",
-               "icon": "DefaultProperty"
-            },
-            "tags": {
-               "type": "array",
-               "items": {
-                  "type": "string"
-               },
-               "title": "Tags",
-               "icon": "DefaultProperty"
-            },
-            "oncallTeam": {
-               "type": "string",
-               "title": "OnCall Team",
-               "description": "Name of the team responsible for this service",
-               "icon": "DefaultProperty"
-            },
-            "teamMembers": {
-               "icon": "TwoUsers",
-               "type": "array",
-               "items": {
-                  "type": "string",
-                  "format": "user"
-               },
-               "title": "Team Members",
-               "description": "Members of team responsible for this service"
-            },
-            "oncallUsers": {
-               "icon": "TwoUsers",
-               "type": "array",
-               "items": {
-                  "type": "string",
-                  "format": "user"
-               },
-               "title": "Oncall Users",
-               "description": "Who is on call for this service"
-            }
-         },
-         "required": []
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {
-         "teamSize": {
-            "title": "Team Size",
-            "icon": "DefaultProperty",
-            "description": "Size of the team",
-            "calculation": ".properties.teamMembers | length",
-            "type": "number"
-         }
-      },
-      "aggregationProperties":{
-         "numberOfOpenIncidents":{
-            "title":"Number of open incidents",
-            "type":"number",
-            "target":"opsGenieIncident",
-            "query":{
-               "combinator":"and",
-               "rules":[
-                  {
-                     "property":"status",
-                     "operator":"=",
-                     "value":"open"
-                  }
-               ]
-            },
-            "calculationSpec":{
-               "calculationBy":"entities",
-               "func":"count"
-            }
-         }
-      },
-      "relations": {}
-   },
-   {
-      "identifier": "opsGenieIncident",
-      "description": "This blueprint represents an OpsGenie incident in our software catalog",
-      "title": "OpsGenie Incident",
-      "icon": "OpsGenie",
-      "schema": {
-         "properties": {
-            "description": {
-               "title": "Description",
-               "type": "string"
-            },
-            "status": {
-               "type": "string",
-               "title": "Status",
-               "enum": [
-                  "closed",
-                  "open",
-                  "resolved"
-               ],
-               "enumColors": {
-                  "closed": "blue",
-                  "open": "red",
-                  "resolved": "green"
-               },
-               "description": "The status of the incident"
-            },
-            "url": {
-               "type": "string",
-               "format": "url",
-               "title": "URL"
-            },
-            "tags": {
-               "type": "array",
-               "items": {
-                  "type": "string"
-               },
-               "title": "Tags"
-            },
-            "responders": {
-               "type": "array",
-               "title": "Responders",
-               "description": "Responders to the alert"
-            },
-            "priority": {
-               "type": "string",
-               "title": "Priority"
-            },
-            "createdAt": {
-               "title": "Create At",
-               "type": "string",
-               "format": "date-time"
-            },
-            "updatedAt": {
-               "title": "Updated At",
-               "type": "string",
-               "format": "date-time"
-            }
-         },
-         "required": []
-      },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "relations": {
-         "services": {
-            "title": "Impacted Services",
-            "target": "opsGenieService",
-            "many": true,
-            "required": false
-         }
-      }
-   },
-   {
-      "identifier": "opsGenieAlert",
-      "description": "This blueprint represents an OpsGenie alert in our software catalog",
-      "title": "OpsGenie Alert",
-      "icon": "OpsGenie",
-      "schema": {
-        "properties": {
-          "description": {
-            "title": "Description",
+  {
+    "identifier": "opsGenieService",
+    "description": "This blueprint represents an OpsGenie service in our software catalog",
+    "title": "OpsGenie Service",
+    "icon": "OpsGenie",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "icon": "DefaultProperty"
+        },
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "description": "URL to the service",
+          "format": "url",
+          "icon": "DefaultProperty"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
             "type": "string"
           },
-          "status": {
-            "type": "string",
-            "title": "Status",
-            "enum": [
-              "closed",
-              "open"
-            ],
-            "enumColors": {
-              "closed": "green",
-              "open": "red"
-            },
-            "description": "The status of the alert"
-          },
-          "acknowledged": {
-            "type": "boolean",
-            "title": "Acknowledged"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "title": "Tags"
-          },
-          "responders": {
-            "type": "array",
-            "title": "Responders",
-            "description": "Responders to the alert"
-          },
-          "integration": {
-            "type": "string",
-            "title": "Integration",
-            "description": "The name of the Integration"
-          },
-          "priority": {
-            "type": "string",
-            "title": "Priority"
-          },
-          "sourceName": {
-            "type": "string",
-            "title": "Source Name",
-            "description": "Alert source name"
-          },
-          "createdBy": {
-            "title": "Created By",
+          "title": "Tags",
+          "icon": "DefaultProperty"
+        },
+        "oncallTeam": {
+          "type": "string",
+          "title": "OnCall Team",
+          "description": "Name of the team responsible for this service",
+          "icon": "DefaultProperty"
+        },
+        "teamMembers": {
+          "icon": "TwoUsers",
+          "type": "array",
+          "items": {
             "type": "string",
             "format": "user"
           },
-          "createdAt": {
-            "title": "Create At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "title": "Updated At",
-            "type": "string",
-            "format": "date-time"
-          },
-          "count": {
-            "title": "Count",
-            "type": "number"
-          }
+          "title": "Team Members",
+          "description": "Members of team responsible for this service"
         },
-        "required": []
+        "oncallUsers": {
+          "icon": "TwoUsers",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "user"
+          },
+          "title": "Oncall Users",
+          "description": "Who is on call for this service"
+        }
       },
-      "mirrorProperties": {},
-      "calculationProperties": {},
-      "relations": {
-        "relatedIncident": {
-          "title": "Related Incident",
-          "target": "opsGenieIncident",
-          "required": false,
-          "many": false
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {
+      "teamSize": {
+        "title": "Team Size",
+        "icon": "DefaultProperty",
+        "description": "Size of the team",
+        "calculation": ".properties.teamMembers | length",
+        "type": "number"
+      }
+    },
+    "aggregationProperties": {
+      "numberOfOpenIncidents": {
+        "title": "Number of open incidents",
+        "type": "number",
+        "target": "opsGenieIncident",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "=",
+              "value": "open"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
         }
       }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "opsGenieIncident",
+    "description": "This blueprint represents an OpsGenie incident in our software catalog",
+    "title": "OpsGenie Incident",
+    "icon": "OpsGenie",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "closed",
+            "open",
+            "resolved"
+          ],
+          "enumColors": {
+            "closed": "blue",
+            "open": "red",
+            "resolved": "green"
+          },
+          "description": "The status of the incident"
+        },
+        "url": {
+          "type": "string",
+          "format": "url",
+          "title": "URL"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags"
+        },
+        "responders": {
+          "type": "array",
+          "title": "Responders",
+          "description": "Responders to the alert"
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority"
+        },
+        "createdAt": {
+          "title": "Create At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "services": {
+        "title": "Impacted Services",
+        "target": "opsGenieService",
+        "many": true,
+        "required": false
+      }
     }
+  },
+  {
+    "identifier": "opsGenieAlert",
+    "description": "This blueprint represents an OpsGenie alert in our software catalog",
+    "title": "OpsGenie Alert",
+    "icon": "OpsGenie",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "closed",
+            "open"
+          ],
+          "enumColors": {
+            "closed": "green",
+            "open": "red"
+          },
+          "description": "The status of the alert"
+        },
+        "acknowledged": {
+          "type": "boolean",
+          "title": "Acknowledged"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags"
+        },
+        "responders": {
+          "type": "array",
+          "title": "Responders",
+          "description": "Responders to the alert"
+        },
+        "integration": {
+          "type": "string",
+          "title": "Integration",
+          "description": "The name of the Integration"
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority"
+        },
+        "sourceName": {
+          "type": "string",
+          "title": "Source Name",
+          "description": "Alert source name"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string",
+          "format": "user"
+        },
+        "createdAt": {
+          "title": "Create At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "count": {
+          "title": "Count",
+          "type": "number"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "relatedIncident": {
+        "title": "Related Incident",
+        "target": "opsGenieIncident",
+        "required": false,
+        "many": false
+      }
+    }
+  }
 ]

@@ -1,120 +1,120 @@
 [
   {
-     "identifier":"servicenowGroup",
-     "title":"Servicenow Group",
-     "icon":"Service",
-     "schema":{
-        "properties":{
-           "description":{
-              "title":"Description",
-              "type":"string"
-           },
-           "isActive":{
-              "title":"Is active",
-              "type":"boolean"
-           },
-           "createdOn":{
-              "title":"Created On",
-              "type":"string",
-              "format":"date-time"
-           },
-           "createdBy":{
-              "title":"Created By",
-              "type":"string"
-           }
+    "identifier": "servicenowGroup",
+    "title": "Servicenow Group",
+    "icon": "Service",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
         },
-        "required":[]
-     },
-     "mirrorProperties":{},
-     "calculationProperties":{},
-     "aggregationProperties":{},
-     "relations":{}
+        "isActive": {
+          "title": "Is active",
+          "type": "boolean"
+        },
+        "createdOn": {
+          "title": "Created On",
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   },
   {
-     "identifier":"servicenowCatalog",
-     "title":"Servicenow Catalog",
-     "icon":"Service",
-     "schema":{
-        "properties":{
-           "description":{
-              "title":"Description",
-              "type":"string"
-           },
-           "isActive":{
-              "title":"Is Active",
-              "type":"boolean"
-           },
-           "createdOn":{
-              "title":"Created On",
-              "type":"string",
-              "format":"date-time"
-           },
-           "createdBy":{
-              "title":"Created By",
-              "type":"string"
-           }
+    "identifier": "servicenowCatalog",
+    "title": "Servicenow Catalog",
+    "icon": "Service",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
         },
-        "required":[]
-     },
-     "mirrorProperties":{},
-     "calculationProperties":{},
-     "aggregationProperties":{},
-     "relations":{}
+        "isActive": {
+          "title": "Is Active",
+          "type": "boolean"
+        },
+        "createdOn": {
+          "title": "Created On",
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   },
   {
-     "identifier":"servicenowIncident",
-     "title":"Servicenow Incident",
-     "icon":"Service",
-     "schema":{
-        "properties":{
-           "category":{
-              "title":"Category",
-              "type":"string"
-           },
-           "reopenCount":{
-              "title":"Reopen Count",
-              "type":"string"
-           },
-           "severity":{
-              "title":"Severity",
-              "type":"string"
-           },
-           "assignedTo":{
-              "title":"Assigned To",
-              "type":"string",
-              "format":"url"
-           },
-           "urgency":{
-              "title":"Urgency",
-              "type":"string"
-           },
-           "contactType":{
-              "title":"Contact Type",
-              "type":"string"
-           },
-           "createdOn":{
-              "title":"Created On",
-              "type":"string",
-              "format":"date-time"
-           },
-           "createdBy":{
-              "title":"Created By",
-              "type":"string"
-           },
-           "isActive":{
-              "title":"Is Active",
-              "type":"boolean"
-           },
-           "priority":{
-              "title":"Priority",
-              "type":"string"
-           }
+    "identifier": "servicenowIncident",
+    "title": "Servicenow Incident",
+    "icon": "Service",
+    "schema": {
+      "properties": {
+        "category": {
+          "title": "Category",
+          "type": "string"
         },
-        "required":[]
-     },
-     "mirrorProperties":{},
-     "calculationProperties":{},
-     "aggregationProperties":{},
-     "relations":{}
+        "reopenCount": {
+          "title": "Reopen Count",
+          "type": "string"
+        },
+        "severity": {
+          "title": "Severity",
+          "type": "string"
+        },
+        "assignedTo": {
+          "title": "Assigned To",
+          "type": "string",
+          "format": "url"
+        },
+        "urgency": {
+          "title": "Urgency",
+          "type": "string"
+        },
+        "contactType": {
+          "title": "Contact Type",
+          "type": "string"
+        },
+        "createdOn": {
+          "title": "Created On",
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string"
+        },
+        "isActive": {
+          "title": "Is Active",
+          "type": "boolean"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]

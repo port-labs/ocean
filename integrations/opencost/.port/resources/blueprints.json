@@ -1,94 +1,94 @@
 [
-    {
-        "identifier": "openCostResourceAllocation",
-        "description": "This blueprint represents an OpenCost resource allocation in our software catalog",
-        "title": "OpenCost Resource Allocation",
-        "icon": "Opencost",
-        "schema": {
-          "properties": {
-            "cluster": {
-              "type": "string",
-              "title": "Cluster"
-            },
-            "namespace": {
-              "type": "string",
-              "title": "Namespace"
-            },
-            "startDate": {
-              "title": "Start Date",
-              "type": "string",
-              "format": "date-time"
-            },
-            "endDate": {
-              "title": "End Date",
-              "type": "string",
-              "format": "date-time"
-            },
-            "cpuCoreHours": {
-              "title": "CPU Core Hours",
-              "type": "number"
-            },
-            "cpuCost": {
-              "title": "CPU Cost",
-              "type": "number"
-            },
-            "cpuEfficiency": {
-              "title": "CPU Efficiency",
-              "type": "number"
-            },
-            "gpuHours": {
-              "title": "GPU Hours",
-              "type": "number"
-            },
-            "gpuCost": {
-              "title": "GPU Cost",
-              "type": "number"
-            },
-            "networkCost": {
-              "title": "Network Cost",
-              "type": "number"
-            },
-            "loadBalancerCost": {
-              "title": "Load Balancer Cost",
-              "type": "number"
-            },
-            "pvCost": {
-              "title": "PV Cost",
-              "type": "number"
-            },
-            "ramBytes": {
-              "title": "RAM Bytes",
-              "type": "number"
-            },
-            "ramCost": {
-              "title": "RAM Cost",
-              "type": "number"
-            },
-            "ramEfficiency": {
-              "title": "RAM Efficiency",
-              "type": "number"
-            },
-            "sharedCost": {
-              "title": "Shared Cost",
-              "type": "number"
-            },
-            "externalCost": {
-              "title": "External Cost",
-              "type": "number"
-            },
-            "totalCost": {
-              "title": "Total Cost",
-              "type": "number"
-            },
-            "totalEfficiency": {
-              "title": "Total Efficiency",
-              "type": "number"
-            }
-          },
-          "required": []
+  {
+    "identifier": "openCostResourceAllocation",
+    "description": "This blueprint represents an OpenCost resource allocation in our software catalog",
+    "title": "OpenCost Resource Allocation",
+    "icon": "Opencost",
+    "schema": {
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "title": "Cluster"
         },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "relations": {}
-    }
+        "namespace": {
+          "type": "string",
+          "title": "Namespace"
+        },
+        "startDate": {
+          "title": "Start Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "title": "End Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "cpuCoreHours": {
+          "title": "CPU Core Hours",
+          "type": "number"
+        },
+        "cpuCost": {
+          "title": "CPU Cost",
+          "type": "number"
+        },
+        "cpuEfficiency": {
+          "title": "CPU Efficiency",
+          "type": "number"
+        },
+        "gpuHours": {
+          "title": "GPU Hours",
+          "type": "number"
+        },
+        "gpuCost": {
+          "title": "GPU Cost",
+          "type": "number"
+        },
+        "networkCost": {
+          "title": "Network Cost",
+          "type": "number"
+        },
+        "loadBalancerCost": {
+          "title": "Load Balancer Cost",
+          "type": "number"
+        },
+        "pvCost": {
+          "title": "PV Cost",
+          "type": "number"
+        },
+        "ramBytes": {
+          "title": "RAM Bytes",
+          "type": "number"
+        },
+        "ramCost": {
+          "title": "RAM Cost",
+          "type": "number"
+        },
+        "ramEfficiency": {
+          "title": "RAM Efficiency",
+          "type": "number"
+        },
+        "sharedCost": {
+          "title": "Shared Cost",
+          "type": "number"
+        },
+        "externalCost": {
+          "title": "External Cost",
+          "type": "number"
+        },
+        "totalCost": {
+          "title": "Total Cost",
+          "type": "number"
+        },
+        "totalEfficiency": {
+          "title": "Total Efficiency",
+          "type": "number"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  }
 ]
