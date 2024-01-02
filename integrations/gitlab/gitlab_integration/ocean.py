@@ -76,16 +76,20 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             # projects takes more time than other resources as it has extra enrichment performed for each entity
             # such as languages, `file://` and `search://`
             projects_batch_iter = iter(projects)
+            projects_processed_in_full_batch = 0
             while projects_batch := tuple(
                 islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
             ):
-                logger.info(f"Processing extras for {len(projects_batch)} projects")
+                projects_processed_in_full_batch += len(projects_batch)
+                logger.info(
+                    f"Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
+                )
                 tasks = []
                 for project in projects_batch:
                     tasks.append(service.enrich_project_with_extras(project))
                 enriched_projects = await asyncio.gather(*tasks)
                 logger.info(
-                    f"Finished Processing extras for {len(enriched_projects)} projects"
+                    f"Finished Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
                 )
                 yield enriched_projects
 
