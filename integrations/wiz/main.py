@@ -23,10 +23,12 @@ def init_client() -> WizClient:
     )
 
 
+# initialise once
+wiz_client = init_client()
+
+
 @ocean.on_resync()
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    wiz_client = init_client()
-
     async for _issues in wiz_client.get_issues():
         logger.info(f"Received {len(_issues)} issues")
         if kind == ObjectKind.ISSUE:

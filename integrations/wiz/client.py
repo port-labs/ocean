@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any, AsyncGenerator
 
@@ -7,6 +6,7 @@ from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.context.event import event
+from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils import http_async_client, get_time
 
 PAGE_SIZE = 50
@@ -125,6 +125,14 @@ query IssuesTable(
 """
 
 
+class InvalidTokenUrlException(OceanAbortException):
+    def __init__(self, url: str, auth0_urls: list[str], cognito_urls: list[str]):
+        base_message = f"The token url {url} is not valid."
+        super().__init__(
+            f"{base_message} Valid token urls for AuthO are {auth0_urls} and for Cognito: {cognito_urls}"
+        )
+
+
 class TokenResponse(BaseModel):
     access_token: str = Field(alias="access_token")
     expires_in: int = Field(alias="expires_in")
@@ -157,11 +165,9 @@ class WizClient:
         self.http_client = http_async_client
 
     @property
-    async def api_auth_headers(self) -> dict[str, Any]:
-        token = self._get_token()
-
+    async def auth_headers(self) -> dict[str, Any]:
         return {
-            "Authorization": token.full_token,
+            "Authorization": await self.token,
             "Content-Type": "application/json",
         }
 
@@ -173,7 +179,9 @@ class WizClient:
         }
 
         if self.token_url not in audience_mapping:
-            raise Exception("Invalid Token URL")
+            raise InvalidTokenUrlException(
+                "Invalid Token URL specified", AUTH0_URLS, COGNITO_URLS
+            )
 
         audience = audience_mapping[self.token_url]
 
@@ -184,35 +192,30 @@ class WizClient:
             "client_secret": self.client_secret,
         }
 
-    def _get_token(self) -> TokenResponse:
-        try:
-            response = httpx.post(
-                self.token_url,
-                data=self.auth_params,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-            response.raise_for_status()
-            return TokenResponse(**response.json())
-        except Exception as e:
-            logger.exception(e)
-            raise
+    async def _get_token(self) -> TokenResponse:
+        logger.info(f"Fetching access token for Wiz clientId: {self.client_id}")
+
+        response = await self.http_client.post(
+            self.token_url,
+            data=self.auth_params,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        response.raise_for_status()
+        return TokenResponse(**response.json())
 
     @property
     async def token(self) -> str:
-        if not self.last_token_object or not self.last_token_object.is_valid:
-            msg = "Wiz Token expired or invalid, fetching new token"
-            logger.info(msg)
-            self.last_token_object = await self._get_token(
-                self.client_id, self.client_secret
-            )
+        if not self.last_token_object or self.last_token_object.expired:
+            logger.info("Wiz Token expired or is invalid, fetching new token")
+            self.last_token_object = await self._get_token()
 
-        return self.last_token_object.token
+        return self.last_token_object.full_token
 
     async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Fetching issues from Wiz API")
 
         if cache := event.attributes.get(CacheKeys.ISSUES):
-            logger.info("picking Wiz issues from cache")
+            logger.info("Picking Wiz issues from cache")
             yield cache
 
         json_data: dict[str, Any] = {
@@ -227,20 +230,22 @@ class WizClient:
             response = await self.http_client.post(
                 url=self.api_url,
                 json=json_data,
-                headers=await self.api_auth_headers,
+                headers=await self.auth_headers,
             )
             response.raise_for_status()
             response_json = response.json()
             data = response_json.get("data")
 
             if not data:
-                logger.error(response_json.get("error"))
-                raise Exception("No data found for Wiz account")
+                logger.error(response_json.get("errors"))
+                raise Exception(
+                    "No data found for Wiz account", response_json.get("errors")
+                )
 
             issues = data["issues"]["nodes"]
             event.attributes[CacheKeys.ISSUES] = issues
             yield issues
 
         except httpx.HTTPError as e:
-            logger.error(f"Error while fetching issues: {str(e)}")
+            logger.error(f"Error while fetching issues from Wiz: {str(e)}")
             raise
