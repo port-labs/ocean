@@ -1,33 +1,33 @@
 [
   {
-     "identifier": "terraformCloudProject",
-     "description": "This blueprint represents a project in Terraform Cloud",
-     "title": "Terraform Cloud Project",
-     "icon": "Terraform",
-     "schema": {
-       "properties": {
-         "name": {
-           "type": "string",
-           "title": "Project Name",
-           "description": "The name of the Terraform Cloud project"
-         },
-         "permissions": {
-           "type": "object",
-           "title": "Permissions",
-           "description": "The permisssions on the project"
-         },
-         "organizationId": {
-           "type": "string",
-           "title": "Organization ID",
-           "description": "The ID of the organization the project belongs to"
-         }
-       }
+     "identifier":"terraformCloudProject",
+     "description":"This blueprint represents a project in Terraform Cloud",
+     "title":"Terraform Cloud Project",
+     "icon":"Terraform",
+     "schema":{
+        "properties":{
+           "name":{
+              "type":"string",
+              "title":"Project Name",
+              "description":"The name of the Terraform Cloud project"
+           },
+           "permissions":{
+              "type":"object",
+              "title":"Permissions",
+              "description":"The permisssions on the project"
+           },
+           "organizationId":{
+              "type":"string",
+              "title":"Organization ID",
+              "description":"The ID of the organization the project belongs to"
+           }
+        }
      },
      "mirrorProperties":{},
      "calculationProperties":{},
      "aggregationProperties":{},
      "relations":{}
-   },
+  },
   {
      "identifier":"terraformCloudWorkspace",
      "description":"This blueprint represents a workspace in Terraform Cloud",
