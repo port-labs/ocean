@@ -8,6 +8,7 @@ features:
       - kind: workspace
       - kind: run
       - kind: state-version
+      - kind: project
 configurations:
   - name: terraformCloudHost
     required: false
