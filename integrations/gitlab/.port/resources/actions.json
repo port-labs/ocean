@@ -143,10 +143,10 @@
         },
         "invocationMethod": {
           "type": "WEBHOOK",
-          "agent": false,
+          "agent": true,
           "synchronized": false,
           "method": "POST",
-          "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
+          "url": "https://example.com"
         },
         "trigger": "DAY-2",
         "description": "To complete setting up this action, please follow following guide:  (Setup create s3 bucket ->)[https://docs.getport.io/guides-and-tutorials/create-cloud-resource-using-iac/]",
