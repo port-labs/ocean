@@ -163,7 +163,6 @@ class TerraformClient:
                     logger.info(
                         f"Retrieved {num_projects} projects for organization ID: {organization_id}"
                     )
-
                     yield projects
 
     async def get_paginated_runs_for_workspace(
