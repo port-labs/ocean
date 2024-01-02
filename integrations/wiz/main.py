@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 
 from loguru import logger
 
@@ -49,3 +50,13 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 for issue in _issues
                 for ticket in issue.get("serviceTickets", [])
             ]
+
+
+@ocean.router.post("/webhook")
+async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    logger.info(f"Received webhook request: {data}")
+
+    issue = await wiz_client.get_single_issue(data["issue"]["id"])
+    await ocean.register_raw(ObjectKind.ISSUE, [issue]),
+
+    return {"ok": True}

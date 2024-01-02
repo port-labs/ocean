@@ -6,6 +6,7 @@ from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.context.event import event
+from port_ocean.exceptions.base import BaseOceanException
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils import http_async_client, get_time
 
@@ -133,6 +134,12 @@ class InvalidTokenUrlException(OceanAbortException):
         )
 
 
+class UnexpectedWizException(BaseOceanException):
+    def __init__(self, errors: Any):
+        base_message = f"An unexpected error occurred at Wiz: {errors}"
+        super().__init__(base_message)
+
+
 class TokenResponse(BaseModel):
     access_token: str = Field(alias="access_token")
     expires_in: int = Field(alias="expires_in")
@@ -211,22 +218,10 @@ class WizClient:
 
         return self.last_token_object.full_token
 
-    async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info("Fetching issues from Wiz API")
-
-        if cache := event.attributes.get(CacheKeys.ISSUES):
-            logger.info("Picking Wiz issues from cache")
-            yield cache
-
-        json_data: dict[str, Any] = {
-            "query": ISSUES_GQL,
-            "variables": {
-                "first": PAGE_SIZE,
-                "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
-            },
-        }
-
+    async def make_graphql_query(self, variables: dict[str, Any]) -> dict[str, Any]:
         try:
+            json_data: dict[str, Any] = {"query": ISSUES_GQL, "variables": variables}
+
             response = await self.http_client.post(
                 url=self.api_url,
                 json=json_data,
@@ -238,14 +233,38 @@ class WizClient:
 
             if not data:
                 logger.error(response_json.get("errors"))
-                raise Exception(
-                    "No data found for Wiz account", response_json.get("errors")
-                )
+                raise UnexpectedWizException(response_json.get("errors"))
 
-            issues = data["issues"]["nodes"]
-            event.attributes[CacheKeys.ISSUES] = issues
-            yield issues
-
+            return data
         except httpx.HTTPError as e:
-            logger.error(f"Error while fetching issues from Wiz: {str(e)}")
+            logger.error(f"Error while making GraphQL query: {str(e)}")
             raise
+
+    async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Fetching issues from Wiz API")
+
+        if cache := event.attributes.get(CacheKeys.ISSUES):
+            logger.info("Picking Wiz issues from cache")
+            yield cache
+
+        variables: dict[str, Any] = {
+            "first": PAGE_SIZE,
+            "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
+        }
+
+        response_data = await self.make_graphql_query(variables)
+        issues = response_data["issues"]["nodes"]
+        event.attributes[CacheKeys.ISSUES] = issues
+        yield issues
+
+    async def get_single_issue(self, issue_id: str) -> dict[str, Any]:
+        logger.info(f"Fetching issue with id {issue_id}")
+
+        query_variables = {
+            "first": 1,
+            "filterBy": {"id": issue_id},
+        }
+
+        response_data = await self.make_graphql_query(query_variables)
+        issue = response_data["issues"]["nodes"][0]
+        return issue
