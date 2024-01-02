@@ -129,7 +129,7 @@
             ]
           },
           {
-            "height": 455,
+            "height": 595,
             "columns": [
               {
                 "id": "gitlabServicesByLevelTable",
@@ -265,7 +265,7 @@
             "id": "gitlabHasTeamEntitiesPieChart",
             "type": "entities-pie-chart",
             "property": "scorecard-rule#ProductionReadiness#hasTeam",
-            "title": "Has Team",
+            "title": "Has a Team",
             "icon": "Star",
             "dataset": {
               "combinator": "and",

@@ -52,7 +52,7 @@
           },
           {
             "identifier": "hasTeam",
-            "title": "Has Team",
+            "title": "Has a Team",
             "level": "Gold",
             "query": {
               "combinator": "and",

@@ -29,7 +29,7 @@
           "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
         },
         "trigger": "CREATE",
-        "description": "To complete setting up this action, please follow following guide:  [Setup scaffold service action ->](https://docs.getport.io/guides-and-tutorials/scaffold-a-new-service/)",
+        "description": "To complete setting up this action, please refer to the following guide - https://docs.getport.io/guides-and-tutorials/scaffold-a-new-service?git-provider=gitlab",
         "requiredApproval": false
       },
       {
@@ -48,7 +48,7 @@
           "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
         },
         "trigger": "CREATE",
-        "description": "To complete setting up this action, please follow following guide:  [Setup send scorecard reminder action ->](https://docs.getport.io/guides-and-tutorials/setup-slack-reminders)",
+        "description": "To complete setting up this action, please refer to the following guide - https://docs.getport.io/guides-and-tutorials/setup-slack-reminders?git-provider=gitlab",
         "requiredApproval": false
       },
       {
@@ -104,7 +104,7 @@
           "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
         },
         "trigger": "DAY-2",
-        "description": "To complete setting up this action, please follow following guide:  (Setup enrich service action ->)[https://docs.getport.io/guides-and-tutorials/let-developers-enrich-services-using-gitops/]",
+        "description": "To complete setting up this action, please refer to the following guide - https://docs.getport.io/guides-and-tutorials/let-developers-enrich-services-using-gitops?git-provider=gitlab",
         "requiredApproval": false
       },
       {
@@ -149,7 +149,7 @@
           "url": "https://example.com"
         },
         "trigger": "DAY-2",
-        "description": "To complete setting up this action, please follow following guide:  (Setup create s3 bucket ->)[https://docs.getport.io/guides-and-tutorials/create-cloud-resource-using-iac/]",
+        "description": "To complete setting up this action, please refer to the following guide - https://docs.getport.io/guides-and-tutorials/create-cloud-resource-using-iac?git-provider=gitlab",
         "requiredApproval": false
       }
     ]
