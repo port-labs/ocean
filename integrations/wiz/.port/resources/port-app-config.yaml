@@ -36,8 +36,8 @@ resources:
             statusChangedAt: .statusChangedAt
             resolvedAt: .resolvedAt
           relations:
-            projects: .projects | map(.id)
-            serviceTickets: .serviceTickets | (.externalId)
+            projects: .projects[].id
+            serviceTickets: .serviceTickets[].externalId
             control: .sourceRule.id
   - kind: control
     selector:

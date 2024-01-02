@@ -7,17 +7,17 @@ features:
     resources:
       - kind: issue
 configurations:
-  - name: clientId
+  - name: wizClientId
     required: true
     type: string
     sensitive: true
-  - name: clientSecret
+  - name: wizClientSecret
     required: true
     type: string
     sensitive: true
-  - name: apiUrl
+  - name: wizApiUrl
     type: string
     required: true
-  - name: tokenUrl
+  - name: wizTokenUrl
     type: string
     required: true

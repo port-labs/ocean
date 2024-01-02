@@ -17,10 +17,10 @@ class ObjectKind(StrEnum):
 
 def init_client() -> WizClient:
     return WizClient(
-        ocean.integration_config["api_url"],
-        ocean.integration_config["client_id"],
-        ocean.integration_config["client_secret"],
-        ocean.integration_config["token_url"],
+        ocean.integration_config["wiz_api_url"],
+        ocean.integration_config["wiz_client_id"],
+        ocean.integration_config["wiz_client_secret"],
+        ocean.integration_config["wiz_token_url"],
     )
 
 
