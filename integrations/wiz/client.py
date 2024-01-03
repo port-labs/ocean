@@ -1,7 +1,9 @@
+import sys
 from enum import StrEnum
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
+from httpx import Timeout
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -10,7 +12,19 @@ from port_ocean.exceptions.base import BaseOceanException
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils import http_async_client, get_time
 
+logger.configure(
+    handlers=[
+        {
+            "sink": sys.stdout,
+            "level": "INFO",
+            "format": "<red>Wiz Integration</red>: <green>[{time}]</green> | {level} | <level>{message}</level>",
+        }
+    ],
+)
+
+
 PAGE_SIZE = 50
+MAX_PAGES = 5
 AUTH0_URLS = ["https://auth.wiz.io/oauth/token", "https://auth0.gov.wiz.io/oauth/token"]
 COGNITO_URLS = [
     "https://auth.app.wiz.io/oauth/token",
@@ -125,6 +139,13 @@ query IssuesTable(
 }
 """
 
+GRAPH_QUERIES = {"issues": ISSUES_GQL}
+
+
+class ResourceKey(StrEnum):
+    ISSUES = "issues"
+    PROJECTS = "projects"
+
 
 class InvalidTokenUrlException(OceanAbortException):
     def __init__(self, url: str, auth0_urls: list[str], cognito_urls: list[str]):
@@ -170,16 +191,10 @@ class WizClient:
         self.last_token_object: TokenResponse | None = None
 
         self.http_client = http_async_client
+        self.http_client.timeout = Timeout(30)
 
     @property
-    async def auth_headers(self) -> dict[str, Any]:
-        return {
-            "Authorization": await self.token,
-            "Content-Type": "application/json",
-        }
-
-    @property
-    def auth_params(self) -> dict[str, Any]:
+    def auth_request_params(self) -> dict[str, Any]:
         audience_mapping = {
             **{url: "beyond-api" for url in AUTH0_URLS},
             **{url: "wiz-api" for url in COGNITO_URLS},
@@ -204,7 +219,7 @@ class WizClient:
 
         response = await self.http_client.post(
             self.token_url,
-            data=self.auth_params,
+            data=self.auth_request_params,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         response.raise_for_status()
@@ -212,50 +227,82 @@ class WizClient:
 
     @property
     async def token(self) -> str:
+        """
+        Asynchronously retrieves and returns the access token for Wiz.
+        """
         if not self.last_token_object or self.last_token_object.expired:
             logger.info("Wiz Token expired or is invalid, fetching new token")
             self.last_token_object = await self._get_token()
 
         return self.last_token_object.full_token
 
-    async def make_graphql_query(self, variables: dict[str, Any]) -> dict[str, Any]:
+    @property
+    async def auth_headers(self) -> dict[str, Any]:
+        return {
+            "Authorization": await self.token,
+            "Content-Type": "application/json",
+        }
+
+    async def make_graphql_query(
+        self, query: str, variables: dict[str, Any]
+    ) -> dict[str, Any]:
         try:
-            json_data: dict[str, Any] = {"query": ISSUES_GQL, "variables": variables}
+            logger.info(f"Fetching graphql query with variables {variables}")
 
             response = await self.http_client.post(
                 url=self.api_url,
-                json=json_data,
+                json={"query": query, "variables": variables},
                 headers=await self.auth_headers,
             )
-            response.raise_for_status()
             response_json = response.json()
-            data = response_json.get("data")
 
-            if not data:
-                logger.error(response_json.get("errors"))
-                raise UnexpectedWizException(response_json.get("errors"))
+            if "data" not in response_json:
+                raise UnexpectedWizException(response_json["errors"])
 
-            return data
+            return response_json["data"]
         except httpx.HTTPError as e:
             logger.error(f"Error while making GraphQL query: {str(e)}")
             raise
 
-    async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info("Fetching issues from Wiz API")
+    async def _get_paginated_resources(
+        self, resource: str, variables: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[Any], None]:
+        logger.info(f"Fetching {resource} data from Wiz API")
+        page_num = 1
 
+        while page_num <= MAX_PAGES:
+            logger.info(f"Fetching page {page_num} of {MAX_PAGES}")
+            gql = GRAPH_QUERIES[resource]
+            data = await self.make_graphql_query(gql, variables)
+
+            yield data[resource]["nodes"]
+
+            cursor = data[resource]["pageInfo"]
+            if not cursor.get("hasNextPage", False):
+                break  # Break out of the loop if no more pages
+
+            # Set the cursor for the next page request
+            variables["after"] = cursor.get("endCursor", "")
+            page_num += 1
+
+    async def get_issues(
+        self, page_size: int = PAGE_SIZE
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.ISSUES):
             logger.info("Picking Wiz issues from cache")
             yield cache
+            return
 
         variables: dict[str, Any] = {
-            "first": PAGE_SIZE,
+            "first": page_size,
             "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
         }
 
-        response_data = await self.make_graphql_query(variables)
-        issues = response_data["issues"]["nodes"]
-        event.attributes[CacheKeys.ISSUES] = issues
-        yield issues
+        async for issues in self._get_paginated_resources(
+            resource=ResourceKey.ISSUES, variables=variables
+        ):
+            event.attributes.setdefault(CacheKeys.ISSUES, []).extend(issues)
+            yield issues
 
     async def get_single_issue(self, issue_id: str) -> dict[str, Any]:
         logger.info(f"Fetching issue with id {issue_id}")
@@ -265,6 +312,6 @@ class WizClient:
             "filterBy": {"id": issue_id},
         }
 
-        response_data = await self.make_graphql_query(query_variables)
-        issue = response_data["issues"]["nodes"][0]
+        response_data = await self.make_graphql_query(ISSUES_GQL, query_variables)
+        issue = response_data.get("issues", {}).get("nodes", [])[0]
         return issue
