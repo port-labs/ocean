@@ -1,6 +1,19 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"terraformCloudProject"'
+          properties:
+            name: .attributes.name
+            permissions: .attributes.permissions
+            organizationId: .relationships.organization.data.id
   - kind: workspace
     selector:
       query: "true"
@@ -9,7 +22,7 @@ resources:
         mappings:
           identifier: .id
           title: .attributes.name
-          blueprint: '"terrafomCloudWorkspace"'
+          blueprint: '"terraformCloudWorkspace"'
           properties:
             organization: .relationships.organization.data.id
             createdAt: .attributes."created-at"
@@ -21,6 +34,26 @@ resources:
             latestChangeAt: .attributes."latest-change-at"
           relations:
             currentStateVersion: .relationships."current-state-version".data.id
+            project: .relationships.project.data.id
+  - kind: state-version
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .id
+          blueprint: '"terraformCloudStateVersion"'
+          properties:
+            createdAt: .attributes."created-at"
+            serial: .attributes.serial
+            status: .attributes.status
+            size: .attributes.size
+            isResourcesProcessed: .attributes."resources-processed"
+            hostedStateDownloadUrl: .attributes."hosted-state-download-url"
+            hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
+            vcsCommitUrl: .attributes."vcs-commit-url"
+            outputData: .__output
   - kind: run
     selector:
       query: "true"
@@ -42,22 +75,3 @@ resources:
             source: .attributes.source
           relations:
             terraformCloudWorkspace: .relationships.workspace.data.id
-  - kind: state-version
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .id
-          blueprint: '"terraformCloudStateVersion"'
-          properties:
-            createdAt: .attributes."created-at"
-            serial: .attributes.serial
-            status: .attributes.status
-            size: .attributes.size
-            isResourcesProcessed: .attributes."resources-processed"
-            hostedStateDownloadUrl: .attributes."hosted-state-download-url"
-            hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
-            vcsCommitUrl: .attributes."vcs-commit-url"
-            outputData: .__output
