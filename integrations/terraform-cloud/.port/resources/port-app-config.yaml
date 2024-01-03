@@ -3,7 +3,7 @@ deleteDependentEntities: true
 resources:
   - kind: organization
     selector:
-        query: "true"
+      query: "true"
     port:
       entity:
         mappings:
