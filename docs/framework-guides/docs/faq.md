@@ -46,7 +46,7 @@ guide.
 
 You can remove your integration by sending an HTTP DELETE method to the `https://api.getport.io/v1/integration/<INTEGRATION_IDENTIFIER>` endpoint in [Port's API](https://api.getport.io/static/index.html#/Integrations/delete_v1_integration__identifier_).
 
-:::caution
+:::warning
 Deleting an integration will not stop the service from running and ingesting data. To stop the service, you need to stop
 the process running the integration.
 :::

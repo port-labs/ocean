@@ -92,7 +92,7 @@ The required parameters are the Port client ID and client secret. As seen in the
 
 For local development, it is possible to export the client ID and secret as environment variables to your shell with the following commands:
 
-```shell showLineNumbers
+```bash showLineNumbers
 export PORT_CLIENT_ID="<YOUR_CLIENT_ID>"
 export PORT_CLIENT_SECRET="<YOUR_CLIENT_SECRET>"
 ```
@@ -105,7 +105,7 @@ port:
   clientSecret: "<YOUR_CLIENT_SECRET>"
 ```
 
-:::caution
+:::warning
 Remember that your Port client ID and secret are API credentials which are sensitive and whose values should not be committed to git
 :::
 

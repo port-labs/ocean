@@ -35,7 +35,7 @@ Fork the Ocean framework repository to your GitHub account. This will create a c
 
 Clone the forked repository to your local machine using the following command:
 
-```shell showLineNumbers
+```bash showLineNumbers
 git clone https://github.com/your-username/ocean-framework.git
 ```
 

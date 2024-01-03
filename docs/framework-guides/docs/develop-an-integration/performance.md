@@ -28,7 +28,7 @@ in memory at once. They are a memory-efficient way to work with large datasets o
 produce a stream of values. Generators are implemented using a special type of function called generator functions or by
 using generator expressions.
 
-```python
+```python showLineNumbers
 def my_generator():
     for item in my_list:
         yield get_item_from_api(item)
@@ -58,7 +58,7 @@ This is especially useful when the integration is returning a large list of item
 Try to optimize the amount of data that is being returned in each batch from the generator, this will make sure the integration is always working and passing the data from the 3rd-party to Port with no delay
 :::
 
-:::caution
+:::warning
 Although using generators with Ocean can make the data appear faster, it will not make the integration faster, it will
 only allow the framework to start processing the data as soon as it is available.
 

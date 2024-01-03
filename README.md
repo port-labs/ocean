@@ -17,13 +17,13 @@ empowering engineers to effortlessly prioritize key features and streamline the 
 ## Installation
 In order to install the Ocean Framework, run the following command:
 
-```sh
+```bash
 pip install port-ocean[cli]
 ```
 
 Or
 
-```sh
+```bash
 poetry add port-ocean[cli]
 ```
 
@@ -31,13 +31,13 @@ poetry add port-ocean[cli]
 
 1. source the integration venv 
 
-   ```sh
+   ```bash
    . .venv/bin/activate
    ```
 
 2. Run
 
-   ```sh
+   ```bash
    ocean sail ./path/to/
    integration
    ```
@@ -113,19 +113,19 @@ In order to learn how you can contribute to Ocean, read our [contributing guide]
 
 2. Install dependencies:
 
-   ```sh
+   ```bash
    make install
    ```
 
    Or (For installing integrations dependencies as well)
 
-   ```sh
+   ```bash
    make install/all
    ```
 
 3. source the integration venv
 
-   ```sh
+   ```bash
    . .venv/bin/activate
    ```
 
@@ -134,7 +134,7 @@ In order to learn how you can contribute to Ocean, read our [contributing guide]
 
 2. For new integration run
 
-   ```sh
+   ```bash
    make new
    ```
 
@@ -142,25 +142,25 @@ In order to learn how you can contribute to Ocean, read our [contributing guide]
 
 3. Install dependencies
 
-4. ```sh
+4. ```bash
    cd DESIRED_INTEGRATION_FOLDER && make install
    ```
 
 5. source the integration venv
 
-   ```sh
+   ```bash
    . .venv/bin/activate
    ```
 
 6. Run the integration
 
-   ```sh
+   ```bash
    make run
    ```
 
    Or
 
-   ```sh
+   ```bash
    ocean sail
    ```
 

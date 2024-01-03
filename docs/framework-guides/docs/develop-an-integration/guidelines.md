@@ -50,7 +50,7 @@ e.g. `__my_custom_field`)
 
 Use loguru for logging
 
-```python
+```python showLineNumbers
 from loguru import logger
 
 logger.info('Hello World')
