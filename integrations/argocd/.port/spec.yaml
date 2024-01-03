@@ -8,6 +8,7 @@ features:
       - kind: cluster
       - kind: project
       - kind: application
+      - kind: history
 configurations:
   - name: token
     required: true

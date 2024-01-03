@@ -18,7 +18,10 @@ async def on_resources_resync(kind: str) -> list[dict[Any, Any]]:
     argocd_client = init_client()
 
     try:
-        return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
+        if kind == ObjectKind.HISTORY:
+            return await argocd_client.get_deployment_history()
+        else:
+            return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
     except ValueError:
         logger.error(f"Invalid resource kind: {kind}")
         raise

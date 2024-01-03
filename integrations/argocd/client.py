@@ -11,6 +11,7 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     APPLICATION = "application"
     CLUSTER = "cluster"
+    HISTORY = "history"
 
 
 class ArgocdClient:
@@ -18,8 +19,9 @@ class ArgocdClient:
         self.token = token
         self.api_url = f"{server_url}/api/v1"
         self.api_auth_header = {"Authorization": f"Bearer {self.token}"}
-        self.http_client = http_async_client
-        self.http_client.headers.update(self.api_auth_header)
+        #self.http_client = http_async_client
+        self.http_client = httpx.AsyncClient(verify=False, headers=self.api_auth_header)
+        #self.http_client.headers.update(self.api_auth_header)
 
     async def _send_api_request(
         self,
@@ -29,11 +31,12 @@ class ArgocdClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         try:
-            response = await self.http_client.request(
-                method=method,
+            response = await self.http_client.get(
+                # method=method,
                 url=url,
                 params=query_params,
-                json=json_data,
+                # json=json_data,
+                #verify=False
             )
             response.raise_for_status()
             return response.json()
@@ -56,3 +59,17 @@ class ArgocdClient:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
         application = await self._send_api_request(url=url)
         return application
+
+    async def get_deployment_history(self) -> list[dict[str, Any]]:
+        """The ArgoCD application API returns a history of all deployments. This function reuses the output of the application endpoint
+        """
+        logger.info("fetching Argocd deployment history from applications endpoint")
+        applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        all_history = [
+                {**history_item, "__applicationId": application["metadata"]["uid"]}
+                for application in applications
+                for history_item in application["status"].get("history", [])
+            ]
+        # all_history = [app["status"]["history"] for app in applications]
+        # flattened_history = [item for sublist in all_history for item in sublist]
+        return all_history

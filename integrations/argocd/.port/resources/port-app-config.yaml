@@ -51,3 +51,21 @@ resources:
             createdAt: .metadata.creationTimestamp
           relations:
             project: .spec.project
+  - kind: history
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .id
+          blueprint: '"argocdDeploymentHistory"'
+          properties:
+            deployedAt: .deployedAt
+            deployStartedAt: .deployStartedAt
+            revision: .revision
+            initiatedBy: .initiatedBy.username
+            repoURL: .source.repoURL
+            sourcePath: .source.path
+          relations:
+            application: .__applicationId
