@@ -15,6 +15,7 @@ class ObjectKind(StrEnum):
     RUN = "run"
     STATE_VERSION = "state-version"
     PROJECT = "project"
+    ORGANIZATION = "organization"
 
 
 def init_terraform_client() -> TerraformClient:
@@ -52,6 +53,14 @@ async def enrich_state_versions_with_output_data(
         ]
 
         return enriched_state_versions
+
+
+@ocean.on_resync(ObjectKind.ORGANIZATION)
+async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+    async for organizations in terraform_client.get_paginated_organizations():
+        logger.info(f"Received {len(organizations)} batch {kind}s")
+        yield organizations
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

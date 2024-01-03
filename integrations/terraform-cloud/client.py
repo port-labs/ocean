@@ -97,9 +97,22 @@ class TerraformClient:
     async def get_paginated_organizations(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        cache_key = "terraform-cloud-organization"
+        if cache := event.attributes.get(cache_key):
+            logger.info("Retrieving organizations data from cache")
+            yield cache
+            return
+
+        all_organizations = []
         logger.info("Fetching organizations")
         async for organizations in self.get_paginated_resources("organizations"):
             yield organizations
+            all_organizations.extend(organizations)
+
+        event.attributes[cache_key] = all_organizations
+        logger.info(
+            f"Total workspaces retrieved across all organizations: {len(all_organizations)}"
+        )
 
     async def get_single_workspace(self, workspace_id: str) -> dict[str, Any]:
         logger.info(f"Fetching workspace with ID: {workspace_id}")
@@ -144,7 +157,7 @@ class TerraformClient:
                     all_workspaces.extend(workspaces)
                     yield workspaces
 
-        event.attributes[cache_key] = workspaces
+        event.attributes[cache_key] = all_workspaces
         logger.info(
             f"Total workspaces retrieved across all organizations: {len(all_workspaces)}"
         )

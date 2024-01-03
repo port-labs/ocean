@@ -1,5 +1,65 @@
 [
   {
+    "identifier": "terraformCloudOrganization",
+    "description": "This blueprint represents an organization in Terraform Cloud",
+    "title": "Terraform Cloud Organization",
+    "icon": "Terraform",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Organization Name",
+          "description": "The name of the Terraform Cloud organization"
+        },
+        "externalId": {
+          "type": "string",
+          "title": "External ID",
+          "description": "The external ID of the organization"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "The time at which the organization was created"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "description": "The email associated with the organization"
+        },
+        "collaboratorAuthPolicy": {
+          "type": "string",
+          "title": "Collaborator Authentication Policy",
+          "description": "Policy for collaborator authentication"
+        },
+        "planIdentifier": {
+          "type": "string",
+          "title": "Plan Identifier",
+          "description": "The identifier of the plan the organization is on"
+        },
+        "permissions": {
+          "type": "object",
+          "title": "Permissions",
+          "description": "Permissions associated with the organization"
+        },
+        "samlEnabled": {
+          "type": "boolean",
+          "title": "SAML Enabled",
+          "description": "Indicates if SAML is enabled for the organization"
+        },
+        "defaultExecutionMode": {
+          "type": "string",
+          "title": "Default Execution Mode",
+          "description": "The default execution mode for the organization"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "terraformCloudProject",
     "description": "This blueprint represents a project in Terraform Cloud",
     "title": "Terraform Cloud Project",
@@ -15,18 +75,20 @@
           "type": "object",
           "title": "Permissions",
           "description": "The permisssions on the project"
-        },
-        "organizationId": {
-          "type": "string",
-          "title": "Organization ID",
-          "description": "The ID of the organization the project belongs to"
         }
       }
     },
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "organization": {
+        "title": "Terraform Cloud Organization",
+        "target": "terraformCloudOrganization",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "terraformCloudWorkspace",
