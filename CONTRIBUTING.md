@@ -41,7 +41,7 @@ By contributing a new integration, you enable users of the framework to seamless
 1. Ensure any install or build dependencies are removed before the end of the layer when doing a
    build.
 2. Create a new change fragment using towncrier. See [here](https://towncrier.readthedocs.io/en/latest/tutorial.html#creating-news-fragments) for more information.
-   ```bash showLineNumbers
+   ```bash
     towncrier create --content 'My very important changelog message' <Issue Id / title>.<type (feature / bugfix / etc...)>
     ```
 
