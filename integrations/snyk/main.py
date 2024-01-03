@@ -108,16 +108,23 @@ async def on_vulnerability_webhook_handler(request: Request) -> None:
 
         project_id = data["project"]["id"]
         organization_id = data["org"]["id"]
-        project_details = await snyk_client.get_single_project(organization_id, project_id)
+        project_details = await snyk_client.get_single_project(
+            organization_id, project_id
+        )
 
         tasks = [
             ocean.register_raw(
-                ObjectKind.ISSUE, await snyk_client.get_issues(organization_id, project_id)
+                ObjectKind.ISSUE,
+                await snyk_client.get_issues(organization_id, project_id),
             ),
             ocean.register_raw(ObjectKind.PROJECT, [project_details]),
             ocean.register_raw(
                 ObjectKind.TARGET,
-                [await snyk_client.get_single_target_by_project_id(organization_id, project_id)],
+                [
+                    await snyk_client.get_single_target_by_project_id(
+                        organization_id, project_id
+                    )
+                ],
             ),
         ]
 

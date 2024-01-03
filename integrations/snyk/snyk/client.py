@@ -165,7 +165,9 @@ class SnykClient:
                 )
                 yield projects_to_yield
 
-    async def get_single_target_by_project_id(self, org_id: str, project_id: str) -> dict[str, Any]:
+    async def get_single_target_by_project_id(
+        self, org_id: str, project_id: str
+    ) -> dict[str, Any]:
         project = await self.get_single_project(org_id, project_id)
         target_id = project["__target"]["data"]["id"]
 
@@ -183,7 +185,6 @@ class SnykClient:
     async def get_paginated_targets(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        
         all_organizations = await self._get_organizations_in_group()
         for org_id in all_organizations:
             logger.info(f"Fetching paginated targets for organization: {org_id}")
@@ -325,32 +326,42 @@ class SnykClient:
         # Check if the result is already cached
         cache_key = CacheKeys.GROUP
         if cache := event.attributes.get(cache_key):
-            logger.info(f"Fetched Snyk group organizations from the cache")
+            logger.info("Fetched Snyk group organizations from the cache")
             return cache
-    
+
         if self.group_ids:
             groups = self.group_ids.split(",")
             all_organizations = []
 
-            logger.info(f"Found {len(groups)} groups to filter. Group IDs: {str(groups)}. Fetching all organizations associated with these groups")
+            logger.info(
+                f"Found {len(groups)} groups to filter. Group IDs: {str(groups)}. Fetching all organizations associated with these groups"
+            )
 
             for group_id in groups:
                 url = f"{self.api_url}/group/{group_id}/orgs"
                 response = await self._send_api_request(url=url)
                 organization_ids_in_group = [org["id"] for org in response["orgs"]]
-                logger.info(f"Fetched {len(organization_ids_in_group)} organizations in group: {group_id}. Organization IDs: {str(organization_ids_in_group)}")
+                logger.info(
+                    f"Fetched {len(organization_ids_in_group)} organizations in group: {group_id}. Organization IDs: {str(organization_ids_in_group)}"
+                )
                 all_organizations.extend(organization_ids_in_group)
 
-            logger.info(f"Fetched {len(all_organizations)} organizations for the given groups. All organization IDs: {str(all_organizations)}")
+            logger.info(
+                f"Fetched {len(all_organizations)} organizations for the given groups. All organization IDs: {str(all_organizations)}"
+            )
 
             event.attributes[cache_key] = all_organizations
             return all_organizations
         else:
-            logger.info("Integration config did not specify any group(s) to filter. Getting all organizations linked to the provided Snyk token")
+            logger.info(
+                "Integration config did not specify any group(s) to filter. Getting all organizations linked to the provided Snyk token"
+            )
             url = f"{self.api_url}/orgs"
             response = await self._send_api_request(url=url)
             organization_ids = [org["id"] for org in response["orgs"]]
 
-            logger.info(f"Fetched {len(organization_ids)} organizations for the given token. All organization IDs: {str(organization_ids)}")
+            logger.info(
+                f"Fetched {len(organization_ids)} organizations for the given token. All organization IDs: {str(organization_ids)}"
+            )
             event.attributes[cache_key] = organization_ids
             return organization_ids
