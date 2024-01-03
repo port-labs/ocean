@@ -21,7 +21,7 @@ configurations:
     type: string
     required: false
     default: https://api.snyk.io
-  - name: group
+  - name: groups
     type: string
     required: false
   - name: appHost

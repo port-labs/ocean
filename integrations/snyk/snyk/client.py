@@ -283,9 +283,7 @@ class SnykClient:
         target_id = (
             project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
         )
-        organization_id = (
-            project.get("relationships", {}).get("organization", {}).get("data", {}).get("id")
-        )
+        organization_id = project["relationships"]["organization"]["data"]["id"]
 
         tasks = [
             self._get_user_details(owner_id),
@@ -318,7 +316,7 @@ class SnykClient:
                     return
 
             body = {"url": app_host_webhook_url, "secret": self.webhook_secret}
-
+            logger.info(f"Creating webhook subscription for organization: {org_id}")
             await self._send_api_request(
                 url=snyk_webhook_url, method="POST", json_data=body
             )
@@ -327,28 +325,25 @@ class SnykClient:
         # Check if the result is already cached
         cache_key = CacheKeys.GROUP
         if cache := event.attributes.get(cache_key):
-            logger.info(f"Using cached organizations in group for key: {cache_key}")
+            logger.info(f"Fetched Snyk group organizations from the cache")
             return cache
     
         if self.group_ids:
             groups = self.group_ids.split(",")
             all_organizations = []
 
-            logger.info(f"Found a total of {len(groups)} groups to filter with details {str(groups)}. Getting their associated organizations")
+            logger.info(f"Found {len(groups)} groups to filter. Group IDs: {str(groups)}. Fetching all organizations associated with these groups")
 
-            async def fetch_organizations_in_group(group_id):
+            for group_id in groups:
                 url = f"{self.api_url}/group/{group_id}/orgs"
                 response = await self._send_api_request(url=url)
-                return [org["id"] for org in response["orgs"]]
+                organization_ids_in_group = [org["id"] for org in response["orgs"]]
+                logger.info(f"Fetched {len(organization_ids_in_group)} organizations in group: {group_id}. Organization IDs: {str(organization_ids_in_group)}")
+                all_organizations.extend(organization_ids_in_group)
 
-            all_organizations = await asyncio.gather(*[fetch_organizations_in_group(group_id) for group_id in groups])
+            logger.info(f"Fetched {len(all_organizations)} organizations for the given groups. All organization IDs: {str(all_organizations)}")
 
-            # Flatten the list
-            organization_ids = [org_id for org_ids_in_group in all_organizations for org_id in org_ids_in_group]
-            logger.info(f"Fetched a total of {len(organization_ids)} organizations for the given token with details: {str(organization_ids)}")
-
-            event.attributes[cache_key] = organization_ids
-
+            event.attributes[cache_key] = all_organizations
             return all_organizations
         else:
             logger.info("Integration config did not specify any group(s) to filter. Getting all organizations linked to the provided Snyk token")
@@ -356,6 +351,6 @@ class SnykClient:
             response = await self._send_api_request(url=url)
             organization_ids = [org["id"] for org in response["orgs"]]
 
-            logger.info(f"Fetched a total of {len(organization_ids)} organizations for the given token with details: {str(organization_ids)}")
+            logger.info(f"Fetched {len(organization_ids)} organizations for the given token. All organization IDs: {str(organization_ids)}")
             event.attributes[cache_key] = organization_ids
             return organization_ids

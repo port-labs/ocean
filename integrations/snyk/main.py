@@ -43,9 +43,7 @@ async def process_project_issues(
 ) -> list[dict[str, Any]]:
     snyk_client = init_client()
     async with semaphore:
-        organization_id = (
-            project.get("relationships", {}).get("organization", {}).get("data", {}).get("id")
-        )
+        organization_id = project["relationships"]["organization"]["data"]["id"]
         return await snyk_client.get_issues(organization_id, project["id"])
 
 
