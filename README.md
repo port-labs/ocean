@@ -17,13 +17,13 @@ empowering engineers to effortlessly prioritize key features and streamline the 
 ## Installation
 In order to install the Ocean Framework, run the following command:
 
-```sh
+```bash showLineNumbers
 pip install port-ocean[cli]
 ```
 
 Or
 
-```sh
+```bash showLineNumbers
 poetry add port-ocean[cli]
 ```
 
@@ -31,13 +31,13 @@ poetry add port-ocean[cli]
 
 1. source the integration venv 
 
-   ```sh
+   ```bash showLineNumbers
    . .venv/bin/activate
    ```
 
 2. Run
 
-   ```sh
+   ```bash showLineNumbers
    ocean sail ./path/to/
    integration
    ```
@@ -81,7 +81,7 @@ port-ocean/
 The Integration Framework utilizes a `config.yaml` file for its configuration. This file defines both the framework configuration and the integration configuration within it. Each integration is identified by its type and unique identifier, which are utilized during initialization to appropriately update Port.
 
 Example `config.yaml`:
-```yaml
+```yaml showLineNumbers
 # This is an example configuration file for the integration service.
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 
@@ -113,19 +113,19 @@ In order to learn how you can contribute to Ocean, read our [contributing guide]
 
 2. Install dependencies:
 
-   ```sh
+   ```bash showLineNumbers
    make install
    ```
 
    Or (For installing integrations dependencies as well)
 
-   ```sh
+   ```bash showLineNumbers
    make install/all
    ```
 
 3. source the integration venv
 
-   ```sh
+   ```bash showLineNumbers
    . .venv/bin/activate
    ```
 
@@ -134,7 +134,7 @@ In order to learn how you can contribute to Ocean, read our [contributing guide]
 
 2. For new integration run
 
-   ```sh
+   ```bash showLineNumbers
    make new
    ```
 
@@ -142,25 +142,25 @@ In order to learn how you can contribute to Ocean, read our [contributing guide]
 
 3. Install dependencies
 
-4. ```sh
+4. ```bash showLineNumbers
    cd DESIRED_INTEGRATION_FOLDER && make install
    ```
 
 5. source the integration venv
 
-   ```sh
+   ```bash showLineNumbers
    . .venv/bin/activate
    ```
 
 6. Run the integration
 
-   ```sh
+   ```bash showLineNumbers
    make run
    ```
 
    Or
 
-   ```sh
+   ```bash showLineNumbers
    ocean sail
    ```
 

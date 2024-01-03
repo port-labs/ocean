@@ -25,7 +25,7 @@ Our documentation is hosted using [AWS Amplify](https://aws.amazon.com/amplify/)
 
 Install [NodeJS](https://nodejs.org), it is recommended to use [NVM](https://github.com/nvm-sh/nvm#install--update-script) to make installation and management of different NodeJS versions on the same machine easier:
 
-```bash
+```bash showLineNumbers
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
 # After this, you can use nvm to install the latest version of node:
 nvm install node
@@ -35,13 +35,13 @@ If you prefer installing NodeJS directly, please install the are not using NVM, 
 
 Next, clone this repository and then in the project directory run:
 
-```bash
+```bash showLineNumbers
 npm install
 ```
 
 Then run:
 
-```bash
+```bash showLineNumbers
 npm run start
 ```
 

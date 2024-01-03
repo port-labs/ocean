@@ -18,7 +18,7 @@ These configurations are passed to the client using environment varaibles.
 `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` are environment variables used to specify a proxy server for handling HTTP, HTTPS, or all types of requests, respectively. The values assigned to these settings should be the URL of the proxy server.
 
 For example:
-```sh showLineNumbers
+```bash showLineNumbers
 HTTP_PROXY=http://my-proxy.com:1111
 HTTPS_PROXY=http://my-proxy.com:2222
 ALL_PROXY=http://my-proxy.com:3333
@@ -29,7 +29,7 @@ ALL_PROXY=http://my-proxy.com:3333
 `NO_PROXY` allows blacklisting certain addresses from being handled through a proxy. This vairable accepts a comma-seperated list of hostnames or urls.
 
 For example:
-```sh showLineNumbers
+```bash showLineNumbers
 NO_PROXY=http://127.0.0.1,google.com
 ```
 
@@ -43,7 +43,7 @@ For more information take a look at the HTTPX [proxy configuration documentation
 This variable specifies the file path where SSL/TLS key information will be logged. This is particularly useful for debugging encrypted SSL/TLS connections, as it allows network analyzers like Wireshark to decrypt and inspect the traffic.
 
 For example:
-```sh showLineNumbers
+```bash showLineNumbers
 SSLKEYLOGFILE=/path/to/sslkeylogfile.txt
 ```
 
@@ -51,7 +51,7 @@ SSLKEYLOGFILE=/path/to/sslkeylogfile.txt
 This variable sets the directory path where the program looks for SSL/TLS certificates. Instead of a single file, `SSL_CERT_DIR` points to a directory that contains multiple certificate files. This is useful when you have a collection of trusted CA (Certificate Authority) certificates split into different files.
 
 For example:
-```sh showLineNumbers
+```bash showLineNumbers
 SSL_CERT_DIR=/etc/ssl/certs
 ```
 
@@ -59,7 +59,7 @@ SSL_CERT_DIR=/etc/ssl/certs
 This variable points to a single file that contains a bundle of concatenated CA certificates, which are used to validate the SSL/TLS connections. The file should contain a series of trusted certificates in PEM format. This is useful when your application needs to validate server certificates against a specific set of CAs.
 
 For example:
-```sh showLineNumbers
+```bash showLineNumbers
 SSL_CERT_FILE=/path/to/cacert.pem
 ```
 
