@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.18 (2024-01-03)
+
+### Features
+
+- Added a new feature to enable automatic discovery and syncing of groups and associated organizations, providing users with the ability to filter and fetch all relevant data seamlessly. This helps to avoid the situation of having to install the exporter per every organization (#5551)
+
+
 # Port_Ocean 0.1.17 (2024-01-01)
 
 ### Improvements
