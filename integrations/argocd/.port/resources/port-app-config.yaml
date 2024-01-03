@@ -57,7 +57,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id | tostring
+          identifier: .__applicationId + "-" + .id | tostring
           title: .id
           blueprint: '"argocdDeploymentHistory"'
           properties:
