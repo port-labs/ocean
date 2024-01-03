@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "newrelic"
-version = "0.1.18"
+version = "0.1.19"
 description = "New Relic Integration"
 authors = ["Tom Tankilevitch <tomtankilevitch@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.4.12", extras = ["cli"]}
+port_ocean = {version = "^0.4.13", extras = ["cli"]}
 httpx = "^0.24.1"
 
 [tool.poetry.group.dev.dependencies]
