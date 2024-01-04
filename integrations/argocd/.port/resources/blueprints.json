@@ -174,42 +174,36 @@
   {
     "identifier": "argocdDeploymentHistory",
     "description": "This blueprint represents an ArgoCD deployment history",
-    "title": "ArgoCD History",
+    "title": "ArgoCD Deployment History",
     "icon": "Argo",
     "schema": {
       "properties": {
         "deployedAt": {
           "title": "Deployed At",
           "type": "string",
-          "format": "date-time",
-          "icon": "DefaultProperty"
+          "format": "date-time"
         },
         "deployStartedAt": {
           "title": "Deploy Started At",
           "type": "string",
-          "format": "date-time",
-          "icon": "DefaultProperty"
+          "format": "date-time"
         },
         "revision": {
           "title": "Revision",
-          "type": "string",
-          "icon": "DefaultProperty"
+          "type": "string"
         },
         "initiatedBy": {
           "title": "Initiated By",
-          "type": "string",
-          "icon": "DefaultProperty"
+          "type": "string"
         },
         "repoURL": {
-          "icon": "DefaultProperty",
           "title": "Repository URL",
           "type": "string",
           "format": "url"
         },
         "sourcePath": {
           "title": "Source Path",
-          "type": "string",
-          "icon": "DefaultProperty"
+          "type": "string"
         }
       },
       "required": []
