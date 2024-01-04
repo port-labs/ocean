@@ -1,6 +1,6 @@
 import sys
 from enum import StrEnum
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator
 
 import httpx
 from httpx import Timeout
