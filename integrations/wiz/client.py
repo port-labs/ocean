@@ -284,7 +284,7 @@ class WizClient:
             raise
 
     async def _get_paginated_resources(
-        self, resource: str, variables: Optional[dict[str, Any]] = None
+        self, resource: str, variables: dict[str, Any]
     ) -> AsyncGenerator[list[Any], None]:
         logger.info(f"Fetching {resource} data from Wiz API")
         page_num = 1
