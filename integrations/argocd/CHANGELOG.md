@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.15 (2024-01-04)
+
+### Features
+
+- Added support for ArgoCD deployment histories (#5704)
+
+
 # Port_Ocean 0.1.14 (2024-01-01)
 
 ### Improvements
