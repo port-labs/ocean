@@ -58,6 +58,6 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     logger.info(f"Received webhook request: {data}")
 
     issue = await wiz_client.get_single_issue(data["issue"]["id"])
-    await ocean.register_raw(ObjectKind.ISSUE, [issue]),
+    await ocean.register_raw(ObjectKind.ISSUE, [issue])
 
     return {"ok": True}
