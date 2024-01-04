@@ -138,13 +138,36 @@ query IssuesTable(
   }
 }
 """
+PROJECTS_GQL = """
+query ProjectsTable(
+  $filterBy: ProjectFilters,
+  $first: Int,
+  $after: String,
+  $orderBy: ProjectOrder
+) {
+  projects(
+    filterBy: $filterBy,
+    first: $first,
+    after: $after,
+    orderBy: $orderBy
+  ) {
+    nodes {
+      id
+      name
+      isFolder
+      archived
+      businessUnit
+      description
+    }
+  }
+}
+"""
+GRAPH_QUERIES = {"issues": ISSUES_GQL, "projects": PROJECTS_GQL}
 
-GRAPH_QUERIES = {"issues": ISSUES_GQL}
 
-
-class ResourceKey(StrEnum):
-    ISSUES = "issues"
-    PROJECTS = "projects"
+class CacheKeys(StrEnum):
+    ISSUES = "wiz_issues"
+    PROJECTS = "wiz_projects"
 
 
 class InvalidTokenUrlException(OceanAbortException):
@@ -174,10 +197,6 @@ class TokenResponse(BaseModel):
     @property
     def full_token(self) -> str:
         return f"{self.token_type} {self.access_token}"
-
-
-class CacheKeys(StrEnum):
-    ISSUES = "wiz_issues"
 
 
 class WizClient:
@@ -277,7 +296,7 @@ class WizClient:
 
             yield data[resource]["nodes"]
 
-            cursor = data[resource]["pageInfo"]
+            cursor = data[resource].get("pageInfo") or {}
             if not cursor.get("hasNextPage", False):
                 break  # Break out of the loop if no more pages
 
@@ -299,10 +318,26 @@ class WizClient:
         }
 
         async for issues in self._get_paginated_resources(
-            resource=ResourceKey.ISSUES, variables=variables
+            resource="issues", variables=variables
         ):
             event.attributes.setdefault(CacheKeys.ISSUES, []).extend(issues)
             yield issues
+
+    async def get_projects(
+        self, page_size: int = PAGE_SIZE
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if cache := event.attributes.get(CacheKeys.PROJECTS):
+            logger.info("Picking Wiz projects from cache")
+            yield cache
+            return
+
+        variables: dict[str, Any] = {"first": page_size}
+
+        async for projects in self._get_paginated_resources(
+            resource="projects", variables=variables
+        ):
+            event.attributes.setdefault(CacheKeys.PROJECTS, []).extend(projects)
+            yield projects
 
     async def get_single_issue(self, issue_id: str) -> dict[str, Any]:
         logger.info(f"Fetching issue with id {issue_id}")

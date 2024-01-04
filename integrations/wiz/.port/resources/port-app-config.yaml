@@ -11,9 +11,9 @@ resources:
           identifier: .id
           title: .name
           properties:
-            slug: .slug
+            archived: .archived
             businessUnit: .businessUnit
-            businessImpact: .riskProfile.businessImpact
+            description: .description
   - kind: issue
     selector:
       query: 'true'

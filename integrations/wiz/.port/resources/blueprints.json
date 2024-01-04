@@ -6,27 +6,35 @@
     "icon": "Box",
     "schema": {
       "properties": {
-        "slug": {
-          "type": "string",
-          "title": "Project Slug",
-          "description": "the project slug"
+        "archived": {
+          "type": "boolean",
+          "title": "Archived?",
+          "description": "Is the project archived?"
         },
         "businessUnit": {
           "type": "string",
           "title": "Business Unit",
           "description": "the business unit of the project"
         },
-        "businessImpact": {
+        "description": {
           "type": "string",
-          "title": "Business Impact",
-          "description": "the impact of the project to the business"
+          "title": "Description",
+          "description": "the project description"
         }
       },
       "required": []
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "issues": {
+        "target": "wizIssue",
+        "title": "Issues",
+        "description": "The issues affecting this project",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "wizControl",

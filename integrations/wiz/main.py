@@ -30,26 +30,27 @@ wiz_client = init_client()
 
 @ocean.on_resync()
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for _issues in wiz_client.get_issues():
-        logger.info(f"Received {len(_issues)} issues")
-        if kind == ObjectKind.ISSUE:
-            yield _issues
-        elif kind == ObjectKind.PROJECT:
-            yield [
-                project for issue in _issues for project in issue.get("projects", [])
-            ]
-        elif kind == ObjectKind.CONTROL:
-            yield [
-                issue["sourceRule"]
-                for issue in _issues
-                if issue.get("sourceRule") is not None
-            ]
-        elif kind == ObjectKind.SERVICE_TICKET:
-            yield [
-                ticket
-                for issue in _issues
-                for ticket in issue.get("serviceTickets", [])
-            ]
+    if kind == ObjectKind.PROJECT:
+        async for projects in wiz_client.get_projects():
+            logger.info(f"Received {len(projects)} projects")
+            yield projects
+    else:
+        async for _issues in wiz_client.get_issues():
+            logger.info(f"Received {len(_issues)} issues")
+            if kind == ObjectKind.ISSUE:
+                yield _issues
+            elif kind == ObjectKind.CONTROL:
+                yield [
+                    issue["sourceRule"]
+                    for issue in _issues
+                    if issue.get("sourceRule") is not None
+                ]
+            elif kind == ObjectKind.SERVICE_TICKET:
+                yield [
+                    ticket
+                    for issue in _issues
+                    for ticket in issue.get("serviceTickets", [])
+                ]
 
 
 @ocean.router.post("/webhook")
