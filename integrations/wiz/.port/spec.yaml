@@ -21,3 +21,7 @@ configurations:
   - name: wizTokenUrl
     type: string
     required: true
+  - name: wizWebhookToken
+    required: true
+    type: string
+    sensitive: true

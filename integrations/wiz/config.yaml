@@ -15,3 +15,4 @@ integration:
     wizClientSecret: "{{ from env WIZ_CLIENT_SECRET }}"
     wizTokenUrl: "{{ from env WIZ_TOKEN_URL }}"
     wizApiUrl: "{{ from env WIZ_API_URL }}"
+    wizWebhookToken: "{{ from env WIZ_WEBHOOK_TOKEN }}"

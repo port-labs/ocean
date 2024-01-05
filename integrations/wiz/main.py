@@ -1,6 +1,8 @@
 from enum import StrEnum
 from typing import Any
 
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer
 from loguru import logger
 
 from client import WizClient
@@ -54,7 +56,16 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+async def handle_webhook_request(
+    data: dict[str, Any], token: Any = Depends(HTTPBearer())
+) -> dict[str, Any]:
+    logger.info(f"Received token {token.__dict__}")
+    if ocean.integration_config.get("wiz_webhook_token") != token.credentials:
+        raise HTTPException(
+            status_code=401,
+            detail="Wiz webhook token verification failed, ignoring request",
+        )
+
     logger.info(f"Received webhook request: {data}")
 
     issue = await wiz_client.get_single_issue(data["issue"]["id"])
