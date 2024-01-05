@@ -1,66 +1,32 @@
 [
   {
-    "identifier": "terraformCloudStateVersion",
-    "description": "This blueprint represents a version of a Terraform state version",
-    "title": "Terraform Cloud State Versions",
+    "identifier": "terraformCloudProject",
+    "description": "This blueprint represents a project in Terraform Cloud",
+    "title": "Terraform Cloud Project",
     "icon": "Terraform",
     "schema": {
       "properties": {
-        "createdAt": {
+        "name": {
           "type": "string",
-          "format": "date-time",
-          "title": "Creation Time",
-          "description": "Timestamp when the state version was created"
+          "title": "Project Name",
+          "description": "The name of the Terraform Cloud project"
         },
-        "serial": {
-          "type": "number",
-          "title": "Serial Number",
-          "description": "A unique identifier for this version within the workspace"
+        "permissions": {
+          "type": "object",
+          "title": "Permissions",
+          "description": "The permisssions on the project"
         },
-        "status": {
+        "organizationId": {
           "type": "string",
-          "title": "Status",
-          "description": "The current status of the state version (e.g., 'queued', 'finished')"
-        },
-        "size": {
-          "type": "number",
-          "title": "Size",
-          "description": "The size of the resources"
-        },
-        "isResourcesProcessed": {
-          "type": "boolean",
-          "title": "Is Resources Processed",
-          "description": "Whether the resources have been processed"
-        },
-        "hostedStateDownloadUrl": {
-          "type": "string",
-          "title": "Download Url",
-          "format": "url",
-          "description": "Hosted state version download url "
-        },
-        "hostedJsonDownloadUrl": {
-          "type": "string",
-          "title": "Download Url",
-          "format": "url",
-          "description": "Url for downloading state version in json format"
-        },
-        "outputData": {
-          "type": "array",
-          "title": "Output",
-          "description": "output returned from state version"
-        },
-        "vcsCommitUrl": {
-          "type": "string",
-          "title": "VCS Commit URL",
-          "format": "url",
-          "description": "URL of the VCS commit that triggered this state version"
+          "title": "Organization ID",
+          "description": "The ID of the organization the project belongs to"
         }
       }
     },
-    "relations": {},
     "mirrorProperties": {},
     "calculationProperties": {},
-    "aggregationProperties": {}
+    "aggregationProperties": {},
+    "relations": {}
   },
   {
     "identifier": "terraformCloudWorkspace",
@@ -123,8 +89,77 @@
         "target": "terraformCloudStateVersion",
         "required": false,
         "many": false
+      },
+      "project": {
+        "title": "Terraform Cloud Project",
+        "target": "terraformCloudProject",
+        "required": false,
+        "many": false
       }
     }
+  },
+  {
+    "identifier": "terraformCloudStateVersion",
+    "description": "This blueprint represents a version of a Terraform state version",
+    "title": "Terraform Cloud State Versions",
+    "icon": "Terraform",
+    "schema": {
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Time",
+          "description": "Timestamp when the state version was created"
+        },
+        "serial": {
+          "type": "number",
+          "title": "Serial Number",
+          "description": "A unique identifier for this version within the workspace"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The current status of the state version (e.g., 'queued', 'finished')"
+        },
+        "size": {
+          "type": "number",
+          "title": "Size",
+          "description": "The size of the resources"
+        },
+        "isResourcesProcessed": {
+          "type": "boolean",
+          "title": "Is Resources Processed",
+          "description": "Whethere the resources has been processed"
+        },
+        "hostedStateDownloadUrl": {
+          "type": "string",
+          "title": "Download Url",
+          "format": "url",
+          "description": "Hosted state version download url "
+        },
+        "hostedJsonDownloadUrl": {
+          "type": "string",
+          "title": "Download Url",
+          "format": "url",
+          "description": "Url for downloading state version in json format"
+        },
+        "outputData": {
+          "type": "array",
+          "title": "Output",
+          "description": "output returned from state version"
+        },
+        "vcsCommitUrl": {
+          "type": "string",
+          "title": "VCS Commit URL",
+          "format": "url",
+          "description": "URL of the VCS commit that triggered this state version"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   },
   {
     "identifier": "terraformCloudRun",

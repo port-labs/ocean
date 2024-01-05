@@ -9,50 +9,9 @@ resources:
         mappings:
           identifier: .path_with_namespace | gsub(" "; "")
           title: .name
-          blueprint: '"gitlabRepository"'
+          blueprint: '"service"'
           properties:
             url: .web_url
             readme: file://README.md
             description: .description
             language: .__languages | to_entries | max_by(.value) | .key
-            namespace: .namespace.name
-            fullPath: .namespace.full_path
-            defaultBranch: .default_branch
-  - kind: merge-request
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .title
-          blueprint: '"gitlabMergeRequest"'
-          properties:
-            creator: .author.name
-            status: .state
-            createdAt: .created_at
-            updatedAt: .updated_at
-            description: .description
-            link: .web_url
-          relations:
-            repository: .references.full | gsub("!.+"; "")
-  - kind: issue
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .title
-          blueprint: '"gitlabIssue"'
-          properties:
-            creator: .author.name
-            status: .state
-            createdAt: .created_at
-            closedAt: .closed_at
-            updatedAt: .updated_at
-            description: .description
-            link: .web_url
-            labels: "[.labels[]]"
-          relations:
-            repository: .references.full | gsub("#.+"; "")
