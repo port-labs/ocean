@@ -7,13 +7,13 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .fullName | gsub(" "; "") | gsub("/"; "-") | ascii_downcase
+          identifier: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1]
           title: .fullName
           blueprint: '"jenkinsJob"'
           properties:
             jobName: .name
             url: .url
-            jobStatus: '{"notbuilt": "created", "blue": "passing", "red": "failing"}[.color // "updated"]'
+            jobStatus: '{"notbuilt": "created", "blue": "passing", "red": "failing"}[.color]'
             timestamp: .time
             parentJob: .__parentJob
   - kind: build
@@ -22,11 +22,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: |
-            def parseURL:
-                  capture("^((?<scheme>[^:/?#]+):)?(//(?<authority>(?<domain>[^/?#:]*)(:(?<port>[0-9]*))?))?((?<path>[^?#]*))?(\\?(?<query>([^#]*)))?(#(?<fragment>(.*)))?");
-            
-            .url | parseURL | .path | gsub("%20"; "")  | gsub("/job/"; "/") | ascii_downcase | gsub("/"; "-") | gsub("^[/\\-]+|[/\\-]+$"; "")
+          identifier: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1]
           title: .displayName
           blueprint: '"jenkinsBuild"'
           properties:
@@ -36,8 +32,4 @@ resources:
             timestamp: '.timestamp / 1000 | todate'
             previousBuild: .previousBuild.url
           relations:
-            parentJob: |
-              def parseURL:
-                    capture("^((?<scheme>[^:/?#]+):)?(//(?<authority>(?<domain>[^/?#:]*)(:(?<port>[0-9]*))?))?((?<path>[^?#]*))?(\\?(?<query>([^#]*)))?(#(?<fragment>(.*)))?");
-              
-              .url | parseURL | .path | gsub("%20"; "")  | gsub("/job/"; "/") | ascii_downcase | gsub("/"; "-") | gsub("^[/\\-]+|[/\\-]+$"; "") | gsub("-[0-9]+$"; "")
+            parentJob: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1] | gsub("-[0-9]+$"; "")
