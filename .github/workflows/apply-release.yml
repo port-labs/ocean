@@ -20,28 +20,31 @@ jobs:
         uses: snok/install-poetry@v1
 
       - name: Get package version
+        id: version
         run: |
-          echo $(poetry search port-ocean)
           version=$(poetry search port-ocean | grep port-ocean | sed 's/.*(\(.*\))/\1/')
           pr_name="Release ${version}"
           branch_name="release-${version}"
           echo "Branch Name: $branch_name"
           echo "PR Name: $pr_name"
-          git checkout -b $branch_name
+          echo "pr_name=$pr_name" >> $GITHUB_OUTPUT
+          echo "branch_name=$branch_name" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Apply changes
         run: |
+          git checkout -b ${{ steps.version.outputs.branch_name }}
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-          ./scripts/bump-all.sh ${version}
+          ./scripts/bump-all.sh ${{ steps.version.outputs.version }}
 
-          git push origin $branch_name
+          git push origin ${{ steps.version.outputs.branch_name }}
 
       - name: Open pull request
         uses: peter-evans/create-pull-request@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "Propose changes"
-          title: $pr_name
+          title: ${{ steps.version.outputs.pr_name }}
           body: "This pull request includes changes made in the feature branch."
