@@ -21,6 +21,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
       - name: Get package version
         id: version
         run: |
