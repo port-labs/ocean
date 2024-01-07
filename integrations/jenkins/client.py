@@ -26,40 +26,19 @@ class JenkinsClient:
             yield cache
             return
 
-        all_jobs = []
-
-        try:
-            async for jobs in self.fetch_jobs_and_builds_from_api():
-                all_jobs.extend(jobs)
-
-            yield all_jobs
-            event.attributes[cache_key] = all_jobs
-        except Exception as e:
-            logger.error(f"Unexpected error occurred: {e}")
-            raise
+        async for jobs in self.fetch_jobs_and_builds_from_api():
+            event.attributes.setdefault(cache_key, []).extend(jobs)
+            yield jobs
 
     async def fetch_jobs_and_builds_from_api(
         self, parent_job: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         page_size = 5
         page = 0
-        job_batch = []
 
         while True:
-            start_idx = page_size * page
-            end_idx = start_idx + page_size
-
-            params = {
-                "tree": f"jobs[name,url,displayName,fullName,color,jobs[name,color,fullName,displayName,url],"
-                f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"
-                f"{{0,50}}]{{{start_idx},{end_idx}}}"
-            }
-
-            if parent_job:
-                job_path = urlparse(parent_job["url"]).path
-                base_url = f"{self.jenkins_base_url}{urlparse(job_path).path}"
-            else:
-                base_url = self.jenkins_base_url
+            params = self._build_api_params(page_size, page)
+            base_url = self._build_base_url(parent_job)
 
             job_response = await self.client.get(f"{base_url}/api/json", params=params)
             job_response.raise_for_status()
@@ -68,26 +47,54 @@ class JenkinsClient:
             if not jobs:
                 break
 
-            for job in jobs:
-                if parent_job:
-                    parent_job["__jobsCount"] = len(parent_job["jobs"])
-                    job["__parentJob"] = {
-                        key: value
-                        for key, value in parent_job.items()
-                        if parent_job and key != "jobs"
-                    }
+            yield await self._process_jobs(jobs, parent_job)
 
-                if "builds" not in job:
-                    # Recursively fetch child jobs only if no builds key
-                    async for child_jobs in self.fetch_jobs_and_builds_from_api(job):
-                        job_batch.extend(child_jobs)
-                else:
-                    job_batch.append(job)
-
-            yield job_batch
             page += 1
+
             if len(jobs) < page_size:
                 break
+
+    def _build_api_params(self, page_size: int, page: int) -> dict[str, Any]:
+        start_idx = page_size * page
+        end_idx = start_idx + page_size
+
+        return {
+            "tree": f"jobs[name,url,displayName,fullName,color,jobs[name,color,fullName,displayName,url],"
+            f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"
+            f"{{0,50}}]{{{start_idx},{end_idx}}}"
+        }
+
+    def _build_base_url(self, parent_job: Optional[dict[str, Any]]) -> str:
+        job_path = urlparse(parent_job["url"]).path if parent_job else ""
+        return f"{self.jenkins_base_url}{urlparse(job_path).path}"
+
+    async def _process_jobs(
+        self, jobs: list[dict[str, Any]], parent_job: Optional[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Process the list of jobs, optionally attaching information from the parent job.
+        If a job has no builds, recursively fetch and include its child jobs.
+
+        Args:
+            jobs (list[dict]): List of jobs to process.
+            parent_job (Optional[dict]): Parent job information to attach to each job.
+
+        Returns:
+            list[dict]: Processed list of jobs with optional parent job information.
+        """
+        job_batch = []
+
+        for job in jobs:
+            if parent_job:
+                job["__parentJob"] = parent_job
+
+            if "builds" not in job:
+                async for child_jobs in self.fetch_jobs_and_builds_from_api(job):
+                    job_batch.extend(child_jobs)
+            else:
+                job_batch.append(job)
+
+        return job_batch
 
     async def get_single_resource(self, resource_url: str) -> dict[str, Any]:
         """
