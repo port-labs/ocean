@@ -38,20 +38,17 @@ jobs:
 
       - name: Apply changes
         run: |
-          git checkout -b ${{ steps.version.outputs.branch_name }}
+#          git checkout -b ${{ steps.version.outputs.branch_name }}
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
           ./scripts/bump-all.sh ${{ steps.version.outputs.version }}
 
-          git push origin ${{ steps.version.outputs.branch_name }}
+#          git push origin ${{ steps.version.outputs.branch_name }}
 
       - name: Open pull request
         uses: peter-evans/create-pull-request@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Propose changes"
           title: ${{ steps.version.outputs.pr_name }}
-          body: "This pull request includes changes made in the feature branch."
           branch: ${{ steps.version.outputs.branch_name }}
           base: main
