@@ -54,3 +54,4 @@ jobs:
           title: ${{ steps.version.outputs.pr_name }}
           body: "This pull request includes changes made in the feature branch."
           branch: ${{ steps.version.outputs.branch_name }}
+          base: main
