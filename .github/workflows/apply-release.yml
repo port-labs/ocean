@@ -30,7 +30,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-          ./scripts/bump-all.sh
+          ./scripts/bump-all.sh ${version}
 
           git push origin $branch_name
 
