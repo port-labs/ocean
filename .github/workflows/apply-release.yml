@@ -28,8 +28,8 @@ jobs:
         id: version
         run: |
           version=$(poetry search port-ocean | grep port-ocean | sed 's/.*(\(.*\))/\1/')
-          pr_name="Release ${version}"
-          branch_name="release-${version}"
+          pr_name="Apply Ocean version $version to all integrations"
+          branch_name="apply-ocean-$version-to-all-integrations"
           echo "Branch Name: $branch_name"
           echo "PR Name: $pr_name"
           echo "pr_name=$pr_name" >> $GITHUB_OUTPUT
@@ -50,3 +50,11 @@ jobs:
           title: ${{ steps.version.outputs.pr_name }}
           branch: ${{ steps.version.outputs.branch_name }}
           base: main
+          body: |
+            This PR was automatically created by a GitHub Action.
+
+            ## What does this PR do?
+            Apply Ocean version ${{ steps.version.outputs.version }} to all integrations
+
+            ## How should this be manually tested?
+            ./scripts/bump-all.sh ^${{ steps.version.outputs.version }}
