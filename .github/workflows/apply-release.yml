@@ -18,6 +18,7 @@ jobs:
 
       - name: Get package version
         run: |
+          echo $(poetry search port-ocean)
           version=$(poetry search port-ocean | grep port-ocean | sed 's/.*(\(.*\))/\1/')
           pr_name="Release ${version}"
           branch_name="release-${version}"
