@@ -1,6 +1,7 @@
 type: opsgenie
 description: OpsGenie integration for Port Ocean
 icon: OpsGenie
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/opsgenie
 features:
   - type: exporter
     section: Incident Management
