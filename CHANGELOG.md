@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.14 (2024-01-07)
+
+
+### Bug Fixes
+
+- Fixed missing team parameter in the port app config model (PORT-5938)
+
+
 ## 0.4.13 (2023-12-31)
 
 ### Features
