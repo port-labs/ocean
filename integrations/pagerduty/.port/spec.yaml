@@ -1,6 +1,7 @@
 type: pagerduty
 description: pagerduty integration for Port Ocean
 icon: pagerduty
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty
 features:
   - type: exporter
     section: Incident Management
