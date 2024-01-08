@@ -97,7 +97,6 @@ jobs:
     permissions:
       packages: write
       contents: read
-    needs: release-integration
     steps:
       - name: Check out code
         uses: actions/checkout@v4
