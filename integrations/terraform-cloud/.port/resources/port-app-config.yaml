@@ -52,6 +52,7 @@ resources:
             executionMode: .attributes."execution-mode"
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
+            tags: .__tags
           relations:
             currentStateVersion: .relationships."current-state-version".data.id
             project: .relationships.project.data.id

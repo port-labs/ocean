@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.4 (2024-01-09)
+
+### Improvements
+
+- Added Tags to terraform cloud (PORT-6043)
+
+
 # Port_Ocean 0.1.4 (2024-01-03)
 
 ### Features

@@ -55,6 +55,22 @@ async def enrich_state_versions_with_output_data(
         return enriched_state_versions
 
 
+async def enrich_workspaces_with_tags(
+    http_client: TerraformClient, workspaces: List[dict[str, Any]]
+) -> list[dict[str, Any]]:
+
+    async def get_tags_for_workspace(workspace: dict[str, Any]) -> dict[str, Any]:
+        tags = []
+        async for tag_batch in http_client.get_workspace_tags(workspace['id']):
+            tags.extend(tag_batch)
+        return {**workspace, "__tags": tags}
+
+    tasks = [get_tags_for_workspace(workspace) for workspace in workspaces]
+    enriched_workspaces = [await task for task in asyncio.as_completed(tasks)]
+
+    return enriched_workspaces
+
+
 @ocean.on_resync(ObjectKind.ORGANIZATION)
 async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
@@ -76,7 +92,10 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
     async for workspaces in terraform_client.get_paginated_workspaces():
         logger.info(f"Received {len(workspaces)} batch {kind}s")
-        yield workspaces
+        enriched_workspace_batch = await enrich_workspaces_with_tags(
+            terraform_client, workspaces
+        )
+        yield enriched_workspace_batch
 
 
 @ocean.on_resync(ObjectKind.RUN)

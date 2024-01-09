@@ -124,6 +124,14 @@ class TerraformClient:
         run = await self.send_api_request(endpoint=f"runs/{run_id}")
         return run.get("data", {})
 
+    async def get_workspace_tags(
+        self, workspace_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Fetching tags for workspace ID: {workspace_id}")
+        endpoint = f"/workspaces/{workspace_id}/relationships/tags"
+        async for tags in self.get_paginated_resources(endpoint):
+            yield tags
+
     async def get_state_version_output(self, state_version_id: str) -> dict[str, Any]:
         logger.info(f"Fetching state version output for ID: {state_version_id}")
         outputs = await self.send_api_request(

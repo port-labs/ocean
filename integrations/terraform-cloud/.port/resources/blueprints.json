@@ -139,6 +139,11 @@
           "format": "date-time",
           "title": "Latest Change",
           "description": "Timestamp of the latest change in the workspace"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Workspace Tags",
+          "description": "Terraform workspace tags"
         }
       }
     },
