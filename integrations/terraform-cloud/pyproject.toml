@@ -3,7 +3,7 @@ name = "terraform-cloud"
 version = "0.1.6"
 description = "Terraform Cloud Integration for Port"
 authors = ["Michael Armah <michaelarmah@getport.io>"]
-
+ 
 [tool.poetry.dependencies]
 python = "^3.11"
 port_ocean = {version = "^0.4.15", extras = ["cli"]}
