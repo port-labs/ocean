@@ -7,18 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.4 (2024-01-09)
+# Port_Ocean 0.1.6 (2024-01-09)
+
+### Features
+
+- Added support for Terraform Organization (PORT-5917)
 
 ### Improvements
 
 - Added Tags to terraform cloud (PORT-6043)
 
 
-# Port_Ocean 0.1.4 (2024-01-03)
+# Port_Ocean 0.1.5 (2024-01-07)
 
-### Features
+### Improvements
 
-- Added support for Terraform Organization (PORT-5917)
+- Bumped ocean version to ^0.4.15 (#1)
+
+
+# Port_Ocean 0.1.4 (2024-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.14 (#1)
 
 
 # Port_Ocean 0.1.3 (2024-01-02)
