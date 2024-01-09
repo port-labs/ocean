@@ -66,7 +66,7 @@ class JenkinsClient:
 
     def _build_base_url(self, parent_job: Optional[dict[str, Any]]) -> str:
         job_path = urlparse(parent_job["url"]).path if parent_job else ""
-        return f"{self.jenkins_base_url}{urlparse(job_path).path}"
+        return f"{self.jenkins_base_url}{job_path}"
 
     async def _process_jobs(
         self, jobs: list[dict[str, Any]], parent_job: Optional[dict[str, Any]]
