@@ -79,5 +79,4 @@ class PortAuthentication:
             self.last_token_object = await self._get_token(
                 self.client_id, self.client_secret
             )
-
         return self.last_token_object.full_token
