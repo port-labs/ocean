@@ -61,7 +61,6 @@ class Ocean:
         self,
     ) -> None:
         def execute_resync_all() -> None:
-            initialize_port_ocean_context(ocean_app=self)
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
@@ -90,7 +89,7 @@ class Ocean:
                 await self.integration.start()
                 await self._setup_scheduled_resync()
             except Exception as e:
-                logger.error(f"Failed to start integration with error: {e}")
+                logger.exception(f"Failed to start integration with error: {e}")
                 sys.exit("Server stopped")
 
         await self.fast_api_app(scope, receive, send)

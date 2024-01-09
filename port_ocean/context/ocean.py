@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Callable, TYPE_CHECKING, Any, Literal
+from typing import Callable, TYPE_CHECKING, Any, Literal, Union
 
 from fastapi import APIRouter
 from werkzeug.local import LocalProxy, LocalStack
@@ -12,7 +11,10 @@ from port_ocean.core.ocean_types import (
     RawEntityDiff,
     EntityDiff,
 )
-from port_ocean.exceptions.context import PortOceanContextNotFoundError
+from port_ocean.exceptions.context import (
+    PortOceanContextNotFoundError,
+    PortOceanContextAlreadyInitializedError,
+)
 
 if TYPE_CHECKING:
     from port_ocean.config.settings import IntegrationConfiguration
@@ -21,9 +23,17 @@ if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
 
 
-@dataclass
 class PortOceanContext:
-    app: "Ocean"
+    def __init__(self, app: Union["Ocean", None]) -> None:
+        self._app = app
+
+    @property
+    def app(self) -> "Ocean":
+        if self._app is None:
+            raise PortOceanContextNotFoundError(
+                "You must first initialize PortOcean in order to use it"
+            )
+        return self._app
 
     @property
     def config(self) -> "IntegrationConfiguration":
@@ -119,12 +129,23 @@ class PortOceanContext:
 
 
 _port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()
+_port_ocean: PortOceanContext = PortOceanContext(None)
 
 
 def initialize_port_ocean_context(ocean_app: "Ocean") -> None:
     """
     This Function initializes the PortOcean context and pushes it into the LocalStack().
     """
+    global _port_ocean
+    try:
+        # Check if the PortOcean context is already initialized
+        _port_ocean.app
+        raise PortOceanContextAlreadyInitializedError(
+            "PortOcean context is already initialized"
+        )
+    except PortOceanContextNotFoundError:
+        _port_ocean = PortOceanContext(app=ocean_app)
+
     _port_ocean_context_stack.push(PortOceanContext(app=ocean_app))
 
 
@@ -132,6 +153,12 @@ def _get_port_ocean_context() -> PortOceanContext:
     """
     Get the PortOcean context from the current thread.
     """
+    if _port_ocean is None:
+        raise PortOceanContextNotFoundError(
+            "You must first initialize PortOcean in order to use it"
+        )
+    return _port_ocean
+
     port_ocean_context = _port_ocean_context_stack.top
     if port_ocean_context is None:
         raise PortOceanContextNotFoundError(
@@ -141,4 +168,4 @@ def _get_port_ocean_context() -> PortOceanContext:
     return port_ocean_context
 
 
-ocean: PortOceanContext = LocalProxy(lambda: _get_port_ocean_context())  # type: ignore
+ocean: PortOceanContext = LocalProxy(lambda: _port_ocean)  # type: ignore

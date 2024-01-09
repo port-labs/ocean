@@ -11,7 +11,6 @@ from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConf
 from port_ocean.context.ocean import (
     ocean,
 )
-from port_ocean.context.utils import wrap_method_with_context
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
     EventListenerEvents,
@@ -141,7 +140,7 @@ class KafkaEventListener(BaseEventListener):
             logger.info(f"spawning thread {thread_name} to start resync")
             threading.Thread(
                 name=thread_name,
-                target=wrap_method_with_context(self._resync_in_new_event_loop),
+                target=self._resync_in_new_event_loop,
                 args=(message,),
             ).start()
             logger.info(f"thread {thread_name} started")
@@ -159,5 +158,5 @@ class KafkaEventListener(BaseEventListener):
         logger.info("Starting Kafka consumer")
         threading.Thread(
             name="ocean_kafka_consumer",
-            target=wrap_method_with_context(func=consumer.start),
+            target=consumer.start,
         ).start()
