@@ -58,10 +58,9 @@ async def enrich_state_versions_with_output_data(
 async def enrich_workspaces_with_tags(
     http_client: TerraformClient, workspaces: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-
     async def get_tags_for_workspace(workspace: dict[str, Any]) -> dict[str, Any]:
         tags = []
-        async for tag_batch in http_client.get_workspace_tags(workspace['id']):
+        async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
             tags.extend(tag_batch)
         return {**workspace, "__tags": tags}
 
