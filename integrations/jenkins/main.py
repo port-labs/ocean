@@ -29,18 +29,22 @@ def init_client() -> JenkinsClient:
     )
 
 
-@ocean.on_resync()
-async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync(ObjectKind.JOB)
+async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     jenkins_client = init_client()
 
-    if kind == ObjectKind.JOB:
-        async for jobs in jenkins_client.get_jobs():
-            logger.info(f"Received batch with {len(jobs)} jobs.")
-            yield jobs
-    elif kind == ObjectKind.BUILD:
-        async for builds in jenkins_client.get_builds():
-            logger.info(f"Received batch with {len(builds)} builds.")
-            yield builds
+    async for jobs in jenkins_client.get_jobs():
+        logger.info(f"Received batch with {len(jobs)} jobs")
+        yield jobs
+
+
+@ocean.on_resync(ObjectKind.BUILD)
+async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    jenkins_client = init_client()
+
+    async for builds in jenkins_client.get_builds():
+        logger.info(f"Received batch with {len(builds)} builds")
+        yield builds
 
 
 @ocean.router.post("/events")
