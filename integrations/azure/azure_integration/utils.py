@@ -7,7 +7,7 @@ from port_ocean.context.ocean import ocean
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
-from azure_integration.overrides import AzurePortAppConfig, AzureResourceConfig
+from azure_integration.overrides import AzureResourceConfig
 
 
 BATCH_SIZE = 20
@@ -26,16 +26,6 @@ def get_integration_subscription_id() -> str:
     logic_settings = ocean.integration_config
     subscription_id = logic_settings["subscription_id"]
     return subscription_id
-
-
-async def get_port_resource_configuration_by_kind(
-    kind: str,
-) -> AzureResourceConfig | None:
-    app_config = typing.cast(AzurePortAppConfig, event.port_app_config)
-    for resource in app_config.resources:
-        if resource.kind == kind:
-            return resource
-    return None
 
 
 def get_current_resource_config() -> AzureResourceConfig:

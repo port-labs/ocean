@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "project",
+    "identifier": "jiraProject",
     "title": "Jira Project",
     "icon": "Jira",
     "description": "A Jira project",
@@ -13,10 +13,11 @@
           "description": "URL to the project in Jira"
         }
       }
-    }
+    },
+    "calculationProperties": {}
   },
   {
-    "identifier": "issue",
+    "identifier": "jiraIssue",
     "title": "Jira Issue",
     "icon": "Jira",
     "schema": {
@@ -59,25 +60,43 @@
           "type": "string",
           "description": "The user that created to the issue",
           "format": "user"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "string",
+          "description": "The priority of the issue"
+        },
+        "created": {
+          "title": "Created At",
+          "type": "string",
+          "description": "The created datetime of the issue",
+          "format": "date-time"
+        },
+        "updated": {
+          "title": "Updated At",
+          "type": "string",
+          "description": "The updated datetime of the issue",
+          "format": "date-time"
         }
       }
     },
+    "calculationProperties": {},
     "relations": {
       "project": {
-        "target": "project",
+        "target": "jiraProject",
         "title": "Project",
         "description": "The Jira project that contains this issue",
         "required": false,
         "many": false
       },
       "parentIssue": {
-        "target": "issue",
+        "target": "jiraIssue",
         "title": "Parent Issue",
         "required": false,
         "many": false
       },
       "subtasks": {
-        "target": "issue",
+        "target": "jiraIssue",
         "title": "Subtasks",
         "required": false,
         "many": true

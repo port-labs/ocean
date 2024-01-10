@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -9,6 +9,7 @@ class EntityMapping(BaseModel):
     identifier: str
     title: str | None
     blueprint: str
+    team: str | None
     properties: dict[str, str] = Field(default_factory=dict)
     relations: dict[str, str] = Field(default_factory=dict)
 
@@ -17,7 +18,7 @@ class PortResourceConfig(BaseModel):
     class MappingsConfig(BaseModel):
         mappings: EntityMapping
 
-    entity: Optional[MappingsConfig]
+    entity: MappingsConfig
 
 
 class Selector(BaseModel):

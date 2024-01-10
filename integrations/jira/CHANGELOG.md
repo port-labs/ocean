@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.25 (2024-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.15 (#1)
+
+
+0.1.24 (2024-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.14 (#1)
+
+
+0.1.23 (2024-01-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.13 (#1)
+
+
+v0.1.22 (2023-12-25)
+
+### Improvements
+
+- Fix stale relation identifiers in default blueprints (port-5799)
+
+
+v0.1.21 (2023-12-24)
+
+### Improvements
+
+- Updated default blueprints and config mapping to include integration name as blueprint identifier prefix
+- Bumped ocean version to ^0.4.12 (#1)
+
+
+0.1.20 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.11 (#1)
+
+
+0.1.19 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.10 (#1)
+
+
+v0.1.18 (2023-12-20)
+
+### Improvements
+
+- Updated authentication method to use built-in basic auth function
+- Added warning message when 0 issues or projects are queried from the Jira API
+
+
+0.1.17 (2023-12-18)
+
+### Improvements
+
+- Updated the Jira issue blueprint by adding entity properties including created datetime, updated datetime and priority (#17)
+
+
+0.1.16 (2023-12-14)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.8 (#1)
+
+
 0.1.15 (2023-12-05)
 
 ### Improvements

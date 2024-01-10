@@ -18,7 +18,6 @@ This guide assumes that you already went through the [quickstart](../getting-sta
   - `mypy` for type checking.
   - `ruff` for code quality analysis.
   - `poetry check` for dependency checks.
-  - `poetry lock` to update the `pyproject.toml` file.
 
 :::note
 
@@ -36,7 +35,7 @@ Fork the Ocean framework repository to your GitHub account. This will create a c
 
 Clone the forked repository to your local machine using the following command:
 
-```shell showLineNumbers
+```bash showLineNumbers
 git clone https://github.com/your-username/ocean-framework.git
 ```
 

@@ -1,6 +1,7 @@
 type: sonarqube
 description: SonarQube integration for Port Ocean
 icon: sonarqube
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/sonarqube
 features:
   - type: exporter
     section: Code Quality & Security

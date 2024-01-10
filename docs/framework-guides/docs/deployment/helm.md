@@ -21,7 +21,7 @@ This guide will walk you through deploying an integration of the Ocean framework
 - [Port](https://app.getport.io) organization for the the Client ID and Client Secret
 - The integration's required configurations
 
-:::caution
+:::warning
 This guide will install the Helm chart using the current Kubernetes context. Make sure you have the correct context set
 before continuing.
 :::
@@ -62,3 +62,24 @@ the [integration configuration](../develop-an-integration/integration-configurat
 More information about the available event listener types and optional configurations can be found in
 the [event listeners](../framework/features/event-listener.md) guide.
 :::
+
+## Advanced configruation
+The Ocean framework supports [advanced configuration](../framework/advanced-configuration.md) using environment variables. The Ocean Helm chart allows setting these variables using Helm parameters. This can be done in one of two ways:
+
+1. Using Helm's `--set` flag:
+```bash showLineNumbers
+helm upgrade --install <MY_INSTALLATION_NAME> port-labs/port-ocean \
+  # Standard installation flags
+  # ...
+  --set extraEnv[0].name=HTTP_PROXY \
+  --set extraEnv[0].value=http://my-proxy.com:1111
+```
+
+2. The Helm `values.yaml` file:
+```yaml showLineNumbers
+# The rest of the configuration
+# ...
+extraEnvs:
+  - name: HTTP_PROXY
+    value: http://my-proxy.com:1111
+```

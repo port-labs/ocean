@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "resourceGroup",
+    "identifier": "azureResourceGroup",
     "description": "This blueprint represents an Azure Resource Group in our software catalog",
     "title": "Resource Group",
     "icon": "Azure",
@@ -22,7 +22,7 @@
     }
   },
   {
-    "identifier": "containerApp",
+    "identifier": "azureContainerApp",
     "description": "This blueprint represents an Azure Container App in our software catalog",
     "title": "Container App",
     "icon": "Azure",
@@ -70,7 +70,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false
@@ -78,7 +78,7 @@
     }
   },
   {
-    "identifier": "aks",
+    "identifier": "azureAks",
     "description": "This blueprint represents an Azure Kubernetes Service in our software catalog",
     "title": "AKS",
     "icon": "Azure",
@@ -168,7 +168,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false
@@ -176,7 +176,7 @@
     }
   },
   {
-    "identifier": "loadBalancer",
+    "identifier": "azureLoadBalancer",
     "description": "This blueprint represents an Azure Load Balancer in our software catalog",
     "title": "Load Balancer",
     "icon": "Azure",
@@ -194,35 +194,35 @@
           "title": "Provisioning State",
           "type": "string",
           "enum": [
-              "Succeeded",
-              "Updating",
-              "Deleting",
-              "Failed"
+            "Succeeded",
+            "Updating",
+            "Deleting",
+            "Failed"
           ]
         },
         "frontendIpResourceIds": {
-            "title": "Frontend IP Resource IDs",
-            "type": "array"
+          "title": "Frontend IP Resource IDs",
+          "type": "array"
         },
         "backendAddressPoolsResourceIds": {
-            "title": "Backend Address Pools Resource IDs",
-            "type": "array"
+          "title": "Backend Address Pools Resource IDs",
+          "type": "array"
         },
         "loadBalancingRulesResourceIds": {
-            "title": "Load Balancing Rules Resource IDs",
-            "type": "array"
+          "title": "Load Balancing Rules Resource IDs",
+          "type": "array"
         },
         "probesResourceIds": {
-            "title": "Probes Resource IDs",
-            "type": "array"
+          "title": "Probes Resource IDs",
+          "type": "array"
         },
         "inboundNatRulesResourceIds": {
-            "title": "Inbound NAT Rules Resource IDs",
-            "type": "array"
+          "title": "Inbound NAT Rules Resource IDs",
+          "type": "array"
         },
         "inboundNatPoolsResourceIds": {
-            "title": "Inbound NAT Pools Resource IDs",
-            "type": "array"
+          "title": "Inbound NAT Pools Resource IDs",
+          "type": "array"
         }
       },
       "required": []
@@ -231,7 +231,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false
@@ -239,11 +239,11 @@
     }
   },
   {
-    "identifier": "storageAccount",
+    "identifier": "azureStorageAccount",
     "description": "This blueprint represents an Azure Storage Account in our software catalog",
     "title": "Storage Account",
     "icon": "Azure",
-    "schema" : {
+    "schema": {
       "properties": {
         "location": {
           "title": "Location",
@@ -253,9 +253,9 @@
           "title": "Provisioning State",
           "type": "string",
           "enum": [
-              "Creating",
-              "ResolvingDNS",
-              "Succeeded"
+            "Creating",
+            "ResolvingDNS",
+            "Succeeded"
           ]
         },
         "creationTime": {
@@ -288,8 +288,8 @@
           "title": "Status of Primary",
           "type": "string",
           "enum": [
-                "available",
-                "unavailable"
+            "available",
+            "unavailable"
           ],
           "enumColors": {
             "unavailable": "red",
@@ -300,8 +300,8 @@
           "title": "Status of Secondary",
           "type": "string",
           "enum": [
-                "available",
-                "unavailable"
+            "available",
+            "unavailable"
           ],
           "enumColors": {
             "unavailable": "red",
@@ -323,7 +323,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false
@@ -331,7 +331,7 @@
     }
   },
   {
-    "identifier": "storageContainer",
+    "identifier": "azureStorageContainer",
     "description": "This blueprint represents an Azure Storage Container in our software catalog",
     "title": "Storage Container",
     "icon": "Azure",
@@ -384,7 +384,7 @@
     "calculationProperties": {},
     "relations": {
       "storageAccount": {
-        "target": "storageAccount",
+        "target": "azureStorageAccount",
         "title": "Storage Account",
         "required": false,
         "many": false
@@ -392,7 +392,7 @@
     }
   },
   {
-    "identifier": "virtualMachine",
+    "identifier": "azureVirtualMachine",
     "description": "This blueprint represents an Azure Virtual Machine in our software catalog",
     "title": "Virtual Machine",
     "icon": "Azure",
@@ -461,7 +461,7 @@
     "calculationProperties": {},
     "relations": {
       "resourceGroup": {
-        "target": "resourceGroup",
+        "target": "azureResourceGroup",
         "title": "Resource Group",
         "required": false,
         "many": false

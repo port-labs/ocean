@@ -1,0 +1,73 @@
+[
+  {
+    "blueprint": "service",
+    "data": [
+      {
+        "identifier": "ProductionReadiness",
+        "title": "Production Readiness",
+        "rules": [
+          {
+            "identifier": "hasReadme",
+            "title": "Has a readme",
+            "level": "Bronze",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "operator": "isNotEmpty",
+                  "property": "readme"
+                }
+              ]
+            }
+          },
+          {
+            "identifier": "usesSupportedLang",
+            "title": "Uses a supported language",
+            "description": "Checks if the service uses one of the supported languages. You can change this rule to include the supported languages in your organization by editing the blueprint via the \"Builder\" page",
+            "level": "Silver",
+            "query": {
+              "combinator": "or",
+              "conditions": [
+                {
+                  "operator": "=",
+                  "property": "language",
+                  "value": "Python"
+                },
+                {
+                  "operator": "=",
+                  "property": "language",
+                  "value": "JavaScript"
+                },
+                {
+                  "operator": "=",
+                  "property": "language",
+                  "value": "React"
+                },
+                {
+                  "operator": "=",
+                  "property": "language",
+                  "value": "GoLang"
+                }
+              ]
+            }
+          },
+          {
+            "identifier": "hasTeam",
+            "description": "Checks if the service has a team that owns it (according to the \"Team\" property of the service)",
+            "title": "Has a Team",
+            "level": "Gold",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "operator": "isNotEmpty",
+                  "property": "$team"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

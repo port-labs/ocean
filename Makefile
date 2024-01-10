@@ -4,7 +4,6 @@ define run_checks
 	exit_code=0; \
 	cd $1; \
 	poetry check || exit_code=$$?;\
-  	poetry lock --check || exit_code=$$?;\
 	mypy . --exclude '/\.venv/' || exit_code=$$?; \
 	ruff . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
@@ -96,7 +95,7 @@ run: lint
 	$(ACTIVATE) && poetry run ocean sail ./integrations/example
 
 new:
-	$(ACTIVATE) && poetry run ocean new ./integrations
+	$(ACTIVATE) && poetry run ocean new ./integrations --remove-docker-files
 
 test: lint
 	$(ACTIVATE) && pytest

@@ -9,7 +9,7 @@ resources:
         mappings:
           identifier: .key
           title: .name
-          blueprint: '"project"'
+          blueprint: '"jiraProject"'
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
   - kind: issue
@@ -21,7 +21,7 @@ resources:
         mappings:
           identifier: .key
           title: .fields.summary
-          blueprint: '"issue"'
+          blueprint: '"jiraIssue"'
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/browse/" + .key
             status: .fields.status.name
@@ -30,6 +30,9 @@ resources:
             assignee: .fields.assignee.displayName
             reporter: .fields.reporter.displayName
             creator: .fields.creator.displayName
+            priority: .fields.priority.id
+            created: .fields.created
+            updated: .fields.updated
           relations:
             project: .fields.project.key
             parentIssue: .fields.parent.key
