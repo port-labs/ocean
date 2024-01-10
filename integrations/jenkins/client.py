@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse
 import httpx
@@ -8,6 +9,11 @@ from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
 
+class ResourceKey(StrEnum):
+    JOBS = "jobs"
+    BUILDS = "builds"
+
+
 class JenkinsClient:
     def __init__(
         self, jenkins_base_url: str, jenkins_user: str, jenkins_token: str
@@ -16,28 +22,35 @@ class JenkinsClient:
         self.client = http_async_client
         self.client.auth = httpx.BasicAuth(jenkins_user, jenkins_token)
 
-    async def get_all_jobs_and_builds(
-        self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        cache_key = "jenkins_jobs_and_builds"
-
-        if cache := event.attributes.get(cache_key):
-            logger.info("picking from cache")
+    async def get_jobs(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if cache := event.attributes.get(ResourceKey.JOBS):
+            logger.info("picking jenkins jobs from cache")
             yield cache
             return
 
-        async for jobs in self.fetch_jobs_and_builds_from_api():
-            event.attributes.setdefault(cache_key, []).extend(jobs)
+        async for jobs in self.fetch_resources(ResourceKey.JOBS):
+            event.attributes.setdefault(ResourceKey.JOBS, []).extend(jobs)
             yield jobs
 
-    async def fetch_jobs_and_builds_from_api(
-        self, parent_job: Optional[dict[str, Any]] = None
+    async def get_builds(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if cache := event.attributes.get(ResourceKey.BUILDS):
+            logger.info("picking jenkins builds from cache")
+            yield cache
+            return
+
+        async for _jobs in self.fetch_resources(ResourceKey.BUILDS):
+            builds = [build for job in _jobs for build in job.get("builds", [])]
+            event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
+            yield builds
+
+    async def fetch_resources(
+        self, resource: str, parent_job: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         page_size = 5
         page = 0
 
         while True:
-            params = self._build_api_params(page_size, page)
+            params = self._build_api_params(resource, page_size, page)
             base_url = self._build_base_url(parent_job)
 
             job_response = await self.client.get(f"{base_url}/api/json", params=params)
@@ -47,54 +60,65 @@ class JenkinsClient:
             if not jobs:
                 break
 
-            yield await self._process_jobs(jobs, parent_job)
+            # immediately return buildable jobs
+            yield [job for job in jobs if job.get("buildable")]
+
+            folder_jobs = [job for job in jobs if job.get("jobs")]
+            yield await self._process_jobs(resource, folder_jobs, parent_job)
 
             page += 1
 
             if len(jobs) < page_size:
                 break
 
-    def _build_api_params(self, page_size: int, page: int) -> dict[str, Any]:
+    def _build_api_params(
+        self, resource: str, page_size: int, page: int
+    ) -> dict[str, Any]:
         start_idx = page_size * page
         end_idx = start_idx + page_size
 
-        return {
-            "tree": f"jobs[name,url,displayName,fullName,color,jobs[name,color,fullName,displayName,url],"
-            f"builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]"
-            f"{{0,50}}]{{{start_idx},{end_idx}}}"
-        }
+        jobs_pagination = f"{{{start_idx},{end_idx}}}"
+        builds_query = (
+            ",builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName]{0,50}"
+            if resource == "builds"
+            else ""
+        )
+        jobs_query = f"jobs[name,url,displayName,fullName,color,buildable,jobs[name,color,fullName,displayName,url]{builds_query}]"
+
+        return {"tree": jobs_query + jobs_pagination}
 
     def _build_base_url(self, parent_job: Optional[dict[str, Any]]) -> str:
         job_path = urlparse(parent_job["url"]).path if parent_job else ""
         return f"{self.jenkins_base_url}{job_path}"
 
     async def _process_jobs(
-        self, jobs: list[dict[str, Any]], parent_job: Optional[dict[str, Any]]
+        self,
+        resource: str,
+        jobs: list[dict[str, Any]],
+        parent_job: Optional[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """
         Process the list of jobs, optionally attaching information from the parent job.
         If a job has no builds, recursively fetch and include its child jobs.
 
         Args:
+            resource: (str) The name of the resource to fetch i.e. jobs or builds
             jobs (list[dict]): List of jobs to process.
             parent_job (Optional[dict]): Parent job information to attach to each job.
 
         Returns:
             list[dict]: Processed list of jobs with optional parent job information.
         """
-        job_batch = []
+        batch = []
 
         for job in jobs:
             if parent_job:
                 job["__parentJob"] = parent_job
 
-            if "builds" not in job:
-                async for child_jobs in self.fetch_jobs_and_builds_from_api(job):
-                    job_batch.extend(child_jobs)
-            else:
-                job_batch.append(job)
+            async for child_jobs in self.fetch_resources(resource, job):
+                batch.extend(child_jobs)
 
-        return job_batch
+        return batch
 
     async def get_single_resource(self, resource_url: str) -> dict[str, Any]:
         """

@@ -33,11 +33,14 @@ def init_client() -> JenkinsClient:
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     jenkins_client = init_client()
 
-    async for _jobs in jenkins_client.get_all_jobs_and_builds():
-        if kind == ObjectKind.JOB:
-            yield _jobs
-        elif kind == ObjectKind.BUILD:
-            yield [build for job in _jobs for build in job.get("builds", [])]
+    if kind == ObjectKind.JOB:
+        async for jobs in jenkins_client.get_jobs():
+            logger.info(f"Received batch with {len(jobs)} jobs.")
+            yield jobs
+    elif kind == ObjectKind.BUILD:
+        async for builds in jenkins_client.get_builds():
+            logger.info(f"Received batch with {len(builds)} builds.")
+            yield builds
 
 
 @ocean.router.post("/events")
