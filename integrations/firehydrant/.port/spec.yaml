@@ -1,6 +1,7 @@
 type: firehydrant
 description: Firehydrant integration for Port Ocean
 icon: FireHydrant
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/firehydrant
 features:
   - type: exporter
     section: Incident Management

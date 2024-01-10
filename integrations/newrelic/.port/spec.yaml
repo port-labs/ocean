@@ -1,6 +1,7 @@
 type: newrelic
 description: newrelic integration for Port Ocean
 icon: NewRelic
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/newrelic
 features:
   - type: exporter
     section: APM & Alerting
