@@ -2,6 +2,7 @@ from typing import Any, AsyncGenerator, Optional
 from port_ocean.utils import http_async_client
 import httpx
 from loguru import logger
+from enum import StrEnum
 
 from port_ocean.context.event import event
 
@@ -13,6 +14,11 @@ TERRAFORM_WEBHOOK_EVENTS = [
     "run:needs_attention",
     "run:planning",
 ]
+
+
+class CacheKeys(StrEnum):
+    ORGANIZATION = "ORGANIZATIONS_CACHE_KEY"
+
 
 PAGE_SIZE = 100
 
@@ -97,8 +103,7 @@ class TerraformClient:
     async def get_paginated_organizations(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        cache_key = "terraform-cloud-organization"
-        if cache := event.attributes.get(cache_key):
+        if cache := event.attributes.get(CacheKeys.ORGANIZATION):
             logger.info("Retrieving organizations data from cache")
             yield cache
             return
@@ -106,10 +111,10 @@ class TerraformClient:
         all_organizations = []
         logger.info("Fetching organizations")
         async for organizations in self.get_paginated_resources("organizations"):
-            yield organizations
             all_organizations.extend(organizations)
+            yield organizations
 
-        event.attributes[cache_key] = all_organizations
+        event.attributes[CacheKeys.ORGANIZATION] = all_organizations
         logger.info(
             f"Total workspaces retrieved across all organizations: {len(all_organizations)}"
         )

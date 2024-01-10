@@ -6,25 +6,14 @@
     "icon": "Terraform",
     "schema": {
       "properties": {
-        "name": {
-          "type": "string",
-          "title": "Organization Name",
-          "description": "The name of the Terraform Cloud organization"
-        },
         "externalId": {
           "type": "string",
           "title": "External ID",
           "description": "The external ID of the organization"
         },
-        "createdAt": {
+        "ownerEmail": {
           "type": "string",
-          "format": "date-time",
-          "title": "Created At",
-          "description": "The time at which the organization was created"
-        },
-        "email": {
-          "type": "string",
-          "title": "Email",
+          "title": "Owner Email",
           "description": "The email associated with the organization"
         },
         "collaboratorAuthPolicy": {
@@ -32,10 +21,15 @@
           "title": "Collaborator Authentication Policy",
           "description": "Policy for collaborator authentication"
         },
-        "planIdentifier": {
+        "planExpired": {
           "type": "string",
-          "title": "Plan Identifier",
-          "description": "The identifier of the plan the organization is on"
+          "title": "Plan Expired",
+          "description": "Indicates if plan is expired"
+        },
+        "planExpiresAt": {
+          "type": "date-time",
+          "title": "Plan Expiry Date",
+          "description": "The data and time which the plan expires"
         },
         "permissions": {
           "type": "object",
@@ -85,7 +79,7 @@
       "organization": {
         "title": "Terraform Cloud Organization",
         "target": "terraformCloudOrganization",
-        "required": false,
+        "required": true,
         "many": false
       }
     }

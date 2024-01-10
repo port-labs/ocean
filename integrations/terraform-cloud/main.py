@@ -59,15 +59,36 @@ async def enrich_workspaces_with_tags(
     http_client: TerraformClient, workspaces: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     async def get_tags_for_workspace(workspace: dict[str, Any]) -> dict[str, Any]:
-        tags = []
-        async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
-            tags.extend(tag_batch)
-        return {**workspace, "__tags": tags}
+        async with asyncio.BoundedSemaphore(30):
+            try:
+                tags = []
+                async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
+                    tags.extend(tag_batch)
+                return {**workspace, "__tags": tags}
+            except Exception as e:
+                logger.error(
+                    f"Failed to fetch tags for workspace {workspace['id']}: {e}"
+                )
+                return {**workspace, "__tags": []}
 
     tasks = [get_tags_for_workspace(workspace) for workspace in workspaces]
     enriched_workspaces = [await task for task in asyncio.as_completed(tasks)]
 
     return enriched_workspaces
+
+
+async def enrich_workspace_with_tags(
+    http_client: TerraformClient, workspace: dict[str, Any]
+) -> dict[str, Any]:
+    async with asyncio.BoundedSemaphore(30):
+        try:
+            tags = []
+            async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
+                tags.extend(tag_batch)
+            return {**workspace, "__tags": tags}
+        except Exception as e:
+            logger.info(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
+            return {**workspace, "__tags": []}
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION)
@@ -137,7 +158,6 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         enriched_state_versions_batch = await enrich_state_versions_with_output_data(
             terraform_client, state_versions_batch
         )
-
         yield enriched_state_versions_batch
 
 
@@ -156,9 +176,11 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         terraform_client.get_single_workspace(workspace_id),
     )
 
+    enriched_workspace = await enrich_workspace_with_tags(terraform_client, workspace)
+
     await gather(
         ocean.register_raw(ObjectKind.RUN, [run]),
-        ocean.register_raw(ObjectKind.WORKSPACE, [workspace]),
+        ocean.register_raw(ObjectKind.WORKSPACE, [enriched_workspace]),
     )
 
     logger.info("Terraform webhook event processed")

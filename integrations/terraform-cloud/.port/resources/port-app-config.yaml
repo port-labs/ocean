@@ -11,12 +11,11 @@ resources:
           title: .attributes.name
           blueprint: '"terraformCloudOrganization"'
           properties:
-            name: .attributes.name
             externalId: .attributes."external-id"
-            createdAt: .attributes."created-at"
-            email: .attributes.email
+            ownerEmail: .attributes.email
             collaboratorAuthPolicy: .attributes."collaborator-auth-policy"
-            planIdentifier: .attributes."plan-identifier"
+            planExpired: .attributes."plan-expired"
+            planExpiry: .attributes."plan-expires-at"
             permissions: .attributes.permissions
             samlEnabled: .attributes."saml-enabled"
             defaultExecutionMode: .attributes."default-execution-mode"
