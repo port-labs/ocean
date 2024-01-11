@@ -13,7 +13,12 @@
                 "jobStatus": {
                     "type": "string",
                     "title": "Job Status",
-                    "enum": ["created", "unknown", "passing", "failing"],
+                    "enum": [
+                        "created",
+                        "unknown",
+                        "passing",
+                        "failing"
+                    ],
                     "enumColors": {
                         "passing": "green",
                         "created": "darkGray",
@@ -52,7 +57,11 @@
                 "buildStatus": {
                     "type": "string",
                     "title": "Build Status",
-                    "enum": ["SUCCESS", "FAILURE", "UNSTABLE"],
+                    "enum": [
+                        "SUCCESS",
+                        "FAILURE",
+                        "UNSTABLE"
+                    ],
                     "enumColors": {
                         "SUCCESS": "green",
                         "FAILURE": "red",
@@ -80,8 +89,8 @@
         },
         "mirrorProperties": {
             "previousBuildStatus": {
-              "title": "Previous Build Status",
-              "path": "previousBuild.buildStatus"
+                "title": "Previous Build Status",
+                "path": "previousBuild.buildStatus"
             }
         },
         "calculationProperties": {},
