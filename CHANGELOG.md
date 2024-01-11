@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.16 (2024-01-11)
+
+
+### Improvements
+
+- Increased the default timeout for requests to the integrations to 30 seconds, and made it configurable (PORT-6074)
+
+
 ## 0.4.15 (2024-01-07)
 
 
