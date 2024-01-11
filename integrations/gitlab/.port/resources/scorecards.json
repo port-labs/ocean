@@ -21,8 +21,9 @@
             }
           },
           {
-            "identifier": "usesASupportedLanguage",
+            "identifier": "usesSupportedLang",
             "title": "Uses a supported language",
+            "description": "Checks if the service uses one of the supported languages. You can change this rule to include the supported languages in your organization by editing the blueprint via the \"Builder\" page",
             "level": "Silver",
             "query": {
               "combinator": "or",
@@ -52,6 +53,7 @@
           },
           {
             "identifier": "hasTeam",
+            "description": "Checks if the service has a team that owns it (according to the \"Team\" property of the service)",
             "title": "Has a Team",
             "level": "Gold",
             "query": {

@@ -43,7 +43,7 @@
         "invocationMethod": {
           "type": "WEBHOOK",
           "agent": false,
-          "synchronized": false,
+          "synchronized": true,
           "method": "POST",
           "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
         },
@@ -99,7 +99,7 @@
         "invocationMethod": {
           "type": "WEBHOOK",
           "agent": false,
-          "synchronized": false,
+          "synchronized": true,
           "method": "POST",
           "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
         },
@@ -143,8 +143,8 @@
         },
         "invocationMethod": {
           "type": "WEBHOOK",
-          "agent": true,
-          "synchronized": false,
+          "agent": false,
+          "synchronized": true,
           "method": "POST",
           "url": "https://example.com"
         },

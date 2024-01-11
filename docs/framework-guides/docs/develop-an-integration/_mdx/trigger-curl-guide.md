@@ -1,4 +1,4 @@
-```bash
+```bash showLineNumbers
 curl -X PATCH \
   -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" \
   -H "Content-Type: application/json" \
