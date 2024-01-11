@@ -41,6 +41,7 @@ class IntegrationSettings(BaseModel, extra=Extra.allow):
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
+    client_timeout: int = 30
     port: PortSettings
     event_listener: EventListenerSettingsType
     integration: IntegrationSettings
