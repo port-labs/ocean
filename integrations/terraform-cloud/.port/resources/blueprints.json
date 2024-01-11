@@ -27,7 +27,8 @@
           "description": "Indicates if plan is expired"
         },
         "planExpiresAt": {
-          "type": "date-time",
+          "type": "string",
+          "format": "date-time",
           "title": "Plan Expiry Date",
           "description": "The data and time which the plan expires"
         },

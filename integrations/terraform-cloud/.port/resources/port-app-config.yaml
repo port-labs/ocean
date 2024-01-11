@@ -15,7 +15,7 @@ resources:
             ownerEmail: .attributes.email
             collaboratorAuthPolicy: .attributes."collaborator-auth-policy"
             planExpired: .attributes."plan-expired"
-            planExpiry: .attributes."plan-expires-at"
+            planExpiresAt: .attributes."plan-expires-at"
             permissions: .attributes.permissions
             samlEnabled: .attributes."saml-enabled"
             defaultExecutionMode: .attributes."default-execution-mode"

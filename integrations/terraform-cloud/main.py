@@ -18,6 +18,9 @@ class ObjectKind(StrEnum):
     ORGANIZATION = "organization"
 
 
+SEMAPHORE_LIMIT = 30
+
+
 def init_terraform_client() -> TerraformClient:
     """
     Intialize Terraform Client
@@ -36,7 +39,7 @@ def init_terraform_client() -> TerraformClient:
 async def enrich_state_versions_with_output_data(
     http_client: TerraformClient, state_versions: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    async with asyncio.BoundedSemaphore(30):
+    async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
         tasks = [
             http_client.get_state_version_output(state_version["id"])
             for state_version in state_versions
@@ -59,14 +62,14 @@ async def enrich_workspaces_with_tags(
     http_client: TerraformClient, workspaces: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     async def get_tags_for_workspace(workspace: dict[str, Any]) -> dict[str, Any]:
-        async with asyncio.BoundedSemaphore(30):
+        async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
             try:
                 tags = []
                 async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
                     tags.extend(tag_batch)
                 return {**workspace, "__tags": tags}
             except Exception as e:
-                logger.error(
+                logger.warning(
                     f"Failed to fetch tags for workspace {workspace['id']}: {e}"
                 )
                 return {**workspace, "__tags": []}
@@ -87,7 +90,7 @@ async def enrich_workspace_with_tags(
                 tags.extend(tag_batch)
             return {**workspace, "__tags": tags}
         except Exception as e:
-            logger.info(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
+            logger.warning(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
             return {**workspace, "__tags": []}
 
 
@@ -96,6 +99,7 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
     async for organizations in terraform_client.get_paginated_organizations():
         logger.info(f"Received {len(organizations)} batch {kind}s")
+        print(organizations)
         yield organizations
 
 

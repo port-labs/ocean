@@ -17,7 +17,7 @@ TERRAFORM_WEBHOOK_EVENTS = [
 
 
 class CacheKeys(StrEnum):
-    ORGANIZATION = "ORGANIZATIONS_CACHE_KEY"
+    ORGANIZATIONS = "ORGANIZATIONS"
 
 
 PAGE_SIZE = 100
@@ -103,7 +103,7 @@ class TerraformClient:
     async def get_paginated_organizations(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if cache := event.attributes.get(CacheKeys.ORGANIZATION):
+        if cache := event.attributes.get(CacheKeys.ORGANIZATIONS):
             logger.info("Retrieving organizations data from cache")
             yield cache
             return
@@ -114,7 +114,7 @@ class TerraformClient:
             all_organizations.extend(organizations)
             yield organizations
 
-        event.attributes[CacheKeys.ORGANIZATION] = all_organizations
+        event.attributes[CacheKeys.ORGANIZATIONS] = all_organizations
         logger.info(
             f"Total workspaces retrieved across all organizations: {len(all_organizations)}"
         )
