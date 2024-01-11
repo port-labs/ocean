@@ -30,6 +30,6 @@ resources:
             buildUrl: .url
             buildDuration: .duration
             timestamp: '.timestamp / 1000 | todate'
-            previousBuild: .previousBuild.url
           relations:
             parentJob: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1] | gsub("-[0-9]+$"; "")
+            previousBuild: .previousBuild.url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1]

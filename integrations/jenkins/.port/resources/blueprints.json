@@ -74,21 +74,27 @@
                     "type": "number",
                     "title": "Build Duration",
                     "description": "Duration of the build"
-                },
-                "previousBuild": {
-                    "type": "string",
-                    "title": "Previous Build URL",
-                    "description": "URL to the previous build"
                 }
             },
             "required": []
         },
-        "mirrorProperties": {},
+        "mirrorProperties": {
+            "previousBuildStatus": {
+              "title": "Previous Build Status",
+              "path": "previousBuild.buildStatus"
+            }
+        },
         "calculationProperties": {},
         "relations": {
             "parentJob": {
                 "title": "Jenkins Job",
                 "target": "jenkinsJob",
+                "required": false,
+                "many": false
+            },
+            "previousBuild": {
+                "title": "Previous Build",
+                "target": "jenkinsBuild",
                 "required": false,
                 "many": false
             }
