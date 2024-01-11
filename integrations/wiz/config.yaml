@@ -7,7 +7,7 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
+  identifier: "my-wiz-integration"
   # The type of the integration.
   type: "wiz"
   config:

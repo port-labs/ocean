@@ -26,12 +26,10 @@ def init_client() -> WizClient:
     )
 
 
-# initialise once
-wiz_client = init_client()
-
-
 @ocean.on_resync()
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    wiz_client = init_client()
+
     if kind == ObjectKind.PROJECT:
         async for projects in wiz_client.get_projects():
             logger.info(f"Received {len(projects)} projects")
@@ -59,14 +57,17 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def handle_webhook_request(
     data: dict[str, Any], token: Any = Depends(HTTPBearer())
 ) -> dict[str, Any]:
-    logger.info(f"Received token {token.__dict__}")
-    if ocean.integration_config.get("wiz_webhook_token") != token.credentials:
+    if ocean.integration_config["wiz_webhook_token"] != token.credentials:
         raise HTTPException(
             status_code=401,
-            detail="Wiz webhook token verification failed, ignoring request",
+            detail={
+                "ok": False,
+                "message": "Wiz webhook token verification failed, ignoring request",
+            },
         )
 
     logger.info(f"Received webhook request: {data}")
+    wiz_client = init_client()
 
     issue = await wiz_client.get_single_issue(data["issue"]["id"])
     await ocean.register_raw(ObjectKind.ISSUE, [issue])

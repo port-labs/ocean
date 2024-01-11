@@ -6,6 +6,9 @@ features:
     section: Incident Management
     resources:
       - kind: issue
+      - kind: project
+      - kind: control
+      - kind: serviceTicket
 configurations:
   - name: wizClientId
     required: true

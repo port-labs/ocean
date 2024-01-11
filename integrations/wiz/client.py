@@ -1,168 +1,22 @@
-import sys
 from enum import StrEnum
 from typing import Any, AsyncGenerator
 
 import httpx
-from httpx import Timeout
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
+from wiz.constants import (
+    GRAPH_QUERIES,
+    ISSUES_GQL,
+    AUTH0_URLS,
+    COGNITO_URLS,
+    PAGE_SIZE,
+    MAX_PAGES,
+)
 from port_ocean.context.event import event
 from port_ocean.exceptions.base import BaseOceanException
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils import http_async_client, get_time
-
-logger.configure(
-    handlers=[
-        {
-            "sink": sys.stdout,
-            "level": "INFO",
-            "format": "<red>Wiz Integration</red>: <green>[{time}]</green> | {level} | <level>{message}</level>",
-        }
-    ],
-)
-
-
-PAGE_SIZE = 50
-MAX_PAGES = 5
-AUTH0_URLS = ["https://auth.wiz.io/oauth/token", "https://auth0.gov.wiz.io/oauth/token"]
-COGNITO_URLS = [
-    "https://auth.app.wiz.io/oauth/token",
-    "https://auth.gov.wiz.io/oauth/token",
-]
-
-ISSUES_GQL = """
-query IssuesTable(
-  $filterBy: IssueFilters
-  $first: Int
-  $after: String
-  $orderBy: IssueOrder
-) {
-  issues: issuesV2(
-    filterBy: $filterBy
-    first: $first
-    after: $after
-    orderBy: $orderBy
-  ) {
-    nodes {
-      id
-      sourceRule {
-        __typename
-        ... on Control {
-          id
-          name
-          controlDescription: description
-          resolutionRecommendation
-          securitySubCategories {
-            title
-            category {
-              name
-              framework {
-                name
-              }
-            }
-          }
-        }
-        ... on CloudEventRule {
-          id
-          name
-          cloudEventRuleDescription: description
-          sourceType
-          type
-        }
-        ... on CloudConfigurationRule {
-          id
-          name
-          cloudConfigurationRuleDescription: description
-          remediationInstructions
-          serviceType
-        }
-      }
-      createdAt
-      updatedAt
-      dueAt
-      type
-      resolvedAt
-      statusChangedAt
-      projects {
-        id
-        name
-        slug
-        businessUnit
-        riskProfile {
-          businessImpact
-        }
-      }
-      status
-      severity
-      entitySnapshot {
-        id
-        type
-        nativeType
-        name
-        status
-        cloudPlatform
-        cloudProviderURL
-        providerId
-        region
-        resourceGroupExternalId
-        subscriptionExternalId
-        subscriptionName
-        subscriptionTags
-        tags
-        createdAt
-        externalId
-      }
-      serviceTickets {
-        externalId
-        name
-        url
-      }
-      notes {
-        createdAt
-        updatedAt
-        text
-        user {
-          name
-          email
-        }
-        serviceAccount {
-          name
-        }
-      }
-    }
-    pageInfo {
-      hasNextPage
-      endCursor
-    }
-  }
-}
-"""
-PROJECTS_GQL = """
-query ProjectsTable(
-  $filterBy: ProjectFilters,
-  $first: Int,
-  $after: String,
-  $orderBy: ProjectOrder
-) {
-  projects(
-    filterBy: $filterBy,
-    first: $first,
-    after: $after,
-    orderBy: $orderBy
-  ) {
-    nodes {
-      id
-      name
-      isFolder
-      archived
-      businessUnit
-      description
-    }
-  }
-}
-"""
-GRAPH_QUERIES = {"issues": ISSUES_GQL, "projects": PROJECTS_GQL}
 
 
 class CacheKeys(StrEnum):
@@ -210,7 +64,6 @@ class WizClient:
         self.last_token_object: TokenResponse | None = None
 
         self.http_client = http_async_client
-        self.http_client.timeout = Timeout(30)
 
     @property
     def auth_request_params(self) -> dict[str, Any]:
