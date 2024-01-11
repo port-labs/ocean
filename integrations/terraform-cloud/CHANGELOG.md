@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Tags to terraform cloud (PORT-6043)
 
 
+# Port_Ocean 0.1.6 (2024-01-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.16 (#1)
+
+
 # Port_Ocean 0.1.5 (2024-01-07)
 
 ### Improvements
