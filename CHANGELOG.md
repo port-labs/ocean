@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Increased the default timeout for requests to the integrations to 30 seconds, and made it configurable (PORT-6074)
+- Increased the default timeout for requests to 3rd party targets to 30 seconds, and made it configurable (PORT-6074)
 
 
 ## 0.4.15 (2024-01-07)
