@@ -39,6 +39,7 @@ def get_cached_all_services() -> List[GitlabService]:
 
 
 class ObjectKind:
+    GROUP = "group"
     ISSUE = "issue"
     JOB = "job"
     MERGE_REQUEST = "merge-request"
