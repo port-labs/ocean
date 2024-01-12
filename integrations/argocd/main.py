@@ -26,7 +26,6 @@ async def on_resources_resync(kind: str) -> list[dict[Any, Any]]:
         logger.error(f"Invalid resource kind: {kind}")
         raise
 
-
 @ocean.router.post("/webhook")
 async def on_application_event_webhook_handler(request: Request) -> None:
     data = await request.json()
