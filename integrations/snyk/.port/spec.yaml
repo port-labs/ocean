@@ -13,17 +13,26 @@ configurations:
     required: true
     type: string
     sensitive: true
+    description: The Snyk API token used for authentication
   - name: webhookSecret
     required: false
     type: string
     sensitive: true
+    description: Secret key used for webhook authentication, if applicable
   - name: apiUrl
     type: string
     required: false
     default: https://api.snyk.io
+    description: The base URL of the Snyk API. Defaults to https://api.snyk.io
+  - name: organizationId
+    type: string
+    required: false
+    description: The unique identifier for the specific organization. Fetches data for a single organization when provided
   - name: groups
     type: string
     required: false
+    description: A comma-separated list of group ids to filter data for. Fetches data for organizations within the specified groups
   - name: appHost
     type: string
     required: false
+    description: The application host, if applicable
