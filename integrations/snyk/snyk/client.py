@@ -330,11 +330,9 @@ class SnykClient:
         if cache := event.attributes.get(cache_key):
             logger.info("Fetched Snyk group organizations from the cache")
             return cache
-        
+
         if self.organization_id:
-            logger.info(
-                f"Specified organization ID: {self.organization_id}"
-            )
+            logger.info(f"Specified organization ID: {self.organization_id}")
             event.attributes[cache_key] = [self.organization_id]
             return [self.organization_id]
 
@@ -346,7 +344,7 @@ class SnykClient:
                 f"Found {len(groups)} groups to filter. Group IDs: {str(groups)}. Fetching all organizations associated with these groups"
             )
 
-            async def fetch_organizations_in_group(group_id):
+            async def fetch_organizations_in_group(group_id: str) -> list[str]:
                 url = f"{self.api_url}/group/{group_id}/orgs"
                 response = await self._send_api_request(url=url)
                 organization_ids_in_group = [org["id"] for org in response["orgs"]]
@@ -354,10 +352,16 @@ class SnykClient:
                     f"Fetched {len(organization_ids_in_group)} organizations in group: {group_id}. Organization IDs: {str(organization_ids_in_group)}"
                 )
                 return organization_ids_in_group
-            
-            all_organizations_lists = await asyncio.gather(*[fetch_organizations_in_group(group_id) for group_id in groups])
 
-            all_organizations = [org_id for org_ids_in_group in all_organizations_lists for org_id in org_ids_in_group]
+            all_organizations_lists = await asyncio.gather(
+                *[fetch_organizations_in_group(group_id) for group_id in groups]
+            )
+
+            all_organizations = [
+                org_id
+                for org_ids_in_group in all_organizations_lists
+                for org_id in org_ids_in_group
+            ]
 
             logger.info(
                 f"Fetched {len(all_organizations)} organizations for the given groups. All organization IDs: {str(all_organizations)}"

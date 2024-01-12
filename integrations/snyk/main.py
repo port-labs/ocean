@@ -38,6 +38,7 @@ def init_client() -> SnykClient:
         ocean.integration_config.get("webhook_secret"),
     )
 
+
 async def process_project_issues(project: dict[str, Any]) -> list[dict[str, Any]]:
     snyk_client = init_client()
     organization_id = project["relationships"]["organization"]["data"]["id"]
