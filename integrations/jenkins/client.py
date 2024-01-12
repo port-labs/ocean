@@ -49,6 +49,8 @@ class JenkinsClient:
         page_size = 5
         page = 0
 
+        child_jobs = []
+
         while True:
             params = self._build_api_params(resource, page_size, page)
             base_url = self._build_base_url(parent_job)
@@ -60,16 +62,21 @@ class JenkinsClient:
             if not jobs:
                 break
 
-            # immediately return buildable jobs
-            yield [job for job in jobs if job.get("buildable")]
+            enriched_jobs = self.enrich_jobs(jobs, parent_job)
 
-            folder_jobs = [job for job in jobs if job.get("jobs")]
-            yield await self._process_jobs(resource, folder_jobs, parent_job)
+            # immediately return buildable jobs
+            yield [job for job in enriched_jobs if job.get("buildable")]
+
+            folder_jobs = [job for job in enriched_jobs if job.get("jobs")]
+            child_jobs.extend(folder_jobs)
 
             page += 1
 
             if len(jobs) < page_size:
                 break
+
+        # now process child jobs
+        yield await self._process_jobs(resource, child_jobs)
 
     def _build_api_params(
         self, resource: str, page_size: int, page: int
@@ -91,11 +98,14 @@ class JenkinsClient:
         job_path = urlparse(parent_job["url"]).path if parent_job else ""
         return f"{self.jenkins_base_url}{job_path}"
 
+    def enrich_jobs(self, jobs, parent_job):
+        if parent_job:
+            return [{**job, "__parentJob": parent_job} for job in jobs]
+
+        return jobs
+
     async def _process_jobs(
-        self,
-        resource: str,
-        jobs: list[dict[str, Any]],
-        parent_job: Optional[dict[str, Any]],
+        self, resource: str, jobs: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """
         Process the list of jobs, optionally attaching information from the parent job.
@@ -104,7 +114,6 @@ class JenkinsClient:
         Args:
             resource: (str) The name of the resource to fetch i.e. jobs or builds
             jobs (list[dict]): List of jobs to process.
-            parent_job (Optional[dict]): Parent job information to attach to each job.
 
         Returns:
             list[dict]: Processed list of jobs with optional parent job information.
@@ -112,9 +121,6 @@ class JenkinsClient:
         batch = []
 
         for job in jobs:
-            if parent_job:
-                job["__parentJob"] = parent_job
-
             async for child_jobs in self.fetch_resources(resource, job):
                 batch.extend(child_jobs)
 
