@@ -367,8 +367,8 @@ class SnykClient:
                 f"Fetched {len(all_organizations)} organizations for the given groups. All organization IDs: {str(all_organizations)}"
             )
 
-            event.attributes[cache_key] = all_organizations[1:]
-            return all_organizations[1:]
+            event.attributes[cache_key] = all_organizations
+            return all_organizations
         else:
             logger.info(
                 "Integration config did not specify any group(s) or organizationId to filter. Getting all organizations linked to the provided Snyk token"
