@@ -1,0 +1,285 @@
+[
+  {
+    "icon": "Apps",
+    "title": "Service Dashboard",
+    "protected": false,
+    "widgets": [
+      {
+        "id": "1",
+        "type": "dashboard-widget",
+        "layout": [
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "gitlabScorecardReadme",
+                "size": 8
+              },
+              {
+                "id": "gitlabServicesByLanguageChart",
+                "size": 4
+              }
+            ]
+          },
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "gitlabExternalDashboard",
+                "size": 6
+              },
+              {
+                "id": "gitlabNumberOfPythonServices",
+                "size": 6
+              }
+            ]
+          }
+        ],
+        "widgets": [
+          {
+            "id": "gitlabScorecardReadme",
+            "title": "Port Dashboards",
+            "description": "",
+            "markdown": "[Dashboards](https://docs.getport.io/customize-pages-dashboards-and-plugins/page/dashboard-page) enable you to visualize the data from your catalog. Dashboards contain various widgets that display the data in different ways, such as pie charts, number charts, iframes, and more. You can create pages and dashboards for specific processes and expose them to the relevant people using [page permissions](https://docs.getport.io/customize-pages-dashboards-and-plugins/page/page-permissions).\n\nHere are some ideas for dashboards\n- [SVP engineering dashboard](https://demo.getport.io/dashboard_svp_engineering)\n- [Security dashboard](https://demo.getport.io/dashboard_security)\n- [SRE dashboard](https://demo.getport.io/dashboard_sre)",
+            "type": "markdown",
+            "icon": "port"
+          },
+          {
+            "icon": "PieChart",
+            "id": "gitlabServicesByLanguageChart",
+            "type": "entities-pie-chart",
+            "description": "",
+            "title": "Services By Language",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "operator": "=",
+                  "value": "service",
+                  "property": "$blueprint"
+                }
+              ]
+            },
+            "property": "property#language"
+          },
+          {
+            "title": "External dashboard",
+            "id": "gitlabExternalDashboard",
+            "description": "",
+            "icon": "Code",
+            "urlType": "public",
+            "url": "https://port-graphical-assets.s3.eu-west-1.amazonaws.com/Widget+Preview.html",
+            "type": "iframe-widget"
+          },
+          {
+            "blueprint": "service",
+            "id": "gitlabNumberOfPythonServices",
+            "calculationBy": "entities",
+            "unit": "none",
+            "description": "",
+            "title": "Number of Python Services",
+            "dataset": [
+              {
+                "property": "language",
+                "operator": "in",
+                "value": [
+                  "Python",
+                  "python"
+                ]
+              },
+              {
+                "property": "$blueprint",
+                "operator": "=",
+                "value": "service"
+              }
+            ],
+            "func": "count",
+            "type": "entities-number-chart",
+            "icon": "Metric"
+          }
+        ]
+      }
+    ],
+    "identifier": "gitlab-Service-Dashboard",
+    "showInSidebar": true,
+    "requiredQueryParams": [],
+    "section": "software_catalog",
+    "type": "dashboard"
+  },
+  {
+    "icon": "Scorecards",
+    "title": "Production Readiness",
+    "protected": false,
+    "widgets": [
+      {
+        "id": "gitlabDashboardWidget",
+        "type": "dashboard-widget",
+        "layout": [
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "gitlabReadme",
+                "size": 8
+              },
+              {
+                "id": "gitlabLevelsSummaryEntitiesPieChart",
+                "size": 4
+              }
+            ]
+          },
+          {
+            "height": 595,
+            "columns": [
+              {
+                "id": "gitlabServicesByLevelTable",
+                "size": 12
+              }
+            ]
+          },
+          {
+            "height": 430,
+            "columns": [
+              {
+                "id": "gitlabHasReadmeEntitiesPieChart",
+                "size": 4
+              },
+              {
+                "id": "gitlabUseSupLangEntitiesPieChart",
+                "size": 4
+              },
+              {
+                "id": "gitlabHasTeamEntitiesPieChart",
+                "size": 4
+              }
+            ]
+          }
+        ],
+        "widgets": [
+          {
+            "title": "Scorecard dashboard",
+            "description": "",
+            "markdown": "[Scorecards](https://docs.getport.io/promote-scorecards/) are a way for you and your team to define and measure standards in different categories, such as service maturity, production readiness, quality, productivity, and more. Scorecards contain [rules](https://docs.getport.io/promote-scorecards/#rule-elements) that determine its overall score (such as bronze, silver, and gold).\n\nThis dashboard is based on the \"Production Readiness\" scorecard we automatically created for you. It contains the following rules:\n- Has a readme (Bronze rule) - checks if the service has a readme file in the repository\n- Uses a supported language (Silver rule) - checks if the service uses one of the supported languages\n- Has a team (Gold rule) - checks if the service has a team that owns it (according to the \"Team\" property of the service)",
+            "type": "markdown",
+            "icon": "port",
+            "id": "gitlabReadme"
+          },
+          {
+            "id": "gitlabLevelsSummaryEntitiesPieChart",
+            "type": "entities-pie-chart",
+            "property": "scorecard#ProductionReadiness",
+            "title": "Levels summary",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          },
+          {
+            "id": "gitlabServicesByLevelTable",
+            "type": "table-entities-explorer",
+            "title": "Services by level",
+            "icon": "Users",
+            "blueprintConfig": {
+              "service": {
+                "groupSettings": {
+                  "groupBy": [
+                    "ProductionReadiness"
+                  ]
+                },
+                "propertiesSettings": {
+                  "hidden": [
+                    "$identifier",
+                    "$updatedAt",
+                    "$createdAt",
+                    "readme",
+                    "url",
+                    "language",
+                    "slack",
+                    "tier"
+                  ],
+                  "order": []
+                }
+              }
+            },
+            "displayMode": "widget",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          },
+          {
+            "id": "gitlabHasReadmeEntitiesPieChart",
+            "type": "entities-pie-chart",
+            "description": "Service has a readme file in the repository",
+            "property": "scorecard-rule#ProductionReadiness#hasReadme",
+            "title": "Has a readme",
+            "icon": "Star",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          },
+          {
+            "id": "gitlabUseSupLangEntitiesPieChart",
+            "type": "entities-pie-chart",
+            "description": "Service uses a supported language",
+            "property": "scorecard-rule#ProductionReadiness#usesSupportedLang",
+            "title": "Uses a supported language",
+            "icon": "Star",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          },
+          {
+            "id": "gitlabHasTeamEntitiesPieChart",
+            "type": "entities-pie-chart",
+            "description": "Service has a team that owns it",
+            "property": "scorecard-rule#ProductionReadiness#hasTeam",
+            "title": "Has a Team",
+            "icon": "Star",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "identifier": "gitlabProductionReadinessDashboard",
+    "showInSidebar": true,
+    "requiredQueryParams": [],
+    "section": "software_catalog",
+    "type": "dashboard"
+  }
+]

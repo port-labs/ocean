@@ -1,4 +1,4 @@
-```python
+```python showLineNumbers
 import requests
 
 integration_identifier = "YOUR_INTEGRATION_IDENTIFIER_HERE"

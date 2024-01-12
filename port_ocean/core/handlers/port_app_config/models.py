@@ -9,6 +9,7 @@ class EntityMapping(BaseModel):
     identifier: str
     title: str | None
     blueprint: str
+    team: str | None
     properties: dict[str, str] = Field(default_factory=dict)
     relations: dict[str, str] = Field(default_factory=dict)
 

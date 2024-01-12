@@ -1,6 +1,7 @@
 type: azure
 description: azure integration for Port Ocean
 icon: Azure
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/azure/
 features:
   - type: exporter
     section: Cloud Providers

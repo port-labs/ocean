@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.18 (2024-01-03)
+# Port_Ocean 0.1.21 (2024-01-12)
 
 ### Features
 
@@ -16,6 +16,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking Changes
 
 - The `organizationId` parameter, previously required, is now optional. Users are no longer obligated to provide this parameter, allowing for more flexibility in fetching data for multiple organizations
+
+
+# Port_Ocean 0.1.20 (2024-01-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.16 (#1)
+
+
+# Port_Ocean 0.1.19 (2024-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.15 (#1)
+
+
+# Port_Ocean 0.1.18 (2024-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.14 (#1)
+
 
 # Port_Ocean 0.1.17 (2024-01-01)
 

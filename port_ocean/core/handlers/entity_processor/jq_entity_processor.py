@@ -61,7 +61,9 @@ class JQEntityProcessor(BaseEntityProcessor):
 
             if should_run and mapping.port.entity:
                 entities.append(
-                    self._search_as_object(data, mapping.port.entity.mappings.dict())
+                    self._search_as_object(
+                        data, mapping.port.entity.mappings.dict(exclude_unset=True)
+                    )
                 )
 
         return [

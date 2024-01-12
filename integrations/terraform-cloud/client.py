@@ -1,7 +1,8 @@
 from typing import Any, AsyncGenerator, Optional
-
+from port_ocean.utils import http_async_client
 import httpx
 from loguru import logger
+from enum import StrEnum
 
 from port_ocean.context.event import event
 
@@ -14,6 +15,11 @@ TERRAFORM_WEBHOOK_EVENTS = [
     "run:planning",
 ]
 
+
+class CacheKeys(StrEnum):
+    ORGANIZATIONS = "ORGANIZATIONS"
+
+
 PAGE_SIZE = 100
 
 
@@ -25,7 +31,8 @@ class TerraformClient:
             "Content-Type": "application/vnd.api+json",
         }
         self.api_url = f"{self.terraform_base_url}/api/v2"
-        self.client = httpx.AsyncClient(headers=self.base_headers)
+        self.client = http_async_client
+        self.client.headers.update(self.base_headers)
 
     async def send_api_request(
         self,
@@ -96,9 +103,21 @@ class TerraformClient:
     async def get_paginated_organizations(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if cache := event.attributes.get(CacheKeys.ORGANIZATIONS):
+            logger.info("Retrieving organizations data from cache")
+            yield cache
+            return
+
+        all_organizations = []
         logger.info("Fetching organizations")
         async for organizations in self.get_paginated_resources("organizations"):
+            all_organizations.extend(organizations)
             yield organizations
+
+        event.attributes[CacheKeys.ORGANIZATIONS] = all_organizations
+        logger.info(
+            f"Total workspaces retrieved across all organizations: {len(all_organizations)}"
+        )
 
     async def get_single_workspace(self, workspace_id: str) -> dict[str, Any]:
         logger.info(f"Fetching workspace with ID: {workspace_id}")
@@ -109,6 +128,14 @@ class TerraformClient:
         logger.info(f"Fetching run with ID: {run_id}")
         run = await self.send_api_request(endpoint=f"runs/{run_id}")
         return run.get("data", {})
+
+    async def get_workspace_tags(
+        self, workspace_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Fetching tags for workspace ID: {workspace_id}")
+        endpoint = f"/workspaces/{workspace_id}/relationships/tags"
+        async for tags in self.get_paginated_resources(endpoint):
+            yield tags
 
     async def get_state_version_output(self, state_version_id: str) -> dict[str, Any]:
         logger.info(f"Fetching state version output for ID: {state_version_id}")
@@ -143,10 +170,26 @@ class TerraformClient:
                     all_workspaces.extend(workspaces)
                     yield workspaces
 
-        event.attributes[cache_key] = workspaces
+        event.attributes[cache_key] = all_workspaces
         logger.info(
             f"Total workspaces retrieved across all organizations: {len(all_workspaces)}"
         )
+
+    async def get_paginated_projects(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Starting to fetch projects across all organizations")
+        async for organizations in self.get_paginated_organizations():
+            for organization in organizations:
+                organization_id = organization["id"]
+                logger.info(f"Fetching projects for organization ID: {organization_id}")
+                endpoint = f"/organizations/{organization_id}/projects"
+                async for projects in self.get_paginated_resources(endpoint):
+                    num_projects = len(projects)
+                    logger.info(
+                        f"Retrieved {num_projects} projects for organization ID: {organization_id}"
+                    )
+                    yield projects
 
     async def get_paginated_runs_for_workspace(
         self, workspace_id: str

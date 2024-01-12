@@ -18,6 +18,7 @@ from starlette.concurrency import run_in_threadpool
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.context.ocean import ocean
 from port_ocean.helpers.retry import RetryTransport
 
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
@@ -26,7 +27,7 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 def _get_http_client_context() -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
-        client = OceanAsyncClient(RetryTransport)
+        client = OceanAsyncClient(RetryTransport, timeout=ocean.config.client_timeout)
         _http_client.push(client)
 
     return client
