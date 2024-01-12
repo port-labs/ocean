@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.16 (2024-01-11)
+
+
+### Improvements
+
+- Increased the default timeout for requests to 3rd party targets to 30 seconds, and made it configurable (PORT-6074)
+
+
+## 0.4.15 (2024-01-07)
+
+
+### Bug Fixes
+
+- Fixed issue causing app config with no team mapping to fail due the core using None when not set (PORT-5938)
+
+
+## 0.4.14 (2024-01-07)
+
+
+### Bug Fixes
+
+- Fixed missing team parameter in the port app config model (PORT-5938)
+
+
 ## 0.4.13 (2023-12-31)
 
 ### Features

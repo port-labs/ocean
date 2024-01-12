@@ -1,7 +1,7 @@
 Use `httpx` package instead if `requests` for making HTTP requests and take advantage of its async & connection re-use
 capabilities.
 
-```python
+```python showLineNumbers
 import httpx
 
 client = httpx.AsyncClient()
@@ -12,7 +12,7 @@ response = await client.get('https://example.com')
 Reuse the async client across your integration to take advantage of connection re-use.
 :::
 
-:::caution
+:::warning
 Usage of `requests` package will cause the web requests to be made synchronously and will block the event loop.
 :::
 

@@ -7,6 +7,50 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.46 (2024-01-11)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.16 (#1)
+
+
+0.1.45 (2024-01-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.15 (#1)
+
+
+0.1.44 (2024-01-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.14 (#1)
+
+
+0.1.43 (2024-01-04)
+===================
+
+### Improvements
+
+- Updated templates to have description in scorecard rules and pie charts (#1) 
+
+
+0.1.42 (2024-01-01)
+===================
+
+### Features
+
+- Added onboarding templates, including blueprints, scorecards, actions and pages (#1)
+
+### Improvements
+
+- Added special handling for project resync batch size to 10, to reduce the time it takes to show data in the UI (#3)
+
+
 0.1.41 (2024-01-01)
 ===================
 

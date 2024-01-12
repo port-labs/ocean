@@ -1,6 +1,38 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: organization
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"terraformCloudOrganization"'
+          properties:
+            externalId: .attributes."external-id"
+            ownerEmail: .attributes.email
+            collaboratorAuthPolicy: .attributes."collaborator-auth-policy"
+            planExpired: .attributes."plan-expired"
+            planExpiresAt: .attributes."plan-expires-at"
+            permissions: .attributes.permissions
+            samlEnabled: .attributes."saml-enabled"
+            defaultExecutionMode: .attributes."default-execution-mode"
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"terraformCloudProject"'
+          properties:
+            name: .attributes.name
+            permissions: .attributes.permissions
+          relations:
+            organization: .relationships.organization.data.id
   - kind: workspace
     selector:
       query: "true"
@@ -9,7 +41,7 @@ resources:
         mappings:
           identifier: .id
           title: .attributes.name
-          blueprint: '"terrafomCloudWorkspace"'
+          blueprint: '"terraformCloudWorkspace"'
           properties:
             organization: .relationships.organization.data.id
             createdAt: .attributes."created-at"
@@ -19,8 +51,29 @@ resources:
             executionMode: .attributes."execution-mode"
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
+            tags: .__tags
           relations:
             currentStateVersion: .relationships."current-state-version".data.id
+            project: .relationships.project.data.id
+  - kind: state-version
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .id
+          blueprint: '"terraformCloudStateVersion"'
+          properties:
+            createdAt: .attributes."created-at"
+            serial: .attributes.serial
+            status: .attributes.status
+            size: .attributes.size
+            isResourcesProcessed: .attributes."resources-processed"
+            hostedStateDownloadUrl: .attributes."hosted-state-download-url"
+            hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
+            vcsCommitUrl: .attributes."vcs-commit-url"
+            outputData: .__output
   - kind: run
     selector:
       query: "true"
@@ -42,22 +95,3 @@ resources:
             source: .attributes.source
           relations:
             terraformCloudWorkspace: .relationships.workspace.data.id
-  - kind: state-version
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .id
-          blueprint: '"terraformCloudStateVersion"'
-          properties:
-            createdAt: .attributes."created-at"
-            serial: .attributes.serial
-            status: .attributes.status
-            size: .attributes.size
-            isResourcesProcessed: .attributes."resources-processed"
-            hostedStateDownloadUrl: .attributes."hosted-state-download-url"
-            hostedJsonDownloadUrl: .attributes."hosted-json-state-download-url"
-            vcsCommitUrl: .attributes."vcs-commit-url"
-            outputData: .__output
