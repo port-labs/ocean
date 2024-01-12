@@ -34,7 +34,7 @@ This guide will walk you through deploying an integration of the Ocean framework
 <details>
 <summary>Get your Port credentials</summary>
 
-To get your Port API credentials go to your [Port application](https://app.getport.io), hover over the `...` button in the top right corner, and select `Credentials`. Here you can view and copy your `CLIENT_ID` and `CLIENT_SECRET`:
+To get your Port API credentials go to your [Port application](https://app.getport.io), click on the `...` button in the top right corner, and select `Credentials`. Here you can view and copy your `CLIENT_ID` and `CLIENT_SECRET`:
 
 <center>
 
@@ -44,19 +44,19 @@ To get your Port API credentials go to your [Port application](https://app.getpo
 </details>
 :::
 
-:::caution
+:::warning
 This guide will install the ArgoCD Application using the current Kubernetes context. Make sure you have the correct context set before continuing.
 :::
 
 ## Deploying the integration
 
 1. In your git repo, create a directory called `argocd`.
-```bash
+```bash showLineNumbers
 mkdir argocd
 ```
 
 2. Inside your `argocd` directory create another directory for the current installation. For our example we use `my-ocean-integration`.
-```bash
+```bash showLineNumbers
 mkdir -p argocd/my-ocean-integration
 ```
 
@@ -135,7 +135,7 @@ spec:
 <br/>
 
 5. Apply your application manifest with `kubectl`:
-```bash
+```bash showLineNumbers
 kubectl apply -f my-ocean-integration.yaml
 ```
 

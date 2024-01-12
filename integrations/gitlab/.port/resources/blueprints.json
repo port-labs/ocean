@@ -1,158 +1,57 @@
 [
   {
-    "identifier": "gitlabRepository",
-    "title": "Repository",
-    "icon": "Microservice",
+    "identifier": "service",
+    "title": "Service",
+    "icon": "GitLab",
     "schema": {
       "properties": {
-        "url": {
-          "title": "URL",
-          "type": "string",
-          "format": "url"
-        },
         "readme": {
           "title": "README",
           "type": "string",
-          "format": "markdown"
+          "format": "markdown",
+          "icon": "Book"
         },
-        "description": {
-          "title": "Description",
-          "type": "string"
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string",
+          "icon": "Link"
         },
         "language": {
+          "type": "string",
           "title": "Language",
-          "type": "string"
+          "icon": "Git"
         },
-        "namespace": {
-          "title": "Namespace",
-          "type": "string"
+        "slack": {
+          "icon": "Slack",
+          "type": "string",
+          "title": "Slack",
+          "format": "url"
         },
-        "fullPath": {
-          "title": "Full Path",
-          "type": "string"
-        },
-        "defaultBranch": {
-          "title": "Default Branch",
-          "type": "string"
+        "tier": {
+          "title": "Tier",
+          "type": "string",
+          "description": "How mission-critical the service is",
+          "enum": [
+            "Mission Critical",
+            "Customer Facing",
+            "Internal Service",
+            "Other"
+          ],
+          "enumColors": {
+            "Mission Critical": "turquoise",
+            "Customer Facing": "green",
+            "Internal Service": "darkGray",
+            "Other": "yellow"
+          },
+          "icon": "DefaultProperty"
         }
       },
       "required": []
     },
     "mirrorProperties": {},
     "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {}
-  },
-  {
-    "identifier": "gitlabMergeRequest",
-    "title": "Merge Request",
-    "icon": "GitVersion",
-    "schema": {
-      "properties": {
-        "creator": {
-          "title": "Creator",
-          "type": "string"
-        },
-        "status": {
-          "title": "Status",
-          "type": "string",
-          "enum": ["opened", "closed", "merged", "locked"],
-          "enumColors": {
-            "opened": "yellow",
-            "closed": "red",
-            "merged": "green",
-            "locked": "blue"
-          }
-        },
-        "createdAt": {
-          "title": "Create At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "title": "Updated At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "description": {
-          "title": "Description",
-          "type": "string",
-          "format": "markdown"
-        },
-        "link": {
-          "title": "Link",
-          "format": "url",
-          "type": "string"
-        }
-      }
-    },
-    "relations": {
-      "repository": {
-        "target": "gitlabRepository",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "gitlabIssue",
-    "title": "Issue",
-    "icon": "GitLab",
-    "schema": {
-      "properties": {
-        "link": {
-          "title": "Link",
-          "type": "string",
-          "format": "url"
-        },
-        "description": {
-          "title": "Description",
-          "type": "string",
-          "format": "markdown"
-        },
-        "createdAt": {
-          "title": "Created At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "closedAt": {
-          "title": "Closed At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "title": "Updated At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "creator": {
-          "title": "Creator",
-          "type": "string"
-        },
-        "status": {
-          "title": "Status",
-          "type": "string",
-          "enum": ["opened", "closed"],
-          "enumColors": {
-            "opened": "green",
-            "closed": "purple"
-          }
-        },
-        "labels": {
-          "title": "Labels",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "relations": {
-      "repository": {
-        "target": "gitlabRepository",
-        "title": "Repository",
-        "required": true,
-        "many": false
-      }
-    }
   }
 ]

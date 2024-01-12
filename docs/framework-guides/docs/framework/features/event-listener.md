@@ -23,7 +23,7 @@ By configuring an event listener the integration will listen to and react to the
 
 <EventListenerTypesList />
 
-:::caution
+:::warning
 The event listeners that are currently available do not support multiple instances of the same integration
 :::
 
@@ -67,7 +67,7 @@ The parameters available to configure the polling event listener:
 | `resyncOnStart` | Whether to perform a manual resync from the 3rd party upon integration startup                      | `True`        |
 | `interval`      | The time in seconds, between queries to Port to check for configuration changes and resync requests | `60`          |
 
-:::caution
+:::warning
 The `interval` parameter should be set to a value high enough to perform a full resync from the 3rd-party. Otherwise another resync process might start mid-way and create an infinite recurring resync
 
 :::
