@@ -1,6 +1,24 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: organization
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.name
+          blueprint: '"terraformCloudOrganization"'
+          properties:
+            externalId: .attributes."external-id"
+            ownerEmail: .attributes.email
+            collaboratorAuthPolicy: .attributes."collaborator-auth-policy"
+            planExpired: .attributes."plan-expired"
+            planExpiresAt: .attributes."plan-expires-at"
+            permissions: .attributes.permissions
+            samlEnabled: .attributes."saml-enabled"
+            defaultExecutionMode: .attributes."default-execution-mode"
   - kind: project
     selector:
       query: "true"
@@ -13,7 +31,8 @@ resources:
           properties:
             name: .attributes.name
             permissions: .attributes.permissions
-            organizationId: .relationships.organization.data.id
+          relations:
+            organization: .relationships.organization.data.id
   - kind: workspace
     selector:
       query: "true"
@@ -32,6 +51,7 @@ resources:
             executionMode: .attributes."execution-mode"
             resourceCount: .attributes."resource-count"
             latestChangeAt: .attributes."latest-change-at"
+            tags: .__tags
           relations:
             currentStateVersion: .relationships."current-state-version".data.id
             project: .relationships.project.data.id
