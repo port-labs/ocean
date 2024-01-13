@@ -6,10 +6,11 @@ features:
   - type: exporter
     section: IaC
     resources:
-      - kind: workspace
-      - kind: run
-      - kind: state-version
+      - kind: organization
       - kind: project
+      - kind: workspace
+      - kind: state-version
+      - kind: run
 configurations:
   - name: terraformCloudHost
     required: false
