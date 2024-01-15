@@ -45,10 +45,12 @@ async def process_project_issues(project: dict[str, Any]) -> list[dict[str, Any]
     organization_id = project["relationships"]["organization"]["data"]["id"]
     return await snyk_client.get_issues(organization_id, project["id"])
 
+
 @ocean.on_resync(ObjectKind.ORGANIZATION)
-async def on_organization_resync(kind: str) -> list[str, Any]:
+async def on_organization_resync(kind: str) -> list[dict[str, Any]]:
     snyk_client = init_client()
     return await snyk_client.get_organizations_in_groups()
+
 
 @ocean.on_resync(ObjectKind.TARGET)
 async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:

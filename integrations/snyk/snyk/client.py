@@ -325,17 +325,19 @@ class SnykClient:
                 url=snyk_webhook_url, method="POST", json_data=body
             )
 
-    def transform_organization_details(self, input_json: dict[str, Any]) -> dict[str, Any]:
+    def transform_organization_details(
+        self, input_json: dict[str, Any]
+    ) -> dict[str, Any]:
         attributes = input_json["data"]["attributes"]
-        
+
         return {
             "id": input_json["data"]["id"],
             "name": attributes["name"],
             "slug": attributes["slug"],
             "url": f"https://app.snyk.io/org/{attributes['slug']}",
-            "created": attributes["created_at"]
+            "created": attributes["created_at"],
         }
-    
+
     async def _get_organization_details(self, org_id: str) -> dict[str, Any]:
         logger.info(f"Fetching organization details: {org_id}")
         cached_details = event.attributes.get(f"{CacheKeys.ORGANIZATION}-{org_id}")
@@ -346,13 +348,13 @@ class SnykClient:
             url=f"{self.rest_api_url}/orgs/{org_id}",
             version=f"{self.snyk_api_version}",
         )
-        logger.info(f"Successfulled fetched details: {organization_details} for organization {org_id}")
+        logger.info(
+            f"Successfulled fetched details: {organization_details} for organization {org_id}"
+        )
 
         organization_details = self.transform_organization_details(organization_details)
         event.attributes[f"{CacheKeys.ORGANIZATION}-{org_id}"] = organization_details
         return organization_details
-    
-
 
     async def get_organizations_in_groups(self) -> list[Any]:
         # Check if the result is already cached
