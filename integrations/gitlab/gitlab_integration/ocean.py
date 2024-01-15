@@ -66,6 +66,13 @@ async def on_start() -> None:
         )
 
 
+@ocean.on_resync(ObjectKind.GROUP)
+async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    for service in get_cached_all_services():
+        async for groups_batch in service.get_all_groups():
+            yield [group.asdict() for group in groups_batch]
+
+
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
