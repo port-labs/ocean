@@ -11,6 +11,7 @@ from snyk.client import SnykClient
 
 CONCURRENT_REQUESTS = 20
 
+
 class ObjectKind(StrEnum):
     ORGANIZATION = "organization"
     PROJECT = "project"
@@ -41,7 +42,9 @@ def init_client() -> SnykClient:
     )
 
 
-async def process_project_issues(semaphore: asyncio.Semaphore, project: dict[str, Any]) -> list[dict[str, Any]]:
+async def process_project_issues(
+    semaphore: asyncio.Semaphore, project: dict[str, Any]
+) -> list[dict[str, Any]]:
     snyk_client = init_client()
     async with semaphore:
         organization_id = project["relationships"]["organization"]["data"]["id"]
