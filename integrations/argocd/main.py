@@ -19,11 +19,23 @@ async def on_resources_resync(kind: str) -> list[dict[Any, Any]]:
 
     try:
         if kind == ObjectKind.HISTORY:
-            return await argocd_client.get_deployment_history()
+            return []
         else:
             return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
     except ValueError:
         logger.error(f"Invalid resource kind: {kind}")
+        raise
+
+
+@ocean.on_resync(kind=ObjectKind.HISTORY)
+async def on_history_resync(kind: str) -> list[dict[Any, Any]]:
+    logger.info("Listing ArgoCD deployment history")
+    argocd_client = init_client()
+
+    try:
+        return await argocd_client.get_deployment_history()
+    except Exception:
+        logger.error("Failed to fetch ArgoCD deployment history")
         raise
 
 

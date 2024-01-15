@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for ArgoCD deployment histories (#5704)
+- Added support for ArgoCD deployments history (#5704)
 
 
 # Port_Ocean 0.1.17 (2024-01-11)
