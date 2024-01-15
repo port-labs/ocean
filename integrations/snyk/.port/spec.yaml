@@ -6,6 +6,7 @@ features:
   - type: exporter
     section: Code Quality & Security
     resources:
+      - kind: organization
       - kind: issue
       - kind: project
       - kind: target

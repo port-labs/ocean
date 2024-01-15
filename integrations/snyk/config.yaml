@@ -14,3 +14,4 @@ integration:
   type: "snyk"
   config:
     token: "{{ from env SNYK_API_TOKEN }}"
+
