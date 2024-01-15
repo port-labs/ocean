@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for Snyk Organization
 - Added a new feature to enable automatic discovery and syncing of groups and associated organizations, providing users with the ability to filter and fetch all relevant data seamlessly. This helps to avoid the situation of having to install the exporter per every organization (#5551)
 
-### Breaking Changes
+### Improvements
 
 - The `organizationId` parameter, previously required, is now optional. Users are no longer obligated to provide this parameter, allowing for more flexibility in fetching data for multiple organizations
 

@@ -11,7 +11,7 @@ resources:
           properties:
             slug: .slug
             created: .created
-            url: .url
+            url: ("https://app.snyk.io/org/" + .slug | tostring)
   - kind: issue
     selector:
       query: '.issueType == "vuln"'

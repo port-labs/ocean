@@ -334,7 +334,6 @@ class SnykClient:
             "id": input_json["data"]["id"],
             "name": attributes["name"],
             "slug": attributes["slug"],
-            "url": f"https://app.snyk.io/org/{attributes['slug']}",
             "created": attributes["created_at"],
         }
 

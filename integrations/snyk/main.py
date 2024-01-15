@@ -9,6 +9,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 from snyk.client import SnykClient
 
+CONCURRENT_REQUESTS = 20
 
 class ObjectKind(StrEnum):
     ORGANIZATION = "organization"
@@ -40,10 +41,11 @@ def init_client() -> SnykClient:
     )
 
 
-async def process_project_issues(project: dict[str, Any]) -> list[dict[str, Any]]:
+async def process_project_issues(semaphore: asyncio.Semaphore, project: dict[str, Any]) -> list[dict[str, Any]]:
     snyk_client = init_client()
-    organization_id = project["relationships"]["organization"]["data"]["id"]
-    return await snyk_client.get_issues(organization_id, project["id"])
+    async with semaphore:
+        organization_id = project["relationships"]["organization"]["data"]["id"]
+        return await snyk_client.get_issues(organization_id, project["id"])
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION)
@@ -64,11 +66,12 @@ async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
 
+    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
     async for projects in snyk_client.get_paginated_projects():
         logger.debug(
             f"Received batch with {len(projects)} projects, getting their issues"
         )
-        tasks = [process_project_issues(project) for project in projects]
+        tasks = [process_project_issues(semaphore, project) for project in projects]
         issues = await asyncio.gather(*tasks)
         yield [
             {**project, "__issues": issues} for project, issues in zip(projects, issues)
@@ -80,11 +83,13 @@ async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
     snyk_client = init_client()
     all_issues: list[dict[str, Any]] = []
 
+    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+
     async for projects in snyk_client.get_paginated_projects():
         logger.debug(
             f"Received batch with {len(projects)} projects, getting their issues parallelled"
         )
-        tasks = [process_project_issues(project) for project in projects]
+        tasks = [process_project_issues(semaphore, project) for project in projects]
         project_issues_list = await asyncio.gather(*tasks)
         logger.info("Gathered all project issues of projects in batch")
         all_issues.extend(sum(project_issues_list, []))
