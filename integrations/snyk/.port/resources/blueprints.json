@@ -123,10 +123,6 @@
           "format": "user",
           "icon": "TwoUsers"
         },
-        "organization": {
-          "type": "string",
-          "title": "Organization"
-        },
         "businessCriticality": {
           "title": "Business Criticality",
           "type": "array",

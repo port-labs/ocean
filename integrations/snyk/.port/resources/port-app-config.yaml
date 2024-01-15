@@ -45,7 +45,6 @@ resources:
             owner: .__owner.email
             businessCriticality: .attributes.business_criticality
             environment: .attributes.environment
-            organization: .relationships.organization.data.id
             lifeCycle: .attributes.lifecycle
             highOpenVulnerabilities: .meta.latest_issue_counts.high
             mediumOpenVulnerabilities: .meta.latest_issue_counts.medium
