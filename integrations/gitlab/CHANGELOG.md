@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.47 (2024-01-12)
+===================
+
+### Features
+
+- Added group & subgroup resource support (#1)
+
+
 0.1.46 (2024-01-11)
 ===================
 
