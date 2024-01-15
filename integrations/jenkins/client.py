@@ -75,8 +75,9 @@ class JenkinsClient:
             if len(jobs) < page_size:
                 break
 
-        # now process child jobs
-        yield await self._process_jobs(resource, child_jobs)
+        for job in child_jobs:
+            async for fetched_jobs in self.fetch_resources(resource, job):
+                yield fetched_jobs
 
     def _build_api_params(
         self, resource: str, page_size: int, page: int
@@ -98,33 +99,13 @@ class JenkinsClient:
         job_path = urlparse(parent_job["url"]).path if parent_job else ""
         return f"{self.jenkins_base_url}{job_path}"
 
-    def enrich_jobs(self, jobs, parent_job):
+    def enrich_jobs(
+        self, jobs: list[dict[str, Any]], parent_job: dict[str, Any] | None
+    ) -> list[dict[str, Any]]:
         if parent_job:
             return [{**job, "__parentJob": parent_job} for job in jobs]
 
         return jobs
-
-    async def _process_jobs(
-        self, resource: str, jobs: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
-        """
-        Process the list of jobs, optionally attaching information from the parent job.
-        If a job has no builds, recursively fetch and include its child jobs.
-
-        Args:
-            resource: (str) The name of the resource to fetch i.e. jobs or builds
-            jobs (list[dict]): List of jobs to process.
-
-        Returns:
-            list[dict]: Processed list of jobs with optional parent job information.
-        """
-        batch = []
-
-        for job in jobs:
-            async for child_jobs in self.fetch_resources(resource, job):
-                batch.extend(child_jobs)
-
-        return batch
 
     async def get_single_resource(self, resource_url: str) -> dict[str, Any]:
         """
