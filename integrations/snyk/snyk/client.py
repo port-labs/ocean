@@ -357,15 +357,14 @@ class SnykClient:
 
     async def get_organizations_in_groups(self) -> list[Any]:
         # Check if the result is already cached
-        cache_key = CacheKeys.GROUP
-        if cache := event.attributes.get(cache_key):
+        if cache := event.attributes.get(CacheKeys.GROUP):
             logger.info("Fetched Snyk group organizations from the cache")
             return cache
 
         if self.organization_id:
             logger.info(f"Specified organization ID: {self.organization_id}")
             organization = await self._get_organization_details(self.organization_id)
-            event.attributes[cache_key] = [organization]
+            event.attributes[CacheKeys.GROUP] = [organization]
             return [organization]
 
         elif self.group_ids:
@@ -398,7 +397,7 @@ class SnykClient:
                 f"Fetched {len(all_organizations)} organizations for the given groups."
             )
 
-            event.attributes[cache_key] = all_organizations
+            event.attributes[CacheKeys.GROUP] = all_organizations
             return all_organizations
         else:
             logger.info(
@@ -411,5 +410,5 @@ class SnykClient:
             logger.info(
                 f"Fetched {len(organizations)} organizations for the given token."
             )
-            event.attributes[cache_key] = organizations
+            event.attributes[CacheKeys.GROUP] = organizations
             return organizations
