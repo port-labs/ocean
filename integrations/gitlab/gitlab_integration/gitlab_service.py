@@ -136,6 +136,9 @@ class GitlabService:
     def should_run_for_path(self, path: str) -> bool:
         return any(does_pattern_apply(mapping, path) for mapping in self.group_mapping)
 
+    def should_run_for_group(self, group: Group) -> bool:
+        return self.should_run_for_path(group.path)
+
     def should_run_for_project(
         self,
         project: Project,
@@ -250,6 +253,22 @@ class GitlabService:
             return project
         else:
             return None
+
+    async def get_all_groups(self) -> typing.AsyncIterator[List[Group]]:
+        logger.info("fetching all groups for the token")
+        async_fetcher = AsyncFetcher(self.gitlab_client)
+        async for groups_batch in async_fetcher.fetch(
+            fetch_func=self.gitlab_client.groups.list,
+            validation_func=self.should_run_for_group,
+            pagination="offset",
+            order_by="id",
+            sort="asc",
+        ):
+            groups: List[Group] = typing.cast(List[Group], groups_batch)
+            logger.info(
+                f"Queried {len(groups)} groups {[group.path for group in groups]}"
+            )
+            yield groups
 
     async def get_all_projects(self) -> typing.AsyncIterator[List[Project]]:
         logger.info("fetching all projects for the token")
