@@ -16,16 +16,12 @@ def init_client() -> ArgocdClient:
 async def on_resources_resync(kind: str) -> RAW_RESULT:
     logger.info(f"Listing ArgoCD resource: {kind}")
 
-    try:
-        if kind in iter(ResourceKindsWithSpecialHandling):
-            logger.info(f"Kind {kind} has a special handling. Skipping...")
-            return []
-        else:
-            argocd_client = init_client()
-            return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
-    except ValueError:
-        logger.error(f"Invalid resource kind: {kind}")
-        raise
+    if kind in iter(ResourceKindsWithSpecialHandling):
+        logger.info(f"Kind {kind} has a special handling. Skipping...")
+        return []
+    else:
+        argocd_client = init_client()
+        return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY)
@@ -33,11 +29,7 @@ async def on_history_resync(kind: str) -> RAW_RESULT:
     logger.info("Listing ArgoCD deployment history")
     argocd_client = init_client()
 
-    try:
-        return await argocd_client.get_deployment_history()
-    except Exception:
-        logger.error("Failed to fetch ArgoCD deployment history")
-        raise
+    return await argocd_client.get_deployment_history()
 
 
 @ocean.router.post("/webhook")
