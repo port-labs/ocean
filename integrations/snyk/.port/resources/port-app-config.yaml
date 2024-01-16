@@ -1,4 +1,16 @@
 resources:
+  - kind: organization
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"snykOrganization"'
+          properties:
+            slug: .slug
+            url: ("https://app.snyk.io/org/" + .slug | tostring)
   - kind: issue
     selector:
       query: '.issueType == "vuln"'
@@ -41,6 +53,7 @@ resources:
             tags: .attributes.tags
           relations:
             snykVulnerabilities: '[.__issues[] | select(.issueType == "vuln").issueData.id]'
+            snykOrganization: .relationships.organization.data.id
   - kind: target
     selector:
       query: 'true'
