@@ -1,0 +1,35 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: job
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1]
+          title: .fullName
+          blueprint: '"jenkinsJob"'
+          properties:
+            jobName: .name
+            url: .url
+            jobStatus: '{"notbuilt": "created", "blue": "passing", "red": "failing"}[.color]'
+            timestamp: .time
+            parentJob: .__parentJob
+  - kind: build
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1]
+          title: .displayName
+          blueprint: '"jenkinsBuild"'
+          properties:
+            buildStatus: .result
+            buildUrl: .url
+            buildDuration: .duration
+            timestamp: '.timestamp / 1000 | todate'
+          relations:
+            parentJob: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1] | gsub("-[0-9]+$"; "")
+            previousBuild: .previousBuild.url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1]

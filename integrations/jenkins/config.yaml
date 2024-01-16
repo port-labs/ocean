@@ -9,8 +9,10 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: my-snyk-integration
+  identifier: "my-jenkins-integration"
   # The type of the integration.
-  type: "snyk"
+  type: "jenkins"
   config:
-    token: "{{ from env SNYK_API_TOKEN }}"
+    jenkinsHost: "{{ from env JENKINS_HOST }}"
+    jenkinsUser: "{{ from env JENKINS_USER }}"
+    jenkinsToken: "{{ from env JENKINS_TOKEN }}"
