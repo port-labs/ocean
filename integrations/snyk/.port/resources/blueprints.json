@@ -1,5 +1,29 @@
 [
   {
+    "identifier": "snykOrganization",
+    "title": "Snyk Organization",
+    "icon": "Snyk",
+    "schema": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "title": "URL",
+          "format": "url",
+          "icon": "Snyk"
+        },
+        "slug": {
+          "type": "string",
+          "title": "Slug"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "snykVulnerability",
     "title": "Snyk Vulnerability",
     "icon": "Snyk",
@@ -177,6 +201,12 @@
         "target": "snykVulnerability",
         "required": false,
         "many": true
+      },
+      "snykOrganization": {
+        "title": "Snyk Organization",
+        "target": "snykOrganization",
+        "required": true,
+        "many": false
       }
     }
   },
