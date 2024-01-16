@@ -10,7 +10,6 @@ resources:
           blueprint: '"snykOrganization"'
           properties:
             slug: .slug
-            created: .created
             url: ("https://app.snyk.io/org/" + .slug | tostring)
   - kind: issue
     selector:

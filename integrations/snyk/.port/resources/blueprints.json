@@ -14,11 +14,6 @@
         "slug": {
           "type": "string",
           "title": "Slug"
-        },
-        "created": {
-          "title": "Created",
-          "type": "string",
-          "format": "date-time"
         }
       },
       "required": []
