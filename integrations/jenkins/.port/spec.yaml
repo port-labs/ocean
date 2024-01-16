@@ -3,7 +3,7 @@ description: Jenkins integration for Port Ocean
 icon: Jenkins
 features:
   - type: exporter
-    section: Git Providers
+    section: CICD
     resources:
       - kind: job
       - kind: build
