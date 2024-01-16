@@ -51,7 +51,7 @@ resources:
             createdAt: .metadata.creationTimestamp
           relations:
             project: .spec.project
-  - kind: history
+  - kind: deployment-history
     selector:
       query: "true"
     port:

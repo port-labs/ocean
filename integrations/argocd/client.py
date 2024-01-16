@@ -11,7 +11,10 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     APPLICATION = "application"
     CLUSTER = "cluster"
-    HISTORY = "history"
+
+
+class ResourceKindsWithSpecialHandling(StrEnum):
+    DEPLOYMENT_HISTORY = "deployment-history"
 
 
 class ArgocdClient:
