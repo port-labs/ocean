@@ -9,6 +9,7 @@ features:
       - kind: cluster
       - kind: project
       - kind: application
+      - kind: deployment-history
 configurations:
   - name: token
     required: true

@@ -1,7 +1,7 @@
-from typing import Any
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from client import ArgocdClient, ObjectKind
+from port_ocean.core.ocean_types import RAW_RESULT
+from client import ArgocdClient, ObjectKind, ResourceKindsWithSpecialHandling
 from fastapi import Request
 
 
@@ -13,15 +13,23 @@ def init_client() -> ArgocdClient:
 
 
 @ocean.on_resync()
-async def on_resources_resync(kind: str) -> list[dict[Any, Any]]:
+async def on_resources_resync(kind: str) -> RAW_RESULT:
     logger.info(f"Listing ArgoCD resource: {kind}")
+
+    if kind in iter(ResourceKindsWithSpecialHandling):
+        logger.info(f"Kind {kind} has a special handling. Skipping...")
+        return []
+    else:
+        argocd_client = init_client()
+        return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY)
+async def on_history_resync(kind: str) -> RAW_RESULT:
+    logger.info("Listing ArgoCD deployment history")
     argocd_client = init_client()
 
-    try:
-        return await argocd_client.get_resources(resource_kind=ObjectKind(kind))
-    except ValueError:
-        logger.error(f"Invalid resource kind: {kind}")
-        raise
+    return await argocd_client.get_deployment_history()
 
 
 @ocean.router.post("/webhook")
