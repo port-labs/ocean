@@ -51,25 +51,19 @@ jobs:
           integration=$(echo ${integration} | tr '-' '_') # replace '-'' with '_'
           integration=$(echo ${integration} | awk '{print toupper($0)}') # Uppercase the string
           echo "INTEG_SECRET_NAME=${integration}" >> $GITHUB_ENV
-          
       - name: Check if SonarCloud project exists
         id: check_project
         run: |
           PROJECT_EXISTS=$(curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X GET "https://sonarcloud.io/api/projects/search?projects=${{ env.INTEG_PROJECT_ID }}" | jq '.components | length > 0')
           echo "PROJECT_EXISTS=$PROJECT_EXISTS" >> $GITHUB_ENV
-      
       - name: Create SonarCloud project and token
         if: env.PROJECT_EXISTS == 'false'
         run: |
             # Create Project
             curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X POST "https://sonarcloud.io/api/projects/create?name=${{ env.INTEG_PROJECT_ID }}&project=Ocean-${{env.INTEG_NAME}}&visibility=public"
-            
             # Generate Token
             SONAR_TOKEN=$(curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X POST "https://sonarcloud.io/api/user_tokens/generate?name=${{env.INTEG_NAME}}-token" | jq -r '.token')
             echo "SONAR_TOKEN=$SONAR_TOKEN" >> $GITHUB_ENV
-      
-
-      
       - name: Create GitHub Repo Secret
         if: env.SONAR_TOKEN != ''
         uses: gliech/create-github-secret-action@v1
@@ -77,4 +71,3 @@ jobs:
           name: ${{ env.INTEG_SECRET_NAME }}
           value: ${{ env.SONAR_TOKEN }}
           pa_token: ${{ secrets.PA_TOKEN_FOR_SECRET_CREATION }}
-    
