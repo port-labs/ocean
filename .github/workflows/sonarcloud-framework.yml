@@ -14,7 +14,7 @@ on:
       - port_ocean/**
 jobs:
   sonarcloud:
-    name: SonarCloud
+    name: Sonarcloud scan changed framework
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
