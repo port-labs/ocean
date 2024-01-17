@@ -6,7 +6,7 @@ on:
     paths:
       - port_ocean/**
   pull_request:
-    types: 
+    types:
       - ready_for_review
       - opened
       - synchronize
@@ -26,4 +26,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_FRAMEWORK_TOKEN }}
         with:
-            projectBaseDir: port_ocean
+          projectBaseDir: port_ocean

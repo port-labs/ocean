@@ -15,8 +15,8 @@ on:
 jobs:
   pre-run:
     outputs:
-        changed_integrations: ${{ steps.create-matrix.outputs.INTEGRATIONS_MATRIX }}
-        count_changed_integrations: ${{steps.changed-integrations.outputs.all_modified_files_count }}
+      changed_integrations: ${{ steps.create-matrix.outputs.INTEGRATIONS_MATRIX }}
+      count_changed_integrations: ${{steps.changed-integrations.outputs.all_modified_files_count }}
     name: Build Sonarcloud scan run
     runs-on: ubuntu-latest
     steps:
@@ -44,27 +44,22 @@ jobs:
     needs: pre-run
     if: ${{ needs.pre-run.outputs.count_changed_integrations > 0 }}
     strategy:
-        matrix: ${{ fromJson(needs.pre-run.outputs.changed_integrations) }}
+      matrix: ${{ fromJson(needs.pre-run.outputs.changed_integrations) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - id: create-project-token
+      - name: Create integration variable
         run: |
           unsplit_integ="${{ matrix.integrations }}"
           integration=${unsplit_integ##*/}
           integration=$(echo ${integration} | tr '-' '_')
           integration=$(echo ${integration} | awk '{print toupper($0)}')
           echo "INTEG_NAME=${integration}" >> $GITHUB_ENV
-          echo ${integration}
-          # sonar_project_secret=$(echo "${{ secrets[env.INTEG_NAME] }}") 
-          # $(echo "${{ secrets[env.INTEG_NAME] }}" | base64 -d  | jq -r --arg integration "$integration" '.[$app]')
-          # echo "SONAR_PROJECT_TOKEN=$(echo ${sonar_project_secret})" >> $GITHUB_OUTPUT
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           SONAR_TOKEN: ${{ secrets[env.INTEG_NAME] }}
         with:
-          projectBaseDir: ${{matrix.integrations}}
-          
+          projectBaseDir: ${{ matrix.integrations }}
