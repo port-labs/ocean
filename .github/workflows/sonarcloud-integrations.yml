@@ -57,6 +57,7 @@ jobs:
           integration=$(echo ${integration} | tr '-' '_')
           integration=$(echo ${integration} | awk '{print toupper($0)}')
           echo "INTEG_NAME=${integration}" >> $GITHUB_ENV
+          echo ${integration}
           sonar_project_secret=$(echo "${{ secrets[env.INTEG_NAME] }}") 
           #$(echo "${{ secrets[env.INTEG_NAME] }}" | base64 -d  | jq -r --arg integration "$integration" '.[$app]')
           echo "SONAR_PROJECT_TOKEN=$(echo ${sonar_project_secret})" >> $GITHUB_OUTPUT
