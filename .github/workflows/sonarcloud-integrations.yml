@@ -58,13 +58,13 @@ jobs:
           integration=$(echo ${integration} | awk '{print toupper($0)}')
           echo "INTEG_NAME=${integration}" >> $GITHUB_ENV
           echo ${integration}
-          sonar_project_secret=$(echo "${{ secrets[env.INTEG_NAME] }}") 
-          #$(echo "${{ secrets[env.INTEG_NAME] }}" | base64 -d  | jq -r --arg integration "$integration" '.[$app]')
-          echo "SONAR_PROJECT_TOKEN=$(echo ${sonar_project_secret})" >> $GITHUB_OUTPUT
+          # sonar_project_secret=$(echo "${{ secrets[env.INTEG_NAME] }}") 
+          # $(echo "${{ secrets[env.INTEG_NAME] }}" | base64 -d  | jq -r --arg integration "$integration" '.[$app]')
+          # echo "SONAR_PROJECT_TOKEN=$(echo ${sonar_project_secret})" >> $GITHUB_OUTPUT
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
-          SONAR_TOKEN: ${{ steps.create-project-token.outputs.SONAR_PROJECT_TOKEN }}
+          SONAR_TOKEN: ${{ secrets[env.INTEG_NAME] }}
         with:
           projectBaseDir: ${{matrix.integrations}}
           
