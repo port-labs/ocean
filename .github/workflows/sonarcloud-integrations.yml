@@ -9,6 +9,7 @@ on:
     types:
       - ready_for_review
       - opened
+      - synchronize
     paths:
       - integrations/**
 jobs:
