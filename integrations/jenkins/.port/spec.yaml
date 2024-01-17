@@ -1,0 +1,22 @@
+type: jenkins
+description: Jenkins integration for Port Ocean
+icon: Jenkins
+features:
+  - type: exporter
+    section: CICD
+    resources:
+      - kind: job
+      - kind: build
+configurations:
+  - name: jenkinsHost
+    description: "The host of the Jenkins server"
+    required: true
+    type: url
+  - name: jenkinsUser
+    required: true
+    type: string
+    sensitive: true
+  - name: jenkinsToken
+    required: true
+    type: string
+    sensitive: true

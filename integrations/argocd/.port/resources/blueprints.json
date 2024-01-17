@@ -170,5 +170,54 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "argocdDeploymentHistory",
+    "description": "This blueprint represents an ArgoCD deployment history",
+    "title": "ArgoCD Deployment History",
+    "icon": "Argo",
+    "schema": {
+      "properties": {
+        "deployedAt": {
+          "title": "Deployed At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "deployStartedAt": {
+          "title": "Deploy Started At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "string"
+        },
+        "initiatedBy": {
+          "title": "Initiated By",
+          "type": "string"
+        },
+        "repoURL": {
+          "title": "Repository URL",
+          "type": "string",
+          "format": "url"
+        },
+        "sourcePath": {
+          "title": "Source Path",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "application": {
+        "title": "Application",
+        "target": "argocdApplication",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]
