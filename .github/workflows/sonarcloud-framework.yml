@@ -8,6 +8,7 @@ on:
   pull_request:
     types: 
       - ready_for_review
+      - opened
     paths:
       - port_ocean/**
 jobs:

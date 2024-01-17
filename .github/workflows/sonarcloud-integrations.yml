@@ -1,15 +1,16 @@
 name: Sonarcloud scan integrations
 on:
   push:
-      branches:
+    branches:
       - main
-      paths:
-      - 'integrations/**'
+    paths:
+      - integrations/**
   pull_request:
     types:
-      - "ready_for_review"
+      - ready_for_review
+      - opened
     paths:
-      - 'integrations/**'
+      - integrations/**
 jobs:
   pre-run:
     outputs:
