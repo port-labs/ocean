@@ -1,7 +1,7 @@
 {
     "integration_name": "Name of the integration",
     "integration_slug": "{{ cookiecutter.integration_name.lower().replace(' ', '_') }}",
-    "integration_sonarcloud_project": "{{ cookiecutter.integration_name.lower().replace(' ', '-') }}",
+    "integration_sonarcloud_project": "port-labs_ocean_{{ cookiecutter.integration_name.lower().replace(' ', '-') }}",
     "integration_short_description": "A short description of the project",
     "full_name": "Your name",
     "email": "Your address email <you@example.com>",
