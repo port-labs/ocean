@@ -36,26 +36,19 @@ async def on_project_resync(kind: str) -> list[dict[str, Any]]:
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
+
     sonar_client = init_sonar_client()
     async for issues_list in sonar_client.get_all_issues():
-        for issue in issues_list:
-            yield [issue]
+        yield issues_list
 
 
 @ocean.on_resync(ObjectKind.ANALYSIS)
 async def on_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
-    if is_onpremise_deployment():
-        logger.debug(
-            "Skipping resync because the integration does not support on-premise Sonarqube deployment"
-        )
-        return
 
     sonar_client = init_sonar_client()
-
     async for analyses_list in sonar_client.get_all_analyses():
-        for analysis_data in analyses_list:
-            yield [analysis_data]
+        yield analyses_list
 
 
 @ocean.router.post("/webhook")
@@ -72,12 +65,6 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
     issues_data = await sonar_client.get_issues_by_component(project)
     await ocean.register_raw(ObjectKind.PROJECTS, [project_data])
     await ocean.register_raw(ObjectKind.ISSUES, issues_data)
-
-    if is_onpremise_deployment():
-        logger.debug(
-            "Skipping real-time update of analysis because the integration does not support on-premise Sonarqube deployment"
-        )
-        return
 
     analysis_data = await sonar_client.get_analysis_for_task(webhook_data=webhook_data)
     await ocean.register_raw(ObjectKind.ANALYSIS, [analysis_data])
