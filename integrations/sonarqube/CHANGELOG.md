@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.26 (2024-01-19)
+
+### Improvements
+
+- Removed the constraint preventing the integration from syncing Sonar analysis data for on-premise installation
+
+
 # Port_Ocean 0.1.25 (2024-01-11)
 
 ### Improvements
