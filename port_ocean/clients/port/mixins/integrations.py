@@ -112,3 +112,20 @@ class IntegrationClientMixin:
         logger.info(
             f"Integration with id: {self.integration_identifier} successfully registered"
         )
+
+    async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
+        logger.debug(
+            f"Ingesting logs for integration with id: {self.integration_identifier}"
+        )
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/logs",
+            headers=headers,
+            json={
+                "logs": logs,
+            },
+        )
+        handle_status_code(response)
+        logger.debug(
+            f"Logs for integration with id: {self.integration_identifier} successfully ingested"
+        )

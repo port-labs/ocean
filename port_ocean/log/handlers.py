@@ -2,6 +2,7 @@ import asyncio
 import atexit
 import logging
 import time
+from datetime import datetime
 from logging import LogRecord
 from logging.handlers import MemoryHandler
 from threading import Timer
@@ -55,14 +56,12 @@ class HTTPMemoryHandler(MemoryHandler):
         )
 
     def flush(self) -> None:
-        if self.ocean is None:
+        if self.ocean is None or not self.buffer:
             return
 
         self.acquire()
         try:
-            asyncio.new_event_loop().run_until_complete(
-                self.send_logs(self.buffer, self.ocean)
-            )
+            asyncio.new_event_loop().run_until_complete(self.send_logs(self.buffer))
             self.buffer.clear()
             self.last_flush_time = time.time()
         finally:
@@ -76,15 +75,19 @@ class HTTPMemoryHandler(MemoryHandler):
         _timer.start()
         self._timer = _timer
 
-    async def send_logs(self, logs: list[LogRecord], ocean_core: Ocean) -> None:
-        pass
-        # a = await ocean_core.port_client.auth.token
-        # print(a)
-        # Modify this function to send logs via HTTP request
-        # For example, you can use the 'requests' library to send a POST request
-        # for record in logs:
-        #     print("!!!!!" + record.msg + "!!!!!")
-        # url = "https://your-log-server-endpoint"
-        # headers = {"Content-Type": "application/json"}
-        # data = {"logs": logs}
-        # response = httpx.post(url, json=data, headers=headers)
+    async def send_logs(self, logs: list[LogRecord]) -> None:
+        raw_logs = [
+            {
+                "message": record.msg,
+                "level": record.levelname,
+                "createdAt": datetime.utcfromtimestamp(record.created).strftime(
+                    "%Y-%m-%dT%H:%M:%S.%fZ"
+                ),
+                "extra": record.__dict__["extra"],
+            }
+            for record in logs
+        ]
+        try:
+            await self.ocean.port_client.ingest_integration_logs(raw_logs)
+        except Exception as e:
+            logger.debug(f"Failed to send logs to Port: {e}")
