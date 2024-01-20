@@ -9,8 +9,11 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 from snyk.client import SnykClient
 
+CONCURRENT_REQUESTS = 20
+
 
 class ObjectKind(StrEnum):
+    ORGANIZATION = "organization"
     PROJECT = "project"
     ISSUE = "issue"
     TARGET = "target"
@@ -33,7 +36,8 @@ def init_client() -> SnykClient:
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
-        ocean.integration_config["organization_id"],
+        ocean.integration_config.get("organization_id"),
+        ocean.integration_config.get("groups"),
         ocean.integration_config.get("webhook_secret"),
     )
 
@@ -43,7 +47,14 @@ async def process_project_issues(
 ) -> list[dict[str, Any]]:
     snyk_client = init_client()
     async with semaphore:
-        return await snyk_client.get_issues(project["id"])
+        organization_id = project["relationships"]["organization"]["data"]["id"]
+        return await snyk_client.get_issues(organization_id, project["id"])
+
+
+@ocean.on_resync(ObjectKind.ORGANIZATION)
+async def on_organization_resync(kind: str) -> list[dict[str, Any]]:
+    snyk_client = init_client()
+    return await snyk_client.get_organizations_in_groups()
 
 
 @ocean.on_resync(ObjectKind.TARGET)
@@ -58,11 +69,11 @@ async def on_targets_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     snyk_client = init_client()
 
+    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
     async for projects in snyk_client.get_paginated_projects():
         logger.debug(
             f"Received batch with {len(projects)} projects, getting their issues"
         )
-        semaphore = asyncio.Semaphore(5)
         tasks = [process_project_issues(semaphore, project) for project in projects]
         issues = await asyncio.gather(*tasks)
         yield [
@@ -75,7 +86,7 @@ async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
     snyk_client = init_client()
     all_issues: list[dict[str, Any]] = []
 
-    semaphore = asyncio.Semaphore(5)
+    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
 
     async for projects in snyk_client.get_paginated_projects():
         logger.debug(
@@ -105,17 +116,25 @@ async def on_vulnerability_webhook_handler(request: Request) -> None:
 
         snyk_client = init_client()
 
-        project = data["project"]
-        project_details = await snyk_client.get_single_project(project["id"])
+        project_id = data["project"]["id"]
+        organization_id = data["org"]["id"]
+        project_details = await snyk_client.get_single_project(
+            organization_id, project_id
+        )
 
         tasks = [
             ocean.register_raw(
-                ObjectKind.ISSUE, await snyk_client.get_issues(project["id"])
+                ObjectKind.ISSUE,
+                await snyk_client.get_issues(organization_id, project_id),
             ),
             ocean.register_raw(ObjectKind.PROJECT, [project_details]),
             ocean.register_raw(
                 ObjectKind.TARGET,
-                [await snyk_client.get_single_target_by_project_id(project["id"])],
+                [
+                    await snyk_client.get_single_target_by_project_id(
+                        organization_id, project_id
+                    )
+                ],
             ),
         ]
 
