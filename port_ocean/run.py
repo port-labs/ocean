@@ -1,5 +1,5 @@
 from inspect import getmembers
-from typing import Type, Dict, Any
+from typing import Dict, Any
 
 import uvicorn
 from loguru import logger
@@ -14,13 +14,14 @@ from port_ocean.ocean import Ocean
 from port_ocean.utils import get_spec_file, load_module
 
 
-def _get_default_config_factory() -> None | Type[BaseModel]:
+def _default_config_factory(**kwargs) -> None | tuple[BaseModel, list[str]]:
     spec = get_spec_file()
-    config_factory = None
     if spec is not None:
-        config_factory = default_config_factory(spec.get("configurations", []))
-
-    return config_factory
+        factory, sensitive_keys = default_config_factory(spec.get("configurations", []))
+        model = factory(**kwargs)
+        raw_model = model.dict()
+        sensitive_data = [raw_model[key] for key in sensitive_keys if key in raw_model]
+        return model, sensitive_data
 
 
 def run(
@@ -35,8 +36,7 @@ def run(
     setup_logger(application_settings.log_level)
 
     logger.info("Starting Port Ocean")
-    config_factory = _get_default_config_factory()
-    default_app = create_default_app(path, config_factory, config_override)
+    default_app = create_default_app(path, _default_config_factory, config_override)
 
     main_path = f"{path}/main.py" if path else "main.py"
     app_module = load_module(main_path)

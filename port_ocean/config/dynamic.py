@@ -11,6 +11,7 @@ class Configuration(BaseModel, extra=Extra.allow):
     type: str
     required: bool = False
     default: Optional[Any]
+    sensitive: bool = False
 
 
 def dynamic_parse(value: Any, field: ModelField) -> Any:
@@ -25,12 +26,18 @@ def dynamic_parse(value: Any, field: ModelField) -> Any:
     return value
 
 
-def default_config_factory(configurations: Any) -> Type[BaseModel]:
+def default_config_factory(
+    configurations: list[dict[str, Any]]
+) -> tuple[Type[BaseModel], list[str]]:
     configurations = parse_obj_as(list[Configuration], configurations)
     fields: dict[str, tuple[Any, Any]] = {}
+    sensitive_fields: list[str] = []
 
     for config in configurations:
         field_type: Type[Any]
+
+        if config.sensitive:
+            sensitive_fields.append(decamelize(config.name))
 
         match config.type:
             case "object":
@@ -59,4 +66,4 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
         **fields,
         __validators__={"dynamic_parse": validator("*", pre=True)(dynamic_parse)},
     )
-    return dynamic_model
+    return dynamic_model, sensitive_fields

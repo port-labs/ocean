@@ -1,7 +1,7 @@
 import sys
 from inspect import getmembers, isclass
 from types import ModuleType
-from typing import Type, Any, Dict
+from typing import Type, Any, Dict, Callable
 
 from pydantic import BaseModel
 
@@ -27,7 +27,7 @@ def _get_base_integration_class_from_module(
 
 def create_default_app(
     path: str | None = None,
-    config_factory: Type[BaseModel] | None = None,
+    config_factory: Callable[..., tuple[BaseModel, list[str]]] | None = None,
     config_override: Dict[str, Any] | None = None,
 ) -> Ocean:
     sys.path.append(".")
