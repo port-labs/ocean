@@ -18,6 +18,7 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils import repeat_every
 from port_ocean.version import __integration_version__
@@ -29,7 +30,7 @@ class Ocean:
         app: FastAPI | None = None,
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
         integration_router: APIRouter | None = None,
-        config_factory: Callable[..., BaseModel] | None = None,
+        config_factory: Callable[..., tuple[BaseModel, list[str]]] | None = None,
         config_override: Dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
@@ -40,9 +41,9 @@ class Ocean:
             base_path="./", **(config_override or {})
         )
         if config_factory:
-            self.config.integration.config = config_factory(
-                **self.config.integration.config
-            ).dict()
+            config, sensitive = config_factory(**self.config.integration.config)
+            self.config.integration.config = config.dict()
+            sensitive_log_filter.hide_sensitive_tokens(*sensitive)
         self.integration_router = integration_router or APIRouter()
 
         self.port_client = PortClient(
