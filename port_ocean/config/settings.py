@@ -10,6 +10,7 @@ LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
 class ApplicationSettings(BaseSettings):
     log_level: LogLevelType = "INFO"
+    enable_http_logging: bool = True
     port: int = 8000
 
     class Config:

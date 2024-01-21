@@ -33,7 +33,10 @@ def run(
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
 
-    setup_logger(application_settings.log_level)
+    setup_logger(
+        application_settings.log_level,
+        enable_http_handler=application_settings.enable_http_logging,
+    )
 
     logger.info("Starting Port Ocean")
     default_app = create_default_app(path, _default_config_factory, config_override)
