@@ -12,10 +12,11 @@ from port_ocean.log.handlers import HTTPMemoryHandler
 from port_ocean.log.sensetive import sensitive_log_filter
 
 
-def setup_logger(level: LogLevelType) -> None:
+def setup_logger(level: LogLevelType, enable_http_handler: bool) -> None:
     logger.remove()
     _stdout_loguru_handler(level)
-    _http_loguru_handler(level)
+    if enable_http_handler:
+        _http_loguru_handler(level)
 
 
 def _stdout_loguru_handler(level: LogLevelType) -> None:
