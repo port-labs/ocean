@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.19 (2024-01-21)
+
+### Improvements
+
+- Added default page for ArgoCD (port-5959)
+
+
 # Port_Ocean 0.1.18 (2024-01-12)
 
 ### Features
