@@ -5,7 +5,7 @@ import httpx
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
-from wiz.constants import (
+from .constants import (
     GRAPH_QUERIES,
     ISSUES_GQL,
     AUTH0_URLS,

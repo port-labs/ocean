@@ -1,9 +1,10 @@
 type: wiz
 description: Wiz integration for Port Ocean
 icon: Alert
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz
 features:
   - type: exporter
-    section: Incident Management
+    section: Code Quality & Security
     resources:
       - kind: issue
       - kind: project
