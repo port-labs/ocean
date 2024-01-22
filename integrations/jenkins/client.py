@@ -120,7 +120,6 @@ class JenkinsClient:
         response.raise_for_status()
         return response.json()
 
-
     async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         page_size = 5
         page = 0
@@ -131,7 +130,9 @@ class JenkinsClient:
 
             params = {"tree": f"users[user[*],*]{{{start_idx},{end_idx}}}"}
 
-            response = await self.client.get(f"{self.jenkins_base_url}/people/api/json", params=params)
+            response = await self.client.get(
+                f"{self.jenkins_base_url}/people/api/json", params=params
+            )
             response.raise_for_status()
             users = response.json()["users"]
 

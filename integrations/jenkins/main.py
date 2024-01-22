@@ -47,6 +47,7 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(builds)} builds")
         yield builds
 
+
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     jenkins_client = init_client()
