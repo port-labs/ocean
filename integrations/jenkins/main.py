@@ -48,7 +48,7 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield builds
 
 @ocean.on_resync(ObjectKind.USER)
-async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     jenkins_client = init_client()
 
     async for users in jenkins_client.get_users():
