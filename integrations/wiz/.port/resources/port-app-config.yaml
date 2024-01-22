@@ -36,7 +36,7 @@ resources:
             statusChangedAt: .statusChangedAt
             resolvedAt: .resolvedAt
           relations:
-            projects: .projects[].id
+            projects: .projects | map(.id)
             serviceTickets: .serviceTickets[].externalId
             control: .sourceRule.id
   - kind: control

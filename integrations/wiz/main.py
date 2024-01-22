@@ -57,7 +57,7 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def handle_webhook_request(
     data: dict[str, Any], token: Any = Depends(HTTPBearer())
 ) -> dict[str, Any]:
-    if ocean.integration_config["wiz_webhook_token"] != token.credentials:
+    if ocean.integration_config["wiz_webhook_verification_token"] != token.credentials:
         raise HTTPException(
             status_code=401,
             detail={

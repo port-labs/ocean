@@ -14,7 +14,6 @@ from wiz.constants import (
     MAX_PAGES,
 )
 from port_ocean.context.event import event
-from port_ocean.exceptions.base import BaseOceanException
 from port_ocean.exceptions.core import OceanAbortException
 from port_ocean.utils import http_async_client, get_time
 
@@ -30,12 +29,6 @@ class InvalidTokenUrlException(OceanAbortException):
         super().__init__(
             f"{base_message} Valid token urls for AuthO are {auth0_urls} and for Cognito: {cognito_urls}"
         )
-
-
-class UnexpectedWizException(BaseOceanException):
-    def __init__(self, errors: Any):
-        base_message = f"An unexpected error occurred at Wiz: {errors}"
-        super().__init__(base_message)
 
 
 class TokenResponse(BaseModel):
@@ -126,10 +119,8 @@ class WizClient:
                 json={"query": query, "variables": variables},
                 headers=await self.auth_headers,
             )
+            response.raise_for_status()
             response_json = response.json()
-
-            if "data" not in response_json:
-                raise UnexpectedWizException(response_json["errors"])
 
             return response_json["data"]
         except httpx.HTTPError as e:
