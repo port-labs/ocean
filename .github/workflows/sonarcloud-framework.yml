@@ -6,7 +6,7 @@ on:
     paths:
       - port_ocean/**
   workflow_dispatch:
-    
+
 jobs:
   sonarcloud:
     name: Sonarcloud scan changed framework
