@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.48 (2024-01-23)
+===================
+
+### Improvements
+
+- Added group & subgroup webhook support (PORT-6229)
+
+
 0.1.47 (2024-01-12)
 ===================
 
