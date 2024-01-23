@@ -25,7 +25,7 @@ jobs:
           json: true
           dir_names: true
           dir_names_max_depth: 2
-          files_ignore: 
+          files_ignore:
             integrations/_infra/**
           files: |
             integrations/**
