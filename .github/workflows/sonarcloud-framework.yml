@@ -5,13 +5,8 @@ on:
       - main
     paths:
       - port_ocean/**
-  pull_request:
-    types:
-      - ready_for_review
-      - opened
-      - synchronize
-    paths:
-      - port_ocean/**
+  workflow_dispatch:
+
 jobs:
   sonarcloud:
     name: Sonarcloud scan changed framework
