@@ -1,6 +1,7 @@
 type: jenkins
 description: Jenkins integration for Port Ocean
 icon: Jenkins
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/ci-cd/jenkins-ocean
 features:
   - type: exporter
     section: CICD
