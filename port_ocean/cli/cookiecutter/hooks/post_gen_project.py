@@ -6,9 +6,11 @@ def delete_docker_files():
         os.remove("Dockerfile")
         os.remove(".dockerignore")
 
+
 def delete_sonarcloud_files():
     if "{{ cookiecutter.custom_integration }}" == "true":
         os.remove("sonar-project.properties")
+
 
 if __name__ == "__main__":
     delete_docker_files()
