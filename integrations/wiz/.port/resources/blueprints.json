@@ -3,7 +3,7 @@
     "identifier": "wizProject",
     "description": "This blueprint represents a wiz project",
     "title": "Wiz Project",
-    "icon": "Box",
+    "icon": "Wiz",
     "schema": {
       "properties": {
         "archived": {
@@ -40,7 +40,7 @@
     "identifier": "wizControl",
     "description": "This blueprint represents a wiz source rule",
     "title": "Wiz Control",
-    "icon": "Flag",
+    "icon": "Wiz",
     "schema": {
       "properties": {
         "controlDescription": {
@@ -64,7 +64,7 @@
     "identifier": "wizIssue",
     "description": "This blueprint represents a wiz issue",
     "title": "Wiz Issue",
-    "icon": "Alert",
+    "icon": "Wiz",
     "schema": {
       "properties": {
         "url": {
@@ -178,7 +178,7 @@
     "identifier": "wizServiceTicket",
     "description": "This blueprint represents a wiz service ticket",
     "title": "Wiz Service Ticket",
-    "icon": "Book",
+    "icon": "Wiz",
     "schema": {
       "properties": {
         "url": {
