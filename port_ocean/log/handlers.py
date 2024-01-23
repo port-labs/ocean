@@ -1,11 +1,10 @@
 import asyncio
-import atexit
 import logging
+import threading
 import time
 from datetime import datetime
 from logging import LogRecord
 from logging.handlers import MemoryHandler
-from threading import Timer
 
 from loguru import logger
 
@@ -28,18 +27,25 @@ class HTTPMemoryHandler(MemoryHandler):
         self.flush_interval = flush_interval
         self.flush_size = flush_size
         self.last_flush_time = time.time()
-        self._timer: Timer | None = None
-        self.auto_flush()
-        atexit.register(
-            lambda: logger.debug(
-                "The application is shutting down flushing all logs into Port"
-            )
-        )
+        self._stop = False
+        # signal.signal(signal.SIGINT, lambda _, __: self.stop())
+        # signal.signal(
+        #     signal.SIGTERM,
+        #     lambda _, __: logger.debug(
+        #         "The application is shutting down flushing all logs into Port"
+        #     ),
+        # )
+        # atexit.register(lambda: self.stop())
+        # atexit.register(
+        #     lambda: logger.debug(
+        #         "The application is shutting down flushing all logs into Port"
+        #     )
+        # )
+        # threading.Timer(self.flush_interval, self.auto_flush).start()
 
-    def close(self) -> None:
-        if self._timer:
-            self._timer.cancel()
-        super().close()
+    def stop(self) -> None:
+        print("!!!!!!!!!!!!!!!!!!!!!!!!")
+        self._stop = True
 
     @property
     def ocean(self) -> Ocean | None:
@@ -61,19 +67,19 @@ class HTTPMemoryHandler(MemoryHandler):
 
         self.acquire()
         try:
-            asyncio.new_event_loop().run_until_complete(self.send_logs(self.buffer))
-            self.buffer.clear()
-            self.last_flush_time = time.time()
+            if self.buffer:
+                asyncio.new_event_loop().run_until_complete(self.send_logs(self.buffer))
+                self.buffer.clear()
+                self.last_flush_time = time.time()
         finally:
             self.release()
 
     def auto_flush(self) -> None:
+        print("auto_flush")
         if self.shouldFlush(EMPTY_LOG_RECORD):
             self.flush()
-        _timer = Timer(self.flush_interval, self.auto_flush)
-        _timer.daemon = True
-        _timer.start()
-        self._timer = _timer
+        if not self._stop:
+            threading.Timer(self.flush_interval, self.auto_flush).start()
 
     async def send_logs(self, logs: list[LogRecord]) -> None:
         raw_logs = [

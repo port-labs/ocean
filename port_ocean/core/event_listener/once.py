@@ -8,7 +8,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
-from port_ocean.utils import repeat_every
+from port_ocean.utils.repeat import repeat_every
 
 
 class OnceEventListenerSettings(EventListenerSettings):

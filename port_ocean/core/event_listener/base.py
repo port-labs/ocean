@@ -3,6 +3,8 @@ from typing import TypedDict, Callable, Any, Awaitable
 
 from pydantic import BaseModel, Extra
 
+from port_ocean.utils.signal import register_signal_handler
+
 
 class EventListenerEvents(TypedDict):
     """
@@ -19,8 +21,16 @@ class BaseEventListener:
     ):
         self.events = events
 
+    async def start(self):
+        register_signal_handler(self._stop)
+        await self._start()
+
     @abstractmethod
-    async def start(self) -> None:
+    async def _start(self) -> None:
+        pass
+
+    @abstractmethod
+    async def _stop(self) -> None:
         pass
 
 
