@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.17 (2024-01-23)
+
+
+### Features
+
+- Added sonarcloud files for public integration scaffolding (PORT-6181)
+- Replaced the `remove-docker` option from the `ocean new` cli with `private` & `public` flags (PORT-6181)
+
+
 ## 0.4.16 (2024-01-11)
 
 
