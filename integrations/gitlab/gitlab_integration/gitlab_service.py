@@ -62,6 +62,7 @@ class GitlabService:
                 "pipeline_events": True,
                 "releases_events": True,
                 "tag_push_events": True,
+                "subgroup_events": True,
                 "confidential_issues_events": True,
             }
         )
@@ -137,7 +138,7 @@ class GitlabService:
         return any(does_pattern_apply(mapping, path) for mapping in self.group_mapping)
 
     def should_run_for_group(self, group: Group) -> bool:
-        return self.should_run_for_path(group.path)
+        return self.should_run_for_path(group.full_path)
 
     def should_run_for_project(
         self,
