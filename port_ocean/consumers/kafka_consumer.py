@@ -1,4 +1,3 @@
-import signal
 from typing import Any, Callable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
@@ -30,8 +29,8 @@ class KafkaConsumer(BaseConsumer):
         self.org_id = org_id
         self.config = config
 
-        signal.signal(signal.SIGINT, self.exit_gracefully)
-        signal.signal(signal.SIGTERM, self.exit_gracefully)
+        # signal.signal(signal.SIGINT, self.exit_gracefully)
+        # signal.signal(signal.SIGTERM, self.exit_gracefully)
 
         self.msg_process = msg_process
         if config.kafka_security_enabled:

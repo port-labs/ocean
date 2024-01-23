@@ -12,6 +12,7 @@ from port_ocean.core.event_listener.factory import (
 )
 from port_ocean.core.integrations.mixins import SyncRawMixin, SyncMixin
 from port_ocean.exceptions.core import IntegrationAlreadyStartedException
+from port_ocean.utils.signal import get_signal_handler
 
 
 class BaseIntegration(SyncRawMixin, SyncMixin):
@@ -84,4 +85,5 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         logger.info("Initializing event listener")
         event_listener = await self.event_listener_factory.create_event_listener()
+        c = get_signal_handler()
         await event_listener.start()

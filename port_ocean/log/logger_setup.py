@@ -1,4 +1,3 @@
-import atexit
 import sys
 from logging import LogRecord
 from logging.handlers import QueueHandler, QueueListener
@@ -15,8 +14,8 @@ from port_ocean.log.sensetive import sensitive_log_filter
 def setup_logger(level: LogLevelType, enable_http_handler: bool) -> None:
     logger.remove()
     _stdout_loguru_handler(level)
-    if enable_http_handler:
-        _http_loguru_handler(level)
+    # if enable_http_handler:
+    #     _http_loguru_handler(level)
 
 
 def _stdout_loguru_handler(level: LogLevelType) -> None:
@@ -53,10 +52,18 @@ def _http_loguru_handler(level: LogLevelType) -> None:
     )
 
     queue_listener = QueueListener(
-        queue, HTTPMemoryHandler(50, flush_interval=60, flush_size=1024)
+        queue, HTTPMemoryHandler(50, flush_interval=5, flush_size=1024)
     )
     queue_listener.start()
-    atexit.register(queue_listener.stop)
+    # signal.signal(
+    #     signal.SIGINT,
+    #     lambda _, __: logger.debug("!!!!!!!!!!!!"),
+    # )
+    # signal.signal(
+    #     signal.SIGTERM,
+    #     lambda _, __: logger.debug("!!!!!!!!!!!!"),
+    # )
+    # atexit.register(queue_listener.stop)
 
 
 def exception_deserializer(record: "loguru.Record") -> None:
