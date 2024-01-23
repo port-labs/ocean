@@ -62,7 +62,7 @@ jobs:
         if: env.PROJECT_EXISTS == 'false'
         run: |
             # Create Project
-            curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X POST "https://sonarcloud.io/api/projects/create?name=${{ env.INTEG_PROJECT_ID }}&project=Ocean-${{env.INTEG_NAME}}&visibility=public&organization=port-labs"
+            curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X POST "https://sonarcloud.io/api/projects/create?name=Ocean-${{env.INTEG_NAME}}&project=${{ env.INTEG_PROJECT_ID }}&visibility=public&organization=port-labs"
             # Rename main branch to "main"
             curl -u ${{ secrets.CREATE_SONARCLOUD_PROJECT_TOKEN }}: -X POST "https://sonarcloud.io/api/project_branches/rename?name=main&project=${{ env.INTEG_PROJECT_ID }}"
             # Generate Token
