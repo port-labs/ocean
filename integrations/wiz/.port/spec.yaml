@@ -1,0 +1,31 @@
+type: wiz
+description: Wiz integration for Port Ocean
+icon: Wiz
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz
+features:
+  - type: exporter
+    section: Code Quality & Security
+    resources:
+      - kind: issue
+      - kind: project
+      - kind: control
+      - kind: serviceTicket
+configurations:
+  - name: wizClientId
+    required: true
+    type: string
+    sensitive: true
+  - name: wizClientSecret
+    required: true
+    type: string
+    sensitive: true
+  - name: wizApiUrl
+    type: string
+    required: true
+  - name: wizTokenUrl
+    type: string
+    required: true
+  - name: wizWebhookVerificationToken
+    required: false
+    type: string
+    sensitive: true
