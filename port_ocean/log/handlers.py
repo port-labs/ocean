@@ -21,31 +21,12 @@ class HTTPMemoryHandler(MemoryHandler):
         capacity: int,
         flush_level: int = logging.FATAL,
         flush_interval: int = 15,
-        flush_size: int = 1024,
+        flush_size: int = 2048,
     ):
         super().__init__(capacity, flushLevel=flush_level, target=None)
         self.flush_interval = flush_interval
         self.flush_size = flush_size
         self.last_flush_time = time.time()
-        self._stop = False
-        # signal.signal(signal.SIGINT, lambda _, __: self.stop())
-        # signal.signal(
-        #     signal.SIGTERM,
-        #     lambda _, __: logger.debug(
-        #         "The application is shutting down flushing all logs into Port"
-        #     ),
-        # )
-        # atexit.register(lambda: self.stop())
-        # atexit.register(
-        #     lambda: logger.debug(
-        #         "The application is shutting down flushing all logs into Port"
-        #     )
-        # )
-        # threading.Timer(self.flush_interval, self.auto_flush).start()
-
-    def stop(self) -> None:
-        print("!!!!!!!!!!!!!!!!!!!!!!!!")
-        self._stop = True
 
     @property
     def ocean(self) -> Ocean | None:
@@ -55,33 +36,36 @@ class HTTPMemoryHandler(MemoryHandler):
             return None
 
     def shouldFlush(self, record: logging.LogRecord) -> bool:
-        return bool(self.buffer) and (
+        if bool(self.buffer) and (
             super(HTTPMemoryHandler, self).shouldFlush(record)
             or sum(len(record.msg) for record in self.buffer) >= self.flush_size
             or time.time() - self.last_flush_time >= self.flush_interval
-        )
+        ):
+            logger.info(
+                f"should flush {len(self.buffer)} with size {sum(len(record.msg) for record in self.buffer)}"
+            )
+            return True
+        return False
 
     def flush(self) -> None:
         if self.ocean is None or not self.buffer:
             return
 
+        def _wrap_event_loop(logs_to_send: list[LogRecord]) -> None:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(self.send_logs(logs_to_send))
+            loop.close()
+
         self.acquire()
-        try:
-            if self.buffer:
-                asyncio.new_event_loop().run_until_complete(self.send_logs(self.buffer))
-                self.buffer.clear()
-                self.last_flush_time = time.time()
-        finally:
-            self.release()
+        logs = list(self.buffer)
+        if logs:
+            self.buffer.clear()
+            self.last_flush_time = time.time()
+            threading.Thread(target=_wrap_event_loop, args=(logs,)).start()
+        self.release()
 
-    def auto_flush(self) -> None:
-        print("auto_flush")
-        if self.shouldFlush(EMPTY_LOG_RECORD):
-            self.flush()
-        if not self._stop:
-            threading.Timer(self.flush_interval, self.auto_flush).start()
-
-    async def send_logs(self, logs: list[LogRecord]) -> None:
+    async def send_logs(self, logs_to_send: list[LogRecord]) -> None:
+        logger.debug(f"Sending logs to Port {len(logs_to_send)}")
         raw_logs = [
             {
                 "message": record.msg,
@@ -91,9 +75,9 @@ class HTTPMemoryHandler(MemoryHandler):
                 ),
                 "extra": record.__dict__["extra"],
             }
-            for record in logs
+            for record in logs_to_send
         ]
         try:
             await self.ocean.port_client.ingest_integration_logs(raw_logs)
         except Exception as e:
-            logger.debug(f"Failed to send logs to Port: {e}")
+            logger.debug(f"Failed to send logs to Port with error: {e}")
