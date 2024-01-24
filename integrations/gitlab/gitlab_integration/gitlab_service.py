@@ -255,6 +255,14 @@ class GitlabService:
         else:
             return None
 
+    def get_group(self, group_id: int) -> Group | None:
+        logger.info(f"fetching group {group_id}")
+        group = self.gitlab_client.groups.get(group_id)
+        if self.should_run_for_group(group):
+            return group
+        else:
+            return None
+
     async def get_all_groups(self) -> typing.AsyncIterator[List[Group]]:
         logger.info("fetching all groups for the token")
         async_fetcher = AsyncFetcher(self.gitlab_client)

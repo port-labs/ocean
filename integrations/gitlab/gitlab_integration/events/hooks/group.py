@@ -1,7 +1,5 @@
 from typing import Any
 
-from gitlab.v4.objects import Project
-
 from loguru import logger
 
 from gitlab_integration.events.hooks.base import HookHandler
@@ -9,7 +7,7 @@ from gitlab_integration.utils import ObjectKind
 from port_ocean.context.ocean import ocean
 
 
-class Group(HookHandler):
+class GroupHook(HookHandler):
     events = ["Subgroup Hook"]
     system_events = [
         "group_destroy",
@@ -26,7 +24,7 @@ class Group(HookHandler):
 
         logger.info(f"Handling hook {event} for group {group_id}")
 
-        group = await self.gitlab_service.get_group(group_id)
+        group = self.gitlab_service.get_group(group_id)
 
         group_full_path = body.get("full_path")
         if group:
@@ -39,6 +37,3 @@ class Group(HookHandler):
             await ocean.unregister_raw(ObjectKind.GROUP, [body])
         else:
             logger.info(f"Group {group_id} was filtered for event {event}. Skipping...")
-
-    async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
-        pass

@@ -9,7 +9,7 @@ from gitlab_integration.events.hooks.jobs import Job
 from gitlab_integration.events.hooks.merge_request import MergeRequest
 from gitlab_integration.events.hooks.pipelines import Pipelines
 from gitlab_integration.events.hooks.push import PushHook
-from gitlab_integration.events.hooks.group import Group
+from gitlab_integration.events.hooks.group import GroupHook
 from gitlab_integration.gitlab_service import GitlabService
 
 event_handler = EventHandler()
@@ -23,7 +23,7 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str | int) -> Non
         Job(gitlab_service),
         Issues(gitlab_service),
         Pipelines(gitlab_service),
-        Group(gitlab_service),
+        GroupHook(gitlab_service),
     ]
     for handler in handlers:
         event_ids = [f"{event_name}:{webhook_id}" for event_name in handler.events]
@@ -37,7 +37,7 @@ def setup_system_listeners(gitlab_clients: list[GitlabService]) -> None:
         Job,
         Issues,
         Pipelines,
-        Group,
+        GroupHook,
     ]
     for handler in handlers:
         system_event_handler.on(handler)
