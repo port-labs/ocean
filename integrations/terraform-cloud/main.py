@@ -172,7 +172,7 @@ async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
     if SKIP_WEBHOOK_CREATION:
         logger.info("Webhook has already been set")
         return []
-    
+
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return []
