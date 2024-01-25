@@ -169,12 +169,12 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
     global SKIP_WEBHOOK_CREATION
 
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return []
-
     if SKIP_WEBHOOK_CREATION:
         logger.info("Webhook has already been set")
+        return []
+    
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
         return []
 
     terraform_client = init_terraform_client()
