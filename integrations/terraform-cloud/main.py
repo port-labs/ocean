@@ -7,7 +7,7 @@ from loguru import logger
 
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE,RAW_RESULT
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 
 
 class ObjectKind(StrEnum):
@@ -165,7 +165,7 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync()
-async def on_create_webhook_resync(kind:str) -> RAW_RESULT:
+async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
     terraform_client = init_terraform_client()
     if app_host := ocean.integration_config.get("app_host"):
         await terraform_client.create_workspace_webhook(app_host=app_host)
@@ -212,4 +212,3 @@ async def on_start() -> None:
             "No app host provided, skipping webhook creation. "
             "Without setting up the webhook, the integration will not export live changes from Terraform"
         )
-        return
