@@ -7,7 +7,7 @@ from loguru import logger
 
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE,RAW_RESULT
 
 
 class ObjectKind(StrEnum):
@@ -165,16 +165,16 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync()
-async def on_create_webhook_resync(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_create_webhook_resync(kind:str) -> RAW_RESULT:
     terraform_client = init_terraform_client()
-    await terraform_client.create_workspace_webhook(
-        app_host=ocean.integration_config["app_host"]
-    )
+    if app_host := ocean.integration_config.get("app_host"):
+        await terraform_client.create_workspace_webhook(app_host=app_host)
     return []
 
 
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    print(data)
     for notifications in data["notifications"]:
         if notifications["trigger"] == "verification":
             return {"ok": True}
@@ -207,18 +207,9 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 async def on_start() -> None:
     logger.info("Starting Port Ocean Terraform integration")
 
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return
-
     if not ocean.integration_config.get("app_host"):
         logger.warning(
             "No app host provided, skipping webhook creation. "
             "Without setting up the webhook, the integration will not export live changes from Terraform"
         )
         return
-
-    # terraform_client = init_terraform_client()
-    # await terraform_client.create_workspace_webhook(
-    #     app_host=ocean.integration_config["app_host"]
-    # )
