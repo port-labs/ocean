@@ -4,7 +4,7 @@ from typing import Any
 from loguru import logger
 from gitlab.v4.objects import Project
 from gitlab_integration.core.utils import generate_ref
-from gitlab_integration.events.hooks.project import ProjectHandler
+from gitlab_integration.events.hooks.base import ProjectHandler
 from gitlab_integration.git_integration import GitlabPortAppConfig
 from gitlab_integration.utils import ObjectKind
 
