@@ -174,7 +174,6 @@ async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
 
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    print(data)
     for notifications in data["notifications"]:
         if notifications["trigger"] == "verification":
             return {"ok": True}
