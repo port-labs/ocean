@@ -2,12 +2,12 @@ from typing import Any
 
 from gitlab.v4.objects import Project
 
-from gitlab_integration.events.hooks.base import HookHandler
+from gitlab_integration.events.hooks.base import ProjectHandler
 from gitlab_integration.utils import ObjectKind
 from port_ocean.context.ocean import ocean
 
 
-class Pipelines(HookHandler):
+class Pipelines(ProjectHandler):
     events = ["Pipeline Hook"]
     system_events = ["pipeline"]
 
