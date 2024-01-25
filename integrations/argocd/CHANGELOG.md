@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed pages template to be inside a list (#1)
+- Fixed a bug in the pages templates where the page weren't inside a list, causing the parsing of the integration to fail (#1)
 
 
 # Port_Ocean 0.1.20 (2024-01-23)
