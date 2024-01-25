@@ -166,6 +166,9 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync()
 async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return []
     terraform_client = init_terraform_client()
     if app_host := ocean.integration_config.get("app_host"):
         await terraform_client.create_workspace_webhook(app_host=app_host)
@@ -176,6 +179,7 @@ async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     for notifications in data["notifications"]:
         if notifications["trigger"] == "verification":
+            logger.info("Webhook verification challenge accepted")
             return {"ok": True}
 
     terraform_client = init_terraform_client()

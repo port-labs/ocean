@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed bug in setting terraform webhook (PORT-6201)
+- Fixed a bug that prevented the creation of workspace webhooks especially when the notification configuration is set to enabled (PORT-6201)
 
 
 # Port_Ocean 0.1.8 (2024-01-23)
