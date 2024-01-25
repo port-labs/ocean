@@ -18,6 +18,7 @@ class ObjectKind(StrEnum):
     ORGANIZATION = "organization"
 
 
+SKIP_WEBHOOK_CREATION = False
 SEMAPHORE_LIMIT = 30
 
 
@@ -83,7 +84,7 @@ async def enrich_workspaces_with_tags(
 async def enrich_workspace_with_tags(
     http_client: TerraformClient, workspace: dict[str, Any]
 ) -> dict[str, Any]:
-    async with asyncio.BoundedSemaphore(30):
+    async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
         try:
             tags = []
             async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
@@ -166,12 +167,21 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync()
 async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
+    global SKIP_WEBHOOK_CREATION
+
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return []
+
+    if SKIP_WEBHOOK_CREATION:
+        logger.info("Webhook has already been set")
+        return []
+
     terraform_client = init_terraform_client()
     if app_host := ocean.integration_config.get("app_host"):
         await terraform_client.create_workspace_webhook(app_host=app_host)
+
+    SKIP_WEBHOOK_CREATION = True
     return []
 
 
