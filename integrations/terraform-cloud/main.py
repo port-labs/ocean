@@ -99,7 +99,6 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
     async for organizations in terraform_client.get_paginated_organizations():
         logger.info(f"Received {len(organizations)} batch {kind}s")
-        print(organizations)
         yield organizations
 
 
@@ -165,8 +164,21 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield enriched_state_versions_batch
 
 
+@ocean.on_resync()
+async def on_create_webhook_resync(kind) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    terraform_client = init_terraform_client()
+    await terraform_client.create_workspace_webhook(
+        app_host=ocean.integration_config["app_host"]
+    )
+    return []
+
+
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    for notifications in data["notifications"]:
+        if notifications["trigger"] == "verification":
+            return {"ok": True}
+
     terraform_client = init_terraform_client()
 
     run_id = data["run_id"]
@@ -206,7 +218,7 @@ async def on_start() -> None:
         )
         return
 
-    terraform_client = init_terraform_client()
-    await terraform_client.create_workspace_webhook(
-        app_host=ocean.integration_config["app_host"]
-    )
+    # terraform_client = init_terraform_client()
+    # await terraform_client.create_workspace_webhook(
+    #     app_host=ocean.integration_config["app_host"]
+    # )
