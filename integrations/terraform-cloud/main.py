@@ -7,7 +7,7 @@ from loguru import logger
 
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 
 
 class ObjectKind(StrEnum):
@@ -18,6 +18,7 @@ class ObjectKind(StrEnum):
     ORGANIZATION = "organization"
 
 
+SKIP_WEBHOOK_CREATION = False
 SEMAPHORE_LIMIT = 30
 
 
@@ -83,7 +84,7 @@ async def enrich_workspaces_with_tags(
 async def enrich_workspace_with_tags(
     http_client: TerraformClient, workspace: dict[str, Any]
 ) -> dict[str, Any]:
-    async with asyncio.BoundedSemaphore(30):
+    async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
         try:
             tags = []
             async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
@@ -99,7 +100,6 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
     async for organizations in terraform_client.get_paginated_organizations():
         logger.info(f"Received {len(organizations)} batch {kind}s")
-        print(organizations)
         yield organizations
 
 
@@ -165,8 +165,33 @@ async def resync_state_versions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield enriched_state_versions_batch
 
 
+@ocean.on_resync()
+async def on_create_webhook_resync(kind: str) -> RAW_RESULT:
+    global SKIP_WEBHOOK_CREATION
+
+    if SKIP_WEBHOOK_CREATION:
+        logger.info("Webhook has already been set")
+        return []
+
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return []
+
+    terraform_client = init_terraform_client()
+    if app_host := ocean.integration_config.get("app_host"):
+        await terraform_client.create_workspace_webhook(app_host=app_host)
+
+    SKIP_WEBHOOK_CREATION = True
+    return []
+
+
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    for notifications in data["notifications"]:
+        if notifications["trigger"] == "verification":
+            logger.info("Webhook verification challenge accepted")
+            return {"ok": True}
+
     terraform_client = init_terraform_client()
 
     run_id = data["run_id"]
@@ -195,18 +220,8 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 async def on_start() -> None:
     logger.info("Starting Port Ocean Terraform integration")
 
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return
-
     if not ocean.integration_config.get("app_host"):
         logger.warning(
             "No app host provided, skipping webhook creation. "
             "Without setting up the webhook, the integration will not export live changes from Terraform"
         )
-        return
-
-    terraform_client = init_terraform_client()
-    await terraform_client.create_workspace_webhook(
-        app_host=ocean.integration_config["app_host"]
-    )

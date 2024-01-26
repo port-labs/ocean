@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.9 (2024-01-25)
+
+### Bug Fixes
+
+- Fixed a bug that prevented the creation of workspace webhooks especially when the notification configuration is set to enabled (PORT-6201)
+
+
 # Port_Ocean 0.1.8 (2024-01-23)
 
 ### Improvements
