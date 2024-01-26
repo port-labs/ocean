@@ -1,7 +1,7 @@
 from typing import Callable, TYPE_CHECKING, Any, Literal, Union
 
 from fastapi import APIRouter
-from werkzeug.local import LocalProxy, LocalStack
+from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.models import Entity
@@ -128,7 +128,6 @@ class PortOceanContext:
         await self.integration.sync_raw_all(trigger_type="manual")
 
 
-_port_ocean_context_stack: LocalStack[PortOceanContext] = LocalStack()
 _port_ocean: PortOceanContext = PortOceanContext(None)
 
 
@@ -145,27 +144,6 @@ def initialize_port_ocean_context(ocean_app: "Ocean") -> None:
         )
     except PortOceanContextNotFoundError:
         _port_ocean = PortOceanContext(app=ocean_app)
-
-    _port_ocean_context_stack.push(PortOceanContext(app=ocean_app))
-
-
-def _get_port_ocean_context() -> PortOceanContext:
-    """
-    Get the PortOcean context from the current thread.
-    """
-    if _port_ocean is None:
-        raise PortOceanContextNotFoundError(
-            "You must first initialize PortOcean in order to use it"
-        )
-    return _port_ocean
-
-    port_ocean_context = _port_ocean_context_stack.top
-    if port_ocean_context is None:
-        raise PortOceanContextNotFoundError(
-            "You must first initialize PortOcean in order to use it"
-        )
-
-    return port_ocean_context
 
 
 ocean: PortOceanContext = LocalProxy(lambda: _port_ocean)  # type: ignore
