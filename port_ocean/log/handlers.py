@@ -70,7 +70,7 @@ class HTTPMemoryHandler(MemoryHandler):
             {
                 "message": record.msg,
                 "level": record.levelname,
-                "createdAt": datetime.utcfromtimestamp(record.created).strftime(
+                "timestamp": datetime.utcfromtimestamp(record.created).strftime(
                     "%Y-%m-%dT%H:%M:%S.%fZ"
                 ),
                 "extra": record.__dict__["extra"],
