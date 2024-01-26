@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Improved on the PagerDuty incident blueprint by adding analytics data (#26)
+- Improved on the PagerDuty incident blueprint by adding analytics data
 
 
 # Port_Ocean 0.1.33 (2024-01-23)
