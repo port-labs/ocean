@@ -14,28 +14,29 @@ class BlueprintClientMixin:
         self.auth = auth
         self.client = client
 
-    async def get_blueprint(self, identifier: str) -> Blueprint:
+    async def get_blueprint(
+        self, identifier: str, should_log: bool = True
+    ) -> Blueprint:
         logger.info(f"Fetching blueprint with id: {identifier}")
         response = await self.client.get(
             f"{self.auth.api_url}/blueprints/{identifier}",
             headers=await self.auth.headers(),
         )
-        handle_status_code(response)
+        handle_status_code(response, should_log=should_log)
         return Blueprint.parse_obj(response.json()["blueprint"])
 
     async def create_blueprint(
         self,
         raw_blueprint: dict[str, Any],
         user_agent_type: UserAgentType | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
         logger.info(f"Creating blueprint with id: {raw_blueprint.get('identifier')}")
         headers = await self.auth.headers(user_agent_type)
         response = await self.client.post(
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
         handle_status_code(response)
-        if response.is_success:
-            return response.json()["blueprint"]
+        return response.json()["blueprint"]
 
     async def patch_blueprint(
         self,
@@ -106,3 +107,30 @@ class BlueprintClientMixin:
         )
 
         handle_status_code(response)
+
+    async def create_page(
+        self,
+        page: dict[str, Any],
+    ) -> dict[str, Any]:
+        logger.info(f"Creating page: {page}")
+        response = await self.client.post(
+            f"{self.auth.api_url}/pages",
+            json=page,
+            headers=await self.auth.headers(),
+        )
+
+        handle_status_code(response)
+        return page
+
+    async def delete_page(
+        self,
+        identifier: str,
+        should_raise: bool = False,
+    ) -> None:
+        logger.info(f"Deleting page: {identifier}")
+        response = await self.client.delete(
+            f"{self.auth.api_url}/pages/{identifier}",
+            headers=await self.auth.headers(),
+        )
+
+        handle_status_code(response, should_raise)

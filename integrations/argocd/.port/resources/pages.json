@@ -1,0 +1,125 @@
+[
+  {
+    "icon": "Argo",
+    "title": "ArgoCD Dashboard",
+    "protected": false,
+    "widgets": [
+      {
+        "id": "1",
+        "type": "dashboard-widget",
+        "layout": [
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "unhealthyApps",
+                "size": 6
+              },
+              {
+                "id": "syncedApps",
+                "size": 6
+              }
+            ]
+          },
+          {
+            "height": 527,
+            "columns": [
+              {
+                "id": "appsByCluster",
+                "size": 12
+              }
+            ]
+          }
+        ],
+        "widgets": [
+          {
+            "icon": "Argo",
+            "type": "entities-pie-chart",
+            "description": "",
+            "title": "Applications By Sync Status",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "operator": "=",
+                  "value": "argocdApplication",
+                  "property": "$blueprint"
+                }
+              ]
+            },
+            "property": "property#syncStatus",
+            "id": "syncedApps"
+          },
+          {
+            "blueprint": "argocdApplication",
+            "calculationBy": "entities",
+            "unit": "none",
+            "description": "",
+            "title": "Unhealthy Applications",
+            "dataset": [
+              {
+                "property": "healthStatus",
+                "operator": "!=",
+                "value": "Healthy"
+              }
+            ],
+            "func": "count",
+            "type": "entities-number-chart",
+            "icon": "Alert",
+            "id": "unhealthyApps"
+          },
+          {
+            "type": "table-entities-explorer",
+            "displayMode": "widget",
+            "title": "Application By Cluster",
+            "description": "",
+            "icon": "Box",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "operator": "=",
+                  "value": "argocdApplication",
+                  "property": "$blueprint"
+                }
+              ]
+            },
+            "id": "appsByCluster",
+            "blueprintConfig": {
+              "argocdApplication": {
+                "groupSettings": {
+                  "groupBy": [
+                    "destinationServer"
+                  ]
+                },
+                "sortSettings": {
+                  "sortBy": []
+                },
+                "filterSettings": {
+                  "filterBy": {
+                    "combinator": "and",
+                    "rules": []
+                  }
+                },
+                "propertiesSettings": {
+                  "hidden": [
+                    "gitRepo",
+                    "gitPath",
+                    "destinationServer",
+                    "createdAt"
+                  ],
+                  "order": []
+                }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "identifier": "argocdDashboard",
+    "showInSidebar": true,
+    "requiredQueryParams": [],
+    "section": "software_catalog",
+    "type": "dashboard"
+  }
+]

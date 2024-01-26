@@ -1,0 +1,23 @@
+type: jenkins
+description: Jenkins integration for Port Ocean
+icon: Jenkins
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/ci-cd/jenkins-ocean
+features:
+  - type: exporter
+    section: CICD
+    resources:
+      - kind: job
+      - kind: build
+configurations:
+  - name: jenkinsHost
+    description: "The host of the Jenkins server"
+    required: true
+    type: url
+  - name: jenkinsUser
+    required: true
+    type: string
+    sensitive: true
+  - name: jenkinsToken
+    required: true
+    type: string
+    sensitive: true

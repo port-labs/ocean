@@ -13,6 +13,10 @@ class ObjectKind(StrEnum):
     CLUSTER = "cluster"
 
 
+class ResourceKindsWithSpecialHandling(StrEnum):
+    DEPLOYMENT_HISTORY = "deployment-history"
+
+
 class ArgocdClient:
     def __init__(self, token: str, server_url: str):
         self.token = token
@@ -56,3 +60,14 @@ class ArgocdClient:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
         application = await self._send_api_request(url=url)
         return application
+
+    async def get_deployment_history(self) -> list[dict[str, Any]]:
+        """The ArgoCD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
+        logger.info("fetching Argocd deployment history from applications endpoint")
+        applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        all_history = [
+            {**history_item, "__applicationId": application["metadata"]["uid"]}
+            for application in applications
+            for history_item in application["status"].get("history", [])
+        ]
+        return all_history

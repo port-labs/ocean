@@ -7,6 +7,87 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.4.17 (2024-01-23)
+
+
+### Features
+
+- Added sonarcloud files for public integration scaffolding (PORT-6181)
+- Replaced the `remove-docker` option from the `ocean new` cli with `private` & `public` flags (PORT-6181)
+
+
+## 0.4.16 (2024-01-11)
+
+
+### Improvements
+
+- Increased the default timeout for requests to 3rd party targets to 30 seconds, and made it configurable (PORT-6074)
+
+
+## 0.4.15 (2024-01-07)
+
+
+### Bug Fixes
+
+- Fixed issue causing app config with no team mapping to fail due the core using None when not set (PORT-5938)
+
+
+## 0.4.14 (2024-01-07)
+
+
+### Bug Fixes
+
+- Fixed missing team parameter in the port app config model (PORT-5938)
+
+
+## 0.4.13 (2023-12-31)
+
+### Features
+
+- Added capability to create pages as part of the integration setup (PORT-5689)
+
+### Improvements
+
+- Added integration and blueprints existence check before creating default resources (#1)
+- Added verbosity to diff deletion process after resync (#2)
+
+## 0.4.12 (2023-12-22)
+
+
+### Bug Fixes
+
+- Fixed `ocean new` scaffolding error `'collections.OrderedDict object' has no attribute 'public_integration'` (PORT-5728)
+
+
+## 0.4.11 (2023-12-21)
+
+### Improvements
+
+- Added handling for aggregation properties when initializing the integration, so it will patch the aggregation properties after creating the relations (PORT-5717)
+- Changed entity property in the `portResourceConfig` to be required instead of optional, as we don't support creation of blueprints as part of the app config (PORT-4549)
+
+
+## 0.4.10 (2023-12-21)
+
+
+### Improvements
+
+- Wrapped the httpx async client with implementation that overrides the default transport class with custom transport to apply all default httpx features that are ignored when passing a custom transport instance. This allows the missing behevior of the http [proxy environment variable](https://www.python-httpx.org/environment_variables/#proxies) (PORT-5676)
+- Changed deprecated `poetry lock --check` in the make files to `poetry check` (PORT-5711)
+
+### Bug Fixes
+
+- Changed the way we upsert and delete bulk of entities from the catalog to be batched rather than spawning all requests at once
+
+
+## 0.4.9 (2023-12-19)
+
+
+### Improvements
+
+- Added a way to create the integration without the Dockerfile and .dockerignore to use the global Docker files when scaffolding a new integration.
+
+
 ## 0.4.8 (2023-12-13)
 
 

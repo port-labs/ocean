@@ -1,6 +1,7 @@
 type: argocd
 description: Argocd integration for Port Ocean
 icon: Argo
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/kubernetes/argocd
 features:
   - type: exporter
     section: Kubernetes Stack
@@ -8,6 +9,7 @@ features:
       - kind: cluster
       - kind: project
       - kind: application
+      - kind: deployment-history
 configurations:
   - name: token
     required: true

@@ -7,6 +7,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.21 (2024-01-25)
+
+### Bug Fixes
+
+- Fixed a bug in the pages templates where the page weren't inside a list, causing the parsing of the integration to fail (#1)
+
+
+# Port_Ocean 0.1.20 (2024-01-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.17 (#1)
+
+
+# Port_Ocean 0.1.19 (2024-01-21)
+
+### Improvements
+
+- Added default page for ArgoCD (PORT-5959)
+
+
+# Port_Ocean 0.1.18 (2024-01-12)
+
+### Features
+
+- Added support for ArgoCD deployments history (#5704)
+
+
+# Port_Ocean 0.1.17 (2024-01-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.16 (#1)
+
+
+# Port_Ocean 0.1.16 (2024-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.15 (#1)
+
+
+# Port_Ocean 0.1.15 (2024-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.14 (#1)
+
+
+# Port_Ocean 0.1.14 (2024-01-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.13 (#1)
+
+
+# Port_Ocean 0.1.13 (2023-12-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.12 (#1)
+
+
+# Port_Ocean 0.1.12 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.11 (#1)
+
+
+# Port_Ocean 0.1.11 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.10 (#1)
+
+
 # Port_Ocean 0.1.10 (2023-12-14)
 
 ### Improvements

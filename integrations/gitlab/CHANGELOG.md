@@ -7,6 +7,136 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.49 (2024-01-23)
+===================
+
+### Features
+
+- Added group & subgroup webhook support (PORT-6229)
+
+### Bug Fixes
+
+- Fixed a bug when checking whether a group should be synced or not (#1)
+
+
+0.1.48 (2024-01-23)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.17 (#1)
+
+
+0.1.47 (2024-01-12)
+===================
+
+### Features
+
+- Added group & subgroup resource support (#1)
+
+
+0.1.46 (2024-01-11)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.16 (#1)
+
+
+0.1.45 (2024-01-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.15 (#1)
+
+
+0.1.44 (2024-01-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.14 (#1)
+
+
+0.1.43 (2024-01-04)
+===================
+
+### Improvements
+
+- Updated templates to have description in scorecard rules and pie charts (#1) 
+
+
+0.1.42 (2024-01-01)
+===================
+
+### Features
+
+- Added onboarding templates, including blueprints, scorecards, actions and pages (#1)
+
+### Improvements
+
+- Added special handling for project resync batch size to 10, to reduce the time it takes to show data in the UI (#3)
+
+
+0.1.41 (2024-01-01)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.13 (#1)
+
+### Bug Fixes
+
+- Fixed handling not found error when trying to get tree for commit sha of newly created project (#1)
+
+
+v0.1.40 (2023-12-27)
+====================
+
+### Improvements
+
+- Increased log verbosity for gitlab webhook bootstrap (#2)
+- Added handling for fetching errors (PORT-5813)
+
+### Bug Fixes
+
+- Fixed 404 error when trying to get tree for commit sha of newly created project (#1)
+
+
+v0.1.39 (2023-12-25)
+====================
+
+### Improvements
+
+- Fix stale relation identifiers in default blueprints (PORT-5799)
+
+
+v0.1.38 (2023-12-24)
+====================
+
+### Improvements
+
+- Updated default blueprints and config mapping to include integration name as blueprint identifier prefix
+- Bumped ocean version to ^0.4.12 (#1)
+
+
+0.1.37 (2023-12-21)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.11 (#1)
+
+
+0.1.36 (2023-12-21)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.4.10 (#1)
+
+
 0.1.35 (2023-12-14)
 ===================
 

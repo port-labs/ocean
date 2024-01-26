@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "cluster",
+    "identifier": "kafkaCluster",
     "title": "Cluster",
     "icon": "Kafka",
     "schema": {
@@ -13,7 +13,7 @@
     }
   },
   {
-    "identifier": "broker",
+    "identifier": "kafkaBroker",
     "title": "Broker",
     "icon": "Kafka",
     "schema": {
@@ -38,14 +38,14 @@
     },
     "relations": {
       "cluster": {
-        "target": "cluster",
+        "target": "kafkaCluster",
         "required": true,
         "many": false
       }
     }
   },
   {
-    "identifier": "topic",
+    "identifier": "kafkaTopic",
     "title": "Topic",
     "icon": "Kafka",
     "schema": {
@@ -82,12 +82,12 @@
     },
     "relations": {
       "cluster": {
-        "target": "cluster",
+        "target": "kafkaCluster",
         "required": true,
         "many": false
       },
       "brokers": {
-        "target": "broker",
+        "target": "kafkaBroker",
         "required": false,
         "many": true
       }

@@ -1,13 +1,15 @@
 import asyncio
-import os
 from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 
+import gitlab.exceptions
 from gitlab import GitlabList, Gitlab
 from gitlab.base import RESTObject, RESTObjectList
 from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue
 from loguru import logger
 
 T = TypeVar("T", bound=RESTObject)
+
+DEFAULT_PAGINATION_PAGE_SIZE = 100
 
 
 class AsyncFetcher:
@@ -34,7 +36,7 @@ class AsyncFetcher:
             [Any],
             bool,
         ],
-        batch_size: int = int(os.environ.get("GITLAB_BATCH_SIZE", 100)),
+        page_size: int = DEFAULT_PAGINATION_PAGE_SIZE,
         **kwargs,
     ) -> AsyncIterator[
         Union[
@@ -62,16 +64,22 @@ class AsyncFetcher:
             List[Dict[str, Any]],
             GitlabList,
         ]:
-            logger.info(f"Fetching page {page_idx}. Batch size: {batch_size}")
+            logger.info(f"Fetching page {page_idx}. Page size: {page_size}")
             return fetch_func(
-                page=page_idx, per_page=batch_size, get_all=False, **kwargs
+                page=page_idx, per_page=page_size, get_all=False, **kwargs
             )
 
         page = 1
         while True:
-            batch = await asyncio.get_running_loop().run_in_executor(
-                None, fetch_batch, page
-            )
+            batch = None
+            try:
+                batch = await asyncio.get_running_loop().run_in_executor(
+                    None, fetch_batch, page
+                )
+            except gitlab.exceptions.GitlabListError as err:
+                if err.response_code in (403, 404):
+                    logger.warning(f"Failed to access resource, error={err}")
+                    break
             if not batch:
                 logger.info(f"No more items to fetch after page {page}")
                 break

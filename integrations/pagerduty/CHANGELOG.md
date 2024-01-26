@@ -6,11 +6,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-# Port_Ocean 0.1.26 (2023-12-19)
+# Port_Ocean 0.1.34 (2024-01-26)
 
 ### Features
 
-- Improved on the PagerDuty incident object by adding analytics data (#26)
+- Improved on the PagerDuty incident blueprint by adding analytics data (#26)
+
+
+# Port_Ocean 0.1.33 (2024-01-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.17 (#1)
+
+
+# Port_Ocean 0.1.32 (2024-01-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.16 (#1)
+
+
+# Port_Ocean 0.1.31 (2024-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.15 (#1)
+
+
+# Port_Ocean 0.1.30 (2024-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.14 (#1)
+
+
+# Port_Ocean 0.1.29 (2024-01-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.13 (#1)
+
+
+# Port_Ocean 0.1.28 (2023-12-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.12 (#1)
+
+
+# Port_Ocean 0.1.27 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.11 (#1)
+
+
+# Port_Ocean 0.1.26 (2023-12-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.10 (#1)
 
 
 # Port_Ocean 0.1.25 (2023-12-19)
