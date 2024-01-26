@@ -1,7 +1,7 @@
 import httpx
 from werkzeug.local import LocalStack, LocalProxy
 
-from port_ocean import ocean
+from port_ocean.context.ocean import ocean
 from port_ocean.helpers.async_client import OceanAsyncClient
 from port_ocean.helpers.retry import RetryTransport
 
