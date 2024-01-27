@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for ingesting users (PORT-6268).
+- Added support for ingesting users (PORT-6268)
 
 # 0.1.1 (2024-01-23)
 
