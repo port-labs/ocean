@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.1 (2024-01-23)
+# 0.1.1 (2024-01-23)
+
+### Features
+
+- Added support for ingesting users (PORT-6268).
 
 ### Improvements
 
 - Bumped ocean version to ^0.4.17 (#1)
-
 
 # 0.1.0 (2024-01-16)
 
