@@ -10,6 +10,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class ObjectKind(StrEnum):
     JOB = "job"
     BUILD = "build"
+    USER = "user"
 
     @staticmethod
     def get_object_kind_for_event(obj_type: str) -> str | None:
@@ -45,6 +46,15 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for builds in jenkins_client.get_builds():
         logger.info(f"Received batch with {len(builds)} builds")
         yield builds
+
+
+@ocean.on_resync(ObjectKind.USER)
+async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    jenkins_client = init_client()
+
+    async for users in jenkins_client.get_users():
+        logger.info(f"Received {len(users)} users")
+        yield users
 
 
 @ocean.router.post("/events")
