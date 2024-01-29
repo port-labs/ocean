@@ -108,5 +108,30 @@
                 "many": false
             }
         }
+    },
+    {
+        "identifier": "jenkinsUser",
+        "description": "This blueprint represents a jenkins user",
+        "title": "Jenkins User",
+        "icon": "Jenkins",
+        "schema": {
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "title": "URL",
+                    "format": "url"
+                },
+                "lastUpdateTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "title": "Last Update",
+                    "description": "Last updated timestamp of the user"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {}
     }
 ]
