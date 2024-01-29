@@ -1,0 +1,88 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: problem
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .problemId
+          title: .title
+          blueprint: '"dynatraceProblem"'
+          properties:
+            entityTags: .entityTags[].stringRepresentation
+            evidenceDetails: .evidenceDetails.details[].displayName
+            managementZones: .managementZones[].name
+            problemFilters: .problemFilters[].name
+            severityLevel: .severityLevel
+            status: .status
+            startTime: '.startTime / 1000 | todate'
+            endTime: '.endTime | if . == -1 then null else (./1000 | todate) end'
+          relations:
+            impactedEntities: .impactedEntities[].name
+            linkedProblemInfo: .linkedProblemInfo.problemId
+            rootCauseEntity: .rootCauseEntity.name
+  - kind: entity_type
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .displayName
+          title: .displayName
+          type: .type
+          dimensionKey: .dimensionKey
+          entityLimitExceeded: .entityLimitExceeded
+          managementZones: .managementZones
+          properties: .properties[].displayName
+          tags: .tags
+  
+  - kind: entity
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .entityId
+          title: .displayName
+          blueprint: '"dynatraceEntity"'
+          properties:
+            firstSeen: '.firstSeenTms / 1000 | todate'
+            lastSeen: '.lastSeenTms / 1000 | todate'
+            type: .type
+            tags: .tags[].stringRepresentation
+            managementZones: .managementZones[].name
+            properties: .properties
+            fromRelationships: .fromRelationships
+            toRelationships: .toRelationships
+  - kind: slo
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"dynatraceSlo"'
+          properties:
+            status: .status
+            target: .target
+            enabled: .enabled
+            burnRateMetricKey: .burnRateMetricKey
+            warning: .warning
+            error: .error
+            errorBudget: .errorBudget
+            errorBudgetBurnRate: .errorBudgetBurnRate.burnRateValue
+            errorBudgetMetricKey: .errorBudgetMetricKey
+            evaluatedPercentage: .evaluatedPercentage
+            evaluationType: .evaluationType
+            filter: .filter
+            metricExpression: .metricExpression
+            metricKey: .metricKey
+            normalizedErrorBudgetMetricKey: .normalizedErrorBudgetMetricKey
+            relatedOpenProblems: .relatedOpenProblems
+            relatedTotalProblems: .relatedTotalProblems
+            timeframe: .timeframe
+
+
