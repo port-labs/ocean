@@ -12,16 +12,14 @@ from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.context import PortOceanContextNotFoundError
 
-EMPTY_LOG_RECORD = LogRecord("", 0, "", 0, "", (), None)
-
 
 class HTTPMemoryHandler(MemoryHandler):
     def __init__(
         self,
-        capacity: int,
+        capacity: int = 100,
         flush_level: int = logging.FATAL,
-        flush_interval: int = 15,
-        flush_size: int = 2048,
+        flush_interval: int = 5,
+        flush_size: int = 1024,
     ):
         super().__init__(capacity, flushLevel=flush_level, target=None)
         self.flush_interval = flush_interval
@@ -36,6 +34,9 @@ class HTTPMemoryHandler(MemoryHandler):
             return None
 
     def shouldFlush(self, record: logging.LogRecord) -> bool:
+        """
+        Extending shouldFlush to include size and time validation as part of the decision whether to flush
+        """
         if bool(self.buffer) and (
             super(HTTPMemoryHandler, self).shouldFlush(record)
             or sum(len(record.msg) for record in self.buffer) >= self.flush_size

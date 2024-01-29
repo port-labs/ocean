@@ -51,9 +51,7 @@ def _http_loguru_handler(level: LogLevelType) -> None:
         filter=sensitive_log_filter.create_filter(full_hide=True),
     )
 
-    queue_listener = QueueListener(
-        queue, HTTPMemoryHandler(100, flush_interval=5, flush_size=2048)
-    )
+    queue_listener = QueueListener(queue, HTTPMemoryHandler())
     queue_listener.start()
 
 
