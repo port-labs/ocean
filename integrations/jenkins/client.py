@@ -8,6 +8,8 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
+PAGE_SIZE = 50
+
 
 class ResourceKey(StrEnum):
     JOBS = "jobs"
@@ -46,7 +48,7 @@ class JenkinsClient:
     async def fetch_resources(
         self, resource: str, parent_job: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        page_size = 5
+        page_size = PAGE_SIZE
         page = 0
 
         child_jobs = []
@@ -119,3 +121,29 @@ class JenkinsClient:
         )
         response.raise_for_status()
         return response.json()
+
+    async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        page_size = PAGE_SIZE
+        page = 0
+
+        while True:
+            start_idx = page_size * page
+            end_idx = start_idx + page_size
+
+            params = {"tree": f"users[user[*],*]{{{start_idx},{end_idx}}}"}
+
+            response = await self.client.get(
+                f"{self.jenkins_base_url}/people/api/json", params=params
+            )
+            response.raise_for_status()
+            users = response.json()["users"]
+
+            if not users:
+                break
+
+            yield users
+
+            page += 1
+
+            if len(users) < page_size:
+                break
