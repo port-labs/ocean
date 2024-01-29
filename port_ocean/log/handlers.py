@@ -1,15 +1,27 @@
 import asyncio
 import logging
+import sys
 import threading
 import time
 from datetime import datetime
-from logging import LogRecord
 from logging.handlers import MemoryHandler
+from typing import Any
 
 from loguru import logger
 
 from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
+
+
+def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
+    return {
+        "message": record.msg,
+        "level": record.levelname,
+        "timestamp": datetime.utcfromtimestamp(record.created).strftime(
+            "%Y-%m-%dT%H:%M:%S.%fZ"
+        ),
+        "extra": record.__dict__["extra"],
+    }
 
 
 class HTTPMemoryHandler(MemoryHandler):
@@ -24,6 +36,7 @@ class HTTPMemoryHandler(MemoryHandler):
         self.flush_interval = flush_interval
         self.flush_size = flush_size
         self.last_flush_time = time.time()
+        self._serialized_buffer: list[dict[str, Any]] = []
 
     @property
     def ocean(self) -> Ocean | None:
@@ -32,13 +45,17 @@ class HTTPMemoryHandler(MemoryHandler):
             return ocean.app
         return None
 
+    def emit(self, record: logging.LogRecord) -> None:
+        self._serialized_buffer.append(_serialize_record(record))
+        super().emit(record)
+
     def shouldFlush(self, record: logging.LogRecord) -> bool:
         """
         Extending shouldFlush to include size and time validation as part of the decision whether to flush
         """
         if bool(self.buffer) and (
             super(HTTPMemoryHandler, self).shouldFlush(record)
-            or sum(len(record.msg) for record in self.buffer) >= self.flush_size
+            or sys.getsizeof(self.buffer) >= self.flush_size
             or time.time() - self.last_flush_time >= self.flush_interval
         ):
             return True
@@ -48,32 +65,22 @@ class HTTPMemoryHandler(MemoryHandler):
         if self.ocean is None or not self.buffer:
             return
 
-        def _wrap_event_loop(logs_to_send: list[LogRecord]) -> None:
+        def _wrap_event_loop(logs_to_send: list[dict[str, Any]]) -> None:
             loop = asyncio.new_event_loop()
             loop.run_until_complete(self.send_logs(logs_to_send))
             loop.close()
 
         self.acquire()
-        logs = list(self.buffer)
+        logs = list(self._serialized_buffer)
         if logs:
             self.buffer.clear()
+            self._serialized_buffer.clear()
             self.last_flush_time = time.time()
             threading.Thread(target=_wrap_event_loop, args=(logs,)).start()
         self.release()
 
-    async def send_logs(self, logs_to_send: list[LogRecord]) -> None:
-        raw_logs = [
-            {
-                "message": record.msg,
-                "level": record.levelname,
-                "timestamp": datetime.utcfromtimestamp(record.created).strftime(
-                    "%Y-%m-%dT%H:%M:%S.%fZ"
-                ),
-                "extra": record.__dict__["extra"],
-            }
-            for record in logs_to_send
-        ]
+    async def send_logs(self, logs_to_send: list[dict[str, Any]]) -> None:
         try:
-            await self.ocean.port_client.ingest_integration_logs(raw_logs)
+            await self.ocean.port_client.ingest_integration_logs(logs_to_send)
         except Exception as e:
             logger.debug(f"Failed to send logs to Port with error: {e}")

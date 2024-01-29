@@ -20,6 +20,7 @@ class BaseEventListener:
         events: EventListenerEvents,
     ):
         self.events = events
+        self._tasks_to_close = []
 
     async def start(self):
         _id = signal_handler.register(self._stop)
@@ -28,6 +29,11 @@ class BaseEventListener:
     @abstractmethod
     async def _start(self) -> None:
         pass
+
+    def stop(self):
+        self._stop()
+        for task in self._tasks_to_close:
+            task.cancel()
 
     def _stop(self) -> None:
         """

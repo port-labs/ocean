@@ -167,5 +167,3 @@ class KafkaEventListener(BaseEventListener):
 
     def _stop(self) -> None:
         self._consumer_kill_event.set()
-        if self._running_task is not None:
-            self._running_task.cancel()

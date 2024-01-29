@@ -49,11 +49,6 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._last_updated_at = None
-        self._running_task = None
-
-    def _stop(self) -> None:
-        if self._running_task is not None:
-            self._running_task.cancel()
 
     async def _start(self) -> None:
         """
@@ -81,11 +76,12 @@ class PollingEventListener(BaseEventListener):
             if should_resync:
                 logger.info("Detected change in integration, resyncing")
                 self._last_updated_at = last_updated_at
-                self._running_task = asyncio.get_event_loop().create_task(
+                running_task = asyncio.get_event_loop().create_task(
                     self.events["on_resync"]({})
                 )
+                self._tasks_to_close.append(running_task)
 
-                await self._running_task
+                await running_task
 
         # Execute resync repeatedly task
         await resync()
