@@ -23,21 +23,7 @@ resources:
             impactedEntities: .impactedEntities[].name
             linkedProblemInfo: .linkedProblemInfo.problemId
             rootCauseEntity: .rootCauseEntity.name
-  - kind: entity_type
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .displayName
-          title: .displayName
-          type: .type
-          dimensionKey: .dimensionKey
-          entityLimitExceeded: .entityLimitExceeded
-          managementZones: .managementZones
-          properties: .properties[].displayName
-          tags: .tags
-  
+
   - kind: entity
     selector:
       query: "true"

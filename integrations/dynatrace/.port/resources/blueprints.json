@@ -1,7 +1,7 @@
 [
     {
         "identifier": "dynatraceProblem",
-        "description": "This blueprint creates a Dynatrace Problem",
+        "description": "This blueprint represents a Dynatrace Problem",
         "title": "Dynatrace Problem",
         "icon": "Dynatrace",
         "schema": {
@@ -75,67 +75,30 @@
                     "format": "date-time"
                 }
             },
-            "relations": {
-                "impactedEntities": {
-                    "title": "Impacted Entities",
-                    "target": "dynatraceEntity",
-                    "required": false,
-                    "many": true
-                },
-                "linkedProblemInfo": {
-                    "title": "Linked Problem Info",
-                    "target": "dynatraceProblem",
-                    "required": false,
-                    "many": false
-                },
-                "rootCauseEntity": {
-                    "title": "Root Cause Entity",
-                    "target": "dynatraceEntity",
-                    "required": false,
-                    "many": false
-                }
+            "required": []
+        },
+        "relations": {
+            "impactedEntities": {
+                "title": "Impacted Entities",
+                "target": "dynatraceEntity",
+                "required": false,
+                "many": true
+            },
+            "linkedProblemInfo": {
+                "title": "Linked Problem Info",
+                "target": "dynatraceProblem",
+                "required": false,
+                "many": false
+            },
+            "rootCauseEntity": {
+                "title": "Root Cause Entity",
+                "target": "dynatraceEntity",
+                "required": false,
+                "many": false
             }
-        }
-    },
-    {
-        "identifier": "dynatraceEntityType",
-        "description": "This blueprint represents a Dynatrace Entity Type",
-        "title": "Dynatrace Entity Type",
-        "icon": "Dynatrace",
-        "schema": {
-            "properties": {
-                "type": {
-                    "type": "string",
-                    "title": "Type",
-                    "description": "The type of the monitored entity."
-                },
-                "dimensionKey": {
-                    "type": "string",
-                    "title": "Dimension Key",
-                    "description": "The dimension key used within metrics for this monitored entity."
-                },
-                "entityLimitExceeded": {
-                    "type": "boolean",
-                    "title": "Entity Limit Exceeded",
-                    "description": "Whether the entity creation limit for the given type has been exceeded"
-                },
-                "managementZones": {
-                    "type": "string",
-                    "title": "Management Zones",
-                    "description": "The placeholder for the list of management zones of an actual entity."
-                },
-                "properties": {
-                    "type": "array",
-                    "title": "Properties",
-                    "description": "A list of additional properties of the monitored entity type."
-                },
-                "tags": {
-                    "type": "string",
-                    "title": "Tags",
-                    "description": "The placeholder for the list of tags of an actual entity."
-                }
-            }
-        }
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {}
     },
     {
         "identifier": "dynatraceEntity",
@@ -187,7 +150,10 @@
                     "description": "A list of all relationships where the entity is the target."
                 }
             }
-        }
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {}
     },
     {
         "identifier": "dynatraceSlo",
@@ -239,7 +205,7 @@
                 "errorBudget": {
                     "type": "number",
                     "title": "Error Budget",
-                    "description": "The error budget of the calculated SLO.\nThe error budget is the difference between the calculated and target values. A positive number means all is good; a negative number means trouble.\nHas the value of the evaluated error budget or the value of -1:\n- If there is an error with the SLO calculation; in that case check the value of the error property.\n- If the evaluate parameter has not been set to true; in that case the error property will contain no error."
+                    "description": "The error budget of the calculated SLO."
                 },
                 "errorBudgetBurnRate": {
                     "type": "number",
@@ -254,18 +220,12 @@
                 "evaluatedPercentage": {
                     "type": "number",
                     "title": "Evaluated Percentage",
-                    "description": "The calculated status value of the SLO.\nHas the value of the evaluated error budget or the value of -1:\n- If there is an error with the SLO calculation; in that case check the value of the error property.\n- If the evaluate parameter has not been set to true; in that case the error property will contain no error."
+                    "description": "The calculated status value of the SLO."
                 },
                 "evaluationType": {
                     "type": "string",
                     "title": "Evaluation Type",
-                    "description": "The type of the SLO evaluation.",
-                    "enum": [
-                        "AGGREGATE"
-                    ],
-                    "enumColors": {
-                        "AGGREGATE": "blue"
-                    }
+                    "description": "The type of the SLO evaluation."
                 },
                 "filter": {
                     "type": "string",
@@ -303,6 +263,9 @@
                     "description": "The timeframe for the SLO evaluation."
                 }
             }
-        }
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {}
     }
 ]

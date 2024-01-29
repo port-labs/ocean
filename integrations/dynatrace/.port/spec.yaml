@@ -8,7 +8,6 @@ features:
       - kind: problem
       - kind: slo
       - kind: entity
-      - kind: entity_type
 configurations:
   - name: dynatraceApiKey
     required: true

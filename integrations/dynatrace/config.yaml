@@ -6,12 +6,12 @@ port:
   clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET
 # The event listener to use for the integration service.
 eventListener:
-  type: KAFKA
+  type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
+  identifier: "my-dynatrace-integration"
   # The type of the integration.
-  type: "My Integration type (Gitlab, Jira, etc.)"
+  type: "dynatrace"
   config:
-    myGitToken: "{{ from env MY_GIT_TOKEN }}"
-    someApplicationUrl: "https://I-Am-Not-A-Real-Url.com"
+    dynatraceHostUrl: "{{ from env DYNATRACE_HOST_URL }}"
+    dynatraceApiKey: "{{ from env DYNATRACE_API_KEY }}"
