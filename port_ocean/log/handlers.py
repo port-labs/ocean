@@ -31,6 +31,7 @@ class HTTPMemoryHandler(MemoryHandler):
         try:
             return ocean.app
         except PortOceanContextNotFoundError:
+            # We want to wait for the context to be initialized before we can send logs
             return None
 
     def shouldFlush(self, record: logging.LogRecord) -> bool:
