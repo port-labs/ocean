@@ -10,7 +10,6 @@ from loguru import logger
 
 from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
-from port_ocean.exceptions.context import PortOceanContextNotFoundError
 
 
 class HTTPMemoryHandler(MemoryHandler):
@@ -28,11 +27,10 @@ class HTTPMemoryHandler(MemoryHandler):
 
     @property
     def ocean(self) -> Ocean | None:
-        try:
+        # We want to wait for the context to be initialized before we can send logs
+        if ocean.initialized:
             return ocean.app
-        except PortOceanContextNotFoundError:
-            # We want to wait for the context to be initialized before we can send logs
-            return None
+        return None
 
     def shouldFlush(self, record: logging.LogRecord) -> bool:
         """
@@ -43,9 +41,6 @@ class HTTPMemoryHandler(MemoryHandler):
             or sum(len(record.msg) for record in self.buffer) >= self.flush_size
             or time.time() - self.last_flush_time >= self.flush_interval
         ):
-            logger.info(
-                f"should flush {len(self.buffer)} with size {sum(len(record.msg) for record in self.buffer)}"
-            )
             return True
         return False
 
@@ -67,7 +62,6 @@ class HTTPMemoryHandler(MemoryHandler):
         self.release()
 
     async def send_logs(self, logs_to_send: list[LogRecord]) -> None:
-        logger.debug(f"Sending logs to Port {len(logs_to_send)}")
         raw_logs = [
             {
                 "message": record.msg,

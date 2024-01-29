@@ -36,6 +36,10 @@ class PortOceanContext:
         return self._app
 
     @property
+    def initialized(self):
+        return self._app is not None
+
+    @property
     def config(self) -> "IntegrationConfiguration":
         return self.app.config
 
@@ -132,18 +136,13 @@ _port_ocean: PortOceanContext = PortOceanContext(None)
 
 
 def initialize_port_ocean_context(ocean_app: "Ocean") -> None:
-    """
-    This Function initializes the PortOcean context and pushes it into the LocalStack().
-    """
     global _port_ocean
-    try:
-        # Check if the PortOcean context is already initialized
-        _port_ocean.app
+
+    if _port_ocean.initialized:
         raise PortOceanContextAlreadyInitializedError(
             "PortOcean context is already initialized"
         )
-    except PortOceanContextNotFoundError:
-        _port_ocean = PortOceanContext(app=ocean_app)
+    _port_ocean = PortOceanContext(app=ocean_app)
 
 
 ocean: PortOceanContext = LocalProxy(lambda: _port_ocean)  # type: ignore

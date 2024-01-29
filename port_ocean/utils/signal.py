@@ -1,7 +1,6 @@
 import signal
 from typing import Callable
 
-from loguru import logger
 from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.utils.misc import generate_uuid
@@ -47,11 +46,8 @@ def _get_signal_handler():
 signal_handler = LocalProxy(_get_signal_handler)
 
 
-def set_signal_handler():
+def init_signal_handler():
     global _signal_handler
+    if _signal_handler.top is not None:
+        raise RuntimeError("Signal handler is already initialized")
     _signal_handler.push(SignalHandler())
-    logger.info(signal_handler)
-
-
-def register_signal_handler(callback: Callable) -> str:
-    return signal_handler.register(callback)

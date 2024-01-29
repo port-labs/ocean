@@ -3,7 +3,7 @@ from typing import TypedDict, Callable, Any, Awaitable
 
 from pydantic import BaseModel, Extra
 
-from port_ocean.utils.signal import register_signal_handler
+from port_ocean.utils.signal import signal_handler
 
 
 class EventListenerEvents(TypedDict):
@@ -22,15 +22,17 @@ class BaseEventListener:
         self.events = events
 
     async def start(self):
-        register_signal_handler(self._stop)
+        _id = signal_handler.register(self._stop)
         await self._start()
 
     @abstractmethod
     async def _start(self) -> None:
         pass
 
-    @abstractmethod
-    async def _stop(self) -> None:
+    def _stop(self) -> None:
+        """
+        Can be used for event listeners that need cleanup before exiting.
+        """
         pass
 
 

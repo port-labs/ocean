@@ -1,10 +1,9 @@
+import threading
 from typing import Any, Callable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
 from loguru import logger
 from pydantic import BaseModel
-
-from port_ocean.consumers.base_consumer import BaseConsumer
 
 
 class KafkaConsumerConfig(BaseModel):
@@ -18,7 +17,7 @@ class KafkaConsumerConfig(BaseModel):
     consumer_poll_timeout: int
 
 
-class KafkaConsumer(BaseConsumer):
+class KafkaConsumer:
     def __init__(
         self,
         msg_process: Callable[[Message], None],
@@ -28,9 +27,6 @@ class KafkaConsumer(BaseConsumer):
         self.running = False
         self.org_id = org_id
         self.config = config
-
-        # signal.signal(signal.SIGINT, self.exit_gracefully)
-        # signal.signal(signal.SIGTERM, self.exit_gracefully)
 
         self.msg_process = msg_process
         if config.kafka_security_enabled:
@@ -52,7 +48,8 @@ class KafkaConsumer(BaseConsumer):
 
         self.consumer = Consumer(kafka_config)
 
-    def start(self) -> None:
+    def start(self, event: threading.Event) -> None:
+        self.running = True
         try:
             logger.info("Start consumer...")
 
@@ -63,8 +60,7 @@ class KafkaConsumer(BaseConsumer):
                 ),
             )
             logger.info("Subscribed to topics")
-            self.running = True
-            while self.running:
+            while self.running and not event.is_set():
                 try:
                     msg = self.consumer.poll(timeout=self.config.consumer_poll_timeout)
                     if msg is None:
@@ -89,6 +85,7 @@ class KafkaConsumer(BaseConsumer):
                 except Exception as message_error:
                     logger.error(str(message_error))
         finally:
+            logger.info("Closing consumer...")
             self.exit_gracefully()
 
     def exit_gracefully(self, *_: Any) -> None:

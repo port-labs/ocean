@@ -70,6 +70,8 @@ class KafkaEventListener(BaseEventListener):
         self.org_id = org_id
         self.integration_identifier = integration_identifier
         self.integration_type = integration_type
+        self._consumer_kill_event = threading.Event()
+        self._running_task = None
 
     async def _get_kafka_config(self) -> KafkaConsumerConfig:
         """
@@ -119,7 +121,8 @@ class KafkaEventListener(BaseEventListener):
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(try_wrapper())
+        self._running_task = loop.create_task(try_wrapper())
+        loop.run_until_complete(self._running_task)
 
     def _handle_message(self, raw_msg: Message) -> None:
         """
@@ -145,7 +148,7 @@ class KafkaEventListener(BaseEventListener):
             ).start()
             logger.info(f"thread {thread_name} started")
 
-    async def start(self) -> None:
+    async def _start(self) -> None:
         """
         The main method that starts the Kafka consumer.
         It creates a KafkaConsumer instance with the given configuration and starts it in a separate thread.
@@ -159,4 +162,10 @@ class KafkaEventListener(BaseEventListener):
         threading.Thread(
             name="ocean_kafka_consumer",
             target=consumer.start,
+            args=(self._consumer_kill_event,),
         ).start()
+
+    def _stop(self) -> None:
+        self._consumer_kill_event.set()
+        if self._running_task is not None:
+            self._running_task.cancel()
