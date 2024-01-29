@@ -17,8 +17,8 @@ resources:
             problemFilters: .problemFilters[].name
             severityLevel: .severityLevel
             status: .status
-            startTime: '.startTime / 1000 | todate'
-            endTime: '.endTime | if . == -1 then null else (./1000 | todate) end'
+            startTime: ".startTime / 1000 | todate"
+            endTime: ".endTime | if . == -1 then null else (./1000 | todate) end"
           relations:
             impactedEntities: .impactedEntities[].name
             linkedProblemInfo: .linkedProblemInfo.problemId
@@ -34,8 +34,8 @@ resources:
           title: .displayName
           blueprint: '"dynatraceEntity"'
           properties:
-            firstSeen: '.firstSeenTms / 1000 | todate'
-            lastSeen: '.lastSeenTms / 1000 | todate'
+            firstSeen: ".firstSeenTms / 1000 | todate"
+            lastSeen: ".lastSeenTms / 1000 | todate"
             type: .type
             tags: .tags[].stringRepresentation
             managementZones: .managementZones[].name
@@ -70,5 +70,3 @@ resources:
             relatedOpenProblems: .relatedOpenProblems
             relatedTotalProblems: .relatedTotalProblems
             timeframe: .timeframe
-
-
