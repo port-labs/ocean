@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Any
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -45,3 +46,16 @@ async def on_resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for entities in dynatrace_client.get_entities():
         logger.info(f"Received batch with {len(entities)} entities")
         yield entities
+
+
+@ocean.router.post("/events")
+async def on_problem_event(event: dict[str, str | Any]) -> dict[str, bool]:
+    dynatrace_client = initialize_client()
+    logger.info(f"Received problem event: {event}")
+
+    if problem_id := event.get("ProblemID"):
+        problem = await dynatrace_client.get_single_problem(problem_id)
+        await ocean.register_raw(ObjectKind.PROBLEM, [problem])
+
+    logger.info("Webhook event processed")
+    return {"ok": True}

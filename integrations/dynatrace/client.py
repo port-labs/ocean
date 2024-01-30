@@ -74,3 +74,18 @@ class DynatraceClient:
             for entity_type in entity_types:
                 async for entities in self._get_entities_from_type(entity_type["type"]):
                     yield entities
+
+    async def get_single_problem(self, problem_id: str) -> dict[str, Any]:
+        url = f"{self.host_url}/problems/{problem_id}"
+        try:
+            response = await self.client.get(url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP error on {url}: {e.response.status_code} - {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error on {url}: {e}")
+            raise

@@ -20,7 +20,7 @@ resources:
             startTime: ".startTime / 1000 | todate"
             endTime: ".endTime | if . == -1 then null else (./1000 | todate) end"
           relations:
-            impactedEntities: .impactedEntities[].name
+            impactedEntities: .impactedEntities[].entityId.id
             linkedProblemInfo: .linkedProblemInfo.problemId
             rootCauseEntity: .rootCauseEntity.name
 
