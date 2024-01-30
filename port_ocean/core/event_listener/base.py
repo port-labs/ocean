@@ -1,8 +1,9 @@
 from abc import abstractmethod
 from typing import TypedDict, Callable, Any, Awaitable
 
-from pydantic import BaseModel, Extra
+from pydantic import Extra
 
+from port_ocean.config.base import BaseOceanModel
 from port_ocean.utils.signal import signal_handler
 
 
@@ -42,7 +43,7 @@ class BaseEventListener:
         pass
 
 
-class EventListenerSettings(BaseModel, extra=Extra.allow):
+class EventListenerSettings(BaseOceanModel, extra=Extra.allow):
     type: str
 
     def to_request(self) -> dict[str, Any]:

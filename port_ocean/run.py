@@ -1,8 +1,7 @@
 from inspect import getmembers
-from typing import Dict, Any
+from typing import Dict, Any, Type
 
 import uvicorn
-from loguru import logger
 from pydantic import BaseModel
 
 from port_ocean.bootstrap import create_default_app
@@ -14,14 +13,13 @@ from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
 
 
-def _default_config_factory(**kwargs) -> None | tuple[BaseModel, list[str]]:
+def _get_default_config_factory() -> None | Type[BaseModel]:
     spec = get_spec_file()
+    config_factory = None
     if spec is not None:
-        factory, sensitive_keys = default_config_factory(spec.get("configurations", []))
-        model = factory(**kwargs)
-        raw_model = model.dict()
-        sensitive_data = [raw_model[key] for key in sensitive_keys if key in raw_model]
-        return model, sensitive_data
+        config_factory = default_config_factory(spec.get("configurations", []))
+
+    return config_factory
 
 
 def run(
@@ -38,8 +36,8 @@ def run(
         enable_http_handler=application_settings.enable_http_logging,
     )
 
-    logger.info("Starting Port Ocean")
-    default_app = create_default_app(path, _default_config_factory, config_override)
+    config_factory = _get_default_config_factory()
+    default_app = create_default_app(path, config_factory, config_override)
 
     main_path = f"{path}/main.py" if path else "main.py"
     app_module = load_module(main_path)

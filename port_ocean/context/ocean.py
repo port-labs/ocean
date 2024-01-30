@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
+from port_ocean.config.base import BaseOceanModel
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
@@ -53,6 +54,8 @@ class PortOceanContext:
 
     @property
     def integration_config(self) -> dict[str, Any]:
+        if isinstance(self.app.config.integration.config, BaseOceanModel):
+            return self.app.config.integration.config.dict()
         return self.app.config.integration.config
 
     @property

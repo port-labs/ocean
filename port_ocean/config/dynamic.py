@@ -3,7 +3,9 @@ from typing import Type, Any, Optional
 
 from humps import decamelize
 from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as, validator
-from pydantic.fields import ModelField
+from pydantic.fields import ModelField, Field
+
+from port_ocean.config.base import BaseOceanModel
 
 
 class Configuration(BaseModel, extra=Extra.allow):
@@ -26,18 +28,12 @@ def dynamic_parse(value: Any, field: ModelField) -> Any:
     return value
 
 
-def default_config_factory(
-    configurations: list[dict[str, Any]]
-) -> tuple[Type[BaseModel], list[str]]:
+def default_config_factory(configurations: Any) -> Type[BaseModel]:
     configurations = parse_obj_as(list[Configuration], configurations)
     fields: dict[str, tuple[Any, Any]] = {}
-    sensitive_fields: list[str] = []
 
     for config in configurations:
         field_type: Type[Any]
-
-        if config.sensitive:
-            sensitive_fields.append(decamelize(config.name))
 
         match config.type:
             case "object":
@@ -58,12 +54,13 @@ def default_config_factory(
             default = parse_obj_as(field_type, config.default)
         fields[decamelize(config.name)] = (
             field_type,
-            default,
+            Field(default, sensitive=config.sensitive),
         )
 
     dynamic_model = create_model(  # type: ignore
         __model_name="Config",
+        __base__=BaseOceanModel,
         **fields,
         __validators__={"dynamic_parse": validator("*", pre=True)(dynamic_parse)},
     )
-    return dynamic_model, sensitive_fields
+    return dynamic_model

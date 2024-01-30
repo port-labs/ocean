@@ -1,14 +1,15 @@
 from typing import Any, Literal
 
-from pydantic import BaseSettings, BaseModel, Extra, AnyHttpUrl, parse_obj_as, validator
+from pydantic import Extra, AnyHttpUrl, parse_obj_as, validator
+from pydantic.fields import Field
 
-from port_ocean.config.base import BaseOceanSettings
+from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
 from port_ocean.core.event_listener import EventListenerSettingsType
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
 
-class ApplicationSettings(BaseSettings):
+class ApplicationSettings(BaseOceanModel):
     log_level: LogLevelType = "INFO"
     enable_http_logging: bool = True
     port: int = 8000
@@ -23,16 +24,16 @@ class ApplicationSettings(BaseSettings):
             return env_settings, init_settings
 
 
-class PortSettings(BaseModel, extra=Extra.allow):
-    client_id: str
-    client_secret: str
+class PortSettings(BaseOceanModel, extra=Extra.allow):
+    client_id: str = Field(..., sensitive=True)
+    client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
 
 
-class IntegrationSettings(BaseModel, extra=Extra.allow):
+class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     identifier: str
     type: str
-    config: dict[str, Any]
+    config: dict[str, Any] | BaseOceanModel
 
     @validator("identifier", "type")
     def validate_lower(cls, v: str) -> str:

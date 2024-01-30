@@ -131,6 +131,9 @@ def load_providers(
 class BaseOceanSettings(BaseSettings):
     base_path: str
 
+    def get_sensitive_fields_data(self) -> set[str]:
+        return _handle_get_sensitive_information(self)
+
     class Config:
         yaml_file = "./config.yaml"
         env_prefix = "OCEAN__"
@@ -153,3 +156,29 @@ class BaseOceanSettings(BaseSettings):
                     s, env_settings(s), init_settings.init_kwargs["base_path"]
                 ),
             )
+
+
+class BaseOceanModel(BaseModel):
+    def get_sensitive_fields_data(self) -> set[str]:
+        return _handle_get_sensitive_information(self)
+
+
+def _handle_get_sensitive_information(
+    model: BaseOceanModel | BaseSettings,
+) -> set[str]:
+    sensitive_fields = [
+        field_name
+        for field_name, field in model.__fields__.items()
+        if field.field_info.extra.get("sensitive", False)
+    ]
+    sensitive_set = {str(getattr(model, field_name)) for field_name in sensitive_fields}
+
+    recursive_sensitive_data = [
+        getattr(model, field_name).get_sensitive_fields_data()
+        for field_name, field in model.__fields__.items()
+        if isinstance(getattr(model, field_name), BaseOceanModel)
+    ]
+    for sensitive_data in recursive_sensitive_data:
+        sensitive_set.update(sensitive_data)
+
+    return sensitive_set

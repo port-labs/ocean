@@ -31,7 +31,7 @@ class Ocean:
         app: FastAPI | None = None,
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
         integration_router: APIRouter | None = None,
-        config_factory: Callable[..., tuple[BaseModel, list[str]]] | None = None,
+        config_factory: Callable[..., BaseModel] | None = None,
         config_override: Dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
@@ -41,10 +41,14 @@ class Ocean:
         self.config = IntegrationConfiguration(
             base_path="./", **(config_override or {})
         )
+
         if config_factory:
-            config, sensitive = config_factory(**self.config.integration.config)
-            self.config.integration.config = config.dict()
-            sensitive_log_filter.hide_sensitive_tokens(*sensitive)
+            self.config.integration.config = config_factory(
+                **self.config.integration.config
+            )
+        sensitive_log_filter.hide_sensitive_tokens(
+            *self.config.get_sensitive_fields_data()
+        )
         self.integration_router = integration_router or APIRouter()
 
         self.port_client = PortClient(
