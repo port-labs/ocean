@@ -3,7 +3,6 @@ from typing import Any, AsyncGenerator
 
 import httpx
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
 
@@ -16,7 +15,7 @@ class ResourceKey(StrEnum):
 
 class DynatraceClient:
     def __init__(self, host_url: str, api_key: str) -> None:
-        self.host_url = host_url
+        self.host_url = f"{host_url.rstrip('/')}/api/v2"
         self.client = http_async_client
         self.client.headers.update({"Authorization": f"Api-Token {api_key}"})
 
@@ -44,54 +43,34 @@ class DynatraceClient:
             logger.error(f"HTTP error on {url}: {e}")
             raise
 
-    async def _get_problems(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_problems(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for problems in self._get_paginated_resources(
-            f"{self.host_url}/api/v2/problems", "problems"
+            f"{self.host_url}/problems", "problems"
         ):
             yield problems
 
-    async def _get_slos(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for slos in self._get_paginated_resources(
-            f"{self.host_url}/api/v2/slo", "slo"
-        ):
+    async def get_slos(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for slos in self._get_paginated_resources(f"{self.host_url}/slo", "slo"):
             yield slos
 
     async def _get_entity_types(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for entity_types in self._get_paginated_resources(
-            f"{self.host_url}/api/v2/entityTypes", "types"
+            f"{self.host_url}/entityTypes", "types"
         ):
             yield entity_types
 
     async def _get_entities_from_type(
-        self, type: str
+        self, type_: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for entities in self._get_paginated_resources(
-            f"{self.host_url}/api/v2/entities",
+            f"{self.host_url}/entities",
             "entities",
-            params={"entitySelector": f'type("{type}")'},
+            params={"entitySelector": f'type("{type_}")'},
         ):
             yield entities
 
-    async def _get_entities(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_entities(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for entity_types in self._get_entity_types():
             for entity_type in entity_types:
                 async for entities in self._get_entities_from_type(entity_type["type"]):
                     yield entities
-
-    async def get_resource(
-        self, resource: str, **kwargs: dict[str, Any]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        RESOURCE_MAPPING = {
-            ResourceKey.PROBLEM.value: self._get_problems,
-            ResourceKey.SLO.value: self._get_slos,
-            ResourceKey.ENTITY.value: self._get_entities,
-        }
-
-        if cache := event.attributes.get(resource):
-            logger.info(f"picking {resource} from cache")
-            yield cache
-            return
-
-        async for resources in RESOURCE_MAPPING[resource]():
-            event.attributes.setdefault(resource, []).extend(resources)
-            yield resources

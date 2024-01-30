@@ -24,24 +24,24 @@ def initialize_client() -> DynatraceClient:
 async def on_resync_problems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dynatrace_client = initialize_client()
 
-    async for entities in dynatrace_client.get_resource(kind):
-        logger.info(f"Received batch with {len(entities)} entities")
-        yield entities
+    async for problems in dynatrace_client.get_problems():
+        logger.info(f"Received batch with {len(problems)} problems")
+        yield problems
 
 
 @ocean.on_resync(ObjectKind.SLO)
 async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dynatrace_client = initialize_client()
 
-    async for entities in dynatrace_client.get_resource(kind):
-        logger.info(f"Received batch with {len(entities)} entities")
-        yield entities
+    async for slos in dynatrace_client.get_slos():
+        logger.info(f"Received batch with {len(slos)} SLOs")
+        yield slos
 
 
 @ocean.on_resync(ObjectKind.ENTITY)
 async def on_resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dynatrace_client = initialize_client()
 
-    async for entities in dynatrace_client.get_resource(kind):
+    async for entities in dynatrace_client.get_entities():
         logger.info(f"Received batch with {len(entities)} entities")
         yield entities
