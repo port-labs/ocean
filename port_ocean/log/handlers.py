@@ -65,9 +65,9 @@ class HTTPMemoryHandler(MemoryHandler):
         if self.ocean is None or not self.buffer:
             return
 
-        def _wrap_event_loop(logs_to_send: list[dict[str, Any]]) -> None:
+        def _wrap_event_loop(_ocean: Ocean, logs_to_send: list[dict[str, Any]]) -> None:
             loop = asyncio.new_event_loop()
-            loop.run_until_complete(self.send_logs(logs_to_send))
+            loop.run_until_complete(self.send_logs(_ocean, logs_to_send))
             loop.close()
 
         self.acquire()
@@ -76,11 +76,13 @@ class HTTPMemoryHandler(MemoryHandler):
             self.buffer.clear()
             self._serialized_buffer.clear()
             self.last_flush_time = time.time()
-            threading.Thread(target=_wrap_event_loop, args=(logs,)).start()
+            threading.Thread(target=_wrap_event_loop, args=(self.ocean, logs)).start()
         self.release()
 
-    async def send_logs(self, logs_to_send: list[dict[str, Any]]) -> None:
+    async def send_logs(
+        self, _ocean: Ocean, logs_to_send: list[dict[str, Any]]
+    ) -> None:
         try:
-            await self.ocean.port_client.ingest_integration_logs(logs_to_send)
+            await _ocean.port_client.ingest_integration_logs(logs_to_send)
         except Exception as e:
             logger.debug(f"Failed to send logs to Port with error: {e}")

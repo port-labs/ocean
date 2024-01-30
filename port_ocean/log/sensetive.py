@@ -1,5 +1,8 @@
 import re
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from loguru import Record
 
 # https://github.com/h33tlit/secret-regex-list
 secret_patterns = {
@@ -53,12 +56,10 @@ class SensitiveLogFilter:
     def hide_sensitive_tokens(self, *tokens: str) -> None:
         self.compiled_patterns.extend([re.compile(token) for token in tokens])
 
-    def create_filter(
-        self, full_hide: bool = False
-    ) -> Callable[["loguru.Record"], bool]:
-        def _filter(record: "loguru.Record") -> bool:
+    def create_filter(self, full_hide: bool = False) -> Callable[["Record"], bool]:
+        def _filter(record: "Record") -> bool:
             for pattern in self.compiled_patterns:
-                replace = (
+                replace: Callable[[re.Match[str]], str] | str = (
                     "[REDACTED]"
                     if full_hide
                     else lambda match: match.group()[:6] + "[REDACTED]"

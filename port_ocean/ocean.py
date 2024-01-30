@@ -43,9 +43,12 @@ class Ocean:
         )
 
         if config_factory:
-            self.config.integration.config = config_factory(
-                **self.config.integration.config
+            raw_config = (
+                self.config.integration.config
+                if isinstance(self.config.integration.config, dict)
+                else self.config.integration.config.dict()
             )
+            self.config.integration.config = config_factory(**raw_config)
         sensitive_log_filter.hide_sensitive_tokens(
             *self.config.get_sensitive_fields_data()
         )

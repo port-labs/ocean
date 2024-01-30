@@ -54,7 +54,7 @@ class HttpEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
 
-    async def start(self) -> None:
+    async def _start(self) -> None:
         """
         Starts the HTTP event listener.
         It sets up an APIRouter to handle the `/resync` endpoint and registers the "on_resync" event handler.

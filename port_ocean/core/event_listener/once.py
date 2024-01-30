@@ -42,7 +42,7 @@ class OnceEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
 
-    async def start(self) -> None:
+    async def _start(self) -> None:
         """
         Starts the resync process, and exits the application once finished.
         """

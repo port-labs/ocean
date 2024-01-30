@@ -121,8 +121,9 @@ class KafkaEventListener(BaseEventListener):
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        self._running_task = loop.create_task(try_wrapper())
-        loop.run_until_complete(self._running_task)
+        running_task = loop.create_task(try_wrapper())
+        self._tasks_to_close.append(running_task)
+        loop.run_until_complete(running_task)
 
     def _handle_message(self, raw_msg: Message) -> None:
         """

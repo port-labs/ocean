@@ -2,6 +2,7 @@ from typing import Any, Literal
 
 from pydantic import Extra, AnyHttpUrl, parse_obj_as, validator
 from pydantic.fields import Field
+from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
 from port_ocean.core.event_listener import EventListenerSettingsType
@@ -33,7 +34,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     identifier: str
     type: str
-    config: dict[str, Any] | BaseOceanModel
+    config: dict[str, Any] | BaseModel
 
     @validator("identifier", "type")
     def validate_lower(cls, v: str) -> str:

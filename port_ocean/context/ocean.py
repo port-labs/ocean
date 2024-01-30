@@ -1,10 +1,10 @@
 from typing import Callable, TYPE_CHECKING, Any, Literal, Union
 
 from fastapi import APIRouter
+from pydantic.main import BaseModel
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.config.base import BaseOceanModel
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
@@ -37,7 +37,7 @@ class PortOceanContext:
         return self._app
 
     @property
-    def initialized(self):
+    def initialized(self) -> bool:
         return self._app is not None
 
     @property
@@ -54,7 +54,7 @@ class PortOceanContext:
 
     @property
     def integration_config(self) -> dict[str, Any]:
-        if isinstance(self.app.config.integration.config, BaseOceanModel):
+        if isinstance(self.app.config.integration.config, BaseModel):
             return self.app.config.integration.config.dict()
         return self.app.config.integration.config
 
