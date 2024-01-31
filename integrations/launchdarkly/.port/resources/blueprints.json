@@ -1,0 +1,197 @@
+[
+  {
+    "identifier": "launchDarklyProject",
+    "description": "This blueprint represents a project in LaunchDarkly.",
+    "title": "LaunchDarkly Project",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "key": {
+          "type": "string",
+          "title": "Project Key",
+          "description": "The unique key identifier for the LaunchDarkly project."
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the project for organizational purposes."
+        },
+        "defaultClientSideAvailability": {
+          "type": "object",
+          "title": "Default Client Side Availability",
+          "description": "The default client-side availability for the project."
+        },
+        "url": {
+          "type": "string",
+          "format": "url",
+          "title": "Link",
+          "description": "Link to project"
+        },
+        "includeInSnippetByDefault": {
+          "type": "boolean",
+          "title": "Include In snippet By Default",
+          "description": "Indicates if project is included in client-side snippets by default."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "launchDarklyFeatureFlag",
+    "description": "This blueprint represents a feature flag in LaunchDarkly.",
+    "title": "LaunchDarkly Feature Flag",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "kind": {
+          "type": "string",
+          "title": "Flag Kind",
+          "description": "The type of the feature flag (e.g., boolean)."
+        },
+        "key": {
+          "type": "string",
+          "title": "Flag Key",
+          "description": "The unique key identifier for the feature flag."
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A description of what the flag controls."
+        },
+        "creationDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Date",
+          "description": "The date and time when the flag was created."
+        },
+        "includeInSnippet": {
+          "type": "boolean",
+          "title": "Include in Client-Side Snippet",
+          "description": "Indicates if the flag is included in the client-side snippet."
+        },
+        "clientSideAvailability": {
+          "type": "object",
+          "title": "Client-Side Availability",
+          "description": "Availability of the flag for client-side applications."
+        },
+        "temporary": {
+          "type": "boolean",
+          "title": "Temporary Flag",
+          "description": "Indicates if the flag is temporary."
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the feature flag."
+        },
+        "maintainer": {
+          "type": "object",
+          "title": "Maintainer",
+          "description": "Information about the maintainer of the flag."
+        },
+        "environments": {
+          "type": "object",
+          "title": "Environments",
+          "description": "Settings and information for each environment the flag is used in."
+        },
+        "customProperties": {
+          "type": "object",
+          "title": "Custom Properties",
+          "description": "Custom properties associated with the flag."
+        },
+        "archived": {
+          "type": "boolean",
+          "title": "Archived",
+          "description": "Indicates if the flag is archived."
+        }
+      }
+    },
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "launchDarklyProject",
+        "required": true,
+        "many": false
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  },
+  {
+    "identifier": "launchDarklyAuditLog",
+    "description": "This blueprint represents an entry in the LaunchDarkly audit log",
+    "title": "LaunchDarkly Audit Log",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "title": "Account ID",
+          "description": "The unique identifier of the LaunchDarkly account associated with this event."
+        },
+        "date": {
+          "type": "string",
+          "format":"date-time",
+          "title": "Event Date",
+          "description": "The timestamp of when the event occurred."
+        },
+        "kind": {
+          "type": "string",
+          "title": "Event Kind",
+          "description": "The type of event (e.g., 'project', 'token')."
+        },
+        "name": {
+          "type": "string",
+          "title": "Event Name",
+          "description": "The name of the event or the entity affected by this event."
+        },
+        "description":{
+          "type": "string",
+          "title":"Description",
+          "description":"a detailed description of the log"
+        },
+        "shortDescription":{
+          "type": "string",
+          "title": "Short Description",
+          "description": "a short description of the log"
+        },
+        "member": {
+          "type": "object",
+          "title": "Member Details",
+          "description": "Information about the LaunchDarkly user associated with this event."
+        },
+        "title": {
+          "type": "string",
+          "title": "Action Taken",
+          "description": "A verb describing the action taken in this event"
+        },
+        "accesses": {
+          "type": "array",
+          "title": "Access Details",
+          "description": "Details about the specific actions taken during the event."
+        },
+        "target": {
+          "type": "object",
+          "title": "Target Resource",
+          "description": "Details about the primary resource affected by this event."
+        }
+      }
+    },
+    "relations": {
+      "relation": {
+        "title": "Relation",
+        "target": "launchDarklyFeatureFlag",
+        "required": false,
+        "many": true
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  } 
+]

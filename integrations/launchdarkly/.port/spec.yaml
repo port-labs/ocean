@@ -1,0 +1,22 @@
+type: launchdarkly
+description: launchdarkly integration for Port Ocean
+icon: Cookiecutter # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: CICD # Should be one of the available sections in Port
+    resources:
+      - kind: project
+      - kind: flag
+      - kind: auditlog
+configurations:
+  - name: launchdarklyHost
+    required: false
+    default: https://app.launchdarkly.com
+    type: string
+  - name: launchdarklyToken
+    required: true 
+    sensitive: true
+    type: string
+  - name: appHost
+    type: url
+    required: false

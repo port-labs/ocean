@@ -1,0 +1,64 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: projects
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ._id
+          title: .name
+          blueprint: '"launchDarklyProject"'
+          properties:
+            key: .key
+            tags: .tags
+            includeInSnippetByDefault: .includeInSnippetByDefault
+            defaultClientSideAvailability: .defaultClientSideAvailability
+            url: ("https://app.launchdarkly.com" + ._links.self.href | tostring)
+  - kind: flags
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"launchDarklyFeatureFlag"'
+          properties:
+            kind: .kind
+            key: .key
+            description: .description
+            creationDate: '.creationDate |  (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            includeInSnippet: .includeInSnippet
+            clientSideAvailability: .clientSideAvailability
+            temporary : .temporary
+            tags: .tags
+            maintainer: .maintainer
+            environments: .environments
+            customProperties: .customProperties
+            archived: .archived
+          relations:
+            project: .__projectId   
+  - kind: auditlog
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ._id
+          title: .titleVerb
+          blueprint: '"launchDarklyAuditLog"'
+          properties:
+            accountId: ._accountId
+            date: '.date |  (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            kind: .kind
+            name: .name
+            description: .description
+            shortDescription: .shortDescription
+            member: .member
+            title: .title
+            accesses: .accesses
+            target: .target
+          relations:
+            relation: 'select(.kind | IN("flag")) | .accesses[] | .resource | split("/") | .[-1]'
