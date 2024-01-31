@@ -23,9 +23,9 @@ configurations:
   - name: appHost
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in PagerDuty"
     required: false
-    type: string  
+    type: string
   - name: enableIncidentAnalytics
     required: false
     type: boolean
-    description: If set to true, will ingest incident analytics data to Port 
+    description: If set to true, will ingest incident analytics data to Port
     default: false
