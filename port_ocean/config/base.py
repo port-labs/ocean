@@ -132,7 +132,7 @@ class BaseOceanSettings(BaseSettings):
     base_path: str
 
     def get_sensitive_fields_data(self) -> set[str]:
-        return _handle_get_sensitive_information(self)
+        return _get_sensitive_information(self)
 
     class Config:
         yaml_file = "./config.yaml"
@@ -160,10 +160,10 @@ class BaseOceanSettings(BaseSettings):
 
 class BaseOceanModel(BaseModel):
     def get_sensitive_fields_data(self) -> set[str]:
-        return _handle_get_sensitive_information(self)
+        return _get_sensitive_information(self)
 
 
-def _handle_get_sensitive_information(
+def _get_sensitive_information(
     model: BaseOceanModel | BaseSettings,
 ) -> set[str]:
     sensitive_fields = [

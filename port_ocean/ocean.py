@@ -99,7 +99,7 @@ class Ocean:
                 await self.integration.start()
                 await self._setup_scheduled_resync()
             except Exception as e:
-                logger.exception(f"Failed to start integration with error: {e}")
+                logger.exception(f"Failed to start integration")
                 sys.exit("Server stopped")
 
         await self.fast_api_app(scope, receive, send)

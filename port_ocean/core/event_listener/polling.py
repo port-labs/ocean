@@ -1,5 +1,4 @@
-import asyncio
-from asyncio import Task
+from asyncio import Task, get_event_loop
 from typing import Literal, Any
 
 from loguru import logger
@@ -77,7 +76,7 @@ class PollingEventListener(BaseEventListener):
             if should_resync:
                 logger.info("Detected change in integration, resyncing")
                 self._last_updated_at = last_updated_at
-                running_task: Task[Any] = asyncio.get_event_loop().create_task(
+                running_task: Task[Any] = get_event_loop().create_task(
                     self.events["on_resync"]({})  # type: ignore
                 )
                 self._tasks_to_close.append(running_task)

@@ -25,7 +25,7 @@ class BaseEventListener:
         self._tasks_to_close: list[Task[Any]] = []
 
     async def start(self) -> None:
-        _id = signal_handler.register(self._stop)
+        signal_handler.register(self._stop)
         await self._start()
 
     @abstractmethod
