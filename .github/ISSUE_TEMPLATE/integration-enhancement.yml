@@ -1,7 +1,7 @@
 name: Integration Feature Request/Enhancement
 description: Request a new feature or ask for an improvement of existing functionality in an integration powered by the Ocean framework
-title: "[Enhancement/Feature] [Framework]"
-labels: ["enhancement", "framework"]
+title: "[Enhancement/Feature] [Integration] [<Integration Name Here i.e PagerDuty, Jira...>]"
+labels: ["enhancement", "integration"]
 body:
   - type: textarea
     attributes:
