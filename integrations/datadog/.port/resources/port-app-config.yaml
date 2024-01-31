@@ -1,0 +1,56 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: host
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogHost"'
+          identifier: .id | tostring
+          title: .name
+          properties:
+            up: .up
+            hostName: .host_name
+            description: .description
+            metrics: .metrics
+            sources: .sources
+  - kind: monitor
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogMonitor"'
+          identifier: .id | tostring
+          title: .name
+          properties:
+            tags: .tags
+            monitorType: .type
+            overallState: .overall_state
+            thresholds: .thresholds
+            priority: .priority
+            createdBy: .creator.name
+            createdAt: .created
+            updatedAt: .modified
+  - kind: slo
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogSlo"'
+          identifier: .id | tostring
+          title: .name
+          properties:
+            tags: .tags
+            sloType: .type
+            description: .description
+            warningThreshold: .warning_threshold
+            targetThreshold: .target_threshold
+            createdBy: .creator.name
+            createdAt: .created_at | todate
+            updatedAt: .modified_at | todate
+          relations:
+            monitors: .monitor_ids | map(tostring)
