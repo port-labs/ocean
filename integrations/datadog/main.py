@@ -1,41 +1,34 @@
-from typing import Any
+from enum import StrEnum
 
+from client import DatadogClient
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
+class ObjectKind(StrEnum):
+    HOST = "host"
+    MONITOR = "monitor"
+    SLO = "slo"
+
+
+def init_client() -> DatadogClient:
+    return DatadogClient(
+        ocean.integration_config["datadog_base_url"],
+        ocean.integration_config["datadog_api_key"],
+        ocean.integration_config["datadog_application_key"],
+    )
+
+
 @ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-    return []
+async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
 
-
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
-
-
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
-@ocean.on_start()
-async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting integration")
+    if kind == ObjectKind.HOST:
+        async for hosts in dd_client.get_hosts():
+            yield hosts
+    if kind == ObjectKind.MONITOR:
+        async for monitors in dd_client.get_monitors():
+            yield monitors
+    if kind == ObjectKind.SLO:
+        async for slos in dd_client.get_slos():
+            yield slos
