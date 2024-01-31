@@ -40,7 +40,7 @@ async def enrich_incidents_with_analytics_data(
 async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
     pager_duty_client = initialize_client()
-    
+
     query_params = typing.cast(
         PagerdutyIncidentResourceConfig, event.resource_config
     ).selector.api_query_params
