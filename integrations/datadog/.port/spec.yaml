@@ -3,14 +3,19 @@ description: Datadog integration for Port Ocean
 icon: Cookiecutter # Should be one of the available icons in Port
 features:
   - type: exporter
-    section: Git Providers # Should be one of the available sections in Port
+    section: APM & Alerting
     resources:
-      - kind: <ResourceName1>
-      - kind: <ResourceName2>
+      - kind: datadogHost
+      - kind: datadogMonitor
+      - kind: datadogSlo
 configurations:
-  - name: myGitToken
+  - name: datadogBaseUrl
+    type: url
+  - name: datadogApiKey
     required: true
     type: string
     sensitive: true
-  - name: someApplicationUrl
-    type: url
+  - name: datadogApplicationKey
+    required: true
+    type: string
+    sensitive: true
