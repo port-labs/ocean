@@ -40,7 +40,7 @@ async def enrich_incidents_with_analytics_data(
 async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
     pager_duty_client = initialize_client()
-
+    
     query_params = typing.cast(
         PagerdutyIncidentResourceConfig, event.resource_config
     ).selector.api_query_params
@@ -50,10 +50,14 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=query_params.generate_request_params() if query_params else None,
     ):
         logger.info(f"Received batch with {len(incidents)} incidents")
-        enriched_incident_batch = await enrich_incidents_with_analytics_data(
-            pager_duty_client, incidents
-        )
-        yield enriched_incident_batch
+
+        if ocean.integration_config["enable_incident_analytics"]:
+            enriched_incident_batch = await enrich_incidents_with_analytics_data(
+                pager_duty_client, incidents
+            )
+            yield enriched_incident_batch
+        else:
+            yield incidents
 
 
 @ocean.on_resync(ObjectKind.SERVICES)
