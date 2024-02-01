@@ -88,6 +88,11 @@ class PagerdutyIncidentResourceConfig(ResourceConfig):
         api_query_params: PagerdutyIncidentAPIQueryParams | None = Field(
             alias="apiQueryParams"
         )
+        enable_incident_analytics: bool = Field(
+            default=False,
+            description="If set to true, will ingest incident analytics data to Port. Default value is false",
+            alias="enableIncidentAnalytics",
+        )
 
     kind: Literal["incidents"]
     selector: PagerdutySelector
