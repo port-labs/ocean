@@ -46,7 +46,6 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector
 
     query_params = selector.api_query_params
-    is_incident_analytics_enabled = selector.enable_incident_analytics
 
     async for incidents in pager_duty_client.paginate_request_to_pager_duty(
         data_key=ObjectKind.INCIDENTS,
@@ -54,7 +53,7 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(f"Received batch with {len(incidents)} incidents")
 
-        if is_incident_analytics_enabled:
+        if selector.enable_incident_analytics:
             enriched_incident_batch = await enrich_incidents_with_analytics_data(
                 pager_duty_client, incidents
             )
