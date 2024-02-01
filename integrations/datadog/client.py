@@ -4,11 +4,13 @@ from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from loguru import logger
 
+MAX_PAGE_SIZE = 50
+
 
 class CacheKeys:
-    HOSTS = "hosts"
-    MONITORS = "monitors"
-    SLOS = "slos"
+    HOSTS = "_cache_hosts"
+    MONITORS = "_cache_monitors"
+    SLOS = "_cache_slos"
 
 
 class DatadogClient:
@@ -27,12 +29,15 @@ class DatadogClient:
             "Content-Type": "application/json",
         }
 
-    async def fetch_resources(self, endpoint: str) -> dict[str, Any]:
+    async def fetch_resources(
+        self, endpoint: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
         logger.info(f"Fetching datadog resources from endpoint {endpoint}")
 
         response = await self.http_client.get(
             url=f"{self.api_url}/api/v1/{endpoint}",
             headers=await self.auth_headers,
+            params=params,
         )
         response.raise_for_status()
         return response.json()
@@ -43,14 +48,21 @@ class DatadogClient:
             yield cache
             return
 
-        result = await self.fetch_resources("hosts")
+        start = 0
+        count = MAX_PAGE_SIZE
 
-        if result.get("host_list"):
-            hosts = result["host_list"]
+        while True:
+            result = await self.fetch_resources(
+                "hosts", {"start": start, "count": count}
+            )
+
+            hosts = result.get("host_list")
+            if not hosts:
+                break
+
             event.attributes.setdefault(CacheKeys.HOSTS, []).extend(hosts)
             yield hosts
-
-        yield []
+            start += count
 
     async def get_monitors(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.MONITORS):
@@ -58,25 +70,56 @@ class DatadogClient:
             yield cache
             return
 
-        monitors = await self.fetch_resources("monitor")
+        page = 0
+        page_size = MAX_PAGE_SIZE
 
-        if monitors:
+        while True:
+            monitors = await self.fetch_resources(
+                "monitor", {"page": page, "page_size": page_size}
+            )
+
+            if not monitors:
+                break
+
             event.attributes.setdefault(CacheKeys.MONITORS, []).extend(monitors)
             yield monitors
-
-        yield []
+            page += 1
 
     async def get_slos(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Asynchronously fetches Datadog SLOs (Service Level Objectives).
+
+        This method retrieves SLOs from Datadog, handling pagination to ensure
+        all SLOs are fetched. If the SLOs are available in the cache, it retrieves
+        them from the cache.
+
+        Yields:
+            List[Dict[str, Any]]: A list of dictionaries representing Datadog SLOs.
+
+        Returns:
+            AsyncGenerator: An asynchronous generator yielding lists of SLOs.
+
+        Example:
+            async for slo_batch in your_instance.get_slos():
+                process_slo_batch(slo_batch)
+        """
         if cache := event.attributes.get(CacheKeys.SLOS):
             logger.info("Picking Datadog SLOs from cache")
             yield cache
             return
 
-        result = await self.fetch_resources("slo")
+        offset = 0
+        limit = MAX_PAGE_SIZE
 
-        if result.get("data"):
-            slos = result["data"]
+        while True:
+            result = await self.fetch_resources(
+                "slo", {"limit": limit, "offset": offset}
+            )
+
+            slos = result.get("data")
+            if not slos:
+                break
+
             event.attributes.setdefault(CacheKeys.SLOS, []).extend(slos)
             yield slos
-
-        yield []
+            offset += limit
