@@ -48,7 +48,7 @@ async def on_resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield entities
 
 
-@ocean.router.post("/events")
+@ocean.router.post("/webhook")
 async def on_problem_event(event: dict[str, str | Any]) -> dict[str, bool]:
     dynatrace_client = initialize_client()
     logger.info(f"Received problem event: {event}")
