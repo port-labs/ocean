@@ -24,4 +24,3 @@ configurations:
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in PagerDuty"
     required: false
     type: string
-
