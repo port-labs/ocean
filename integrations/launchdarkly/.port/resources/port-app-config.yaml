@@ -7,11 +7,11 @@ resources:
     port:
       entity:
         mappings:
-          identifier: ._id
+          identifier: .key
           title: .name
           blueprint: '"launchDarklyProject"'
           properties:
-            key: .key
+            id: ._id
             tags: .tags
             includeInSnippetByDefault: .includeInSnippetByDefault
             defaultClientSideAvailability: .defaultClientSideAvailability
@@ -27,19 +27,19 @@ resources:
           blueprint: '"launchDarklyFeatureFlag"'
           properties:
             kind: .kind
-            key: .key
             description: .description
             creationDate: '.creationDate |  (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
             includeInSnippet: .includeInSnippet
             clientSideAvailability: .clientSideAvailability
             temporary : .temporary
             tags: .tags
-            maintainer: .maintainer
+            maintainer: ._maintainer
             environments: .environments
+            variations: .variations
             customProperties: .customProperties
             archived: .archived
           relations:
-            project: .__projectId   
+            project: .__projectKey   
   - kind: auditlog
     selector:
       query: "true"
@@ -61,4 +61,28 @@ resources:
             accesses: .accesses
             target: .target
           relations:
-            relation: 'select(.kind | IN("flag")) | .accesses[] | .resource | split("/") | .[-1]'
+            project: 'select(.kind | IN("project")) | .accesses[] | .resource | split("/") | .[-1]'
+  - kind: environments
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"launchDarklyEnvironment"'
+          properties:
+            environmentId: ._id
+            apiKey: .apiKey
+            mobileKey: .mobileKey
+            color: .color
+            defaultTtl: .defaultTtl
+            secureMode: .secureMode
+            defaultTrackEvents: .defaultTrackEvents
+            requireComments: .requireComments
+            confirmChanges: .confirmChanges
+            tags: .tags
+            approvalSettings: .approvalSettings
+            critical: .critical
+          relations:
+            project: .__projectKey

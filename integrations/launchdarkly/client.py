@@ -1,13 +1,10 @@
 from port_ocean.utils import http_async_client
 import httpx
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional,Dict
 from loguru import logger
-from enum import StrEnum
 
 PAGE_SIZE = 20
 
-class ResourceKindsWithSpecialHandling(StrEnum):
-    FEATURE_FLAGS = "flags"
 
 class LaunchDarklyClient:
     def __init__(
@@ -26,7 +23,7 @@ class LaunchDarklyClient:
         }
 
     async def get_paginated_resource(
-        self, resource_kind, resource_path: str | None = None
+        self, resource_kind:str, resource_path: str | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = resource_kind if not resource_path else f"{resource_kind}/{resource_path}"
 
@@ -42,7 +39,6 @@ class LaunchDarklyClient:
 
                 if "_links" in response and "next" in response["_links"]:
                     url = response["_links"]["next"]["href"]
-                    url = url.replace("/api/v2/","")
                 else:
                     total_count = response.get("totalCount")
                     logger.info(
@@ -70,6 +66,7 @@ class LaunchDarklyClient:
     ) -> dict[str, Any]:
         logger.info(f"Requesting Launchdarkly data for endpoint: {endpoint}")
         try:
+            endpoint = endpoint.replace("/api/v2/","")
             url = f"{self.api_url}/{endpoint}"
             logger.info(
                 f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
@@ -96,7 +93,7 @@ class LaunchDarklyClient:
             raise
 
 
-    async def get_paginated_feature_flags(self,kind:str):
+    async def get_paginated_feature_flags(self,kind:str) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for items in self.get_paginated_resource(
             resource_kind="projects"
         ):
@@ -105,10 +102,44 @@ class LaunchDarklyClient:
                     kind, resource_path=project["key"]
                 ):
                     for flag in flags:
-                        flag.update({"__projectId":project["_id"]})
+                        flag.update({"__projectKey":project["key"]})
                     print("Feature Flags", flags)
                     yield flags
+        
+    async def get_single_feature_flag(self,data:dict)->dict[str, Any]:
+        endpoint = data["_links"]["canonical"]["href"]
+        response = await self.send_api_request(endpoint)
+        print("Feature Flag Response",response)
+        project_key = endpoint.split("/api/v2/flags/")[1].split("/")[0]
+        response.update({"__projectKey":project_key})
+        return response
+    
+    async def get_single_environment(self,data:dict)-> dict[str, Any]:
+        endpoint = data["_links"]["canonical"]["href"]
+        response = await self.send_api_request(endpoint)
+        project_key = endpoint.split("/api/v2/projects/")[1].split("/")[0]
+        response.update({"__projectKey":project_key})
+        return response
 
+    async def get_single_resource(self,data:dict)-> Dict[str, Any]:
+        endpoint = data["_links"]["canonical"]
+        response = await self.send_api_request(endpoint)
+        return response
+
+    async def get_paginated_environments(self,kind:str)-> AsyncGenerator[list[dict[str, Any]], None] :
+
+        async for projects in self.get_paginated_resource(
+            resource_kind="projects"
+        ):
+            for project in projects:
+                async for environments in self.get_paginated_resource(
+                    "projects", resource_path=f'{project["key"]}/{kind}'
+                ):
+                    for environment in environments:
+                        environment.update({"__projectKey":project["key"]})
+                    yield environments
+                    
+                    
 
     async def create_launchdarkly_webhook(self, app_host: str) -> None:
         webhook_target_url = f"{app_host}/integration/webhook"
@@ -116,12 +147,11 @@ class LaunchDarklyClient:
 
         existing_configs = notifications_response.get("items")
 
-        print("Existing Configs", existing_configs)
         webhook_exists = any(
             config["url"] == webhook_target_url for config in existing_configs
         )
         if webhook_exists:
-            logger.info(f"Webhook already exists")
+            logger.info("Webhook already exists")
         else:
             webhook_body = {
                 "url": webhook_target_url,
@@ -132,3 +162,4 @@ class LaunchDarklyClient:
                 endpoint="webhooks", method="POST", json_data=webhook_body
             )
             logger.info("Webhook created")
+            

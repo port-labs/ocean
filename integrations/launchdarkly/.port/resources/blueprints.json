@@ -6,10 +6,10 @@
     "icon": "Launchdarkly",
     "schema": {
       "properties": {
-        "key": {
+        "id": {
           "type": "string",
-          "title": "Project Key",
-          "description": "The unique key identifier for the LaunchDarkly project."
+          "title": "Project ID",
+          "description": "The unique identifier for the LaunchDarkly project."
         },
         "tags": {
           "type": "array",
@@ -52,11 +52,6 @@
           "title": "Flag Kind",
           "description": "The type of the feature flag (e.g., boolean)."
         },
-        "key": {
-          "type": "string",
-          "title": "Flag Key",
-          "description": "The unique key identifier for the feature flag."
-        },
         "description": {
           "type": "string",
           "title": "Description",
@@ -98,6 +93,11 @@
           "title": "Environments",
           "description": "Settings and information for each environment the flag is used in."
         },
+        "variations": {
+          "type": "array",
+          "title": "Variations",
+          "description": "An array of possible variations for the flag"
+        },
         "customProperties": {
           "type": "object",
           "title": "Custom Properties",
@@ -136,7 +136,7 @@
         },
         "date": {
           "type": "string",
-          "format":"date-time",
+          "format": "date-time",
           "title": "Event Date",
           "description": "The timestamp of when the event occurred."
         },
@@ -150,12 +150,12 @@
           "title": "Event Name",
           "description": "The name of the event or the entity affected by this event."
         },
-        "description":{
+        "description": {
           "type": "string",
-          "title":"Description",
-          "description":"a detailed description of the log"
+          "title": "Description",
+          "description": "a detailed description of the log"
         },
-        "shortDescription":{
+        "shortDescription": {
           "type": "string",
           "title": "Short Description",
           "description": "a short description of the log"
@@ -183,9 +183,9 @@
       }
     },
     "relations": {
-      "relation": {
-        "title": "Relation",
-        "target": "launchDarklyFeatureFlag",
+      "project": {
+        "title": "Project",
+        "target": "launchDarklyProject",
         "required": false,
         "many": true
       }
@@ -193,5 +193,91 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {}
-  } 
+  },
+  {
+    "identifier": "launchDarklyEnvironment",
+    "description": "This blueprint represents an environment in LaunchDarkly",
+    "title": "LaunchDarkly Environment",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "environmentId": {
+          "type": "string",
+          "title": "Environment ID",
+          "description": "The unique identifier for the environment."
+        },
+        "name": {
+          "type": "string",
+          "title": "Environment Name",
+          "description": "The name of the environment."
+        },
+        "apiKey": {
+          "type": "string",
+          "title": "API Key",
+          "description": "The SDK key for accessing the LaunchDarkly SDK within this environment."
+        },
+        "mobileKey": {
+          "type": "string",
+          "title": "Mobile Key",
+          "description": "The mobile key for accessing the LaunchDarkly SDK specifically for mobile applications within this environment."
+        },
+        "color": {
+          "type": "string",
+          "title": "Color",
+          "description": "A color associated with the environment, typically used for identification and UI purposes."
+        },
+        "defaultTtl": {
+          "type": "number",
+          "title": "Default TTL",
+          "description": "The default time-to-live (in minutes) for feature flag settings in this environment."
+        },
+        "secureMode": {
+          "type": "boolean",
+          "title": "Secure Mode",
+          "description": "Indicates whether Secure Mode is enabled for the environment, enhancing security by verifying user tokens."
+        },
+        "defaultTrackEvents": {
+          "type": "boolean",
+          "title": "Default Track Events",
+          "description": "Indicates whether event tracking is enabled by default for all flags in this environment."
+        },
+        "requireComments": {
+          "type": "boolean",
+          "title": "Require Comments",
+          "description": "Indicates whether comments are required for changes made in this environment."
+        },
+        "confirmChanges": {
+          "type": "boolean",
+          "title": "Confirm Changes",
+          "description": "Indicates whether changes need to be confirmed before being applied in this environment."
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "A list of tags associated with the environment for organizational purposes."
+        },
+        "approvalSettings": {
+          "type": "object",
+          "title": "Approval Settings",
+          "description": "Settings related to the approval process for changes made in this environment."
+        },
+        "critical": {
+          "type": "boolean",
+          "title": "Critical Environment",
+          "description": "Indicates whether this environment is considered critical, which may affect change management and notifications."
+        }
+      }
+    },
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "launchDarklyProject",
+        "required": true,
+        "many": false
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  }
 ]
