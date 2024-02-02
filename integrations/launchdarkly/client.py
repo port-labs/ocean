@@ -1,9 +1,20 @@
 from port_ocean.utils import http_async_client
 import httpx
-from typing import Any, AsyncGenerator, Optional,Dict
+from typing import Any, AsyncGenerator, Optional, Dict
 from loguru import logger
+from enum import StrEnum
 
 PAGE_SIZE = 20
+
+
+class ResourceKindsWithSpecialHandling(StrEnum):
+    FEATURE_FLAG = "flag"
+    ENVIRONMENT = "environment"
+
+
+class ObjectKind(StrEnum):
+    PROJECT = "project"
+    AUDITLOG = "auditlog"
 
 
 class LaunchDarklyClient:
@@ -23,9 +34,11 @@ class LaunchDarklyClient:
         }
 
     async def get_paginated_resource(
-        self, resource_kind:str, resource_path: str | None = None
+        self, kind: str, resource_path: str | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        url = resource_kind if not resource_path else f"{resource_kind}/{resource_path}"
+        kind = kind + "s"
+        url = kind if not resource_path else f"{kind}/{resource_path}"
+        url = url.replace("auditlogs", "auditlog")
 
         params = {"limit": PAGE_SIZE}
 
@@ -41,9 +54,7 @@ class LaunchDarklyClient:
                     url = response["_links"]["next"]["href"]
                 else:
                     total_count = response.get("totalCount")
-                    logger.info(
-                        f"Fetched {total_count} {resource_kind} from Launchdarkly"
-                    )
+                    logger.info(f"Fetched {total_count} {kind} from Launchdarkly")
                     break
 
             except httpx.HTTPStatusError as e:
@@ -53,7 +64,7 @@ class LaunchDarklyClient:
                 raise
             except httpx.HTTPError as e:
                 logger.error(
-                    f"HTTP error occurred while fetching {resource_kind} from LaunchDarkly: {e}"
+                    f"HTTP error occurred while fetching {kind} from LaunchDarkly: {e}"
                 )
                 raise
 
@@ -66,7 +77,7 @@ class LaunchDarklyClient:
     ) -> dict[str, Any]:
         logger.info(f"Requesting Launchdarkly data for endpoint: {endpoint}")
         try:
-            endpoint = endpoint.replace("/api/v2/","")
+            endpoint = endpoint.replace("/api/v2/", "")
             url = f"{self.api_url}/{endpoint}"
             logger.info(
                 f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
@@ -92,54 +103,48 @@ class LaunchDarklyClient:
             logger.error(f"HTTP error on {endpoint}: {str(e)}")
             raise
 
-
-    async def get_paginated_feature_flags(self,kind:str) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for items in self.get_paginated_resource(
-            resource_kind="projects"
-        ):
+    async def get_paginated_feature_flags(
+        self, kind: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for items in self.get_paginated_resource(kind=ObjectKind.PROJECT):
             for project in items:
                 async for flags in self.get_paginated_resource(
                     kind, resource_path=project["key"]
                 ):
                     for flag in flags:
-                        flag.update({"__projectKey":project["key"]})
-                    print("Feature Flags", flags)
+                        flag.update({"__projectKey": project["key"]})
                     yield flags
-        
-    async def get_single_feature_flag(self,data:dict)->dict[str, Any]:
+
+    async def get_single_feature_flag(self, data: dict) -> dict[str, Any]:
         endpoint = data["_links"]["canonical"]["href"]
         response = await self.send_api_request(endpoint)
-        print("Feature Flag Response",response)
         project_key = endpoint.split("/api/v2/flags/")[1].split("/")[0]
-        response.update({"__projectKey":project_key})
+        response.update({"__projectKey": project_key})
         return response
-    
-    async def get_single_environment(self,data:dict)-> dict[str, Any]:
+
+    async def get_single_environment(self, data: dict) -> dict[str, Any]:
         endpoint = data["_links"]["canonical"]["href"]
         response = await self.send_api_request(endpoint)
         project_key = endpoint.split("/api/v2/projects/")[1].split("/")[0]
-        response.update({"__projectKey":project_key})
+        response.update({"__projectKey": project_key})
         return response
 
-    async def get_single_resource(self,data:dict)-> Dict[str, Any]:
+    async def get_single_resource(self, data: dict) -> Dict[str, Any]:
         endpoint = data["_links"]["canonical"]
         response = await self.send_api_request(endpoint)
         return response
 
-    async def get_paginated_environments(self,kind:str)-> AsyncGenerator[list[dict[str, Any]], None] :
-
-        async for projects in self.get_paginated_resource(
-            resource_kind="projects"
-        ):
+    async def get_paginated_environments(
+        self, kind: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.get_paginated_resource(kind=ObjectKind.PROJECT):
             for project in projects:
                 async for environments in self.get_paginated_resource(
-                    "projects", resource_path=f'{project["key"]}/{kind}'
+                    ObjectKind.PROJECT, resource_path=f'{project["key"]}/{kind}s'
                 ):
                     for environment in environments:
-                        environment.update({"__projectKey":project["key"]})
+                        environment.update({"__projectKey": project["key"]})
                     yield environments
-                    
-                    
 
     async def create_launchdarkly_webhook(self, app_host: str) -> None:
         webhook_target_url = f"{app_host}/integration/webhook"
@@ -162,4 +167,3 @@ class LaunchDarklyClient:
                 endpoint="webhooks", method="POST", json_data=webhook_body
             )
             logger.info("Webhook created")
-            

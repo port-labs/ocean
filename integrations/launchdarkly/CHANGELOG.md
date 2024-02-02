@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Implemented Launchdarkly integration (0.1.0)
+- Implemented Launchdarkly integration (PORT-6238)

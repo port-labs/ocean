@@ -1,7 +1,7 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
-  - kind: projects
+  - kind: project
     selector:
       query: "true"
     port:
@@ -16,7 +16,7 @@ resources:
             includeInSnippetByDefault: .includeInSnippetByDefault
             defaultClientSideAvailability: .defaultClientSideAvailability
             url: ("https://app.launchdarkly.com" + ._links.self.href | tostring)
-  - kind: flags
+  - kind: flag
     selector:
       query: "true"
     port:
@@ -62,7 +62,7 @@ resources:
             target: .target
           relations:
             project: 'select(.kind | IN("project")) | .accesses[] | .resource | split("/") | .[-1]'
-  - kind: environments
+  - kind: environment
     selector:
       query: "true"
     port:
