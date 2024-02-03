@@ -53,7 +53,7 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(f"Received batch with {len(incidents)} incidents")
 
-        if selector.enable_incident_analytics:
+        if selector.incident_analytics:
             enriched_incident_batch = await enrich_incidents_with_analytics_data(
                 pager_duty_client, incidents
             )
