@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Optional, AsyncGenerator, cast
 import base64
 import httpx
@@ -22,11 +23,13 @@ class SonarQubeClient:
         api_key: str,
         organization_id: str | None,
         app_host: str | None,
+        is_onpremise: bool = False,
     ):
         self.base_url = base_url
         self.api_key = api_key
         self.organization_id = organization_id
         self.app_host = app_host
+        self.is_onpremise = is_onpremise
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
 
@@ -37,6 +40,9 @@ class SonarQubeClient:
             "vulnerabilities",
             "duplicated_files",
             "security_hotspots",
+            "new_violations",
+            "new_coverage",
+            "new_duplicated_lines_density",
         ]
 
     @property
@@ -204,7 +210,11 @@ class SonarQubeClient:
         branches = await self.get_branches(project_key)
         main_branch = [branch for branch in branches if branch.get("isMain")]
         project["__branch"] = main_branch[0]
-        project["__link"] = f"{self.base_url}/project/overview?id={project_key}"
+
+        if self.is_onpremise:
+            project["__link"] = f"{self.base_url}/dashboard?id={project_key}"
+        else:
+            project["__link"] = f"{self.base_url}/project/overview?id={project_key}"
 
         return project
 
@@ -261,7 +271,9 @@ class SonarQubeClient:
 
         return component_issues
 
-    async def get_all_analyses(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_all_sonarcloud_analyses(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve analysis data across all components from SonarQube API using asyn generator.
 
@@ -341,6 +353,65 @@ class SonarQubeClient:
             if analysis_object.get("analysisId") == analysis_identifier:
                 return analysis_object
         return {}  ## when no data is found
+
+    async def get_pull_requests_for_project(
+        self, project_key: str
+    ) -> list[dict[str, Any]]:
+        logger.info(f"Fetching all pull requests in : {project_key}")
+        response = await self.send_api_request(
+            endpoint="project_pull_requests/list",
+            query_params={"project": project_key},
+        )
+        return response.get("pullRequests", [])
+
+    async def get_pull_request_measures(
+        self, project_key: str, pull_request_key: str
+    ) -> list[dict[str, Any]]:
+        logger.info(f"Fetching analysis for pull request: {pull_request_key}")
+        response = await self.send_api_request(
+            endpoint=Endpoints.MEASURES,
+            query_params={
+                "component": project_key,
+                "metricKeys": ",".join(self.metrics),
+                "pullRequest": pull_request_key,
+            },
+        )
+        return response.get("component", {}).get("measures", [])
+
+    async def enrich_pull_request_with_measures(
+        self, project_key: str, pull_request: dict[str, Any]
+    ) -> dict[str, Any]:
+        pull_request_key = pull_request["key"]
+        pr_measures = await self.get_pull_request_measures(
+            project_key, pull_request_key
+        )
+        pull_request["__measures"] = pr_measures
+        pull_request["__project"] = project_key
+        return pull_request
+
+    async def get_measures_for_all_pull_requests(
+        self, project_key: str
+    ) -> list[dict[str, Any]]:
+        pull_requests = await self.get_pull_requests_for_project(project_key)
+
+        analysis_for_all_pull_requests = await asyncio.gather(
+            *[
+                self.enrich_pull_request_with_measures(project_key, pr)
+                for pr in pull_requests
+            ]
+        )
+
+        return analysis_for_all_pull_requests
+
+    async def get_all_sonarqube_analyses(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        components = await self.get_components()
+        for component in components:
+            analysis_data = await self.get_measures_for_all_pull_requests(
+                project_key=component["key"]
+            )
+            yield analysis_data
 
     def sanity_check(self) -> None:
         try:
