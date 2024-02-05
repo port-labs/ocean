@@ -1,6 +1,6 @@
 type: datadog
 description: Datadog integration for Port Ocean
-icon: Cookiecutter # Should be one of the available icons in Port
+icon: Datadog
 features:
   - type: exporter
     section: APM & Alerting
@@ -8,6 +8,7 @@ features:
       - kind: datadogHost
       - kind: datadogMonitor
       - kind: datadogSlo
+      - kind: datadogAlert
 configurations:
   - name: datadogBaseUrl
     type: url
@@ -18,4 +19,11 @@ configurations:
   - name: datadogApplicationKey
     required: true
     type: string
+    sensitive: true
+  - name: appHost
+    type: url
+    required: false
+  - name: ddWebhookToken
+    type: string
+    required: false
     sensitive: true
