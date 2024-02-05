@@ -357,7 +357,7 @@ class SonarQubeClient:
     async def get_pull_requests_for_project(
         self, project_key: str
     ) -> list[dict[str, Any]]:
-        logger.info(f"Fetching all pull requests in : {project_key}")
+        logger.info(f"Fetching all pull requests in project : {project_key}")
         response = await self.send_api_request(
             endpoint="project_pull_requests/list",
             query_params={"project": project_key},
@@ -367,7 +367,7 @@ class SonarQubeClient:
     async def get_pull_request_measures(
         self, project_key: str, pull_request_key: str
     ) -> list[dict[str, Any]]:
-        logger.info(f"Fetching analysis for pull request: {pull_request_key}")
+        logger.info(f"Fetching measures for pull request: {pull_request_key}")
         response = await self.send_api_request(
             endpoint=Endpoints.MEASURES,
             query_params={

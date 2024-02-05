@@ -9,10 +9,8 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: my-onprem-sonarqube-integration
+  identifier: my-sonarqube-integration
   # The type of the integration.
   type: "sonarqube"
   config:
-    sonarApiToken: "{{ from env PORT_SONAR_API_TOKEN }}"
-    sonarUrl: "{{ from env PORT_SONAR_URL }}"
-    sonarIsOnPremise: "{{ from env PORT_SONAR_IS_ON_PREMISE }}"
+    sonarApiToken: "{{ from env SONAR_API_TOKEN }}"
