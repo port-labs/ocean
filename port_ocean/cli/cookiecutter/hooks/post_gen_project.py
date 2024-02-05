@@ -1,11 +1,13 @@
 import os
 
 
-def delete_docker_files():
-    if "{{ cookiecutter.remove_docker_files }}" == "True":
+def handle_private_integration_flags():
+    if "{{ cookiecutter.is_private_integration }}" == "True":
         os.remove("Dockerfile")
         os.remove(".dockerignore")
+    if "{{ cookiecutter.is_private_integration }}" == "False":
+        os.remove("sonar-project.properties")
 
 
 if __name__ == "__main__":
-    delete_docker_files()
+    handle_private_integration_flags()

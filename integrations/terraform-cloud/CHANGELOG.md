@@ -6,7 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
- 
+
+# Port_Ocean 0.1.9 (2024-01-25)
+
+### Bug Fixes
+
+- Fixed a bug that prevented the creation of workspace webhooks especially when the notification configuration is set to enabled (PORT-6201)
+
+
+# Port_Ocean 0.1.8 (2024-01-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.4.17 (#1)
+
+
 # Port_Ocean 0.1.7 (2024-01-11)
 
 ### Features

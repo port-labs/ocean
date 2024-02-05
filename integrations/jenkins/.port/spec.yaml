@@ -1,12 +1,14 @@
 type: jenkins
 description: Jenkins integration for Port Ocean
 icon: Jenkins
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/ci-cd/jenkins
 features:
   - type: exporter
     section: CICD
     resources:
       - kind: job
       - kind: build
+      - kind: user
 configurations:
   - name: jenkinsHost
     description: "The host of the Jenkins server"

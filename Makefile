@@ -95,7 +95,7 @@ run: lint
 	$(ACTIVATE) && poetry run ocean sail ./integrations/example
 
 new:
-	$(ACTIVATE) && poetry run ocean new ./integrations --remove-docker-files
+	$(ACTIVATE) && poetry run ocean new ./integrations --public
 
 test: lint
 	$(ACTIVATE) && pytest

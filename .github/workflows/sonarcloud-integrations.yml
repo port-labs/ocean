@@ -5,13 +5,8 @@ on:
       - main
     paths:
       - integrations/**
-  pull_request:
-    types:
-      - ready_for_review
-      - opened
-      - synchronize
-    paths:
-      - integrations/**
+  workflow_dispatch:
+
 jobs:
   pre-run:
     outputs:
