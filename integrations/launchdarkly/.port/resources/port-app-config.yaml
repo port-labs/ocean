@@ -31,7 +31,7 @@ resources:
             creationDate: '.creationDate |  (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
             includeInSnippet: .includeInSnippet
             clientSideAvailability: .clientSideAvailability
-            temporary : .temporary
+            temporary: .temporary
             tags: .tags
             maintainer: ._maintainer
             environments: .environments
@@ -39,7 +39,7 @@ resources:
             customProperties: .customProperties
             archived: .archived
           relations:
-            project: .__projectKey   
+            project: .__projectKey
   - kind: auditlog
     selector:
       query: "true"

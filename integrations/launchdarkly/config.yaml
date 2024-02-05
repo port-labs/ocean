@@ -5,9 +5,9 @@ port:
 eventListener:
   type: POLLING
 integration:
-identifier:  "my-launchdarkly-integration"
-  type: "launchdarkly"
+  identifier: 'my-launchdarkly-integration'
+  type: 'launchdarkly'
   config:
-    launchdarklyToken: "{{ from env LAUNCHDARKLY_TOKEN }}"
-    launchdarklyHost: "{{ from env LAUNCHDARKLY_HOST }}"
-    appHost: "{{ from env LAUNCHDARKLY_APP_HOST }}"
+    launchdarklyToken: '{{ from env LAUNCHDARKLY_TOKEN }}'
+    launchdarklyHost: '{{ from env LAUNCHDARKLY_HOST }}'
+    appHost: '{{ from env LAUNCHDARKLY_APP_HOST }}'
