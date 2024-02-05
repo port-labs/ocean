@@ -54,7 +54,6 @@ async def on_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/webhook")
 async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
-    logger.info(f"Received Sonarqube webhook event {webhook_data}")
     logger.info(
         f"Processing Sonarqube webhook for event type: {webhook_data.get('project', {}).get('key')}"
     )
