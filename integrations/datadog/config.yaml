@@ -2,8 +2,8 @@
 # Please copy this file to config.yaml file in the integration folder and edit it to your needs.
 initializePortResources: true
 port:
-  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded via environment variable: PORT_CLIENT_ID
-  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded via environment variable: PORT_CLIENT_SECRET
+  clientId: "{{ from env PORT_CLIENT_ID }}"  # Can be loaded via environment variable: PORT_CLIENT_ID
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}"  # Can be loaded via environment variable: PORT_CLIENT_SECRET
 # The event listener to use for the integration service.
 eventListener:
   type: POLLING
@@ -16,3 +16,5 @@ integration:
     datadogBaseUrl: "{{ from env DD_BASE_URL }}"
     datadogApiKey: "{{ from env DD_API_KEY }}"
     datadogApplicationKey: "{{ from env DD_APPLICATION_KEY }}"
+    appHost: '{{ from env APP_HOST }}'
+    ddWebhookToken: '{{ from env DD_WEBHOOK_TOKEN }}'

@@ -54,3 +54,23 @@ resources:
             updatedAt: .modified_at | todate
           relations:
             monitors: .monitor_ids | map(tostring)
+  - kind: alert
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogAlert"'
+          identifier: .id | tostring
+          title: .title
+          properties:
+            url: .event_url
+            message: .message
+            eventType: .event_type
+            priority: .priority
+            creator: .creator
+            alertMetric: .alert_metric
+            alertType: .alert_type
+            tags: .tags | split(", ")
+          relations:
+            monitor: .alert_id | tostring

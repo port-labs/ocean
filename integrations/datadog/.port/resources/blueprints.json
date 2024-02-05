@@ -54,7 +54,17 @@
         },
         "overallState": {
           "type": "string",
-          "title": "Overall state"
+          "title": "Overall state",
+          "enum": ["Alert", "Ignored", "No Data", "OK", "Skipped", "Unknown", "Warn"],
+          "enumColors": {
+            "Alert": "red",
+            "Ignored": "darkGray",
+            "No Data": "lightGray",
+            "OK": "green",
+            "Skipped": "yellow",
+            "Unknown": "purple",
+            "Warn": "orange"
+          }
         },
         "priority": {
           "type": "string",
@@ -138,6 +148,64 @@
         "description": "The monitors tracking this SLO",
         "required": false,
         "many": true
+      }
+    }
+  },
+  {
+    "identifier": "datadogAlert",
+    "description": "This blueprint represents a Datadog alert/event",
+    "title": "Datadog Alert",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "url",
+          "title": "Event URL"
+        },
+        "message": {
+          "type": "string",
+          "title": "Details"
+        },
+        "eventType": {
+          "type": "string",
+          "title": "Event Type"
+        },
+        "priority": {
+          "type": "string",
+          "title": "Metric Priority"
+        },
+        "creator": {
+          "type": "string",
+          "title": "Creator"
+        },
+        "alertMetric": {
+          "type": "string",
+          "title": "Alert Metric"
+        },
+        "alertType": {
+          "type": "string",
+          "title": "Alert Type",
+          "enum": ["error", "warning", "success", "info"]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "monitor": {
+        "title": "Monitor",
+        "target": "datadogMonitor",
+        "required": false,
+        "many": false
       }
     }
   }

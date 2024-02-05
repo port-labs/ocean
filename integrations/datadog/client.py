@@ -1,8 +1,11 @@
-from typing import Any, AsyncGenerator
+import json
+from typing import Any, AsyncGenerator, Optional
+from urllib.parse import urlparse, urlunparse
+import httpx
 
+from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
-from loguru import logger
 
 MAX_PAGE_SIZE = 50
 
@@ -11,6 +14,41 @@ class CacheKeys:
     HOSTS = "_cache_hosts"
     MONITORS = "_cache_monitors"
     SLOS = "_cache_slos"
+
+
+def insert_credentials(url: str, username: str, password: str) -> str:
+    """
+    Inserts username and password into a given URL.
+
+    Args:
+        url (str): The original URL.
+        username (str): The username to insert.
+        password (str): The password to insert.
+
+    Returns:
+        str: The modified URL with inserted credentials.
+
+    Example:
+        new_url = insert_credentials("https://my.service.example.com", "my_username", "my_password")
+    """
+    parsed_url = urlparse(url)
+
+    # Insert credentials into the netloc part of the URL
+    netloc_with_credentials = f"{username}:{password}@{parsed_url.netloc}"
+
+    # Create a new URL with inserted credentials
+    modified_url = urlunparse(
+        (
+            parsed_url.scheme,
+            netloc_with_credentials,
+            parsed_url.path,
+            parsed_url.params,
+            parsed_url.query,
+            parsed_url.fragment,
+        )
+    )
+
+    return modified_url
 
 
 class DatadogClient:
@@ -29,15 +67,21 @@ class DatadogClient:
             "Content-Type": "application/json",
         }
 
-    async def fetch_resources(
-        self, endpoint: str, params: dict[str, Any]
-    ) -> dict[str, Any]:
-        logger.info(f"Fetching datadog resources from endpoint {endpoint}")
+    async def _send_api_request(
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+        method: str = "GET",
+    ) -> Any:
+        logger.info(f"Making datadog API {method} request to endpoint {url}")
 
-        response = await self.http_client.get(
-            url=f"{self.api_url}/api/v1/{endpoint}",
+        response = await self.http_client.request(
+            url=url,
+            method=method,
             headers=await self.auth_headers,
             params=params,
+            json=json_data,
         )
         response.raise_for_status()
         return response.json()
@@ -52,8 +96,9 @@ class DatadogClient:
         count = MAX_PAGE_SIZE
 
         while True:
-            result = await self.fetch_resources(
-                "hosts", {"start": start, "count": count}
+            url = f"{self.api_url}/api/v1/hosts"
+            result = await self._send_api_request(
+                url, params={"start": start, "count": count}
             )
 
             hosts = result.get("host_list")
@@ -74,8 +119,9 @@ class DatadogClient:
         page_size = MAX_PAGE_SIZE
 
         while True:
-            monitors = await self.fetch_resources(
-                "monitor", {"page": page, "page_size": page_size}
+            url = f"{self.api_url}/api/v1/monitor"
+            monitors = await self._send_api_request(
+                url, params={"page": page, "page_size": page_size}
             )
 
             if not monitors:
@@ -112,8 +158,9 @@ class DatadogClient:
         limit = MAX_PAGE_SIZE
 
         while True:
-            result = await self.fetch_resources(
-                "slo", {"limit": limit, "offset": offset}
+            url = f"{self.api_url}/api/v1/slo"
+            result = await self._send_api_request(
+                url, params={"limit": limit, "offset": offset}
             )
 
             slos = result.get("data")
@@ -123,3 +170,71 @@ class DatadogClient:
             event.attributes.setdefault(CacheKeys.SLOS, []).extend(slos)
             yield slos
             offset += limit
+
+    async def get_single_monitor(self, monitor_id: str) -> dict[str, Any] | None:
+        if not monitor_id:
+            return None
+        url = f"{self.api_url}/api/v1/monitor/{monitor_id}"
+        return await self._send_api_request(url)
+
+    async def create_webhooks_if_not_exists(self, app_host: Any, token: Any) -> None:
+        dd_webhook_url = (
+            f"{self.api_url}/api/v1/integration/webhooks/configuration/webhooks"
+        )
+
+        try:
+            webhook = await self._send_api_request(
+                url=f"{dd_webhook_url}/PORT", method="GET"
+            )
+            if webhook:
+                logger.info(f"Webhook already exists: {webhook}")
+                return
+        except httpx.HTTPStatusError as err:
+            if err.response.status_code == 404:
+                # Webhook does not exist, continue with creation
+                pass
+            elif err.response.status_code == 500:
+                # Webhooks are not yet enabled in Datadog
+                logger.error(err.response.text)
+            else:
+                raise
+
+        app_host_webhook_url = f"{app_host}/integration/webhook"
+        modified_url = insert_credentials(app_host_webhook_url, "port", token)
+        logger.info(modified_url)
+
+        body = {
+            "name": "PORT",
+            "url": modified_url,
+            "encode_as": "json",
+            "payload": json.dumps(
+                {
+                    "id": "$ID",
+                    "message": "$TEXT_ONLY_MSG",
+                    "priority": "$PRIORITY",
+                    "last_updated": "$LAST_UPDATED",
+                    "event_type": "$EVENT_TYPE",
+                    "event_url": "$LINK",
+                    "service": "$HOSTNAME",
+                    "creator": "$USER",
+                    "title": "$EVENT_TITLE",
+                    "date": "$DATE",
+                    "org_id": "$ORG_ID",
+                    "org_name": "$ORG_NAME",
+                    "alert_id": "$ALERT_ID",
+                    "alert_metric": "$ALERT_METRIC",
+                    "alert_status": "$ALERT_STATUS",
+                    "alert_title": "$ALERT_TITLE",
+                    "alert_type": "$ALERT_TYPE",
+                    "tags": "$TAGS",
+                    "body": "$EVENT_MSG",
+                }
+            ),
+        }
+
+        logger.info("Creating webhook subscription")
+        result = await self._send_api_request(
+            url=dd_webhook_url, method="POST", json_data=body
+        )
+
+        logger.info(f"Response: {result}")
