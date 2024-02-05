@@ -80,10 +80,6 @@
           "title": "Updated At",
           "type": "string",
           "format": "date-time"
-        },
-        "analytics": {
-          "title": "Analytics",
-          "type": "object"
         }
       },
       "required": []
