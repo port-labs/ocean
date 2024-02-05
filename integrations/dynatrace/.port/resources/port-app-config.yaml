@@ -1,6 +1,21 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: entity
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .entityId
+          title: .displayName
+          blueprint: '"dynatraceEntity"'
+          properties:
+            firstSeen: ".firstSeenTms / 1000 | todate"
+            lastSeen: ".lastSeenTms / 1000 | todate"
+            type: .type
+            tags: .tags[].stringRepresentation
+
   - kind: problem
     selector:
       query: "true"
@@ -24,24 +39,6 @@ resources:
             linkedProblemInfo: .linkedProblemInfo.problemId
             rootCauseEntity: .rootCauseEntity.name
 
-  - kind: entity
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .entityId
-          title: .displayName
-          blueprint: '"dynatraceEntity"'
-          properties:
-            firstSeen: ".firstSeenTms / 1000 | todate"
-            lastSeen: ".lastSeenTms / 1000 | todate"
-            type: .type
-            tags: .tags[].stringRepresentation
-            managementZones: .managementZones[].name
-            properties: .properties
-            fromRelationships: .fromRelationships
-            toRelationships: .toRelationships
   - kind: slo
     selector:
       query: "true"
@@ -55,18 +52,11 @@ resources:
             status: .status
             target: .target
             enabled: .enabled
-            burnRateMetricKey: .burnRateMetricKey
             warning: .warning
             error: .error
             errorBudget: .errorBudget
-            errorBudgetBurnRate: .errorBudgetBurnRate.burnRateValue
-            errorBudgetMetricKey: .errorBudgetMetricKey
             evaluatedPercentage: .evaluatedPercentage
             evaluationType: .evaluationType
             filter: .filter
-            metricExpression: .metricExpression
-            metricKey: .metricKey
-            normalizedErrorBudgetMetricKey: .normalizedErrorBudgetMetricKey
             relatedOpenProblems: .relatedOpenProblems
-            relatedTotalProblems: .relatedTotalProblems
             timeframe: .timeframe

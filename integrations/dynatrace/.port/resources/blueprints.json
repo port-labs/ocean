@@ -1,5 +1,43 @@
 [
   {
+    "identifier": "dynatraceEntity",
+    "description": "This blueprint represents a Dynatrace Entity",
+    "title": "Dynatrace Entity",
+    "icon": "Dynatrace",
+    "schema": {
+      "properties": {
+        "firstSeen": {
+          "type": "string",
+          "title": "First Seen",
+          "description": "The timestamp at which the entity was first seen, in UTC milliseconds.",
+          "format": "date-time"
+        },
+        "lastSeen": {
+          "type": "string",
+          "title": "Last Seen",
+          "description": "The timestamp at which the entity was last seen, in UTC milliseconds.",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "The type of the entity."
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "A list of tags of the entity.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "dynatraceProblem",
     "description": "This blueprint represents a Dynatrace Problem",
     "title": "Dynatrace Problem",
@@ -9,22 +47,34 @@
         "entityTags": {
           "type": "array",
           "title": "Entity Tags",
-          "description": "A list of all entity tags of the problem."
+          "description": "A list of all entity tags of the problem.",
+          "items": {
+            "type": "string"
+          }
         },
         "evidenceDetails": {
           "type": "array",
           "title": "Evidence Details",
-          "description": "A list of all evidence details of the problem."
+          "description": "A list of all evidence details of the problem.",
+          "items": {
+            "type": "string"
+          }
         },
         "managementZones": {
           "type": "array",
           "title": "Management Zones",
-          "description": "A list of all management zones that the problem belongs to."
+          "description": "A list of all management zones that the problem belongs to.",
+          "items": {
+            "type": "string"
+          }
         },
         "problemFilters": {
           "type": "array",
           "title": "Problem Filters",
-          "description": "A list of alerting profiles that match the problem."
+          "description": "A list of alerting profiles that match the problem.",
+          "items": {
+            "type": "string"
+          }
         },
         "severityLevel": {
           "type": "string",
@@ -74,6 +124,8 @@
       },
       "required": []
     },
+    "mirrorProperties": {},
+    "calculationProperties": {},
     "relations": {
       "impactedEntities": {
         "title": "Impacted Entities",
@@ -93,64 +145,7 @@
         "required": false,
         "many": false
       }
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {}
-  },
-  {
-    "identifier": "dynatraceEntity",
-    "description": "This blueprint represents a Dynatrace Entity",
-    "title": "Dynatrace Entity",
-    "icon": "Dynatrace",
-    "schema": {
-      "properties": {
-        "firstSeen": {
-          "type": "string",
-          "title": "First Seen",
-          "description": "The timestamp at which the entity was first seen, in UTC milliseconds.",
-          "format": "date-time"
-        },
-        "lastSeen": {
-          "type": "string",
-          "title": "Last Seen",
-          "description": "The timestamp at which the entity was last seen, in UTC milliseconds.",
-          "format": "date-time"
-        },
-        "type": {
-          "type": "string",
-          "title": "Type",
-          "description": "The type of the entity."
-        },
-        "tags": {
-          "type": "array",
-          "title": "Tags",
-          "description": "A list of tags of the entity."
-        },
-        "managementZones": {
-          "type": "array",
-          "title": "Management Zones",
-          "description": "A list of all management zones that the entity belongs to."
-        },
-        "properties": {
-          "type": "properties",
-          "title": "Properties",
-          "description": "A list of additional properties of the entity."
-        },
-        "fromRelationships": {
-          "type": "object",
-          "title": "From Relationships",
-          "description": "A list of all relationships where the entity is the source."
-        },
-        "toRelationships": {
-          "type": "object",
-          "title": "To Relationships",
-          "description": "A list of all relationships where the entity is the target."
-        }
-      }
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {}
+    }
   },
   {
     "identifier": "dynatraceSlo",
@@ -180,11 +175,6 @@
           "title": "Enabled",
           "description": "Whether the SLO is enabled."
         },
-        "burnRateMetricKey": {
-          "type": "string",
-          "title": "Burn Rate Metric Key",
-          "description": "The key for the SLO's error budget burn rate func metric."
-        },
         "warning": {
           "type": "number",
           "title": "Warning",
@@ -199,16 +189,6 @@
           "type": "number",
           "title": "Error Budget",
           "description": "The error budget of the calculated SLO."
-        },
-        "errorBudgetBurnRate": {
-          "type": "number",
-          "title": "Error Budget Burn Rate",
-          "description": "The error budget burn rate of the SLO."
-        },
-        "errorBudgetMetricKey": {
-          "type": "string",
-          "title": "Error Budget Metric Key",
-          "description": "The key for the SLO's error budget func metric."
         },
         "evaluatedPercentage": {
           "type": "number",
@@ -225,30 +205,10 @@
           "title": "Filter",
           "description": "The filter for the SLO evaluation."
         },
-        "metricExpression": {
-          "type": "string",
-          "title": "Metric Expression",
-          "description": "The percentage-based metric expression for the calculation of the SLO."
-        },
-        "metricKey": {
-          "type": "string",
-          "title": "Metric Key",
-          "description": "The key for the SLO's status func metric."
-        },
-        "normalizedErrorBudgetMetricKey": {
-          "type": "string",
-          "title": "Normalized Error Budget Metric Key",
-          "description": "The key for the SLO's normalized error budget func metric."
-        },
         "relatedOpenProblems": {
           "type": "integer",
           "title": "Related Open Problems",
           "description": "Number of open problems related to the SLO. Has the value of -1 if there's an error with fetching SLO related problems."
-        },
-        "relatedTotalProblems": {
-          "type": "integer",
-          "title": "Related Total Problems",
-          "description": "Number of total problems related to the SLO. Has the value of -1 if there's an error with fetching SLO related problems."
         },
         "timeframe": {
           "type": "string",
