@@ -381,9 +381,8 @@ class SonarQubeClient:
     async def enrich_pull_request_with_measures(
         self, project_key: str, pull_request: dict[str, Any]
     ) -> dict[str, Any]:
-        pull_request_key = pull_request["key"]
         pr_measures = await self.get_pull_request_measures(
-            project_key, pull_request_key
+            project_key, pull_request["key"]
         )
         pull_request["__measures"] = pr_measures
         pull_request["__project"] = project_key

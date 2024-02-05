@@ -34,7 +34,7 @@ resources:
           title: .__commit.message // .analysisId // .title
           properties:
             branch: .branch // .__branchName
-            fixedIssues: .measures.violations_fixed // .__measures[]? | select(.metric == "new_violations") | .period.value
+            fixedIssues: .measures.violations_fixed
             newIssues: .measures.violations_added // .__measures[]? | select(.metric == "new_violations") | .period.value
             coverage: .measures.coverage_change // .__measures[]? | select(.metric == "new_coverage") | .period.value
             duplications: .measures.duplicated_lines_density_change // .__measures[]? | select(.metric == "new_duplicated_lines_density") | .period.value
