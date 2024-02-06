@@ -150,7 +150,7 @@
         "many": true
       },
       "services": {
-        "target": "datadogServiceDefinition",
+        "target": "datadogServiceCatalog",
         "title": "Services",
         "description": "The services tracked by this SLO",
         "required": false,
@@ -159,8 +159,8 @@
     }
   },
   {
-    "identifier": "datadogServiceDefinition",
-    "description": "This blueprint represents a Datadog service definition",
+    "identifier": "datadogServiceCatalog",
+    "description": "This blueprint represents a Datadog service catalog",
     "title": "Datadog Service Catalog",
     "icon": "Datadog",
     "schema": {

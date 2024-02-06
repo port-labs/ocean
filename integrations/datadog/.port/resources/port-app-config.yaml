@@ -34,6 +34,22 @@ resources:
             createdBy: .creator.name
             createdAt: .created
             updatedAt: .modified
+  - kind: serviceCatalog
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogServiceCatalog"'
+          identifier: .attributes.schema."dd-service"
+          title: .attributes.schema."dd-service"
+          properties:
+            contacts: .attributes.schema.contacts
+            languages: .attributes.schema.languages
+            description: .attributes.schema.description
+            tags: .attributes.schema.tags
+            type: .attributes.schema.type
+            code_repositories: .attributes.schema.links | map(.url)
   - kind: slo
     selector:
       query: 'true'
@@ -55,19 +71,4 @@ resources:
           relations:
             monitors: .monitor_ids | map(tostring)
             services: '.monitor_tags + .tags | map(select(startswith("service:"))) | unique | map(split(":")[1])'
-  - kind: serviceDefinition
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          blueprint: '"datadogServiceDefinition"'
-          identifier: .attributes.schema."dd-service"
-          title: .attributes.schema."dd-service"
-          properties:
-            contacts: .attributes.schema.contacts
-            languages: .attributes.schema.languages
-            description: .attributes.schema.description
-            tags: .attributes.schema.tags
-            type: .attributes.schema.type
-            code_repositories: .attributes.schema.links | map(.url)
+  

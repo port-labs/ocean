@@ -12,7 +12,7 @@ class ObjectKind(StrEnum):
     HOST = "host"
     MONITOR = "monitor"
     SLO = "slo"
-    SERVICE = "serviceDefinition"
+    SERVICE = "serviceCatalog"
 
 
 def init_client() -> DatadogClient:
@@ -41,7 +41,7 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield slos
     if kind == ObjectKind.SERVICE:
         async for services in dd_client.get_services():
-            logger.info(f"Received batch with {len(services)} service definitions")
+            logger.info(f"Received batch with {len(services)} service catalogs")
             yield services
 
 
@@ -52,7 +52,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     dd_client = init_client()
 
     monitor = await dd_client.get_single_monitor(data["alert_id"])
-    if monitor is not None:
+    if monitor:
         logger.info(f"Updating monitor status for alert {monitor}")
         await ocean.register_raw(ObjectKind.MONITOR, [monitor])
 
@@ -69,13 +69,13 @@ async def on_start() -> None:
     # If the user did not provide them, we ignore creating webhook subscriptions
     logger.info(f"Starting webhook creation {ocean.integration_config}")
     if ocean.integration_config.get("app_host") and ocean.integration_config.get(
-        "dd_webhook_token"
+        "datadog_webhook_token"
     ):
         logger.info("Subscribing to Datadog webhooks")
 
         dd_client = init_client()
 
         app_host = ocean.integration_config.get("app_host")
-        dd_webhook_token = ocean.integration_config.get("dd_webhook_token")
+        dd_webhook_token = ocean.integration_config.get("datadog_webhook_token")
 
         await dd_client.create_webhooks_if_not_exists(app_host, dd_webhook_token)
