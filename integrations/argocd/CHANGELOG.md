@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.22 (2024-02-06)
+
+### Improvements
+
+- Added a revision property to the ArgoCD application blueprint to display information about the sync revision history (PORT-6528)
+
+
 # Port_Ocean 0.1.21 (2024-01-25)
 
 ### Bug Fixes
