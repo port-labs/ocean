@@ -8,7 +8,7 @@ features:
       - kind: datadogHost
       - kind: datadogMonitor
       - kind: datadogSlo
-      - kind: datadogServiceDefinition
+      - kind: datadogServiceCatalog
 configurations:
   - name: datadogBaseUrl
     type: url

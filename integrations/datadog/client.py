@@ -7,7 +7,7 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
-MAX_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 100
 
 
 class CacheKeys:
@@ -134,7 +134,7 @@ class DatadogClient:
 
     async def get_services(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.SERVICES):
-            logger.info("Picking Datadog Service Definitions from cache")
+            logger.info("Picking Datadog Service Catalogs from cache")
             yield cache
             return
 

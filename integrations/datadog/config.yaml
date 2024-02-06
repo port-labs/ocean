@@ -17,4 +17,4 @@ integration:
     datadogApiKey: "{{ from env DD_API_KEY }}"
     datadogApplicationKey: "{{ from env DD_APPLICATION_KEY }}"
     appHost: '{{ from env APP_HOST }}'
-    ddWebhookToken: '{{ from env DD_WEBHOOK_TOKEN }}'
+    datadogWebhookToken: '{{ from env DD_WEBHOOK_TOKEN }}'
