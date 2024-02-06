@@ -31,7 +31,8 @@
             "type": "string"
           }
         }
-      }
+      },
+      "required": []
     },
     "mirrorProperties": {},
     "calculationProperties": {},
@@ -181,7 +182,7 @@
           "description": "The warning value of the SLO. At warning state the SLO is still fulfilled but is getting close to failure."
         },
         "error": {
-          "type": "number",
+          "type": "string",
           "title": "Error",
           "description": "The error of the SLO calculation. If the value differs from NONE, there is something wrong with the SLO calculation."
         },
@@ -215,7 +216,8 @@
           "title": "Timeframe",
           "description": "The timeframe for the SLO evaluation."
         }
-      }
+      },
+      "required": []
     },
     "mirrorProperties": {},
     "calculationProperties": {},
