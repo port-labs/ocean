@@ -60,6 +60,54 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
+    "aggregationProperties": {
+      "criticalOpenIssues": {
+        "title": "Number Of Open Critical Issues",
+        "type": "number",
+        "target": "sonarQubeIssue",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "in",
+              "value": ["OPEN", "REOPENED"]
+            },
+            {
+              "property": "severity",
+              "operator": "=",
+              "value": "CRITICAL"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      },
+      "numberOfOpenIssues": {
+        "title": "Number Of Open Issues",
+        "type": "number",
+        "target": "sonarQubeIssue",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "in",
+              "value": [
+                "OPEN",
+                "REOPENED"
+              ]
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      }
+    },
     "relations": {}
   },
   {
