@@ -54,23 +54,20 @@ resources:
             updatedAt: .modified_at | todate
           relations:
             monitors: .monitor_ids | map(tostring)
-  - kind: alert
+            services: '.monitor_tags + .tags | map(select(startswith("service:"))) | unique | map(split(":")[1])'
+  - kind: serviceDefinition
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"datadogAlert"'
-          identifier: .id | tostring
-          title: .title
+          blueprint: '"datadogServiceDefinition"'
+          identifier: .attributes.schema."dd-service"
+          title: .attributes.schema."dd-service"
           properties:
-            url: .event_url
-            message: .message
-            eventType: .event_type
-            priority: .priority
-            creator: .creator
-            alertMetric: .alert_metric
-            alertType: .alert_type
-            tags: .tags | split(", ")
-          relations:
-            monitor: .alert_id | tostring
+            contacts: .attributes.schema.contacts
+            languages: .attributes.schema.languages
+            description: .attributes.schema.description
+            tags: .attributes.schema.tags
+            type: .attributes.schema.type
+            code_repositories: .attributes.schema.links | map(.url)

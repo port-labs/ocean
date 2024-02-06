@@ -14,6 +14,7 @@ class CacheKeys:
     HOSTS = "_cache_hosts"
     MONITORS = "_cache_monitors"
     SLOS = "_cache_slos"
+    SERVICES = "_cache_services"
 
 
 def insert_credentials(url: str, username: str, password: str) -> str:
@@ -129,6 +130,29 @@ class DatadogClient:
 
             event.attributes.setdefault(CacheKeys.MONITORS, []).extend(monitors)
             yield monitors
+            page += 1
+
+    async def get_services(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if cache := event.attributes.get(CacheKeys.SERVICES):
+            logger.info("Picking Datadog Service Definitions from cache")
+            yield cache
+            return
+
+        page = 0
+        page_size = MAX_PAGE_SIZE
+
+        while True:
+            url = f"{self.api_url}/api/v2/services/definitions"
+            result = await self._send_api_request(
+                url, params={"page[number]": page, "page[size]": page_size}
+            )
+
+            services = result.get("data")
+            if not services:
+                break
+
+            event.attributes.setdefault(CacheKeys.SERVICES, []).extend(services)
+            yield services
             page += 1
 
     async def get_slos(self) -> AsyncGenerator[list[dict[str, Any]], None]:

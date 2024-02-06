@@ -12,7 +12,7 @@ class ObjectKind(StrEnum):
     HOST = "host"
     MONITOR = "monitor"
     SLO = "slo"
-    ALERT = "alert"
+    SERVICE = "serviceDefinition"
 
 
 def init_client() -> DatadogClient:
@@ -39,6 +39,10 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for slos in dd_client.get_slos():
             logger.info(f"Received batch with {len(slos)} slos")
             yield slos
+    if kind == ObjectKind.SERVICE:
+        async for services in dd_client.get_services():
+            logger.info(f"Received batch with {len(services)} service definitions")
+            yield services
 
 
 @ocean.router.post("/webhook")
@@ -52,7 +56,6 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         logger.info(f"Updating monitor status for alert {monitor}")
         await ocean.register_raw(ObjectKind.MONITOR, [monitor])
 
-    await ocean.register_raw(ObjectKind.ALERT, [data])
     return {"ok": True}
 
 
