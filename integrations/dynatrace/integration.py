@@ -12,6 +12,7 @@ class DynatraceEntitySelector(Selector):
     entity_types: list[str] = Field(
         default=["APPLICATION", "SERVICE"],
         description="List of entity types to be fetched",
+        alias="entityTypes",
     )
 
 
