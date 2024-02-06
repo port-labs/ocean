@@ -148,45 +148,30 @@
         "description": "The monitors tracking this SLO",
         "required": false,
         "many": true
+      },
+      "services": {
+        "target": "datadogServiceDefinition",
+        "title": "Services",
+        "description": "The services tracked by this SLO",
+        "required": false,
+        "many": true
       }
     }
   },
   {
-    "identifier": "datadogAlert",
-    "description": "This blueprint represents a Datadog alert/event",
-    "title": "Datadog Alert",
+    "identifier": "datadogServiceDefinition",
+    "description": "This blueprint represents a Datadog service definition",
+    "title": "Datadog Service Catalog",
     "icon": "Datadog",
     "schema": {
       "properties": {
-        "url": {
-          "type": "string",
-          "format": "url",
-          "title": "Event URL"
+        "contacts": {
+          "type": "array",
+          "title": "Contacts"
         },
-        "message": {
-          "type": "string",
-          "title": "Details"
-        },
-        "eventType": {
-          "type": "string",
-          "title": "Event Type"
-        },
-        "priority": {
-          "type": "string",
-          "title": "Metric Priority"
-        },
-        "creator": {
-          "type": "string",
-          "title": "Creator"
-        },
-        "alertMetric": {
-          "type": "string",
-          "title": "Alert Metric"
-        },
-        "alertType": {
-          "type": "string",
-          "title": "Alert Type",
-          "enum": ["error", "warning", "success", "info"]
+        "description": {
+          "title": "Description",
+          "type": "string"
         },
         "tags": {
           "type": "array",
@@ -194,19 +179,50 @@
             "type": "string"
           },
           "title": "Tags"
+        },
+        "languages": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Languages",
+          "type": "array"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "web",
+            "db",
+            "custom",
+            "cache",
+            "function",
+            "browser",
+            "mobile"
+          ],
+          "enumColors": {
+            "web": "lightGray",
+            "db": "lightGray",
+            "custom": "lightGray",
+            "cache": "lightGray",
+            "function": "lightGray",
+            "browser": "lightGray",
+            "mobile": "lightGray"
+          }
+        },
+        "code_repositories": {
+          "title": "Code Repositories",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "url"
+          }
         }
       },
       "required": []
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {
-      "monitor": {
-        "title": "Monitor",
-        "target": "datadogMonitor",
-        "required": false,
-        "many": false
-      }
-    }
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]
