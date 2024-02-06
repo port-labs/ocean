@@ -71,4 +71,3 @@ resources:
           relations:
             monitors: .monitor_ids | map(tostring)
             services: '.monitor_tags + .tags | map(select(startswith("service:"))) | unique | map(split(":")[1])'
-  
