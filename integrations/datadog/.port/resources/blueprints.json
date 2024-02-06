@@ -96,69 +96,6 @@
     "relations": {}
   },
   {
-    "identifier": "datadogSlo",
-    "description": "This blueprint represents a datadog SLO",
-    "title": "Datadog SLO",
-    "icon": "Datadog",
-    "schema": {
-      "properties": {
-        "tags": {
-          "type": "array",
-          "title": "Tags"
-        },
-        "sloType": {
-          "title": "Type",
-          "type": "string"
-        },
-        "description": {
-          "title": "Description",
-          "type": "string"
-        },
-        "warningThreshold": {
-          "title": "Warning Threshold",
-          "type": "string"
-        },
-        "targetThreshold": {
-          "title": "Target Threshold",
-          "type": "string"
-        },
-        "createdAt": {
-          "title": "Created At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "title": "Updated At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "createdBy": {
-          "title": "Creator",
-          "type": "string"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {
-      "monitors": {
-        "target": "datadogMonitor",
-        "title": "SLO Monitors",
-        "description": "The monitors tracking this SLO",
-        "required": false,
-        "many": true
-      },
-      "services": {
-        "target": "datadogServiceCatalog",
-        "title": "Services",
-        "description": "The services tracked by this SLO",
-        "required": false,
-        "many": true
-      }
-    }
-  },
-  {
     "identifier": "datadogServiceCatalog",
     "description": "This blueprint represents a Datadog service catalog",
     "title": "Datadog Service Catalog",
@@ -224,5 +161,68 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "datadogSlo",
+    "description": "This blueprint represents a datadog SLO",
+    "title": "Datadog SLO",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        },
+        "sloType": {
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "warningThreshold": {
+          "title": "Warning Threshold",
+          "type": "string"
+        },
+        "targetThreshold": {
+          "title": "Target Threshold",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "title": "Creator",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "monitors": {
+        "target": "datadogMonitor",
+        "title": "SLO Monitors",
+        "description": "The monitors tracking this SLO",
+        "required": false,
+        "many": true
+      },
+      "services": {
+        "target": "datadogServiceCatalog",
+        "title": "Services",
+        "description": "The services tracked by this SLO",
+        "required": false,
+        "many": true
+      }
+    }
   }
 ]
