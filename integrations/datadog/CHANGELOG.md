@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Implemented Datadog integration (1.0.0)
+- Implemented Datadog integration to bring host, monitor, service catalog and SLO entities (PORT-5633)
