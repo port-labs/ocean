@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Implemented Dynatrace integration to bring slos, entities and problems data to Port (1.0.0)
+- Implemented Dynatrace integration to bring slos, entities and problems data to Port (PORT-5605)
