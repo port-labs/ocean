@@ -13,7 +13,6 @@ from integration import DynatraceResourceConfig
 class ResourceKey(StrEnum):
     PROBLEM = "problem"
     SLO = "slo"
-    ENTITY_TYPE = "entity_type"
     ENTITY = "entity"
 
 
@@ -59,12 +58,6 @@ class DynatraceClient:
             f"{self.host_url}/slo", "slo", {"pageSize": 10_000}
         ):
             yield slos
-
-    async def _get_entity_types(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for entity_types in self._get_paginated_resources(
-            f"{self.host_url}/entityTypes", "types", {"pageSize": 100}
-        ):
-            yield entity_types
 
     async def _get_entities_from_type(
         self, type_: str
