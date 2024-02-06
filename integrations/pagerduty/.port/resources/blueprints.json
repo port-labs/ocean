@@ -8,7 +8,21 @@
       "properties": {
         "status": {
           "title": "Status",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "active",
+            "warning",
+            "critical",
+            "maintenance",
+            "disabled"
+          ],
+          "enumColors": {
+            "active": "green",
+            "warning": "yellow",
+            "critical": "red",
+            "maintenance": "lightGray",
+            "disabled": "darkGray"
+          }
         },
         "url": {
           "title": "URL",
