@@ -46,6 +46,7 @@ resources:
             gitPath: .spec.source.path
             destinationServer: .spec.destination.server
             namespace: .metadata.namespace
+            revision: .status.sync.revision
             syncStatus: .status.sync.status
             healthStatus: .status.health.status
             createdAt: .metadata.creationTimestamp

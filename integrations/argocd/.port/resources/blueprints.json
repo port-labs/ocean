@@ -116,6 +116,10 @@
           "type": "string",
           "title": "Namespace"
         },
+        "revision": {
+          "type": "string",
+          "title": "Revision"
+        },
         "syncStatus": {
           "type": "string",
           "title": "Sync Status",
