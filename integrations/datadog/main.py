@@ -65,14 +65,11 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    # check if user provided webhook secret or app_host. These variable are required to create webhook subscriptions.
-    # If the user did not provide them, we ignore creating webhook subscriptions
-    logger.info(f"Starting webhook creation {ocean.integration_config}")
+    # Verify the presence of a webhook token or app_host, essential for creating subscriptions.
+    # If not provided, skip webhook subscription creation.
     if ocean.integration_config.get("app_host") and ocean.integration_config.get(
         "datadog_webhook_token"
     ):
-        logger.info("Subscribing to Datadog webhooks")
-
         dd_client = init_client()
 
         app_host = ocean.integration_config.get("app_host")

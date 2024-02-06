@@ -223,9 +223,10 @@ class DatadogClient:
             else:
                 raise
 
+        logger.info("Subscribing to Datadog webhooks...")
+
         app_host_webhook_url = f"{app_host}/integration/webhook"
         modified_url = insert_credentials(app_host_webhook_url, "port", token)
-        logger.info(modified_url)
 
         body = {
             "name": "PORT",
@@ -261,4 +262,4 @@ class DatadogClient:
             url=dd_webhook_url, method="POST", json_data=body
         )
 
-        logger.info(f"Response: {result}")
+        logger.info(f"Webhook Subscription Response: {result}")

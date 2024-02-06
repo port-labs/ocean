@@ -7,8 +7,8 @@ features:
     resources:
       - kind: datadogHost
       - kind: datadogMonitor
-      - kind: datadogSlo
       - kind: datadogServiceCatalog
+      - kind: datadogSlo
 configurations:
   - name: datadogBaseUrl
     type: url
@@ -23,7 +23,7 @@ configurations:
   - name: appHost
     type: url
     required: false
-  - name: ddWebhookToken
+  - name: datadogWebhookToken
     type: string
     required: false
     sensitive: true
