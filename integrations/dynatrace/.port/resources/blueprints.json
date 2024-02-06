@@ -94,7 +94,7 @@
             "CUSTOM_ALERT": "turquoise",
             "ERROR": "red",
             "INFO": "green",
-            "MONITORING_UNAVAILABLE": "gray",
+            "MONITORING_UNAVAILABLE": "darkGray",
             "PERFORMANCE": "orange",
             "RESOURCE_CONTENTION": "yellow"
           }
@@ -206,7 +206,7 @@
           "description": "The filter for the SLO evaluation."
         },
         "relatedOpenProblems": {
-          "type": "integer",
+          "type": "number",
           "title": "Related Open Problems",
           "description": "Number of open problems related to the SLO. Has the value of -1 if there's an error with fetching SLO related problems."
         },
