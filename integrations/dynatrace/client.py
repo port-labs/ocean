@@ -78,7 +78,6 @@ class DynatraceClient:
 
     async def get_entities(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         selector = typing.cast(DynatraceResourceConfig, event.resource_config).selector
-        logger.info(selector)
 
         for entity_type in selector.entity_types:
             async for entities in self._get_entities_from_type(entity_type):
