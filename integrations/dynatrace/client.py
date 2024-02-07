@@ -49,13 +49,13 @@ class DynatraceClient:
 
     async def get_problems(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for problems in self._get_paginated_resources(
-            f"{self.host_url}/problems", "problems", {"pageSize": 500}
+            f"{self.host_url}/problems", "problems", {"pageSize": 200}
         ):
             yield problems
 
     async def get_slos(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for slos in self._get_paginated_resources(
-            f"{self.host_url}/slo", "slo", {"pageSize": 10_000}
+            f"{self.host_url}/slo", "slo", {"pageSize": 200}
         ):
             yield slos
 
@@ -65,7 +65,7 @@ class DynatraceClient:
         async for entities in self._get_paginated_resources(
             f"{self.host_url}/entities",
             "entities",
-            params={"entitySelector": f'type("{type_}")'},
+            params={"entitySelector": f'type("{type_}")', "pageSize": 100},
         ):
             yield entities
 
