@@ -37,7 +37,7 @@ resources:
           relations:
             impactedEntities: .impactedEntities[].entityId.id
             linkedProblemInfo: .linkedProblemInfo.problemId
-            rootCauseEntity: .rootCauseEntity.name
+            rootCauseEntity: .rootCauseEntity.entityId.id
 
   - kind: slo
     selector:
