@@ -1,286 +1,4 @@
 [
-    {
-        "identifier": "launchDarklyProject",
-        "description": "This blueprint represents a project in LaunchDarkly.",
-        "title": "LaunchDarkly Project",
-        "icon": "Launchdarkly",
-        "schema": {
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "title": "Project ID",
-                    "description": "The unique identifier for the LaunchDarkly project."
-                },
-                "tags": {
-                    "type": "array",
-                    "title": "Tags",
-                    "description": "Tags associated with the project for organizational purposes."
-                },
-                "defaultClientSideAvailability": {
-                    "type": "object",
-                    "title": "Default Client Side Availability",
-                    "description": "The default client-side availability for the project."
-                },
-                "url": {
-                    "type": "string",
-                    "format": "url",
-                    "title": "Link",
-                    "description": "Link to project"
-                },
-                "includeInSnippetByDefault": {
-                    "type": "boolean",
-                    "title": "Include In snippet By Default",
-                    "description": "Indicates if project is included in client-side snippets by default."
-                }
-            },
-            "required": []
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "aggregationProperties": {},
-        "relations": {}
-    },
-    {
-        "identifier": "launchDarklyFeatureFlag",
-        "description": "This blueprint represents a feature flag in LaunchDarkly.",
-        "title": "LaunchDarkly Feature Flag",
-        "icon": "Launchdarkly",
-        "schema": {
-            "properties": {
-                "kind": {
-                    "type": "string",
-                    "title": "Flag Kind",
-                    "description": "The type of the feature flag (e.g., boolean)."
-                },
-                "description": {
-                    "type": "string",
-                    "title": "Description",
-                    "description": "A description of what the flag controls."
-                },
-                "creationDate": {
-                    "type": "string",
-                    "format": "date-time",
-                    "title": "Creation Date",
-                    "description": "The date and time when the flag was created."
-                },
-                "includeInSnippet": {
-                    "type": "boolean",
-                    "title": "Include in Client-Side Snippet",
-                    "description": "Indicates if the flag is included in the client-side snippet."
-                },
-                "clientSideAvailability": {
-                    "type": "object",
-                    "title": "Client-Side Availability",
-                    "description": "Availability of the flag for client-side applications."
-                },
-                "temporary": {
-                    "type": "boolean",
-                    "title": "Temporary Flag",
-                    "description": "Indicates if the flag is temporary."
-                },
-                "tags": {
-                    "type": "array",
-                    "title": "Tags",
-                    "description": "Tags associated with the feature flag."
-                },
-                "maintainer": {
-                    "type": "object",
-                    "title": "Maintainer",
-                    "description": "Information about the maintainer of the flag."
-                },
-                "environments": {
-                    "type": "object",
-                    "title": "Environments",
-                    "description": "Settings and information for each environment the flag is used in."
-                },
-                "variations": {
-                    "type": "array",
-                    "title": "Variations",
-                    "description": "An array of possible variations for the flag"
-                },
-                "customProperties": {
-                    "type": "object",
-                    "title": "Custom Properties",
-                    "description": "Custom properties associated with the flag."
-                },
-                "archived": {
-                    "type": "boolean",
-                    "title": "Archived",
-                    "description": "Indicates if the flag is archived."
-                }
-            }
-        },
-        "relations": {
-            "project": {
-                "title": "Project",
-                "target": "launchDarklyProject",
-                "required": true,
-                "many": false
-            }
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "aggregationProperties": {}
-    },
-    {
-        "identifier": "launchDarklyAuditLog",
-        "description": "This blueprint represents an entry in the LaunchDarkly audit log",
-        "title": "LaunchDarkly Audit Log",
-        "icon": "Launchdarkly",
-        "schema": {
-            "properties": {
-                "accountId": {
-                    "type": "string",
-                    "title": "Account ID",
-                    "description": "The unique identifier of the LaunchDarkly account associated with this event."
-                },
-                "date": {
-                    "type": "string",
-                    "format": "date-time",
-                    "title": "Event Date",
-                    "description": "The timestamp of when the event occurred."
-                },
-                "kind": {
-                    "type": "string",
-                    "title": "Event Kind",
-                    "description": "The type of event (e.g., 'project', 'token')."
-                },
-                "name": {
-                    "type": "string",
-                    "title": "Event Name",
-                    "description": "The name of the event or the entity affected by this event."
-                },
-                "description": {
-                    "type": "string",
-                    "title": "Description",
-                    "description": "a detailed description of the log"
-                },
-                "shortDescription": {
-                    "type": "string",
-                    "title": "Short Description",
-                    "description": "a short description of the log"
-                },
-                "member": {
-                    "type": "object",
-                    "title": "Member Details",
-                    "description": "Information about the LaunchDarkly user associated with this event."
-                },
-                "title": {
-                    "type": "string",
-                    "title": "Action Taken",
-                    "description": "A verb describing the action taken in this event"
-                },
-                "accesses": {
-                    "type": "array",
-                    "title": "Access Details",
-                    "description": "Details about the specific actions taken during the event."
-                },
-                "target": {
-                    "type": "object",
-                    "title": "Target Resource",
-                    "description": "Details about the primary resource affected by this event."
-                }
-            }
-        },
-        "relations": {
-            "project": {
-                "title": "Project",
-                "target": "launchDarklyProject",
-                "required": false,
-                "many": true
-            }
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "aggregationProperties": {}
-    },
-    {
-        "identifier": "launchDarklyEnvironment",
-        "description": "This blueprint represents an environment in LaunchDarkly",
-        "title": "LaunchDarkly Environment",
-        "icon": "Launchdarkly",
-        "schema": {
-            "properties": {
-                "environmentId": {
-                    "type": "string",
-                    "title": "Environment ID",
-                    "description": "The unique identifier for the environment."
-                },
-                "name": {
-                    "type": "string",
-                    "title": "Environment Name",
-                    "description": "The name of the environment."
-                },
-                "apiKey": {
-                    "type": "string",
-                    "title": "API Key",
-                    "description": "The SDK key for accessing the LaunchDarkly SDK within this environment."
-                },
-                "mobileKey": {
-                    "type": "string",
-                    "title": "Mobile Key",
-                    "description": "The mobile key for accessing the LaunchDarkly SDK specifically for mobile applications within this environment."
-                },
-                "color": {
-                    "type": "string",
-                    "title": "Color",
-                    "description": "A color associated with the environment, typically used for identification and UI purposes."
-                },
-                "defaultTtl": {
-                    "type": "number",
-                    "title": "Default TTL",
-                    "description": "The default time-to-live (in minutes) for feature flag settings in this environment."
-                },
-                "secureMode": {
-                    "type": "boolean",
-                    "title": "Secure Mode",
-                    "description": "Indicates whether Secure Mode is enabled for the environment, enhancing security by verifying user tokens."
-                },
-                "defaultTrackEvents": {
-                    "type": "boolean",
-                    "title": "Default Track Events",
-                    "description": "Indicates whether event tracking is enabled by default for all flags in this environment."
-                },
-                "requireComments": {
-                    "type": "boolean",
-                    "title": "Require Comments",
-                    "description": "Indicates whether comments are required for changes made in this environment."
-                },
-                "confirmChanges": {
-                    "type": "boolean",
-                    "title": "Confirm Changes",
-                    "description": "Indicates whether changes need to be confirmed before being applied in this environment."
-                },
-                "tags": {
-                    "type": "array",
-                    "title": "Tags",
-                    "description": "A list of tags associated with the environment for organizational purposes."
-                },
-                "approvalSettings": {
-                    "type": "object",
-                    "title": "Approval Settings",
-                    "description": "Settings related to the approval process for changes made in this environment."
-                },
-                "critical": {
-                    "type": "boolean",
-                    "title": "Critical Environment",
-                    "description": "Indicates whether this environment is considered critical, which may affect change management and notifications."
-                }
-            }
-        },
-        "relations": {
-            "project": {
-                "title": "Project",
-                "target": "launchDarklyProject",
-                "required": true,
-                "many": false
-            }
-        },
-        "mirrorProperties": {},
-        "calculationProperties": {},
-        "aggregationProperties": {}
-    }
-][
   {
     "identifier": "launchDarklyProject",
     "description": "This blueprint represents a project in LaunchDarkly.",
@@ -288,11 +6,6 @@
     "icon": "Launchdarkly",
     "schema": {
       "properties": {
-        "id": {
-          "type": "string",
-          "title": "Project ID",
-          "description": "The unique identifier for the LaunchDarkly project."
-        },
         "tags": {
           "type": "array",
           "title": "Tags",
@@ -303,16 +16,21 @@
           "title": "Default Client Side Availability",
           "description": "The default client-side availability for the project."
         },
-        "url": {
+        "link": {
           "type": "string",
           "format": "url",
-          "title": "Link",
+          "title": "Resource Link",
           "description": "Link to project"
         },
         "includeInSnippetByDefault": {
           "type": "boolean",
           "title": "Include In snippet By Default",
           "description": "Indicates if project is included in client-side snippets by default."
+        },
+        "id": {
+          "type": "string",
+          "title": "Project ID",
+          "description": "The unique identifier for the LaunchDarkly project."
         }
       },
       "required": []
@@ -375,11 +93,6 @@
           "title": "Environments",
           "description": "Settings and information for each environment the flag is used in."
         },
-        "variations": {
-          "type": "array",
-          "title": "Variations",
-          "description": "An array of possible variations for the flag"
-        },
         "customProperties": {
           "type": "object",
           "title": "Custom Properties",
@@ -389,9 +102,18 @@
           "type": "boolean",
           "title": "Archived",
           "description": "Indicates if the flag is archived."
+        },
+        "variations": {
+          "type": "array",
+          "title": "Variations",
+          "description": "An array of possible variations for the flag"
         }
-      }
+      },
+      "required": []
     },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {
       "project": {
         "title": "Project",
@@ -399,10 +121,7 @@
         "required": true,
         "many": false
       }
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {}
+    }
   },
   {
     "identifier": "launchDarklyAuditLog",
@@ -411,11 +130,6 @@
     "icon": "Launchdarkly",
     "schema": {
       "properties": {
-        "accountId": {
-          "type": "string",
-          "title": "Account ID",
-          "description": "The unique identifier of the LaunchDarkly account associated with this event."
-        },
         "date": {
           "type": "string",
           "format": "date-time",
@@ -429,8 +143,29 @@
         },
         "name": {
           "type": "string",
-          "title": "Event Name",
+          "title": "Target Resource",
           "description": "The name of the event or the entity affected by this event."
+        },
+        "member": {
+          "type": "object",
+          "title": "Member Details",
+          "description": "Information about the LaunchDarkly user associated with this event."
+        },
+        "accesses": {
+          "type": "array",
+          "title": "Access Details",
+          "description": "Details about the specific actions taken during the event."
+        },
+        "accountId": {
+          "type": "string",
+          "title": "Account ID",
+          "description": "The unique identifier of the LaunchDarkly account associated with this event."
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Link",
+          "description": "Link to audit resource"
         },
         "description": {
           "type": "string",
@@ -442,28 +177,17 @@
           "title": "Short Description",
           "description": "a short description of the log"
         },
-        "member": {
-          "type": "object",
-          "title": "Member Details",
-          "description": "Information about the LaunchDarkly user associated with this event."
-        },
         "title": {
           "type": "string",
           "title": "Action Taken",
           "description": "A verb describing the action taken in this event"
-        },
-        "accesses": {
-          "type": "array",
-          "title": "Access Details",
-          "description": "Details about the specific actions taken during the event."
-        },
-        "target": {
-          "type": "object",
-          "title": "Target Resource",
-          "description": "Details about the primary resource affected by this event."
         }
-      }
+      },
+      "required": []
     },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {
       "project": {
         "title": "Project",
@@ -471,10 +195,7 @@
         "required": false,
         "many": true
       }
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {}
+    }
   },
   {
     "identifier": "launchDarklyEnvironment",
@@ -548,8 +269,12 @@
           "title": "Critical Environment",
           "description": "Indicates whether this environment is considered critical, which may affect change management and notifications."
         }
-      }
+      },
+      "required": []
     },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {
       "project": {
         "title": "Project",
@@ -557,9 +282,75 @@
         "required": true,
         "many": false
       }
+    }
+  },
+  {
+    "identifier": "terraformCloudRun",
+    "description": "This blueprint represents a run in Terraform cloud",
+    "title": "Terraform Cloud Run",
+    "icon": "Terraform",
+    "schema": {
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Time",
+          "description": "The creation timestamp of the run"
+        },
+        "status": {
+          "type": "string",
+          "title": "Run Status",
+          "description": "The current status of the run"
+        },
+        "hasChanges": {
+          "type": "boolean",
+          "title": "Has Changes",
+          "description": "Indicates whether the run has changes"
+        },
+        "isDestroy": {
+          "type": "boolean",
+          "title": "Is Destroy",
+          "description": "Indicates whether the run is a destroy operation"
+        },
+        "message": {
+          "type": "string",
+          "title": "Run Message",
+          "description": "Message associated with the run"
+        },
+        "terraformVersion": {
+          "type": "string",
+          "title": "Terraform Cloud Version",
+          "description": "Version of Terraform cloud used in the run"
+        },
+        "appliedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Applied Time",
+          "description": "Timestamp when the run was applied"
+        },
+        "plannedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Planned Time",
+          "description": "Timestamp when the run was planned"
+        },
+        "source": {
+          "type": "string",
+          "title": "Run Source",
+          "description": "The source of the run initiation"
+        }
+      }
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "aggregationProperties": {}
+    "aggregationProperties": {},
+    "relations": {
+      "terraformCloudWorkspace": {
+        "title": "Terraform Cloud Workspace",
+        "target": "terraformCloudWorkspace",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

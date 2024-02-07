@@ -15,7 +15,7 @@ resources:
             tags: .tags
             includeInSnippetByDefault: .includeInSnippetByDefault
             defaultClientSideAvailability: .defaultClientSideAvailability
-            url: ("https://app.launchdarkly.com" + ._links.self.href | tostring)
+            link: ("https://app.launchdarkly.com" + ._links.self.href | tostring)
   - kind: flag
     selector:
       query: "true"
@@ -54,12 +54,12 @@ resources:
             date: '.date |  (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
             kind: .kind
             name: .name
+            link: ("https://app.launchdarkly.com/" + ._links.canonical.href | tostring)
             description: .description
             shortDescription: .shortDescription
             member: .member
             title: .title
             accesses: .accesses
-            target: .target
           relations:
             project: 'select(.kind | IN("project")) | .accesses[] | .resource | split("/") | .[-1]'
   - kind: environment
