@@ -1,6 +1,6 @@
 from port_ocean.utils import http_async_client
 import httpx
-from typing import Any, AsyncGenerator, Optional, Dict
+from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from enum import StrEnum
 
@@ -115,21 +115,21 @@ class LaunchDarklyClient:
                         flag.update({"__projectKey": project["key"]})
                     yield flags
 
-    async def get_single_feature_flag(self, data: dict) -> dict[str, Any]:
+    async def get_single_feature_flag(self, data: dict[str, Any]) -> dict[str, Any]:
         endpoint = data["_links"]["canonical"]["href"]
         response = await self.send_api_request(endpoint)
         project_key = endpoint.split("/api/v2/flags/")[1].split("/")[0]
         response.update({"__projectKey": project_key})
         return response
 
-    async def get_single_environment(self, data: dict) -> dict[str, Any]:
+    async def get_single_environment(self, data: dict[str, Any]) -> dict[str, Any]:
         endpoint = data["_links"]["canonical"]["href"]
         response = await self.send_api_request(endpoint)
         project_key = endpoint.split("/api/v2/projects/")[1].split("/")[0]
         response.update({"__projectKey": project_key})
         return response
 
-    async def get_single_resource(self, data: dict) -> Dict[str, Any]:
+    async def get_single_resource(self, data: dict[str, Any]) -> dict[str, Any]:
         endpoint = data["_links"]["canonical"]
         response = await self.send_api_request(endpoint)
         return response
@@ -150,7 +150,7 @@ class LaunchDarklyClient:
         webhook_target_url = f"{app_host}/integration/webhook"
         notifications_response = await self.send_api_request(endpoint="webhooks")
 
-        existing_configs = notifications_response.get("items")
+        existing_configs = notifications_response.get("items", [])
 
         webhook_exists = any(
             config["url"] == webhook_target_url for config in existing_configs
