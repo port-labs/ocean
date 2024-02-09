@@ -23,7 +23,7 @@ resources:
             coverage: .__measures[]? | select(.metric == "coverage") | .value
             mainBranch: .__branch.name
             tags: .tags
-  - kind: analysis
+  - kind: saas_analysis
     selector:
       query: 'true'
     port:
@@ -39,6 +39,23 @@ resources:
             coverage: .measures.coverage_change // .__measures[]? | select(.metric == "new_coverage") | .period.value
             duplications: .measures.duplicated_lines_density_change // .__measures[]? | select(.metric == "new_duplicated_lines_density") | .period.value
             createdAt: .analysisDate // .__analysisDate
+          relations:
+            sonarQubeProject: .__project
+  - kind: onprem_analysis
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeAnalysis"'
+          identifier: .__project + "-" + .key
+          title: .title
+          properties:
+            branch: .branch
+            newIssues: .__measures[]? | select(.metric == "new_violations") | .period.value
+            coverage: .__measures[]? | select(.metric == "new_coverage") | .period.value
+            duplications: .__measures[]? | select(.metric == "new_duplicated_lines_density") | .period.value
+            createdAt: .analysisDate
           relations:
             sonarQubeProject: .__project
   - kind: issues

@@ -10,7 +10,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class ObjectKind:
     PROJECTS = "projects"
     ISSUES = "issues"
-    ANALYSIS = "analysis"
+    SASS_ANALYSIS = "saas_analysis"
+    ONPREM_ANALYSIS = "onprem_analysis"
 
 
 def init_sonar_client() -> SonarQubeClient:
@@ -39,16 +40,23 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues_list
 
 
-@ocean.on_resync(ObjectKind.ANALYSIS)
-async def on_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync(ObjectKind.SASS_ANALYSIS)
+async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    logger.info(f"Listing Sonarqube resource: {kind}")
+
+    sonar_client = init_sonar_client()
+    if not ocean.integration_config["sonar_is_on_premise"]:
+        async for analyses_list in sonar_client.get_all_sonarcloud_analyses():
+            yield analyses_list
+
+
+@ocean.on_resync(ObjectKind.ONPREM_ANALYSIS)
+async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
 
     sonar_client = init_sonar_client()
     if ocean.integration_config["sonar_is_on_premise"]:
         async for analyses_list in sonar_client.get_all_sonarqube_analyses():
-            yield analyses_list
-    else:
-        async for analyses_list in sonar_client.get_all_sonarcloud_analyses():
             yield analyses_list
 
 
@@ -71,12 +79,12 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
         onprem_analysis_data = await sonar_client.get_measures_for_all_pull_requests(
             project_key=project["key"]
         )
-        await ocean.register_raw(ObjectKind.ANALYSIS, onprem_analysis_data)
+        await ocean.register_raw(ObjectKind.ONPREM_ANALYSIS, onprem_analysis_data)
     else:
         cloud_analysis_data = await sonar_client.get_analysis_for_task(
             webhook_data=webhook_data
         )
-        await ocean.register_raw(ObjectKind.ANALYSIS, [cloud_analysis_data])
+        await ocean.register_raw(ObjectKind.SASS_ANALYSIS, [cloud_analysis_data])
 
     logger.info("Webhook event processed")
 
