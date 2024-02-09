@@ -8,6 +8,8 @@ features:
     resources:
       - kind: project
       - kind: issue
+      - kind: board
+      - kind: sprint
 configurations:
   - name: appHost
     required: false

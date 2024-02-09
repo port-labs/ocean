@@ -1,5 +1,84 @@
 [
   {
+    "identifier": "jiraBoard",
+    "title": "Jira Board",
+    "description": "This blueprint represents a Jira board",
+    "icon": "Jira",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Board URL",
+          "type": "string",
+          "format": "url",
+          "description": "URL to the board in Jira"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "description": "The type of the board"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "project": {
+        "target": "jiraProject",
+        "title": "Project",
+        "description": "The Jira project that contains this board",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+
+  {
+    "identifier": "jiraSprint",
+    "title": "Jira Sprint",
+    "description": "This blueprint represents a Jira sprint",
+    "icon": "Jira",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Sprint URL",
+          "type": "string",
+          "format": "url",
+          "description": "URL to the sprint in Jira"
+        },
+        "state": {
+          "title": "State",
+          "type": "string",
+          "description": "The state of the sprint"
+        },
+        "startDate": {
+          "title": "Start Date",
+          "type": "string",
+          "description": "The start date of the sprint",
+          "format": "date-time"
+        },
+        "endDate": {
+          "title": "End Date",
+          "type": "string",
+          "description": "The end date of the sprint",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "board": {
+        "target": "jiraBoard",
+        "title": "Board",
+        "description": "The Jira board that contains this sprint",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "jiraProject",
     "title": "Jira Project",
     "icon": "Jira",
@@ -14,7 +93,17 @@
         }
       }
     },
-    "calculationProperties": {}
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "board": {
+        "target": "jiraBoard",
+        "title": "Board",
+        "description": "The Jira board that contains this sprint",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "jiraIssue",
@@ -82,6 +171,20 @@
     },
     "calculationProperties": {},
     "relations": {
+      "board": {
+        "target": "jiraBoard",
+        "title": "Board",
+        "description": "The Jira board that contains this issue",
+        "required": false,
+        "many": false
+      },
+      "sprint": {
+        "target": "jiraSprint",
+        "title": "Sprint",
+        "description": "The Jira sprint that contains this issue",
+        "required": false,
+        "many": false
+      },
       "project": {
         "target": "jiraProject",
         "title": "Project",
