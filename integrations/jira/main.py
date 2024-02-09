@@ -10,6 +10,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
+    BOARD = "board"
+    SPRINT = "sprint"
 
 
 async def setup_application() -> None:
@@ -57,6 +59,31 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for issues in client.get_paginated_issues():
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
+
+@ocean.on_resync(ObjectKind.BOARD)
+async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = JiraClient(
+        ocean.integration_config["jira_host"],
+        ocean.integration_config["atlassian_user_email"],
+        ocean.integration_config["atlassian_user_token"],
+    )
+
+    async for boards in client.get_paginated_boards():
+        logger.info(f"Received board batch with {len(boards)} boards")
+        yield boards
+
+
+@ocean.on_resync(ObjectKind.SPRINT)
+async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = JiraClient(
+        ocean.integration_config["jira_host"],
+        ocean.integration_config["atlassian_user_email"],
+        ocean.integration_config["atlassian_user_token"],
+    )
+
+    async for sprints in client.get_paginated_sprints():
+        logger.info(f"Received sprint batch with {len(sprints)} sprints")
+        yield sprints
 
 
 @ocean.router.post("/webhook")

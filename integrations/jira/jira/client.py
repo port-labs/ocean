@@ -28,6 +28,7 @@ WEBHOOK_EVENTS = [
 class JiraClient:
     def __init__(self, jira_url: str, jira_email: str, jira_token: str) -> None:
         self.jira_url = jira_url
+        self.base_url = f"{self.jira_url}/rest/agile/1.0"
         self.jira_rest_url = f"{self.jira_url}/rest"
         self.jira_email = jira_email
         self.jira_token = jira_token
@@ -49,6 +50,11 @@ class JiraClient:
             "maxResults": maxResults,
             "startAt": startAt,
         }
+    
+    async def make_paginated_request(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
+        response = await self.client.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
 
     async def _get_paginated_projects(self, params: dict[str, Any]) -> dict[str, Any]:
         project_response = await self.client.get(
@@ -143,4 +149,60 @@ class JiraClient:
             logger.info(f"Current query position: {params['startAt']}/{total_issues}")
             issue_response_list = (await self._get_paginated_issues(params))["issues"]
             yield issue_response_list
+            params["startAt"] += PAGE_SIZE
+    
+    async def _get_paginated_boards(self, params: dict[str, Any]) -> dict[str, Any]:
+        board_response = await self.client.get(
+            f"{self.api_url}/board", params=params
+        )
+        board_response.raise_for_status()
+        return board_response.json()
+    
+    async def get_paginated_boards(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting boards from Jira")
+
+        params = self._generate_base_req_params()
+
+        total_boards = (await self._get_paginated_boards(params))["total"]
+
+        if total_boards == 0:
+            logger.warning(
+                "Board query returned 0 boards, did you provide the correct Jira API credentials?"
+            )
+
+        params["maxResults"] = PAGE_SIZE
+        while params["startAt"] <= total_boards:
+            logger.info(f"Current query position: {params['startAt']}/{total_boards}")
+            board_response_list = (await self._get_paginated_boards(params))[
+                "values"
+            ]
+            yield board_response_list
+            params["startAt"] += PAGE_SIZE
+    
+    async def _get_paginated_sprints(self, board_id: int, params: dict[str, Any]) -> dict[str, Any]:
+        sprint_response = await self.client.get(
+            f"{self.api_url}/board/{board_id}/sprint", params=params
+        )
+        sprint_response.raise_for_status()
+        return sprint_response.json()
+    
+    async def get_paginated_sprints(self, board_id: int) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting sprints from Jira")
+
+        params = self._generate_base_req_params()
+
+        total_sprints = (await self._get_paginated_sprints(board_id, params))["total"]
+
+        if total_sprints == 0:
+            logger.warning(
+                "Sprint query returned 0 sprints, did you provide the correct Jira API credentials?"
+            )
+
+        params["maxResults"] = PAGE_SIZE
+        while params["startAt"] <= total_sprints:
+            logger.info(f"Current query position: {params['startAt']}/{total_sprints}")
+            sprint_response_list = (await self._get_paginated_sprints(board_id, params))[
+                "values"
+            ]
+            yield sprint_response_list
             params["startAt"] += PAGE_SIZE
