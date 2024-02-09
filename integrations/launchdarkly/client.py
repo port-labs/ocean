@@ -4,17 +4,16 @@ from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from enum import StrEnum
 
-PAGE_SIZE = 20
+from port_ocean.context.event import event
 
-
-class ResourceKindsWithSpecialHandling(StrEnum):
-    FEATURE_FLAG = "flag"
-    ENVIRONMENT = "environment"
+PAGE_SIZE = 100
 
 
 class ObjectKind(StrEnum):
     PROJECT = "project"
     AUDITLOG = "auditlog"
+    FEATURE_FLAG = "flag"
+    ENVIRONMENT = "environment"
 
 
 class LaunchDarklyClient:
@@ -34,13 +33,13 @@ class LaunchDarklyClient:
         }
 
     async def get_paginated_resource(
-        self, kind: str, resource_path: str | None = None
+        self, kind: str, resource_path: str | None = None, limit: int = PAGE_SIZE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         kind = kind + "s"
         url = kind if not resource_path else f"{kind}/{resource_path}"
         url = url.replace("auditlogs", "auditlog")
 
-        params = {"limit": PAGE_SIZE}
+        params = {"limit": limit}
 
         while url:
             try:
@@ -103,17 +102,49 @@ class LaunchDarklyClient:
             logger.error(f"HTTP error on {endpoint}: {str(e)}")
             raise
 
-    async def get_paginated_feature_flags(
-        self, kind: str
+    async def get_paginated_projects(
+        self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for items in self.get_paginated_resource(kind=ObjectKind.PROJECT):
-            for project in items:
+        if cache := event.attributes.get(ObjectKind.PROJECT):
+            logger.info("Retrieving project data from cache")
+            yield cache
+            return
+
+        all_projects = []
+        logger.info("Fetching projects")
+        async for projects in self.get_paginated_resource(ObjectKind.PROJECT):
+            all_projects.extend(projects)
+            yield projects
+
+        event.attributes[ObjectKind.PROJECT] = all_projects
+        logger.info(
+            f"Total workspaces retrieved across all organizations: {len(projects)}"
+        )
+
+    async def get_paginated_feature_flags(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.get_paginated_resource(kind=ObjectKind.PROJECT):
+            for project in projects:
                 async for flags in self.get_paginated_resource(
-                    kind, resource_path=project["key"]
+                    ObjectKind.FEATURE_FLAG, resource_path=project["key"]
                 ):
                     for flag in flags:
                         flag.update({"__projectKey": project["key"]})
                     yield flags
+
+    async def get_paginated_environments(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.get_paginated_resource(kind=ObjectKind.PROJECT):
+            for project in projects:
+                async for environments in self.get_paginated_resource(
+                    ObjectKind.PROJECT,
+                    resource_path=f'{project["key"]}/{ObjectKind.ENVIRONMENT}s',
+                ):
+                    for environment in environments:
+                        environment.update({"__projectKey": project["key"]})
+                    yield environments
 
     async def get_single_feature_flag(self, data: dict[str, Any]) -> dict[str, Any]:
         endpoint = data["_links"]["canonical"]["href"]
@@ -133,18 +164,6 @@ class LaunchDarklyClient:
         endpoint = data["_links"]["canonical"]
         response = await self.send_api_request(endpoint)
         return response
-
-    async def get_paginated_environments(
-        self, kind: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for projects in self.get_paginated_resource(kind=ObjectKind.PROJECT):
-            for project in projects:
-                async for environments in self.get_paginated_resource(
-                    ObjectKind.PROJECT, resource_path=f'{project["key"]}/{kind}s'
-                ):
-                    for environment in environments:
-                        environment.update({"__projectKey": project["key"]})
-                    yield environments
 
     async def create_launchdarkly_webhook(self, app_host: str) -> None:
         webhook_target_url = f"{app_host}/integration/webhook"
