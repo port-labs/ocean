@@ -250,5 +250,5 @@ class PagerDutyClient:
             )
             return {}
         except httpx.HTTPError as e:
-            logger.error(f"HTTP occurred while fetching incident analytics data: {e}")
+            logger.error(f"HTTP occurred while fetching service analytics data: {e}")
             return {}
