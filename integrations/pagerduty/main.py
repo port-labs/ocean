@@ -21,10 +21,10 @@ def initialize_client() -> PagerDutyClient:
 
 
 async def enrich_service_with_analytics_data(
-    client: PagerDutyClient, services: list[dict[str, Any]], months: int
+    client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
 ) -> list[dict[str, Any]]:
     analytics_data = await asyncio.gather(
-        *[client.get_service_analytics(service["id"], months) for service in services]
+        *[client.get_service_analytics(service["id"], months_period) for service in services]
     )
 
     enriched_services = [
