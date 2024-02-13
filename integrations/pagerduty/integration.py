@@ -108,10 +108,10 @@ class PagerdutyServiceResourceConfig(ResourceConfig):
             description="If set to true, will ingest service analytics data to Port. Default value is true",
             alias="serviceAnalytics",
         )
-        months: int = Field(
+        analytics_months_period: int = Field(
             default=3,
             description="Number of months to consider for the service analytics date range. Must be a positive integer. Default value is 3 months",
-            alias="months",
+            alias="analyticsMonthsPeriod",
         )
 
     kind: Literal["services"]

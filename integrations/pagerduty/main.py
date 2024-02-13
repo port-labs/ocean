@@ -96,7 +96,7 @@ async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         if selector.service_analytics:
             services = await enrich_service_with_analytics_data(
-                pager_duty_client, services, selector.months
+                pager_duty_client, services, selector.analytics_months_period
             )
 
         yield await pager_duty_client.update_oncall_users(services)
