@@ -14,4 +14,4 @@ integration:
   type: "pagerduty"
   config:
     token: "{{ from env PAGERDUTY_TOKEN }}"
-    ##appHost: "{{ from env APP_HOST }}"
+    appHost: "{{ from env APP_HOST }}"
