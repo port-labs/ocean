@@ -104,9 +104,14 @@ class PagerdutyServiceResourceConfig(ResourceConfig):
             alias="apiQueryParams"
         )
         service_analytics: bool = Field(
-            default=False,
-            description="If set to true, will ingest service analytics data to Port. Default value is false",
+            default=True,
+            description="If set to true, will ingest service analytics data to Port. Default value is true",
             alias="serviceAnalytics",
+        )
+        months: int = Field(
+            default=3,
+            description="Number of months to consider for the service analytics date range. Must be a positive integer. Default value is 3 months",
+            alias="months",
         )
 
     kind: Literal["services"]
