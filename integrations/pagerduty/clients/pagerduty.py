@@ -217,7 +217,9 @@ class PagerDutyClient:
             logger.error(f"HTTP occurred while fetching incident analytics data: {e}")
             return {}
 
-    async def get_service_analytics(self, service_id: str, months: int = 3) -> dict[str, Any]:
+    async def get_service_analytics(
+        self, service_id: str, months: int = 3
+    ) -> dict[str, Any]:
         logger.info(f"Fetching analytics for service: {service_id}")
         url = f"{self.api_url}/analytics/metrics/incidents/services"
         date_ranges = get_date_range_for_last_n_months(months)

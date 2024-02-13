@@ -81,14 +81,16 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
     pager_duty_client = initialize_client()
-    
+
     selector = typing.cast(
         PagerdutyServiceResourceConfig, event.resource_config
     ).selector
 
     async for services in pager_duty_client.paginate_request_to_pager_duty(
         data_key=ObjectKind.SERVICES,
-        params=selector.api_query_params.generate_request_params() if selector.api_query_params else None,
+        params=selector.api_query_params.generate_request_params()
+        if selector.api_query_params
+        else None,
     ):
         logger.info(f"Received batch with {len(services)} services")
 
