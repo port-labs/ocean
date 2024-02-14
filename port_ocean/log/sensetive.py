@@ -30,7 +30,7 @@ secret_patterns = {
 class SensitiveLogFilter:
     compiled_patterns = [re.compile(pattern) for pattern in secret_patterns.values()]
 
-    def hide_sensitive_tokens(self, *tokens: str) -> None:
+    def hide_sensitive_strings(self, *tokens: str) -> None:
         self.compiled_patterns.extend([re.compile(token) for token in tokens])
 
     def create_filter(self, full_hide: bool = False) -> Callable[["Record"], bool]:
