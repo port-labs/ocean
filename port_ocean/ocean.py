@@ -49,6 +49,7 @@ class Ocean:
                 else self.config.integration.config.dict()
             )
             self.config.integration.config = config_factory(**raw_config)
+        # add the integration sensitive configuration to the sensitive patterns to mask out 
         sensitive_log_filter.hide_sensitive_tokens(
             *self.config.get_sensitive_fields_data()
         )
