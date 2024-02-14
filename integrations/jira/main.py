@@ -1,10 +1,11 @@
 from enum import StrEnum
 from typing import Any
 
-from jira.client import JiraClient
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from jira.client import JiraClient
 
 
 class ObjectKind(StrEnum):
@@ -43,9 +44,12 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ocean.integration_config["atlassian_user_token"],
     )
 
-    async for projects in client.get_paginated_projects():
-        logger.info(f"Received project batch with {len(projects)} issues")
-        yield projects
+    async for boards in client.get_boards():
+        logger.info(f"Received board batch with {len(boards)} boards")
+        for board in boards:
+            async for projects in client.get_projects(board["id"]):
+                logger.info(f"Received sprint batch with {len(projects)} sprints")
+                yield projects
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -56,9 +60,13 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ocean.integration_config["atlassian_user_token"],
     )
 
-    async for issues in client.get_paginated_issues():
-        logger.info(f"Received issue batch with {len(issues)} issues")
-        yield issues
+    async for boards in client.get_boards():
+        logger.info(f"Received board batch with {len(boards)} boards")
+        for board in boards:
+            async for issues in client.get_issues(board["id"]):
+                logger.info(f"Received issue batch with {len(issues)} issues")
+                yield issues
+
 
 @ocean.on_resync(ObjectKind.BOARD)
 async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -68,7 +76,7 @@ async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ocean.integration_config["atlassian_user_token"],
     )
 
-    async for boards in client.get_paginated_boards():
+    async for boards in client.get_boards():
         logger.info(f"Received board batch with {len(boards)} boards")
         yield boards
 
@@ -81,9 +89,12 @@ async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ocean.integration_config["atlassian_user_token"],
     )
 
-    async for sprints in client.get_paginated_sprints():
-        logger.info(f"Received sprint batch with {len(sprints)} sprints")
-        yield sprints
+    async for boards in client.get_boards():
+        logger.info(f"Received board batch with {len(boards)} boards")
+        for board in boards:
+            async for sprints in client.get_sprints(board["id"]):
+                logger.info(f"Received sprint batch with {len(sprints)} sprints")
+                yield sprints
 
 
 @ocean.router.post("/webhook")
@@ -102,6 +113,14 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         logger.info(f'Received webhook event for issue: {data["issue"]["key"]}')
         issue = await client.get_single_issue(data["issue"]["key"])
         await ocean.register_raw(ObjectKind.ISSUE, [issue])
+    elif "board" in data:
+        logger.info(f'Received webhook event for board: {data["board"]["id"]}')
+        board = await client.get_single_board(data["board"]["id"])
+        await ocean.register_raw(ObjectKind.BOARD, [board])
+    elif "sprint" in data:
+        logger.info(f'Received webhook event for sprint: {data["sprint"]["id"]}')
+        sprint = await client.get_single_sprint(data["sprint"]["id"])
+        await ocean.register_raw(ObjectKind.SPRINT, [sprint])
     logger.info("Webhook event processed")
     return {"ok": True}
 
