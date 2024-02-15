@@ -11,8 +11,8 @@ if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 
-class BootstrapConfig(TypedDict):
-    logsUrl: str
+class LogAttributes(TypedDict):
+    ingestUrl: str
 
 
 class IntegrationClientMixin:
@@ -27,7 +27,7 @@ class IntegrationClientMixin:
         self.integration_version = integration_version
         self.auth = auth
         self.client = client
-        self._bootstrap_config: BootstrapConfig | None = None
+        self._log_attributes: LogAttributes | None = None
 
     async def _get_current_integration(self) -> httpx.Response:
         logger.info(f"Fetching integration with id: {self.integration_identifier}")
@@ -44,11 +44,11 @@ class IntegrationClientMixin:
         handle_status_code(response, should_raise, should_log)
         return response.json()["integration"]
 
-    async def get_bootstrap_config(self) -> BootstrapConfig:
-        if self._bootstrap_config is None:
+    async def get_log_attributes(self) -> LogAttributes:
+        if self._log_attributes is None:
             response = await self.get_current_integration()
-            self._bootstrap_config = response["bootstrapConfig"]
-        return self._bootstrap_config
+            self._log_attributes = response["logAttributes"]
+        return self._log_attributes
 
     async def create_integration(
         self,
@@ -126,10 +126,10 @@ class IntegrationClientMixin:
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
-        bootstrap_config = await self.get_bootstrap_config()
+        log_attributes = await self.get_log_attributes()
         headers = await self.auth.headers()
         response = await self.client.post(
-            bootstrap_config["logsUrl"],
+            log_attributes["ingestUrl"],
             headers=headers,
             json={
                 "logs": logs,
