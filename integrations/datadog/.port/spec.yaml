@@ -12,6 +12,7 @@ features:
 configurations:
   - name: datadogBaseUrl
     type: url
+    required: true
   - name: datadogApiKey
     required: true
     type: string
