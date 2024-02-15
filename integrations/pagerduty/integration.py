@@ -42,7 +42,7 @@ class PagerdutyServiceAPIQueryParams(BaseModel):
 
 
 class PagerdutyScheduleAPIQueryParams(BaseModel):
-    include: list[Literal["escalation_policies", "users"]] | None
+    include: list[str] | None
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -102,6 +102,16 @@ class PagerdutyServiceResourceConfig(ResourceConfig):
     class PagerdutySelector(Selector):
         api_query_params: PagerdutyServiceAPIQueryParams | None = Field(
             alias="apiQueryParams"
+        )
+        service_analytics: bool = Field(
+            default=True,
+            description="If set to true, will ingest service analytics data to Port. Default value is true",
+            alias="serviceAnalytics",
+        )
+        analytics_months_period: int = Field(
+            default=3,
+            description="Number of months to consider for the service analytics date range. Must be a positive integer. Default value is 3 months",
+            alias="analyticsMonthsPeriod",
         )
 
     kind: Literal["services"]

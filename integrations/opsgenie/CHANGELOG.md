@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.21 (2024-02-12)
+
+### Improvements
+
+- Increased API page size param from 50 to 100 to reduce possibility of experiencing rate limit (PORT-6358)
+
+
 # Port_Ocean 0.1.20 (2024-01-23)
 
 ### Improvements
