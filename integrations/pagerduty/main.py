@@ -20,6 +20,24 @@ def initialize_client() -> PagerDutyClient:
     )
 
 
+async def enrich_service_with_analytics_data(
+    client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
+) -> list[dict[str, Any]]:
+    analytics_data = await asyncio.gather(
+        *[
+            client.get_service_analytics(service["id"], months_period)
+            for service in services
+        ]
+    )
+
+    enriched_services = [
+        {**service, "__analytics": analytics}
+        for service, analytics in zip(services, analytics_data)
+    ]
+
+    return enriched_services
+
+
 async def enrich_incidents_with_analytics_data(
     client: PagerDutyClient,
     incidents: list[dict[str, Any]],
@@ -66,14 +84,24 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Pagerduty resource: {kind}")
     pager_duty_client = initialize_client()
-    query_params = typing.cast(
+
+    selector = typing.cast(
         PagerdutyServiceResourceConfig, event.resource_config
-    ).selector.api_query_params
+    ).selector
 
     async for services in pager_duty_client.paginate_request_to_pager_duty(
         data_key=ObjectKind.SERVICES,
-        params=query_params.generate_request_params() if query_params else None,
+        params=selector.api_query_params.generate_request_params()
+        if selector.api_query_params
+        else None,
     ):
+        logger.info(f"Received batch with {len(services)} services")
+
+        if selector.service_analytics:
+            services = await enrich_service_with_analytics_data(
+                pager_duty_client, services, selector.analytics_months_period
+            )
+
         yield await pager_duty_client.update_oncall_users(services)
 
 
