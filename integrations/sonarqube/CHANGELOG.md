@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.28 (2024-02-15)
+
+### Improvements
+
+- Add Sonarqube component object sonarQube analysis data (PORT-6656)
+
+
 # Port_Ocean 0.1.27 (2024-02-04)
 
 ### Improvements
