@@ -1,9 +1,10 @@
 type: launchdarkly
 description: launchdarkly integration for Port Ocean
-icon: Cookiecutter
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/launchdarkly
+icon: Launchdarkly
 features:
   - type: exporter
-    section: CICD
+    section: Project management
     resources:
       - kind: project
       - kind: flag

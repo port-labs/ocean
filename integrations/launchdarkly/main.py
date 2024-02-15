@@ -16,7 +16,7 @@ def initialize_client() -> LaunchDarklyClient:
 async def on_resync_auditlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Lauchdarkly resource: {kind}")
     launchdarkly_client = initialize_client()
-    async for auditlogs in launchdarkly_client.get_paginated_resource(kind, limit=100):
+    async for auditlogs in launchdarkly_client.get_paginated_resource(kind, limit=20):
         logger.info(f"Received {kind} batch with {len(auditlogs)} items")
         yield auditlogs
 
@@ -35,6 +35,7 @@ async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Lauchdarkly resource: {kind}")
     launchdarkly_client = initialize_client()
     async for flags in launchdarkly_client.get_paginated_feature_flags():
+        logger.info(f"Received {kind} batch with {len(flags)} items")
         yield flags
 
 
@@ -43,6 +44,7 @@ async def on_resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Lauchdarkly resource: {kind}")
     launchdarkly_client = initialize_client()
     async for environments in launchdarkly_client.get_paginated_environments():
+        logger.info(f"Received {kind} batch with {len(environments)} items")
         yield environments
 
 
@@ -78,7 +80,7 @@ async def on_start() -> None:
         return
 
     if not ocean.integration_config.get("app_host"):
-        logger.warning(
+        logger.warning(print
             "No app host provided, skipping webhook creation. "
             "Without setting up the webhook, the integration will not export live changes from Launchdarkly"
         )

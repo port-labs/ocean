@@ -3,6 +3,7 @@ import httpx
 from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from enum import StrEnum
+import asyncio
 
 from port_ocean.context.event import event
 
@@ -121,30 +122,59 @@ class LaunchDarklyClient:
             f"Total workspaces retrieved across all organizations: {len(projects)}"
         )
 
-    async def get_paginated_feature_flags(
-        self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for projects in self.get_paginated_resource(kind=ObjectKind.PROJECT):
-            for project in projects:
-                async for flags in self.get_paginated_resource(
-                    ObjectKind.FEATURE_FLAG, resource_path=project["key"]
-                ):
-                    for flag in flags:
-                        flag.update({"__projectKey": project["key"]})
-                    yield flags
-
     async def get_paginated_environments(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for projects in self.get_paginated_resource(kind=ObjectKind.PROJECT):
-            for project in projects:
-                async for environments in self.get_paginated_resource(
-                    ObjectKind.PROJECT,
-                    resource_path=f'{project["key"]}/{ObjectKind.ENVIRONMENT}s',
-                ):
-                    for environment in environments:
-                        environment.update({"__projectKey": project["key"]})
-                    yield environments
+        batch_project = [project async for project in self.get_paginated_projects()]
+        tasks = [
+            self.fetch_environments_for_project(project)
+            for projects in batch_project
+            for project in projects
+        ]
+        environments = await asyncio.gather(*tasks)
+        for environment_batch in environments:
+            yield environment_batch
+
+    async def fetch_environments_for_project(
+        self, project: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        environments = []
+        async for environment_batch in self.get_paginated_resource(
+            ObjectKind.PROJECT,
+            resource_path=f'{project["key"]}/{ObjectKind.ENVIRONMENT}s',
+        ):
+            updated_batch = [
+                {**environment, "__projectKey": project["key"]}
+                for environment in environment_batch
+            ]
+            environments.extend(updated_batch)
+        return environments
+
+    async def get_paginated_feature_flags(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        batch_project = [project async for project in self.get_paginated_projects()]
+        tasks = [
+            self.fetch_feature_flags_for_project(project)
+            for projects in batch_project
+            for project in projects
+        ]
+        feature_flags_batches = await asyncio.gather(*tasks)
+        for feature_flags in feature_flags_batches:
+            yield feature_flags
+
+    async def fetch_feature_flags_for_project(
+        self, project: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        feature_flags = []
+        async for flags_batch in self.get_paginated_resource(
+            ObjectKind.FEATURE_FLAG, resource_path=project["key"]
+        ):
+            updated_batch = [
+                {**flag, "__projectKey": project["key"]} for flag in flags_batch
+            ]
+            feature_flags.extend(updated_batch)
+        return feature_flags
 
     async def get_single_feature_flag(self, data: dict[str, Any]) -> dict[str, Any]:
         endpoint = data["_links"]["canonical"]["href"]
