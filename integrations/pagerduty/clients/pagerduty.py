@@ -4,6 +4,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.utils import http_async_client
+from .utils import get_date_range_for_last_n_months
 
 
 class PagerDutyClient:
@@ -191,3 +192,64 @@ class PagerDutyClient:
                 if user["escalation_policy"]["id"] == escalation_policy_id
             ]
         return services
+
+    async def get_incident_analytics(self, incident_id: str) -> dict[str, Any]:
+        logger.info(f"Fetching analytics for incident: {incident_id}")
+        url = f"{self.api_url}/analytics/raw/incidents/{incident_id}"
+
+        try:
+            response = await self.http_client.get(url)
+            response.raise_for_status()
+            data = response.json()
+            return data
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.debug(
+                    f"Incident {incident_id} analytics data was not found, skipping..."
+                )
+                return {}
+
+            logger.error(
+                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            )
+            return {}
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP occurred while fetching incident analytics data: {e}")
+            return {}
+
+    async def get_service_analytics(
+        self, service_id: str, months_period: int = 3
+    ) -> dict[str, Any]:
+        logger.info(f"Fetching analytics for service: {service_id}")
+        url = f"{self.api_url}/analytics/metrics/incidents/services"
+        date_ranges = get_date_range_for_last_n_months(months_period)
+
+        try:
+            body = {
+                "filters": {
+                    "service_ids": [service_id],
+                    "created_at_start": date_ranges[0],
+                    "created_at_end": date_ranges[1],
+                }
+            }
+            response = await self.http_client.post(url, json=body)
+            response.raise_for_status()
+
+            logger.info(f"Successfully fetched analytics for service: {service_id}")
+
+            return response.json()["data"][0] if response.json()["data"] else {}
+
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.debug(
+                    f"Service {service_id} analytics data was not found, skipping..."
+                )
+                return {}
+
+            logger.error(
+                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            )
+            return {}
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP occurred while fetching service analytics data: {e}")
+            return {}
