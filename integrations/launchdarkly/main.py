@@ -80,7 +80,7 @@ async def on_start() -> None:
         return
 
     if not ocean.integration_config.get("app_host"):
-        logger.warning(print
+        logger.warning(
             "No app host provided, skipping webhook creation. "
             "Without setting up the webhook, the integration will not export live changes from Launchdarkly"
         )
