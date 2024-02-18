@@ -19,28 +19,29 @@ async def setup_listeners(
         PushHookListener(azure_devops_client),
         WorkItemHookListener(azure_devops_client),
     ]
-    webhook_events = set()
+    webhook_events: list[WebhookEvent] = list()
     for listener in listeners:
         for event in listener.webhook_events:
             event.set_consumer_url(f"{app_host}/integration/webhook")
         webhook_event_handler.on(listener.webhook_events, listener.on_hook)
-        webhook_events.update(listener.webhook_events)
+        webhook_events.extend(listener.webhook_events)
     await _create_webhooks(azure_devops_client, list(webhook_events))
 
 
 async def _create_webhooks(
     azure_devops_client: AzureDevopsHTTPClient, webhook_events: list[WebhookEvent]
 ) -> None:
-    logger.info(f"Creating webhooks: {webhook_events}")
     new_events = []
     existing_subscriptions: list[
         WebhookEvent
     ] = await azure_devops_client.generate_subscriptions_webhook_events()
     try:
         for event in webhook_events:
-            if event in existing_subscriptions:
+            if not event.is_event_subscribed(existing_subscriptions):
                 logger.debug(f"Creating new subscription for event: {str(event)}")
                 new_events.append(event)
+            else:
+                logger.debug(f"Event: {str(event)} already has a subscription, not creating a new one")
         await asyncio.gather(
             *(azure_devops_client.create_subscription(event) for event in new_events)
         )
@@ -48,7 +49,7 @@ async def _create_webhooks(
             logger.info(f"Created {len(new_events)} webhooks successfully")
         else:
             logger.info(
-                "All relevant subscriptions already exist, not creating any new ones.."
+                "All relevant subscriptions already exist"
             )
     except Exception as e:
         logger.error(f"Failed to create a subscription: {str(e)}")
