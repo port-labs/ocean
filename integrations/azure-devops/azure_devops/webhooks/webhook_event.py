@@ -13,7 +13,7 @@ class WebhookEvent(BaseModel):
         self.consumerInputs = {"url": url}
 
     def __hash__(self) -> int:
-        return hash((self.publisherId, self.eventType, self.consumerInputs))
+        return hash((self.publisherId, self.eventType, str(self.consumerInputs)))
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, WebhookEvent):
