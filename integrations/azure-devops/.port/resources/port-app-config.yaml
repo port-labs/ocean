@@ -13,7 +13,6 @@ resources:
           properties: 
             url: '.url'
             readme: file://README.md
-            daysSinceLastUpdate: '.project.lastUpdateTime | sub("\\.[[:digit:]]+"; "") | fromdate | (now - .) / (24 * 3600) | floor'
 
   - kind: repository_policy
     selector:

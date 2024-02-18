@@ -11,10 +11,6 @@
             "type": "string",
             "icon": "Link"
           },
-          "daysSinceLastUpdate": {
-            "title":"Days passed since last update",
-            "type": "number"
-          },
           "readme": {
             "title": "README",
             "type": "string",
