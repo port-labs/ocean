@@ -12,17 +12,19 @@ class WebhookEventObserver:
 
     def on(self, events: list[WebhookEvent], observer: Observer) -> None:
         for event in events:
-            self._observers[self._get_event_key_from_event(event)].append(observer)
+            self._observers[self._get_observer_key_from_webhook_event(event)].append(
+                observer
+            )
 
     async def notify(self, event: WebhookEvent, body: dict[str, Any]) -> Awaitable[Any]:
         return asyncio.gather(
             *(
                 observer(body)
                 for observer in self._observers.get(
-                    self._get_event_key_from_event(event), []
+                    self._get_observer_key_from_webhook_event(event), []
                 )
             )
         )
 
-    def _get_event_key_from_event(self, event: WebhookEvent) -> str:
-        return f"{event.publisherId}:{event.consumerId}"
+    def _get_observer_key_from_webhook_event(self, event: WebhookEvent) -> str:
+        return f"{event.publisherId}:{event.eventType}"
