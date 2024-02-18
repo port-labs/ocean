@@ -40,7 +40,7 @@ class HTTPBaseClient:
                     f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
                 )
             else:
-                logger.error(
+                logger.debug(
                     f"Request with bad status code {response.status_code}: GET to url {url}: {str(e)}"
                 )
                 raise e
