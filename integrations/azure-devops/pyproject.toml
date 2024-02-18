@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "azure-devops"
 version = "0.1.0"
-description = "A short description of the project"
-authors = ["Your name <Your address email <you@example.com>>"]
+description = "An Azure Devops Ocean integration"
+authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
