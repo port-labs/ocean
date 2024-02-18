@@ -41,16 +41,16 @@ async def _create_webhooks(
                 logger.debug(f"Creating new subscription for event: {str(event)}")
                 new_events.append(event)
             else:
-                logger.debug(f"Event: {str(event)} already has a subscription, not creating a new one")
+                logger.debug(
+                    f"Event: {str(event)} already has a subscription, not creating a new one"
+                )
         await asyncio.gather(
             *(azure_devops_client.create_subscription(event) for event in new_events)
         )
         if new_events:
             logger.info(f"Created {len(new_events)} webhooks successfully")
         else:
-            logger.info(
-                "All relevant subscriptions already exist"
-            )
+            logger.info("All relevant subscriptions already exist")
     except Exception as e:
         logger.error(f"Failed to create a subscription: {str(e)}")
     return
