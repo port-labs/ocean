@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -12,14 +12,12 @@ class WebhookEvent(BaseModel):
     def set_consumer_url(self, url: str) -> None:
         self.consumerInputs = {"url": url}
 
-    def __hash__(self) -> int:
-        return hash((self.publisherId, self.eventType, str(self.consumerInputs)))
-
-    def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, WebhookEvent):
-            return False
-        return (
-            other.publisherId == self.publisherId
-            and other.eventType == self.eventType
-            and other.consumerInputs == self.consumerInputs
-        )
+    def is_event_subscribed(self, subscribed_events) -> bool:  # type: ignore
+        for subscribed_event in subscribed_events:
+            if (
+                subscribed_event.publisherId == self.publisherId
+                and subscribed_event.eventType == self.eventType
+                and subscribed_event.consumerInputs == self.consumerInputs
+            ):
+                return True
+        return False
