@@ -1,0 +1,20 @@
+type: azure-devops
+description: azure-devops integration for Port Ocean
+icon: Cookiecutter
+features:
+  - type: exporter
+    section: Git Providers
+configurations:
+  - name: organizationUrl
+    required: true
+    type: url
+    sensitive: true
+  - name: personalAccessToken
+    required: true
+    type: string
+    sensitive: true
+  - name: appHost
+    required: false
+    type: url
+    description: The host of the Port Ocean app.
+
