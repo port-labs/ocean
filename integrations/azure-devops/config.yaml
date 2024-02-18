@@ -1,6 +1,6 @@
 initializePortResources: true
 port:
-  clientId: "{{ from env PORT_CLIENT_ID }}" 
+  clientId: "{{ from env PORT_CLIENT_ID }}"
   clientSecret: "{{ from env PORT_CLIENT_SECRET }}"
 eventListener:
   type: POLLING

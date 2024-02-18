@@ -10,7 +10,7 @@ resources:
           identifier: .id
           blueprint: '"service"'
           title: .name
-          properties: 
+          properties:
             url: '.url'
             readme: file://README.md
 
@@ -22,9 +22,9 @@ resources:
         mappings:
           identifier: .repositoryId
           blueprint: '"service"'
-          properties: 
+          properties:
             minimumApproverCount: '.settings.minimumApproverCount'
-  
+
   - kind: repository_policy
     selector:
       query: '.type.displayName=="Work item linking"'
@@ -32,6 +32,6 @@ resources:
       entity:
         mappings:
           identifier: .repositoryId
-          blueprint: '"service"'  
-          properties: 
+          blueprint: '"service"'
+          properties:
             workItemLinking: '.isEnabled and .isBlocking'
