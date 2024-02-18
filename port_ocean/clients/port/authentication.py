@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.clients.port.utils import handle_status_code
-from port_ocean.utils import get_time
+from port_ocean.utils.misc import get_time
 
 
 class TokenResponse(BaseModel):
@@ -79,5 +79,4 @@ class PortAuthentication:
             self.last_token_object = await self._get_token(
                 self.client_id, self.client_secret
             )
-
         return self.last_token_object.full_token
