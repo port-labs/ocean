@@ -17,6 +17,11 @@
           "type": "string",
           "icon": "Link"
         },
+        "language": {
+          "type": "string",
+          "title": "Language",
+          "icon": "Git"
+        },
         "slack": {
           "icon": "Slack",
           "type": "string",
