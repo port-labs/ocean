@@ -15,4 +15,4 @@ class GitResourceConfig(ResourceConfig):
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] = Field(alias="specPath", default=["port.yml"])
     branch: str = "main"
-    resources: list[GitResourceConfig | ResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitResourceConfig | ResourceConfig] = Field(default_factory=list)
