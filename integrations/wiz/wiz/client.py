@@ -245,7 +245,7 @@ class WizClient:
         logger.info(f"Created report with id {report_id}")
         return report_id
 
-    async def get_integration_report(self) -> dict:
+    async def get_integration_report(self) -> dict[str, Any]:
         logger.info("Checking the Port Integration Report Details")
 
         filters = {
@@ -265,7 +265,7 @@ class WizClient:
         logger.info("Port integration report not found.")
         return {}
 
-    async def rerun_report(self, report_id) -> None:
+    async def rerun_report(self, report_id: str) -> str:
         logger.info(f"Restarting report {report_id} generation")
 
         filters = {"reportId": report_id}
@@ -295,7 +295,7 @@ class WizClient:
                 logger.info(
                     f"Report failed or expired, re-running the report and waiting {RETRY_TIME_FOR_DOWNLOAD_REPORT}",
                 )
-                self.rerun_report(report_id)
+                await self.rerun_report(report_id)
                 time.sleep(RETRY_TIME_FOR_DOWNLOAD_REPORT)
                 num_of_retries += 1
 
@@ -311,7 +311,7 @@ class WizClient:
 
     async def stream_and_parse_csv(
         self, download_url: str, chunk_size: int = PAGE_SIZE, max_pages: int = MAX_PAGES
-    ):
+    ) -> AsyncGenerator[List[Dict[str, str]], None]:
         start_time = time.time()
         total_records = 0
         chunk_count = 0
