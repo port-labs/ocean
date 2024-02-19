@@ -1,7 +1,7 @@
 import asyncio
 import json
 import sys
-import threading
+from asyncio import ensure_future
 from typing import Any, Literal
 
 from confluent_kafka import Message  # type: ignore
@@ -15,7 +15,6 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
-from port_ocean.utils.repeat import repeat_every
 
 
 class KafkaEventListenerSettings(EventListenerSettings):
@@ -70,8 +69,8 @@ class KafkaEventListener(BaseEventListener):
         self.org_id = org_id
         self.integration_identifier = integration_identifier
         self.integration_type = integration_type
-        self._consumer_kill_event = threading.Event()
         self._running_task = None
+        self.consumer = None
 
     async def _get_kafka_config(self) -> KafkaConsumerConfig:
         """
@@ -104,28 +103,7 @@ class KafkaEventListener(BaseEventListener):
 
         return False
 
-    def _resync_in_new_event_loop(self, message: dict[Any, Any]) -> None:
-        """
-        A private method that handles incoming Kafka messages in a separate thread.
-        It triggers the `on_resync` event handler.
-        """
-
-        async def try_wrapper() -> None:
-            try:
-                await self.events["on_resync"](message)
-            except Exception as e:
-                _type, _, tb = sys.exc_info()
-                logger.opt(exception=(_type, None, tb)).error(
-                    f"Failed to process message: {str(e)}"
-                )
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        running_task = loop.create_task(try_wrapper())
-        self._tasks_to_close.append(running_task)
-        loop.run_until_complete(running_task)
-
-    def _handle_message(self, raw_msg: Message) -> None:
+    async def _handle_message(self, raw_msg: Message) -> None:
         """
         A private method that handles incoming Kafka messages.
         If the message should be processed (determined by `_should_be_processed`), it triggers the corresponding event handler.
@@ -140,21 +118,20 @@ class KafkaEventListener(BaseEventListener):
             return
 
         if "change.log" in topic and message is not None:
-            thread_name = f"ocean_event_handler_{raw_msg.offset()}"
-            logger.info(f"spawning thread {thread_name} to start resync")
-            threading.Thread(
-                name=thread_name,
-                target=self._resync_in_new_event_loop,
-                args=(message,),
-            ).start()
-            logger.info(f"thread {thread_name} started")
+            try:
+                await self.events["on_resync"](message)
+            except Exception as e:
+                _type, _, tb = sys.exc_info()
+                logger.opt(exception=(_type, None, tb)).error(
+                    f"Failed to process message: {str(e)}"
+                )
 
     async def _start(self) -> None:
         """
         The main method that starts the Kafka consumer.
         It creates a KafkaConsumer instance with the given configuration and starts it in a separate thread.
         """
-        consumer = KafkaConsumer(
+        self.consumer = KafkaConsumer(
             msg_process=self._handle_message,
             config=await self._get_kafka_config(),
             org_id=self.org_id,
@@ -162,11 +139,11 @@ class KafkaEventListener(BaseEventListener):
         logger.info("Starting Kafka consumer")
 
         # we use the `repeat_every` decorator to make sure the Kafka consumer will be started, but won't stuck the application
-        @repeat_every(seconds=0, max_repetitions=1)
-        async def run_kafka() -> None:
-            await consumer.start(self._consumer_kill_event)
-
-        await run_kafka()
+        self._running_task = asyncio.create_task(self.consumer.start())
+        ensure_future(self._running_task)
 
     def _stop(self) -> None:
-        self._consumer_kill_event.set()
+        if self.consumer:
+            self.consumer.exit_gracefully()
+        if self._running_task:
+            self._running_task.cancel()

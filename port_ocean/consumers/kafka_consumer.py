@@ -1,8 +1,7 @@
 import functools
 import signal
-import threading
-from asyncio import get_running_loop
-from typing import Any, Callable
+from asyncio import get_running_loop, ensure_future
+from typing import Any, Callable, Awaitable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
 from loguru import logger
@@ -23,11 +22,12 @@ class KafkaConsumerConfig(BaseModel):
 class KafkaConsumer:
     def __init__(
         self,
-        msg_process: Callable[[Message], None],
+        msg_process: Callable[[Message], Awaitable[None]],
         config: KafkaConsumerConfig,
         org_id: str,
     ) -> None:
         self.running = False
+        self._assigned_partitions = False
         self.org_id = org_id
         self.config = config
 
@@ -41,6 +41,7 @@ class KafkaConsumer:
                 "sasl.password": config.password,
                 "group.id": f"{self.org_id}.{config.group_name}",
                 "enable.auto.commit": "false",
+                "partition.assignment.strategy": "cooperative-sticky",
             }
         else:
             kafka_config = {
@@ -53,7 +54,7 @@ class KafkaConsumer:
 
     def _handle_partitions_assignment(self, _, partitions: list[str]) -> None:
         logger.info(f"Assignment: {partitions}")
-        if not partitions:
+        if not partitions and not self._assigned_partitions:
             logger.error(
                 "No partitions assigned. This usually means that there is"
                 " already another integration from the same type and with"
@@ -61,8 +62,10 @@ class KafkaConsumer:
                 " type and identifier cannot run at the same time."
             )
             signal.raise_signal(signal.SIGINT)
+        else:
+            self._assigned_partitions = True
 
-    async def start(self, event: threading.Event) -> None:
+    async def start(self) -> None:
         self.running = True
         logger.info("Start consumer...")
 
@@ -77,7 +80,7 @@ class KafkaConsumer:
             self.consumer.poll, timeout=self.config.consumer_poll_timeout
         )
         try:
-            while self.running and not event.is_set():
+            while self.running:
                 try:
                     msg = await loop.run_in_executor(None, poll)
                     if msg is None:
@@ -90,7 +93,7 @@ class KafkaConsumer:
                                 "Process message "
                                 f"from topic {msg.topic()}, partition {msg.partition()}, offset {msg.offset()}"
                             )
-                            self.msg_process(msg)
+                            ensure_future(self.msg_process(msg))
 
                         except Exception as process_error:
                             logger.exception(
@@ -106,6 +109,6 @@ class KafkaConsumer:
             self.exit_gracefully()
 
     def exit_gracefully(self, *_: Any) -> None:
-        logger.info("Exiting gracefully...")
+        logger.info("Closing the kafka consumer gracefully...")
         self.running = False
         self.consumer.close()
