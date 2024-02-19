@@ -14,7 +14,7 @@ resources:
             url: '.url'
             readme: file://README.md
 
-  - kind: repository_policy
+  - kind: repository-policy
     selector:
       query: '.type.displayName=="Minimum number of reviewers"'
     port:
@@ -25,7 +25,7 @@ resources:
           properties:
             minimumApproverCount: '.settings.minimumApproverCount'
 
-  - kind: repository_policy
+  - kind: repository-policy
     selector:
       query: '.type.displayName=="Work item linking"'
     port:

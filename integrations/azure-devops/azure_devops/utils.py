@@ -2,6 +2,18 @@ import functools
 from port_ocean.context.event import event
 from typing import Callable, Any, AsyncGenerator
 
+
+class Kind:
+    REPOSITORY = "repository"
+    REPOSITORY_POLICY = "repository-policy"
+    PULL_REQUEST = "pull-request"
+    WORK_ITEM = "work-item"
+    PIPELINE = "pipeline"
+    BOARD = "board"
+    MEMBER = "member"
+    TEAM = "team"
+    PROJECT = "project"
+
 AsyncGeneratorCreatorType = Callable[..., AsyncGenerator[list[Any], None]]
 
 

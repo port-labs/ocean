@@ -5,7 +5,7 @@ port:
 eventListener:
   type: POLLING
 integration:
-  identifier: my_azure_devops_integration
+  identifier: my-azure-devops-integration
   type: "azure-devops"
   config:
     organizationUrl: "{{ from env ORGANIZATION_URL }}"
