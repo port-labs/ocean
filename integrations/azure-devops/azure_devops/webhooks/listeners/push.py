@@ -10,21 +10,19 @@ from azure_devops.gitops.port_app_config import GitPortAppConfig
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
 from azure_devops.utils import Kind
 
+
 class PushHookListener(HookListener):
     webhook_events = [WebhookEvent(publisherId="tfs", eventType="git.push")]
 
     async def on_hook(self, data: dict[str, Any]) -> None:
-        logger.info("Got Push event!")
         config: GitPortAppConfig = typing.cast(GitPortAppConfig, event.port_app_config)
-
         push_url = data["resource"]["url"]
         push_params = {"includeRefUpdates": True}
         push_data = (
             await self._client.send_get_request(push_url, params=push_params)
         ).json()
-
         updates = push_data["refUpdates"]
-        for update in updates:
+        async for update in updates:
             repo_id = update["repositoryId"]
             branch = "/".join(
                 update["name"].split("/")[2:]

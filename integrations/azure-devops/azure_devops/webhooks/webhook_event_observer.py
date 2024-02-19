@@ -19,10 +19,9 @@ class WebhookEventObserver:
 
     async def notify(self, event: WebhookEvent, body: dict[str, Any]) -> None:
         event_key = self._get_observer_key_from_webhook_event(event)
-        tasks = [
-            observer(body)
-            for observer in self._observers.get(event_key, [])
-        ]
+        tasks = [observer(body) for observer in self._observers.get(event_key, [])]
+
+        logger.info(f"Got event {event_key}, notifying {len(tasks)} listeners..")
         results_with_error = await asyncio.gather(*(tasks), return_exceptions=True)
         errors = [
             result for result in results_with_error if isinstance(result, Exception)
