@@ -37,30 +37,6 @@
     }
   },
   {
-    "identifier": "wizControl",
-    "description": "This blueprint represents a wiz source rule",
-    "title": "Wiz Control",
-    "icon": "Wiz",
-    "schema": {
-      "properties": {
-        "controlDescription": {
-          "type": "string",
-          "title": "Control Description",
-          "description": "the control description"
-        },
-        "resolutionRecommendation": {
-          "type": "string",
-          "title": "Control Recommendation",
-          "description": "the control recommendation on resolving issues"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {}
-  },
-  {
     "identifier": "wizIssue",
     "description": "This blueprint represents a wiz issue",
     "title": "Wiz Issue",
@@ -111,37 +87,35 @@
           "title": "Type",
           "type": "string"
         },
-        "vulnerability": {
-          "title": "Vulnerability",
-          "type": "object",
-          "description": "The identified security risk"
+        "resource_name": {
+          "title": "Resource Name",
+          "type": "string"
         },
-        "notes": {
-          "title": "Notes",
+        "recommendation": {
+          "title": "Remediation Recommendation",
+          "type": "string"
+        },
+        "serviceTickets": {
+          "items": {
+            "type": "string",
+            "format": "url"
+          },
+          "title": "Ticket URLS",
+          "icon": "DefaultProperty",
           "type": "array"
+        },
+        "resourceTags": {
+          "title": "Resource Tags",
+          "icon": "Wiz",
+          "type": "object"
         },
         "createdAt": {
           "title": "Created At",
           "type": "string",
           "format": "date-time"
         },
-        "updatedAt": {
-          "title": "Updated At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "dueAt": {
-          "title": "Due At",
-          "type": "string",
-          "format": "date-time"
-        },
         "resolvedAt": {
           "title": "Resolved At",
-          "type": "string",
-          "format": "date-time"
-        },
-        "statusChangedAt": {
-          "title": "Status ChangedAt",
           "type": "string",
           "format": "date-time"
         }
@@ -157,41 +131,7 @@
         "description": "The projects affected by this issue",
         "required": false,
         "many": true
-      },
-      "serviceTickets": {
-        "target": "wizServiceTicket",
-        "title": "Service Tickets",
-        "description": "The service tickets belonging to this issue",
-        "required": false,
-        "many": true
-      },
-      "control": {
-        "target": "wizControl",
-        "title": "Control",
-        "description": "The control that flagged this issue",
-        "required": false,
-        "many": false
       }
     }
-  },
-  {
-    "identifier": "wizServiceTicket",
-    "description": "This blueprint represents a wiz service ticket",
-    "title": "Wiz Service Ticket",
-    "icon": "Wiz",
-    "schema": {
-      "properties": {
-        "url": {
-          "type": "string",
-          "title": "Ticket URL",
-          "format": "url",
-          "description": "the service ticket URL"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {}
   }
 ]

@@ -1,7 +1,13 @@
+import codecs
+import csv
+import json
+import time
+from contextlib import closing
 from enum import StrEnum
-from typing import Any, AsyncGenerator
+from typing import AsyncGenerator, Dict, List, Any
 
 import httpx
+import requests
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -12,6 +18,14 @@ from .constants import (
     COGNITO_URLS,
     PAGE_SIZE,
     MAX_PAGES,
+    CREATE_REPORT_MUTATION,
+    GET_REPORT,
+    DOWNLOAD_REPORT_QUERY,
+    MAX_RETRIES_FOR_DOWNLOAD_REPORT,
+    CHECK_INTERVAL_FOR_DOWNLOAD_REPORT,
+    RETRY_TIME_FOR_DOWNLOAD_REPORT,
+    RERUN_REPORT_MUTATION,
+    PORT_REPORT_NAME,
 )
 from port_ocean.context.event import event
 from port_ocean.exceptions.core import OceanAbortException
@@ -112,7 +126,7 @@ class WizClient:
         self, query: str, variables: dict[str, Any]
     ) -> dict[str, Any]:
         try:
-            logger.info(f"Fetching graphql query with variables {variables}")
+            logger.info(f"Posting graphql query with variables {variables}")
 
             response = await self.http_client.post(
                 url=self.api_url,
@@ -194,3 +208,169 @@ class WizClient:
         response_data = await self.make_graphql_query(ISSUES_GQL, query_variables)
         issue = response_data.get("issues", {}).get("nodes", [])[0]
         return issue
+
+    async def setup_integration_report(self) -> None:
+        logger.info(f"Creating report '{PORT_REPORT_NAME}' to fetch issues")
+
+        report = await self.get_integration_report()
+        if report:
+            logger.info(f"Report already exists. Skipping creation: {report}")
+            return
+
+        logger.error("Report does not exist. Creating...")
+        await self.create_report()
+
+    async def create_report(self) -> str:
+        report_project_id = "*"
+        report_type = "DETAILED"
+        report_issue_status = ["OPEN", "IN_PROGRESS"]
+
+        report_variables = {
+            "input": {
+                "name": PORT_REPORT_NAME,
+                "type": "ISSUES",
+                "projectId": report_project_id,
+                "issueParams": {
+                    "type": report_type,
+                    "issueFilters": {"status": report_issue_status},
+                },
+            }
+        }
+
+        response_data = await self.make_graphql_query(
+            CREATE_REPORT_MUTATION, report_variables
+        )
+        logger.info(f"Report creation response: {response_data}")
+        report_id = response_data["createReport"]["report"]["id"]
+        logger.info(f"Created report with id {report_id}")
+        return report_id
+
+    async def get_integration_report(self) -> dict:
+        logger.info("Checking the Port Integration Report Details")
+
+        filters = {
+            "first": 5,
+            "filterBy": {
+                "search": PORT_REPORT_NAME,
+                "lastReportRunStatus": ["COMPLETED", "IN_PROGRESS"],
+            },
+        }
+
+        response_data = await self.make_graphql_query(GET_REPORT, filters)
+        reports = response_data.get("reports", {}).get("nodes", [])
+
+        if reports:
+            return reports[0]
+
+        logger.info("Port integration report not found.")
+        return {}
+
+    async def rerun_report(self, report_id) -> None:
+        logger.info(f"Restarting report {report_id} generation")
+
+        filters = {"reportId": report_id}
+        response = await self.make_graphql_query(RERUN_REPORT_MUTATION, filters)
+        report_id = response["rerunReport"]["report"]["id"]
+        logger.info("Report was re-run successfully. Report ID: %s", report_id)
+        return report_id
+
+    async def get_report_url_and_status(self, report_id: str) -> Any:
+        logger.info("Getting the Port Integration Report Download URL")
+
+        filters = {"reportId": report_id}
+        num_of_retries = 0
+
+        while num_of_retries < MAX_RETRIES_FOR_DOWNLOAD_REPORT:
+            logger.info(
+                f"Report is still creating, waiting {CHECK_INTERVAL_FOR_DOWNLOAD_REPORT} seconds"
+            )
+
+            time.sleep(CHECK_INTERVAL_FOR_DOWNLOAD_REPORT)
+            response = await self.make_graphql_query(DOWNLOAD_REPORT_QUERY, filters)
+            status = response["report"]["lastRun"]["status"]
+
+            if status == "COMPLETED":
+                return response["report"]["lastRun"]["url"]
+            elif status == "FAILED" or status == "EXPIRED":
+                logger.info(
+                    f"Report failed or expired, re-running the report and waiting {RETRY_TIME_FOR_DOWNLOAD_REPORT}",
+                )
+                self.rerun_report(report_id)
+                time.sleep(RETRY_TIME_FOR_DOWNLOAD_REPORT)
+                num_of_retries += 1
+
+        raise Exception("Download failed, exceeding the maximum number of retries")
+
+    async def get_reported_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        report = await self.get_integration_report()
+        report_url = await self.get_report_url_and_status(report["id"])
+
+        logger.info(f"Dowloading the Port Integration Report: {report['name']}")
+        async for chunk in self.stream_and_parse_csv(report_url, 50, 2):
+            yield chunk
+
+    async def stream_and_parse_csv(
+        self, download_url: str, chunk_size: int = PAGE_SIZE, max_pages: int = MAX_PAGES
+    ):
+        start_time = time.time()
+        total_records = 0
+        chunk_count = 0
+        current_page = 0
+
+        logger.info("Starting CSV download and processing")
+
+        try:
+            with closing(requests.get(download_url, stream=True)) as r:
+                r.raise_for_status()  # Ensure successful download
+                reader = csv.reader(
+                    codecs.iterdecode(r.iter_lines(), "utf-8")
+                )  # For structured CSV parsing
+
+                headers = next(reader, None)  # Get the header row
+                if not headers:
+                    logger.error("CSV appears to be empty or without headers")
+                    return
+
+                chunk: List[Dict[str, str]] = []
+
+                for row in reader:
+                    if len(row) != len(headers):
+                        logger.warning(f"Row length mismatch. Skipping: {row}")
+                        continue
+
+                    transformed_headers = list(
+                        map(lambda x: x.lower().replace(" ", "_"), headers)
+                    )
+
+                    obj = {transformed_headers[i]: row[i] for i in range(len(headers))}
+                    obj["resource_tags"] = json.loads(obj["resource_tags"])
+                    chunk.append(obj)
+
+                    total_records += 1
+
+                    if len(chunk) == chunk_size:
+                        yield chunk
+                        chunk = []
+                        chunk_count += 1
+                        current_page += 1
+
+                        if max_pages and current_page >= max_pages:
+                            break
+
+                if chunk:
+                    yield chunk
+                    chunk_count += 1
+
+        except requests.RequestException as exc:
+            logger.exception(f"Requests error occurred: {exc}")
+            raise
+
+        except Exception as exc:
+            logger.exception(f"Error occured when processing Issues report: {exc}")
+            raise
+
+        end_time = time.time()
+        duration = end_time - start_time
+        logger.info(
+            f"CSV processing finished. Processed {total_records} records in {chunk_count} chunks (max_pages: {max_pages}). Duration: {duration:.2f} seconds"
+        )

@@ -1,4 +1,5 @@
 initializePortResources: true
+scheduledResyncInterval: 1440 # 24 * 60 
 port:
   clientId: "{{ from env PORT_CLIENT_ID }}"   # Can be loaded via environment variable: PORT_CLIENT_ID
   clientSecret: "{{ from env PORT_CLIENT_SECRET }}"   # Can be loaded via environment variable: PORT_CLIENT_SECRET
