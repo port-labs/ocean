@@ -1,13 +1,15 @@
+import functools
 import inspect
 from importlib.util import spec_from_file_location, module_from_spec
 from pathlib import Path
 from time import time
 from types import ModuleType
-from typing import Callable, Any
+from typing import Callable, Any, AsyncIterator
 from uuid import uuid4
 
 import tomli
 import yaml
+from port_ocean.context.event import event
 
 
 def get_time(seconds_precision: bool = True) -> float:
@@ -54,3 +56,32 @@ def load_module(file_path: str) -> ModuleType:
     spec.loader.exec_module(module)
 
     return module
+
+
+AsyncIteratorCallable = Callable[..., AsyncIterator[list[Any]]]
+
+
+def cache_iterator_result(
+    cache_key: str,
+) -> Callable[[AsyncIteratorCallable], AsyncIteratorCallable]:
+    def decorator(func: AsyncIteratorCallable) -> AsyncIteratorCallable:
+        @functools.wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Check if the result is already in the cache
+            if cache := event.attributes.get(cache_key):
+                yield cache
+                return
+
+            # If not in cache, fetch the data
+            cached_results = list()
+            async for result in func(*args, **kwargs):
+                cached_results.extend(result)
+                yield result
+
+            # Cache the results
+            event.attributes[cache_key] = cached_results
+            return
+
+        return wrapper
+
+    return decorator
