@@ -4,6 +4,7 @@ from port_ocean.context.ocean import ocean
 from .listener import HookListener
 from azure_devops.utils import Kind
 
+
 class WorkItemHookListener(HookListener):
     webhook_events = [
         WebhookEvent(publisherId="tfs", eventType="workitem.created"),

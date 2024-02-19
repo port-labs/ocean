@@ -3,6 +3,7 @@ import functools
 from port_ocean.context.event import event
 from typing import Callable, Any, AsyncGenerator
 
+
 class Kind(StrEnum):
     REPOSITORY = "repository"
     REPOSITORY_POLICY = "repository-policy"

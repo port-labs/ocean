@@ -8,7 +8,7 @@ from typing import List, Literal
 
 
 class GitResourceConfig(ResourceConfig):
-    kind: Literal['repository']
+    kind: Literal["repository"]
     selector: GitSelector
 
 

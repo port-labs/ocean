@@ -95,9 +95,9 @@ class HTTPBaseClient:
             params: dict[str, Any] = {
                 "$top": PAGE_SIZE,
                 "continuationToken": continuation_token,
-                **(additional_params or {})
+                **(additional_params or {}),
             }
-            response = await self.send_request('GET', url, params=params)
+            response = await self.send_request("GET", url, params=params)
             logger.debug(
                 f"Found {len(response.json()['value'])} objects in url {url} with params: {params}"
             )
@@ -113,7 +113,7 @@ class HTTPBaseClient:
         params = {**default_params, **(params or {})}
         while True:
             objects_page = self._parse_response_values(
-                await self.send_request('GET' ,url, params=params)
+                await self.send_request("GET", url, params=params)
             )
             if objects_page:
                 logger.debug(
