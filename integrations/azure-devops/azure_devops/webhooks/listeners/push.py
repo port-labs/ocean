@@ -21,8 +21,8 @@ class PushHookListener(HookListener):
         push_data = (
             await self._client.send_request('GET' ,push_url, params=push_params)
         ).json()
-        updates = push_data["refUpdates"]
-        async for update in updates:
+        updates: list[dict[str,Any]] = push_data["refUpdates"]
+        for update in updates:
             repo_id = update["repositoryId"]
             branch = "/".join(
                 update["name"].split("/")[2:]
