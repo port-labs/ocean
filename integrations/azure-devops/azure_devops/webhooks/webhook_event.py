@@ -12,7 +12,7 @@ class WebhookEvent(BaseModel):
     def set_consumer_url(self, url: str) -> None:
         self.consumerInputs = {"url": url}
 
-    def is_event_subscribed(self, subscribed_events) -> bool:  # type: ignore
+    def is_event_subscribed(self, subscribed_events: list["WebhookEvent"]) -> bool:
         for subscribed_event in subscribed_events:
             if (
                 subscribed_event.publisherId == self.publisherId
