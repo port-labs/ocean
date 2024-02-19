@@ -4,7 +4,7 @@ import yaml
 from yaml.parser import ParserError
 from port_ocean.core.models import Entity
 from .file_entity_processor import FILE_PROPERTY_PREFIX
-from azure_devops.client import AzureDevopsHTTPClient
+from azure_devops.client import AzureDevopsClient
 from loguru import logger
 
 JSON_SUFFIX = ".json"
@@ -12,7 +12,7 @@ JSON_SUFFIX = ".json"
 
 def _generate_entity_from_port_yaml(
     raw_entity: Entity,
-    azure_devops_client: AzureDevopsHTTPClient,
+    azure_devops_client: AzureDevopsClient,
     commit_id: str,
     repository_id: str,
 ) -> Entity:
@@ -42,7 +42,7 @@ def _generate_entity_from_port_yaml(
 
 
 def _generate_entities_from_port_yaml(
-    azure_devops_client: AzureDevopsHTTPClient,
+    azure_devops_client: AzureDevopsClient,
     file_name: str,
     repository_id: str,
     commit_id: str,
@@ -70,7 +70,7 @@ def _generate_entities_from_port_yaml(
 
 
 def generate_entities_from_commit_id(
-    azure_devops_client: AzureDevopsHTTPClient,
+    azure_devops_client: AzureDevopsClient,
     spec_paths: list[str],
     repo_id: str,
     commit_id: str,

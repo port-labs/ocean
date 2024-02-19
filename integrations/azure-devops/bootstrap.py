@@ -1,6 +1,6 @@
 import asyncio
 from loguru import logger
-from azure_devops.client import AzureDevopsHTTPClient
+from azure_devops.client import AzureDevopsClient
 from azure_devops.webhooks.listeners.listener import HookListener
 from azure_devops.webhooks.listeners.pull_request import PullRequestHookListener
 from azure_devops.webhooks.listeners.push import PushHookListener
@@ -12,7 +12,7 @@ webhook_event_handler = WebhookEventObserver()
 
 
 async def setup_listeners(
-    app_host: str, azure_devops_client: AzureDevopsHTTPClient
+    app_host: str, azure_devops_client: AzureDevopsClient
 ) -> None:
     listeners: list[HookListener] = [
         PullRequestHookListener(azure_devops_client),
@@ -29,7 +29,7 @@ async def setup_listeners(
 
 
 async def _create_webhooks(
-    azure_devops_client: AzureDevopsHTTPClient, webhook_events: list[WebhookEvent]
+    azure_devops_client: AzureDevopsClient, webhook_events: list[WebhookEvent]
 ) -> None:
     new_events = []
     existing_subscriptions: list[

@@ -10,13 +10,13 @@ from azure_devops.utils import cache_results
 API_URL_PREFIX = "_apis"
 
 
-class AzureDevopsHTTPClient(HTTPBaseClient):
+class AzureDevopsClient(HTTPBaseClient):
     def __init__(self, organization_url: str, personal_access_token: str) -> None:
         super().__init__(personal_access_token)
         self._organization_base_url = organization_url
 
     @classmethod
-    def create_from_ocean_config(cls) -> "AzureDevopsHTTPClient":
+    def create_from_ocean_config(cls) -> "AzureDevopsClient":
         if cache := event.attributes.get("azure_devops_client"):
             return cache
         azure_devops_client = cls(

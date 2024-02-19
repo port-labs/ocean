@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Tuple, Type
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import Selector
-from azure_devops.client import AzureDevopsHTTPClient
+from azure_devops.client import AzureDevopsClient
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"
@@ -12,7 +12,7 @@ class AzureDevopsFileEntityProcessor(JQEntityProcessor):
     prefix = FILE_PROPERTY_PREFIX
 
     def _search(self, data: Dict[str, Any], pattern: str) -> Any:
-        client = AzureDevopsHTTPClient.create_from_ocean_config()
+        client = AzureDevopsClient.create_from_ocean_config()
         repository_id, branch = parse_repository_payload(data)
         file_path = pattern.replace(self.prefix, "")
         # Because of the current state of Ocean Entitiy processor this has to be sync.
