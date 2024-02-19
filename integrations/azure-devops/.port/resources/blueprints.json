@@ -2,7 +2,7 @@
   {
     "identifier": "service",
     "title": "Service",
-    "icon": "Azure",
+    "icon": "AzureDevops",
     "schema": {
       "properties": {
         "url": {
