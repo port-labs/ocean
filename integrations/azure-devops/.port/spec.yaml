@@ -2,6 +2,8 @@ type: azure-devops
 description: azure-devops integration for Port Ocean
 icon: Cookiecutter
 features:
+  - type: gitops
+    section: GitOps
   - type: exporter
     section: Git Providers
 configurations:
