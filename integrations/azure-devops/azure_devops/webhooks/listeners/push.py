@@ -19,9 +19,9 @@ class PushHookListener(HookListener):
         push_url = data["resource"]["url"]
         push_params = {"includeRefUpdates": True}
         push_data = (
-            await self._client.send_request('GET' ,push_url, params=push_params)
+            await self._client.send_request("GET", push_url, params=push_params)
         ).json()
-        updates: list[dict[str,Any]] = push_data["refUpdates"]
+        updates: list[dict[str, Any]] = push_data["refUpdates"]
         for update in updates:
             repo_id = update["repositoryId"]
             branch = "/".join(
