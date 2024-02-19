@@ -1,5 +1,5 @@
 import httpx
-from httpx import Timeout, BasicAuth, Response
+from httpx import HTTPError, Timeout, BasicAuth, Response
 from typing import Any, AsyncGenerator, Optional
 from port_ocean.utils import http_async_client
 from loguru import logger
@@ -100,7 +100,7 @@ class HTTPBaseClient:
                     f"Request with bad status code {response.status_code}: {method} to url {url}: {str(e)}"
                 )
                 raise e
-        except Exception as e:
+        except HTTPError as e:
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
         logger.debug(
@@ -116,9 +116,8 @@ class HTTPBaseClient:
             params: dict[str, Any] = {
                 "$top": PAGE_SIZE,
                 "continuationToken": continuation_token,
+                **(additional_params or {})
             }
-            if additional_params:
-                params.update(additional_params)
             response = await self.send_get_request(url, params=params)
             logger.debug(
                 f"Found {len(response.json()['value'])} objects in url {url} with params: {params}"
