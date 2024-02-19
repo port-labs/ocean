@@ -49,28 +49,7 @@ class HTTPBaseClient:
             raise e
         return response
 
-    async def send_get_request(
-        self,
-        url: str,
-        params: Optional[dict[str, Any]] = None,
-        headers: Optional[dict[str, Any]] = None,
-    ) -> Response:
-        return await self._send_request(
-            method="get", url=url, params=params, headers=headers
-        )
-
-    async def send_post_request(
-        self,
-        url: str,
-        params: Optional[dict[str, Any]] = None,
-        data: Optional[str | dict[Any, Any]] = None,
-        headers: Optional[dict[str, Any]] = None,
-    ) -> Response:
-        return await self._send_request(
-            method="post", params=params, url=url, data=data, headers=headers
-        )
-
-    async def _send_request(
+    async def send_request(
         self,
         method: str,
         url: str,
@@ -99,7 +78,7 @@ class HTTPBaseClient:
                 logger.error(
                     f"Request with bad status code {response.status_code}: {method} to url {url}: {str(e)}"
                 )
-                raise e
+            raise e
         except HTTPError as e:
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
@@ -118,7 +97,7 @@ class HTTPBaseClient:
                 "continuationToken": continuation_token,
                 **(additional_params or {})
             }
-            response = await self.send_get_request(url, params=params)
+            response = await self.send_request('GET', url, params=params)
             logger.debug(
                 f"Found {len(response.json()['value'])} objects in url {url} with params: {params}"
             )
@@ -137,7 +116,7 @@ class HTTPBaseClient:
             params = default_params
         while True:
             objects_page = self._parse_response_values(
-                await self.send_get_request(url, params=params)
+                await self.send_request('GET' ,url, params=params)
             )
             if objects_page:
                 logger.debug(

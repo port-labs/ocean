@@ -58,7 +58,7 @@ class AzureDevopsClient(HTTPBaseClient):
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
                 repositories = self._parse_response_values(
-                    await self.send_get_request(repos_url)
+                    await self.send_request("GET", repos_url)
                 )
                 yield repositories
 
@@ -99,7 +99,8 @@ class AzureDevopsClient(HTTPBaseClient):
                 work_items_wiql_headers = {"Content-Type": "application/json"}
                 work_items_wiql_url = f"{self._organization_base_url}/{team['projectId']}/{team['id']}/{API_URL_PREFIX}/wit/wiql"
                 wiql_content = (
-                    await self.send_post_request(
+                    await self.send_request(
+                        "POST",
                         work_items_wiql_url,
                         headers=work_items_wiql_headers,
                         params=work_items_wiql_params,
@@ -127,8 +128,8 @@ class AzureDevopsClient(HTTPBaseClient):
                     }
                     work_items_list_url = f"{self._organization_base_url}/{team['projectId']}/{API_URL_PREFIX}/wit/workitems"
                     work_items_data = self._parse_response_values(
-                        await self.send_get_request(
-                            work_items_list_url, params=work_items_list_params
+                        await self.send_request(
+                            "GET", work_items_list_url, params=work_items_list_params
                         )
                     )
                     for work_item in work_items_data:
@@ -144,7 +145,7 @@ class AzureDevopsClient(HTTPBaseClient):
             for project in projects:
                 board_list_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/work/boards"
                 boards = self._parse_response_values(
-                    await self.send_get_request(board_list_url)
+                    await self.send_request("GET", board_list_url)
                 )
                 project_boards: list[dict[Any, Any]] = []
                 for board in boards:
@@ -152,7 +153,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         f"Found board {board['name']} in project {project['name']}"
                     )
                     board_data = self._parse_response_values(
-                        await self.send_get_request(board["url"])
+                        await self.send_request("GET", board["url"])
                     )
                     project_boards.extend(board_data)
                 logger.info(
@@ -168,7 +169,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 params = {"repositoryId": repo["id"], "refName": repo["defaultBranch"]}
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
                 repo_policies = self._parse_response_values(
-                    await self.send_get_request(policies_url, params=params)
+                    await self.send_request("GET", policies_url, params=params)
                 )
                 for policy in repo_policies:
                     policy["repositoryId"] = repo["id"]
@@ -176,19 +177,19 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any]:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
-        response = await self.send_get_request(get_single_pull_request_url)
+        response = await self.send_request("GET", get_single_pull_request_url)
         pull_request_data = response.json()
         return pull_request_data
 
     async def get_repository(self, repository_id: str) -> dict[Any, Any]:
         get_single_repository_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}"
-        response = await self.send_get_request(get_single_repository_url)
+        response = await self.send_request("GET", get_single_repository_url)
         repository_data = response.json()
         return repository_data
 
     async def get_work_item(self, work_item_id: str) -> dict[Any, Any]:
         get_single_pull_reqest_url = f"{self._organization_base_url}/{API_URL_PREFIX}/wit/workitems/{work_item_id}"
-        response = await self.send_get_request(get_single_pull_reqest_url)
+        response = await self.send_request("GET", get_single_pull_reqest_url)
         pull_request_data = response.json()
         return pull_request_data
 
@@ -199,7 +200,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
             )
             subscriptions_raw = self._parse_response_values(
-                await self.send_get_request(get_subscriptions_url, headers=headers)
+                await self.send_request("GET", get_subscriptions_url, headers=headers)
             )
         except json.decoder.JSONDecodeError:
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
@@ -220,7 +221,8 @@ class AzureDevopsClient(HTTPBaseClient):
         )
         webhook_event_json = webhook_event.json()
         logger.debug(f"Creating subscription to event: {webhook_event_json}")
-        response = await self.send_post_request(
+        response = await self.send_request(
+            "POST",
             create_subscription_url,
             params=params,
             headers=headers,
