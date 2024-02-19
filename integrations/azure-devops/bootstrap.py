@@ -35,21 +35,26 @@ async def _create_webhooks(
     existing_subscriptions: list[
         WebhookEvent
     ] = await azure_devops_client.generate_subscriptions_webhook_events()
-    try:
-        for event in webhook_events:
-            if not event.is_event_subscribed(existing_subscriptions):
-                logger.debug(f"Creating new subscription for event: {str(event)}")
-                new_events.append(event)
-            else:
-                logger.debug(
-                    f"Event: {str(event)} already has a subscription, not creating a new one"
-                )
-        await asyncio.gather(
-            *(azure_devops_client.create_subscription(event) for event in new_events)
-        )
-        if new_events:
-            logger.info(f"Created {len(new_events)} webhooks successfully")
+    for event in webhook_events:
+        if not event.is_event_subscribed(existing_subscriptions):
+            logger.debug(f"Creating new subscription for event: {str(event)}")
+            new_events.append(event)
         else:
-            logger.info("All relevant subscriptions already exist")
-    except Exception as e:
-        logger.error(f"Failed to create a subscription: {str(e)}")
+            logger.debug(
+                f"Event: {str(event)} already has a subscription, not creating a new one"
+            )
+    if new_events:
+        results_with_error = await asyncio.gather(
+            *(azure_devops_client.create_subscription(event) for event in new_events),
+            return_exceptions=True,
+        )
+        errors = [
+            result for result in results_with_error if isinstance(result, Exception)
+        ]
+        for error in errors:
+            logger.error(f"Got error while creating a subscription: {str(error)}")
+        logger.info(
+            f"Created {len(new_events)-len(errors)} webhooks successfully with {len(errors)} failed"
+        )
+    else:
+        logger.info("All relevant subscriptions already exist")
