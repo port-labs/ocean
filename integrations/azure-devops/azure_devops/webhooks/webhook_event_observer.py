@@ -2,6 +2,7 @@ import asyncio
 from collections import defaultdict
 from typing import Any, Awaitable, Callable
 from .webhook_event import WebhookEvent
+from loguru import logger
 
 Observer = Callable[[dict[str, Any]], Awaitable[Any]]
 
@@ -16,15 +17,23 @@ class WebhookEventObserver:
                 observer
             )
 
-    async def notify(self, event: WebhookEvent, body: dict[str, Any]) -> Awaitable[Any]:
-        return asyncio.gather(
-            *(
-                observer(body)
-                for observer in self._observers.get(
-                    self._get_observer_key_from_webhook_event(event), []
-                )
-            )
+    async def notify(self, event: WebhookEvent, body: dict[str, Any]) -> None:
+        event_key = self._get_observer_key_from_webhook_event(event)
+        tasks = [
+            observer(body)
+            for observer in self._observers.get(event_key, [])
+        ]
+        results_with_error = await asyncio.gather(*(tasks), return_exceptions=True)
+        errors = [
+            result for result in results_with_error if isinstance(result, Exception)
+        ]
+        logger.info(
+            f"Triggered {len(tasks)} tasks for event {event_key}, failed: {len(errors)}"
         )
+        for error in errors:
+            logger.error(
+                f"Got error while handling webhook event {event_key}: {str(error)}"
+            )
 
     def _get_observer_key_from_webhook_event(self, event: WebhookEvent) -> str:
         return f"{event.publisherId}:{event.eventType}"
