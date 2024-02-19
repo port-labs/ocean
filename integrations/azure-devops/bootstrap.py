@@ -53,4 +53,3 @@ async def _create_webhooks(
             logger.info("All relevant subscriptions already exist")
     except Exception as e:
         logger.error(f"Failed to create a subscription: {str(e)}")
-    return
