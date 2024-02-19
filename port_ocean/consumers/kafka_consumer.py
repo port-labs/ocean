@@ -1,4 +1,7 @@
+import functools
+import signal
 import threading
+from asyncio import get_running_loop
 from typing import Any, Callable
 
 from confluent_kafka import Consumer, KafkaException, Message  # type: ignore
@@ -48,21 +51,35 @@ class KafkaConsumer:
 
         self.consumer = Consumer(kafka_config)
 
-    def start(self, event: threading.Event) -> None:
-        self.running = True
-        try:
-            logger.info("Start consumer...")
-
-            self.consumer.subscribe(
-                [f"{self.org_id}.change.log"],
-                on_assign=lambda _, partitions: logger.info(
-                    f"Assignment: {partitions}"
-                ),
+    def _handle_partitions_assignment(self, _, partitions: list[str]) -> None:
+        logger.info(f"Assignment: {partitions}")
+        if not partitions:
+            logger.error(
+                "No partitions assigned. This usually means that there is"
+                " already another integration from the same type and with"
+                " the same identifier running. Two integrations of the same"
+                " type and identifier cannot run at the same time."
             )
-            logger.info("Subscribed to topics")
+            signal.raise_signal(signal.SIGINT)
+
+    async def start(self, event: threading.Event) -> None:
+        self.running = True
+        logger.info("Start consumer...")
+
+        self.consumer.subscribe(
+            [f"{self.org_id}.change.log"],
+            on_assign=self._handle_partitions_assignment,
+        )
+        logger.info("Subscribed to topics")
+
+        loop = get_running_loop()
+        poll = functools.partial(
+            self.consumer.poll, timeout=self.config.consumer_poll_timeout
+        )
+        try:
             while self.running and not event.is_set():
                 try:
-                    msg = self.consumer.poll(timeout=self.config.consumer_poll_timeout)
+                    msg = await loop.run_in_executor(None, poll)
                     if msg is None:
                         continue
                     if msg.error():

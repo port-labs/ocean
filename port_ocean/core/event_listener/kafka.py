@@ -6,7 +6,6 @@ from typing import Any, Literal
 
 from confluent_kafka import Message  # type: ignore
 from loguru import logger
-
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.ocean import (
     ocean,
@@ -16,6 +15,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
+from port_ocean.utils.repeat import repeat_every
 
 
 class KafkaEventListenerSettings(EventListenerSettings):
@@ -160,11 +160,13 @@ class KafkaEventListener(BaseEventListener):
             org_id=self.org_id,
         )
         logger.info("Starting Kafka consumer")
-        threading.Thread(
-            name="ocean_kafka_consumer",
-            target=consumer.start,
-            args=(self._consumer_kill_event,),
-        ).start()
+
+        # we use the `repeat_every` decorator to make sure the Kafka consumer will be started, but won't stuck the application
+        @repeat_every(seconds=0, max_repetitions=1)
+        async def run_kafka() -> None:
+            await consumer.start(self._consumer_kill_event)
+
+        await run_kafka()
 
     def _stop(self) -> None:
         self._consumer_kill_event.set()
