@@ -11,6 +11,10 @@ import requests
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
+from port_ocean.context.event import event
+from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.utils import http_async_client
+from port_ocean.utils.misc import get_time
 from .constants import (
     GRAPH_QUERIES,
     ISSUES_GQL,
@@ -27,9 +31,6 @@ from .constants import (
     RERUN_REPORT_MUTATION,
     PORT_REPORT_NAME,
 )
-from port_ocean.context.event import event
-from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.utils import http_async_client, get_time
 
 
 class CacheKeys(StrEnum):
