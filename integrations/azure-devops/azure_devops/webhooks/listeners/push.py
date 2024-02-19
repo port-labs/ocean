@@ -19,7 +19,7 @@ class PushHookListener(HookListener):
         push_url = data["resource"]["url"]
         push_params = {"includeRefUpdates": True}
         push_data = (
-            await self._client.send_get_request(push_url, params=push_params)
+            await self._client.send_request('GET' ,push_url, params=push_params)
         ).json()
         updates = push_data["refUpdates"]
         async for update in updates:
