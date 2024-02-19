@@ -110,10 +110,7 @@ class HTTPBaseClient:
         self, url: str, params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
-        if params:
-            params.update(**default_params)
-        else:
-            params = default_params
+        params = {**default_params, **(params or {})}
         while True:
             objects_page = self._parse_response_values(
                 await self.send_request('GET' ,url, params=params)
