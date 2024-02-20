@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from confluent_kafka import Message  # type: ignore
 from loguru import logger
+
 from port_ocean.consumers.kafka_consumer import KafkaConsumer, KafkaConsumerConfig
 from port_ocean.context.ocean import (
     ocean,
@@ -138,7 +139,8 @@ class KafkaEventListener(BaseEventListener):
         )
         logger.info("Starting Kafka consumer")
 
-        # we use the `repeat_every` decorator to make sure the Kafka consumer will be started, but won't stuck the application
+        # We are running the consumer with asyncio.create_task to ensure that it runs in the background and not blocking
+        # the integration's main event loop from finishing the startup process.
         self._running_task = asyncio.create_task(self.consumer.start())
         ensure_future(self._running_task)
 

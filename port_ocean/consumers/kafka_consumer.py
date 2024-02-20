@@ -41,6 +41,10 @@ class KafkaConsumer:
                 "sasl.password": config.password,
                 "group.id": f"{self.org_id}.{config.group_name}",
                 "enable.auto.commit": "false",
+                # We use the cooperative-sticky assignment strategy to ensure that the same instance of the integration
+                # is always assigned the same partitions. This is important as only one instance of the integration
+                # can be assigned to a partition at a time and we dont want a running instance to lose its partitions
+                # when a new instance starts and causes a rebalance.
                 "partition.assignment.strategy": "cooperative-sticky",
             }
         else:
@@ -53,7 +57,7 @@ class KafkaConsumer:
         self.consumer = Consumer(kafka_config)
 
     def _handle_partitions_assignment(self, _, partitions: list[str]) -> None:
-        logger.info(f"Assignment: {partitions}")
+        logger.info(f"Assigned partitions: {partitions}")
         if not partitions and not self._assigned_partitions:
             logger.error(
                 "No partitions assigned. This usually means that there is"
@@ -67,13 +71,13 @@ class KafkaConsumer:
 
     async def start(self) -> None:
         self.running = True
-        logger.info("Start consumer...")
-
+        logger.info("Starting kafka consumer...")
+        topics = [f"{self.org_id}.change.log"]
         self.consumer.subscribe(
-            [f"{self.org_id}.change.log"],
+            topics,
             on_assign=self._handle_partitions_assignment,
         )
-        logger.info("Subscribed to topics")
+        logger.info(f"Subscribed to topics: {topics}")
 
         loop = get_running_loop()
         poll = functools.partial(
