@@ -25,6 +25,12 @@
           "default": 0,
           "type": "number"
         },
+        "slack": {
+          "icon": "Slack",
+          "type": "string",
+          "title": "Slack",
+          "format": "url"
+        },
         "tier": {
           "title": "Tier",
           "type": "string",
