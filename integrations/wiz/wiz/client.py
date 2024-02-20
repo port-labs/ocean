@@ -1,13 +1,10 @@
-import codecs
 import csv
 import json
 import time
-from contextlib import closing
 from enum import StrEnum
-from typing import AsyncGenerator, Dict, List, Any
+from typing import AsyncGenerator, Any
 
 import httpx
-import requests
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -218,7 +215,7 @@ class WizClient:
             logger.info(f"Report already exists. Skipping creation: {report}")
             return
 
-        logger.error("Report does not exist. Creating...")
+        logger.info("Report does not exist. Creating...")
         await self.create_report()
 
     async def create_report(self) -> str:
@@ -250,7 +247,7 @@ class WizClient:
         logger.info("Checking the Port Integration Report Details")
 
         filters = {
-            "first": 5,
+            "first": 1,
             "filterBy": {
                 "search": PORT_REPORT_NAME,
                 "lastReportRunStatus": ["COMPLETED", "IN_PROGRESS"],
@@ -312,7 +309,7 @@ class WizClient:
 
     async def stream_and_parse_csv(
         self, download_url: str, chunk_size: int = PAGE_SIZE, max_pages: int = MAX_PAGES
-    ) -> AsyncGenerator[List[Dict[str, str]], None]:
+    ) -> AsyncGenerator[list[dict[str, str]], None]:
         start_time = time.time()
         total_records = 0
         chunk_count = 0
@@ -321,18 +318,16 @@ class WizClient:
         logger.info("Starting CSV download and processing")
 
         try:
-            with closing(requests.get(download_url, stream=True)) as r:
+            with httpx.stream("GET", download_url) as r:
                 r.raise_for_status()  # Ensure successful download
-                reader = csv.reader(
-                    codecs.iterdecode(r.iter_lines(), "utf-8")
-                )  # For structured CSV parsing
+                reader = csv.reader(r.iter_lines())
 
                 headers = next(reader, None)  # Get the header row
                 if not headers:
                     logger.error("CSV appears to be empty or without headers")
                     return
 
-                chunk: List[Dict[str, str]] = []
+                chunk: list[dict[str, str]] = []
 
                 for row in reader:
                     if len(row) != len(headers):
