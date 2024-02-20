@@ -7,6 +7,23 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.1 (2024-02-20)
+
+
+### Features
+
+- Added handling for kafka consumer empty partition assignment and shutting the application down with an error (PORT-5475)
+- Added QOL decorator to help with caching the third party response (PORT-5475_2)
+
+### Improvements
+
+- Changed the Kafka consumer to run in the event loop in async instead of sync in another thread (PORT-5475)
+
+### Bug Fixes
+
+- Fixed an issue causing all the character to be redacted when passing empty string to a sensitive field
+
+
 ## 0.5.0 (2024-02-18)
 
 
