@@ -56,7 +56,7 @@ class KafkaConsumer:
 
         self.consumer = Consumer(kafka_config)
 
-    def _handle_partitions_assignment(self, _, partitions: list[str]) -> None:
+    def _handle_partitions_assignment(self, _: Any, partitions: list[str]) -> None:
         logger.info(f"Assigned partitions: {partitions}")
         if not partitions and not self._assigned_partitions:
             logger.error(

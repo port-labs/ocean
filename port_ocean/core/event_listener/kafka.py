@@ -1,7 +1,7 @@
 import asyncio
 import json
 import sys
-from asyncio import ensure_future
+from asyncio import ensure_future, Task
 from typing import Any, Literal
 
 from confluent_kafka import Message  # type: ignore
@@ -70,8 +70,8 @@ class KafkaEventListener(BaseEventListener):
         self.org_id = org_id
         self.integration_identifier = integration_identifier
         self.integration_type = integration_type
-        self._running_task = None
-        self.consumer = None
+        self._running_task: Task[Any] | None = None
+        self.consumer: KafkaConsumer | None = None
 
     async def _get_kafka_config(self) -> KafkaConsumerConfig:
         """
