@@ -1,39 +1,38 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
-- kind: project
-  selector:
-    query: 'true'
-  port:
-    entity:
-      mappings:
-        blueprint: '"wizProject"'
-        identifier: .id
-        title: .name
-        properties:
-          archived: .archived
-          businessUnit: .businessUnit
-          description: .description
-- kind: issue
-  selector:
-    query: 'true'
-  port:
-    entity:
-      mappings:
-        blueprint: '"wizIssue"'
-        identifier: .id // .issue_id
-        title: .title // .entitySnapshot.name + " | " + .entitySnapshot.type
-        properties:
-          # https://integrate.wiz.io/reference/issues-query#:~:text=Direct%20a%20user%20to%20an%20Issue%20in%20Wiz
-          url: .wiz_url // .id as $id | "https://app.wiz.io/issues#~(issue~'" + $id + ")"
-          status: .status
-          severity: .severity
-          resource_name: .resource_name
-          type: .type // .resource_type
-          recommendation: .sourceRule.resolutionRecommendation // .resolution_recommendation
-          createdAt: .createdAt // .created_at
-          serviceTickets: .ticket_urls | split(", ")
-          resourceTags: .resource_tags
-          resolvedAt: .resolvedAt
-        relations:
-          projects: .projects | map(.id) // .project_ids | split(", ")
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizProject"'
+          identifier: .id
+          title: .name
+          properties:
+            archived: .archived
+            businessUnit: .businessUnit
+            description: .description
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"wizIssue"'
+          identifier: .id // .issue_id
+          title: .title // .entitySnapshot.name + " | " + .entitySnapshot.type
+          properties:
+            url: .wiz_url // .id as $id | "https://app.wiz.io/issues#~(issue~'" + $id + ")"
+            status: .status
+            severity: .severity
+            resource_name: .resource_name
+            type: .type // .resource_type
+            recommendation: .sourceRule.resolutionRecommendation // .resolution_recommendation
+            createdAt: .createdAt // .created_at
+            serviceTickets: .ticket_urls | split(", ")
+            resourceTags: .resource_tags
+            resolvedAt: .resolvedAt
+          relations:
+            projects: .projects | map(.id) // .project_ids | split(", ")
