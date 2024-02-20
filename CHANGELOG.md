@@ -19,6 +19,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Changed the Kafka consumer to run in the event loop in async instead of sync in another thread (PORT-5475)
 
+### Bug Fixes
+
+- Fixed an issue causing all the character to be redacted when passing empty string to a sensitive field
+
 
 ## 0.5.0 (2024-02-18)
 
