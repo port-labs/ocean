@@ -323,7 +323,6 @@ class SonarQubeClient:
                 )
                 analysis_data["__component"] = component
                 analysis_data["__project"] = component_key
-                analysis_data["__component"] = component
 
                 component_analysis_data.append(analysis_data)
 

@@ -23,8 +23,6 @@ resources:
             coverage: .__measures[]? | select(.metric == "coverage") | .value
             mainBranch: .__branch.name
             tags: .tags
-          relations:
-            service: .tags | map(select(startswith("port"))) | map(sub("port-"; ""; "g"))
   - kind: saas_analysis
     selector:
       query: 'true'
@@ -43,19 +41,6 @@ resources:
             createdAt: .__analysisDate
           relations:
             sonarQubeProject: .__project
-            pullRequest: . | if has("pullRequest") then .__component.name + "-" + .pullRequest.key else null end
-  - kind: saas_analysis
-    selector:
-      query: . | has("pullRequest")
-    port:
-      entity:
-        mappings:
-          blueprint: '"githubPullRequest"'
-          identifier: .__component.name + "-" + .pullRequest.key
-          title: .pullRequest.commit.message
-          properties: {}
-          relations:
-            sonarAnalysis: .__component.name + "-" + .pullRequest.key
   - kind: onprem_analysis
     selector:
       query: 'true'
@@ -92,3 +77,21 @@ resources:
             createdAt: .creationDate
           relations:
             sonarQubeProject: .project
+  - kind: analysis
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeAnalysis"'
+          identifier: .analysisId
+          title: .__commit.message // .analysisId
+          properties:
+            branch: .__branchName
+            fixedIssues: .measures.violations_fixed
+            newIssues: .measures.violations_added
+            coverage: .measures.coverage_change
+            duplications: .measures.duplicated_lines_density_change
+            createdAt: .__analysisDate
+          relations:
+            sonarQubeProject: .__project

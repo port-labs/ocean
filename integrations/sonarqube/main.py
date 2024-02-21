@@ -10,6 +10,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class ObjectKind:
     PROJECTS = "projects"
     ISSUES = "issues"
+    ANALYSIS = "analysis"
     SASS_ANALYSIS = "saas_analysis"
     ONPREM_ANALYSIS = "onprem_analysis"
 
@@ -39,7 +40,7 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for issues_list in sonar_client.get_all_issues():
         yield issues_list
 
-
+@ocean.on_resync(ObjectKind.ANALYSIS)
 @ocean.on_resync(ObjectKind.SASS_ANALYSIS)
 async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
@@ -85,6 +86,7 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
             webhook_data=webhook_data
         )
         await ocean.register_raw(ObjectKind.SASS_ANALYSIS, [cloud_analysis_data])
+        await ocean.register_raw(ObjectKind.ANALYSIS, [cloud_analysis_data])
 
     logger.info("Webhook event processed")
 
