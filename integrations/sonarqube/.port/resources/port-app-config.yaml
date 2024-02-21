@@ -23,7 +23,7 @@ resources:
             coverage: .__measures[]? | select(.metric == "coverage") | .value
             mainBranch: .__branch.name
             tags: .tags
-  - kind: saas_analysis
+  - kind: analysis
     selector:
       query: 'true'
     port:
@@ -77,7 +77,7 @@ resources:
             createdAt: .creationDate
           relations:
             sonarQubeProject: .project
-  - kind: analysis
+  - kind: saas_analysis
     selector:
       query: 'true'
     port:
