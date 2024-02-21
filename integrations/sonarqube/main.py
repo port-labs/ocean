@@ -40,6 +40,7 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for issues_list in sonar_client.get_all_issues():
         yield issues_list
 
+
 @ocean.on_resync(ObjectKind.ANALYSIS)
 @ocean.on_resync(ObjectKind.SASS_ANALYSIS)
 async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
