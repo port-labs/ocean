@@ -31,7 +31,9 @@ class SensitiveLogFilter:
     compiled_patterns = [re.compile(pattern) for pattern in secret_patterns.values()]
 
     def hide_sensitive_strings(self, *tokens: str) -> None:
-        self.compiled_patterns.extend([re.compile(token) for token in tokens])
+        self.compiled_patterns.extend(
+            [re.compile(re.escape(token.strip())) for token in tokens if token.strip()]
+        )
 
     def create_filter(self, full_hide: bool = False) -> Callable[["Record"], bool]:
         def _filter(record: "Record") -> bool:
