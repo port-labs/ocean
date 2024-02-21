@@ -50,6 +50,10 @@ async def on_resync_entities(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/webhook/problem")
 async def on_problem_event(event: dict[str, str | Any]) -> dict[str, bool]:
+    """
+    Webhook endpoint for Dynatrace problem events
+    https://docs.dynatrace.com/docs/observe-and-explore/notifications-and-alerting/problem-notifications/webhook-integration
+    """
     dynatrace_client = initialize_client()
     logger.info(f"Received problem event: {event}")
 
@@ -64,7 +68,7 @@ async def on_problem_event(event: dict[str, str | Any]) -> dict[str, bool]:
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean Dynatrace integration")
-    logger.info("Performing healthcheck")
     dynatrace_client = initialize_client()
+    logger.info("Performing healthcheck")
     await dynatrace_client.healthcheck()
     logger.info("Completed healthcheck")
