@@ -32,7 +32,7 @@ class SensitiveLogFilter:
 
     def hide_sensitive_strings(self, *tokens: str) -> None:
         self.compiled_patterns.extend(
-            [re.compile(token) for token in tokens if token.strip()]
+            [re.compile(re.escape(token.strip())) for token in tokens if token.strip()]
         )
 
     def create_filter(self, full_hide: bool = False) -> Callable[["Record"], bool]:

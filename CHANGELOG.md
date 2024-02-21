@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.1 (2024-02-21)
+
+
+### Bug Fixes
+
+- Fixed an issue causing the integration to crash when passing a sensitive configuration with invalid regex characters due to a missing escaping (PORT-6836)
+
+
 ## 0.5.1 (2024-02-20)
 
 
