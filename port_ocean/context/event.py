@@ -22,7 +22,7 @@ from port_ocean.exceptions.context import (
     EventContextNotFoundError,
     ResourceContextNotFoundError,
 )
-from port_ocean.utils import get_time
+from port_ocean.utils.misc import get_time
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
