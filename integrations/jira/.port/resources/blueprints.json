@@ -1,5 +1,29 @@
 [
   {
+    "identifier": "jiraProject",
+    "title": "Jira Project",
+    "icon": "Jira",
+    "description": "A Jira project",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Project URL",
+          "type": "string",
+          "format": "url",
+          "description": "URL to the project in Jira"
+        },
+        "totalIssues": {
+          "title": "Total Issues",
+          "type": "number",
+          "description": "The total number of issues in the project"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "jiraBoard",
     "title": "Jira Board",
     "description": "This blueprint represents a Jira board",
@@ -15,7 +39,12 @@
         "type": {
           "title": "Type",
           "type": "string",
-          "description": "The type of the board"
+          "description": "The type of the board",
+          "enum": ["scrum", "kanban"],
+          "enumColors": {
+            "scrum": "blue",
+            "kanban": "green"
+          }
         }
       },
       "required": []
@@ -32,7 +61,6 @@
       }
     }
   },
-
   {
     "identifier": "jiraSprint",
     "title": "Jira Sprint",
@@ -49,7 +77,13 @@
         "state": {
           "title": "State",
           "type": "string",
-          "description": "The state of the sprint"
+          "description": "The state of the sprint",
+          "enum": ["active", "closed", "future"],
+          "enumColors": {
+            "active": "green",
+            "closed": "red",
+            "future": "blue"
+          }
         },
         "startDate": {
           "title": "Start Date",
@@ -72,34 +106,7 @@
       "board": {
         "target": "jiraBoard",
         "title": "Board",
-        "description": "The Jira board that contains this sprint",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "jiraProject",
-    "title": "Jira Project",
-    "icon": "Jira",
-    "description": "A Jira project",
-    "schema": {
-      "properties": {
-        "url": {
-          "title": "Project URL",
-          "type": "string",
-          "format": "url",
-          "description": "URL to the project in Jira"
-        }
-      }
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {
-      "board": {
-        "target": "jiraBoard",
-        "title": "Board",
-        "description": "The Jira board that contains this sprint",
+        "description": "The Jira board associated with this sprint",
         "required": false,
         "many": false
       }

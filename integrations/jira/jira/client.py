@@ -62,33 +62,33 @@ class JiraClient:
         }
 
     async def _make_paginated_request(
-        self, url: str, params: dict[str, Any] = {}
+        self,
+        url: str,
+        params: dict[str, Any] = {},
+        data_key: str = "values",
+        is_last_function: typing.Callable[
+            [dict[str, Any]], bool
+        ] = lambda response: response["isLast"],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = {**params, **self._generate_base_req_params()}
+        params = {**self._generate_base_req_params(), **params}
         is_last = False
+        logger.info(f"Making paginated request to {url} with params: {params}")
         while not is_last:
             response = await self.client.get(url, params=params)
             response.raise_for_status()
             response_data = response.json()
-            values = response_data["values"]
+            values = response_data[data_key]
             yield values
-            is_last = response_data["isLast"]
+            is_last = is_last_function(response_data)
             start = response_data["startAt"] + response_data["maxResults"]
             params = {**params, "startAt": start}
+            logger.info(f"Next page startAt: {start}")
+        logger.info("Finished paginated request")
         return
 
-    async def _get_single_item_request(
-        self, url: str, params: dict[str, Any] = {}
-    ) -> dict[str, Any]:
-        response = await self.client.get(url, params=params)
-        response.raise_for_status()
-        return response.json()
-
-    async def get_projects(
-        self, board_id: int
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self._make_paginated_request(
-            f"{self.base_url}/board/{board_id}/project"
+            f"{self.detail_base_url}/project/search"
         ):
             yield projects
 
@@ -103,9 +103,14 @@ class JiraClient:
             logger.info(f"Found JQL filter: {config.selector.jql}")
 
         async for issues in self._make_paginated_request(
-            f"{self.base_url}/board/{board_id}/issue", params=params
+            f"{self.base_url}/board/{board_id}/issue",
+            params=params,
+            data_key="issues",
+            is_last_function=lambda response: response["startAt"]
+            + response["maxResults"]
+            >= response["total"],
         ):
-            yield issues
+            yield [{**issue, "board_id": board_id} for issue in issues]
 
     async def get_sprints(
         self, board_id: int

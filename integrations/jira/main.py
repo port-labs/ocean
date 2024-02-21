@@ -44,12 +44,9 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ocean.integration_config["atlassian_user_token"],
     )
 
-    async for boards in client.get_boards():
-        logger.info(f"Received board batch with {len(boards)} boards")
-        for board in boards:
-            async for projects in client.get_projects(board["id"]):
-                logger.info(f"Received sprint batch with {len(projects)} sprints")
-                yield projects
+    async for projects in client.get_projects():
+        logger.info(f"Received sprint batch with {len(projects)} sprints")
+        yield projects
 
 
 @ocean.on_resync(ObjectKind.ISSUE)

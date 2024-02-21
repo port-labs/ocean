@@ -1,38 +1,6 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
-  - kind: board
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .name
-          blueprint: '"jiraBoard"'
-          properties:
-            url: .self
-            type: .type
-          relations:
-            project: .location.projectId
-
-  - kind: sprint
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          title: .name
-          blueprint: '"jiraSprint"'
-          properties:
-            url: .self
-            state: .state
-            startDate: .startDate
-            endDate: .endDate
-          relations:
-            board: .originBoardId
-
   - kind: project
     selector:
       query: "true"
@@ -44,8 +12,39 @@ resources:
           blueprint: '"jiraProject"'
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
+            totalIssues: .insight.totalIssueCount
+
+  - kind: board
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"jiraBoard"'
+          properties:
+            url: .self
+            type: .type
           relations:
-            board: .boardId
+            project: .location.projectId | tostring
+
+  - kind: sprint
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"jiraSprint"'
+          properties:
+            url: .self
+            state: .state
+            startDate: .startDate
+            endDate: .endDate
+          relations:
+            board: .originBoardId | tostring
 
   - kind: issue
     selector:
@@ -69,8 +68,8 @@ resources:
             created: .fields.created
             updated: .fields.updated
           relations:
-            board: .boardId
-            sprint: .sprint.id
+            board: .boardId | tostring
+            sprint: .sprint.id | tostring
             project: .fields.project.key
             parentIssue: .fields.parent.key
             subtasks: .fields.subtasks | map(.key)
