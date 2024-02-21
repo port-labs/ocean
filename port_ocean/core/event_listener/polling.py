@@ -1,3 +1,4 @@
+from asyncio import Task, get_event_loop
 from typing import Literal, Any
 
 from loguru import logger
@@ -8,7 +9,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerEvents,
     EventListenerSettings,
 )
-from port_ocean.utils import repeat_every
+from port_ocean.utils.repeat import repeat_every
 
 
 class PollingEventListenerSettings(EventListenerSettings):
@@ -49,7 +50,7 @@ class PollingEventListener(BaseEventListener):
         self.event_listener_config = event_listener_config
         self._last_updated_at = None
 
-    async def start(self) -> None:
+    async def _start(self) -> None:
         """
         Starts the polling event listener.
         It registers the "on_resync" event to be called every `interval` seconds specified in the `event_listener_config`.
@@ -75,7 +76,12 @@ class PollingEventListener(BaseEventListener):
             if should_resync:
                 logger.info("Detected change in integration, resyncing")
                 self._last_updated_at = last_updated_at
-                await self.events["on_resync"]({})
+                running_task: Task[Any] = get_event_loop().create_task(
+                    self.events["on_resync"]({})  # type: ignore
+                )
+                self._tasks_to_close.append(running_task)
+
+                await running_task
 
         # Execute resync repeatedly task
         await resync()

@@ -18,8 +18,10 @@ from port_ocean.context.ocean import (
     initialize_port_ocean_context,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
-from port_ocean.utils import repeat_every
+from port_ocean.utils.repeat import repeat_every
+from port_ocean.utils.signal import init_signal_handler
 from port_ocean.version import __integration_version__
 
 
@@ -39,10 +41,18 @@ class Ocean:
         self.config = IntegrationConfiguration(
             base_path="./", **(config_override or {})
         )
+
         if config_factory:
-            self.config.integration.config = config_factory(
-                **self.config.integration.config
-            ).dict()
+            raw_config = (
+                self.config.integration.config
+                if isinstance(self.config.integration.config, dict)
+                else self.config.integration.config.dict()
+            )
+            self.config.integration.config = config_factory(**raw_config)
+        # add the integration sensitive configuration to the sensitive patterns to mask out
+        sensitive_log_filter.hide_sensitive_strings(
+            *self.config.get_sensitive_fields_data()
+        )
         self.integration_router = integration_router or APIRouter()
 
         self.port_client = PortClient(
@@ -61,7 +71,6 @@ class Ocean:
         self,
     ) -> None:
         def execute_resync_all() -> None:
-            initialize_port_ocean_context(ocean_app=self)
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
@@ -86,11 +95,12 @@ class Ocean:
 
         @self.fast_api_app.on_event("startup")
         async def startup() -> None:
+            init_signal_handler()
             try:
                 await self.integration.start()
                 await self._setup_scheduled_resync()
-            except Exception as e:
-                logger.error(f"Failed to start integration with error: {e}")
+            except Exception:
+                logger.exception("Failed to start integration")
                 sys.exit("Server stopped")
 
         await self.fast_api_app(scope, receive, send)

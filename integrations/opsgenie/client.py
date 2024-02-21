@@ -7,7 +7,7 @@ from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from utils import ObjectKind, RESOURCE_API_VERSIONS
 
-PAGE_SIZE = 50
+PAGE_SIZE = 100
 
 
 class OpsGenieClient:

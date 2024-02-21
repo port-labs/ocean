@@ -1,16 +1,16 @@
 from inspect import getmembers
-from typing import Type, Dict, Any
-from pydantic import BaseModel
+from typing import Dict, Any, Type
 
 import uvicorn
+from pydantic import BaseModel
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.config.settings import ApplicationSettings, LogLevelType
 from port_ocean.core.defaults.initialize import initialize_defaults
-from port_ocean.logger_setup import setup_logger
+from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
-from port_ocean.utils import get_spec_file, load_module
+from port_ocean.utils.misc import get_spec_file, load_module
 
 
 def _get_default_config_factory() -> None | Type[BaseModel]:
@@ -31,7 +31,11 @@ def run(
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
 
-    setup_logger(application_settings.log_level)
+    setup_logger(
+        application_settings.log_level,
+        enable_http_handler=application_settings.enable_http_logging,
+    )
+
     config_factory = _get_default_config_factory()
     default_app = create_default_app(path, config_factory, config_override)
 

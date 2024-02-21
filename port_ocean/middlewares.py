@@ -6,7 +6,7 @@ from loguru import logger
 from port_ocean.exceptions.api import BaseAPIException, InternalServerException
 from .context.event import event_context, EventType
 from .context.ocean import ocean
-from .utils import get_time, generate_uuid
+from .utils.misc import get_time, generate_uuid
 
 
 async def _handle_silently(

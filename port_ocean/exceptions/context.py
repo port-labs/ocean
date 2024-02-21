@@ -15,3 +15,7 @@ class EventContextNotFoundError(NoContextError):
 
 class PortOceanContextNotFoundError(NoContextError):
     pass
+
+
+class PortOceanContextAlreadyInitializedError(NoContextError):
+    pass
