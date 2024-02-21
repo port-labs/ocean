@@ -3,7 +3,6 @@ from typing import Any, AsyncGenerator
 
 from httpx import BasicAuth, Timeout
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
