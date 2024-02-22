@@ -357,7 +357,6 @@ class WizClient:
                     yield chunk
                     chunk_count += 1
 
-
         except Exception as exc:
             logger.exception(f"Error occured when processing Issues report: {exc}")
             raise
