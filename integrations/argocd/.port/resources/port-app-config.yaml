@@ -1,6 +1,5 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
-enableMergeEntity: true
 resources:
   - kind: cluster
     selector:
