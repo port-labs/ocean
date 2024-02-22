@@ -3,6 +3,7 @@ from typing import Literal, Any
 from fastapi import APIRouter
 from loguru import logger
 from pydantic import AnyHttpUrl
+from pydantic.fields import Field
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.event_listener.base import (
@@ -24,7 +25,7 @@ class HttpEventListenerSettings(EventListenerSettings):
     """
 
     type: Literal["WEBHOOK"]
-    app_host: AnyHttpUrl
+    app_host: AnyHttpUrl = Field(..., sensitive=True)
 
     def to_request(self) -> dict[str, Any]:
         return {
@@ -53,7 +54,7 @@ class HttpEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
 
-    async def start(self) -> None:
+    async def _start(self) -> None:
         """
         Starts the HTTP event listener.
         It sets up an APIRouter to handle the `/resync` endpoint and registers the "on_resync" event handler.
