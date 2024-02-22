@@ -69,7 +69,7 @@ resources:
             updated: .fields.updated
           relations:
             board: .boardId | tostring
-            sprint: .sprint.id | tostring
+            sprint: .fields.sprint.id | tostring
             project: .fields.project.key
             parentIssue: .fields.parent.key
             subtasks: .fields.subtasks | map(.key)

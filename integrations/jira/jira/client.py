@@ -110,7 +110,7 @@ class JiraClient:
             + response["maxResults"]
             >= response["total"],
         ):
-            yield [{**issue, "board_id": board_id} for issue in issues]
+            yield [{**issue, "boardId": board_id} for issue in issues]
 
     async def get_sprints(
         self, board_id: int
@@ -122,6 +122,7 @@ class JiraClient:
 
     async def get_boards(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self._make_paginated_request(f"{self.base_url}/board/"):
+            logger.info(boards)
             yield boards
 
     async def get_single_project(self, project_key: str) -> dict[str, Any]:

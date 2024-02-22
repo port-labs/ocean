@@ -49,22 +49,6 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
-@ocean.on_resync(ObjectKind.ISSUE)
-async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
-
-    async for boards in client.get_boards():
-        logger.info(f"Received board batch with {len(boards)} boards")
-        for board in boards:
-            async for issues in client.get_issues(board["id"]):
-                logger.info(f"Received issue batch with {len(issues)} issues")
-                yield issues
-
-
 @ocean.on_resync(ObjectKind.BOARD)
 async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = JiraClient(
@@ -92,6 +76,22 @@ async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for sprints in client.get_sprints(board["id"]):
                 logger.info(f"Received sprint batch with {len(sprints)} sprints")
                 yield sprints
+
+
+@ocean.on_resync(ObjectKind.ISSUE)
+async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = JiraClient(
+        ocean.integration_config["jira_host"],
+        ocean.integration_config["atlassian_user_email"],
+        ocean.integration_config["atlassian_user_token"],
+    )
+
+    async for boards in client.get_boards():
+        logger.info(f"Received board batch with {len(boards)} boards")
+        for board in boards:
+            async for issues in client.get_issues(board["id"]):
+                logger.info(f"Received issue batch with {len(issues)} issues")
+                yield issues
 
 
 @ocean.router.post("/webhook")
