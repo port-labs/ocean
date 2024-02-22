@@ -1,6 +1,7 @@
 import typing
 from typing import Any, AsyncGenerator
 
+import httpx
 from httpx import BasicAuth, Timeout
 from loguru import logger
 from port_ocean.context.event import event
@@ -74,15 +75,21 @@ class JiraClient:
         is_last = False
         logger.info(f"Making paginated request to {url} with params: {params}")
         while not is_last:
-            response = await self.client.get(url, params=params)
-            response.raise_for_status()
-            response_data = response.json()
-            values = response_data[data_key]
-            yield values
-            is_last = is_last_function(response_data)
-            start = response_data["startAt"] + response_data["maxResults"]
-            params = {**params, "startAt": start}
-            logger.info(f"Next page startAt: {start}")
+            try:
+                response = await self.client.get(url, params=params)
+                response.raise_for_status()
+                response_data = response.json()
+                values = response_data[data_key]
+                yield values
+                is_last = is_last_function(response_data)
+                start = response_data["startAt"] + response_data["maxResults"]
+                params = {**params, "startAt": start}
+                logger.info(f"Next page startAt: {start}")
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+                )
+                raise
         logger.info("Finished paginated request")
         return
 
@@ -125,29 +132,16 @@ class JiraClient:
             logger.info(boards)
             yield boards
 
-    async def get_single_project(self, project_key: str) -> dict[str, Any]:
-        project_response = await self.client.get(
-            f"{self.detail_base_url}/project/{project_key}"
-        )
-        project_response.raise_for_status()
-        return project_response.json()
-
-    async def get_single_issue(self, issue_key_or_id: str) -> dict[str, Any]:
-        issue_response = await self.client.get(
-            f"{self.base_url}/issue/{issue_key_or_id}"
-        )
-        issue_response.raise_for_status()
-        return issue_response.json()
-
-    async def get_single_sprint(self, sprint_id: int) -> dict[str, Any]:
-        sprint_response = await self.client.get(f"{self.base_url}/sprint/{sprint_id}")
-        sprint_response.raise_for_status()
-        return sprint_response.json()
-
-    async def get_single_board(self, board_id: int) -> dict[str, Any]:
-        board_response = await self.client.get(f"{self.base_url}/board/{board_id}")
-        board_response.raise_for_status()
-        return board_response.json()
+    async def get_single_item(self, url: str) -> dict[str, Any]:
+        try:
+            response = await self.client.get(url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP error on {url}: {e.response.status_code} - {e.response.text}"
+            )
+            raise
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
