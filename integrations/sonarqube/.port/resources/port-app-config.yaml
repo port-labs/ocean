@@ -41,6 +41,23 @@ resources:
             createdAt: .__analysisDate
           relations:
             sonarQubeProject: .__project
+  - kind: onprem_analysis
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeAnalysis"'
+          identifier: .__project + "-" + .key
+          title: .title
+          properties:
+            branch: .branch
+            newIssues: .__measures[]? | select(.metric == "new_violations") | .period.value
+            coverage: .__measures[]? | select(.metric == "new_coverage") | .period.value
+            duplications: .__measures[]? | select(.metric == "new_duplicated_lines_density") | .period.value
+            createdAt: .analysisDate
+          relations:
+            sonarQubeProject: .__project
   - kind: issues
     selector:
       query: 'true'
@@ -60,3 +77,21 @@ resources:
             createdAt: .creationDate
           relations:
             sonarQubeProject: .project
+  - kind: saas_analysis
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeAnalysis"'
+          identifier: .analysisId
+          title: .__commit.message // .analysisId
+          properties:
+            branch: .__branchName
+            fixedIssues: .measures.violations_fixed
+            newIssues: .measures.violations_added
+            coverage: .measures.coverage_change
+            duplications: .measures.duplicated_lines_density_change
+            createdAt: .__analysisDate
+          relations:
+            sonarQubeProject: .__project
