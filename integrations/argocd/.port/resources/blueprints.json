@@ -3,7 +3,7 @@
     "identifier": "argocdCluster",
     "description": "This blueprint represents an ArgoCD cluster",
     "title": "Environment",
-    "icon": "Argo",
+    "icon": "Cluster",
     "schema": {
       "properties": {
         "namespace": {

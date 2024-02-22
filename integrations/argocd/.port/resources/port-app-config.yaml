@@ -4,7 +4,7 @@ enableMergeEntity: true
 resources:
   - kind: cluster
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -21,7 +21,7 @@ resources:
             server: .server
   - kind: project
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -38,7 +38,7 @@ resources:
               select(test("^[a-zA-Z0-9@_.:/=-]+$")))
   - kind: application
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -61,7 +61,7 @@ resources:
               .spec.destination.name else null end
   - kind: deployment-history
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
