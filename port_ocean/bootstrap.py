@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.ocean import Ocean
-from port_ocean.utils import load_module
+from port_ocean.utils.misc import load_module
 
 
 def _get_base_integration_class_from_module(

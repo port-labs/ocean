@@ -7,8 +7,10 @@ features:
     section: Code Quality & Security
     resources:
       - kind: projects
-      - kind: analysis
+      - kind: saas_analysis
+      - kind: onprem_analysis
       - kind: issues
+      - kind: analysis
 configurations:
   - name: sonarApiToken
     required: true
@@ -28,3 +30,8 @@ configurations:
     required: false
     description: The SonarQube URL
     default: https://sonarcloud.io
+  - name: sonarIsOnPremise
+    type: boolean
+    required: false
+    description: Whether the SonarQube instance is on-premise
+    default: false
