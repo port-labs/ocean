@@ -6,7 +6,7 @@ authors = ["Ayodeji Adeoti <<ayodeji.adeoti@getport.io>>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = { version = "^0.5.1", extras = ["cli"] }
+port_ocean = { version = "^0.5.2", extras = ["cli"] }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
