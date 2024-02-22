@@ -1,17 +1,19 @@
-createMissingRelatedEntities: true
 deleteDependentEntities: true
+createMissingRelatedEntities: true
+enableMergeEntity: true
 resources:
   - kind: cluster
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
-          identifier: .name
+          identifier: .namespaces[0] + "-" + .name
           title: .name
           blueprint: '"argocdCluster"'
           properties:
-            namespaces: .namespaces
+            namespace: .namespaces[0]
+            cluster: .name
             applicationsCount: .info.applicationsCount
             serverVersion: .serverVersion
             labels: .labels
@@ -19,7 +21,7 @@ resources:
             server: .server
   - kind: project
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -31,10 +33,12 @@ resources:
             createdAt: .metadata.creationTimestamp
             description: .spec.description
           relations:
-            cluster: '[.spec.destinations[].name | select(test("^[a-zA-Z0-9@_.:/=-]+$"))]'
+            cluster: >-
+              .spec.destinations | map(.namespace + "-" + .name |
+              select(test("^[a-zA-Z0-9@_.:/=-]+$")))
   - kind: application
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -45,15 +49,19 @@ resources:
             gitRepo: .spec.source.repoURL
             gitPath: .spec.source.path
             destinationServer: .spec.destination.server
+            revision: .status.sync.revision
             namespace: .metadata.namespace
             syncStatus: .status.sync.status
             healthStatus: .status.health.status
             createdAt: .metadata.creationTimestamp
           relations:
             project: .spec.project
+            environment: >-
+              if .spec.destination.name then .spec.destination.namespace + "-" +
+              .spec.destination.name else null end
   - kind: deployment-history
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -63,7 +71,7 @@ resources:
           properties:
             deployedAt: .deployedAt
             deployStartedAt: .deployStartedAt
-            revision: .revision
+            revision: .source.repoURL + "/commit/" + .revision
             initiatedBy: .initiatedBy.username
             repoURL: .source.repoURL
             sourcePath: .source.path

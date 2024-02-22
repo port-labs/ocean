@@ -2,18 +2,21 @@
   {
     "identifier": "argocdCluster",
     "description": "This blueprint represents an ArgoCD cluster",
-    "title": "ArgoCD Cluster",
+    "title": "Environment",
     "icon": "Argo",
     "schema": {
       "properties": {
-        "namespaces": {
-          "items": {
-            "type": "string"
-          },
+        "namespace": {
           "icon": "DefaultProperty",
           "title": "Namespace",
-          "type": "array",
-          "description": "Holds list of namespaces which are accessible in that cluster."
+          "type": "string",
+          "description": "Holds the namespace which is accessible in that cluster."
+        },
+        "cluster": {
+          "icon": "DefaultProperty",
+          "title": "Cluster",
+          "type": "string",
+          "description": "The name of the cluster."
         },
         "applicationsCount": {
           "title": "Applications Count",
@@ -116,6 +119,10 @@
           "type": "string",
           "title": "Namespace"
         },
+        "revision": {
+          "type": "string",
+          "title": "Revision"
+        },
         "syncStatus": {
           "type": "string",
           "title": "Sync Status",
@@ -168,6 +175,12 @@
         "target": "argocdProject",
         "required": false,
         "many": false
+      },
+      "environment": {
+        "title": "Environment",
+        "target": "argocdCluster",
+        "required": false,
+        "many": false
       }
     }
   },
@@ -190,7 +203,8 @@
         },
         "revision": {
           "title": "Revision",
-          "type": "string"
+          "type": "string",
+          "format": "url"
         },
         "initiatedBy": {
           "title": "Initiated By",
