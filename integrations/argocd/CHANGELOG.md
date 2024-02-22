@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.25 (2024-02-22)
+
+### Improvements
+
+- Enhanced the application blueprint by adding relation to the cluster and a new revision property (PORT-6528)
+- Updated the deployment history revision property from string to url, linking the user the specific revision (PORT-6854)
+- Renamed the cluster blueprint to behave like an environment and updated its properties (PORT-6856)
+
+
 # Port_Ocean 0.1.24 (2024-02-21)
 
 ### Improvements
