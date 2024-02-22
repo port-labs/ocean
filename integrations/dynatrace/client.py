@@ -33,6 +33,7 @@ class DynatraceClient:
                 response.raise_for_status()
                 response_data = response.json()
                 resources = response_data[resource_key]
+                logger.info(f"Received batch with {len(resources)} {resource_key}")
                 yield resources
                 next_page_key = response_data.get("nextPageKey")
                 if not next_page_key:
