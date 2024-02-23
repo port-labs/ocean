@@ -68,7 +68,6 @@ resources:
             created: .fields.created
             updated: .fields.updated
           relations:
-            board: .boardId | tostring
             sprint: .fields.sprint.id | tostring
             project: .fields.project.key
             parentIssue: .fields.parent.key

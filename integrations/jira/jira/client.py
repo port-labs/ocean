@@ -90,6 +90,9 @@ class JiraClient:
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
                 raise
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP occurred while fetching Jira data {e}")
+                raise
         logger.info("Finished paginated request")
         return
 
@@ -117,7 +120,7 @@ class JiraClient:
             + response["maxResults"]
             >= response["total"],
         ):
-            yield [{**issue, "boardId": board_id} for issue in issues]
+            yield issues
 
     async def get_sprints(
         self, board_id: int
@@ -129,7 +132,6 @@ class JiraClient:
 
     async def get_boards(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self._make_paginated_request(f"{self.base_url}/board/"):
-            logger.info(boards)
             yield boards
 
     async def get_single_item(self, url: str) -> dict[str, Any]:
@@ -141,6 +143,9 @@ class JiraClient:
             logger.error(
                 f"HTTP error on {url}: {e.response.status_code} - {e.response.text}"
             )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP occurred while fetching Jira data {e}")
             raise
 
     async def create_events_webhook(self, app_host: str) -> None:

@@ -39,12 +39,7 @@
         "type": {
           "title": "Type",
           "type": "string",
-          "description": "The type of the board",
-          "enum": ["scrum", "kanban"],
-          "enumColors": {
-            "scrum": "blue",
-            "kanban": "green"
-          }
+          "description": "The type of the board"
         }
       },
       "required": []
@@ -178,13 +173,6 @@
     },
     "calculationProperties": {},
     "relations": {
-      "board": {
-        "target": "jiraBoard",
-        "title": "Board",
-        "description": "The Jira board that contains this issue",
-        "required": false,
-        "many": false
-      },
       "sprint": {
         "target": "jiraSprint",
         "title": "Sprint",
