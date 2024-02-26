@@ -32,6 +32,14 @@ async def on_history_resync(kind: str) -> RAW_RESULT:
     return await argocd_client.get_deployment_history()
 
 
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.KUBERNETES_RESOURCE)
+async def on_managed_k8s_resources_resync(kind: str) -> RAW_RESULT:
+    logger.info(f"Listing ArgoCD {kind}")
+    argocd_client = init_client()
+
+    return await argocd_client.get_kubernetes_resource()
+
+
 @ocean.router.post("/webhook")
 async def on_application_event_webhook_handler(request: Request) -> None:
     data = await request.json()
