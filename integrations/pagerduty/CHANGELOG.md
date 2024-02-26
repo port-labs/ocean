@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated the service oncall and incident responder property type from string to user (PORT-6908)
+- Updated the service status to enum and incident responder property type from string to user (PORT-6908)
 
 
 # Port_Ocean 0.1.38 (2024-02-21)
