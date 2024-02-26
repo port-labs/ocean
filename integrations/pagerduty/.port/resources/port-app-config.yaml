@@ -1,3 +1,5 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
 resources:
   - kind: services
     selector:
@@ -12,9 +14,13 @@ resources:
             status: .status
             url: .html_url
             oncall: '[.__oncall_user[].user.email]'
+            meanSecondsToResolve: .__analytics.mean_seconds_to_resolve
+            meanSecondsToFirstAck: .__analytics.mean_seconds_to_first_ack
+            meanSecondsToEngage: .__analytics.mean_seconds_to_engage
   - kind: incidents
     selector:
       query: 'true'
+      include: ['assignees']
     port:
       entity:
         mappings:
@@ -25,7 +31,7 @@ resources:
             status: .status
             url: .self
             urgency: .urgency
-            responder: .assignments[0].assignee.summary
+            responder: .assignments[0].assignee.email
             escalation_policy: .escalation_policy.summary
             created_at: .created_at
             updated_at: .updated_at

@@ -36,6 +36,18 @@
             "type": "string",
             "format": "user"
           }
+        },
+        "meanSecondsToResolve": {
+          "title": "Mean Seconds to Resolve",
+          "type": "number"
+        },
+        "meanSecondsToFirstAck": {
+          "title": "Mean Seconds to First Acknowledge",
+          "type": "number"
+        },
+        "meanSecondsToEngage": {
+          "title": "Mean Seconds to Engage",
+          "type": "number"
         }
       },
       "required": []
@@ -79,7 +91,8 @@
         },
         "responder": {
           "type": "string",
-          "title": "Assignee"
+          "title": "Assignee",
+          "format": "user"
         },
         "escalation_policy": {
           "type": "string",
