@@ -77,7 +77,7 @@
             "calculationBy": "entities",
             "unit": "none",
             "description": "",
-            "title": "Number of Services with Work-Item linking inforcement enabled",
+            "title": "Number of Services with Work-Item linking enforcement enabled",
             "dataset": [
               {
                 "property": "workItemLinking",
