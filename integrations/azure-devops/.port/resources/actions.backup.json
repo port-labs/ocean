@@ -14,8 +14,12 @@
               "type": "string"
             }
           },
-          "required": ["service_name"],
-          "order": ["service_name"]
+          "required": [
+            "service_name"
+          ],
+          "order": [
+            "service_name"
+          ]
         },
         "invocationMethod": {
           "type": "WEBHOOK",
@@ -30,7 +34,6 @@
       },
       {
         "identifier": "azure_devops_send_scorecard_reminder",
-
         "icon": "Slack",
         "title": "Send scorecard reminder",
         "userInputs": {
@@ -59,7 +62,11 @@
               "title": "Type",
               "description": "The service's type",
               "type": "string",
-              "enum": ["backend", "frontend", "integration"],
+              "enum": [
+                "backend",
+                "frontend",
+                "integration"
+              ],
               "enumColors": {
                 "backend": "lightGray",
                 "frontend": "lightGray",
@@ -71,7 +78,11 @@
               "title": "Lifecycle",
               "description": "The service's lifecycle state",
               "type": "string",
-              "enum": ["Production", "Experimental", "Deprecated"],
+              "enum": [
+                "Production",
+                "Experimental",
+                "Deprecated"
+              ],
               "enumColors": {
                 "Production": "green",
                 "Experimental": "orange",
@@ -80,7 +91,10 @@
             }
           },
           "required": [],
-          "order": ["type", "lifecycle"]
+          "order": [
+            "type",
+            "lifecycle"
+          ]
         },
         "invocationMethod": {
           "type": "WEBHOOK",
@@ -108,17 +122,25 @@
               "title": "Visibility",
               "description": "The resource's public/private visibility",
               "type": "string",
-              "enum": ["public", "private"],
+              "enum": [
+                "public",
+                "private"
+              ],
               "enumColors": {
                 "public": "green",
                 "private": "red"
               }
             }
           },
-          "required": ["name", "visibility"],
-          "order": ["name", "visibility"]
+          "required": [
+            "name",
+            "visibility"
+          ],
+          "order": [
+            "name",
+            "visibility"
+          ]
         },
-
         "invocationMethod": {
           "type": "WEBHOOK",
           "agent": false,
