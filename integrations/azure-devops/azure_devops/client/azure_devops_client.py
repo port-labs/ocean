@@ -57,9 +57,9 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                repositories = self._parse_response_values(
-                    await self.send_request("GET", repos_url)
-                )
+                repositories = (await self.send_request("GET", repos_url)).json()[
+                    "value"
+                ]
                 yield repositories
 
     async def generate_pull_requests(
@@ -127,11 +127,11 @@ class AzureDevopsClient(HTTPBaseClient):
                         "ids": ",".join(str(id) for id in work_item_ids_batch),
                     }
                     work_items_list_url = f"{self._organization_base_url}/{team['projectId']}/{API_URL_PREFIX}/wit/workitems"
-                    work_items_data = self._parse_response_values(
+                    work_items_data = (
                         await self.send_request(
                             "GET", work_items_list_url, params=work_items_list_params
                         )
-                    )
+                    ).json()["value"]
                     for work_item in work_items_data:
                         work_item["teamId"] = team["id"]
                         work_item["projectId"] = team["projectId"]
@@ -144,17 +144,17 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 board_list_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/work/boards"
-                boards = self._parse_response_values(
-                    await self.send_request("GET", board_list_url)
-                )
+                boards = (await self.send_request("GET", board_list_url)).json()[
+                    "value"
+                ]
                 project_boards: list[dict[Any, Any]] = []
                 for board in boards:
                     logger.info(
                         f"Found board {board['name']} in project {project['name']}"
                     )
-                    board_data = self._parse_response_values(
-                        await self.send_request("GET", board["url"])
-                    )
+                    board_data = (await self.send_request("GET", board["url"])).json()[
+                        "values"
+                    ]
                     project_boards.extend(board_data)
                 logger.info(
                     f"Found {len(project_boards)} boards in project {project['name']}"
@@ -168,9 +168,9 @@ class AzureDevopsClient(HTTPBaseClient):
             for repo in repos:
                 params = {"repositoryId": repo["id"], "refName": repo["defaultBranch"]}
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-                repo_policies = self._parse_response_values(
+                repo_policies = (
                     await self.send_request("GET", policies_url, params=params)
-                )
+                ).json()["value"]
                 for policy in repo_policies:
                     policy["repositoryId"] = repo["id"]
                 yield repo_policies
@@ -199,9 +199,9 @@ class AzureDevopsClient(HTTPBaseClient):
             get_subscriptions_url = (
                 f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
             )
-            subscriptions_raw = self._parse_response_values(
+            subscriptions_raw = (
                 await self.send_request("GET", get_subscriptions_url, headers=headers)
-            )
+            ).json()["value"]
         except json.decoder.JSONDecodeError:
             err_str = "Couldn't decode response from subscritions route. This may be because you are unauthorized- Check PAT (Personal Access Token) validity"
             logger.warning(err_str)
@@ -234,17 +234,17 @@ class AzureDevopsClient(HTTPBaseClient):
         )
 
     def _get_item_content(
-        self, file_path: str, repository_id: str, versionType: str, version: str
+        self, file_path: str, repository_id: str, version_type: str, version: str
     ) -> bytes:
         items_params = {
-            "versionType": versionType,
+            "versionType": version_type,
             "version": version,
             "path": file_path,
         }
         items_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}/items"
         try:
             logger.debug(
-                f"Getting file {file_path} from repo id {repository_id} by {versionType}: {version}"
+                f"Getting file {file_path} from repo id {repository_id} by {version_type}: {version}"
             )
             file_content = self.send_sync_get_request(
                 items_url, params=items_params

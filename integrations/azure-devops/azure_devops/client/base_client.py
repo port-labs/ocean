@@ -18,10 +18,6 @@ class HTTPBaseClient:
         self._timeout = Timeout(REQUEST_TIMEOUT_SECONDS)
         self._follow_redirects = ALLOW_REDIRECTS
 
-    @staticmethod
-    def _parse_response_values(response: Response) -> list[dict[Any, Any]]:
-        return response.json()["value"]
-
     def send_sync_get_request(
         self, url: str, params: Optional[dict[str, Any]] = None
     ) -> Response:
@@ -101,7 +97,7 @@ class HTTPBaseClient:
             logger.debug(
                 f"Found {len(response.json()['value'])} objects in url {url} with params: {params}"
             )
-            yield self._parse_response_values(response)
+            yield response.json()["value"]
             if CONTINUATION_TOKEN_HEADER not in response.headers:
                 break
             continuation_token = response.headers.get(CONTINUATION_TOKEN_HEADER)
@@ -112,9 +108,9 @@ class HTTPBaseClient:
         default_params = {"$top": PAGE_SIZE, "$skip": 0}
         params = {**default_params, **(params or {})}
         while True:
-            objects_page = self._parse_response_values(
-                await self.send_request("GET", url, params=params)
-            )
+            objects_page = (await self.send_request("GET", url, params=params)).json()[
+                "value"
+            ]
             if objects_page:
                 logger.debug(
                     f"Found {len(objects_page)} objects in url {url} with params: {params}"
