@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Tuple, Type
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import Selector
-from azure_devops.client import AzureDevopsClient
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"

@@ -4,7 +4,7 @@ from azure_devops.webhooks.webhook_event import WebhookEvent
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from loguru import logger
-from client import HTTPBaseClient
+from .base_client import HTTPBaseClient
 from azure_devops.utils import cache_results
 
 API_URL_PREFIX = "_apis"

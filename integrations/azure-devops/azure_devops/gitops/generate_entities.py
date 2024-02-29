@@ -4,7 +4,7 @@ import yaml
 from yaml.parser import ParserError
 from port_ocean.core.models import Entity
 from .file_entity_processor import FILE_PROPERTY_PREFIX
-from azure_devops.client import AzureDevopsClient
+from azure_devops.client.azure_devops_client import AzureDevopsClient
 from loguru import logger
 
 JSON_SUFFIX = ".json"
