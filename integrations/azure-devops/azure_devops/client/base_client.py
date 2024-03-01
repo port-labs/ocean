@@ -1,5 +1,5 @@
 import httpx
-from httpx import Timeout, BasicAuth, Response
+from httpx import BasicAuth, Response
 from typing import Any, AsyncGenerator, Optional
 from port_ocean.utils import http_async_client
 from loguru import logger
@@ -9,10 +9,8 @@ CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 
 class HTTPBaseClient:
     def __init__(self, personal_access_token: str) -> None:
-        self._async_client = http_async_client
-        # Username isn't required in basic auth to Azure Devops
-        self._auth = BasicAuth("", personal_access_token)
-        http_async_client.follow_redirects = True
+        self._client = http_async_client
+        self._personal_access_token = personal_access_token
 
     async def send_request(
         self,
@@ -22,13 +20,15 @@ class HTTPBaseClient:
         params: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, Any]] = None,
     ) -> Response:
-        try:
-            response = await self._async_client.request(
+        self._client.auth = BasicAuth("", self._personal_access_token)
+        self._client.follow_redirects = True
+
+        try:      
+            response = await self._client.request(
                 method=method,
                 url=url,
                 data=data,
                 params=params,
-                auth=self._auth,
                 headers=headers,
             )
             response.raise_for_status()

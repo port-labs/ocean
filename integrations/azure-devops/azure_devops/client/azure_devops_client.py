@@ -5,7 +5,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from .base_client import HTTPBaseClient
-from port_ocean.utils import cache_results
+from port_ocean.utils.cache import cache_iterator_result
 
 API_URL_PREFIX = "_apis"
 
@@ -26,7 +26,7 @@ class AzureDevopsClient(HTTPBaseClient):
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
 
-    @cache_results("projects")
+    @cache_iterator_result("projects")
     async def generate_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {"includeCapabilities": "true"}
         projects_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects"
@@ -35,7 +35,7 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield projects
 
-    @cache_results("teams")
+    @cache_iterator_result("teams")
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
@@ -52,7 +52,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         member["teamId"] = team["id"]
                     yield members
 
-    @cache_results("repositories")
+    @cache_iterator_result("repositories")
     async def generate_repositories(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -73,7 +73,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 ):
                     yield filtered_pull_requests
 
-    @cache_results("pipelines")
+    @cache_iterator_result("pipelines")
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
