@@ -63,9 +63,9 @@ def _generate_entities_from_port_yaml(
             for entity_data in raw_entities
         ]
     except ParserError as e:
-        logger.debug(f"Failed to parse gitops entities file {file_name} - {str(e)}")
+        logger.info(f"Failed to parse gitops entities file {file_name} - {str(e)}")
     except Exception as e:
-        logger.debug(f"Failed to get gitops entities file {file_name} - {str(e)}")
+        logger.info(f"Failed to get gitops entities file {file_name} - {str(e)}")
     return []
 
 

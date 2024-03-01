@@ -33,12 +33,12 @@ class PushHookListener(HookListener):
                 new_entities = generate_entities_from_commit_id(
                     self._client, config.spec_path, repo_id, new_commit
                 )
-                logger.debug(f"Got {len(new_entities)} new entities")
+                logger.info(f"Got {len(new_entities)} new entities")
 
                 old_entities = generate_entities_from_commit_id(
                     self._client, config.spec_path, repo_id, old_commit
                 )
-                logger.debug(f"Got {len(old_entities)} old entities")
+                logger.info(f"Got {len(old_entities)} old entities")
 
                 await ocean.update_diff(
                     {"before": old_entities, "after": new_entities},

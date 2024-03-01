@@ -37,10 +37,10 @@ async def _create_webhooks(
     ] = await azure_devops_client.generate_subscriptions_webhook_events()
     for event in webhook_events:
         if not event.is_event_subscribed(existing_subscriptions):
-            logger.debug(f"Creating new subscription for event: {str(event)}")
+            logger.info(f"Creating new subscription for event: {str(event)}")
             new_events.append(event)
         else:
-            logger.debug(
+            logger.info(
                 f"Event: {str(event)} already has a subscription, not creating a new one"
             )
     if new_events:

@@ -1,22 +1,18 @@
 import httpx
-from httpx import HTTPError, Timeout, BasicAuth, Response
+from httpx import Timeout, BasicAuth, Response
 from typing import Any, AsyncGenerator, Optional
 from port_ocean.utils import http_async_client
 from loguru import logger
 
 PAGE_SIZE = 50
-REQUEST_TIMEOUT_SECONDS = 30
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
-ALLOW_REDIRECTS = True
-
 
 class HTTPBaseClient:
     def __init__(self, personal_access_token: str) -> None:
         self._async_client = http_async_client
         # Username isn't required in basic auth to Azure Devops
         self._auth = BasicAuth("", personal_access_token)
-        self._timeout = Timeout(REQUEST_TIMEOUT_SECONDS)
-        self._follow_redirects = ALLOW_REDIRECTS
+        http_async_client.follow_redirects = True
 
     async def send_request(
         self,
@@ -33,8 +29,6 @@ class HTTPBaseClient:
                 data=data,
                 params=params,
                 auth=self._auth,
-                follow_redirects=self._follow_redirects,
-                timeout=self._timeout,
                 headers=headers,
             )
             response.raise_for_status()
@@ -44,14 +38,14 @@ class HTTPBaseClient:
                     f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
                 )
             else:
-                logger.error(
-                    f"Request with bad status code {response.status_code}: {method} to url {url}: {str(e)}"
+                logger.exception(
+                    f"Request with bad status code {response.status_code}: {method} to url {url}"
                 )
             raise e
-        except HTTPError as e:
+        except httpx.HTTPError as e:
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
-        logger.debug(
+        logger.info(
             f"{method} Request to {url} got {response.status_code} -> {str(response.content)}"
         )
         return response
@@ -67,7 +61,7 @@ class HTTPBaseClient:
                 **(additional_params or {}),
             }
             response = await self.send_request("GET", url, params=params)
-            logger.debug(
+            logger.info(
                 f"Found {len(response.json()['value'])} objects in url {url} with params: {params}"
             )
             yield response.json()["value"]
@@ -85,7 +79,7 @@ class HTTPBaseClient:
                 "value"
             ]
             if objects_page:
-                logger.debug(
+                logger.info(
                     f"Found {len(objects_page)} objects in url {url} with params: {params}"
                 )
                 yield objects_page

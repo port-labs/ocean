@@ -1,4 +1,3 @@
-import asyncio
 import json
 from typing import Any, AsyncGenerator, Optional
 from azure_devops.webhooks.webhook_event import WebhookEvent
@@ -6,7 +5,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from .base_client import HTTPBaseClient
-from azure_devops.utils import cache_results
+from port_ocean.utils import cache_results
 
 API_URL_PREFIX = "_apis"
 
@@ -211,7 +210,6 @@ class AzureDevopsClient(HTTPBaseClient):
             logger.warning(
                 f"Failed to get all existing subscriptions:{type(e)} {str(e)}"
             )
-            raise e
         return [WebhookEvent(**subscription) for subscription in subscriptions_raw]
 
     async def create_subscription(self, webhook_event: WebhookEvent) -> None:
@@ -221,7 +219,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
         )
         webhook_event_json = webhook_event.json()
-        logger.debug(f"Creating subscription to event: {webhook_event_json}")
+        logger.info(f"Creating subscription to event: {webhook_event_json}")
         response = await self.send_request(
             "POST",
             create_subscription_url,
@@ -244,7 +242,7 @@ class AzureDevopsClient(HTTPBaseClient):
         }
         items_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}/items"
         try:
-            logger.debug(
+            logger.info(
                 f"Getting file {file_path} from repo id {repository_id} by {version_type}: {version}"
             )
             file_content = (await self.send_request(method="GET", url=items_url, params=items_params)).content

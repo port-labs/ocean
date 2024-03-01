@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Any
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -9,10 +10,9 @@ from azure_devops.search_criteria import (
     WORK_ITEMS_WIQL_QUERY,
     MAX_WORK_ITEMS_PER_QUERY,
 )
-from azure_devops.utils import Kind
 from bootstrap import setup_listeners, webhook_event_handler
 from starlette.requests import Request
-
+from azure_devops.utils import Kind
 
 @ocean.on_start()
 async def setup_webhooks() -> None:
