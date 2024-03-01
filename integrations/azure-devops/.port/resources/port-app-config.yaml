@@ -20,7 +20,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .repositoryId
+          identifier: .__repositoryId
           blueprint: '"service"'
           properties:
             minimumApproverCount: '.settings.minimumApproverCount'
@@ -31,7 +31,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .repositoryId
+          identifier: .__repositoryId
           blueprint: '"service"'
           properties:
             workItemLinking: '.isEnabled and .isBlocking'

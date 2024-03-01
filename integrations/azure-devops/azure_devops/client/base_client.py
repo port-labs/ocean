@@ -18,33 +18,6 @@ class HTTPBaseClient:
         self._timeout = Timeout(REQUEST_TIMEOUT_SECONDS)
         self._follow_redirects = ALLOW_REDIRECTS
 
-    def send_sync_get_request(
-        self, url: str, params: Optional[dict[str, Any]] = None
-    ) -> Response:
-        try:
-            response = httpx.get(
-                url,
-                params=params,
-                auth=self._auth,
-                timeout=self._timeout,
-                follow_redirects=self._follow_redirects,
-            )
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            if response.status_code == 401:
-                logger.error(
-                    f"Couldn't access url {url} . Make sure the PAT (Personal Access Token) is valid!"
-                )
-            else:
-                logger.debug(
-                    f"Request with bad status code {response.status_code}: GET to url {url}: {str(e)}"
-                )
-                raise e
-        except Exception as e:
-            logger.error(f"Couldn't send get request to url {url}: {str(e)}")
-            raise e
-        return response
-
     async def send_request(
         self,
         method: str,

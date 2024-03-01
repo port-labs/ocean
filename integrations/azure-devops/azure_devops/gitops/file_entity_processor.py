@@ -15,7 +15,7 @@ class AzureDevopsFileEntityProcessor(JQEntityProcessor):
         client = AzureDevopsClient.create_from_ocean_config()
         repository_id, branch = parse_repository_payload(data)
         file_path = pattern.replace(self.prefix, "")
-        # Because of the current state of Ocean Entitiy processor this has to be sync.
+        # Because of the current state of Ocean Entity processor this has to be sync.
         file_raw_content = client.get_file_by_branch(file_path, repository_id, branch)
         return file_raw_content.decode() if file_raw_content else None
 

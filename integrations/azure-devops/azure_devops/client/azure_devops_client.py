@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any, AsyncGenerator, Optional
 from azure_devops.webhooks.webhook_event import WebhookEvent
@@ -172,7 +173,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     await self.send_request("GET", policies_url, params=params)
                 ).json()["value"]
                 for policy in repo_policies:
-                    policy["repositoryId"] = repo["id"]
+                    policy["__repositoryId"] = repo["id"]
                 yield repo_policies
 
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any]:
@@ -246,9 +247,13 @@ class AzureDevopsClient(HTTPBaseClient):
             logger.debug(
                 f"Getting file {file_path} from repo id {repository_id} by {version_type}: {version}"
             )
-            file_content = self.send_sync_get_request(
-                items_url, params=items_params
-            ).content
+            file_content = asyncio.get_running_loop().create_task(
+                self.send_request(method="GET", url=items_url, params=items_params)
+            )
+
+            if not file_content.done():
+                file_content = asyncio.run(file_content)
+
         except Exception as e:
             logger.warning(
                 f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}"
