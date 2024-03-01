@@ -234,7 +234,7 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Created subscription id: {response_content['id']} for eventType {response_content['eventType']}"
         )
 
-    def _get_item_content(
+    async def _get_item_content(
         self, file_path: str, repository_id: str, version_type: str, version: str
     ) -> bytes:
         items_params = {
@@ -247,12 +247,7 @@ class AzureDevopsClient(HTTPBaseClient):
             logger.debug(
                 f"Getting file {file_path} from repo id {repository_id} by {version_type}: {version}"
             )
-            file_content = asyncio.get_running_loop().create_task(
-                self.send_request(method="GET", url=items_url, params=items_params)
-            )
-
-            if not file_content.done():
-                file_content = asyncio.run(file_content)
+            file_content = (await self.send_request(method="GET", url=items_url, params=items_params)).content
 
         except Exception as e:
             logger.warning(
@@ -262,12 +257,12 @@ class AzureDevopsClient(HTTPBaseClient):
         else:
             return file_content
 
-    def get_file_by_branch(
+    async def get_file_by_branch(
         self, file_path: str, repository_id: str, branch_name: str
     ) -> bytes:
         return self._get_item_content(file_path, repository_id, "Branch", branch_name)
 
-    def get_file_by_commit(
+    async def get_file_by_commit(
         self, file_path: str, repository_id: str, commit_id: str
     ) -> bytes:
         return self._get_item_content(file_path, repository_id, "Commit", commit_id)

@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Dict, List, Tuple, Type
 from pydantic import BaseModel, Field
 from port_ocean.core.handlers import JQEntityProcessor
@@ -9,14 +10,17 @@ JSON_SUFFIX = ".json"
 
 
 class AzureDevopsFileEntityProcessor(JQEntityProcessor):
-    prefix = FILE_PROPERTY_PREFIX
-
     def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         client = AzureDevopsClient.create_from_ocean_config()
         repository_id, branch = parse_repository_payload(data)
-        file_path = pattern.replace(self.prefix, "")
+        file_path = pattern.replace(FILE_PROPERTY_PREFIX, "")
         # Because of the current state of Ocean Entity processor this has to be sync.
-        file_raw_content = client.get_file_by_branch(file_path, repository_id, branch)
+
+        # TODO: make sure if making this function call sync if possible, it's currently not working.
+        loop = asyncio.new_event_loop()
+        file_raw_content = loop.run_until_complete(client.get_file_by_branch(file_path, repository_id, branch))
+        loop.close()           
+        # Wait for the file content to be fetched, if it's not done mean
         return file_raw_content.decode() if file_raw_content else None
 
 
@@ -45,6 +49,4 @@ def parse_repository_payload(data: Dict[str, Any]) -> Tuple[str, str]:
     ref = "/".join(
         data.get("defaultBranch", "").split("/")[2:]
     )  # Remove /refs/heads from ref to get branch
-    if repository_id and ref:
-        return repository_id, ref
-    raise ValueError("Repository id and ref are required")
+    return repository_id, ref
