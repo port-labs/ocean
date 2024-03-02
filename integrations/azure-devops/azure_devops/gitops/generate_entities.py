@@ -71,10 +71,13 @@ def _generate_entities_from_port_yaml(
 
 def generate_entities_from_commit_id(
     azure_devops_client: AzureDevopsClient,
-    spec_paths: list[str],
+    spec_paths: list[str] | str,
     repo_id: str,
     commit_id: str,
-) -> list[Entity]:
+) -> list[Entity]:    
+    if isinstance(spec_paths, str):
+        spec_paths = [spec_paths]
+
     return [
         entity
         for path in spec_paths

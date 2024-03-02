@@ -6,6 +6,6 @@ from pydantic import Field
 from typing import List
 
 class GitPortAppConfig(PortAppConfig):
-    spec_path: List[str] = Field(alias="specPath", default=["port.yml"])
+    spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     branch: str = "main"
     resources: list[ResourceConfig] = Field(default_factory=list)
