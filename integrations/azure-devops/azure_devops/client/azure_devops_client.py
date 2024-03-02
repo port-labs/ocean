@@ -47,14 +47,13 @@ class AzureDevopsClient(HTTPBaseClient):
             team: dict[str, Any]
         ) -> list[dict[str, Any]]:
             members_in_teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{team['projectId']}/teams/{team['id']}/members"
-            return await self._get_paginated_by_top_and_skip(members_in_teams_url)
+            return self._get_paginated_by_top_and_skip(members_in_teams_url)
 
         async for teams in self.generate_teams():
             member_tasks = []
             for team in teams:
-                members_in_teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{team['projectId']}/teams/{team['id']}/members"
                 member_tasks.append(
-                    _get_members_in_team(members_in_teams_url)
+                    _get_members_in_team(team)
                 )
 
             for coro in asyncio.as_completed(member_tasks):
