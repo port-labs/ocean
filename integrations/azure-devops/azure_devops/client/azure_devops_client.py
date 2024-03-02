@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any, AsyncGenerator, Optional
 from azure_devops.webhooks.webhook_event import WebhookEvent
@@ -42,135 +43,95 @@ class AzureDevopsClient(HTTPBaseClient):
             yield teams
 
     async def generate_members(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async def _get_members_in_team(
+            team: dict[str, Any]
+        ) -> list[dict[str, Any]]:
+            members_in_teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{team['projectId']}/teams/{team['id']}/members"
+            return await self._get_paginated_by_top_and_skip(members_in_teams_url)
+
         async for teams in self.generate_teams():
+            member_tasks = []
             for team in teams:
                 members_in_teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{team['projectId']}/teams/{team['id']}/members"
-                async for members in self._get_paginated_by_top_and_skip(
-                    members_in_teams_url
-                ):
-                    for member in members:
-                        member["teamId"] = team["id"]
-                    yield members
+                member_tasks.append(
+                    _get_members_in_team(members_in_teams_url)
+                )
 
-    @cache_iterator_result("repositories")
+            for coro in asyncio.as_completed(member_tasks):
+                members = await coro
+                for member in members:
+                    member["teamId"] = team["id"]
+                yield members
+
+
     async def generate_repositories(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
+            repo_tasks = []
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                repositories = (await self.send_request("GET", repos_url)).json()[
-                    "value"
-                ]
+                repo_tasks.append(
+                    self.send_request("GET", repos_url)
+                )
+
+            for future in asyncio.as_completed(repo_tasks):
+                response = await future
+                repositories = response.json()["value"]
                 yield repositories
 
-    async def generate_pull_requests(
-        self, search_filters: Optional[dict[str, Any]] = None
-    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
+
+    async def generate_pull_requests(self, search_filters: Optional[dict[str, Any]] = None) -> AsyncGenerator[list[dict[Any, Any]], None]:
+        async def _get_pull_requests(url: str, search_filters: Optional[dict[str, Any]]) -> list[dict[Any, Any]]:
+            pull_requests = []
+            async for page in self._get_paginated_by_top_and_skip(url, search_filters):
+                pull_requests.extend(page)
+            return pull_requests
+        
         async for repositories in self.generate_repositories():
+            pull_request_tasks = []
             for repository in repositories:
                 pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
-                async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
-                    pull_requests_url, search_filters
-                ):
-                    yield filtered_pull_requests
+                pull_request_tasks.append(
+                    _get_pull_requests(pull_requests_url, search_filters)
+                )
 
-    @cache_iterator_result("pipelines")
+            for coro in asyncio.as_completed(pull_request_tasks):
+                filtered_pull_requests = await coro
+                yield filtered_pull_requests
+
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
+        async def _get_pipelines(url: str) -> list[dict[Any, Any]]:
+            pipelines = []
+            async for page in self._get_paginated_by_top_and_skip(url):
+                pipelines.extend(page)
+            return pipelines
+
         async for projects in self.generate_projects():
+            pipeline_tasks = []
             for project in projects:
                 pipelines_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines"
-                async for (
-                    pipelines
-                ) in self._get_paginated_by_top_and_continuation_token(pipelines_url):
-                    for pipeline in pipelines:
-                        pipeline["projectId"] = project["id"]
-                    yield pipelines
-
-    async def generate_work_items_by_wiql(
-        self, wiql_query: str, max_work_items_per_query: int
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        MAX_ALLOWED_ITEMS_IN_BATCH = 200
-        data = {"query": wiql_query}
-        async for teams in self.generate_teams():
-            for team in teams:
-                work_items_wiql_params = {
-                    "api-version": "6.0",
-                    "$top": max_work_items_per_query,
-                }
-                work_items_wiql_headers = {"Content-Type": "application/json"}
-                work_items_wiql_url = f"{self._organization_base_url}/{team['projectId']}/{team['id']}/{API_URL_PREFIX}/wit/wiql"
-                wiql_content = (
-                    await self.send_request(
-                        "POST",
-                        work_items_wiql_url,
-                        headers=work_items_wiql_headers,
-                        params=work_items_wiql_params,
-                        data=json.dumps(data),
-                    )
-                ).json()
-                work_items_metadata = wiql_content["workItems"]
-                logger.info(
-                    f"Found {len(work_items_metadata)} work items in project id {team['projectId']} team name {team['name']} for query: {wiql_query}"
+                pipeline_tasks.append(
+                    _get_pipelines(pipelines_url)
                 )
-                work_item_ids: list[int] = [
-                    work_item_metadata["id"]
-                    for work_item_metadata in work_items_metadata
-                ]
-                for work_item_ids_index in range(
-                    0, len(work_item_ids), MAX_ALLOWED_ITEMS_IN_BATCH
-                ):
-                    work_item_ids_batch = work_item_ids[
-                        work_item_ids_index : work_item_ids_index
-                        + MAX_ALLOWED_ITEMS_IN_BATCH
-                    ]
-                    work_items_list_params = {
-                        "api-version": "5.1",
-                        "ids": ",".join(str(id) for id in work_item_ids_batch),
-                    }
-                    work_items_list_url = f"{self._organization_base_url}/{team['projectId']}/{API_URL_PREFIX}/wit/workitems"
-                    work_items_data = (
-                        await self.send_request(
-                            "GET", work_items_list_url, params=work_items_list_params
-                        )
-                    ).json()["value"]
-                    for work_item in work_items_data:
-                        work_item["teamId"] = team["id"]
-                        work_item["projectId"] = team["projectId"]
-                    logger.info(
-                        f"Finished proceesing batch of {len(work_items_data)} work items.."
-                    )
-                    yield work_items_data
 
-    async def generate_boards(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for projects in self.generate_projects():
-            for project in projects:
-                board_list_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/work/boards"
-                boards = (await self.send_request("GET", board_list_url)).json()[
-                    "value"
-                ]
-                project_boards: list[dict[Any, Any]] = []
-                for board in boards:
-                    logger.info(
-                        f"Found board {board['name']} in project {project['name']}"
-                    )
-                    board_data = (await self.send_request("GET", board["url"])).json()[
-                        "values"
-                    ]
-                    project_boards.extend(board_data)
-                logger.info(
-                    f"Found {len(project_boards)} boards in project {project['name']}"
-                )
-                yield project_boards
+            for coro in asyncio.as_completed(pipeline_tasks):
+                pipelines = await coro
+                for pipeline in pipelines:
+                    pipeline["projectId"] = project["id"]
+                yield pipelines
 
-    async def generate_repository_policies(
-        self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_repository_policies(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repos in self.generate_repositories():
+            policy_tasks = []
             for repo in repos:
                 params = {"repositoryId": repo["id"], "refName": repo["defaultBranch"]}
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-                repo_policies = (
-                    await self.send_request("GET", policies_url, params=params)
-                ).json()["value"]
+                policy_tasks.append(
+                    self.send_request("GET", policies_url, params=params)
+                )
+
+            for coro in asyncio.as_completed(policy_tasks):
+                response = await coro
+                repo_policies = response.json()["value"]
                 for policy in repo_policies:
                     policy["__repositoryId"] = repo["id"]
                 yield repo_policies
@@ -186,12 +147,6 @@ class AzureDevopsClient(HTTPBaseClient):
         response = await self.send_request("GET", get_single_repository_url)
         repository_data = response.json()
         return repository_data
-
-    async def get_work_item(self, work_item_id: str) -> dict[Any, Any]:
-        get_single_pull_reqest_url = f"{self._organization_base_url}/{API_URL_PREFIX}/wit/workitems/{work_item_id}"
-        response = await self.send_request("GET", get_single_pull_reqest_url)
-        pull_request_data = response.json()
-        return pull_request_data
 
     async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:
         headers = {"Content-Type": "application/json"}

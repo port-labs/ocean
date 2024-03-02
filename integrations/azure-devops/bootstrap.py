@@ -4,7 +4,6 @@ from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.webhooks.listeners.listener import HookListener
 from azure_devops.webhooks.listeners.pull_request import PullRequestHookListener
 from azure_devops.webhooks.listeners.push import PushHookListener
-from azure_devops.webhooks.listeners.work_item import WorkItemHookListener
 from azure_devops.webhooks.webhook_event import WebhookEvent
 from azure_devops.webhooks.webhook_event_observer import WebhookEventObserver
 
@@ -17,7 +16,6 @@ async def setup_listeners(
     listeners: list[HookListener] = [
         PullRequestHookListener(azure_devops_client),
         PushHookListener(azure_devops_client),
-        WorkItemHookListener(azure_devops_client),
     ]
     webhook_events: list[WebhookEvent] = list()
     for listener in listeners:

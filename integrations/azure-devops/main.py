@@ -7,8 +7,6 @@ from azure_devops.webhooks.webhook_event import WebhookEvent
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from azure_devops.search_criteria import (
     PULL_REQUEST_SEARCH_CRITERIA,
-    WORK_ITEMS_WIQL_QUERY,
-    MAX_WORK_ITEMS_PER_QUERY,
 )
 from bootstrap import setup_listeners, webhook_event_handler
 from starlette.requests import Request
@@ -76,24 +74,6 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for repositories in azure_devops_client.generate_repositories():
         logger.info(f"Resyncing repositories: {str(repositories)}")
         yield repositories
-
-
-@ocean.on_resync(Kind.WORK_ITEM)
-async def resync_work_items(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for work_items in azure_devops_client.generate_work_items_by_wiql(
-        WORK_ITEMS_WIQL_QUERY, MAX_WORK_ITEMS_PER_QUERY
-    ):
-        logger.info(f"Resyncing work items: {str(work_items)}")
-        yield work_items
-
-
-@ocean.on_resync(Kind.BOARD)
-async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for boards in azure_devops_client.generate_boards():
-        logger.info(f"Resyncing boards: {str(boards)}")
-        yield boards
 
 
 @ocean.on_resync(Kind.REPOSITORY_POLICY)
