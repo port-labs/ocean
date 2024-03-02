@@ -33,17 +33,6 @@ class GitManipulationHandler(JQEntityProcessor):
             entity_processor = JQEntityProcessor
         return entity_processor(self.context)._search(data, pattern)
 
-
-class FoldersSelector(BaseModel):
-    path: str
-    repos: List[str] = Field(default_factory=list)
-    branch: str | None = None
-
-
-class GitSelector(Selector):
-    folders: List[FoldersSelector] = Field(default_factory=list)
-
-
 def parse_repository_payload(data: Dict[str, Any]) -> Tuple[str, str]:
     repository_id = data.get("id", "")
     ref = "/".join(
