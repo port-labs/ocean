@@ -5,7 +5,6 @@ class Kind(StrEnum):
     REPOSITORY_POLICY = "repository-policy"
     PULL_REQUEST = "pull-request"
     PIPELINE = "pipeline"
-    BOARD = "board"
     MEMBER = "member"
     TEAM = "team"
     PROJECT = "project"
