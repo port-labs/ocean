@@ -1,1 +1,0 @@
-Changed the JQ Entity processor to work with async calls to allow better parallelism and async work
