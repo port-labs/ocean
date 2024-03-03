@@ -18,8 +18,8 @@ class GitManipulationHandler(JQEntityProcessor):
         client = AzureDevopsClient.create_from_ocean_config()
         repository_id, branch = parse_repository_payload(data)
         file_path = pattern.replace(FILE_PROPERTY_PREFIX, "")
-        file_raw_content = asyncio.get_running_loop().run_until_complete(
-            client.get_file_by_branch(file_path, repository_id, branch)
+        file_raw_content = await client.get_file_by_branch(
+            file_path, repository_id, branch
         )
         return file_raw_content.decode() if file_raw_content else None
 
