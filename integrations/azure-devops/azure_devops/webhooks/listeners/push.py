@@ -30,12 +30,12 @@ class PushHookListener(HookListener):
             old_commit = update["oldObjectId"]
             new_commit = update["newObjectId"]
             if config.branch == branch:
-                new_entities = generate_entities_from_commit_id(
+                new_entities = await generate_entities_from_commit_id(
                     self._client, config.spec_path, repo_id, new_commit
                 )
                 logger.info(f"Got {len(new_entities)} new entities")
 
-                old_entities = generate_entities_from_commit_id(
+                old_entities = await generate_entities_from_commit_id(
                     self._client, config.spec_path, repo_id, old_commit
                 )
                 logger.info(f"Got {len(old_entities)} old entities")

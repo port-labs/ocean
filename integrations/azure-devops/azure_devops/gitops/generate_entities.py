@@ -1,3 +1,4 @@
+import asyncio
 import json
 from pathlib import Path
 import yaml
@@ -10,7 +11,7 @@ from loguru import logger
 JSON_SUFFIX = ".json"
 
 
-def _generate_entity_from_port_yaml(
+async def _generate_entity_from_port_yaml(
     raw_entity: Entity,
     azure_devops_client: AzureDevopsClient,
     commit_id: str,
@@ -20,7 +21,7 @@ def _generate_entity_from_port_yaml(
     for key, value in raw_entity.properties.items():
         if isinstance(value, str) and value.startswith(FILE_PROPERTY_PREFIX):
             file_meta = Path(value.replace(FILE_PROPERTY_PREFIX, ""))
-            file_content: bytes = azure_devops_client.get_file_by_commit(
+            file_content: bytes = await azure_devops_client.get_file_by_commit(
                 file_path=str(file_meta),
                 repository_id=repository_id,
                 commit_id=commit_id,
@@ -41,14 +42,14 @@ def _generate_entity_from_port_yaml(
     )
 
 
-def _generate_entities_from_port_yaml(
+async def _generate_entities_from_port_yaml(
     azure_devops_client: AzureDevopsClient,
     file_name: str,
     repository_id: str,
     commit_id: str,
 ) -> list[Entity]:
     try:
-        file_content = azure_devops_client.get_file_by_commit(
+        file_content = await azure_devops_client.get_file_by_commit(
             file_name, repository_id, commit_id
         )
         entities = yaml.safe_load(file_content.decode())
@@ -57,7 +58,7 @@ def _generate_entities_from_port_yaml(
             for entity_data in (entities if isinstance(entities, list) else [entities])
         ]
         return [
-            _generate_entity_from_port_yaml(
+            await _generate_entity_from_port_yaml(
                 entity_data, azure_devops_client, commit_id, repository_id
             )
             for entity_data in raw_entities
@@ -69,19 +70,21 @@ def _generate_entities_from_port_yaml(
     return []
 
 
-def generate_entities_from_commit_id(
+async def generate_entities_from_commit_id(
     azure_devops_client: AzureDevopsClient,
     spec_paths: list[str] | str,
     repo_id: str,
     commit_id: str,
-) -> list[Entity]:    
+) -> list[Entity]:
     if isinstance(spec_paths, str):
         spec_paths = [spec_paths]
 
     return [
         entity
         for path in spec_paths
-        for entity in _generate_entities_from_port_yaml(
-            azure_devops_client, path, repo_id, commit_id
+        for entity in (
+            await _generate_entities_from_port_yaml(
+                azure_devops_client, path, repo_id, commit_id
+            )
         )
     ]

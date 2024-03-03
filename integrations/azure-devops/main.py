@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Any
 from loguru import logger
 from port_ocean.context.ocean import ocean
@@ -11,6 +10,11 @@ from azure_devops.search_criteria import (
 from bootstrap import setup_listeners, webhook_event_handler
 from starlette.requests import Request
 from azure_devops.utils import Kind
+
+import nest_asyncio
+
+nest_asyncio.apply()
+
 
 @ocean.on_start()
 async def setup_webhooks() -> None:

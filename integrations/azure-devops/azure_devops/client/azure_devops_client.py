@@ -181,9 +181,13 @@ class AzureDevopsClient(HTTPBaseClient):
     async def get_file_by_branch(
         self, file_path: str, repository_id: str, branch_name: str
     ) -> bytes:
-        return self._get_item_content(file_path, repository_id, "Branch", branch_name)
+        return await self._get_item_content(
+            file_path, repository_id, "Branch", branch_name
+        )
 
     async def get_file_by_commit(
         self, file_path: str, repository_id: str, commit_id: str
     ) -> bytes:
-        return self._get_item_content(file_path, repository_id, "Commit", commit_id)
+        return await self._get_item_content(
+            file_path, repository_id, "Commit", commit_id
+        )
