@@ -57,9 +57,9 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                repositories = self._parse_response_values(
-                    await self.send_request("GET", repos_url)
-                )
+                repositories = (await self.send_request("GET", repos_url)).json()[
+                    "value"
+                ]
                 yield repositories
 
     async def generate_pull_requests(
@@ -92,9 +92,10 @@ class AzureDevopsClient(HTTPBaseClient):
             for repo in repos:
                 params = {"repositoryId": repo["id"], "refName": repo["defaultBranch"]}
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-                repo_policies = self._parse_response_values(
+                repo_policies = (
                     await self.send_request("GET", policies_url, params=params)
-                )
+                ).json()["value"]
+
                 for policy in repo_policies:
                     policy["__repositoryId"] = repo["id"]
                 yield repo_policies

@@ -14,18 +14,6 @@ resources:
             url: '.url'
             readme: file://README.md
 
-  - kind: pull-request
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id
-          blueprint: '"obj"'
-          title: .title
-          properties:
-            obj: '.'
-
   - kind: repository-policy
     selector:
       query: '.type.displayName=="Minimum number of reviewers"'
