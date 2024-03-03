@@ -1,6 +1,10 @@
 [tool.poetry]
 name = "port-ocean"
+<<<<<<< HEAD
 version = "0.5.3.rc1"
+=======
+version = "0.5.3"
+>>>>>>> 2676ad5bb347adf49f5cf8e812431a9480852ffc
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
