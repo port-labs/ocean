@@ -16,7 +16,7 @@ class WebhookEvent(BaseModel):
 
     def get_event_by_subscription(
         self, subscribed_events: list["WebhookEvent"]
-    ) -> "WebhookEvent":
+    ) -> "WebhookEvent" | None:
         for subscribed_event in subscribed_events:
             if (
                 subscribed_event.publisherId == self.publisherId

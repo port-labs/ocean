@@ -20,11 +20,13 @@ class PushHookListener(HookListener):
         config: GitPortAppConfig = typing.cast(GitPortAppConfig, event.port_app_config)
         push_url = data["resource"]["url"]
         push_params = {"includeRefUpdates": True}
-        push_data = await self._client.send_request("GET", push_url, params=push_params)
-        push_data = push_data.json()
+        push_data = (
+            await self._client.send_request("GET", push_url, params=push_params)
+        ).json()
+        updates: list[dict[str, Any]] = push_data["refUpdates"]
 
         ref_update_tasks = []
-        for update in push_data["refUpdates"]:
+        for update in updates:
             task = asyncio.create_task(self.process_ref_update(config, update))
             ref_update_tasks.append(task)
 

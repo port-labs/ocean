@@ -7,7 +7,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id
+          identifier: '.project.name + "/" + .name'
           blueprint: '"service"'
           title: .name
           properties:
@@ -20,7 +20,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__repositoryId
+          identifier: '.__repository.project.name + "/" + .__repository.name'
           blueprint: '"service"'
           properties:
             minimumApproverCount: '.settings.minimumApproverCount'
@@ -31,7 +31,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__repositoryId
+          identifier: '.__repository.project.name + "/" + .__repository.name'
           blueprint: '"service"'
           properties:
             workItemLinking: '.isEnabled and .isBlocking'

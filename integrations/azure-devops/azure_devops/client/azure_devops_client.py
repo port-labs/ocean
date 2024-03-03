@@ -98,7 +98,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 ).json()["value"]
 
                 for policy in repo_policies:
-                    policy["__repositoryId"] = repo["id"]
+                    policy["__repository"] = repo
                 yield repo_policies
 
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any]:
