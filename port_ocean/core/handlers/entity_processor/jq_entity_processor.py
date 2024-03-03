@@ -78,6 +78,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                 return await self._search_as_object(
                     data, mapping.port.entity.mappings.dict(exclude_unset=True)
                 )
+            return {}
 
         entities_tasks = [asyncio.create_task(calculate_raw(data)) for data in raw_data]
         entities = await asyncio.gather(*entities_tasks)
