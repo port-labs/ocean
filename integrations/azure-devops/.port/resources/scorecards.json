@@ -29,7 +29,7 @@
               "combinator": "and",
               "conditions": [
                 {
-                  "operator": "<",
+                  "operator": ">",
                   "property": "minimumApproverCount",
                   "value": 2
                 }
