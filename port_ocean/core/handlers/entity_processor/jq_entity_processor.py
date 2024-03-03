@@ -22,10 +22,8 @@ class JQEntityProcessor(BaseEntityProcessor):
     """
 
     @lru_cache
-    async def _compile(self, pattern: str) -> Any:
-        loop = asyncio.get_event_loop()
-        compiler = functools.partial(jq.compile, pattern)
-        return await loop.run_in_executor(None, compiler)
+    def _compile(self, pattern: str) -> Any:
+        return jq.compile(pattern)
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
@@ -38,7 +36,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     async def _search_as_bool(self, data: dict[str, Any], pattern: str) -> bool:
         loop = asyncio.get_event_loop()
-        compiled_pattern = await self._compile(pattern)
+        compiled_pattern = self._compile(pattern)
         first_value_callable = functools.partial(compiled_pattern.first, data)
         value = await loop.run_in_executor(None, first_value_callable)
 
@@ -53,7 +51,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         self, data: dict[str, Any], obj: dict[str, Any]
     ) -> dict[str, Any | None]:
         search_tasks = {}
-        with TaskGroup() as tg:
+        async with TaskGroup() as tg:
             for key, value in obj.items():
                 if isinstance(value, dict):
                     search_tasks[key] = tg.create_task(
@@ -74,17 +72,15 @@ class JQEntityProcessor(BaseEntityProcessor):
     async def _calculate_entities(
         self, mapping: ResourceConfig, raw_data: list[dict[str, Any]]
     ) -> list[Entity]:
-        async def calculate_raw(data: dict[str, Any]) -> Entity:
+        async def calculate_raw(data: dict[str, Any]):
             should_run = await self._search_as_bool(data, mapping.selector.query)
             if should_run and mapping.port.entity:
-                return Entity.parse_obj(
-                    await self._search_as_object(
-                        data, mapping.port.entity.mappings.dict(exclude_unset=True)
-                    )
+                return await self._search_as_object(
+                    data, mapping.port.entity.mappings.dict(exclude_unset=True)
                 )
 
         entities_tasks = [asyncio.create_task(calculate_raw(data)) for data in raw_data]
-        entities = asyncio.gather(*entities_tasks)
+        entities = await asyncio.gather(*entities_tasks)
 
         return [
             Entity.parse_obj(entity_data)
