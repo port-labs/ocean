@@ -8,6 +8,7 @@ from .base_client import HTTPBaseClient
 from port_ocean.utils.cache import cache_iterator_result
 
 API_URL_PREFIX = "_apis"
+WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -132,7 +133,6 @@ class AzureDevopsClient(HTTPBaseClient):
         return [WebhookEvent(**subscription) for subscription in subscriptions_raw]
 
     async def create_subscription(self, webhook_event: WebhookEvent) -> None:
-        params = {"api-version": "7.1-preview.1"}
         headers = {"Content-Type": "application/json"}
         create_subscription_url = (
             f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions"
@@ -142,7 +142,7 @@ class AzureDevopsClient(HTTPBaseClient):
         response = await self.send_request(
             "POST",
             create_subscription_url,
-            params=params,
+            params=WEBHOOK_API_PARAMS,
             headers=headers,
             data=webhook_event_json,
         )
@@ -153,9 +153,14 @@ class AzureDevopsClient(HTTPBaseClient):
 
     async def delete_subscription(self, webhook_event: WebhookEvent) -> None:
         headers = {"Content-Type": "application/json"}
-        delete_subscription_url = f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_event.id}?api-version=7.1-preview.1"
+        delete_subscription_url = f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_event.id}"
         logger.info(f"Deleting subscription to event: {webhook_event.json()}")
-        await self.send_request("DELETE", delete_subscription_url, headers=headers)
+        await self.send_request(
+            "DELETE",
+            delete_subscription_url,
+            headers=headers,
+            params=WEBHOOK_API_PARAMS,
+        )
 
     async def _get_item_content(
         self, file_path: str, repository_id: str, version_type: str, version: str

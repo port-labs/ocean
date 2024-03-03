@@ -1,6 +1,6 @@
 import asyncio
 import typing
-from typing import Any, Dict, List
+from typing import Any, Dict
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
