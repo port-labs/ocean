@@ -43,48 +43,48 @@ class AzureDevopsClient(HTTPBaseClient):
             yield teams
 
     async def generate_members(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async def _get_members_in_team(
-            team: dict[str, Any]
-        ) -> list[dict[str, Any]]:
-            members_in_teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{team['projectId']}/teams/{team['id']}/members"
-            return self._get_paginated_by_top_and_skip(members_in_teams_url)
+        async def _get_members_in_team(team: dict[str, Any]) -> list[dict[str, Any]]:
+            members = []
+            async for page in self._get_paginated_by_top_and_skip(
+                f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{team['projectId']}/teams/{team['id']}/members"
+            ):
+                members.extend(page)
+            return members
 
         async for teams in self.generate_teams():
             member_tasks = []
             for team in teams:
-                member_tasks.append(
-                    _get_members_in_team(team)
-                )
+                member_tasks.append(_get_members_in_team(team))
 
             for coro in asyncio.as_completed(member_tasks):
                 members = await coro
                 for member in members:
-                    member["teamId"] = team["id"]
+                    member["__teamId"] = team["id"]
                 yield members
-
 
     async def generate_repositories(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             repo_tasks = []
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                repo_tasks.append(
-                    self.send_request("GET", repos_url)
-                )
+                repo_tasks.append(self.send_request("GET", repos_url))
 
             for future in asyncio.as_completed(repo_tasks):
                 response = await future
                 repositories = response.json()["value"]
                 yield repositories
 
-
-    async def generate_pull_requests(self, search_filters: Optional[dict[str, Any]] = None) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        async def _get_pull_requests(url: str, search_filters: Optional[dict[str, Any]]) -> list[dict[Any, Any]]:
+    async def generate_pull_requests(
+        self, search_filters: Optional[dict[str, Any]] = None
+    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
+        async def _get_pull_requests(
+            url: str, search_filters: Optional[dict[str, Any]]
+        ) -> list[dict[Any, Any]]:
             pull_requests = []
             async for page in self._get_paginated_by_top_and_skip(url, search_filters):
                 pull_requests.extend(page)
             return pull_requests
-        
+
         async for repositories in self.generate_repositories():
             pull_request_tasks = []
             for repository in repositories:
@@ -108,9 +108,7 @@ class AzureDevopsClient(HTTPBaseClient):
             pipeline_tasks = []
             for project in projects:
                 pipelines_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines"
-                pipeline_tasks.append(
-                    _get_pipelines(pipelines_url)
-                )
+                pipeline_tasks.append(_get_pipelines(pipelines_url))
 
             for coro in asyncio.as_completed(pipeline_tasks):
                 pipelines = await coro
@@ -118,7 +116,9 @@ class AzureDevopsClient(HTTPBaseClient):
                     pipeline["projectId"] = project["id"]
                 yield pipelines
 
-    async def generate_repository_policies(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_repository_policies(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repos in self.generate_repositories():
             policy_tasks = []
             for repo in repos:
@@ -199,7 +199,11 @@ class AzureDevopsClient(HTTPBaseClient):
             logger.info(
                 f"Getting file {file_path} from repo id {repository_id} by {version_type}: {version}"
             )
-            file_content = (await self.send_request(method="GET", url=items_url, params=items_params)).content
+            file_content = (
+                await self.send_request(
+                    method="GET", url=items_url, params=items_params
+                )
+            ).content
 
         except Exception as e:
             logger.warning(
