@@ -151,6 +151,12 @@ class AzureDevopsClient(HTTPBaseClient):
             f"Created subscription id: {response_content['id']} for eventType {response_content['eventType']}"
         )
 
+    async def delete_subscription(self, webhook_event: WebhookEvent) -> None:
+        headers = {"Content-Type": "application/json"}
+        delete_subscription_url = f"{self._organization_base_url}/{API_URL_PREFIX}/hooks/subscriptions/{webhook_event.id}?api-version=7.1-preview.1"
+        logger.info(f"Deleting subscription to event: {webhook_event.json()}")
+        await self.send_request("DELETE", delete_subscription_url, headers=headers)
+
     async def _get_item_content(
         self, file_path: str, repository_id: str, version_type: str, version: str
     ) -> bytes:

@@ -23,27 +23,46 @@ async def setup_listeners(
             event.set_consumer_url(f"{app_host}/integration/webhook")
         webhook_event_handler.on(listener.webhook_events, listener.on_hook)
         webhook_events.extend(listener.webhook_events)
-    await _create_webhooks(azure_devops_client, list(webhook_events))
+    await _upsert_webhooks(azure_devops_client, webhook_events)
 
 
-async def _create_webhooks(
+async def _upsert_webhooks(
     azure_devops_client: AzureDevopsClient, webhook_events: list[WebhookEvent]
 ) -> None:
-    new_events = []
+    events_to_create = []
+    events_to_delete = []
     existing_subscriptions: list[
         WebhookEvent
     ] = await azure_devops_client.generate_subscriptions_webhook_events()
     for event in webhook_events:
-        if not event.is_event_subscribed(existing_subscriptions):
-            logger.info(f"Creating new subscription for event: {str(event)}")
-            new_events.append(event)
+        webhook_subscription = event.get_event_by_subscription(existing_subscriptions)
+        if webhook_subscription is not None and not webhook_subscription.is_enabled():
+            logger.info("Subscription is disabled, deleting it and creating a new one")
+            events_to_create.append(event)
+            events_to_delete.append(webhook_subscription)
+        elif event.get_event_by_subscription(existing_subscriptions) is None:
+            events_to_create.append(event)
         else:
             logger.info(
                 f"Event: {str(event)} already has a subscription, not creating a new one"
             )
-    if new_events:
+    if events_to_delete:
+        logger.info(f"Deleting {len(events_to_delete)} subscriptions")
+        await asyncio.gather(
+            *(
+                azure_devops_client.delete_subscription(subscription)
+                for subscription in events_to_delete
+            )
+        )
+        logger.info(f"Deleted {len(events_to_delete)} subscriptions")
+
+    if events_to_create:
+        logger.info(f"Creating new subscription for event: {str(event)}")
         results_with_error = await asyncio.gather(
-            *(azure_devops_client.create_subscription(event) for event in new_events),
+            *(
+                azure_devops_client.create_subscription(event)
+                for event in events_to_create
+            ),
             return_exceptions=True,
         )
         errors = [
@@ -52,7 +71,8 @@ async def _create_webhooks(
         for error in errors:
             logger.error(f"Got error while creating a subscription: {str(error)}")
         logger.info(
-            f"Created {len(new_events)-len(errors)} webhooks successfully with {len(errors)} failed"
+            f"Created {len(events_to_create)-len(errors)} webhooks successfully with {len(errors)} failed"
         )
+
     else:
         logger.info("All relevant subscriptions already exist")

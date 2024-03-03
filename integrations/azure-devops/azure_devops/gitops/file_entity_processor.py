@@ -1,6 +1,7 @@
 from typing import Any, Dict, Tuple
 from port_ocean.core.handlers import JQEntityProcessor
 from azure_devops.client.azure_devops_client import AzureDevopsClient
+from port_ocean.utils.misc import extract_branch_name_from_ref
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"
@@ -25,7 +26,5 @@ class GitManipulationHandler(JQEntityProcessor):
 
 def parse_repository_payload(data: Dict[str, Any]) -> Tuple[str, str]:
     repository_id = data.get("id", "")
-    ref = "/".join(
-        data.get("defaultBranch", "").split("/")[2:]
-    )  # Remove /refs/heads from ref to get branch
-    return repository_id, ref
+    branch = extract_branch_name_from_ref(data.get("defaultBranch", ""))
+    return repository_id, branch
