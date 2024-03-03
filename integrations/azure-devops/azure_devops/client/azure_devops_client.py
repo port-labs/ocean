@@ -1,4 +1,3 @@
-import asyncio
 import json
 from typing import Any, AsyncGenerator, Optional
 from azure_devops.webhooks.webhook_event import WebhookEvent
