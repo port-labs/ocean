@@ -11,10 +11,6 @@ from bootstrap import setup_listeners, webhook_event_handler
 from starlette.requests import Request
 from azure_devops.utils import Kind
 
-import nest_asyncio
-
-nest_asyncio.apply()
-
 
 @ocean.on_start()
 async def setup_webhooks() -> None:
