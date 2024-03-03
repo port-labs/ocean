@@ -739,17 +739,6 @@ files = [
 ]
 
 [[package]]
-name = "nest-asyncio"
-version = "1.6.0"
-description = "Patch asyncio to allow nested event loops"
-optional = false
-python-versions = ">=3.5"
-files = [
-    {file = "nest_asyncio-1.6.0-py3-none-any.whl", hash = "sha256:87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c"},
-    {file = "nest_asyncio-1.6.0.tar.gz", hash = "sha256:6f172d5449aca15afd6c646851f4e31e02c598d553a667e38cafa997cfec55fe"},
-]
-
-[[package]]
 name = "packaging"
 version = "23.2"
 description = "Core utilities for Python packages"
@@ -803,13 +792,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.2"
+version = "0.5.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = ">=3.11,<4.0"
 files = [
-    {file = "port_ocean-0.5.2-py3-none-any.whl", hash = "sha256:83418a0da5cfec30e58412ed362739f30a16c0fba5ab979b7cec0f0d308c3656"},
-    {file = "port_ocean-0.5.2.tar.gz", hash = "sha256:609dabaa27ca83685318568e09168f20ab13e212f567e515e7cf9e6cd4e76a81"},
+    {file = "port_ocean-0.5.3-py3-none-any.whl", hash = "sha256:d467f4dad05e2b4dbf9746063e2fb780b714cfdcbd419b305ddb0155a36967f3"},
+    {file = "port_ocean-0.5.3.tar.gz", hash = "sha256:29bacd912ebb432f800a2d6d648f65789bef64c47682289f0a1d23c444774f12"},
 ]
 
 [package.dependencies]
@@ -1398,4 +1387,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "05335cb8f8848d877e0e21133498eb52052ad05946eeb2e63b421dd5efdd7ecf"
+content-hash = "2b57cfa0493ca5870215065d27b7d27b919599da31d1246551e02a4087752312"
