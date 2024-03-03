@@ -1,6 +1,5 @@
 import asyncio
 import functools
-from asyncio import TaskGroup
 from functools import lru_cache
 from typing import Any
 
@@ -51,14 +50,13 @@ class JQEntityProcessor(BaseEntityProcessor):
         self, data: dict[str, Any], obj: dict[str, Any]
     ) -> dict[str, Any | None]:
         search_tasks = {}
-        async with TaskGroup() as tg:
-            for key, value in obj.items():
-                if isinstance(value, dict):
-                    search_tasks[key] = tg.create_task(
-                        self._search_as_object(data, value)
-                    )
-                else:
-                    search_tasks[key] = tg.create_task(self._search(data, value))
+        for key, value in obj.items():
+            if isinstance(value, dict):
+                search_tasks[key] = asyncio.create_task(
+                    self._search_as_object(data, value)
+                )
+            else:
+                search_tasks[key] = asyncio.create_task(self._search(data, value))
 
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
