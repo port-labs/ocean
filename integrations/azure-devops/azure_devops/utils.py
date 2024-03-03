@@ -1,5 +1,6 @@
 from enum import StrEnum
 
+
 class Kind(StrEnum):
     REPOSITORY = "repository"
     REPOSITORY_POLICY = "repository-policy"

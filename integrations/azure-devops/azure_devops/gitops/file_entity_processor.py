@@ -1,5 +1,4 @@
-import asyncio
-from typing import Any, Dict, Tuple, Type
+from typing import Any, Dict, Tuple
 from port_ocean.core.handlers import JQEntityProcessor
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 
