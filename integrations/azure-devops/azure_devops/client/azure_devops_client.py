@@ -43,94 +43,59 @@ class AzureDevopsClient(HTTPBaseClient):
             yield teams
 
     async def generate_members(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async def _get_members_in_team(team: dict[str, Any]) -> list[dict[str, Any]]:
-            members = []
-            async for page in self._get_paginated_by_top_and_skip(
-                f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{team['projectId']}/teams/{team['id']}/members"
-            ):
-                members.extend(page)
-            return members
-
         async for teams in self.generate_teams():
-            member_tasks = []
             for team in teams:
-                member_tasks.append(_get_members_in_team(team))
+                members_in_teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{team['projectId']}/teams/{team['id']}/members"
+                async for members in self._get_paginated_by_top_and_skip(
+                    members_in_teams_url
+                ):
+                    for member in members:
+                        member["__teamId"] = team["id"]
+                    yield members
 
-            for coro in asyncio.as_completed(member_tasks):
-                members = await coro
-                for member in members:
-                    member["__teamId"] = team["id"]
-                yield members
-
+    @cache_iterator_result("repositories")
     async def generate_repositories(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
-            repo_tasks = []
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
-                repo_tasks.append(self.send_request("GET", repos_url))
-
-            for future in asyncio.as_completed(repo_tasks):
-                response = await future
-                repositories = response.json()["value"]
+                repositories = self._parse_response_values(
+                    await self.send_request("GET", repos_url)
+                )
                 yield repositories
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        async def _get_pull_requests(
-            url: str, search_filters: Optional[dict[str, Any]]
-        ) -> list[dict[Any, Any]]:
-            pull_requests = []
-            async for page in self._get_paginated_by_top_and_skip(url, search_filters):
-                pull_requests.extend(page)
-            return pull_requests
-
         async for repositories in self.generate_repositories():
-            pull_request_tasks = []
             for repository in repositories:
                 pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
-                pull_request_tasks.append(
-                    _get_pull_requests(pull_requests_url, search_filters)
-                )
+                async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
+                    pull_requests_url, search_filters
+                ):
+                    yield filtered_pull_requests
 
-            for coro in asyncio.as_completed(pull_request_tasks):
-                filtered_pull_requests = await coro
-                yield filtered_pull_requests
-
+    @cache_iterator_result("pipelines")
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        async def _get_pipelines(url: str) -> list[dict[Any, Any]]:
-            pipelines = []
-            async for page in self._get_paginated_by_top_and_skip(url):
-                pipelines.extend(page)
-            return pipelines
-
         async for projects in self.generate_projects():
-            pipeline_tasks = []
             for project in projects:
                 pipelines_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/pipelines"
-                pipeline_tasks.append(_get_pipelines(pipelines_url))
-
-            for coro in asyncio.as_completed(pipeline_tasks):
-                pipelines = await coro
-                for pipeline in pipelines:
-                    pipeline["projectId"] = project["id"]
-                yield pipelines
+                async for (
+                    pipelines
+                ) in self._get_paginated_by_top_and_continuation_token(pipelines_url):
+                    for pipeline in pipelines:
+                        pipeline["__projectId"] = project["id"]
+                    yield pipelines
 
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repos in self.generate_repositories():
-            policy_tasks = []
             for repo in repos:
                 params = {"repositoryId": repo["id"], "refName": repo["defaultBranch"]}
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-                policy_tasks.append(
-                    self.send_request("GET", policies_url, params=params)
+                repo_policies = self._parse_response_values(
+                    await self.send_request("GET", policies_url, params=params)
                 )
-
-            for coro in asyncio.as_completed(policy_tasks):
-                response = await coro
-                repo_policies = response.json()["value"]
                 for policy in repo_policies:
                     policy["__repositoryId"] = repo["id"]
                 yield repo_policies
