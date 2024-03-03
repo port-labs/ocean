@@ -7,8 +7,14 @@ FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"
 
 
-class AzureDevopsFileEntityProcessor(JQEntityProcessor):
-    def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+class GitManipulationHandler(JQEntityProcessor):
+    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+        if pattern.startswith(FILE_PROPERTY_PREFIX):
+            return await self._search_by_file(data, pattern)
+
+        return await super()._search(data, pattern)
+
+    async def _search_by_file(self, data: Dict[str, Any], pattern: str) -> Any:
         client = AzureDevopsClient.create_from_ocean_config()
         repository_id, branch = parse_repository_payload(data)
         file_path = pattern.replace(FILE_PROPERTY_PREFIX, "")
@@ -16,16 +22,6 @@ class AzureDevopsFileEntityProcessor(JQEntityProcessor):
             client.get_file_by_branch(file_path, repository_id, branch)
         )
         return file_raw_content.decode() if file_raw_content else None
-
-
-class GitManipulationHandler(JQEntityProcessor):
-    def _search(self, data: Dict[str, Any], pattern: str) -> Any:
-        entity_processor: Type[JQEntityProcessor]
-        if pattern.startswith(FILE_PROPERTY_PREFIX):
-            entity_processor = AzureDevopsFileEntityProcessor
-        else:
-            entity_processor = JQEntityProcessor
-        return entity_processor(self.context)._search(data, pattern)
 
 
 def parse_repository_payload(data: Dict[str, Any]) -> Tuple[str, str]:

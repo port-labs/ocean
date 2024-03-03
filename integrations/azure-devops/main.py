@@ -33,7 +33,7 @@ async def setup_webhooks() -> None:
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for projects in azure_devops_client.generate_projects():
-        logger.info(f"Resyncing projects: {str(projects)}")
+        logger.info(f"Resyncing {len(projects)} projects")
         yield projects
 
 
@@ -41,7 +41,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for teams in azure_devops_client.generate_teams():
-        logger.info(f"Resyncing teams: {str(teams)}")
+        logger.info(f"Resyncing {len(teams)} teams")
         yield teams
 
 
@@ -49,7 +49,7 @@ async def resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for members in azure_devops_client.generate_members():
-        logger.info(f"Resyncing members: {str(members)}")
+        logger.info(f"Resyncing {len(members)} members")
         yield members
 
 
@@ -57,7 +57,7 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_pipeline(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for pipelines in azure_devops_client.generate_pipelines():
-        logger.info(f"Resyncing pipelines: {str(pipelines)}")
+        logger.info(f"Resyncing {len(pipelines)} pipelines")
         yield pipelines
 
 
@@ -68,7 +68,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for pull_requests in azure_devops_client.generate_pull_requests(
             search_filter
         ):
-            logger.info(f"Resyncing pull_requests: {str([pull_requests])}")
+            logger.info(f"Resyncing {len(pull_requests)} pull_requests")
             yield pull_requests
 
 
@@ -76,7 +76,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for repositories in azure_devops_client.generate_repositories():
-        logger.info(f"Resyncing repositories: {str(repositories)}")
+        logger.info(f"Resyncing {len(repositories)} repositories")
         yield repositories
 
 
@@ -84,7 +84,7 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for policies in azure_devops_client.generate_repository_policies():
-        logger.info(f"Resyncing repository policies: {str(policies)}")
+        logger.info(f"Resyncing repository {len(policies)} policies")
         yield policies
 
 

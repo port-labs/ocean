@@ -7,6 +7,7 @@ from loguru import logger
 PAGE_SIZE = 50
 CONTINUATION_TOKEN_HEADER = "x-ms-continuationtoken"
 
+
 class HTTPBaseClient:
     def __init__(self, personal_access_token: str) -> None:
         self._client = http_async_client
@@ -23,7 +24,7 @@ class HTTPBaseClient:
         self._client.auth = BasicAuth("", self._personal_access_token)
         self._client.follow_redirects = True
 
-        try:      
+        try:
             response = await self._client.request(
                 method=method,
                 url=url,
@@ -45,9 +46,6 @@ class HTTPBaseClient:
         except httpx.HTTPError as e:
             logger.error(f"Couldn't send request {method} to url {url}: {str(e)}")
             raise e
-        logger.info(
-            f"{method} Request to {url} got {response.status_code} -> {str(response.content)}"
-        )
         return response
 
     async def _get_paginated_by_top_and_continuation_token(
