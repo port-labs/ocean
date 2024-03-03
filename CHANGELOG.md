@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.4 (2024-03-03)
+
+
+### Bug Fixes
+
+- Fixed an issue where a failure in the entity processing step might fail the whole resync (#1)
+
+
 ## 0.5.3 (2024-03-03)
 
 
