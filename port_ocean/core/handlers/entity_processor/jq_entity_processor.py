@@ -28,7 +28,7 @@ class JQEntityProcessor(BaseEntityProcessor):
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
             loop = asyncio.get_event_loop()
-            compiled_pattern = await self._compile(pattern)
+            compiled_pattern = self._compile(pattern)
             first_value_callable = functools.partial(compiled_pattern.first, data)
             return await loop.run_in_executor(None, first_value_callable)
         except Exception:
