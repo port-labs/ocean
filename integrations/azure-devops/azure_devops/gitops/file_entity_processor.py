@@ -1,7 +1,7 @@
 from typing import Any, Dict, Tuple
 from port_ocean.core.handlers import JQEntityProcessor
 from azure_devops.client.azure_devops_client import AzureDevopsClient
-from port_ocean.utils.misc import extract_branch_name_from_ref
+from azure_devops.misc import extract_branch_name_from_ref
 
 FILE_PROPERTY_PREFIX = "file://"
 JSON_SUFFIX = ".json"

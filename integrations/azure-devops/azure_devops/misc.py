@@ -36,3 +36,7 @@ class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     branch: str = "main"
     resources: list[ResourceConfig] = Field(default_factory=list)
+
+
+def extract_branch_name_from_ref(ref: str) -> str:
+    return "/".join(ref.split("/")[2:])

@@ -6,7 +6,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.clients.port.types import UserAgentType
 from azure_devops.webhooks.webhook_event import WebhookEvent
-from port_ocean.utils.misc import extract_branch_name_from_ref
+from azure_devops.misc import extract_branch_name_from_ref
 from .listener import HookListener
 from azure_devops.misc import GitPortAppConfig
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
