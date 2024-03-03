@@ -11,4 +11,3 @@ integration:
     organizationUrl: "{{ from env ORGANIZATION_URL }}"
     personalAccessToken: "{{ from env PERSONAL_ACCESS_TOKEN }}"
     appHost: "{{ from env APP_HOST }}"
-
