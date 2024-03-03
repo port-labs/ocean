@@ -2,7 +2,7 @@ from typing import Any
 
 from port_ocean.context.ocean import ocean
 from azure_devops.webhooks.webhook_event import WebhookEvent
-from azure_devops.utils import Kind
+from azure_devops.misc import Kind
 from .listener import HookListener
 
 

@@ -8,7 +8,7 @@ from azure_devops.webhooks.webhook_event import WebhookEvent
 from .listener import HookListener
 from azure_devops.gitops.port_app_config import GitPortAppConfig
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
-from azure_devops.utils import Kind
+from azure_devops.misc import Kind
 
 
 class PushHookListener(HookListener):

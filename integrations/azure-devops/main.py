@@ -4,12 +4,9 @@ from port_ocean.context.ocean import ocean
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.webhooks.webhook_event import WebhookEvent
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from azure_devops.search_criteria import (
-    PULL_REQUEST_SEARCH_CRITERIA,
-)
 from bootstrap import setup_listeners, webhook_event_handler
 from starlette.requests import Request
-from azure_devops.utils import Kind
+from azure_devops.misc import Kind, PULL_REQUEST_SEARCH_CRITERIA
 
 
 @ocean.on_start()
