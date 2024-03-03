@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.3 (2024-03-03)
+
+
+### Improvements
+
+- Cahnged the JQ Entity processor to work with async callss to allow better parallelism and async work (#1)
+
+
 ## 0.5.2 (2024-02-21)
 
 
