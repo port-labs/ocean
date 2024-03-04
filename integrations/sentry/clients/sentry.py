@@ -1,8 +1,11 @@
-from typing import Any, AsyncGenerator
-
+from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 
 from port_ocean.utils import http_async_client
+from port_ocean.utils.cache import cache_iterator_result
+import httpx
+
+PAGE_SIZE = 100
 
 
 class SentryClient:
@@ -17,30 +20,61 @@ class SentryClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
 
+    def get_next_link(self, link_header: str) -> Optional[str]:
+        if link_header:
+            links = link_header.split(",")
+            for link in links:
+                parts = link.strip().split(";")
+                url = parts[0].strip("<>")
+                rel = parts[1].strip()
+                results = parts[2].strip()
+                if 'rel="next"' in rel and 'results="true"' in results:
+                    return url
+        return None
+
+    async def get_paginated_resource(
+        self, url: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        params: dict[str, Any] = {"per_page": PAGE_SIZE}
+
+        while url:
+            try:
+                response = await self.client.get(
+                    url=url,
+                    params=params,
+                )
+                response.raise_for_status()
+                records = response.json()
+                logger.info(
+                    f"Received {len(records)} records from Sentry for URL: {url}"
+                )
+                yield records
+
+                url = self.get_next_link(response.headers.get("link", ""))  # type: ignore
+
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+                )
+                raise
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP occurred while fetching Sentry data: {e}")
+                raise
+
+    @cache_iterator_result("project")
     async def get_paginated_projects(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        per_page = 100
-        page = 0
-        logger.info("Getting projects from Sentry")
-        while True:
-            project_response = await self.client.get(
-                f"{self.api_url}/projects/?per_page={per_page}&cursor={page}:1:0"
-            )
-            project_response.raise_for_status()
-            projects = project_response.json()
-            logger.info(f"Got {len(projects)} projects from Sentry")
-            yield projects
-            page += 1
-            if len(projects) < per_page:
-                break
+        logger.info("Getting paginated projects from Sentry")
+        async for project in self.get_paginated_resource(f"{self.api_url}/projects/"):
+            yield project
 
-    async def get_issues(self, project_slug: str) -> list[dict[str, Any]]:
-        logger.info(f"Getting issues from Sentry for project {project_slug}")
-        issue_response = await self.client.get(
+    async def get_paginated_issues(
+        self, project_slug: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Getting paginated issues from Sentry for project {project_slug}")
+
+        async for issues in self.get_paginated_resource(
             f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/"
-        )
-        issue_response.raise_for_status()
-        issues = issue_response.json()
-        logger.info(f"Got {len(issues)} issues from Sentry for project {project_slug}")
-        return issues
+        ):
+            yield issues
