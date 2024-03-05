@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator
 from loguru import logger
 
 from port_ocean.utils import http_async_client
@@ -20,7 +20,7 @@ class SentryClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
 
-    def get_next_link(self, link_header: str) -> Optional[str]:
+    def get_next_link(self, link_header: str) -> str:
         if link_header:
             links = link_header.split(",")
             for link in links:
@@ -30,7 +30,7 @@ class SentryClient:
                 results = parts[2].strip()
                 if 'rel="next"' in rel and 'results="true"' in results:
                     return url
-        return None
+        return ""
 
     async def get_paginated_resource(
         self, url: str
@@ -50,7 +50,7 @@ class SentryClient:
                 )
                 yield records
 
-                url = self.get_next_link(response.headers.get("link", ""))  # type: ignore
+                url = self.get_next_link(response.headers.get("link", ""))
 
             except httpx.HTTPStatusError as e:
                 logger.error(
