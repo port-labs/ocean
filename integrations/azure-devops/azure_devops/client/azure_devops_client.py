@@ -55,26 +55,26 @@ class AzureDevopsClient(HTTPBaseClient):
                     yield members
 
     @cache_iterator_result("repositories")
-    async def generate_repositories(
-        self, ignore_disabled_repos: bool = False
-    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
+    async def generate_repositories(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
                 repositories = (await self.send_request("GET", repos_url)).json()[
                     "value"
                 ]
-                if ignore_disabled_repos:
-                    yield [repo for repo in repositories if not repo.get("isDisabled")]
-                else:
-                    yield repositories
+                yield repositories
+
+    @cache_iterator_result("non_disabled_repositories")
+    async def _generate_non_disabled_repositories(
+        self,
+    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
+        async for repos in self.generate_repositories():
+            yield [repo for repo in repos if not repo.get("isDisabled")]
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        async for repositories in self.generate_repositories(
-            ignore_disabled_repos=True
-        ):
+        async for repositories in self._generate_non_disabled_repositories():
             for repository in repositories:
                 pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
                 async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
@@ -97,7 +97,7 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for repos in self.generate_repositories(ignore_disabled_repos=True):
+        async for repos in self._generate_non_disabled_repositories():
             for repo in repos:
                 params = {
                     "repositoryId": repo["id"],
