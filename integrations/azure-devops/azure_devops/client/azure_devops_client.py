@@ -28,7 +28,7 @@ class AzureDevopsClient(HTTPBaseClient):
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
 
-    @cache_iterator_result("projects")
+    @cache_iterator_result()
     async def generate_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {"includeCapabilities": "true"}
         projects_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects"
@@ -37,7 +37,7 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield projects
 
-    @cache_iterator_result("teams")
+    @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
@@ -54,27 +54,27 @@ class AzureDevopsClient(HTTPBaseClient):
                         member["__teamId"] = team["id"]
                     yield members
 
-    @cache_iterator_result("repositories")
-    async def generate_repositories(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
+    @cache_iterator_result()
+    async def generate_repositories(
+        self, include_disabled_repositories: bool = True
+    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
                 repositories = (await self.send_request("GET", repos_url)).json()[
                     "value"
                 ]
-                yield repositories
-
-    @cache_iterator_result("non_disabled_repositories")
-    async def _generate_non_disabled_repositories(
-        self,
-    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        async for repos in self.generate_repositories():
-            yield [repo for repo in repos if not repo.get("isDisabled")]
+                if include_disabled_repositories:
+                    yield repositories
+                else:
+                    yield [repo for repo in repositories if not repo.get("isDisabled")]
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        async for repositories in self._generate_non_disabled_repositories():
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
             for repository in repositories:
                 pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
                 async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
@@ -82,7 +82,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 ):
                     yield filtered_pull_requests
 
-    @cache_iterator_result("pipelines")
+    @cache_iterator_result()
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -97,7 +97,9 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for repos in self._generate_non_disabled_repositories():
+        async for repos in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
             for repo in repos:
                 params = {
                     "repositoryId": repo["id"],
