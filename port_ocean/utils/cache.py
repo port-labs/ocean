@@ -1,14 +1,12 @@
 import functools
+import hashlib
 from typing import Callable, AsyncIterator, Any
-
 from port_ocean.context.event import event
 
 AsyncIteratorCallable = Callable[..., AsyncIterator[list[Any]]]
 
 
-def cache_iterator_result(
-    cache_key: str,
-) -> Callable[[AsyncIteratorCallable], AsyncIteratorCallable]:
+def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCallable]:
     """
     This decorator caches the results of an async iterator function. It checks if the result is already in the cache
     and if not, it fetches the all the data and caches it at ocean.attributes cache the end of the iteration.
@@ -18,9 +16,12 @@ def cache_iterator_result(
     For example, you can use this to cache data coming back from the third-party API to avoid making the same request
     multiple times for each kind.
 
+    The caching mechanism also detects changes in parameters.
+    If a function is called with different parameter values, it will be stored in different hash keys for each unique call.
+
     Usage:
     ```python
-    @cache_iterator_result("my_cache_key")
+    @cache_iterator_result()
     async def my_async_iterator_function():
         # Your code here
     ```
@@ -29,6 +30,13 @@ def cache_iterator_result(
     def decorator(func: AsyncIteratorCallable) -> AsyncIteratorCallable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Create Hash key from function name, args and kwargs
+            args_str = str(args)
+            kwargs_str = str(kwargs)
+            concatenated_string = args_str + kwargs_str
+            hash_object = hashlib.sha256(concatenated_string.encode())
+            cache_key = f"{func.__name__}_{hash_object.hexdigest()}"
+
             # Check if the result is already in the cache
             if cache := event.attributes.get(cache_key):
                 yield cache
