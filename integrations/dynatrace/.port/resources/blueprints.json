@@ -206,11 +206,6 @@
           "title": "Filter",
           "description": "The filter for the SLO evaluation."
         },
-        "relatedOpenProblems": {
-          "type": "number",
-          "title": "Related Open Problems",
-          "description": "Number of open problems related to the SLO. Has the value of -1 if there's an error with fetching SLO related problems."
-        },
         "timeframe": {
           "type": "string",
           "title": "Timeframe",

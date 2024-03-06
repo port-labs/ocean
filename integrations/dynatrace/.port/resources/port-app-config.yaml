@@ -58,5 +58,4 @@ resources:
             evaluatedPercentage: .evaluatedPercentage
             evaluationType: .evaluationType
             filter: .filter
-            relatedOpenProblems: .relatedOpenProblems
             timeframe: .timeframe
