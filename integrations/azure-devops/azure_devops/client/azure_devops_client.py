@@ -72,12 +72,12 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        async for repositories in self.generate_repositories(ignore_disabled_repos=True):
+        async for repositories in self.generate_repositories(
+            ignore_disabled_repos=True
+        ):
             for repository in repositories:
                 pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
-                async for (
-                    filtered_pull_requests
-                ) in self._get_paginated_by_top_and_skip(
+                async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
                     pull_requests_url, search_filters
                 ):
                     yield filtered_pull_requests
