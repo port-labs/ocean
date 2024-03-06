@@ -40,7 +40,7 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Create Hash key from function name, args and kwargs
             cache_key = hash_func(func.__name__, *args, **kwargs)
-            
+
             # Check if the result is already in the cache
             if cache := event.attributes.get(cache_key):
                 yield cache
