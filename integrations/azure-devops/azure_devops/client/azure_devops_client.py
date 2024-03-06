@@ -195,8 +195,7 @@ class AzureDevopsClient(HTTPBaseClient):
             general_err_msg = f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}. Returning empty file."
             if e.response.status_code == 404:
                 logger.warning(
-                    general_err_msg
-                    + f" This may be because the repo {repository_id} is disabled."
+                    f"{general_err_msg} This may be because the repo {repository_id} is disabled."
                 )
             else:
                 logger.warning(general_err_msg)
