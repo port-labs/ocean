@@ -1,6 +1,7 @@
 import json
 from typing import Any, AsyncGenerator, Optional
 from azure_devops.webhooks.webhook_event import WebhookEvent
+from httpx import HTTPStatusError
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from loguru import logger
@@ -68,11 +69,14 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for repositories in self.generate_repositories():
             for repository in repositories:
-                pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
-                async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
-                    pull_requests_url, search_filters
-                ):
-                    yield filtered_pull_requests
+                if not repository["isDisabled"]:
+                    pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
+                    async for (
+                        filtered_pull_requests
+                    ) in self._get_paginated_by_top_and_skip(
+                        pull_requests_url, search_filters
+                    ):
+                        yield filtered_pull_requests
 
     @cache_iterator_result("pipelines")
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
@@ -91,15 +95,19 @@ class AzureDevopsClient(HTTPBaseClient):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for repos in self.generate_repositories():
             for repo in repos:
-                params = {"repositoryId": repo["id"], "refName": repo["defaultBranch"]}
-                policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
-                repo_policies = (
-                    await self.send_request("GET", policies_url, params=params)
-                ).json()["value"]
+                if not repo["isDisabled"]:
+                    params = {
+                        "repositoryId": repo["id"],
+                        "refName": repo["defaultBranch"],
+                    }
+                    policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
+                    repo_policies = (
+                        await self.send_request("GET", policies_url, params=params)
+                    ).json()["value"]
 
-                for policy in repo_policies:
-                    policy["__repository"] = repo
-                yield repo_policies
+                    for policy in repo_policies:
+                        policy["__repository"] = repo
+                    yield repo_policies
 
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any]:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
@@ -165,13 +173,13 @@ class AzureDevopsClient(HTTPBaseClient):
     async def _get_item_content(
         self, file_path: str, repository_id: str, version_type: str, version: str
     ) -> bytes:
-        items_params = {
-            "versionType": version_type,
-            "version": version,
-            "path": file_path,
-        }
-        items_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}/items"
         try:
+            items_params = {
+                "versionType": version_type,
+                "version": version,
+                "path": file_path,
+            }
+            items_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}/items"
             logger.info(
                 f"Getting file {file_path} from repo id {repository_id} by {version_type}: {version}"
             )
@@ -180,10 +188,19 @@ class AzureDevopsClient(HTTPBaseClient):
                     method="GET", url=items_url, params=items_params
                 )
             ).content
-
+        except HTTPStatusError as e:
+            general_err_msg = f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}. Returning empty file."
+            if e.response.status_code == 404:
+                logger.warning(
+                    general_err_msg
+                    + f" This may be because the repo {repository_id} is disabled."
+                )
+            else:
+                logger.warning(general_err_msg)
+            return bytes()
         except Exception as e:
             logger.warning(
-                f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}"
+                f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}. Returning empty file."
             )
             return bytes()
         else:
