@@ -173,13 +173,13 @@ class AzureDevopsClient(HTTPBaseClient):
     async def _get_item_content(
         self, file_path: str, repository_id: str, version_type: str, version: str
     ) -> bytes:
+        items_params = {
+            "versionType": version_type,
+            "version": version,
+            "path": file_path,
+        }
+        items_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}/items"
         try:
-            items_params = {
-                "versionType": version_type,
-                "version": version,
-                "path": file_path,
-            }
-            items_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/repositories/{repository_id}/items"
             logger.info(
                 f"Getting file {file_path} from repo id {repository_id} by {version_type}: {version}"
             )
