@@ -6,6 +6,14 @@ from port_ocean.context.event import event
 AsyncIteratorCallable = Callable[..., AsyncIterator[list[Any]]]
 
 
+def hash_func(function_name: str, *args: Any, **kwargs: Any) -> str:
+    args_str = str(args)
+    kwargs_str = str(kwargs)
+    concatenated_string = args_str + kwargs_str
+    hash_object = hashlib.sha256(concatenated_string.encode())
+    return f"{function_name}_{hash_object.hexdigest()}"
+
+
 def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCallable]:
     """
     This decorator caches the results of an async iterator function. It checks if the result is already in the cache
@@ -31,12 +39,8 @@ def cache_iterator_result() -> Callable[[AsyncIteratorCallable], AsyncIteratorCa
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Create Hash key from function name, args and kwargs
-            args_str = str(args)
-            kwargs_str = str(kwargs)
-            concatenated_string = args_str + kwargs_str
-            hash_object = hashlib.sha256(concatenated_string.encode())
-            cache_key = f"{func.__name__}_{hash_object.hexdigest()}"
-
+            cache_key = hash_func(func.__name__, *args, **kwargs)
+            
             # Check if the result is already in the cache
             if cache := event.attributes.get(cache_key):
                 yield cache
