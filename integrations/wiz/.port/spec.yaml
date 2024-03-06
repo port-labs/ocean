@@ -6,10 +6,8 @@ features:
   - type: exporter
     section: Code Quality & Security
     resources:
-      - kind: issue
       - kind: project
-      - kind: control
-      - kind: serviceTicket
+      - kind: issue
 configurations:
   - name: wizClientId
     required: true

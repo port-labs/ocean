@@ -137,5 +137,73 @@ query ProjectsTable(
   }
 }
 """
+CREATE_REPORT_MUTATION = """
+    mutation CreateReport($input: CreateReportInput!) {
+      createReport(input: $input) {
+        report {
+          id
+        }
+      }
+    }
+    """
+# The GraphQL mutation that rerun report and return report ID
+RERUN_REPORT_MUTATION = """
+    mutation RerunReport($reportId: ID!) {
+        rerunReport(input: { id: $reportId }) {
+            report {
+                id
+            }
+        }
+    }
+"""
 
-GRAPH_QUERIES = {"issues": ISSUES_GQL, "projects": PROJECTS_GQL}
+GRAPH_QUERIES = {
+    "issues": ISSUES_GQL,
+    "projects": PROJECTS_GQL,
+    "create_report": CREATE_REPORT_MUTATION,
+}
+
+GET_REPORT = """
+query ReportsTable($filterBy: ReportFilters, $first: Int, $after: String) {
+  reports(first: $first, after: $after, filterBy: $filterBy) {
+    nodes {
+      id
+      name
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+"""
+
+DOWNLOAD_REPORT_QUERY = """
+    query ReportDownloadUrl($reportId: ID!) {
+        report(id: $reportId) {
+            lastRun {
+                url
+                status
+            }
+        }
+    }
+"""
+
+RERUN_REPORT_MUTATION = """
+    mutation RerunReport($reportId: ID!) {
+        rerunReport(input: { id: $reportId }) {
+            report {
+                id
+            }
+        }
+    }
+"""
+
+# Configuration variables
+MAX_RETRIES_FOR_QUERY = 5
+RETRY_TIME_FOR_QUERY = 2
+MAX_RETRIES_FOR_DOWNLOAD_REPORT = 5
+RETRY_TIME_FOR_DOWNLOAD_REPORT = 60
+CHECK_INTERVAL_FOR_DOWNLOAD_REPORT = 20
+
+PORT_REPORT_NAME = "port-integration-report"

@@ -13,8 +13,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
-    SERVICE_TICKET = "serviceTicket"
-    CONTROL = "control"
 
 
 def init_client() -> WizClient:
@@ -34,23 +32,10 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for projects in wiz_client.get_projects():
             logger.info(f"Received {len(projects)} projects")
             yield projects
-    else:
-        async for _issues in wiz_client.get_issues():
+    elif kind == ObjectKind.ISSUE:
+        async for _issues in wiz_client.get_reported_issues():
             logger.info(f"Received {len(_issues)} issues")
-            if kind == ObjectKind.ISSUE:
-                yield _issues
-            elif kind == ObjectKind.CONTROL:
-                yield [
-                    issue["sourceRule"]
-                    for issue in _issues
-                    if issue.get("sourceRule") is not None
-                ]
-            elif kind == ObjectKind.SERVICE_TICKET:
-                yield [
-                    ticket
-                    for issue in _issues
-                    for ticket in issue.get("serviceTickets", [])
-                ]
+            yield _issues
 
 
 @ocean.router.post("/webhook")
@@ -73,3 +58,11 @@ async def handle_webhook_request(
     await ocean.register_raw(ObjectKind.ISSUE, [issue])
 
     return {"ok": True}
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    logger.info("Starting Port Ocean Wiz integration")
+
+    wiz_client = init_client()
+    await wiz_client.setup_integration_report()
