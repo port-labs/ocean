@@ -1,15 +1,15 @@
 from typing import Dict, Any, Tuple, List, Type
 
+from gitlab.v4.objects import Project
+from loguru import logger
+from pydantic import Field, BaseModel
+
 from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,
     SEARCH_PROPERTY_PREFIX,
 )
-from loguru import logger
-from pydantic import Field, BaseModel
-from gitlab.v4.objects import Project
 from gitlab_integration.gitlab_service import PROJECTS_CACHE_KEY
 from gitlab_integration.utils import get_cached_all_services
-
 from port_ocean.context.event import event
 from port_ocean.core.handlers import JQEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import (
@@ -22,7 +22,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 class FileEntityProcessor(JQEntityProcessor):
     prefix = FILE_PROPERTY_PREFIX
 
-    def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         project_id, ref, base_path = _validate_project_scope(data)
         project = _get_project_from_cache(project_id)
 
@@ -45,7 +45,7 @@ class SearchEntityProcessor(JQEntityProcessor):
     prefix = SEARCH_PROPERTY_PREFIX
     separation_symbol = "&&"
 
-    def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         """
         Handles entity mapping for search:// pattern
         :param data: project data
@@ -99,7 +99,7 @@ class SearchEntityProcessor(JQEntityProcessor):
 
 
 class GitManipulationHandler(JQEntityProcessor):
-    def _search(self, data: Dict[str, Any], pattern: str) -> Any:
+    async def _search(self, data: Dict[str, Any], pattern: str) -> Any:
         entity_processor: Type[JQEntityProcessor]
         if pattern.startswith(FILE_PROPERTY_PREFIX):
             entity_processor = FileEntityProcessor
@@ -107,7 +107,7 @@ class GitManipulationHandler(JQEntityProcessor):
             entity_processor = SearchEntityProcessor
         else:
             entity_processor = JQEntityProcessor
-        return entity_processor(self.context)._search(data, pattern)
+        return await entity_processor(self.context)._search(data, pattern)
 
 
 class FoldersSelector(BaseModel):

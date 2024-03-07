@@ -1,0 +1,60 @@
+[
+  {
+    "identifier": "service",
+    "title": "Service",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string",
+          "icon": "Link"
+        },
+        "readme": {
+          "title": "README",
+          "type": "string",
+          "format": "markdown",
+          "icon": "Book"
+        },
+        "workItemLinking": {
+          "default": false,
+          "type": "boolean"
+        },
+        "minimumApproverCount": {
+          "default": 0,
+          "type": "number"
+        },
+        "slack": {
+          "icon": "Slack",
+          "type": "string",
+          "title": "Slack",
+          "format": "url"
+        },
+        "tier": {
+          "title": "Tier",
+          "type": "string",
+          "description": "How mission-critical the service is",
+          "enum": [
+            "Mission Critical",
+            "Customer Facing",
+            "Internal Service",
+            "Other"
+          ],
+          "enumColors": {
+            "Mission Critical": "turquoise",
+            "Customer Facing": "green",
+            "Internal Service": "darkGray",
+            "Other": "yellow"
+          },
+          "icon": "DefaultProperty"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  }
+]

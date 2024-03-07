@@ -1,0 +1,58 @@
+[
+  {
+    "blueprint": "service",
+    "data": [
+      {
+        "identifier": "ProductionReadiness",
+        "title": "Production Readiness",
+        "rules": [
+          {
+            "identifier": "hasReadme",
+            "title": "Has a readme",
+            "level": "Bronze",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "operator": "isNotEmpty",
+                  "property": "readme"
+                }
+              ]
+            }
+          },
+          {
+            "identifier": "hasMultipleApprovers",
+            "title": "Has multiple Approvers required",
+            "description": "Checks whether the Service is protected by having at least 2 approvers having to approve before pushing new code",
+            "level": "Silver",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "operator": ">",
+                  "property": "minimumApproverCount",
+                  "value": 2
+                }
+              ]
+            }
+          },
+          {
+            "identifier": "hasTeam",
+            "description": "Checks if the service has a team that owns it (according to the \"Team\" property of the service)",
+            "title": "Has a Team",
+            "level": "Gold",
+            "query": {
+              "combinator": "and",
+              "conditions": [
+                {
+                  "operator": "isNotEmpty",
+                  "property": "$team"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
