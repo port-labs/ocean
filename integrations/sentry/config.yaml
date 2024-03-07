@@ -10,7 +10,7 @@ eventListener:
   type: POLLING
 integration:
   # The identifier of this integration instance.
-  identifier: my-sentry-integration
+  identifier: sentry
   # The type of the integration.
   type: sentry
   config:

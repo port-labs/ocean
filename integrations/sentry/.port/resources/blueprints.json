@@ -1,21 +1,21 @@
 [
   {
     "identifier": "sentryProject",
-    "title": "project",
+    "title": "Sentry Project Environment",
     "icon": "Sentry",
     "schema": {
       "properties": {
         "dateCreated": {
-          "title": "dateCreated",
+          "title": "Date Created",
           "type": "string",
           "format": "date-time"
         },
         "platform": {
           "type": "string",
-          "title": "platform"
+          "title": "Platform"
         },
         "status": {
-          "title": "status",
+          "title": "Status",
           "type": "string",
           "enum": [
             "active",
@@ -25,7 +25,7 @@
           ]
         },
         "link": {
-          "title": "link",
+          "title": "Link",
           "type": "string",
           "format": "url"
         }
@@ -38,21 +38,20 @@
   },
   {
     "identifier": "sentryIssue",
-    "title": "issue",
+    "title": "Sentry Issue",
     "icon": "Sentry",
     "schema": {
       "properties": {
         "link": {
-          "title": "link",
+          "title": "Link",
           "type": "string",
           "format": "url"
         },
         "status": {
-          "title": "status",
+          "title": "Status",
           "type": "string"
         },
         "isUnhandled": {
-          "icon": "DefaultProperty",
           "title": "isUnhandled",
           "type": "boolean"
         }
@@ -63,10 +62,10 @@
     "calculationProperties": {},
     "relations": {
       "project": {
-        "title": "project",
+        "title": "Sentry Project Environment",
         "target": "sentryProject",
         "required": false,
-        "many": false
+        "many": true
       }
     }
   }
