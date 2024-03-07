@@ -24,6 +24,7 @@ configurations:
   - name: appHost
     type: url
     required: false
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
   - name: datadogWebhookToken
     type: string
     required: false

@@ -1,9 +1,10 @@
 import json
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
-import httpx
 
+import httpx
 from loguru import logger
+
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
@@ -17,25 +18,29 @@ class CacheKeys:
     SERVICES = "_cache_services"
 
 
-def insert_credentials(url: str, username: str, password: str) -> str:
+def insert_credentials(url: str, username: str, token: str) -> str:
     """
-    Inserts username and password into a given URL.
+    Inserts username and token into a given URL for Datadog compatibility.
+
+    This method prepares a URL for use with Datadog webhook integrations.
+    Datadog's webhooks can utilize basic HTTP authentication, requiring credentials embedded within the URL.
 
     Args:
         url (str): The original URL.
         username (str): The username to insert.
-        password (str): The password to insert.
+        token (str): The token (likely an API key) to insert.
 
     Returns:
-        str: The modified URL with inserted credentials.
+        str: The modified URL with inserted credentials, ready for Datadog use.
 
     Example:
-        new_url = insert_credentials("https://my.service.example.com", "my_username", "my_password")
+        new_url = insert_credentials("https://my.service.example.com", "my_username", "my_api_key")
+        # Use new_url in your Datadog webhook configuration
     """
     parsed_url = urlparse(url)
 
     # Insert credentials into the netloc part of the URL
-    netloc_with_credentials = f"{username}:{password}@{parsed_url.netloc}"
+    netloc_with_credentials = f"{username}:{token}@{parsed_url.netloc}"
 
     # Create a new URL with inserted credentials
     modified_url = urlunparse(
@@ -53,10 +58,10 @@ def insert_credentials(url: str, username: str, password: str) -> str:
 
 
 class DatadogClient:
-    def __init__(self, dd_api_url: str, dd_api_key: str, dd_app_key: str):
-        self.api_url = dd_api_url
-        self.dd_api_key = dd_api_key
-        self.dd_app_key = dd_app_key
+    def __init__(self, api_url: str, api_key: str, app_key: str):
+        self.api_url = api_url
+        self.dd_api_key = api_key
+        self.dd_app_key = app_key
 
         self.http_client = http_async_client
 
