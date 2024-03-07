@@ -23,26 +23,40 @@ def init_client() -> DatadogClient:
     )
 
 
-@ocean.on_resync()
-async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync(ObjectKind.HOST)
+async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
-    if kind == ObjectKind.HOST:
-        async for hosts in dd_client.get_hosts():
-            logger.info(f"Received batch with {len(hosts)} hosts")
-            yield hosts
-    if kind == ObjectKind.MONITOR:
-        async for monitors in dd_client.get_monitors():
-            logger.info(f"Received batch with {len(monitors)} monitors")
-            yield monitors
-    if kind == ObjectKind.SLO:
-        async for slos in dd_client.get_slos():
-            logger.info(f"Received batch with {len(slos)} slos")
-            yield slos
-    if kind == ObjectKind.SERVICE:
-        async for services in dd_client.get_services():
-            logger.info(f"Received batch with {len(services)} service catalogs")
-            yield services
+    async for hosts in dd_client.get_hosts():
+        logger.info(f"Received batch with {len(hosts)} hosts")
+        yield hosts
+
+
+@ocean.on_resync(ObjectKind.MONITOR)
+async def on_resync_monitors(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    async for monitors in dd_client.get_monitors():
+        logger.info(f"Received batch with {len(monitors)} monitors")
+        yield monitors
+
+
+@ocean.on_resync(ObjectKind.SLO)
+async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    async for slos in dd_client.get_slos():
+        logger.info(f"Received batch with {len(slos)} slos")
+        yield slos
+
+
+@ocean.on_resync(ObjectKind.SERVICE)
+async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    async for services in dd_client.get_services():
+        logger.info(f"Received batch with {len(services)} service catalogs")
+        yield services
 
 
 @ocean.router.post("/webhook")
@@ -68,7 +82,7 @@ async def on_start() -> None:
     # Verify the presence of a webhook token or app_host, essential for creating subscriptions.
     # If not provided, skip webhook subscription creation.
     if ocean.integration_config.get("app_host") and ocean.integration_config.get(
-        "datadog_webhook_token"
+            "datadog_webhook_token"
     ):
         dd_client = init_client()
 
