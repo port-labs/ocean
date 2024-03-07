@@ -82,7 +82,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 ):
                     yield filtered_pull_requests
 
-    @cache_iterator_result()
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
