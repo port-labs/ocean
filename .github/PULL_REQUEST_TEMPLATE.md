@@ -17,7 +17,7 @@ Please leave one option from the following and delete the rest:
 
 ## Screenshots
 
-Include screenshots from your environment showing how the integration will look.
+Include screenshots from your environment showing how the resources of the integration will look.
 
 ## API Documentation
 
