@@ -27,7 +27,7 @@ class AzureDevopsClient(HTTPBaseClient):
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
 
-    @cache_iterator_result()
+    @cache_iterator_result("projects")
     async def generate_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {"includeCapabilities": "true"}
         projects_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects"
@@ -36,7 +36,7 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield projects
 
-    @cache_iterator_result()
+    @cache_iterator_result("teams")
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
@@ -53,7 +53,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         member["__teamId"] = team["id"]
                     yield members
 
-    @cache_iterator_result()
+    @cache_iterator_result("repositories")
     async def generate_repositories(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -74,7 +74,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 ):
                     yield filtered_pull_requests
 
-    @cache_iterator_result()
+    @cache_iterator_result("pipelines")
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
