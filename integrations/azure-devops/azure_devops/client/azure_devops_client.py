@@ -1,6 +1,7 @@
 import json
 from typing import Any, AsyncGenerator, Optional
 from azure_devops.webhooks.webhook_event import WebhookEvent
+from httpx import HTTPStatusError
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from loguru import logger
@@ -27,7 +28,7 @@ class AzureDevopsClient(HTTPBaseClient):
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
 
-    @cache_iterator_result("projects")
+    @cache_iterator_result()
     async def generate_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {"includeCapabilities": "true"}
         projects_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects"
@@ -36,7 +37,7 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             yield projects
 
-    @cache_iterator_result("teams")
+    @cache_iterator_result()
     async def generate_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/teams"
         async for teams in self._get_paginated_by_top_and_skip(teams_url):
@@ -53,20 +54,27 @@ class AzureDevopsClient(HTTPBaseClient):
                         member["__teamId"] = team["id"]
                     yield members
 
-    @cache_iterator_result("repositories")
-    async def generate_repositories(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
+    @cache_iterator_result()
+    async def generate_repositories(
+        self, include_disabled_repositories: bool = True
+    ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
                 repos_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/git/repositories"
                 repositories = (await self.send_request("GET", repos_url)).json()[
                     "value"
                 ]
-                yield repositories
+                if include_disabled_repositories:
+                    yield repositories
+                else:
+                    yield [repo for repo in repositories if not repo.get("isDisabled")]
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
-        async for repositories in self.generate_repositories():
+        async for repositories in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
             for repository in repositories:
                 pull_requests_url = f"{self._organization_base_url}/{repository['project']['id']}/{API_URL_PREFIX}/git/repositories/{repository['id']}/pullrequests"
                 async for filtered_pull_requests in self._get_paginated_by_top_and_skip(
@@ -74,7 +82,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 ):
                     yield filtered_pull_requests
 
-    @cache_iterator_result("pipelines")
     async def generate_pipelines(self) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -89,9 +96,14 @@ class AzureDevopsClient(HTTPBaseClient):
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for repos in self.generate_repositories():
+        async for repos in self.generate_repositories(
+            include_disabled_repositories=False
+        ):
             for repo in repos:
-                params = {"repositoryId": repo["id"], "refName": repo["defaultBranch"]}
+                params = {
+                    "repositoryId": repo["id"],
+                    "refName": repo["defaultBranch"],
+                }
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
                 repo_policies = (
                     await self.send_request("GET", policies_url, params=params)
@@ -180,10 +192,18 @@ class AzureDevopsClient(HTTPBaseClient):
                     method="GET", url=items_url, params=items_params
                 )
             ).content
-
+        except HTTPStatusError as e:
+            general_err_msg = f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}. Returning empty file."
+            if e.response.status_code == 404:
+                logger.warning(
+                    f"{general_err_msg} This may be because the repo {repository_id} is disabled."
+                )
+            else:
+                logger.warning(general_err_msg)
+            return bytes()
         except Exception as e:
             logger.warning(
-                f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}"
+                f"Couldn't fetch file {file_path} from repo id {repository_id}: {str(e)}. Returning empty file."
             )
             return bytes()
         else:
