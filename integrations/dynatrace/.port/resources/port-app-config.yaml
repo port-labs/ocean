@@ -58,4 +58,3 @@ resources:
             evaluatedPercentage: .evaluatedPercentage
             evaluationType: .evaluationType
             filter: .filter
-            timeframe: .timeframe

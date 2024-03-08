@@ -205,11 +205,6 @@
           "type": "string",
           "title": "Filter",
           "description": "The filter for the SLO evaluation."
-        },
-        "timeframe": {
-          "type": "string",
-          "title": "Timeframe",
-          "description": "The timeframe for the SLO evaluation."
         }
       },
       "required": []
