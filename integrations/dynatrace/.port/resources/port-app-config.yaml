@@ -4,6 +4,7 @@ resources:
   - kind: entity
     selector:
       query: "true"
+      entityTypes: ["APPLICATION", "SERVICE"]
     port:
       entity:
         mappings:
