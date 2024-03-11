@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.4 (2024-03-07)
+
+### Bug Fixes
+
+- Fixed issue causing disabled repositories to fail resynchronization for pull requests, policies, and item content (#413)
+
+
 # Port_Ocean 0.1.3 (2024-03-03)
 
 ### Improvements

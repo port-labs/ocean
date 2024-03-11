@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.42 (2024-03-08)
+
+### Improvements
+
+- Added support for Pagerduty oncall schedules, allowing the user to see who is oncall over a period of time (PORT-6981)
+
+
+# Port_Ocean 0.1.41 (2024-03-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.5 (#1)
+
+
 # Port_Ocean 0.1.40 (2024-03-03)
 
 ### Improvements

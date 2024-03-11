@@ -9,6 +9,7 @@ features:
       - kind: incidents
       - kind: services
       - kind: schedules
+      - kind: oncalls
 configurations:
   - name: token
     required: true
