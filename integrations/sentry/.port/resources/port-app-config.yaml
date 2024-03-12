@@ -32,4 +32,4 @@ resources:
             status: .status
             isUnhandled: .isUnhandled
           relations:
-            project: '[(.project.slug as $slug | .__tags[] | "\($slug)-\(.name)")]'
+            projectEnvironment: '[(.project.slug as $slug | .__tags[] | "\($slug)-\(.name)")]'

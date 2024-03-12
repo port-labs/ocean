@@ -1,5 +1,4 @@
-from typing import Any, AsyncGenerator
-import typing
+from typing import Any, AsyncGenerator, cast
 from loguru import logger
 
 from port_ocean.utils import http_async_client
@@ -23,9 +22,7 @@ class SentryClient:
         self.organization = sentry_organization
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
-        self.selector = typing.cast(
-            SentryResourceConfig, event.resource_config
-        ).selector
+        self.selector = cast(SentryResourceConfig, event.resource_config).selector
 
     def get_next_link(self, link_header: str) -> str:
         """Information about the next page of results is provided in the link header. The pagination cursors are returned for both the previous and the next page.
@@ -89,7 +86,7 @@ class SentryClient:
             logger.error(f"HTTP occurred while fetching Sentry data: {e}")
             return []
 
-    @cache_iterator_result()
+    @cache_iterator_result("projects")
     async def get_paginated_projects(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:

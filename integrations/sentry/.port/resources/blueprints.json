@@ -49,7 +49,19 @@
         },
         "status": {
           "title": "Status",
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "resolved",
+            "unresolved",
+            "ignored",
+            "reprocessing"
+          ],
+          "enumColors": {
+            "resolved": "green",
+            "unresolved": "red",
+            "ignored": "lightGray",
+            "reprocessing": "yellow"
+          }
         },
         "isUnhandled": {
           "title": "isUnhandled",
@@ -61,7 +73,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "project": {
+      "projectEnvironment": {
         "title": "Sentry Project Environment",
         "target": "sentryProject",
         "required": false,
