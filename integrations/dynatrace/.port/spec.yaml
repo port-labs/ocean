@@ -1,0 +1,18 @@
+type: dynatrace
+description: Dynatrace integration for Port Ocean
+icon: Dynatrace
+features:
+  - type: exporter
+    section: Incident Management
+    resources:
+      - kind: problem
+      - kind: slo
+      - kind: entity
+configurations:
+  - name: dynatraceApiKey
+    required: true
+    type: string
+    sensitive: true
+  - name: dynatraceHostUrl
+    type: url
+    required: true

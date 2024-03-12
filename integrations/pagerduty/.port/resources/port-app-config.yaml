@@ -50,3 +50,21 @@ resources:
             timezone: .time_zone
             description: .description
             users: '[.users[].summary]'
+  - kind: oncalls
+    selector:
+      query: 'true'
+      apiQueryParams:
+        include: ['users']
+    port:
+      entity:
+        mappings:
+          identifier: .user.id + "-" + .schedule.id + "-" + .start
+          title: .user.name
+          blueprint: '"pagerdutyOncall"'
+          properties:
+            user: .user.email
+            startDate: .start
+            endDate: .end
+            url: .schedule.html_url
+          relations:
+            pagerdutySchedule: .schedule.id

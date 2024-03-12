@@ -1,13 +1,12 @@
 [tool.poetry]
-name = "pagerduty"
-version = "0.1.42"
-description = "Pagerduty Integration"
-authors = ["Port Team <support@getport.io>"]
+name = "dynatrace"
+version = "0.1.0"
+description = "An integration used to import Dynatrace resources into Port"
+authors = ["Ayodeji Adeoti <<ayodeji.adeoti@getport.io>>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.5.5", extras = ["cli"]}
-httpx = "^0.24.1"
+port_ocean = { version = "^0.5.5", extras = ["cli"] }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
