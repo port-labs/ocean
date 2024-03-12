@@ -86,7 +86,7 @@ class SentryClient:
             logger.error(f"HTTP occurred while fetching Sentry data: {e}")
             return []
 
-    @cache_iterator_result("projects")
+    @cache_iterator_result()
     async def get_paginated_projects(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
