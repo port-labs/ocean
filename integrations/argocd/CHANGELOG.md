@@ -6,14 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-# Port_Ocean 0.1.25 (2024-02-22)
+# Port_Ocean 0.1.28 (2024-03-13)
 
 ### Improvements
 
 - Enhanced the application blueprint by adding relation to the cluster and a new revision property (PORT-6528)
 - Updated the deployment history revision property from string to url, linking the user the specific revision (PORT-6854)
 - Renamed the cluster blueprint to behave like an environment and updated its properties (PORT-6856)
+
+# Port_Ocean 0.1.27 (2024-03-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.5 (#1)
+
+
+# Port_Ocean 0.1.26 (2024-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.4 (#1)
+
+
+# Port_Ocean 0.1.25 (2024-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.3 (#1)
 
 
 # Port_Ocean 0.1.24 (2024-02-21)

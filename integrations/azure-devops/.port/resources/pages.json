@@ -1,0 +1,283 @@
+[
+  {
+    "icon": "Apps",
+    "title": "Service Dashboard",
+    "protected": false,
+    "widgets": [
+      {
+        "id": "1",
+        "type": "dashboard-widget",
+        "layout": [
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "azureDevopsScorecardReadme",
+                "size": 8
+              },
+              {
+                "id": "azureDevopsApproversChart",
+                "size": 4
+              }
+            ]
+          },
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "azureDevopsExternalDashboard",
+                "size": 6
+              },
+              {
+                "id": "azureDevopsNumberOfWorkLinkingEnabled",
+                "size": 6
+              }
+            ]
+          }
+        ],
+        "widgets": [
+          {
+            "id": "azureDevopsScorecardReadme",
+            "title": "Port Dashboards",
+            "description": "",
+            "markdown": "[Dashboards](https://docs.getport.io/customize-pages-dashboards-and-plugins/page/dashboard-page) enable you to visualize the data from your catalog. Dashboards contain various widgets that display the data in different ways, such as pie charts, number charts, iframes, and more. You can create pages and dashboards for specific processes and expose them to the relevant people using [page permissions](https://docs.getport.io/customize-pages-dashboards-and-plugins/page/page-permissions).\n\nHere are some ideas for dashboards\n- [SVP engineering dashboard](https://demo.getport.io/dashboard_svp_engineering)\n- [Security dashboard](https://demo.getport.io/dashboard_security)\n- [SRE dashboard](https://demo.getport.io/dashboard_sre)",
+            "type": "markdown",
+            "icon": "port"
+          },
+          {
+            "icon": "PieChart",
+            "id": "azureDevopsApproversChart",
+            "type": "entities-pie-chart",
+            "description": "",
+            "title": "Services By Approvers",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "operator": "=",
+                  "value": "service",
+                  "property": "$blueprint"
+                }
+              ]
+            },
+            "property": "property#minimumApproverCount"
+          },
+          {
+            "title": "External dashboard",
+            "id": "azureDevopsExternalDashboard",
+            "description": "",
+            "icon": "Code",
+            "urlType": "public",
+            "url": "https://port-graphical-assets.s3.eu-west-1.amazonaws.com/Widget+Preview.html",
+            "type": "iframe-widget"
+          },
+          {
+            "blueprint": "service",
+            "id": "azureDevopsNumberOfWorkLinkingEnabled",
+            "calculationBy": "entities",
+            "unit": "none",
+            "description": "",
+            "title": "Number of Services with Work-Item linking enforcement enabled",
+            "dataset": [
+              {
+                "property": "workItemLinking",
+                "operator": "=",
+                "value": true
+              },
+              {
+                "property": "$blueprint",
+                "operator": "=",
+                "value": "service"
+              }
+            ],
+            "func": "count",
+            "type": "entities-number-chart",
+            "icon": "Metric"
+          }
+        ]
+      }
+    ],
+    "identifier": "azureDevops-Service-Dashboard",
+    "showInSidebar": true,
+    "requiredQueryParams": [],
+    "section": "software_catalog",
+    "type": "dashboard"
+  },
+  {
+    "icon": "Scorecards",
+    "title": "Production Readiness",
+    "protected": false,
+    "widgets": [
+      {
+        "id": "azureDevopsDashboardWidget",
+        "type": "dashboard-widget",
+        "layout": [
+          {
+            "height": 400,
+            "columns": [
+              {
+                "id": "azureDevopsReadme",
+                "size": 8
+              },
+              {
+                "id": "azureDevopsLevelsSummaryEntitiesPieChart",
+                "size": 4
+              }
+            ]
+          },
+          {
+            "height": 595,
+            "columns": [
+              {
+                "id": "azureDevopsServicesByLevelTable",
+                "size": 12
+              }
+            ]
+          },
+          {
+            "height": 430,
+            "columns": [
+              {
+                "id": "azureDevopsHasReadmeEntitiesPieChart",
+                "size": 4
+              },
+              {
+                "id": "azureDevopsHasMultipleApproversPieChart",
+                "size": 4
+              },
+              {
+                "id": "azureDevopsHasTeamEntitiesPieChart",
+                "size": 4
+              }
+            ]
+          }
+        ],
+        "widgets": [
+          {
+            "title": "Scorecard dashboard",
+            "description": "",
+            "markdown": "[Scorecards](https://docs.getport.io/promote-scorecards/) are a way for you and your team to define and measure standards in different categories, such as service maturity, production readiness, quality, productivity, and more. Scorecards contain [rules](https://docs.getport.io/promote-scorecards/#rule-elements) that determine its overall score (such as bronze, silver, and gold).\n\nThis dashboard is based on the \"Production Readiness\" scorecard we automatically created for you. It contains the following rules:\n- Has a readme (Bronze rule) - checks if the service has a readme file in the repository\n- Has multiple approvers (Silver rule) - checks if the service has multiple approvers required for pushing new code\n- Has a team (Gold rule) - checks if the service has a team that owns it (according to the \"Team\" property of the service)",
+            "type": "markdown",
+            "icon": "port",
+            "id": "azureDevopsReadme"
+          },
+          {
+            "id": "azureDevopsLevelsSummaryEntitiesPieChart",
+            "type": "entities-pie-chart",
+            "property": "scorecard#ProductionReadiness",
+            "title": "Levels summary",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          },
+          {
+            "id": "azureDevopsServicesByLevelTable",
+            "type": "table-entities-explorer",
+            "title": "Services by level",
+            "icon": "Users",
+            "blueprintConfig": {
+              "service": {
+                "groupSettings": {
+                  "groupBy": [
+                    "ProductionReadiness"
+                  ]
+                },
+                "propertiesSettings": {
+                  "hidden": [
+                    "$identifier",
+                    "$updatedAt",
+                    "$createdAt",
+                    "readme",
+                    "url",
+                    "workItemLinking",
+                    "minimumApproverCount",
+                    "slack",
+                    "tier"
+                  ],
+                  "order": []
+                }
+              }
+            },
+            "displayMode": "widget",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          },
+          {
+            "id": "azureDevopsHasReadmeEntitiesPieChart",
+            "type": "entities-pie-chart",
+            "description": "Service has a readme file in the repository",
+            "property": "scorecard-rule#ProductionReadiness#hasReadme",
+            "title": "Has a readme",
+            "icon": "Star",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          },
+          {
+            "id": "azureDevopsHasMultipleApproversPieChart",
+            "type": "entities-pie-chart",
+            "description": "Service has multiple approvers approving required to push new code",
+            "property": "scorecard-rule#ProductionReadiness#hasMultipleApprovers",
+            "title": "Has multiple approvers",
+            "icon": "Star",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          },
+          {
+            "id": "azureDevopsHasTeamEntitiesPieChart",
+            "type": "entities-pie-chart",
+            "description": "Service has a team that owns it",
+            "property": "scorecard-rule#ProductionReadiness#hasTeam",
+            "title": "Has a Team",
+            "icon": "Star",
+            "dataset": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "$blueprint",
+                  "operator": "=",
+                  "value": "service"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "identifier": "azureDevopsProductionReadinessDashboard",
+    "showInSidebar": true,
+    "requiredQueryParams": [],
+    "section": "software_catalog",
+    "type": "dashboard"
+  }
+]

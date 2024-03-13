@@ -1,23 +1,25 @@
 [
   {
+    "identifier": "argocdNamespace",
+    "description": "This blueprint represents an ArgoCD namespace",
+    "title": "ArgoCD Namespace",
+    "icon": "Argo",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "aggregationProperties": {},
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "argocdCluster",
     "description": "This blueprint represents an ArgoCD cluster",
-    "title": "Environment",
-    "icon": "Cluster",
+    "title": "ArgoCD Cluster",
+    "icon": "Argo",
     "schema": {
       "properties": {
-        "namespace": {
-          "icon": "DefaultProperty",
-          "title": "Namespace",
-          "type": "string",
-          "description": "Holds the namespace which is accessible in that cluster."
-        },
-        "cluster": {
-          "icon": "DefaultProperty",
-          "title": "Cluster",
-          "type": "string",
-          "description": "The name of the cluster."
-        },
         "applicationsCount": {
           "title": "Applications Count",
           "type": "number",
@@ -53,7 +55,14 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "namespace": {
+        "title": "ArgoCD Namespace",
+        "target": "argocdNamespace",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "argocdProject",
@@ -86,7 +95,7 @@
     "calculationProperties": {},
     "relations": {
       "cluster": {
-        "title": "Cluster",
+        "title": "ArgoCD Cluster",
         "target": "argocdCluster",
         "required": false,
         "many": true
@@ -115,13 +124,13 @@
           "type": "string",
           "title": "Destination Server"
         },
-        "namespace": {
-          "type": "string",
-          "title": "Namespace"
-        },
         "revision": {
           "type": "string",
           "title": "Revision"
+        },
+        "targetRevision": {
+          "type": "string",
+          "title": "Target Revision"
         },
         "syncStatus": {
           "type": "string",
@@ -171,14 +180,20 @@
     "calculationProperties": {},
     "relations": {
       "project": {
-        "title": "Project",
+        "title": "ArgoCD Project",
         "target": "argocdProject",
         "required": false,
         "many": false
       },
-      "environment": {
-        "title": "Environment",
+      "cluster": {
+        "title": "ArgoCD Cluster",
         "target": "argocdCluster",
+        "required": false,
+        "many": false
+      },
+      "namespace": {
+        "title": "ArgoCD Namespace",
+        "target": "argocdNamespace",
         "required": false,
         "many": false
       }
@@ -203,8 +218,7 @@
         },
         "revision": {
           "title": "Revision",
-          "type": "string",
-          "format": "url"
+          "type": "string"
         },
         "initiatedBy": {
           "title": "Initiated By",
@@ -212,8 +226,7 @@
         },
         "repoURL": {
           "title": "Repository URL",
-          "type": "string",
-          "format": "url"
+          "type": "string"
         },
         "sourcePath": {
           "title": "Source Path",

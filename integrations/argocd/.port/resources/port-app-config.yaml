@@ -7,17 +7,17 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .namespaces[0] + "-" + .name
+          identifier: .name
           title: .name
           blueprint: '"argocdCluster"'
           properties:
-            namespace: .namespaces[0]
-            cluster: .name
             applicationsCount: .info.applicationsCount
             serverVersion: .serverVersion
             labels: .labels
             updatedAt: .connectionState.attemptedAt
             server: .server
+          relations:
+            namespace: .namespaces
   - kind: project
     selector:
       query: "true"
@@ -32,9 +32,7 @@ resources:
             createdAt: .metadata.creationTimestamp
             description: .spec.description
           relations:
-            cluster: >-
-              .spec.destinations | map(.namespace + "-" + .name |
-              select(test("^[a-zA-Z0-9@_.:/=-]+$")))
+            cluster: '[.spec.destinations[].name | select(test("^[a-zA-Z0-9@_.:/=-]+$"))]'
   - kind: application
     selector:
       query: "true"
@@ -49,15 +47,14 @@ resources:
             gitPath: .spec.source.path
             destinationServer: .spec.destination.server
             revision: .status.sync.revision
-            namespace: .metadata.namespace
+            targetRevision: .spec.source.targetRevision
             syncStatus: .status.sync.status
             healthStatus: .status.health.status
             createdAt: .metadata.creationTimestamp
           relations:
             project: .spec.project
-            environment: >-
-              if .spec.destination.name then .spec.destination.namespace + "-" +
-              .spec.destination.name else null end
+            namespace: .metadata.namespace
+            cluster: .spec.destination.name
   - kind: deployment-history
     selector:
       query: "true"

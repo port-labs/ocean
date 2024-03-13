@@ -1,0 +1,37 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: repository
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.project.name + "/" + .name'
+          blueprint: '"service"'
+          title: .name
+          properties:
+            url: '.url'
+            readme: file://README.md
+
+  - kind: repository-policy
+    selector:
+      query: '.type.displayName=="Minimum number of reviewers"'
+    port:
+      entity:
+        mappings:
+          identifier: '.__repository.project.name + "/" + .__repository.name'
+          blueprint: '"service"'
+          properties:
+            minimumApproverCount: '.settings.minimumApproverCount'
+
+  - kind: repository-policy
+    selector:
+      query: '.type.displayName=="Work item linking"'
+    port:
+      entity:
+        mappings:
+          identifier: '.__repository.project.name + "/" + .__repository.name'
+          blueprint: '"service"'
+          properties:
+            workItemLinking: '.isEnabled and .isBlocking'

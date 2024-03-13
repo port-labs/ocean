@@ -11,11 +11,17 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 
+from clients.utils import (
+    get_date_range_for_last_n_months,
+    get_date_range_for_upcoming_n_months,
+)
+
 
 class ObjectKind:
     SERVICES = "services"
     INCIDENTS = "incidents"
     SCHEDULES = "schedules"
+    ONCALLS = "oncalls"
 
 
 class PagerdutyServiceAPIQueryParams(BaseModel):
@@ -48,6 +54,23 @@ class PagerdutyScheduleAPIQueryParams(BaseModel):
         value = self.dict(exclude_none=True)
         if include := value.pop("include", None):
             value["include[]"] = include
+        return value
+
+
+class PagerdutyOncallAPIQueryParams(BaseModel):
+    include: list[str] = Field(default=["users"])
+    until: int = Field(default=3)
+    since: int = Field(default=0)
+
+    def generate_request_params(self) -> dict[str, Any]:
+        value = self.dict(exclude_none=True)
+        if include := value.pop("include", None):
+            value["include[]"] = include
+        if until := value.pop("until", None):
+            value["until"] = get_date_range_for_upcoming_n_months(until)[1]
+        if since := value.pop("since", None):
+            value["since"] = get_date_range_for_last_n_months(since)[0]
+
         return value
 
 
@@ -128,11 +151,22 @@ class PagerdutyScheduleResourceConfig(ResourceConfig):
     selector: PagerdutySelector
 
 
+class PagerdutyOncallResourceConfig(ResourceConfig):
+    class PagerdutySelector(Selector):
+        api_query_params: PagerdutyOncallAPIQueryParams | None = Field(
+            alias="apiQueryParams"
+        )
+
+    kind: Literal["oncalls"]
+    selector: PagerdutySelector
+
+
 class PagerdutyPortAppConfig(PortAppConfig):
     resources: list[
         PagerdutyIncidentResourceConfig
         | PagerdutyServiceResourceConfig
         | PagerdutyScheduleResourceConfig
+        | PagerdutyOncallResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore
