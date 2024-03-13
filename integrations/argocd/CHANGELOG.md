@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Enhanced the application blueprint by adding relation to the cluster and a new revision property (PORT-6528)
+- Enhanced the application blueprint by adding relation to the cluster and two revision properties (actual and target) (PORT-6528)
 - Updated the deployment history revision property from string to url, linking the user the specific revision (PORT-6854)
-- Renamed the cluster blueprint to behave like an environment and updated its properties (PORT-6856)
+- Added namesapce blueprint and created relevant relations(PORT-7187)
 
 # Port_Ocean 0.1.27 (2024-03-06)
 
