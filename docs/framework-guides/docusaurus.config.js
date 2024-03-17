@@ -13,7 +13,7 @@ const config = {
   baseUrl: "/",
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "throw",
-  favicon: "img/favicon.svg",
+  favicon: "img/ocean-logo.svg",
   organizationName: "port-labs", // Usually your GitHub org/user name.
   projectName: "port-ocean", // Usually your repo name.
   staticDirectories: ["static"],
@@ -55,7 +55,7 @@ const config = {
         title: "Ocean Documentation",
         logo: {
           alt: "Ocean Logo",
-          src: "img/favicon.svg",
+          src: "img/ocean-logo.svg",
         },
         items: [
           {
