@@ -30,7 +30,7 @@ jobs:
           password: ${{ env.PYPI_PASSWORD }}
           packages-dir: ${{github.workspace}}/dist
 
-      - name: Deploy Stage
+      - name: Send internal release notification
         continue-on-error: true
         uses: fjogeleit/http-request-action@v1
         with:
