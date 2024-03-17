@@ -121,7 +121,7 @@ The integration's `configurations` spec is an array where each item includes:
 - `required` - whether the parameter is required or optional
   - Available values: `true`, `false`
 - `type` - the type of the parameter
-  - Available values: `string`, `number`, `boolean`, `object`, `url`
+  - Available values: `string`, `number`, `boolean`, `object`, `array`, `url`
 - `description` - a description for the parameter and its usage in the integration
   - Please provide a description to make it easier for users who want to use your integration to understand the different required parameters
 - `sensitive` - whether this parameter is secret or sensitive
