@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Features
 
-- Added array to config.types in default_config_factory (PORT-7262)
+- Added array to possible integration configuration types (PORT-7262)
 
 
 ## 0.5.5 (2024-03-06)
