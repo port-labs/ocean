@@ -51,6 +51,7 @@ def setup_application(
     gitlab_host: str,
     app_host: str,
     use_system_hook: bool,
+    groups_paths_for_hooks: list,
 ) -> None:
     clients = []
     for token, group_mapping in token_mapping.items():
@@ -60,7 +61,7 @@ def setup_application(
         if use_system_hook:
             gitlab_service.create_system_hook()
         else:
-            webhook_ids = gitlab_service.create_webhooks()
+            webhook_ids = gitlab_service.create_webhooks(groups_paths_for_hooks)
             for webhook_id in webhook_ids:
                 setup_listeners(gitlab_service, webhook_id)
     if use_system_hook:

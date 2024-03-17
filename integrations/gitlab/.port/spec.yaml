@@ -29,3 +29,7 @@ configurations:
     type: boolean
     description: If set to true, will use system hook instead of project hooks.
     default: false
+  - name: groupsPathsForHooks
+    required: false
+    type: array
+    description: A list of full paths of specified groups to open webhooks for on start. 

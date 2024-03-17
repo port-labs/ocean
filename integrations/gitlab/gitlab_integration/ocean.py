@@ -58,6 +58,7 @@ async def on_start() -> None:
             logic_settings["gitlab_host"],
             logic_settings["app_host"],
             logic_settings["use_system_hook"],
+            logic_settings["groups_paths_for_hooks"],
         )
     except Exception as e:
         logger.warning(
