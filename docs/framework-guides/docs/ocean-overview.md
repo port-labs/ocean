@@ -7,7 +7,7 @@ sidebar_label: 🌊 Overview
 
 # Overview
 
-![Thumbnail](https://github.com/port-labs/ocean/blob/f61343caa69d886f8ffe48fe05326f7442bca294/assets/Thumbnail.jpg?raw=true)
+![Thumbnail](https://github.com/port-labs/ocean/blob/c560a5555d499867e182ee096402009a3413fdcb/assets/Thumbnail.png)
 
 <p align="center">
 <a href="https://github.com/tiangolo/fastapi/actions?query=lint+event:push+branch:main" target="_blank" style={{marginRight: "0.5em"}}>
