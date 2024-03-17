@@ -46,6 +46,8 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
                 field_type = int
             case "boolean":
                 field_type = bool
+            case "array":
+                field_type = list
             case _:
                 raise ValueError(f"Unknown type: {config.type}")
 
