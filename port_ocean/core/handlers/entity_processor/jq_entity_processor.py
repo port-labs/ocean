@@ -76,8 +76,10 @@ class JQEntityProcessor(BaseEntityProcessor):
                 entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
                     exclude_unset=True
                 )
-                if entity_mappings.get("items_to_parse"):
-                    items = await self._search(data, entity_mappings["items_to_parse"])
+                if (
+                    items_to_parse_expression := mapping.port.entity.mappings.items_to_parse
+                ):
+                    items = await self._search(data, items_to_parse_expression)
                     if isinstance(items, list):
                         return [
                             await self._search_as_object(
