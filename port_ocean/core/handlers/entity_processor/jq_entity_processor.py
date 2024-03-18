@@ -73,7 +73,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         async def calculate_raw(data: dict[str, Any]) -> list[dict[str, Any]]:
             should_run = await self._search_as_bool(data, mapping.selector.query)
             if should_run and mapping.port.entity:
-                entity_mappings: dict[str, any] = mapping.port.entity.mappings.dict(
+                entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
                     exclude_unset=True
                 )
                 if entity_mappings.get("items_to_parse"):
