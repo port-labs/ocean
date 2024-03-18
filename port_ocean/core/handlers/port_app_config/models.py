@@ -12,6 +12,7 @@ class EntityMapping(BaseModel):
     team: str | None
     properties: dict[str, str] = Field(default_factory=dict)
     relations: dict[str, str] = Field(default_factory=dict)
+    items_to_parse: str | None = Field(alias="itemsToParse")
 
 
 class PortResourceConfig(BaseModel):
