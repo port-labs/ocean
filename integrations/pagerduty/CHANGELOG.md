@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated the format for properties in the default blueprints (PORT-6908)
+- Updated the format for properties in the default blueprints
 
 
 # Port_Ocean 0.1.43 (2024-03-17)
