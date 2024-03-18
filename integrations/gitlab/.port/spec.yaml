@@ -29,7 +29,8 @@ configurations:
     type: boolean
     description: If set to true, will use system hook instead of project hooks.
     default: false
-  - name: groupsPathsForHooks
+  - name: tokenGroupOverrideHooksMapping
     required: false
-    type: array
-    description: A list of full paths of specified groups to open webhooks for on start. 
+    type: object
+    description: "Mapping of Gitlab tokens to specified groups to open webhooks for on start. example: {\"THE_GROUP_ADMIN_TOKEN\":[\"GROUP1_FULL_PATH\", \"GROUP2_FULL_PATH\"]}"
+    sensitive: true

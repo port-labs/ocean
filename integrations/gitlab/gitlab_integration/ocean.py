@@ -8,12 +8,13 @@ from loguru import logger
 from starlette.requests import Request
 from port_ocean.context.event import event
 
-from gitlab_integration.bootstrap import event_handler, system_event_handler
-from gitlab_integration.bootstrap import setup_application
+from gitlab_integration.events.setup import event_handler, system_event_handler
+from gitlab_integration.events.setup import setup_application
 from gitlab_integration.git_integration import GitlabResourceConfig
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.log.sensetive import sensitive_log_filter
 
 NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not export live changes from the gitlab"
 PROJECT_RESYNC_BATCH_SIZE = 10
@@ -41,11 +42,15 @@ async def handle_system_webhook(request: Request) -> dict[str, Any]:
 
 @ocean.on_start()
 async def on_start() -> None:
+    logic_settings = ocean.integration_config
+    token_mapping: dict = logic_settings["token_mapping"]
+    hook_override_mapping: dict = logic_settings["token_group_override_hooks_mapping"]
+    sensitive_log_filter.hide_sensitive_strings(*token_mapping.keys(), *hook_override_mapping.keys())
+    
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    logic_settings = ocean.integration_config
     if not logic_settings.get("app_host"):
         logger.warning(
             f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
@@ -58,7 +63,7 @@ async def on_start() -> None:
             logic_settings["gitlab_host"],
             logic_settings["app_host"],
             logic_settings["use_system_hook"],
-            logic_settings["groups_paths_for_hooks"],
+            logic_settings["token_group_override_hooks_mapping"],
         )
     except Exception as e:
         logger.warning(

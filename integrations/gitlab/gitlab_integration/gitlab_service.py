@@ -170,20 +170,19 @@ class GitlabService:
             List[Group], [group for group in groups if group.parent_id is None]
         )
     
-    def get_specified_groups(self, groups_paths) -> List[Group]:
-        groups = self.gitlab_client.groups.list(iterator=True)
+    def filter_groups_by_paths(self, groups_full_paths) -> List[Group]:
+        groups = self.gitlab_client.groups.list()
         return typing.cast(
-            List[Group], [group for group in groups if group.full_path in groups_paths]
+            List[Group], [group for group in groups if group.attributes["full_path"] in groups_full_paths]
         )
 
-    # 1. create webhooks by groups 2. create webhooks from root 
-    def create_webhooks(self, groups_paths) -> list[int | str]:
-        if(groups_paths == None):
-            partial_groups = self.get_root_groups()
-            logger.info("Getting all the root groups to create webhooks for")
+    def create_webhooks(self, groups_full_paths) -> list[int | str]:
+        if groups_full_paths:
+            logger.info("Getting all the specified groups in the mapping to create their webhooks")
+            partial_groups = self.filter_groups_by_paths(groups_full_paths)
         else:
-            partial_groups = self.get_specified_groups(groups_paths)
-            logger.info("Getting all the specified groups in the mapping to create webhooks for")
+            logger.info("Getting all the root groups to create their webhooks")
+            partial_groups = self.get_root_groups()
         
         # Filter out groups that are not in the group mapping and creating webhooks for the rest
         filtered_partial_groups = [
