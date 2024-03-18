@@ -80,7 +80,9 @@ class JQEntityProcessor(BaseEntityProcessor):
                     items = await self._search(data, entity_mappings["items_to_parse"])
                     if isinstance(items, list):
                         return [
-                            await self._search_as_object(item, entity_mappings)
+                            await self._search_as_object(
+                                {"item": item, **data}, entity_mappings
+                            )
                             for item in items
                         ]
                 return [await self._search_as_object(data, entity_mappings)]

@@ -1,0 +1,1 @@
+Added ability to map entities from raw array attribute
