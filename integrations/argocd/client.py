@@ -15,6 +15,7 @@ class ObjectKind(StrEnum):
 
 class ResourceKindsWithSpecialHandling(StrEnum):
     DEPLOYMENT_HISTORY = "deployment-history"
+    MANAGED_RESOURCE = "managed-resource"
 
 
 class ArgocdClient:
@@ -71,3 +72,10 @@ class ArgocdClient:
             for history_item in application["status"].get("history", [])
         ]
         return all_history
+
+    async def get_managed_resources(
+        self, application_name: str
+    ) -> list[dict[str, Any]]:
+        url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
+        managed_resources = (await self._send_api_request(url=url))["items"]
+        return managed_resources
