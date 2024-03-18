@@ -153,5 +153,47 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "pagerdutyOncall",
+    "description": "This blueprint represents a PagerDuty oncall schedule in our software catalog",
+    "title": "PagerDuty Oncall Schedule",
+    "icon": "pagerduty",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Oncall Schedule URL",
+          "type": "string",
+          "format": "url"
+        },
+        "user": {
+          "title": "User",
+          "type": "string",
+          "format": "user"
+        },
+        "startDate": {
+          "title": "Start Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "title": "End Date",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "pagerdutySchedule": {
+        "title": "PagerDuty Schedule",
+        "target": "pagerdutySchedule",
+        "required": false,
+        "many": true
+      }
+    }
   }
 ]

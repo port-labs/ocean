@@ -4,10 +4,10 @@ from typing import Any
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from loguru import logger
-
-from wiz.client import WizClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from wiz.client import WizClient
 
 
 class ObjectKind(StrEnum):

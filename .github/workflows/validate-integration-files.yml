@@ -50,7 +50,7 @@ jobs:
           for integration in $(find integrations -name 'spec.yaml' -not -path "**/.venv/*"); do
             integration_type=$(yq -r '.type' $integration)
 
-            if [ $(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.type' {} | grep -c $integration_type) -gt 1 ]; then
+            if [ $(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.type' {} | grep -c ^$integration_type$) -gt 1 ]; then
               echo "ERROR: $integration_type integration type is duplicated please check your spec.yaml file"
               exit 1
             fi

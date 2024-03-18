@@ -1,0 +1,216 @@
+[
+  {
+    "identifier": "dynatraceEntity",
+    "description": "This blueprint represents a Dynatrace Entity",
+    "title": "Dynatrace Entity",
+    "icon": "Dynatrace",
+    "schema": {
+      "properties": {
+        "firstSeen": {
+          "type": "string",
+          "title": "First Seen",
+          "description": "The timestamp at which the entity was first seen, in UTC milliseconds.",
+          "format": "date-time"
+        },
+        "lastSeen": {
+          "type": "string",
+          "title": "Last Seen",
+          "description": "The timestamp at which the entity was last seen, in UTC milliseconds.",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "The type of the entity."
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "A list of tags of the entity.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "dynatraceProblem",
+    "description": "This blueprint represents a Dynatrace Problem",
+    "title": "Dynatrace Problem",
+    "icon": "Dynatrace",
+    "schema": {
+      "properties": {
+        "entityTags": {
+          "type": "array",
+          "title": "Entity Tags",
+          "description": "A list of all entity tags of the problem.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidenceDetails": {
+          "type": "array",
+          "title": "Evidence Details",
+          "description": "A list of all evidence details of the problem.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "managementZones": {
+          "type": "array",
+          "title": "Management Zones",
+          "description": "A list of all management zones that the problem belongs to.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "problemFilters": {
+          "type": "array",
+          "title": "Problem Filters",
+          "description": "A list of alerting profiles that match the problem.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "severityLevel": {
+          "type": "string",
+          "title": "Severity Level",
+          "description": "The severity level of the problem.",
+          "enum": [
+            "AVAILABILITY",
+            "CUSTOM_ALERT",
+            "ERROR",
+            "INFO",
+            "MONITORING_UNAVAILABLE",
+            "PERFORMANCE",
+            "RESOURCE_CONTENTION"
+          ],
+          "enumColors": {
+            "AVAILABILITY": "blue",
+            "CUSTOM_ALERT": "turquoise",
+            "ERROR": "red",
+            "INFO": "green",
+            "MONITORING_UNAVAILABLE": "darkGray",
+            "PERFORMANCE": "orange",
+            "RESOURCE_CONTENTION": "yellow"
+          }
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the problem.",
+          "enum": ["CLOSED", "OPEN"],
+          "enumColors": {
+            "CLOSED": "green",
+            "OPEN": "red"
+          }
+        },
+        "startTime": {
+          "type": "string",
+          "title": "Start Time",
+          "description": "The start time of the problem, in UTC milliseconds.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "title": "End Time",
+          "description": "The end time of the problem, in UTC milliseconds.",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "impactedEntities": {
+        "title": "Impacted Entities",
+        "target": "dynatraceEntity",
+        "required": false,
+        "many": true
+      },
+      "linkedProblemInfo": {
+        "title": "Linked Problem Info",
+        "target": "dynatraceProblem",
+        "required": false,
+        "many": false
+      },
+      "rootCauseEntity": {
+        "title": "Root Cause Entity",
+        "target": "dynatraceEntity",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "dynatraceSlo",
+    "description": "This blueprint represents a Dynatrace SLO",
+    "title": "Dynatrace SLO",
+    "icon": "Dynatrace",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "The status of the SLO.",
+          "enum": ["FAILURE", "WARNING", "SUCCESS"],
+          "enumColors": {
+            "FAILURE": "red",
+            "WARNING": "yellow",
+            "SUCCESS": "green"
+          }
+        },
+        "target": {
+          "type": "number",
+          "title": "Target",
+          "description": "The target value of the SLO."
+        },
+        "enabled": {
+          "type": "boolean",
+          "title": "Enabled",
+          "description": "Whether the SLO is enabled."
+        },
+        "warning": {
+          "type": "number",
+          "title": "Warning",
+          "description": "The warning value of the SLO. At warning state the SLO is still fulfilled but is getting close to failure."
+        },
+        "error": {
+          "type": "string",
+          "title": "Error",
+          "description": "The error of the SLO calculation. If the value differs from NONE, there is something wrong with the SLO calculation."
+        },
+        "errorBudget": {
+          "type": "number",
+          "title": "Error Budget",
+          "description": "The error budget of the calculated SLO."
+        },
+        "evaluatedPercentage": {
+          "type": "number",
+          "title": "Evaluated Percentage",
+          "description": "The calculated status value of the SLO."
+        },
+        "evaluationType": {
+          "type": "string",
+          "title": "Evaluation Type",
+          "description": "The type of the SLO evaluation."
+        },
+        "filter": {
+          "type": "string",
+          "title": "Filter",
+          "description": "The filter for the SLO evaluation."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  }
+]
