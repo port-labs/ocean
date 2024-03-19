@@ -70,24 +70,30 @@ class JQEntityProcessor(BaseEntityProcessor):
     async def _calculate_entities(
         self, mapping: ResourceConfig, raw_data: list[dict[str, Any]]
     ) -> list[Entity]:
-        async def calculate_raw(data: dict[str, Any]) -> list[dict[str, Any]]:
+        async def calculate_entity(
+            data: dict[str, Any], entity_mappings: dict[str, Any]
+        ) -> dict[str, Any]:
             should_run = await self._search_as_bool(data, mapping.selector.query)
-            if should_run and mapping.port.entity:
+            if should_run:
+                return await self._search_as_object(data, entity_mappings)
+            return {}
+
+        async def calculate_raw(data: dict[str, Any]) -> list[dict[str, Any]]:
+            if mapping.port.entity:
                 entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
                     exclude_unset=True
                 )
-                if (
-                    items_to_parse_expression := mapping.port.entity.mappings.items_to_parse
-                ):
+                if items_to_parse_expression := mapping.port.items_to_parse:
                     items = await self._search(data, items_to_parse_expression)
                     if isinstance(items, list):
                         return [
-                            await self._search_as_object(
+                            await calculate_entity(
                                 {"item": item, **data}, entity_mappings
                             )
                             for item in items
                         ]
-                return [await self._search_as_object(data, entity_mappings)]
+                else:
+                    return [await calculate_entity(data, entity_mappings)]
             return [{}]
 
         entities_tasks = [asyncio.create_task(calculate_raw(data)) for data in raw_data]
