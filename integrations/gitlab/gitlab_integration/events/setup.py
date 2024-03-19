@@ -13,35 +13,65 @@ from gitlab_integration.events.hooks.group import GroupHook
 from gitlab_integration.gitlab_service import GitlabService
 from port_ocean.exceptions.core import OceanAbortException
 
+
+class TokenNotFoundException(OceanAbortException):
+    pass
+
+
+class TooManyTokensException(OceanAbortException):
+    def __init__(self):
+        super().__init__(
+            "There are too many tokens in tokenMapping. When useSystemHook = true,"
+            / " there should be only one token configured"
+        )
+
+
+class EventListenerConflict(OceanAbortException):
+    pass
+
+
 event_handler = EventHandler()
 system_event_handler = SystemEventHandler()
 
 
-def validate_configuration(
+def validate_hooks_override_config(
     token_mapping: dict[str, list[str]],
     token_group_override_hooks_mapping: dict[str, list[str]],
+    use_system_hook: bool,
 ) -> None:
+    if len(token_mapping.keys()) == 0:
+        raise TokenNotFoundException("There must be at least one token in tokenMapping")
+
+    if use_system_hook:
+        if len(token_mapping.keys()) == 1:
+            return
+        else:
+            raise TooManyTokensException()
+
     if not token_group_override_hooks_mapping:
         return
-        groups_paths: list[str] = []
-        for token in token_group_override_hooks_mapping:
-            if token not in token_mapping:
-                raise TokenNotFoundException(token)
-            groups_paths.extend(token_group_override_hooks_mapping[token])
 
-        for group_path in groups_paths:
-            if groups_paths.count(group_path) > 1:
+    groups_paths: list[str] = []
+    for token in token_group_override_hooks_mapping:
+        if token not in token_mapping:
+            raise TokenNotFoundException(
+                "Tokens from tokenGroupHooksOverrideMapping should also be in tokenMapping"
+            )
+        groups_paths.extend(token_group_override_hooks_mapping[token])
+
+    for group_path in groups_paths:
+        if groups_paths.count(group_path) > 1:
+            raise EventListenerConflict(
+                f"Cannot listen to the same group multiple times. group: {group_path}"
+            )
+        for second_group_path in groups_paths:
+            if second_group_path != group_path and second_group_path.startswith(
+                group_path
+            ):
                 raise EventListenerConflict(
-                    f"Cannot listen to the same group multiple times. group: {group_path}"
+                    "Cannot listen to multiple groups with hierarchy to one another."
+                    f" Group: {second_group_path} is inside group: {group_path}"
                 )
-            for second_group_path in groups_paths:
-                if second_group_path != group_path and second_group_path.startswith(
-                    group_path
-                ):
-                    raise EventListenerConflict(
-                        "Cannot listen to multiple groups with hierarchy to one another."
-                        f" Group: {second_group_path} is inside group: {group_path}"
-                    )
 
 
 def setup_listeners(gitlab_service: GitlabService, webhook_id: str | int) -> None:
@@ -74,30 +104,6 @@ def setup_system_listeners(gitlab_clients: list[GitlabService]) -> None:
         system_event_handler.add_client(gitlab_service)
 
 
-def setup_application(
-    token_mapping: dict[str, list[str]],
-    gitlab_host: str,
-    app_host: str,
-    use_system_hook: bool,
-    token_group_override_hooks_mapping: dict[str, list[str]],
-) -> None:
-    validate_configuration(token_mapping, token_group_override_hooks_mapping)
-    clients = []
-    for token, group_mapping in token_mapping.items():
-        clients.append(
-            listen_to_webhook_by_token(
-                gitlab_host,
-                app_host,
-                use_system_hook,
-                token,
-                token_group_override_hooks_mapping,
-                group_mapping,
-            )
-        )
-    if use_system_hook:
-        setup_system_listeners(clients)
-
-
 def listen_to_webhook_by_token(
     gitlab_host: str,
     app_host: str,
@@ -120,12 +126,27 @@ def listen_to_webhook_by_token(
     return gitlab_service
 
 
-class TokenNotFoundException(OceanAbortException):
-    def __init__(self, token: str):
-        super().__init__(
-            "Token from token_group_override_hooks_mapping should also be in token_mapping"
+def setup_application(
+    token_mapping: dict[str, list[str]],
+    gitlab_host: str,
+    app_host: str,
+    use_system_hook: bool,
+    token_group_override_hooks_mapping: dict[str, list[str]],
+) -> None:
+    validate_hooks_override_config(
+        token_mapping, token_group_override_hooks_mapping, use_system_hook
+    )
+    clients = []
+    for token, group_mapping in token_mapping.items():
+        clients.append(
+            listen_to_webhook_by_token(
+                gitlab_host,
+                app_host,
+                use_system_hook,
+                token,
+                token_group_override_hooks_mapping,
+                group_mapping,
+            )
         )
-
-
-class EventListenerConflict(OceanAbortException):
-    pass
+    if use_system_hook:
+        setup_system_listeners(clients)

@@ -170,7 +170,7 @@ class GitlabService:
             List[Group], [group for group in groups if group.parent_id is None]
         )
 
-    def filter_groups_by_paths(self, groups_full_paths) -> List[Group]:
+    def filter_groups_by_paths(self, groups_full_paths: list[str]) -> List[Group]:
         groups = self.gitlab_client.groups.list()
         return typing.cast(
             List[Group],
@@ -187,7 +187,7 @@ class GitlabService:
         token: str,
     ) -> List[Group]:
         partial_groups = []
-        if token_group_override_hooks_mapping:
+        if not token_group_override_hooks_mapping:
             if token_group_override_hooks_mapping.get(token):
                 logger.info(
                     "Getting all the specified groups in the mapping to create their webhooks"

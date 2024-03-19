@@ -29,7 +29,7 @@ configurations:
     type: boolean
     description: If set to true, will use system hook instead of project hooks.
     default: false
-  - name: tokenGroupOverrideHooksMapping
+  - name: tokenGroupHooksOverrideMapping
     required: false
     type: object
     description: "Mapping of Gitlab tokens to groups in which to create webhooks, if not set, it will create webhooks only on root groups. Example: {\"THE_GROUP_ADMIN_TOKEN\":[\"GROUP1_FULL_PATH\", \"GROUP2_FULL_PATH\"]}"
