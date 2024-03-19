@@ -13,7 +13,7 @@ configurations:
   - name: tokenMapping
     required: true
     type: object
-    description: "Mapping of Gitlab tokens to Port Ocean tokens. example: {\"THE_GROUP_TOKEN\":[\"getport-labs/**\", \"GROUP/PROJECT PATTERN TO RUN FOR\"]}"
+    description: "Mapping of Gitlab tokens to the groups scopes to ingest data from into port. Example: {\"THE_GROUP_TOKEN\":[\"getport-labs/**\", \"GROUP/PROJECT PATTERN TO RUN FOR\"]}"
     sensitive: true
   - name: appHost
     required: false
@@ -32,5 +32,5 @@ configurations:
   - name: tokenGroupOverrideHooksMapping
     required: false
     type: object
-    description: "Mapping of Gitlab tokens to specified groups to open webhooks for on start. example: {\"THE_GROUP_ADMIN_TOKEN\":[\"GROUP1_FULL_PATH\", \"GROUP2_FULL_PATH\"]}"
+    description: "Mapping of Gitlab tokens to groups in which to create webhooks, if not set, it will create webhooks only on root groups. Example: {\"THE_GROUP_ADMIN_TOKEN\":[\"GROUP1_FULL_PATH\", \"GROUP2_FULL_PATH\"]}"
     sensitive: true

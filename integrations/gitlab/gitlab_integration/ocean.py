@@ -42,9 +42,11 @@ async def handle_system_webhook(request: Request) -> dict[str, Any]:
 
 @ocean.on_start()
 async def on_start() -> None:
-    logic_settings = ocean.integration_config
-    token_mapping: dict = logic_settings["token_mapping"]
-    hook_override_mapping: dict = logic_settings["token_group_override_hooks_mapping"]
+    integration_config = ocean.integration_config
+    token_mapping: dict = integration_config["token_mapping"]
+    hook_override_mapping: dict = integration_config[
+        "token_group_override_hooks_mapping"
+    ]
     sensitive_log_filter.hide_sensitive_strings(
         *token_mapping.keys(), *hook_override_mapping.keys()
     )
@@ -53,7 +55,7 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    if not logic_settings.get("app_host"):
+    if not integration_config.get("app_host"):
         logger.warning(
             f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
         )
@@ -61,11 +63,11 @@ async def on_start() -> None:
 
     try:
         setup_application(
-            logic_settings["token_mapping"],
-            logic_settings["gitlab_host"],
-            logic_settings["app_host"],
-            logic_settings["use_system_hook"],
-            logic_settings["token_group_override_hooks_mapping"],
+            integration_config["token_mapping"],
+            integration_config["gitlab_host"],
+            integration_config["app_host"],
+            integration_config["use_system_hook"],
+            integration_config["token_group_override_hooks_mapping"],
         )
     except Exception as e:
         logger.warning(
