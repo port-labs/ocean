@@ -65,7 +65,6 @@ class ArgocdClient:
 
     async def get_deployment_history(self) -> list[dict[str, Any]]:
         """The ArgoCD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
-        logger.info("Fetching Argocd deployment history from applications endpoint")
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
         all_history = [
             {**history_item, "__applicationId": application["metadata"]["uid"]}
