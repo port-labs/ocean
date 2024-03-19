@@ -1,0 +1,61 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: entity
+    selector:
+      query: "true"
+      entityTypes: ["APPLICATION", "SERVICE"]
+    port:
+      entity:
+        mappings:
+          identifier: .entityId
+          title: .displayName
+          blueprint: '"dynatraceEntity"'
+          properties:
+            firstSeen: ".firstSeenTms / 1000 | todate"
+            lastSeen: ".lastSeenTms / 1000 | todate"
+            type: .type
+            tags: .tags[].stringRepresentation
+
+  - kind: problem
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .problemId
+          title: .title
+          blueprint: '"dynatraceProblem"'
+          properties:
+            entityTags: .entityTags[].stringRepresentation
+            evidenceDetails: .evidenceDetails.details[].displayName
+            managementZones: .managementZones[].name
+            problemFilters: .problemFilters[].name
+            severityLevel: .severityLevel
+            status: .status
+            startTime: ".startTime / 1000 | todate"
+            endTime: ".endTime | if . == -1 then null else (./1000 | todate) end"
+          relations:
+            impactedEntities: .impactedEntities[].entityId.id
+            linkedProblemInfo: .linkedProblemInfo.problemId
+            rootCauseEntity: .rootCauseEntity.entityId.id
+
+  - kind: slo
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"dynatraceSlo"'
+          properties:
+            status: .status
+            target: .target
+            enabled: .enabled
+            warning: .warning
+            error: .error
+            errorBudget: .errorBudget
+            evaluatedPercentage: .evaluatedPercentage
+            evaluationType: .evaluationType
+            filter: .filter
