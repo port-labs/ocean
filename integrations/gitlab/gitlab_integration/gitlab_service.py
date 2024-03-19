@@ -181,17 +181,24 @@ class GitlabService:
             ],
         )
 
-    def create_webhooks(self, groups_full_paths=None) -> list[int | str]:
-        if groups_full_paths:
-            logger.info(
-                "Getting all the specified groups in the mapping to create their webhooks"
-            )
-            partial_groups = self.filter_groups_by_paths(groups_full_paths)
+    def get_filtered_groups_for_webhooks(
+        self,
+        token_group_override_hooks_mapping: dict[str, list[str]],
+        token: str,
+    ) -> List[Group]:
+        partial_groups = []
+        if token_group_override_hooks_mapping:
+            if token_group_override_hooks_mapping.get(token):
+                logger.info(
+                    "Getting all the specified groups in the mapping to create their webhooks"
+                )
+                partial_groups = self.filter_groups_by_paths(
+                    token_group_override_hooks_mapping[token]
+                )
         else:
             logger.info("Getting all the root groups to create their webhooks")
             partial_groups = self.get_root_groups()
 
-        # Filter out groups that are not in the group mapping and creating webhooks for the rest
         filtered_partial_groups = [
             group
             for group in partial_groups
@@ -200,11 +207,16 @@ class GitlabService:
                 for mapping in self.group_mapping
             )
         ]
+
+        return filtered_partial_groups
+
+    def create_webhooks(self, groups_for_webhooks) -> list[int | str]:
+        # Filter out groups that are not in the group mapping and creating webhooks for the rest
         logger.info(
-            f"Creating webhooks for the groups: {[group.attributes['full_path'] for group in filtered_partial_groups]}"
+            f"Creating webhooks for the groups: {[group.attributes['full_path'] for group in groups_for_webhooks]}"
         )
         webhook_ids = []
-        for partial_group in filtered_partial_groups:
+        for partial_group in groups_for_webhooks:
             group_id = partial_group.get_id()
             if group_id is None:
                 logger.info(

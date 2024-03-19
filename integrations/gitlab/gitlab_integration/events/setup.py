@@ -109,15 +109,11 @@ def listen_to_webhook_by_token(
     gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
     if use_system_hook:
         gitlab_service.create_system_hook()
-    elif token_group_override_hooks_mapping:
-        if token_group_override_hooks_mapping.get(token):
-            webhook_ids = gitlab_service.create_webhooks(
-                token_group_override_hooks_mapping[token]
-            )
-            for webhook_id in webhook_ids:
-                setup_listeners(gitlab_service, webhook_id)
     else:
-        webhook_ids = gitlab_service.create_webhooks()
+        groups_for_webhooks = gitlab_service.get_filtered_groups_for_webhooks(
+            token_group_override_hooks_mapping, token
+        )
+        webhook_ids = gitlab_service.create_webhooks(groups_for_webhooks)
         for webhook_id in webhook_ids:
             setup_listeners(gitlab_service, webhook_id)
     return gitlab_service
