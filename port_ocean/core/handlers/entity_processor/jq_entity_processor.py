@@ -68,11 +68,64 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         return result
 
+    async def _get_entity_if_passed_selector(
+        self,
+        data: dict[str, Any],
+        raw_entity_mappings: dict[str, Any],
+        selector_query: str,
+    ) -> dict[str, Any]:
+        should_run = await self._search_as_bool(data, selector_query)
+        if should_run:
+            return await self._search_as_object(data, raw_entity_mappings)
+        return {}
+
+    async def _calculate_entity(
+        self,
+        data: dict[str, Any],
+        raw_entity_mappings: dict[str, Any],
+        items_to_parse: str | None,
+        selector_query: str,
+    ) -> list[dict[str, Any]]:
+        if items_to_parse:
+            items = await self._search(data, items_to_parse)
+            if isinstance(items, list):
+                return await asyncio.gather(
+                    *[
+                        self._get_entity_if_passed_selector(
+                            {"item": item, **data},
+                            raw_entity_mappings,
+                            selector_query,
+                        )
+                        for item in items
+                    ]
+                )
+            logger.warning(
+                f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items)}."
+                f" Skipping..."
+            )
+        else:
+            return [
+                await self._get_entity_if_passed_selector(
+                    data, raw_entity_mappings, selector_query
+                )
+            ]
+        return [{}]
+
     async def _calculate_entities(
         self, mapping: ResourceConfig, raw_data: list[dict[str, Any]]
     ) -> list[Entity]:
+        raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
+            exclude_unset=True
+        )
         entities_tasks = [
-            asyncio.create_task(self._calculate_entity(data, mapping))
+            asyncio.create_task(
+                self._calculate_entity(
+                    data,
+                    raw_entity_mappings,
+                    mapping.port.items_to_parse,
+                    mapping.selector.query,
+                )
+            )
             for data in raw_data
         ]
         entities = await asyncio.gather(*entities_tasks)
@@ -85,45 +138,6 @@ class JQEntityProcessor(BaseEntityProcessor):
                 flatten,
             )
         ]
-
-    async def _calculate_entity(
-        self, data: dict[str, Any], mapping: ResourceConfig
-    ) -> list[dict[str, Any]]:
-        raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
-            exclude_unset=True
-        )
-        if items_to_parse_expression := mapping.port.items_to_parse:
-            items = await self._search(data, items_to_parse_expression)
-            if isinstance(items, list):
-                return await asyncio.gather(
-                    *[
-                        self._get_entity_if_passed_selector(
-                            {"item": item, **data},
-                            raw_entity_mappings,
-                            mapping.selector.query,
-                        )
-                        for item in items
-                    ]
-                )
-            logger.warning("Can't parse items that are not list, Skipping...")
-        else:
-            return [
-                await self._get_entity_if_passed_selector(
-                    data, raw_entity_mappings, mapping.selector.query
-                )
-            ]
-        return [{}]
-
-    async def _get_entity_if_passed_selector(
-        self,
-        data: dict[str, Any],
-        raw_entity_mappings: dict[str, Any],
-        selector_query: str,
-    ) -> dict[str, Any]:
-        should_run = await self._search_as_bool(data, selector_query)
-        if should_run:
-            return await self._search_as_object(data, raw_entity_mappings)
-        return {}
 
     async def _parse_items(
         self, mapping: ResourceConfig, raw_results: RawEntityDiff
