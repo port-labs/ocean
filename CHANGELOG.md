@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Features
 
-- Added ability to map entities from raw array attribute ([PORT-7206](https://getport.atlassian.net/browse/PORT-7206))
+- Added ability to map entities from raw array attribute
 
 
 ## 0.5.6 (2024-03-17)
