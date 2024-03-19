@@ -86,12 +86,14 @@ class JQEntityProcessor(BaseEntityProcessor):
                 if items_to_parse_expression := mapping.port.items_to_parse:
                     items = await self._search(data, items_to_parse_expression)
                     if isinstance(items, list):
-                        return [
-                            await calculate_entity(
-                                {"item": item, **data}, entity_mappings
-                            )
-                            for item in items
-                        ]
+                        return await asyncio.gather(
+                            *[
+                                calculate_entity(
+                                    {"item": item, **data}, entity_mappings
+                                )
+                                for item in items
+                            ]
+                        )
                 else:
                     return [await calculate_entity(data, entity_mappings)]
             return [{}]

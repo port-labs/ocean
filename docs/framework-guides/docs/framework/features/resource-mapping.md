@@ -121,8 +121,6 @@ how you specify which entities and which properties you want to fill with data f
     query: .name | startswith("service")
     ```
 
-  - etc.
-
 - The `port`, `entity` and the `mappings` keys open the section used to map the 3rd-party application object fields to
   Port entities. To create multiple mappings of the same kind, you can add another item to the `resources` array;
 
@@ -154,6 +152,52 @@ how you specify which entities and which properties you want to fill with data f
   Pay attention to the value of the `blueprint` key, if you want to use a hardcoded string, you need to encapsulate it
   in 2 sets of quotes, for example use a pair of single-quotes (`'`) and then another pair of double-quotes (`"`)
   :::
+- The `itemsToParse` key makes the mapping to apply over iterated array attribute of a 3rd-party application 
+object, so that several entities could be created from a single 3rd-party application object.
+in order to refer to an array item attribute, use the `item` JQ expression prefix:
+```yaml
+  - kind: issue
+    selector:
+      query: .item.name != 'test-item' and .issueType == 'Bug' 
+    port:
+      itemsToParse: .fields.comments
+      entity:
+        mappings:
+          identifier: .item.id
+          blueprint: '"comment"'
+          properties:
+            text: .item.text
+          relations:
+             issue: .key
+```
+issue's json from api:
+
+```json
+{
+  "url": "https://example.com/issue/1",
+  "status": "Open",
+  "issueType": "Bug",
+  "comments": [
+    {
+      "id": "123",
+      "text": "This issue is not reproducing"
+    },
+    {
+      "id": "456",
+      "text": "Great issue!"
+    }
+  ],
+  "assignee": "user1",
+  "reporter": "user2",
+  "creator": "user3",
+  "priority": "High",
+  "created": "2024-03-18T10:00:00Z",
+  "updated": "2024-03-18T12:30:00Z",
+  "key": "ISSUE-1"
+}
+```
+
+it will map the comments array attribute of each issue got from the api to "comment" entities.
 
 #### Advanced Fields
 
@@ -204,18 +248,19 @@ automatically in cases where the target related entity does not exist in the sof
 
 The following table specifies all of the fields that can be specified in the resource mapping configuration:
 
-| Field                                   | Type  | Default | Description                                                                                                                                                                                                                      |
-| --------------------------------------- | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `deleteDependentEntities`               | bool  | `false` | Delete dependent entities when the parent entity is deleted.                                                                                                                                                                     |
-| `createMissingRelatedEntities`          | bool  | `false` | Create missing related entities when the child entity is created.                                                                                                                                                                |
-| `resources`                             | array | `[]`    | A list of resources to map.                                                                                                                                                                                                      |
+| Field                                   | Type  | Default | Description                                                                                                                                                                                                                     |
+|-----------------------------------------| ----- | ------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `deleteDependentEntities`               | bool  | `false` | Delete dependent entities when the parent entity is deleted.                                                                                                                                                                    |
+| `createMissingRelatedEntities`          | bool  | `false` | Create missing related entities when the child entity is created.                                                                                                                                                               |
+| `resources`                             | array | `[]`    | A list of resources to map.                                                                                                                                                                                                     |
 | `resources.[].kind`\*                   | str   |         | The kind name of the resource. (Should match one of the available kinds in the [integration specification](../../develop-an-integration/integration-spec-and-default-resources.md#features---integration-feature-specification)) |
-| `resources.[].selector.query`\*         | str   |         | A JQ expression that will be used to filter the raw data from the 3rd-party application.                                                                                                                                         |
-| `resources.[].port.entity.identifier`\* | str   |         | A JQ expression that will be used to extract the entity identifier.                                                                                                                                                              |
-| `resources.[].port.entity.blueprint`\*  | str   |         | A JQ expression that will be used to extract the entity blueprint.                                                                                                                                                               |
-| `resources.[].port.entity.title`        | str   |         | A JQ expression that will be used to extract the entity title.                                                                                                                                                                   |
-| `resources.[].port.entity.properties`   | dict  | `{}`    | An object of property identifier to JQ expressions that will be used to extract the entity properties.                                                                                                                           |
-| `resources.[].port.entity.relations`    | dict  | `{}`    | An object of relation identifier to JQ expressions that will be used to extract the entity properties.                                                                                                                           |
+| `resources.[].selector.query`\*         | str   |         | A JQ expression that will be used to filter the raw data from the 3rd-party application.                                                                                                                                        |
+| `resources.[].port.itemsToParse`        | str   |         | A JQ expression that will be used to extract multiple entities and apply the mapping on instead of applying it on a single entity.                                                                                              |
+| `resources.[].port.entity.identifier`\* | str   |         | A JQ expression that will be used to extract the entity identifier.                                                                                                                                                             |
+| `resources.[].port.entity.blueprint`\*  | str   |         | A JQ expression that will be used to extract the entity blueprint.                                                                                                                                                              |
+| `resources.[].port.entity.title`        | str   |         | A JQ expression that will be used to extract the entity title.                                                                                                                                                                  |
+| `resources.[].port.entity.properties`   | dict  | `{}`    | An object of property identifier to JQ expressions that will be used to extract the entity properties.                                                                                                                          |
+| `resources.[].port.entity.relations`    | dict  | `{}`    | An object of relation identifier to JQ expressions that will be used to extract the entity properties.                                                                                                                          |
 
 ## Specify custom resource mapping fields
 
