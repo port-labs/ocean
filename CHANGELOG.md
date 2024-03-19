@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.6 (2024-03-17)
+
+
+### Features
+
+- Added array to possible integration configuration types (PORT-7262)
+
+
 ## 0.5.5 (2024-03-06)
 
 

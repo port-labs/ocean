@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.44 (2024-03-19)
+
+### Improvements
+
+- Updated the format for properties in the default blueprints
+
+
+# Port_Ocean 0.1.43 (2024-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.6 (#1)
+
+
 # Port_Ocean 0.1.42 (2024-03-08)
 
 ### Improvements

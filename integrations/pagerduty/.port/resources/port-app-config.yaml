@@ -20,6 +20,7 @@ resources:
   - kind: incidents
     selector:
       query: 'true'
+      include: ['assignees']
     port:
       entity:
         mappings:
@@ -30,7 +31,7 @@ resources:
             status: .status
             url: .self
             urgency: .urgency
-            responder: .assignments[0].assignee.summary
+            responder: .assignments[0].assignee.email
             escalation_policy: .escalation_policy.summary
             created_at: .created_at
             updated_at: .updated_at

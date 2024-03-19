@@ -1,24 +1,4 @@
-<svg width="198" height="206" viewBox="0 0 198 206" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0.515013 96.2467L197.485 96.2467C197.485 43.0911 153.392 2.77259e-06 99 6.19275e-06C44.6082 9.61291e-06 0.515011 43.0911 0.515013 96.2467Z" fill="url(#paint0_linear_1804_3872)" fill-opacity="0.2"/>
-<path d="M23.0001 96.2456L175.204 96.2456C175.204 55.0397 141.132 21.6357 99.1021 21.6357C57.0721 21.6357 23.0001 55.0397 23.0001 96.2456Z" fill="url(#paint1_linear_1804_3872)" fill-opacity="0.2"/>
-<path d="M52.3704 96.2435L145.633 96.2435C145.633 70.6958 124.755 49.9854 99.0016 49.9854C73.2479 49.9854 52.3704 70.6958 52.3704 96.2435Z" fill="url(#paint2_linear_1804_3872)"/>
-<path d="M0.515205 106.249L197.485 106.249C197.485 161.059 153.392 205.491 99.0001 205.491C44.6084 205.491 0.515209 161.059 0.515205 106.249Z" fill="url(#paint3_linear_1804_3872)"/>
-<defs>
-<linearGradient id="paint0_linear_1804_3872" x1="162.917" y1="61.491" x2="9.64608" y2="61.491" gradientUnits="userSpaceOnUse">
-<stop offset="0.112043" stop-color="#FF7826"/>
-<stop offset="1" stop-color="#FF6489"/>
-</linearGradient>
-<linearGradient id="paint1_linear_1804_3872" x1="148.493" y1="69.3032" x2="30.0559" y2="69.3032" gradientUnits="userSpaceOnUse">
-<stop offset="0.112043" stop-color="#FF7826"/>
-<stop offset="1" stop-color="#FF6489"/>
-</linearGradient>
-<linearGradient id="paint2_linear_1804_3872" x1="129.265" y1="79.5391" x2="56.6938" y2="79.5392" gradientUnits="userSpaceOnUse">
-<stop offset="0.112043" stop-color="#FF7826"/>
-<stop offset="1" stop-color="#FF6489"/>
-</linearGradient>
-<linearGradient id="paint3_linear_1804_3872" x1="165.97" y1="106.249" x2="93.8806" y2="233.241" gradientUnits="userSpaceOnUse">
-<stop offset="0.0001" stop-color="#4243F6"/>
-<stop offset="1" stop-color="#2991F3"/>
-</linearGradient>
-</defs>
+<svg width="21" height="20" viewBox="0 0 21 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M16.4945 9.86903L4.50562 9.86899C4.64217 6.67631 7.27375 4.12986 10.5 4.12988C13.7263 4.1299 16.3579 6.67635 16.4945 9.86903Z" fill="#FF6F55"/>
+<path d="M2.5 12.6519H18.5V15.8692H2.5V12.6519Z" fill="#447CEA"/>
 </svg>
