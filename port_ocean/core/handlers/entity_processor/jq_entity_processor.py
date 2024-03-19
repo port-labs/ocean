@@ -72,7 +72,8 @@ class JQEntityProcessor(BaseEntityProcessor):
         self, mapping: ResourceConfig, raw_data: list[dict[str, Any]]
     ) -> list[Entity]:
         entities_tasks = [
-            asyncio.create_task(self._calculate_entity(data, mapping)) for data in raw_data
+            asyncio.create_task(self._calculate_entity(data, mapping))
+            for data in raw_data
         ]
         entities = await asyncio.gather(*entities_tasks)
 
