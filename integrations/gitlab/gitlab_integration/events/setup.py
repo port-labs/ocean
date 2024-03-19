@@ -22,7 +22,7 @@ class TooManyTokensException(OceanAbortException):
     def __init__(self):
         super().__init__(
             "There are too many tokens in tokenMapping. When useSystemHook = true,"
-            / " there should be only one token configured"
+            " there should be only one token configured"
         )
 
 
@@ -34,19 +34,26 @@ event_handler = EventHandler()
 system_event_handler = SystemEventHandler()
 
 
+def validate_token_mapping(token_mapping: dict[str, list[str]]):
+    if len(token_mapping.keys()) == 0:
+        raise TokenNotFoundException("There must be at least one token in tokenMapping")
+
+
+def validate_use_system_hook(token_mapping: dict[str, list[str]]):
+    if len(token_mapping.keys()) > 1:
+        raise TooManyTokensException()
+
+
 def validate_hooks_override_config(
     token_mapping: dict[str, list[str]],
     token_group_override_hooks_mapping: dict[str, list[str]],
     use_system_hook: bool,
 ) -> None:
-    if len(token_mapping.keys()) == 0:
-        raise TokenNotFoundException("There must be at least one token in tokenMapping")
+    validate_token_mapping(token_mapping)
 
     if use_system_hook:
-        if len(token_mapping.keys()) == 1:
-            return
-        else:
-            raise TooManyTokensException()
+        validate_use_system_hook(token_mapping)
+        return
 
     if not token_group_override_hooks_mapping:
         return

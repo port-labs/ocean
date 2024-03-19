@@ -45,7 +45,7 @@ async def on_start() -> None:
     integration_config = ocean.integration_config
     token_mapping: dict = integration_config["token_mapping"]
     hook_override_mapping: dict = integration_config[
-        "token_group_override_hooks_mapping"
+        "token_group_hooks_override_mapping"
     ]
     sensitive_log_filter.hide_sensitive_strings(
         *token_mapping.keys(), *hook_override_mapping.keys()
@@ -67,7 +67,7 @@ async def on_start() -> None:
             integration_config["gitlab_host"],
             integration_config["app_host"],
             integration_config["use_system_hook"],
-            integration_config["token_group_override_hooks_mapping"],
+            integration_config["token_group_hooks_override_mapping"],
         )
     except Exception as e:
         logger.warning(
