@@ -105,7 +105,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                         for item in items
                     ]
                 )
-            logger.info("Can't parse items that are not list, Skipping...")
+            logger.warning("Can't parse items that are not list, Skipping...")
         else:
             return [
                 await self._get_entity_if_passed_selector(
