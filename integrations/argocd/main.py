@@ -14,8 +14,6 @@ def init_client() -> ArgocdClient:
 
 @ocean.on_resync()
 async def on_resources_resync(kind: str) -> RAW_RESULT:
-    logger.info(f"Listing ArgoCD resource: {kind}")
-
     if kind in iter(ResourceKindsWithSpecialHandling):
         logger.info(f"Kind {kind} has a special handling. Skipping...")
         return []
@@ -26,7 +24,6 @@ async def on_resources_resync(kind: str) -> RAW_RESULT:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.DEPLOYMENT_HISTORY)
 async def on_history_resync(kind: str) -> RAW_RESULT:
-    logger.info("Listing ArgoCD deployment history")
     argocd_client = init_client()
 
     return await argocd_client.get_deployment_history()
@@ -34,16 +31,12 @@ async def on_history_resync(kind: str) -> RAW_RESULT:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.MANAGED_RESOURCE)
 async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info("Listing ArgoCD managed resources")
     argocd_client = init_client()
 
     applications = await argocd_client.get_resources(
         resource_kind=ObjectKind.APPLICATION
     )
     for application in applications:
-        logger.info(
-            f"Listing managed resources for application: {application['metadata']['name']}"
-        )
         managed_resources = await argocd_client.get_managed_resources(
             application_name=application["metadata"]["name"]
         )

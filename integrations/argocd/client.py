@@ -53,6 +53,7 @@ class ArgocdClient:
             raise
 
     async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
+        logger.info(f"Fetching ArgoCD resource: {resource_kind}")
         url = f"{self.api_url}/{resource_kind}s"
         response_data = (await self._send_api_request(url=url))["items"]
         return response_data
@@ -64,7 +65,7 @@ class ArgocdClient:
 
     async def get_deployment_history(self) -> list[dict[str, Any]]:
         """The ArgoCD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
-        logger.info("fetching Argocd deployment history from applications endpoint")
+        logger.info("Fetching Argocd deployment history from applications endpoint")
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
         all_history = [
             {**history_item, "__applicationId": application["metadata"]["uid"]}
@@ -76,6 +77,7 @@ class ArgocdClient:
     async def get_managed_resources(
         self, application_name: str
     ) -> list[dict[str, Any]]:
+        logger.info(f"Fetching managed resources for application: {application_name}")
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
         managed_resources = (await self._send_api_request(url=url))["items"]
         return managed_resources
