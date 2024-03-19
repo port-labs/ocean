@@ -16,24 +16,32 @@ from port_ocean.exceptions.core import OceanAbortException
 event_handler = EventHandler()
 system_event_handler = SystemEventHandler()
 
+
 def validate_configuration(
-    token_mapping: dict[str, list[str]], 
-    token_group_override_hooks_mapping: dict[str, list[str]]
+    token_mapping: dict[str, list[str]],
+    token_group_override_hooks_mapping: dict[str, list[str]],
 ) -> None:
     if token_group_override_hooks_mapping:
-        groups_paths = []
+        groups_paths: list[str] = []
         for token in token_group_override_hooks_mapping:
             if token not in token_mapping:
                 raise TokenNotFoundException(token)
-            groups_paths.extend(token_group_override_hooks_mapping.get(token))
-        
+            groups_paths.extend(token_group_override_hooks_mapping[token])
+
         for group_path in groups_paths:
             if groups_paths.count(group_path) > 1:
-                raise EventListenerConflict(f"Cannot listen to the same group multiple times. group: {group_path}")
+                raise EventListenerConflict(
+                    f"Cannot listen to the same group multiple times. group: {group_path}"
+                )
             for second_group_path in groups_paths:
-                if second_group_path != group_path and second_group_path.startswith(group_path):
-                    raise EventListenerConflict("Cannot listen to multiple groups with hierarchy to one another."\
-                                                f" Group: {second_group_path} is inside group: {group_path}")        
+                if second_group_path != group_path and second_group_path.startswith(
+                    group_path
+                ):
+                    raise EventListenerConflict(
+                        "Cannot listen to multiple groups with hierarchy to one another."
+                        f" Group: {second_group_path} is inside group: {group_path}"
+                    )
+
 
 def setup_listeners(gitlab_service: GitlabService, webhook_id: str | int) -> None:
     handlers = [
@@ -75,17 +83,27 @@ def setup_application(
     validate_configuration(token_mapping, token_group_override_hooks_mapping)
     clients = []
     for token, group_mapping in token_mapping.items():
-        clients.append(listen_to_webhook_by_token(gitlab_host, app_host, use_system_hook, token, token_group_override_hooks_mapping, group_mapping))
+        clients.append(
+            listen_to_webhook_by_token(
+                gitlab_host,
+                app_host,
+                use_system_hook,
+                token,
+                token_group_override_hooks_mapping,
+                group_mapping,
+            )
+        )
     if use_system_hook:
         setup_system_listeners(clients)
 
+
 def listen_to_webhook_by_token(
-        gitlab_host: str, 
-        app_host: str, 
-        use_system_hook: bool, 
-        token: str, 
-        token_group_override_hooks_mapping: dict[str, list[str]], 
-        group_mapping: dict[str, list[str]]
+    gitlab_host: str,
+    app_host: str,
+    use_system_hook: bool,
+    token: str,
+    token_group_override_hooks_mapping: dict[str, list[str]],
+    group_mapping: list[str],
 ) -> GitlabService:
     gitlab_client = Gitlab(gitlab_host, token)
     gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
@@ -93,7 +111,9 @@ def listen_to_webhook_by_token(
         gitlab_service.create_system_hook()
     elif token_group_override_hooks_mapping:
         if token_group_override_hooks_mapping.get(token):
-            webhook_ids = gitlab_service.create_webhooks(token_group_override_hooks_mapping.get(token))
+            webhook_ids = gitlab_service.create_webhooks(
+                token_group_override_hooks_mapping[token]
+            )
             for webhook_id in webhook_ids:
                 setup_listeners(gitlab_service, webhook_id)
     else:
@@ -102,9 +122,13 @@ def listen_to_webhook_by_token(
             setup_listeners(gitlab_service, webhook_id)
     return gitlab_service
 
+
 class TokenNotFoundException(OceanAbortException):
     def __init__(self, token: str):
-        super().__init__(f"Token from token_group_override_hooks_mapping should also be in token_mapping")
+        super().__init__(
+            "Token from token_group_override_hooks_mapping should also be in token_mapping"
+        )
+
 
 class EventListenerConflict(OceanAbortException):
-     pass
+    pass

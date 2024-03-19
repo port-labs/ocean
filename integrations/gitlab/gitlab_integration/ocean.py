@@ -45,8 +45,10 @@ async def on_start() -> None:
     logic_settings = ocean.integration_config
     token_mapping: dict = logic_settings["token_mapping"]
     hook_override_mapping: dict = logic_settings["token_group_override_hooks_mapping"]
-    sensitive_log_filter.hide_sensitive_strings(*token_mapping.keys(), *hook_override_mapping.keys())
-    
+    sensitive_log_filter.hide_sensitive_strings(
+        *token_mapping.keys(), *hook_override_mapping.keys()
+    )
+
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
