@@ -21,7 +21,8 @@ def validate_configuration(
     token_mapping: dict[str, list[str]],
     token_group_override_hooks_mapping: dict[str, list[str]],
 ) -> None:
-    if token_group_override_hooks_mapping:
+    if not token_group_override_hooks_mapping:
+        return
         groups_paths: list[str] = []
         for token in token_group_override_hooks_mapping:
             if token not in token_mapping:
