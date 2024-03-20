@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.7 (2024-03-19)
+
+
+### Features
+
+- Added the ability to map entities from raw array attributes by introducing `itemsToParse` key in the mapping configuration
+
+
 ## 0.5.6 (2024-03-17)
 
 
