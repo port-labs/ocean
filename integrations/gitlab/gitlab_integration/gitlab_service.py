@@ -171,7 +171,7 @@ class GitlabService:
         )
 
     def filter_groups_by_paths(self, groups_full_paths: list[str]) -> List[Group]:
-        groups = self.gitlab_client.groups.list()
+        groups = self.gitlab_client.groups.list(get_all=True)
         return typing.cast(
             List[Group],
             [
@@ -183,32 +183,32 @@ class GitlabService:
 
     def get_filtered_groups_for_webhooks(
         self,
-        token_group_override_hooks_mapping: dict[str, list[str]],
-        token: str,
+        groups_hooks_override_list: list[str] | None,
     ) -> List[Group]:
-        partial_groups = []
-        if token_group_override_hooks_mapping:
-            if token_group_override_hooks_mapping.get(token):
+        groups_for_webhooks = []
+        if groups_hooks_override_list is not None:
+            if groups_hooks_override_list:
                 logger.info(
-                    "Getting all the specified groups in the mapping to create their webhooks"
+                    "Getting all the specified groups in the mapping for a token to create their webhooks"
                 )
-                partial_groups = self.filter_groups_by_paths(
-                    token_group_override_hooks_mapping[token]
+                groups_for_webhooks = self.filter_groups_by_paths(
+                    groups_hooks_override_list
                 )
         else:
             logger.info("Getting all the root groups to create their webhooks")
-            partial_groups = self.get_root_groups()
+            root_groups = self.get_root_groups()
+            groups_for_webhooks = [
+                group
+                for group in root_groups
+                if any(
+                    does_pattern_apply(
+                        mapping.split("/")[0], group.attributes["full_path"]
+                    )
+                    for mapping in self.group_mapping
+                )
+            ]
 
-        filtered_partial_groups = [
-            group
-            for group in partial_groups
-            if any(
-                does_pattern_apply(mapping.split("/")[0], group.attributes["full_path"])
-                for mapping in self.group_mapping
-            )
-        ]
-
-        return filtered_partial_groups
+        return groups_for_webhooks
 
     def create_webhooks(self, groups_for_webhooks) -> list[int | str]:
         # Filter out groups that are not in the group mapping and creating webhooks for the rest
