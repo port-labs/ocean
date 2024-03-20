@@ -10,6 +10,7 @@ features:
       - kind: project
       - kind: application
       - kind: deployment-history
+      - kind: managed-resource
 configurations:
   - name: token
     required: true

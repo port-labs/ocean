@@ -19,6 +19,7 @@ class PortResourceConfig(BaseModel):
         mappings: EntityMapping
 
     entity: MappingsConfig
+    items_to_parse: str | None = Field(alias="itemsToParse")
 
 
 class Selector(BaseModel):

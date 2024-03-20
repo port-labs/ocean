@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.45 (2024-03-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.7 (#1)
+
+
+# Port_Ocean 0.1.44 (2024-03-19)
+
+### Improvements
+
+- Updated the format for properties in the default blueprints
+
+
+# Port_Ocean 0.1.43 (2024-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.6 (#1)
+
+
+# Port_Ocean 0.1.42 (2024-03-08)
+
+### Improvements
+
+- Added support for Pagerduty oncall schedules, allowing the user to see who is oncall over a period of time (PORT-6981)
+
+
+# Port_Ocean 0.1.41 (2024-03-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.5 (#1)
+
+
+# Port_Ocean 0.1.40 (2024-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.4 (#1)
+
+
+# Port_Ocean 0.1.39 (2024-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.3 (#1)
+
+
 # Port_Ocean 0.1.38 (2024-02-21)
 
 ### Improvements
