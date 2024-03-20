@@ -152,9 +152,9 @@ how you specify which entities and which properties you want to fill with data f
   Pay attention to the value of the `blueprint` key, if you want to use a hardcoded string, you need to encapsulate it
   in 2 sets of quotes, for example use a pair of single-quotes (`'`) and then another pair of double-quotes (`"`)
   :::
-- The `itemsToParse` key makes the mapping to apply over iterated array attribute of a 3rd-party application 
-object, so that several entities could be created from a single 3rd-party application object.
-in order to refer to an array item attribute, use the `item` JQ expression prefix:
+- The `itemsToParse` key makes it possible to create multiple entities from a single array attribute of a 3rd-party application object.
+In order to reference an array item attribute, use the `.item` JQ expression prefix.
+Here is an example mapping configuration that uses the `itemsToParse` syntax with an `issue` kind provided an Ocean Jira integration:
 ```yaml
   - kind: issue
     selector:
@@ -170,7 +170,7 @@ in order to refer to an array item attribute, use the `item` JQ expression prefi
           relations:
              issue: .key
 ```
-issue's json from api:
+Here is a sample JSON object (3rd-party response) that the mapping will be used for:
 
 ```json
 {
@@ -197,8 +197,7 @@ issue's json from api:
 }
 ```
 
-it will map the comments array attribute of each issue got from the api to "comment" entities.
-
+The result of the mapping will be multiple `comment` entities, based on the items from the `comments` array in the JSON.
 #### Advanced Fields
 
 The Ocean framework supports additional flags to provide additional configuration, making it easier to configure its
@@ -255,7 +254,7 @@ The following table specifies all of the fields that can be specified in the res
 | `resources`                             | array | `[]`    | A list of resources to map.                                                                                                                                                                                                     |
 | `resources.[].kind`\*                   | str   |         | The kind name of the resource. (Should match one of the available kinds in the [integration specification](../../develop-an-integration/integration-spec-and-default-resources.md#features---integration-feature-specification)) |
 | `resources.[].selector.query`\*         | str   |         | A JQ expression that will be used to filter the raw data from the 3rd-party application.                                                                                                                                        |
-| `resources.[].port.itemsToParse`        | str   |         | A JQ expression that will be used to extract multiple entities and apply the mapping on instead of applying it on a single entity.                                                                                              |
+| `resources.[].port.itemsToParse`        | str   |         | A JQ expression that will be used to apply the mapping on the items of an array and generate multiple entities from the array items.                                                                                              |
 | `resources.[].port.entity.identifier`\* | str   |         | A JQ expression that will be used to extract the entity identifier.                                                                                                                                                             |
 | `resources.[].port.entity.blueprint`\*  | str   |         | A JQ expression that will be used to extract the entity blueprint.                                                                                                                                                              |
 | `resources.[].port.entity.title`        | str   |         | A JQ expression that will be used to extract the entity title.                                                                                                                                                                  |
