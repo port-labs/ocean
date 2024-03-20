@@ -14,11 +14,11 @@ from gitlab_integration.gitlab_service import GitlabService
 from port_ocean.exceptions.core import OceanAbortException
 
 
-class TokenNotFoundException(OceanAbortException):
+class GitlabTokenNotFoundException(OceanAbortException):
     pass
 
 
-class TooManyTokensException(OceanAbortException):
+class GitlabTooManyTokensException(OceanAbortException):
     def __init__(self):
         super().__init__(
             "There are too many tokens in tokenMapping. When useSystemHook = true,"
@@ -26,7 +26,7 @@ class TooManyTokensException(OceanAbortException):
         )
 
 
-class EventListenerConflict(OceanAbortException):
+class GitlabEventListenerConflict(OceanAbortException):
     pass
 
 
@@ -36,12 +36,14 @@ system_event_handler = SystemEventHandler()
 
 def validate_token_mapping(token_mapping: dict[str, list[str]]):
     if len(token_mapping.keys()) == 0:
-        raise TokenNotFoundException("There must be at least one token in tokenMapping")
+        raise GitlabTokenNotFoundException(
+            "There must be at least one token in tokenMapping"
+        )
 
 
 def validate_use_system_hook(token_mapping: dict[str, list[str]]):
     if len(token_mapping.keys()) > 1:
-        raise TooManyTokensException()
+        raise GitlabTooManyTokensException()
 
 
 def validate_hooks_override_config(
@@ -61,21 +63,21 @@ def validate_hooks_override_config(
     groups_paths: list[str] = []
     for token in token_group_override_hooks_mapping:
         if token not in token_mapping:
-            raise TokenNotFoundException(
+            raise GitlabTokenNotFoundException(
                 "Tokens from tokenGroupHooksOverrideMapping should also be in tokenMapping"
             )
         groups_paths.extend(token_group_override_hooks_mapping[token])
 
     for group_path in groups_paths:
         if groups_paths.count(group_path) > 1:
-            raise EventListenerConflict(
+            raise GitlabEventListenerConflict(
                 f"Cannot listen to the same group multiple times. group: {group_path}"
             )
         for second_group_path in groups_paths:
             if second_group_path != group_path and second_group_path.startswith(
                 group_path
             ):
-                raise EventListenerConflict(
+                raise GitlabEventListenerConflict(
                     "Cannot listen to multiple groups with hierarchy to one another."
                     f" Group: {second_group_path} is inside group: {group_path}"
                 )
