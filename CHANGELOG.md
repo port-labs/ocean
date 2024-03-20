@@ -7,6 +7,82 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.6 (2024-03-17)
+
+
+### Features
+
+- Added array to possible integration configuration types (PORT-7262)
+
+
+## 0.5.5 (2024-03-06)
+
+
+### Bug Fixes
+
+- Changed caching to detect changes in params of function (#1)
+
+
+## 0.5.4 (2024-03-03)
+
+
+### Bug Fixes
+
+- Fixed an issue where a failure in the entity processing step might fail the whole resync (#1)
+
+
+## 0.5.3 (2024-03-03)
+
+
+### Improvements
+
+- Cahnged the JQ Entity processor to work with async callss to allow better parallelism and async work (#1)
+
+
+## 0.5.2 (2024-02-21)
+
+
+### Bug Fixes
+
+- Fixed an issue causing the integration to crash when passing a sensitive configuration with invalid regex characters due to a missing escaping (PORT-6836)
+
+
+## 0.5.1 (2024-02-20)
+
+
+### Features
+
+- Added handling for kafka consumer empty partition assignment and shutting the application down with an error (PORT-5475)
+- Added QOL decorator to help with caching the third party response (PORT-5475_2)
+
+### Improvements
+
+- Changed the Kafka consumer to run in the event loop in async instead of sync in another thread (PORT-5475)
+
+### Bug Fixes
+
+- Fixed an issue causing all the character to be redacted when passing empty string to a sensitive field
+
+
+## 0.5.0 (2024-02-18)
+
+
+### Features
+
+- Added a method for ocean integration to redact sensitive information from the logs and automatically apply it to sensitive configurations and known sensitive patterns. (#1)
+- Added an HTTP handler for Ocean logs to facilitate sending the logs to the Port. (#2)
+
+### Improvements
+
+- Seperated the `port_ocean.utils` file into multiple files within the `utils` folder to improve code organization. (#1)
+- Changed the Ocean context to be a global variable instead of using Localstack, preventing the framework from re-initiating the context for each thread. (#2)
+
+### Bug Fixes
+
+- Fixed an issue where the event listener was causing the application to continue running even after receiving a termination signal. (#1)
+- Fixed a bug that caused some termination signal handlers to not work by consolidating the signal listeners in a single class, as signals can only have one listener. (#2)
+
+
 ## 0.4.17 (2024-01-23)
 
 

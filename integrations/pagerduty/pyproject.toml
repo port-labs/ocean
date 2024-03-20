@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "pagerduty"
-version = "0.1.35"
+version = "0.1.44"
 description = "Pagerduty Integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.4.17", extras = ["cli"]}
+port_ocean = {version = "^0.5.6", extras = ["cli"]}
 httpx = "^0.24.1"
 
 [tool.poetry.group.dev.dependencies]

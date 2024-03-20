@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.36 (2024-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.6 (#1)
+
+
+# Port_Ocean 0.1.35 (2024-03-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.5 (#1)
+
+
+# Port_Ocean 0.1.34 (2024-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.4 (#1)
+
+
+# Port_Ocean 0.1.33 (2024-03-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.3 (#1)
+
+
+# Port_Ocean 0.1.32 (2024-02-21)
+
+### Features
+
+- Added functionality for syncing Sonar onpremise analysis data using Pull Request and Measures API (#1)
+
+
+# Port_Ocean 0.1.31 (2024-02-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.2 (#1)
+
+
+# Port_Ocean 0.1.30 (2024-02-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.1 (#1)
+
+
+# Port_Ocean 0.1.29 (2024-02-18)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.0 (#1)
+
+
+# Port_Ocean 0.1.28 (2024-02-15)
+
+### Improvements
+
+- Add Sonarqube component object sonarQube analysis data (PORT-6656)
+
+
 # Port_Ocean 0.1.27 (2024-02-04)
 
 ### Improvements

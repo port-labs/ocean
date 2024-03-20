@@ -3,19 +3,20 @@ from typing import Any, AsyncGenerator
 
 import httpx
 from loguru import logger
+from port_ocean.context.event import event
+from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.utils import http_async_client
+from port_ocean.utils.misc import get_time
 from pydantic import BaseModel, Field, PrivateAttr
 
 from .constants import (
-    GRAPH_QUERIES,
-    ISSUES_GQL,
     AUTH0_URLS,
     COGNITO_URLS,
-    PAGE_SIZE,
+    GRAPH_QUERIES,
+    ISSUES_GQL,
     MAX_PAGES,
+    PAGE_SIZE,
 )
-from port_ocean.context.event import event
-from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.utils import http_async_client, get_time
 
 
 class CacheKeys(StrEnum):
