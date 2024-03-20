@@ -4,7 +4,6 @@ from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from enum import StrEnum
 import asyncio
-
 from port_ocean.context.event import event
 
 PAGE_SIZE = 100
@@ -18,9 +17,7 @@ class ObjectKind(StrEnum):
 
 
 class LaunchDarklyClient:
-    def __init__(
-        self, api_token: str, launchdarkly_url: str = "https://app.launchdarkly.com"
-    ):
+    def __init__(self, api_token: str, launchdarkly_url: str):
         self.api_url = f"{launchdarkly_url}/api/v2"
         self.api_token = api_token
         self.http_client = http_async_client
@@ -34,13 +31,12 @@ class LaunchDarklyClient:
         }
 
     async def get_paginated_resource(
-        self, kind: str, resource_path: str | None = None, limit: int = PAGE_SIZE
+        self, kind: str, resource_path: str | None = None, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         kind = kind + "s"
         url = kind if not resource_path else f"{kind}/{resource_path}"
-        url = url.replace("auditlogs", "auditlog")
-
-        params = {"limit": limit}
+        url = url.replace("auditlogs", ObjectKind.AUDITLOG)
+        params = {"limit": page_size}
 
         while url:
             try:
@@ -48,6 +44,7 @@ class LaunchDarklyClient:
                     endpoint=url, query_params=params
                 )
                 items = response.get("items", [])
+                logger.info(f"Received {kind} batch with {len(items)} items")
                 yield items
 
                 if "_links" in response and "next" in response["_links"]:
@@ -79,7 +76,7 @@ class LaunchDarklyClient:
         try:
             endpoint = endpoint.replace("/api/v2/", "")
             url = f"{self.api_url}/{endpoint}"
-            logger.info(
+            logger.debug(
                 f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
             )
             response = await self.http_client.request(
@@ -90,7 +87,7 @@ class LaunchDarklyClient:
             )
             response.raise_for_status()
 
-            logger.info(f"Successfully retrieved data for endpoint: {endpoint}")
+            logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
 
             return response.json()
 

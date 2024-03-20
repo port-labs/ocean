@@ -14,16 +14,15 @@ def initialize_client() -> LaunchDarklyClient:
 
 @ocean.on_resync(kind=ObjectKind.AUDITLOG)
 async def on_resync_auditlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Lauchdarkly resource: {kind}")
     launchdarkly_client = initialize_client()
-    async for auditlogs in launchdarkly_client.get_paginated_resource(kind, limit=20):
-        logger.info(f"Received {kind} batch with {len(auditlogs)} items")
+    async for auditlogs in launchdarkly_client.get_paginated_resource(
+        kind, page_size=20
+    ):
         yield auditlogs
 
 
 @ocean.on_resync(kind=ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Lauchdarkly resource: {kind}")
     launchdarkly_client = initialize_client()
     async for projects in launchdarkly_client.get_paginated_projects():
         logger.info(f"Received {kind} batch with {len(projects)} items")
@@ -32,7 +31,6 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ObjectKind.FEATURE_FLAG)
 async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Lauchdarkly resource: {kind}")
     launchdarkly_client = initialize_client()
     async for flags in launchdarkly_client.get_paginated_feature_flags():
         logger.info(f"Received {kind} batch with {len(flags)} items")
@@ -41,7 +39,6 @@ async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ObjectKind.ENVIRONMENT)
 async def on_resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Lauchdarkly resource: {kind}")
     launchdarkly_client = initialize_client()
     async for environments in launchdarkly_client.get_paginated_environments():
         logger.info(f"Received {kind} batch with {len(environments)} items")
@@ -80,7 +77,7 @@ async def on_start() -> None:
         return
 
     if not ocean.integration_config.get("app_host"):
-        logger.warning(print
+        logger.warning(
             "No app host provided, skipping webhook creation. "
             "Without setting up the webhook, the integration will not export live changes from Launchdarkly"
         )

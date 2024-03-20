@@ -11,26 +11,11 @@
           "title": "Tags",
           "description": "Tags associated with the project for organizational purposes."
         },
-        "defaultClientSideAvailability": {
-          "type": "object",
-          "title": "Default Client Side Availability",
-          "description": "The default client-side availability for the project."
-        },
         "link": {
           "type": "string",
           "format": "url",
           "title": "Resource Link",
           "description": "Link to project"
-        },
-        "includeInSnippetByDefault": {
-          "type": "boolean",
-          "title": "Include In snippet By Default",
-          "description": "Indicates if project is included in client-side snippets by default."
-        },
-        "id": {
-          "type": "string",
-          "title": "Project ID",
-          "description": "The unique identifier for the LaunchDarkly project."
         }
       },
       "required": []
@@ -62,11 +47,6 @@
           "format": "date-time",
           "title": "Creation Date",
           "description": "The date and time when the flag was created."
-        },
-        "includeInSnippet": {
-          "type": "boolean",
-          "title": "Include in Client-Side Snippet",
-          "description": "Indicates if the flag is included in the client-side snippet."
         },
         "clientSideAvailability": {
           "type": "object",
@@ -130,7 +110,7 @@
     "icon": "Launchdarkly",
     "schema": {
       "properties": {
-        "date": {
+        "eventDate": {
           "type": "string",
           "format": "date-time",
           "title": "Event Date",
@@ -141,7 +121,7 @@
           "title": "Event Kind",
           "description": "The type of event (e.g., 'project', 'token')."
         },
-        "name": {
+        "targetResource": {
           "type": "string",
           "title": "Target Resource",
           "description": "The name of the event or the entity affected by this event."
@@ -151,7 +131,7 @@
           "title": "Member Details",
           "description": "Information about the LaunchDarkly user associated with this event."
         },
-        "accesses": {
+        "accessDetails": {
           "type": "array",
           "title": "Access Details",
           "description": "Details about the specific actions taken during the event."
@@ -167,20 +147,10 @@
           "title": "Link",
           "description": "Link to audit resource"
         },
-        "description": {
-          "type": "string",
-          "title": "Description",
-          "description": "a detailed description of the log"
-        },
         "shortDescription": {
           "type": "string",
           "title": "Short Description",
           "description": "a short description of the log"
-        },
-        "title": {
-          "type": "string",
-          "title": "Action Taken",
-          "description": "A verb describing the action taken in this event"
         }
       },
       "required": []
@@ -204,31 +174,6 @@
     "icon": "Launchdarkly",
     "schema": {
       "properties": {
-        "environmentId": {
-          "type": "string",
-          "title": "Environment ID",
-          "description": "The unique identifier for the environment."
-        },
-        "name": {
-          "type": "string",
-          "title": "Environment Name",
-          "description": "The name of the environment."
-        },
-        "apiKey": {
-          "type": "string",
-          "title": "API Key",
-          "description": "The SDK key for accessing the LaunchDarkly SDK within this environment."
-        },
-        "mobileKey": {
-          "type": "string",
-          "title": "Mobile Key",
-          "description": "The mobile key for accessing the LaunchDarkly SDK specifically for mobile applications within this environment."
-        },
-        "color": {
-          "type": "string",
-          "title": "Color",
-          "description": "A color associated with the environment, typically used for identification and UI purposes."
-        },
         "defaultTtl": {
           "type": "number",
           "title": "Default TTL",
@@ -258,11 +203,6 @@
           "type": "array",
           "title": "Tags",
           "description": "A list of tags associated with the environment for organizational purposes."
-        },
-        "approvalSettings": {
-          "type": "object",
-          "title": "Approval Settings",
-          "description": "Settings related to the approval process for changes made in this environment."
         },
         "critical": {
           "type": "boolean",
