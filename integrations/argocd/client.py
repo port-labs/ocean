@@ -15,6 +15,7 @@ class ObjectKind(StrEnum):
 
 class ResourceKindsWithSpecialHandling(StrEnum):
     DEPLOYMENT_HISTORY = "deployment-history"
+    KUBERNETES_RESOURCE = "kubernetes-resource"
     MANAGED_RESOURCE = "managed-resource"
 
 
@@ -72,6 +73,17 @@ class ArgocdClient:
             for history_item in application["status"].get("history", [])
         ]
         return all_history
+
+    async def get_kubernetes_resource(self) -> list[dict[str, Any]]:
+        """The ArgoCD application returns a list of managed kubernetes resources. This function reuses the output of the application endpoint"""
+        logger.info("fetching Argocd k8s resources from applications endpoint")
+        applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
+        all_k8s_resources = [
+            {**resource, "__applicationId": application["metadata"]["uid"]}
+            for application in applications
+            for resource in application["status"].get("resources", [])
+        ]
+        return all_k8s_resources
 
     async def get_managed_resources(
         self, application_name: str
