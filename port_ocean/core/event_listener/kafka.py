@@ -38,7 +38,9 @@ class KafkaEventListenerSettings(EventListenerSettings):
     """
 
     type: Literal["KAFKA"]
-    brokers: str = "b-1-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-2-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-3-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196"
+    brokers: str = (
+        "b-1-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-2-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196,b-3-public.publicclusterprod.t9rw6w.c1.kafka.eu-west-1.amazonaws.com:9196"
+    )
     security_protocol: str = "SASL_SSL"
     authentication_mechanism: str = "SCRAM-SHA-512"
     kafka_security_enabled: bool = True
