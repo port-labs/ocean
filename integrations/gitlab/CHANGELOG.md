@@ -7,6 +7,54 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.58 (2024-03-20)
+===================
+
+### Features
+
+- Added support for webhooks creation by specified groups through the config (PORT-7140)
+
+
+0.1.57 (2024-03-20)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.7 (#1)
+
+
+0.1.56 (2024-03-17)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.6 (#1)
+
+
+0.1.55 (2024-03-06)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.5 (#1)
+
+
+0.1.54 (2024-03-03)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.4 (#1)
+
+
+0.1.53 (2024-03-03)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.3 (#1)
+
+
 0.1.52 (2024-02-21)
 ===================
 
