@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.31 (2024-03-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.7 (#1)
+
+
+# Port_Ocean 0.1.30 (2024-03-18)
+
+### Improvements
+
+- Added support for Application managed resources kind
+
+
+# Port_Ocean 0.1.29 (2024-03-18)
+
+### Improvements
+
+- Enhanced the application blueprint by adding relation to the cluster and two revision properties (actual and target) (PORT-6528)
+- Updated the deployment history revision property from string to url, linking the user the specific revision (PORT-6854)
+- Added namespace blueprint and created relevant relations(PORT-7187)
+
+# Port_Ocean 0.1.28 (2024-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.6 (#1)
+
+
 # Port_Ocean 0.1.27 (2024-03-06)
 
 ### Improvements

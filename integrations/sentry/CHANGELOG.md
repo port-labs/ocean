@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.28 (2024-03-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.7 (#1)
+
+
+# Port_Ocean 0.1.27 (2024-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.6 (#1)
+
+
+# Port_Ocean 0.1.26 (2024-03-07)
+
+### Improvements
+
+- Added pagination support for fetching Sentry issues and fixed a bug in the existing pagination logic to use the response header link object (PORT-6861)
+- Added mechanism to ingest project and issue tags from your Sentry environment (PORT-6861)
+
+
 # Port_Ocean 0.1.25 (2024-03-06)
 
 ### Improvements
