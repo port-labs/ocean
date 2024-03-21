@@ -170,23 +170,53 @@ class GitlabService:
             List[Group], [group for group in groups if group.parent_id is None]
         )
 
-    def create_webhooks(self) -> list[int | str]:
-        root_partial_groups = self.get_root_groups()
-        logger.info("Getting all the root groups to create webhooks for")
-        # Filter out root groups that are not in the group mapping and creating webhooks for the rest
-        filtered_partial_groups = [
-            group
-            for group in root_partial_groups
-            if any(
-                does_pattern_apply(mapping.split("/")[0], group.attributes["full_path"])
-                for mapping in self.group_mapping
-            )
-        ]
+    def filter_groups_by_paths(self, groups_full_paths: list[str]) -> List[Group]:
+        groups = self.gitlab_client.groups.list(get_all=True)
+        return typing.cast(
+            List[Group],
+            [
+                group
+                for group in groups
+                if group.attributes["full_path"] in groups_full_paths
+            ],
+        )
+
+    def get_filtered_groups_for_webhooks(
+        self,
+        groups_hooks_override_list: list[str] | None,
+    ) -> List[Group]:
+        groups_for_webhooks = []
+        if groups_hooks_override_list is not None:
+            if groups_hooks_override_list:
+                logger.info(
+                    "Getting all the specified groups in the mapping for a token to create their webhooks"
+                )
+                groups_for_webhooks = self.filter_groups_by_paths(
+                    groups_hooks_override_list
+                )
+        else:
+            logger.info("Getting all the root groups to create their webhooks")
+            root_groups = self.get_root_groups()
+            groups_for_webhooks = [
+                group
+                for group in root_groups
+                if any(
+                    does_pattern_apply(
+                        mapping.split("/")[0], group.attributes["full_path"]
+                    )
+                    for mapping in self.group_mapping
+                )
+            ]
+
+        return groups_for_webhooks
+
+    def create_webhooks(self, groups_for_webhooks) -> list[int | str]:
+        # Filter out groups that are not in the group mapping and creating webhooks for the rest
         logger.info(
-            f"Creating webhooks for the root groups. Groups: {[group.attributes['full_path'] for group in filtered_partial_groups]}"
+            f"Creating webhooks for the groups: {[group.attributes['full_path'] for group in groups_for_webhooks]}"
         )
         webhook_ids = []
-        for partial_group in filtered_partial_groups:
+        for partial_group in groups_for_webhooks:
             group_id = partial_group.get_id()
             if group_id is None:
                 logger.info(
