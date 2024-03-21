@@ -35,6 +35,7 @@ async def on_managed_k8s_resources_resync(kind: str) -> RAW_RESULT:
 
     return await argocd_client.get_kubernetes_resource()
 
+
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.MANAGED_RESOURCE)
 async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     argocd_client = init_client()

@@ -84,7 +84,7 @@ class ArgocdClient:
             for resource in application["status"].get("resources", [])
         ]
         return all_k8s_resources
-    
+
     async def get_managed_resources(
         self, application_name: str
     ) -> list[dict[str, Any]]:
