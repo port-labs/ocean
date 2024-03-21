@@ -12,7 +12,6 @@ resources:
           blueprint: '"launchDarklyProject"'
           properties:
             tags: .tags
-            link: ("https://app.launchdarkly.com" + ._links.self.href | tostring)
   - kind: flag
     selector:
       query: "true"

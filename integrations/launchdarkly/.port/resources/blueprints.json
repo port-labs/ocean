@@ -10,12 +10,6 @@
           "type": "array",
           "title": "Tags",
           "description": "Tags associated with the project for organizational purposes."
-        },
-        "link": {
-          "type": "string",
-          "format": "url",
-          "title": "Resource Link",
-          "description": "Link to project"
         }
       },
       "required": []
