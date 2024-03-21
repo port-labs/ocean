@@ -73,3 +73,20 @@ resources:
             sourcePath: .source.path
           relations:
             application: .__applicationId
+  - kind: kubernetes-resource
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .__applicationId + "-" + .name
+          title: .name
+          blueprint: '"argocdKubernetesResource"'
+          properties:
+            kind: .kind
+            version: .version
+            namespace: .namespace
+            syncStatus: .status
+            healthStatus: .health.status
+          relations:
+            application: .__applicationId
