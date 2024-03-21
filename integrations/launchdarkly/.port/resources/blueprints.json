@@ -68,7 +68,7 @@
           "title": "Maintainer",
           "description": "Name of the maintainer of the flag."
         },
-        "maintainerEmail" : {
+        "maintainerEmail": {
           "type": "string",
           "title": "Maintainer Email",
           "description": "Email address of the maintainer of the flag."
@@ -84,7 +84,7 @@
           "description": "Indicates if the flag is archived."
         },
         "deprecated": {
-          "type" :"boolean",
+          "type": "boolean",
           "title": "Deprecated",
           "description": "Indicates if the flag is deprecated."
         },

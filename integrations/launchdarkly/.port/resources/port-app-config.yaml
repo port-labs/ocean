@@ -32,7 +32,7 @@ resources:
             tags: .tags
             maintainer: ._maintainer | .firstName + " " + .lastName
             maintainerEmail: ._maintainer.email
-            deprecated : .deprecated
+            deprecated: .deprecated
             variations: .variations
             customProperties: .customProperties
             archived: .archived
