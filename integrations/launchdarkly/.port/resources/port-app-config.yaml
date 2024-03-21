@@ -25,18 +25,19 @@ resources:
           properties:
             kind: .kind
             description: .description
-            creationDate: '.creationDate |  (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            creationDate: .creationDate / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ")
             includeInSnippet: .includeInSnippet
             clientSideAvailability: .clientSideAvailability
             temporary: .temporary
             tags: .tags
-            maintainer: ._maintainer
-            environments: .environments
+            maintainer: ._maintainer | .firstName + " " + .lastName
+            maintainerEmail: ._maintainer.email
+            deprecated : .deprecated
             variations: .variations
             customProperties: .customProperties
             archived: .archived
           relations:
-            project: .__projectKey
+            environments: .environments | keys
   - kind: auditlog
     selector:
       query: "true"
@@ -48,15 +49,15 @@ resources:
           blueprint: '"launchDarklyAuditLog"'
           properties:
             accountId: ._accountId
-            eventDate: '.date |  (strptime("%Y-%m-%d %H:%M:%S") | strftime("%Y-%m-%dT%H:%M:%SZ"))'
+            eventDate: .date / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ")
             kind: .kind
             targetResource: .name
-            link: ("https://app.launchdarkly.com/" + ._links.canonical.href | tostring)
+            link: ("https://app.launchdarkly.com" + ._links.canonical.href | tostring)
             shortDescription: .shortDescription
             member: .member
             accessDetails: .accesses
           relations:
-            project: 'select(.kind | IN("project")) | .accesses[] | .resource | split("/") | .[-1]'
+            project: 'select(.kind | IN("project","flag")) | .accesses[] | .resource | split("proj/") | .[-1] | split(":") | .[0]'
   - kind: environment
     selector:
       query: "true"

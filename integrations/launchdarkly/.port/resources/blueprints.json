@@ -64,14 +64,14 @@
           "description": "Tags associated with the feature flag."
         },
         "maintainer": {
-          "type": "object",
+          "type": "string",
           "title": "Maintainer",
-          "description": "Information about the maintainer of the flag."
+          "description": "Name of the maintainer of the flag."
         },
-        "environments": {
-          "type": "object",
-          "title": "Environments",
-          "description": "Settings and information for each environment the flag is used in."
+        "maintainerEmail" : {
+          "type": "string",
+          "title": "Maintainer Email",
+          "description": "Email address of the maintainer of the flag."
         },
         "customProperties": {
           "type": "object",
@@ -82,6 +82,11 @@
           "type": "boolean",
           "title": "Archived",
           "description": "Indicates if the flag is archived."
+        },
+        "deprecated": {
+          "type" :"boolean",
+          "title": "Deprecated",
+          "description": "Indicates if the flag is deprecated."
         },
         "variations": {
           "type": "array",
@@ -95,11 +100,11 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "project": {
-        "title": "Project",
-        "target": "launchDarklyProject",
-        "required": true,
-        "many": false
+      "environments": {
+        "title": "Environments",
+        "target": "launchDarklyEnvironment",
+        "required": false,
+        "many": true
       }
     }
   },
@@ -163,7 +168,7 @@
         "title": "Project",
         "target": "launchDarklyProject",
         "required": false,
-        "many": true
+        "many": false
       }
     }
   },
