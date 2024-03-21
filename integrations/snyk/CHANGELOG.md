@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Add three more origins to the Snyk Target blueprint
+- Expand the origins Enum of the Snyk Target blueprint
 
 
 # Port_Ocean 0.1.30 (2024-03-20)
