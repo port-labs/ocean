@@ -156,9 +156,9 @@ async def event_context(
         event_kind=event.event_type,
         event_id=event.id,
         event_parent_id=event.parent_id,
-        event_resource_kind=event.resource_config.kind
-        if event.resource_config
-        else None,
+        event_resource_kind=(
+            event.resource_config.kind if event.resource_config else None
+        ),
     ):
         logger.info("Event started")
         try:
