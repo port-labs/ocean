@@ -61,7 +61,7 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
     kind = data["kind"]
     endpoint = (
         data["_links"]["canonical"]
-        if not kind in [ObjectKind.AUDITLOG, ObjectKind.PROJECT]
+        if kind not in [ObjectKind.AUDITLOG, ObjectKind.PROJECT]
         else data["_links"]["canonical"]["href"]
     )
 
