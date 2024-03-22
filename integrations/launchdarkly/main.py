@@ -12,6 +12,15 @@ def initialize_client() -> LaunchDarklyClient:
     )
 
 
+async def enrich_resource_with_project(endpoint: str, kind: str) -> dict[str, Any]:
+    launchdarkly_client = initialize_client()
+
+    response = await launchdarkly_client.send_api_request(endpoint)
+    project_key = endpoint.split(f"/api/v2/{kind}s/")[1].split("/")[0]
+    response.update({"__projectKey": project_key})
+    return response
+
+
 @ocean.on_resync(kind=ObjectKind.AUDITLOG)
 async def on_resync_auditlog(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     launchdarkly_client = initialize_client()
@@ -50,21 +59,21 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
     launchdarkly_client = initialize_client()
 
     kind = data["kind"]
+    endpoint = (
+        data["_links"]["canonical"]
+        if not kind in [ObjectKind.AUDITLOG, ObjectKind.PROJECT]
+        else data["_links"]["canonical"]["href"]
+    )
 
     if kind in [ObjectKind.AUDITLOG, ObjectKind.PROJECT]:
         logger.info(f"Received webhook event for {kind}")
-        item = await launchdarkly_client.get_single_resource(data)
+        item = await launchdarkly_client.send_api_request(endpoint)
         await ocean.register_raw(kind, [item])
 
-    elif kind == ObjectKind.FEATURE_FLAG:
-        logger.info("Received webhook event for feature flag")
-        flag = await launchdarkly_client.get_single_feature_flag(data)
-        await ocean.register_raw(kind, [flag])
-
-    elif kind == ObjectKind.ENVIRONMENT:
+    elif kind in [ObjectKind.FEATURE_FLAG, ObjectKind.ENVIRONMENT]:
         logger.info("Received webhook event for environment")
-        environment = await launchdarkly_client.get_single_environment(data)
-        await ocean.register_raw(kind, [environment])
+        item = await launchdarkly_client.enrich_resource_with_projects(endpoint, kind)
+        await ocean.register_raw(kind, [item])
 
     logger.info("Launchdarkly webhook event processed")
     return {"ok": True}

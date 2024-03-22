@@ -4,7 +4,7 @@ from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from enum import StrEnum
 import asyncio
-from port_ocean.context.event import event
+from port_ocean.utils.cache import cache_iterator_result
 
 PAGE_SIZE = 100
 
@@ -72,7 +72,6 @@ class LaunchDarklyClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        logger.info(f"Requesting Launchdarkly data for endpoint: {endpoint}")
         try:
             endpoint = endpoint.replace("/api/v2/", "")
             url = f"{self.api_url}/{endpoint}"
@@ -100,24 +99,13 @@ class LaunchDarklyClient:
             logger.error(f"HTTP error on {endpoint}: {str(e)}")
             raise
 
+    @cache_iterator_result()
     async def get_paginated_projects(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if cache := event.attributes.get(ObjectKind.PROJECT):
-            logger.info("Retrieving project data from cache")
-            yield cache
-            return
-
-        all_projects = []
-        logger.info("Fetching projects")
         async for projects in self.get_paginated_resource(ObjectKind.PROJECT):
-            all_projects.extend(projects)
+            logger.info(f"Retrieved {len(projects)} projects from launchdarkly")
             yield projects
-
-        event.attributes[ObjectKind.PROJECT] = all_projects
-        logger.info(
-            f"Total workspaces retrieved across all organizations: {len(projects)}"
-        )
 
     async def get_paginated_environments(
         self,
@@ -172,25 +160,6 @@ class LaunchDarklyClient:
             ]
             feature_flags.extend(updated_batch)
         return feature_flags
-
-    async def get_single_feature_flag(self, data: dict[str, Any]) -> dict[str, Any]:
-        endpoint = data["_links"]["canonical"]["href"]
-        response = await self.send_api_request(endpoint)
-        project_key = endpoint.split("/api/v2/flags/")[1].split("/")[0]
-        response.update({"__projectKey": project_key})
-        return response
-
-    async def get_single_environment(self, data: dict[str, Any]) -> dict[str, Any]:
-        endpoint = data["_links"]["canonical"]["href"]
-        response = await self.send_api_request(endpoint)
-        project_key = endpoint.split("/api/v2/projects/")[1].split("/")[0]
-        response.update({"__projectKey": project_key})
-        return response
-
-    async def get_single_resource(self, data: dict[str, Any]) -> dict[str, Any]:
-        endpoint = data["_links"]["canonical"]
-        response = await self.send_api_request(endpoint)
-        return response
 
     async def create_launchdarkly_webhook(self, app_host: str) -> None:
         webhook_target_url = f"{app_host}/integration/webhook"
