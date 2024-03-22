@@ -30,7 +30,12 @@ jobs:
           password: ${{ env.PYPI_PASSWORD }}
           packages-dir: ${{github.workspace}}/dist
 
+      - name: Remove 'v' from version name
+        continue-on-error: true
+        run: echo "VERSION=${{ github.ref_name:1 }}" >> $GITHUB_ENV
+
       - name: Send internal release notification
+        if: env.VERSION != ''
         continue-on-error: true
         uses: fjogeleit/http-request-action@v1
         with:
@@ -58,14 +63,14 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Version:*  `${{ github.ref_name }}`"
+                    "text": "*Version:* `${{ env.VERSION }}`"
                   }
                 },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "<https://ocean.getport.io/changelog/${{ github.ref_name }}|Check out the Changelog>"
+                    "text": "<https://ocean.getport.io/changelog/${{ env.VERSION }}|Check out the Changelog>"
                   }
                 },
                 {
