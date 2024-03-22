@@ -8,12 +8,13 @@ from loguru import logger
 from starlette.requests import Request
 from port_ocean.context.event import event
 
-from gitlab_integration.bootstrap import event_handler, system_event_handler
-from gitlab_integration.bootstrap import setup_application
+from gitlab_integration.events.setup import event_handler, system_event_handler
+from gitlab_integration.events.setup import setup_application
 from gitlab_integration.git_integration import GitlabResourceConfig
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.log.sensetive import sensitive_log_filter
 
 NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not export live changes from the gitlab"
 PROJECT_RESYNC_BATCH_SIZE = 10
@@ -41,12 +42,20 @@ async def handle_system_webhook(request: Request) -> dict[str, Any]:
 
 @ocean.on_start()
 async def on_start() -> None:
+    integration_config = ocean.integration_config
+    token_mapping: dict = integration_config["token_mapping"]
+    hook_override_mapping: dict = integration_config[
+        "token_group_hooks_override_mapping"
+    ]
+    sensitive_log_filter.hide_sensitive_strings(
+        *token_mapping.keys(), *hook_override_mapping.keys()
+    )
+
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    logic_settings = ocean.integration_config
-    if not logic_settings.get("app_host"):
+    if not integration_config.get("app_host"):
         logger.warning(
             f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
         )
@@ -54,10 +63,11 @@ async def on_start() -> None:
 
     try:
         setup_application(
-            logic_settings["token_mapping"],
-            logic_settings["gitlab_host"],
-            logic_settings["app_host"],
-            logic_settings["use_system_hook"],
+            integration_config["token_mapping"],
+            integration_config["gitlab_host"],
+            integration_config["app_host"],
+            integration_config["use_system_hook"],
+            integration_config["token_group_hooks_override_mapping"],
         )
     except Exception as e:
         logger.warning(
