@@ -25,14 +25,17 @@ class ObjectKind:
 
 
 class PagerdutyServiceAPIQueryParams(BaseModel):
-    include: list[
-        Literal[
-            "escalation_policies",
-            "teams",
-            "integrations",
-            "auto_pause_notifications_parameters",
+    include: (
+        list[
+            Literal[
+                "escalation_policies",
+                "teams",
+                "integrations",
+                "auto_pause_notifications_parameters",
+            ]
         ]
-    ] | None
+        | None
+    )
     sort_by: Literal["name", "name:asc", "name:desc"] | None
     team_ids: list[str] | None
     time_zone: str | None
