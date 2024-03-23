@@ -36,27 +36,7 @@ resources:
             customProperties: .customProperties
             archived: .archived
           relations:
-            environments: .environments | keys
-  - kind: auditlog
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: ._id
-          title: .titleVerb
-          blueprint: '"launchDarklyAuditLog"'
-          properties:
-            accountId: ._accountId
-            eventDate: .date / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ")
-            kind: .kind
-            targetResource: .name
-            link: ("https://app.launchdarkly.com" + ._links.canonical.href | tostring)
-            shortDescription: .shortDescription
-            member: .member
-            accessDetails: .accesses
-          relations:
-            project: 'select(.kind | IN("project","flag")) | .accesses[] | .resource | split("proj/") | .[-1] | split(":") | .[0]'
+            environments: .environments
   - kind: environment
     selector:
       query: "true"
