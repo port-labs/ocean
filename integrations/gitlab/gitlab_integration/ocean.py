@@ -48,7 +48,12 @@ async def on_start() -> None:
         "token_group_hooks_override_mapping"
     ]
     sensitive_log_filter.hide_sensitive_strings(
-        *token_mapping.keys(), *hook_override_mapping.keys()
+        *token_mapping.keys()
+    )
+
+    if hook_override_mapping is not None:
+        sensitive_log_filter.hide_sensitive_strings(
+        *hook_override_mapping.keys()
     )
 
     if ocean.event_listener_type == "ONCE":
