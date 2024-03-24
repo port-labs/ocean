@@ -11,14 +11,14 @@ features:
       - kind: auditlog
       - kind: environment
 configurations:
-  - name: launchdarklyHost
-    required: false
-    default: https://app.launchdarkly.com
-    type: string
   - name: launchdarklyToken
     required: true
     sensitive: true
     type: string
+  - name: launchdarklyHost
+    required: false
+    type: string
+    default: https://app.launchdarkly.com
   - name: appHost
     type: url
     required: false
