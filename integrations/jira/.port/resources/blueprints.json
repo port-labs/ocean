@@ -66,6 +66,13 @@
           "type": "string",
           "description": "The priority of the issue"
         },
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "array"
+        },
         "created": {
           "title": "Created At",
           "type": "string",
