@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.60 (2024-03-25)
+===================
+
+### Features
+
+- Changed listening to default branch unless mentioned otherwise in mapping (PORT-7141)
+
+
 0.1.59 (2024-03-24)
 ===================
 
