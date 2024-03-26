@@ -65,6 +65,14 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield pull_requests
 
 
+@ocean.on_resync(Kind.PROJECT_WITH_TEAM)
+async def resync_projects_with_team(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for projects_with_team in azure_devops_client.generate_projects_with_team():
+        logger.info(f"Resyncing {len(projects_with_team)} {Kind.PROJECT_WITH_TEAM}")
+        yield projects_with_team
+
+
 @ocean.on_resync(Kind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()

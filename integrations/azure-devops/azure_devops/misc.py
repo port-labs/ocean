@@ -17,6 +17,7 @@ class Kind(StrEnum):
     MEMBER = "member"
     TEAM = "team"
     PROJECT = "project"
+    PROJECT_WITH_TEAM = "project-with-team"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [

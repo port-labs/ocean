@@ -113,6 +113,17 @@ class AzureDevopsClient(HTTPBaseClient):
                     policy["__repository"] = repo
                 yield repo_policies
 
+    async def generate_projects_with_team(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        # The List Projects API doesn't show the default team for the project and so we have to run Get Project for each one.
+        params = {"includeCapabilities": "true"}
+        async for projects in self.generate_projects():
+            projects_with_teams: list[dict[str, Any]] = []
+            for project in projects:
+                project_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project['id']}"
+                response = await self.send_request("GET", project_url, params=params)
+                projects_with_teams.append(response.json())
+            yield projects_with_teams
+
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any]:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
         response = await self.send_request("GET", get_single_pull_request_url)
