@@ -35,6 +35,7 @@ def _stdout_loguru_handler(level: LogLevelType) -> None:
         diagnose=False,  # hide variable values in log backtrace
         filter=sensitive_log_filter.create_filter(),
     )
+    logger.configure(patcher=exception_deserializer)
 
 
 def _http_loguru_handler(level: LogLevelType) -> None:
@@ -50,6 +51,7 @@ def _http_loguru_handler(level: LogLevelType) -> None:
         enqueue=True,  # process logs in background
         filter=sensitive_log_filter.create_filter(full_hide=True),
     )
+    logger.configure(patcher=exception_deserializer)
 
     queue_listener = QueueListener(queue, HTTPMemoryHandler())
     queue_listener.start()
