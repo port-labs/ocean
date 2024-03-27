@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.8 (2024-03-27)
+
+
+### Bug Fixes
+
+- Fixed an issue when logging error in loguru (#1)
+
+
 ## 0.5.7 (2024-03-20)
 
 
