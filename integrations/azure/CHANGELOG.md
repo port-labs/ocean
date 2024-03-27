@@ -1,3 +1,12 @@
+
+
+0.1.36 (2024-03-27)
+
+### Improvements
+
+- Added default permissions 
+
+
 0.1.35 (2024-03-20)
 
 ### Improvements
