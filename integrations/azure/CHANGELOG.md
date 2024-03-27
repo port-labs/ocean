@@ -1,3 +1,12 @@
+
+
+0.1.36 (2024-03-27)
+
+### Improvements
+
+- Added default permissions to match the default resources created (#1)
+
+
 0.1.35 (2024-03-20)
 
 ### Improvements
