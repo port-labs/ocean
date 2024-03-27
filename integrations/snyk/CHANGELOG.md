@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.31 (2024-03-21)
+
+### Improvements
+
+- Expand the origins Enum of the Snyk Target blueprint
+
+
 # Port_Ocean 0.1.30 (2024-03-20)
 
 ### Improvements

@@ -31,6 +31,7 @@ resources:
             reporter: .fields.reporter.displayName
             creator: .fields.creator.displayName
             priority: .fields.priority.id
+            labels: .fields.labels
             created: .fields.created
             updated: .fields.updated
           relations:
