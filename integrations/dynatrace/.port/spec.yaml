@@ -1,6 +1,7 @@
 type: dynatrace
 description: Dynatrace integration for Port Ocean
 icon: Dynatrace
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/dynatrace
 features:
   - type: exporter
     section: Incident Management
