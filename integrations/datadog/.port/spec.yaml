@@ -1,0 +1,31 @@
+type: datadog
+description: Datadog integration for Port Ocean
+icon: Datadog
+features:
+  - type: exporter
+    section: APM & Alerting
+    resources:
+      - kind: datadogHost
+      - kind: datadogMonitor
+      - kind: datadogServiceCatalog
+      - kind: datadogSlo
+configurations:
+  - name: datadogBaseUrl
+    type: url
+    required: true
+  - name: datadogApiKey
+    required: true
+    type: string
+    sensitive: true
+  - name: datadogApplicationKey
+    required: true
+    type: string
+    sensitive: true
+  - name: appHost
+    type: url
+    required: false
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
+  - name: datadogWebhookToken
+    type: string
+    required: false
+    sensitive: true
