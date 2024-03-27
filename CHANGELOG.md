@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Fixed an issue when logging error in loguru (#1)
+- Fixed a bug in loguru which fails to deserialize an exceptions (#1)
 
 
 ## 0.5.7 (2024-03-20)
