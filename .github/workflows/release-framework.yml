@@ -32,7 +32,7 @@ jobs:
 
       - name: Remove 'v' from version name
         continue-on-error: true
-        run: echo "VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')" >> $GITHUB_ENV
+        run: echo "VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//g')" >> $GITHUB_ENV
 
       - name: Send internal release notification
         if: env.VERSION != ''
