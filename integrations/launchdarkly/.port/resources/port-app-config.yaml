@@ -29,8 +29,7 @@ resources:
             clientSideAvailability: .clientSideAvailability
             temporary: .temporary
             tags: .tags
-            maintainer: ._maintainer | .firstName + " " + .lastName
-            maintainerEmail: ._maintainer.email
+            maintainer: ._maintainer.email
             deprecated: .deprecated
             variations: .variations
             customProperties: .customProperties

@@ -60,11 +60,6 @@
         "maintainer": {
           "type": "string",
           "title": "Maintainer",
-          "description": "Name of the maintainer of the flag."
-        },
-        "maintainerEmail": {
-          "type": "string",
-          "title": "Maintainer Email",
           "description": "Email address of the maintainer of the flag."
         },
         "customProperties": {
