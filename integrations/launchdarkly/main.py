@@ -65,13 +65,12 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
         else data["_links"]["canonical"]["href"]
     )
 
+    logger.info(f"Received webhook event for {kind}")
     if kind in [ObjectKind.AUDITLOG, ObjectKind.PROJECT]:
-        logger.info(f"Received webhook event for {kind}")
         item = await launchdarkly_client.send_api_request(endpoint)
         await ocean.register_raw(kind, [item])
 
     elif kind in [ObjectKind.FEATURE_FLAG, ObjectKind.ENVIRONMENT]:
-        logger.info("Received webhook event for environment")
         item = await enrich_resource_with_project(endpoint, kind)
         await ocean.register_raw(kind, [item])
 
