@@ -14,12 +14,11 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from azure.identity.aio import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
-
+from azure.mgmt.subscription.aio import SubscriptionClient
 
 from azure_integration.utils import (
     ResourceKindsWithSpecialHandling,
     resource_client_context,
-    get_integration_subscription_id,
     resolve_resource_type_from_resource_uri,
     batch_resources_iterator,
     is_sub_resource,
@@ -48,25 +47,84 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Re-syncs resource groups, this is done separately because the resource groups api is different from the other apis
     """
     async with DefaultAzureCredential() as credential:
-        async with ResourceManagementClient(
-            credential=credential, subscription_id=get_integration_subscription_id()
-        ) as client:
-            async for resource_groups_batch in batch_resources_iterator(
-                client.resource_groups.list,
-                api_version=get_current_resource_config().selector.api_version,
+        async with SubscriptionClient(credential=credential) as subscription_client:
+            async for subscriptions_batch in batch_resources_iterator(
+                subscription_client.subscriptions.list,
             ):
-                yield resource_groups_batch
+                for subscription in subscriptions_batch:
+                    async with ResourceManagementClient(
+                        credential=credential,
+                        subscription_id=subscription["subscription_id"],
+                    ) as resource_groups_client:
+                        async for resource_groups_batch in batch_resources_iterator(
+                            resource_groups_client.resource_groups.list,
+                            api_version=get_current_resource_config().selector.api_version,
+                        ):
+                            yield resource_groups_batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SUBSCRIPTION)
+async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Re-syncs subscriptions, this is done separately because the subscriptions api is different from the other apis
+    """
+    async with DefaultAzureCredential() as credential:
+        async with SubscriptionClient(credential=credential) as client:
+            async for subscriptions_batch in batch_resources_iterator(
+                client.subscriptions.list,
+            ):
+                yield subscriptions_batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUD_RESOURCE)
+async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async with DefaultAzureCredential() as credential:
+        async with SubscriptionClient(credential=credential) as client:
+            async for subscriptions_batch in batch_resources_iterator(
+                client.subscriptions.list,
+            ):
+                for subscription in subscriptions_batch:
+                    async with ResourceManagementClient(
+                        credential=credential,
+                        subscription_id=subscription["subscription_id"],
+                    ) as resource_client:
+                        async for resource_groups_batch in batch_resources_iterator(
+                            resource_client.resource_groups.list,
+                            api_version=get_current_resource_config().selector.api_version,
+                        ):
+                            for resource_group in resource_groups_batch:
+                                async for resources_batch in batch_resources_iterator(
+                                    resource_client.resources.list_by_resource_group,
+                                    resource_group_name=resource_group["name"],
+                                    api_version=get_current_resource_config().selector.api_version,
+                                ):
+                                    yield [
+                                        {
+                                            "subscription": subscription,
+                                            "resource_group": resource_group,
+                                            "resource": resource,
+                                        }
+                                        for resource in resources_batch
+                                    ]
 
 
 async def resync_base_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async with resource_client_context() as client:
-        async for resources_batch in batch_resources_iterator(
-            list_resources,
-            resources_client=client,
-            resource_type=kind,
-            api_version=get_current_resource_config().selector.api_version,
-        ):
-            yield resources_batch
+    async with DefaultAzureCredential() as credential:
+        async with SubscriptionClient(credential=credential) as subscription_client:
+            async for subscriptions_batch in batch_resources_iterator(
+                subscription_client.subscriptions.list,
+            ):
+                for subscription in subscriptions_batch:
+                    async with resource_client_context(
+                        subscription["subscription_id"]
+                    ) as client:
+                        async for resources_batch in batch_resources_iterator(
+                            list_resources,
+                            resources_client=client,
+                            resource_type=kind,
+                            api_version=get_current_resource_config().selector.api_version,
+                        ):
+                            yield resources_batch
 
 
 async def resync_extension_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -97,22 +155,37 @@ async def resync_extension_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     :return: Async generator of extension resources
     """
     with logger.contextualize(resource_kind=kind):
-        async with resource_client_context() as client:
-            base_resource_kind, _ = get_resource_kind_by_level(kind, 0)
-            api_version = get_current_resource_config().selector.api_version
-            async for resource in list_resources(
-                client,
-                api_version=api_version,
-                resource_type=base_resource_kind,
-            ):
-                async for resource_batch in loop_over_extension_resource_kind(
-                    client=client,
-                    full_resource_kind=kind,
-                    kind_level=1,
-                    resource_id=resource.id,
-                    api_version=api_version,
+        async with DefaultAzureCredential() as credential:
+            async with SubscriptionClient(credential=credential) as subscription_client:
+                async for subscriptions_batch in batch_resources_iterator(
+                    subscription_client.subscriptions.list,
                 ):
-                    yield resource_batch
+                    for subscription in subscriptions_batch:
+                        with logger.contextualize(
+                            subscription_id=subscription["subscription_id"]
+                        ):
+                            async with resource_client_context(
+                                subscription["subscription_id"]
+                            ) as client:
+                                base_resource_kind, _ = get_resource_kind_by_level(
+                                    kind, 0
+                                )
+                                api_version = (
+                                    get_current_resource_config().selector.api_version
+                                )
+                                async for resource in list_resources(
+                                    client,
+                                    api_version=api_version,
+                                    resource_type=base_resource_kind,
+                                ):
+                                    async for resource_batch in loop_over_extension_resource_kind(
+                                        client=client,
+                                        full_resource_kind=kind,
+                                        kind_level=1,
+                                        resource_id=resource.id,
+                                        api_version=api_version,
+                                    ):
+                                        yield resource_batch
 
 
 async def loop_over_extension_resource_kind(

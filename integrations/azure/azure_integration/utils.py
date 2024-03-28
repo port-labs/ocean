@@ -20,12 +20,8 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     """
 
     RESOURCE_GROUPS = "Microsoft.Resources/resourceGroups"
-
-
-def get_integration_subscription_id() -> str:
-    logic_settings = ocean.integration_config
-    subscription_id = logic_settings["subscription_id"]
-    return subscription_id
+    SUBSCRIPTION = "subscription"
+    CLOUD_RESOURCE = "cloudResource"
 
 
 def get_current_resource_config() -> AzureResourceConfig:
@@ -129,13 +125,15 @@ async def batch_resources_iterator(
 
 
 @contextlib.asynccontextmanager
-async def resource_client_context() -> typing.AsyncIterator[ResourceManagementClient]:
+async def resource_client_context(
+    subscription_id: str,
+) -> typing.AsyncIterator[ResourceManagementClient]:
     """
     Creates a resource client context manager that yields a resource client with the default azure credentials
     """
     async with DefaultAzureCredential() as credential:
         async with ResourceManagementClient(
             credential=credential,
-            subscription_id=get_integration_subscription_id(),
+            subscription_id=subscription_id,
         ) as client:
             yield client
