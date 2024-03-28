@@ -1,3 +1,17 @@
+0.1.37 (2024-03-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.8 (#1)
+
+
+0.1.36 (2024-03-27)
+
+### Improvements
+
+- Added default permissions to match the default resources created (#1)
+
+
 0.1.35 (2024-03-20)
 
 ### Improvements
