@@ -84,6 +84,9 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 client.subscriptions.list,
             ):
                 for subscription in subscriptions_batch:
+                    logger.info(
+                        f"Resyncing resources for subscription {subscription['subscription_id']}"
+                    )
                     async with ResourceManagementClient(
                         credential=credential,
                         subscription_id=subscription["subscription_id"],
@@ -93,6 +96,9 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             api_version=get_current_resource_config().selector.api_version,
                         ):
                             for resource_group in resource_groups_batch:
+                                logger.info(
+                                    f"Resyncing resources for resource group {resource_group['name']} in subscription {subscription['subscription_id']}"
+                                )
                                 async for resources_batch in batch_resources_iterator(
                                     resource_client.resources.list_by_resource_group,
                                     resource_group_name=resource_group["name"],
