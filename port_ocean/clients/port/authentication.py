@@ -13,7 +13,11 @@ class TokenResponse(BaseModel):
     access_token: str = Field(alias="accessToken")
     expires_in: int = Field(alias="expiresIn")
     token_type: str = Field(alias="tokenType")
-    _retrieved_time: int = PrivateAttr(get_time())
+    _retrieved_time: int = PrivateAttr()
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        self._retrieved_time = int(get_time())
 
     @property
     def expired(self) -> bool:
