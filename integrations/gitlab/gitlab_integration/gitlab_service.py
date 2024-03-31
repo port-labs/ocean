@@ -34,15 +34,18 @@ if TYPE_CHECKING:
 
 
 class GitlabService:
-    all_events_in_webhook: list[str] = ["push_events", 
-                                        "merge_requests_events", 
-                                        "issues_events", 
-                                        "job_events", 
-                                        "pipeline_events", 
-                                        "releases_events", 
-                                        "tag_push_events", 
-                                        "subgroup_events", 
-                                        "confidential_issues_events"]
+    all_events_in_webhook: list[str] = [
+        "push_events",
+        "merge_requests_events",
+        "issues_events",
+        "job_events",
+        "pipeline_events",
+        "releases_events",
+        "tag_push_events",
+        "subgroup_events",
+        "confidential_issues_events",
+    ]
+
     def __init__(
         self,
         gitlab_client: Gitlab,
@@ -59,19 +62,21 @@ class GitlabService:
                 return True
         return False
 
-    def _create_group_webhook(self, group: RESTObject, events: list[str] | None) -> None:
+    def _create_group_webhook(
+        self, group: RESTObject, events: list[str] | None
+    ) -> None:
         logger.info(f"Creating webhook for {group.get_id()}")
-        
+
         events_in_webhook: list[str]
         if not events:
             events_in_webhook = self.all_events_in_webhook
         else:
             events_in_webhook = events
-       
+
         resp = group.hooks.create(
             {
                 "url": f"{self.app_host}/integration/hook/{group.get_id()}",
-                **{event_name: True for event_name in events_in_webhook}
+                **{event_name: True for event_name in events_in_webhook},
             }
         )
         logger.info(
@@ -218,17 +223,19 @@ class GitlabService:
 
         return groups_for_webhooks
 
-    def create_webhooks(self, groups_for_webhooks: list[tuple[Group, list[str]]]) -> list[int | str]:
+    def create_webhooks(
+        self, groups_for_webhooks: list[tuple[Group, list[str] | None]]
+    ) -> list[int | str]:
         webhook_ids = []
         for group_to_events in groups_for_webhooks:
             group = group_to_events[0]
             events = group_to_events[1]
-            
+
             # Filter out groups that are not in the group mapping and creating webhooks for the rest
             logger.info(
-                 f"Creating webhooks for the groups: {group.attributes['full_path']}"
+                f"Creating webhooks for the groups: {group.attributes['full_path']}"
             )
-            
+
             group_id = group.get_id()
             if group_id is None:
                 logger.info(
@@ -236,9 +243,7 @@ class GitlabService:
                 )
             else:
                 if self._is_exists(group):
-                    logger.info(
-                        f"Webhook already exists for group {group.get_id()}"
-                    )
+                    logger.info(f"Webhook already exists for group {group.get_id()}")
                 else:
                     self._create_group_webhook(group, events)
                 webhook_ids.append(group_id)
