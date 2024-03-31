@@ -1,4 +1,5 @@
 import asyncio
+import json
 from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
@@ -105,15 +106,24 @@ class SnykClient:
             return cache
 
         url = f"{self.api_url}/org/{org_id}/project/{project_id}/aggregated-issues"
-        issues = (
-            await self._send_api_request(
-                url=url,
-                method="POST",
-                version=self.snyk_api_version,
-            )
-        )["issues"]
-        event.attributes[cache_key] = issues
-        return issues
+        try:
+            issues = (
+                await self._send_api_request(
+                    url=url,
+                    method="POST",
+                    version=self.snyk_api_version,
+                )
+            )["issues"]
+            event.attributes[cache_key] = issues
+            return issues
+        except httpx.HTTPStatusError as e:
+            if json.loads(e.response.text).code == "SNYK-9999":
+                logger.error(
+                    f"Encountered Synk internal error while getting issues "
+                    f"for project {project_id} in org {org_id}."
+                )
+                return []
+            raise
 
     def _get_projects_by_target(
         self,
