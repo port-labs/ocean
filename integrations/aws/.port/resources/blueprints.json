@@ -12,5 +12,19 @@
       }
     },
     "relations": {}
+  },
+  {
+    "identifier": "cloudResource",
+    "title": "AWS Cloud Resource",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        }
+      }
+    },
+    "relations": {}
   }
 ]

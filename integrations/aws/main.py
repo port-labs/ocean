@@ -6,6 +6,19 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 
 
+SUPPORTED_AWS_CLOUD_CONTROL_RESOURCES = [
+    "AWS::Lambda::Function",
+    "AWS::RDS::DBInstance",
+    "AWS::S3::Bucket",
+    "AWS::IAM::User",
+    "AWS::ECS::Cluster",
+    "AWS::ECS::Service",
+    "AWS::Logs::LogGroup",
+    "AWS::DynamoDB::Table",
+    "AWS::SQS::Queue",
+    "AWS::SNS::Topic",
+    "AWS::Cognito::IdentityPool",
+]
 # Handles unserializable date properties in the JSON by turning them into a string
 def _fix_unserializable_date_properties(obj: Any) -> Any:
     return json.loads(json.dumps(obj, default=str))
@@ -21,12 +34,42 @@ def _get_sessions() -> list[boto3.Session]:
     
     return aws_sessions
 
+# @ocean.on_resync()
+# async def resync(kind: str) -> list[dict[Any, Any]]:
+    # if kind == "ec2":
+    #     return await resync_ec2(kind)
+    # else:
+        # return await resync_cloudcontrol(kind)
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
+@ocean.on_resync('cloudResource')
+async def resync_cloudcontrol(kind: str) -> list[dict[Any, Any]]:
+    sessions = _get_sessions()
+    all_instances = []
+    next_token = None
+    for session in sessions:
+        region = session.region_name
+        for resource_type in SUPPORTED_AWS_CLOUD_CONTROL_RESOURCES:
+            while True:
+                try:
+                    cloudcontrol = session.client('cloudcontrol')
+                    response = cloudcontrol.list_resources(TypeName=resource_type)
+                    next_token = response.get('NextToken')
+                    for instance in response.get('ResourceDescriptions', []):
+                        all_instances.append({
+                            'Identifier': instance.get('Identifier', ''),
+                            'Kind': resource_type,
+                            **json.loads(instance.get('Properties', {}))
+                        })
+                except Exception as e:
+                    logger.error(f"Failed to list CloudControl Instance in region: {region}; error {e}")
+                    break
+                if not next_token:
+                    break
+                
+    return all_instances
+
 @ocean.on_resync('ec2')
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
+async def resync_ec2(kind: str) -> list[dict[Any, Any]]:
     sessions = _get_sessions()
     all_instances = []
     for session in sessions:

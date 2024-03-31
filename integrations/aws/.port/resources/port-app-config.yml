@@ -10,3 +10,14 @@ resources:
           blueprint: '"ec2"'
           properties:
             architecture: .Architecture
+  - kind: cloudResource
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Identifier
+          title: .Identifier
+          blueprint: '"cloudResource"'
+          properties:
+            kind: .Kind
