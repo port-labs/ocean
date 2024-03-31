@@ -1,0 +1,21 @@
+type: aws
+description: AWS integration for Port Ocean
+icon: AWS
+features:
+  - type: exporter
+    section: Cloud Providers
+    resources:
+      - kind: EC2
+configurations:
+  - name: awsAccessKeyId
+    required: true
+    type: string
+    sensitive: true
+  - name: awsSecretAccessKey
+    required: true
+    type: string
+    sensitive: true
+  - name: awsRegions
+    required: true
+    type: array
+    description: List of AWS regions to export resources from

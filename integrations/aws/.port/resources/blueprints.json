@@ -1,0 +1,16 @@
+[
+  {
+    "identifier": "ec2",
+    "title": "EC2 Instance",
+    "icon": "AWS",
+    "schema": {
+      "properties": {
+        "architecture": {
+          "title": "Architecture",
+          "type": "string"
+        }
+      }
+    },
+    "relations": {}
+  }
+]

@@ -1,0 +1,12 @@
+resources:
+  - kind: ec2
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .InstanceId
+          title: .KeyName
+          blueprint: '"ec2"'
+          properties:
+            architecture: .Architecture
