@@ -4,7 +4,7 @@ docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/l
 icon: Launchdarkly
 features:
   - type: exporter
-    section: Project management
+    section: Feature Flags
     resources:
       - kind: project
       - kind: flag
