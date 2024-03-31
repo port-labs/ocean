@@ -53,6 +53,7 @@ class SnykClient:
         query_params: Optional[dict[str, Any]] = None,
         version: str | None = None,
         json_data: Optional[dict[str, Any]] = None,
+        raise_for_snyk_error: bool = False,
     ) -> dict[str, Any]:
         query_params = {
             **(query_params or {}),
@@ -66,8 +67,14 @@ class SnykClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
-            if json.loads(e.response.text).get("code") == "SNYK-9999":
-                logger.error(f"Encountered Synk internal error in [{method}] {url}.")
+            if (
+                raise_for_snyk_error
+                and json.loads(e.response.text).get("code") == "SNYK-9999"
+            ):
+                logger.error(
+                    f"Encountered Synk internal error while sending request: "
+                    f"method: {method}, url: {url}, query_params: {query_params}, version: {version}, json: {json_data}"
+                )
                 return {}
 
             logger.error(
@@ -326,11 +333,8 @@ class SnykClient:
 
             snyk_webhook_url = f"{self.api_url}/org/{org['id']}/webhooks"
             all_subscriptions = await self._send_api_request(
-                url=snyk_webhook_url, method="GET"
+                url=snyk_webhook_url, method="GET", raise_for_snyk_error=True
             )
-
-            if not all_subscriptions:
-                return
 
             app_host_webhook_url = f"{self.app_host}/integration/webhook"
 
@@ -341,7 +345,7 @@ class SnykClient:
             body = {"url": app_host_webhook_url, "secret": self.webhook_secret}
             logger.info(f"Creating webhook subscription for organization: {org['id']}")
             await self._send_api_request(
-                url=snyk_webhook_url, method="POST", json_data=body
+                url=snyk_webhook_url, method="POST", json_data=body, raise_for_snyk_error=True
             )
 
     async def get_all_organizations(self) -> list[dict[str, Any]]:
