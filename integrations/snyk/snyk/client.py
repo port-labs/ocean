@@ -72,8 +72,8 @@ class SnykClient:
                 and json.loads(e.response.text).get("code") == "SNYK-9999"
             ):
                 logger.error(
-                    f"Encountered Synk internal error while sending request: "
-                    f"method: {method}, url: {url}, query_params: {query_params}, version: {version}, json: {json_data}"
+                    f"Encountered Synk internal error while sending request: method: {method}, "
+                    f"url: {url}, query_params: {query_params}, version: {version}, json: {json_data}"
                 )
                 return {}
 
