@@ -1,0 +1,157 @@
+[
+  {
+    "identifier": "launchDarklyProject",
+    "description": "This blueprint represents a project in LaunchDarkly.",
+    "title": "LaunchDarkly Project",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the project for organizational purposes."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "launchDarklyFeatureFlag",
+    "description": "This blueprint represents a feature flag in LaunchDarkly.",
+    "title": "LaunchDarkly Feature Flag",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "kind": {
+          "type": "string",
+          "title": "Flag Kind",
+          "description": "The type of the feature flag (e.g., boolean)."
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A description of what the flag controls."
+        },
+        "creationDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Creation Date",
+          "description": "The date and time when the flag was created."
+        },
+        "clientSideAvailability": {
+          "type": "object",
+          "title": "Client-Side Availability",
+          "description": "Availability of the flag for client-side applications."
+        },
+        "temporary": {
+          "type": "boolean",
+          "title": "Temporary Flag",
+          "description": "Indicates if the flag is temporary."
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "Tags associated with the feature flag."
+        },
+        "maintainer": {
+          "type": "string",
+          "title": "Maintainer",
+          "description": "Email address of the maintainer of the flag."
+        },
+        "customProperties": {
+          "type": "object",
+          "title": "Custom Properties",
+          "description": "Custom properties associated with the flag."
+        },
+        "archived": {
+          "type": "boolean",
+          "title": "Archived",
+          "description": "Indicates if the flag is archived."
+        },
+        "deprecated": {
+          "type": "boolean",
+          "title": "Deprecated",
+          "description": "Indicates if the flag is deprecated."
+        },
+        "variations": {
+          "type": "array",
+          "title": "Variations",
+          "description": "An array of possible variations for the flag"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "environments": {
+        "title": "Environments",
+        "target": "launchDarklyEnvironment",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "launchDarklyEnvironment",
+    "description": "This blueprint represents an environment in LaunchDarkly",
+    "title": "LaunchDarkly Environment",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "defaultTtl": {
+          "type": "number",
+          "title": "Default TTL",
+          "description": "The default time-to-live (in minutes) for feature flag settings in this environment."
+        },
+        "secureMode": {
+          "type": "boolean",
+          "title": "Secure Mode",
+          "description": "Indicates whether Secure Mode is enabled for the environment, enhancing security by verifying user tokens."
+        },
+        "defaultTrackEvents": {
+          "type": "boolean",
+          "title": "Default Track Events",
+          "description": "Indicates whether event tracking is enabled by default for all flags in this environment."
+        },
+        "requireComments": {
+          "type": "boolean",
+          "title": "Require Comments",
+          "description": "Indicates whether comments are required for changes made in this environment."
+        },
+        "confirmChanges": {
+          "type": "boolean",
+          "title": "Confirm Changes",
+          "description": "Indicates whether changes need to be confirmed before being applied in this environment."
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "A list of tags associated with the environment for organizational purposes."
+        },
+        "critical": {
+          "type": "boolean",
+          "title": "Critical Environment",
+          "description": "Indicates whether this environment is considered critical, which may affect change management and notifications."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "launchDarklyProject",
+        "required": true,
+        "many": false
+      }
+    }
+  }
+]
