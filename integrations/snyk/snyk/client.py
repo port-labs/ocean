@@ -329,9 +329,12 @@ class SnykClient:
                 url=snyk_webhook_url, method="GET"
             )
 
+            if not all_subscriptions:
+                return
+
             app_host_webhook_url = f"{self.app_host}/integration/webhook"
 
-            for webhook in all_subscriptions.get("results"):
+            for webhook in all_subscriptions["results"]:
                 if webhook["url"] == app_host_webhook_url:
                     return
 
