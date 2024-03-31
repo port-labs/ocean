@@ -3,7 +3,12 @@ from typing import Any
 import boto3
 import json
 from port_ocean.context.ocean import ocean
+from loguru import logger
 
+
+# Handles unserializable date properties in the JSON by turning them into a string
+def _fix_unserializable_date_properties(obj: Any) -> Any:
+    return json.loads(json.dumps(obj, default=str))
 
 def _get_sessions() -> list[boto3.Session]:
     aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
@@ -23,17 +28,24 @@ def _get_sessions() -> list[boto3.Session]:
 @ocean.on_resync('ec2')
 async def on_resync(kind: str) -> list[dict[Any, Any]]:
     sessions = _get_sessions()
+    all_instances = []
     for session in sessions:
-        ec2 = session.client('ec2')  # Initialize EC2 client
+        region = session.region_name
+        try:
+            ec2 = session.resource('ec2')
+            response = ec2.instances.all()
+        except Exception as e:
+            logger.error(f"Failed to list EC2 Instance in region: {region}; error {e}")
+            break
 
-        response = ec2.describe_instances()  # Call describe_instances() method to get instances
-        all_instances = []
-        instances = response['Reservations']
-        for reservation in instances:
-            for instance in reservation['Instances']:
-                all_instances.append(json.loads(json.dumps(instance, default=str)))
-
-        return all_instances
+        ec2_client = session.client('ec2')
+        for instance in response:
+            described_instance = ec2_client.describe_instances(InstanceIds=[instance.id])
+            instance_definition = described_instance["Reservations"][0]["Instances"][0]
+            seriliazable_instance = _fix_unserializable_date_properties(instance_definition)
+            all_instances.append(seriliazable_instance)
+        
+    return all_instances
 
 # The same sync logic can be registered for one of the kinds that are available in the mapping in port.
 # @ocean.on_resync('project')
