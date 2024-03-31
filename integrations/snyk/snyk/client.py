@@ -345,7 +345,10 @@ class SnykClient:
             body = {"url": app_host_webhook_url, "secret": self.webhook_secret}
             logger.info(f"Creating webhook subscription for organization: {org['id']}")
             await self._send_api_request(
-                url=snyk_webhook_url, method="POST", json_data=body, raise_for_snyk_error=True
+                url=snyk_webhook_url,
+                method="POST",
+                json_data=body,
+                raise_for_snyk_error=True,
             )
 
     async def get_all_organizations(self) -> list[dict[str, Any]]:
