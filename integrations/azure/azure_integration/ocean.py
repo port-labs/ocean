@@ -37,7 +37,8 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         iterator_resync_method = resync_extension_resources
     else:
         iterator_resync_method = resync_base_resources
-    async for resources_batch in iterator_resync_method(kind):
+    api_version = get_current_resource_config().selector.api_version
+    async for resources_batch in iterator_resync_method(kind, api_version):
         yield resources_batch
 
 
@@ -78,43 +79,26 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUD_RESOURCE)
 async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async with DefaultAzureCredential() as credential:
-        async with SubscriptionClient(credential=credential) as client:
-            async for subscriptions_batch in batch_resources_iterator(
-                client.subscriptions.list,
-            ):
-                for subscription in subscriptions_batch:
-                    logger.info(
-                        f"Resyncing resources for subscription {subscription['subscription_id']}"
-                    )
-                    async with ResourceManagementClient(
-                        credential=credential,
-                        subscription_id=subscription["subscription_id"],
-                    ) as resource_client:
-                        async for resource_groups_batch in batch_resources_iterator(
-                            resource_client.resource_groups.list,
-                            api_version=get_current_resource_config().selector.api_version,
-                        ):
-                            for resource_group in resource_groups_batch:
-                                logger.info(
-                                    f"Resyncing resources for resource group {resource_group['name']} in subscription {subscription['subscription_id']}"
-                                )
-                                async for resources_batch in batch_resources_iterator(
-                                    resource_client.resources.list_by_resource_group,
-                                    resource_group_name=resource_group["name"],
-                                    api_version=get_current_resource_config().selector.api_version,
-                                ):
-                                    yield [
-                                        {
-                                            "subscription": subscription,
-                                            "resource_group": resource_group,
-                                            "resource": resource,
-                                        }
-                                        for resource in resources_batch
-                                    ]
+    resource_kinds = get_current_resource_config().selector.resource_kinds
+    if not resource_kinds:
+        logger.warning(
+            "Resource kinds not found in port app config, skipping",
+        )
+        return
+    for resource_kind, resource_api_version in resource_kinds.items():
+        if is_sub_resource(resource_kind):
+            iterator_resync_method = resync_extension_resources
+        else:
+            iterator_resync_method = resync_base_resources
+        async for resources_batch in iterator_resync_method(
+            resource_kind, resource_api_version
+        ):
+            yield resources_batch
 
 
-async def resync_base_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_base_resources(
+    kind: str, api_version: str
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async with DefaultAzureCredential() as credential:
         async with SubscriptionClient(credential=credential) as subscription_client:
             async for subscriptions_batch in batch_resources_iterator(
@@ -124,16 +108,21 @@ async def resync_base_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     async with resource_client_context(
                         subscription["subscription_id"]
                     ) as client:
+                        logger.info(
+                            f"Listing resources for kind {kind} in subscription {subscription['subscription_id']}",
+                        )
                         async for resources_batch in batch_resources_iterator(
                             list_resources,
                             resources_client=client,
                             resource_type=kind,
-                            api_version=get_current_resource_config().selector.api_version,
+                            api_version=api_version,
                         ):
                             yield resources_batch
 
 
-async def resync_extension_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_extension_resources(
+    kind: str, api_version: str
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Re-syncs sub resources
 
@@ -158,6 +147,7 @@ async def resync_extension_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     having the base resource ids
 
     :param kind: Resource kind
+    :param api_version: The api version to use when querying the resources
     :return: Async generator of extension resources
     """
     with logger.contextualize(resource_kind=kind):
@@ -176,8 +166,8 @@ async def resync_extension_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 base_resource_kind, _ = get_resource_kind_by_level(
                                     kind, 0
                                 )
-                                api_version = (
-                                    get_current_resource_config().selector.api_version
+                                logger.info(
+                                    f"Listing resources for kind {kind} in subscription {subscription['subscription_id']}"
                                 )
                                 async for resource in list_resources(
                                     client,
