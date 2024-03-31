@@ -32,5 +32,8 @@ configurations:
   - name: tokenGroupHooksOverrideMapping
     required: false
     type: object
-    description: "Mapping of Gitlab tokens to groups in which to create webhooks, if not set, it will create webhooks only on root groups. Example: {\"THE_GROUP_ADMIN_TOKEN\":[\"GROUP1_FULL_PATH\", \"GROUP2_FULL_PATH\"]}"
+    description: "Mapping of Gitlab tokens to groups in which to create webhooks with specific events, 
+    if not set, it will create webhooks containing all the events, and only on root groups. 
+    Example: {\"THE_GROUP_ADMIN_TOKEN\":{\"GROUP1_FULL_PATH\": {\"events\": [\"merge-requests_events\"]}, 
+    \"GROUP2_FULL_PATH\": {\"events\": [\"push_events\", \"pipeline_events\"]}}}"
     sensitive: true
