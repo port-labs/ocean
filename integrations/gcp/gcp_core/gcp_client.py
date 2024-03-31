@@ -1,8 +1,10 @@
 from typing import Any, AsyncGenerator
-from gcp_core.utils import parseProtobufMessages
+from gcp_core.utils import GCP_OCEAN_FEED_NAME, parseProtobufMessages
 from google.cloud.asset_v1 import (
     AssetServiceAsyncClient,
     ListAssetsRequest,
+    CreateFeedRequest,
+    ListFeedsRequest,
     ContentType,
 )
 from google.api_core.exceptions import PermissionDenied
@@ -14,23 +16,22 @@ from port_ocean.context.ocean import ocean
 
 
 class GCPClient:
-    def __init__(self, organization_id: str, service_account_file: str) -> None:
-        self._organization = organization_id
+    def __init__(self, parent: str, service_account_file: str) -> None:
         self._asset_client: AssetServiceAsyncClient = (
             AssetServiceAsyncClient.from_service_account_file(service_account_file)
-        ) #TODO: Use another method of authentication
+        )  # TODO: Use another method of authentication
+        self._parent = parent
 
     @classmethod
     def create_from_ocean_config(cls) -> "GCPClient":
         if cache := event.attributes.get("gcp_client"):
             return cache
         gcp_client = cls(
-            ocean.integration_config["organization_id"],
+            ocean.integration_config["gcp_parent"],
             ocean.integration_config["service_account_file_location"],
         )
         event.attributes["gcp_client"] = gcp_client
         return gcp_client
-    
 
     async def generate_assets(
         self, asset_name: str
@@ -54,7 +55,6 @@ class GCPClient:
     def _generateListRequest(self, asset_name: str) -> ListAssetsRequest:
         request = ListAssetsRequest()
         request.asset_types = [asset_name]
-        # request.parent=f'organizations/{organization_id}' # TODO: Enable at org level
-        request.parent = f"projects/{self._organization}"
+        request.parent = self._parent
         request.content_type = ContentType(1)
         return request
