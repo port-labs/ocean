@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- catch error code SNYK-9999 from snyk api
+- Fixed an issue when the snyk API returns internal error code SNYK-9999 and caused the resync to fail (PORT-7454)
 
 
 # Port_Ocean 0.1.32 (2024-03-28)
