@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.33 (2024-03-31)
+
+### Bug Fixes
+
+- catch error code SNYK-9999 from snyk api
+
+
 # Port_Ocean 0.1.32 (2024-03-28)
 
 ### Improvements
