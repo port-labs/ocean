@@ -38,6 +38,17 @@ def get_cached_all_services() -> List[GitlabService]:
         return get_all_services()
 
 
+def merge_all_groups(
+    token_group_override_hooks_mapping: dict[str, dict[str, dict[str, list[str]]]]
+) -> dict[str, dict[str, list[str]]]:
+    groups: dict[str, dict[str, list[str]]] = {}
+
+    for groups_in_token in token_group_override_hooks_mapping.values():
+        groups.update(groups_in_token)
+
+    return groups
+
+
 class ObjectKind:
     GROUP = "group"
     ISSUE = "issue"
