@@ -1,4 +1,5 @@
 import asyncio
+import json
 from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
@@ -52,6 +53,7 @@ class SnykClient:
         query_params: Optional[dict[str, Any]] = None,
         version: str | None = None,
         json_data: Optional[dict[str, Any]] = None,
+        raise_for_snyk_error: bool = False,
     ) -> dict[str, Any]:
         query_params = {
             **(query_params or {}),
@@ -65,6 +67,16 @@ class SnykClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
+            if (
+                raise_for_snyk_error
+                and json.loads(e.response.text).get("code") == "SNYK-9999"
+            ):
+                logger.error(
+                    f"Encountered Synk internal error while sending request: method: {method}, "
+                    f"url: {url}, query_params: {query_params}, version: {version}, json: {json_data}"
+                )
+                return {}
+
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
@@ -111,7 +123,8 @@ class SnykClient:
                 method="POST",
                 version=self.snyk_api_version,
             )
-        )["issues"]
+        ).get("issues", [])
+
         event.attributes[cache_key] = issues
         return issues
 
@@ -179,6 +192,9 @@ class SnykClient:
         response = await self._send_api_request(
             url=url, method="GET", version=f"{self.snyk_api_version}~beta"
         )
+
+        if not response:
+            return {}
 
         target = response["data"]
         async for projects_data_of_target in self.get_paginated_projects(target["id"]):
@@ -253,6 +269,10 @@ class SnykClient:
             user_details = await self._send_api_request(
                 url=f"{self.api_url}/user/{user_id}"
             )
+
+            if not user_details:
+                return {}
+
             event.attributes[f"{CacheKeys.USER}-{user_id}"] = user_details
             return user_details
         except httpx.HTTPStatusError as e:
@@ -310,7 +330,7 @@ class SnykClient:
 
             snyk_webhook_url = f"{self.api_url}/org/{org['id']}/webhooks"
             all_subscriptions = await self._send_api_request(
-                url=snyk_webhook_url, method="GET"
+                url=snyk_webhook_url, method="GET", raise_for_snyk_error=True
             )
 
             app_host_webhook_url = f"{self.app_host}/integration/webhook"
@@ -322,13 +342,16 @@ class SnykClient:
             body = {"url": app_host_webhook_url, "secret": self.webhook_secret}
             logger.info(f"Creating webhook subscription for organization: {org['id']}")
             await self._send_api_request(
-                url=snyk_webhook_url, method="POST", json_data=body
+                url=snyk_webhook_url,
+                method="POST",
+                json_data=body,
+                raise_for_snyk_error=True,
             )
 
     async def get_all_organizations(self) -> list[dict[str, Any]]:
         url = f"{self.api_url}/orgs"
         response = await self._send_api_request(url=url)
-        organizations = response["orgs"]
+        organizations = response.get("orgs", [])
 
         logger.info(f"Fetched {len(organizations)} organizations for the given token.")
         return organizations

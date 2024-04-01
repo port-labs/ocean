@@ -39,6 +39,8 @@ deploymentMethodOverride:
           - "Microsoft.Storage/storageAccounts"
           - "Microsoft.Compute/virtualMachines"
           - "Microsoft.Network/loadBalancers"
+          - "Microsoft.ContainerService/managedClusters"
+          - "Microsoft.Network/virtualNetworks"
         type: array
       - name: action_permissions_list
         description: A list of permissions that will be assigned to the Azure Integration User to export Azure Resources.
@@ -50,4 +52,5 @@ deploymentMethodOverride:
           - "Microsoft.Storage/storageAccounts/*/read"
           - "Microsoft.ContainerService/managedClusters/read"
           - "Microsoft.Network/loadBalancers/read"
+          - "Microsoft.Compute/virtualMachines/read"
         type: array
