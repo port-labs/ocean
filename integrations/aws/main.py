@@ -34,12 +34,34 @@ def _get_sessions() -> list[boto3.Session]:
     
     return aws_sessions
 
-# @ocean.on_resync()
-# async def resync(kind: str) -> list[dict[Any, Any]]:
-    # if kind == "ec2":
-    #     return await resync_ec2(kind)
-    # else:
-        # return await resync_cloudcontrol(kind)
+@ocean.on_resync()
+async def resync_all(kind: str) -> list[dict[Any, Any]]:
+    await resync_cloudformation(kind)
+    return []
+
+@ocean.on_resync('cloudFormation')
+async def resync_cloudformation(kind: str) -> list[dict[Any, Any]]:
+    sessions = _get_sessions()
+    all_stacks = []
+    next_token = None
+    for session in sessions:
+        region = session.region_name
+        while True:
+            try:
+                cloudformation = session.client('cloudformation')
+                if next_token:
+                    response = cloudformation.list_stacks(NextToken=next_token)
+                else:
+                    response = cloudformation.list_stacks()
+                next_token = response.get('NextToken')
+                for stack in response.get('StackSummaries', []):
+                    all_stacks.append(stack)
+            except Exception as e:
+                logger.error(f"Failed to list CloudFormation Stack in region: {region}; error {e}")
+                break
+            if not next_token:
+                break
+    return all_stacks
 
 @ocean.on_resync('cloudResource')
 async def resync_cloudcontrol(kind: str) -> list[dict[Any, Any]]:
@@ -52,7 +74,13 @@ async def resync_cloudcontrol(kind: str) -> list[dict[Any, Any]]:
             while True:
                 try:
                     cloudcontrol = session.client('cloudcontrol')
-                    response = cloudcontrol.list_resources(TypeName=resource_type)
+                    params = {
+                        'TypeName': resource_type,
+                    }
+                    if next_token:
+                        params['NextToken'] = next_token
+                    
+                    response = cloudcontrol.list_resources(**params)
                     next_token = response.get('NextToken')
                     for instance in response.get('ResourceDescriptions', []):
                         all_instances.append({
@@ -89,20 +117,6 @@ async def resync_ec2(kind: str) -> list[dict[Any, Any]]:
             all_instances.append(seriliazable_instance)
         
     return all_instances
-
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
-
 
 # Optional
 # Listen to the start event of the integration. Called once when the integration starts.
