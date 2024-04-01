@@ -134,7 +134,7 @@ def create_webhooks_by_client(
     gitlab_client = Gitlab(gitlab_host, token)
     gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
 
-    specified_groups: list[str] | None = []
+    specified_groups: list[str] | None = None
 
     if groups_hooks_events_override is not None:
         specified_groups = list(groups_hooks_events_override.keys())
