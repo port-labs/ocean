@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Moved Launchdarkly integration to the Feature Flags category (#1)
+- Moved Launchdarkly integration to the Feature Management section (#1)
 
 # Port_Ocean 0.1.0 (2024-02-02)
 
