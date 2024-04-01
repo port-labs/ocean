@@ -126,7 +126,7 @@ class GitlabResourceConfig(ResourceConfig):
 
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
-    branch: str = "main"
+    branch: str | None
     filter_owned_projects: bool | None = Field(
         alias="filterOwnedProjects", default=True
     )
