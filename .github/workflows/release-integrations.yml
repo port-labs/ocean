@@ -60,19 +60,28 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_MACHINE_USER }}
           password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
-      - name: Build and push Docker image
+      - name: Prepare Docker images tags
+        id: prepare_tags
         run: |
           GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           current_integration_spec=${{ matrix.integration }}
 
           type=$(yq eval '.type' "$current_integration_spec")
           folder=$(dirname "$current_integration_spec")
+          context_dir=$(dirname "$folder")
+          echo "context_dir=$context_dir" >> $GITHUB_OUTPUT
 
           version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
 
@@ -80,17 +89,30 @@ jobs:
           if test -e $folder/../Dockerfile; then
             dockerfile_path=$folder/../Dockerfile
           fi
-          # Check if the 'version' variable contains any character other than digits and "."
+          echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
 
+          # Check if the 'version' variable contains any character other than digits and "."
           if [[ ! "$version" =~ ^[0-9.]+$ ]]; then
             # If 'version' contains non-numeric and non-dot characters, skip building 'latest' tag
+            tags="ghcr.io/port-labs/port-ocean-$type:$version"
+            echo "tags=$tags" >> $GITHUB_OUTPUT
             echo "Version contains non-numeric characters. Building without 'latest' tag."
-            docker buildx build -f $dockerfile_path -t "ghcr.io/port-labs/port-ocean-$type:$version" --build-arg="BUILD_CONTEXT=$folder/.." .
           else
             # If 'version' contains only digits and dots, build with both 'latest' and version tags
-            docker buildx build -f $dockerfile_path -t "ghcr.io/port-labs/port-ocean-$type:$version" -t "ghcr.io/port-labs/port-ocean-$type:latest" --build-arg="BUILD_CONTEXT=$folder/.." .
+            tags="ghcr.io/port-labs/port-ocean-$type:$version,ghcr.io/port-labs/port-ocean-$type:latest"
+            echo "tags=$tags" >> $GITHUB_OUTPUT
           fi
-          docker push "ghcr.io/port-labs/port-ocean-$type" --all-tags
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ steps.prepare_tags.outputs.dockerfile_path }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.prepare_tags.outputs.tags }}
+          build-args: |
+            BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
 
   upload-specs:
     runs-on: ubuntu-latest
