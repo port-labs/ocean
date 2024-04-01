@@ -123,10 +123,7 @@ class SnykClient:
                 method="POST",
                 version=self.snyk_api_version,
             )
-        ).get("issues")
-
-        if not issues:
-            return []
+        ).get("issues", [])
 
         event.attributes[cache_key] = issues
         return issues
@@ -354,7 +351,7 @@ class SnykClient:
     async def get_all_organizations(self) -> list[dict[str, Any]]:
         url = f"{self.api_url}/orgs"
         response = await self._send_api_request(url=url)
-        organizations = response.get("orgs") or []
+        organizations = response.get("orgs", [])
 
         logger.info(f"Fetched {len(organizations)} organizations for the given token.")
         return organizations
