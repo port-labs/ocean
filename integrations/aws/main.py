@@ -36,8 +36,33 @@ def _get_sessions() -> list[boto3.Session]:
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> list[dict[Any, Any]]:
-    await resync_cloudformation(kind)
+    await resync_loadbalancer(kind)
     return []
+
+@ocean.on_resync('loadBalancer')
+async def resync_loadbalancer(kind: str) -> list[dict[Any, Any]]:
+    sessions = _get_sessions()
+    all_stacks = []
+    next_token = None
+    for session in sessions:
+        region = session.region_name
+        while True:
+            try:
+                elbv2 = session.client('elbv2')
+                if next_token:
+                    response = elbv2.describe_load_balancers(Marker=next_token)
+                else:
+                    response = elbv2.describe_load_balancers()
+                next_token = response.get('NextMarker')
+                for stack in response.get('LoadBalancers', []):
+                    all_stacks.append(_fix_unserializable_date_properties(stack))
+            except Exception as e:
+                logger.error(f"Failed to list CloudFormation Stack in region: {region}; error {e}")
+                break
+            if not next_token:
+                break
+
+    return all_stacks
 
 @ocean.on_resync('cloudFormation')
 async def resync_cloudformation(kind: str) -> list[dict[Any, Any]]:
@@ -61,6 +86,7 @@ async def resync_cloudformation(kind: str) -> list[dict[Any, Any]]:
                 break
             if not next_token:
                 break
+
     return all_stacks
 
 @ocean.on_resync('cloudResource')
