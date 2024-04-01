@@ -34,15 +34,65 @@ def _get_sessions() -> list[boto3.Session]:
     
     return aws_sessions
 
-@ocean.on_resync()
-async def resync_all(kind: str) -> list[dict[Any, Any]]:
-    await resync_loadbalancer(kind)
-    return []
+# @ocean.on_resync()
+# async def resync_all(kind: str) -> list[dict[Any, Any]]:
+#     await resync_acm(kind)
+#     return []
+
+@ocean.on_resync('acm')
+async def resync_acm(kind: str) -> list[dict[Any, Any]]:
+    sessions = _get_sessions()
+    all_acm = []
+    next_token = None
+    for session in sessions:
+        region = session.region_name
+        while True:
+            try:
+                elasticache = session.client('acm')
+                if next_token:
+                    response = elasticache.list_certificates(NextToken=next_token)
+                else:
+                    response = elasticache.list_certificates()
+                next_token = response.get('NextToken')
+                for stack in response.get('CertificateSummaryList', []):
+                    all_acm.append(_fix_unserializable_date_properties(stack))
+            except Exception as e:
+                logger.error(f"Failed to list CloudFormation Stack in region: {region}; error {e}")
+                break
+            if not next_token:
+                break
+
+    return all_acm
+
+@ocean.on_resync('elasticache')
+async def resync_elasticache(kind: str) -> list[dict[Any, Any]]:
+    sessions = _get_sessions()
+    all_elastic_caches = []
+    next_token = None
+    for session in sessions:
+        region = session.region_name
+        while True:
+            try:
+                elasticache = session.client('elasticache')
+                if next_token:
+                    response = elasticache.describe_cache_clusters(Marker=next_token)
+                else:
+                    response = elasticache.describe_cache_clusters()
+                next_token = response.get('NextMarker')
+                for stack in response.get('CacheClusters', []):
+                    all_elastic_caches.append(_fix_unserializable_date_properties(stack))
+            except Exception as e:
+                logger.error(f"Failed to list CloudFormation Stack in region: {region}; error {e}")
+                break
+            if not next_token:
+                break
+
+    return all_elastic_caches
 
 @ocean.on_resync('loadBalancer')
 async def resync_loadbalancer(kind: str) -> list[dict[Any, Any]]:
     sessions = _get_sessions()
-    all_stacks = []
+    all_elbs = []
     next_token = None
     for session in sessions:
         region = session.region_name
@@ -54,15 +104,15 @@ async def resync_loadbalancer(kind: str) -> list[dict[Any, Any]]:
                 else:
                     response = elbv2.describe_load_balancers()
                 next_token = response.get('NextMarker')
-                for stack in response.get('LoadBalancers', []):
-                    all_stacks.append(_fix_unserializable_date_properties(stack))
+                for lb in response.get('LoadBalancers', []):
+                    all_elbs.append(_fix_unserializable_date_properties(lb))
             except Exception as e:
                 logger.error(f"Failed to list CloudFormation Stack in region: {region}; error {e}")
                 break
             if not next_token:
                 break
 
-    return all_stacks
+    return all_elbs
 
 @ocean.on_resync('cloudFormation')
 async def resync_cloudformation(kind: str) -> list[dict[Any, Any]]:
