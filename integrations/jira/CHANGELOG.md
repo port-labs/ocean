@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.38 (2024-04-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.9 (#1)
+
+
+0.1.37 (2024-03-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.8 (#1)
+
+
+0.1.36 (2024-03-25)
+
+### Improvements
+
+- Updated default blueprints and config mapping to include issue labels (port-7311)
+
+
 0.1.35 (2024-03-20)
 
 ### Improvements

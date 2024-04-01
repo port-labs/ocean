@@ -7,6 +7,38 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.62 (2024-04-01)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.9 (#1)
+
+
+0.1.61 (2024-03-28)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.8 (#1)
+
+
+0.1.60 (2024-03-25)
+===================
+
+### Features
+
+- Changed listening to default branch unless mentioned otherwise in mapping (PORT-7141)
+
+
+0.1.59 (2024-03-24)
+===================
+
+### Bug Fixes
+
+- Fix bug that could not run on startup when not configuring param tokenGroupsHooksOverridMapping (PORT-7326)
+
+
 0.1.58 (2024-03-20)
 ===================
 
