@@ -14,7 +14,7 @@
     "relations": {}
   },
   {
-    "identifier": "cloudResource",
+    "identifier": "cloud_resource",
     "title": "AWS Cloud Resource",
     "icon": "AWS",
     "schema": {

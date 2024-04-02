@@ -10,7 +10,7 @@ resources:
           blueprint: '"ec2"'
           properties:
             architecture: .Architecture
-  - kind: cloudResource
+  - kind: cloudresource
     selector:
       query: 'true'
     port:
@@ -18,6 +18,6 @@ resources:
         mappings:
           identifier: .Identifier
           title: .Identifier
-          blueprint: '"cloudResource"'
+          blueprint: '"cloud_resource"'
           properties:
             kind: .Kind
