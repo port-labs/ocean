@@ -1,5 +1,5 @@
 resources:
-  - kind: ec2
+  - kind: AWS::EC2::Instance
     selector:
       query: 'true'
     port:

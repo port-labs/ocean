@@ -7,7 +7,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     """
 
     CLOUDRESOURCE = "cloudresource"
-    EC2 = "ec2"
+    EC2 = "AWS::EC2::Instance"
     CLOUDFORMATION = "cloudformation"
     LOADBALANCER = "loadbalancer"
     ELASTICACHE = "elasticache"
