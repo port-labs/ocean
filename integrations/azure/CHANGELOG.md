@@ -1,3 +1,10 @@
+0.1.38 (2024-04-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.9 (#1)
+
+
 0.1.37 (2024-03-28)
 
 ### Improvements
