@@ -90,17 +90,13 @@ class SnykClient:
     ) -> AsyncGenerator[list[Any], None]:
         while url_path:
             try:
-                full_url = f"{self.rest_api_url}{url_path}"
-
-                response = await self.http_client.request(
+                data = await self._send_api_request(
+                    url=f"{self.rest_api_url}{url_path}",
                     method=method,
-                    url=full_url,
-                    params={**(query_params or {}), "limit": 50},
+                    query_params={**(query_params or {}), "limit": 50},
                 )
-                response.raise_for_status()
-                data = response.json()
 
-                yield data["data"]
+                yield data.get("data", [])
 
                 # Check if there is a "next" URL in the links object
                 url_path = data.get("links", {}).get("next")

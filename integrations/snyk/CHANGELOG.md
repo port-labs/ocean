@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.35 (2024-04-02)
+
+### Bug Fixes
+
+- Fixed an issue when the snyk API returns internal error code SNYK-9999 and caused the resync to fail (PORT-7454)
+
+
 # Port_Ocean 0.1.34 (2024-04-01)
 
 ### Improvements
