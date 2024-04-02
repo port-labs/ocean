@@ -14,6 +14,80 @@
     "relations": {}
   },
   {
+    "identifier": "lambda",
+    "description": "This blueprint represents an AWS Lambda function in our software catalog",
+    "title": "Lambda",
+    "icon": "Lambda",
+    "schema": {
+      "properties": {
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Link"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "memorySize": {
+          "type": "number",
+          "title": "Memory Size"
+        },
+        "ephemeralStorageSize": {
+          "type": "number",
+          "title": "Ephemeral Storage Size"
+        },
+        "timeout": {
+          "type": "number",
+          "title": "Timeout"
+        },
+        "runtime": {
+          "type": "string",
+          "title": "Runtime"
+        },
+        "packageType": {
+          "type": "string",
+          "enum": ["Image", "Zip"],
+          "title": "Package Type"
+        },
+        "environment": {
+          "type": "object",
+          "title": "Environment"
+        },
+        "architectures": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["x86_64", "arm64"]
+          },
+          "title": "Architectures"
+        },
+        "layers": {
+          "type": "array",
+          "title": "Layers"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        },
+        "iamRole": {
+          "type": "string",
+          "format": "url",
+          "title": "IAM Role",
+          "icon": "Unlock"
+        },
+        "arn": {
+          "type": "string",
+          "title": "ARN"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "cloud_resource",
     "title": "AWS Cloud Resource",
     "icon": "AWS",

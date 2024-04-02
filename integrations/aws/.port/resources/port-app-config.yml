@@ -10,6 +10,29 @@ resources:
           blueprint: '"ec2"'
           properties:
             architecture: .Architecture
+  - kind: AWS::Lambda::Function
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '.FunctionName'
+          title: '.FunctionName'
+          blueprint: '"lambda"'
+          properties:
+            link: '"https://console.aws.amazon.com/go/view?arn=" + .Arn'
+            description: '.Description'
+            memorySize: '.MemorySize'
+            ephemeralStorageSize: '.EphemeralStorage.Size'
+            timeout: '.Timeout'
+            runtime: '.Runtime'
+            packageType: '.PackageType'
+            environment: '.Environment'
+            architectures: '.Architectures'
+            layers: '.Layers'
+            tags: '.Tags'
+            iamRole: '"https://console.aws.amazon.com/go/view?arn=" + .Role'
+            arn: '.Arn'
   - kind: cloudresource
     selector:
       query: 'true'
