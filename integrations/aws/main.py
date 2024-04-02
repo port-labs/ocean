@@ -2,22 +2,24 @@ from typing import Any
 
 import boto3
 import json
+from utils import ResourceKindsWithSpecialHandling
 from port_ocean.context.ocean import ocean
 from loguru import logger
 
 
 SUPPORTED_AWS_CLOUD_CONTROL_RESOURCES = [
-    "AWS::Lambda::Function",
-    "AWS::RDS::DBInstance",
-    "AWS::S3::Bucket",
-    "AWS::IAM::User",
-    "AWS::ECS::Cluster",
-    "AWS::ECS::Service",
-    "AWS::Logs::LogGroup",
-    "AWS::DynamoDB::Table",
-    "AWS::SQS::Queue",
-    "AWS::SNS::Topic",
-    "AWS::Cognito::IdentityPool",
+    # "AWS::Lambda::Function",
+    # "AWS::RDS::DBInstance",
+    # "AWS::S3::Bucket",
+    # "AWS::IAM::User",
+    # "AWS::ECS::Cluster",
+    # "AWS::ECS::Service",
+    # "AWS::Logs::LogGroup",
+    # "AWS::DynamoDB::Table",
+    # "AWS::SQS::Queue",
+    # "AWS::SNS::Topic",
+    # "AWS::Cognito::IdentityPool",
+    "AWS::CloudFormation::Stack"
 ]
 # Handles unserializable date properties in the JSON by turning them into a string
 def _fix_unserializable_date_properties(obj: Any) -> Any:
@@ -34,12 +36,14 @@ def _get_sessions() -> list[boto3.Session]:
     
     return aws_sessions
 
-# @ocean.on_resync()
-# async def resync_all(kind: str) -> list[dict[Any, Any]]:
-#     await resync_acm(kind)
-#     return []
+@ocean.on_resync()
+async def resync_all(kind: str) -> list[dict[Any, Any]]:
+    # if kind in iter(ResourceKindsWithSpecialHandling):
+    #     logger.info("Kind already has a specific handling, skipping", kind=kind)
+    #     return
+    return await resync_cloudcontrol(kind)
 
-@ocean.on_resync('acm')
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM)
 async def resync_acm(kind: str) -> list[dict[Any, Any]]:
     sessions = _get_sessions()
     all_acm = []
@@ -64,7 +68,7 @@ async def resync_acm(kind: str) -> list[dict[Any, Any]]:
 
     return all_acm
 
-@ocean.on_resync('elasticache')
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE)
 async def resync_elasticache(kind: str) -> list[dict[Any, Any]]:
     sessions = _get_sessions()
     all_elastic_caches = []
@@ -89,7 +93,7 @@ async def resync_elasticache(kind: str) -> list[dict[Any, Any]]:
 
     return all_elastic_caches
 
-@ocean.on_resync('loadBalancer')
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
 async def resync_loadbalancer(kind: str) -> list[dict[Any, Any]]:
     sessions = _get_sessions()
     all_elbs = []
@@ -114,7 +118,7 @@ async def resync_loadbalancer(kind: str) -> list[dict[Any, Any]]:
 
     return all_elbs
 
-@ocean.on_resync('cloudFormation')
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION)
 async def resync_cloudformation(kind: str) -> list[dict[Any, Any]]:
     sessions = _get_sessions()
     all_stacks = []
@@ -139,7 +143,7 @@ async def resync_cloudformation(kind: str) -> list[dict[Any, Any]]:
 
     return all_stacks
 
-@ocean.on_resync('cloudResource')
+
 async def resync_cloudcontrol(kind: str) -> list[dict[Any, Any]]:
     sessions = _get_sessions()
     all_instances = []
@@ -172,7 +176,7 @@ async def resync_cloudcontrol(kind: str) -> list[dict[Any, Any]]:
                 
     return all_instances
 
-@ocean.on_resync('ec2')
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.EC2)
 async def resync_ec2(kind: str) -> list[dict[Any, Any]]:
     sessions = _get_sessions()
     all_instances = []
