@@ -93,10 +93,10 @@ class SnykClient:
                 data = await self._send_api_request(
                     url=f"{self.rest_api_url}{url_path}",
                     method=method,
-                    query_params={**(query_params or {}), "limit": 50}
+                    query_params={**(query_params or {}), "limit": 50},
                 )
 
-                yield data["data"]
+                yield data.get("data", [])
 
                 # Check if there is a "next" URL in the links object
                 url_path = data.get("links", {}).get("next")
