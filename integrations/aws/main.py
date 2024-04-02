@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, AsyncIterator
 
 import boto3
 import json
@@ -7,20 +7,6 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 
 
-SUPPORTED_AWS_CLOUD_CONTROL_RESOURCES = [
-    # "AWS::Lambda::Function",
-    # "AWS::RDS::DBInstance",
-    # "AWS::S3::Bucket",
-    # "AWS::IAM::User",
-    # "AWS::ECS::Cluster",
-    # "AWS::ECS::Service",
-    # "AWS::Logs::LogGroup",
-    # "AWS::DynamoDB::Table",
-    # "AWS::SQS::Queue",
-    # "AWS::SNS::Topic",
-    # "AWS::Cognito::IdentityPool",
-    "AWS::CloudFormation::Stack"
-]
 # Handles unserializable date properties in the JSON by turning them into a string
 def _fix_unserializable_date_properties(obj: Any) -> Any:
     return json.loads(json.dumps(obj, default=str))
@@ -37,11 +23,34 @@ def _get_sessions() -> list[boto3.Session]:
     return aws_sessions
 
 @ocean.on_resync()
-async def resync_all(kind: str) -> list[dict[Any, Any]]:
-    # if kind in iter(ResourceKindsWithSpecialHandling):
-    #     logger.info("Kind already has a specific handling, skipping", kind=kind)
-    #     return
-    return await resync_cloudcontrol(kind)
+async def resync_all(kind: str) -> AsyncIterator[list[dict[Any, Any]]]:
+    if kind in iter(ResourceKindsWithSpecialHandling):
+        logger.info("Kind already has a specific handling, skipping", kind=kind)
+        return
+    async for batch in resync_cloudcontrol(kind):
+        yield batch
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDRESOURCE)
+async def resync_generic_cloud_resource(kind: str) -> AsyncIterator[list[dict[Any, Any]]]:
+    DEFAULT_AWS_CLOUD_CONTROL_RESOURCES = [
+        "AWS::Lambda::Function",
+        "AWS::RDS::DBInstance",
+        "AWS::S3::Bucket",
+        "AWS::IAM::User",
+        "AWS::ECS::Cluster",
+        "AWS::ECS::Service",
+        "AWS::Logs::LogGroup",
+        "AWS::DynamoDB::Table",
+        "AWS::SQS::Queue",
+        "AWS::SNS::Topic",
+        "AWS::Cognito::IdentityPool",
+        "AWS::CloudFormation::Stack"
+    ]
+
+    for kind in DEFAULT_AWS_CLOUD_CONTROL_RESOURCES:
+        async for batch in resync_cloudcontrol(kind):
+            yield batch
+
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM)
 async def resync_acm(kind: str) -> list[dict[Any, Any]]:
@@ -144,37 +153,36 @@ async def resync_cloudformation(kind: str) -> list[dict[Any, Any]]:
     return all_stacks
 
 
-async def resync_cloudcontrol(kind: str) -> list[dict[Any, Any]]:
+async def resync_cloudcontrol(kind: str) -> AsyncIterator[list[dict[Any, Any]]]:
     sessions = _get_sessions()
-    all_instances = []
     next_token = None
     for session in sessions:
         region = session.region_name
-        for resource_type in SUPPORTED_AWS_CLOUD_CONTROL_RESOURCES:
-            while True:
-                try:
-                    cloudcontrol = session.client('cloudcontrol')
-                    params = {
-                        'TypeName': resource_type,
-                    }
-                    if next_token:
-                        params['NextToken'] = next_token
-                    
-                    response = cloudcontrol.list_resources(**params)
-                    next_token = response.get('NextToken')
-                    for instance in response.get('ResourceDescriptions', []):
-                        all_instances.append({
-                            'Identifier': instance.get('Identifier', ''),
-                            'Kind': resource_type,
-                            **json.loads(instance.get('Properties', {}))
-                        })
-                except Exception as e:
-                    logger.error(f"Failed to list CloudControl Instance in region: {region}; error {e}")
-                    break
-                if not next_token:
-                    break
+        while True:
+            all_instances = []
+            try:
+                cloudcontrol = session.client('cloudcontrol')
+                params = {
+                    'TypeName': kind,
+                }
+                if next_token:
+                    params['NextToken'] = next_token
                 
-    return all_instances
+                response = cloudcontrol.list_resources(**params)
+                next_token = response.get('NextToken')
+                for instance in response.get('ResourceDescriptions', []):
+                    all_instances.append({
+                        'Identifier': instance.get('Identifier', ''),
+                        'Kind': kind,
+                        **json.loads(instance.get('Properties', {}))
+                    })
+                yield all_instances
+            except Exception as e:
+                logger.error(f"Failed to list CloudControl Instance in region: {region}; error {e}")
+                break
+            if not next_token:
+                break
+                
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.EC2)
 async def resync_ec2(kind: str) -> list[dict[Any, Any]]:

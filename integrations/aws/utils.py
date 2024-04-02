@@ -6,6 +6,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     These resource kinds are handled separately from the other resource kinds
     """
 
+    CLOUDRESOURCE = "cloudresource"
     EC2 = "ec2"
     CLOUDFORMATION = "cloudformation"
     LOADBALANCER = "loadbalancer"
