@@ -73,7 +73,7 @@ async def resync_cloudformation() -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
-async def resync_cloudcontrol(kind: str) -> AsyncIterator[list[dict[Any, Any]]]:
+async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
     next_token = None
     for session in sessions:
@@ -105,26 +105,25 @@ async def resync_cloudcontrol(kind: str) -> AsyncIterator[list[dict[Any, Any]]]:
                 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.EC2)
-async def resync_ec2(kind: str) -> list[dict[Any, Any]]:
+async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    all_instances = []
     for session in sessions:
         region = session.region_name
         try:
             ec2 = session.resource('ec2')
-            response = ec2.instances.all()
+            ec2_client = session.client('ec2')
+            for page in ec2.instances.pages():
+                page_instances = []
+                for instance in page:
+                    described_instance = ec2_client.describe_instances(InstanceIds=[instance.id])
+                    instance_definition = described_instance["Reservations"][0]["Instances"][0]
+                    seriliazable_instance = _fix_unserializable_date_properties(instance_definition)
+                    page_instances.append(seriliazable_instance)
+                yield page_instances
         except Exception as e:
             logger.error(f"Failed to list EC2 Instance in region: {region}; error {e}")
             break
 
-        ec2_client = session.client('ec2')
-        for instance in response:
-            described_instance = ec2_client.describe_instances(InstanceIds=[instance.id])
-            instance_definition = described_instance["Reservations"][0]["Instances"][0]
-            seriliazable_instance = _fix_unserializable_date_properties(instance_definition)
-            all_instances.append(seriliazable_instance)
-        
-    return all_instances
 
 # Optional
 # Listen to the start event of the integration. Called once when the integration starts.
