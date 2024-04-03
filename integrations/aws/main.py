@@ -2,14 +2,10 @@ from typing import Any, AsyncIterator
 
 import boto3
 import json
-from utils import ResourceKindsWithSpecialHandling
+from utils import ASYNC_GENERATOR_RESYNC_TYPE, ResourceKindsWithSpecialHandling, _describe_resources, _fix_unserializable_date_properties
 from port_ocean.context.ocean import ocean
 from loguru import logger
 
-
-# Handles unserializable date properties in the JSON by turning them into a string
-def _fix_unserializable_date_properties(obj: Any) -> Any:
-    return json.loads(json.dumps(obj, default=str))
 
 def _get_sessions() -> list[boto3.Session]:
     aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
@@ -53,104 +49,28 @@ async def resync_generic_cloud_resource(kind: str) -> AsyncIterator[list[dict[An
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM)
-async def resync_acm(kind: str) -> list[dict[Any, Any]]:
+async def resync_acm() -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    all_acm = []
-    next_token = None
-    for session in sessions:
-        region = session.region_name
-        while True:
-            try:
-                elasticache = session.client('acm')
-                if next_token:
-                    response = elasticache.list_certificates(NextToken=next_token)
-                else:
-                    response = elasticache.list_certificates()
-                next_token = response.get('NextToken')
-                for stack in response.get('CertificateSummaryList', []):
-                    all_acm.append(_fix_unserializable_date_properties(stack))
-            except Exception as e:
-                logger.error(f"Failed to list CloudFormation Stack in region: {region}; error {e}")
-                break
-            if not next_token:
-                break
-
-    return all_acm
+    for batch in _describe_resources(sessions, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
+        yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE)
-async def resync_elasticache(kind: str) -> list[dict[Any, Any]]:
+async def resync_elasticache() -> list[dict[Any, Any]]:
     sessions = _get_sessions()
-    all_elastic_caches = []
-    next_token = None
-    for session in sessions:
-        region = session.region_name
-        while True:
-            try:
-                elasticache = session.client('elasticache')
-                if next_token:
-                    response = elasticache.describe_cache_clusters(Marker=next_token)
-                else:
-                    response = elasticache.describe_cache_clusters()
-                next_token = response.get('NextMarker')
-                for stack in response.get('CacheClusters', []):
-                    all_elastic_caches.append(_fix_unserializable_date_properties(stack))
-            except Exception as e:
-                logger.error(f"Failed to list CloudFormation Stack in region: {region}; error {e}")
-                break
-            if not next_token:
-                break
-
-    return all_elastic_caches
+    for batch in _describe_resources(sessions, 'elasticache', 'describe_cache_clusters', 'CacheClusters', 'NextMarker'):
+        yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
-async def resync_loadbalancer(kind: str) -> list[dict[Any, Any]]:
+async def resync_loadbalancer() -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    all_elbs = []
-    next_token = None
-    for session in sessions:
-        region = session.region_name
-        while True:
-            try:
-                elbv2 = session.client('elbv2')
-                if next_token:
-                    response = elbv2.describe_load_balancers(Marker=next_token)
-                else:
-                    response = elbv2.describe_load_balancers()
-                next_token = response.get('NextMarker')
-                for lb in response.get('LoadBalancers', []):
-                    all_elbs.append(_fix_unserializable_date_properties(lb))
-            except Exception as e:
-                logger.error(f"Failed to list CloudFormation Stack in region: {region}; error {e}")
-                break
-            if not next_token:
-                break
-
-    return all_elbs
+    for batch in _describe_resources(sessions, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
+        yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION)
-async def resync_cloudformation(kind: str) -> list[dict[Any, Any]]:
+async def resync_cloudformation() -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    all_stacks = []
-    next_token = None
-    for session in sessions:
-        region = session.region_name
-        while True:
-            try:
-                cloudformation = session.client('cloudformation')
-                if next_token:
-                    response = cloudformation.list_stacks(NextToken=next_token)
-                else:
-                    response = cloudformation.list_stacks()
-                next_token = response.get('NextToken')
-                for stack in response.get('StackSummaries', []):
-                    all_stacks.append(stack)
-            except Exception as e:
-                logger.error(f"Failed to list CloudFormation Stack in region: {region}; error {e}")
-                break
-            if not next_token:
-                break
-
-    return all_stacks
+    for batch in _describe_resources(sessions, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
+        yield batch
 
 
 async def resync_cloudcontrol(kind: str) -> AsyncIterator[list[dict[Any, Any]]]:
