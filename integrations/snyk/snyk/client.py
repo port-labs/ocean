@@ -100,6 +100,7 @@ class SnykClient:
 
                 # Check if there is a "next" URL in the links object
                 url_path = data.get("links", {}).get("next")
+                query_params = {}  # Reset query params for the next iteration
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
