@@ -65,20 +65,26 @@ class GitlabService:
     def _create_group_webhook(
         self, group: RESTObject, events: list[str] | None
     ) -> None:
-        webhook_events_to_listen_to: list[str]
+        webhook_events_to_listen: list[str]
+        webhook_events_not_to_listen: list[str]
         if not events:
-            webhook_events_to_listen_to = self.all_events_in_webhook
+            webhook_events_to_listen = self.all_events_in_webhook
+            webhook_events_to_listen = []
         else:
-            webhook_events_to_listen_to = events
+            webhook_events_to_listen = events
+            webhook_events_not_to_listen = [
+                event for event in self.all_events_in_webhook if event not in events
+            ]
 
         logger.info(
-            f"Creating webhook for {group.get_id()} with events: {webhook_events_to_listen_to}"
+            f"Creating webhook for {group.get_id()} with events: {webhook_events_to_listen}"
         )
 
         resp = group.hooks.create(
             {
                 "url": f"{self.app_host}/integration/hook/{group.get_id()}",
-                **{event_name: True for event_name in webhook_events_to_listen_to},
+                **{event_name: True for event_name in webhook_events_to_listen},
+                **{event_name: False for event_name in webhook_events_not_to_listen},
             }
         )
         logger.info(
@@ -225,9 +231,7 @@ class GitlabService:
 
         return groups_for_webhooks
 
-    def create_webhook(
-        self, group: Group, events: list[str] | None
-    ) -> int | str | None:
+    def create_webhook(self, group: Group, events: list[str] | None) -> str | None:
         logger.info(f"Creating webhook for the group: {group.attributes['full_path']}")
 
         webhook_id = None
@@ -240,7 +244,7 @@ class GitlabService:
                 logger.info(f"Webhook already exists for group {group.get_id()}")
             else:
                 self._create_group_webhook(group, events)
-            webhook_id = group_id
+            webhook_id = str(group_id)
 
         return webhook_id
 

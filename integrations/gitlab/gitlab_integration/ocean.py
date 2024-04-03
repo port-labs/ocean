@@ -9,7 +9,9 @@ from starlette.requests import Request
 from port_ocean.context.event import event
 
 from gitlab_integration.events.setup import event_handler, system_event_handler
-from gitlab_integration.models.webhook_config_models import TokenWebhookMapping
+from gitlab_integration.models.webhook_groups_override_config import (
+    WebhookMappingConfig,
+)
 from gitlab_integration.events.setup import setup_application
 from gitlab_integration.git_integration import GitlabResourceConfig
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
@@ -63,10 +65,10 @@ async def on_start() -> None:
         )
         return
 
-    token_webhook_mapping: TokenWebhookMapping | None = None
+    token_webhook_mapping: WebhookMappingConfig | None = None
 
     if integration_config["token_group_hooks_override_mapping"]:
-        token_webhook_mapping = TokenWebhookMapping(
+        token_webhook_mapping = WebhookMappingConfig(
             tokens=integration_config["token_group_hooks_override_mapping"]
         )
 
