@@ -1,5 +1,4 @@
 import asyncio
-import json
 from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
@@ -67,9 +66,10 @@ class SnykClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
-            if (
-                raise_for_snyk_error
-                and json.loads(e.response.text).get("code") == "SNYK-9999"
+            response_json = e.response.json()
+            if not raise_for_snyk_error and any(
+                error.get("code") == "SNYK-9999"
+                for error in response_json.get("errors", [])
             ):
                 logger.error(
                     f"Encountered Synk internal error while sending request: method: {method}, "
@@ -78,7 +78,7 @@ class SnykClient:
                 return {}
 
             logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+                f"HTTP error with status code: {e.response.status_code} and response: {response_json}"
             )
             raise
 
