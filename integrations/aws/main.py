@@ -19,7 +19,7 @@ def _get_sessions() -> list[boto3.Session]:
     return aws_sessions
 
 @ocean.on_resync()
-async def resync_all(kind: str) -> AsyncIterator[list[dict[Any, Any]]]:
+async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
         logger.info("Kind already has a specific handling, skipping", kind=kind)
         return
@@ -27,7 +27,7 @@ async def resync_all(kind: str) -> AsyncIterator[list[dict[Any, Any]]]:
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDRESOURCE)
-async def resync_generic_cloud_resource(kind: str) -> AsyncIterator[list[dict[Any, Any]]]:
+async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     DEFAULT_AWS_CLOUD_CONTROL_RESOURCES = [
         "AWS::Lambda::Function",
         "AWS::RDS::DBInstance",
@@ -55,7 +55,7 @@ async def resync_acm() -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE)
-async def resync_elasticache() -> list[dict[Any, Any]]:
+async def resync_elasticache() -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
     for batch in _describe_resources(sessions, 'elasticache', 'describe_cache_clusters', 'CacheClusters', 'NextMarker'):
         yield batch
