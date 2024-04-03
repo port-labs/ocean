@@ -9,6 +9,7 @@ from starlette.requests import Request
 from port_ocean.context.event import event
 
 from gitlab_integration.events.setup import event_handler, system_event_handler
+from gitlab_integration.models.webhook_config_models import TokenWebhookMapping
 from gitlab_integration.events.setup import setup_application
 from gitlab_integration.git_integration import GitlabResourceConfig
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
@@ -62,13 +63,20 @@ async def on_start() -> None:
         )
         return
 
+    token_webhook_mapping: TokenWebhookMapping | None = None
+
+    if integration_config["token_group_hooks_override_mapping"]:
+        token_webhook_mapping = TokenWebhookMapping(
+            tokens=integration_config["token_group_hooks_override_mapping"]
+        )
+
     try:
         setup_application(
             integration_config["token_mapping"],
             integration_config["gitlab_host"],
             integration_config["app_host"],
             integration_config["use_system_hook"],
-            integration_config["token_group_hooks_override_mapping"],
+            token_webhook_mapping,
         )
     except Exception as e:
         logger.warning(
@@ -125,7 +133,9 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for folder_selector in selector.folders:
                 for project in projects_batch:
                     if project.name in folder_selector.repos:
-                        async for folders_batch in service.get_all_folders_in_project_path(
+                        async for (
+                            folders_batch
+                        ) in service.get_all_folders_in_project_path(
                             project, folder_selector
                         ):
                             yield folders_batch

@@ -2,9 +2,12 @@ from typing import List
 
 from gitlab import Gitlab
 from gitlab_integration.gitlab_service import GitlabService
+from gitlab_integration.models.webhook_config_models import (
+    TokenWebhookMapping,
+    WebhookGroup,
+)
 from loguru import logger
 from port_ocean.context.event import event
-
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.context import EventContextNotFoundError
 
@@ -39,14 +42,14 @@ def get_cached_all_services() -> List[GitlabService]:
 
 
 def merge_all_groups(
-    token_group_override_hooks_mapping: dict[str, dict[str, dict[str, list[str]]]]
-) -> dict[str, dict[str, list[str]]]:
-    groups: dict[str, dict[str, list[str]]] = {}
+    token_group_override_hooks_mapping: TokenWebhookMapping,
+) -> dict[str, WebhookGroup]:
+    all_groups: dict[str, WebhookGroup] = {}
 
-    for groups_in_token in token_group_override_hooks_mapping.values():
-        groups.update(groups_in_token)
+    for webhook_token_obj in token_group_override_hooks_mapping.tokens.values():
+        all_groups.update(webhook_token_obj.groups)
 
-    return groups
+    return all_groups
 
 
 class ObjectKind:
