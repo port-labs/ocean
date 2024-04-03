@@ -1,5 +1,4 @@
 import asyncio
-import json
 from enum import StrEnum
 from typing import Any, Optional, AsyncGenerator
 
@@ -67,9 +66,10 @@ class SnykClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
-            if (
-                raise_for_snyk_error
-                and json.loads(e.response.text).get("code") == "SNYK-9999"
+            response_json = e.response.json()
+            if not raise_for_snyk_error and any(
+                error.get("code") == "SNYK-9999"
+                for error in response_json.get("errors", [])
             ):
                 logger.error(
                     f"Encountered Synk internal error while sending request: method: {method}, "
@@ -78,7 +78,7 @@ class SnykClient:
                 return {}
 
             logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+                f"HTTP error with status code: {e.response.status_code} and response: {response_json}"
             )
             raise
 
@@ -90,17 +90,13 @@ class SnykClient:
     ) -> AsyncGenerator[list[Any], None]:
         while url_path:
             try:
-                full_url = f"{self.rest_api_url}{url_path}"
-
-                response = await self.http_client.request(
+                data = await self._send_api_request(
+                    url=f"{self.rest_api_url}{url_path}",
                     method=method,
-                    url=full_url,
-                    params={**(query_params or {}), "limit": 50},
+                    query_params={**(query_params or {}), "limit": 50},
                 )
-                response.raise_for_status()
-                data = response.json()
 
-                yield data["data"]
+                yield data.get("data", [])
 
                 # Check if there is a "next" URL in the links object
                 url_path = data.get("links", {}).get("next")
