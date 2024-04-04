@@ -11,9 +11,3 @@ class WebhookTokenConfig(BaseModel):
 
 class WebhookMappingConfig(BaseModel):
     tokens: dict[str, WebhookTokenConfig]
-
-    def get_token_groups(self, token: str) -> dict[str, WebhookGroupConfig]:
-        if self.tokens.get(token):
-            return self.tokens[token].groups
-        else:
-            return {}

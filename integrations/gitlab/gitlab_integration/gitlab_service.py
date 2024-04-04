@@ -65,26 +65,19 @@ class GitlabService:
     def _create_group_webhook(
         self, group: RESTObject, events: list[str] | None
     ) -> None:
-        webhook_events_to_listen: list[str]
-        webhook_events_not_to_listen: list[str]
-        if not events:
-            webhook_events_to_listen = self.all_events_in_webhook
-            webhook_events_to_listen = []
-        else:
-            webhook_events_to_listen = events
-            webhook_events_not_to_listen = [
-                event for event in self.all_events_in_webhook if event not in events
-            ]
+        webhook_events = {
+            event: event in (events if events else self.all_events_in_webhook)
+            for event in self.all_events_in_webhook
+        }
 
         logger.info(
-            f"Creating webhook for {group.get_id()} with events: {webhook_events_to_listen}"
+            f"Creating webhook for {group.get_id()} with events: {[event for event in webhook_events if webhook_events[event]]}"
         )
 
         resp = group.hooks.create(
             {
                 "url": f"{self.app_host}/integration/hook/{group.get_id()}",
-                **{event_name: True for event_name in webhook_events_to_listen},
-                **{event_name: False for event_name in webhook_events_not_to_listen},
+                **webhook_events,
             }
         )
         logger.info(

@@ -14,6 +14,7 @@ from gitlab_integration.gitlab_service import GitlabService
 from gitlab_integration.models.webhook_groups_override_config import (
     WebhookMappingConfig,
     WebhookGroupConfig,
+    WebhookTokenConfig,
 )
 from gitlab_integration.errors import (
     GitlabTokenNotFoundException,
@@ -80,7 +81,7 @@ def validate_groups_hooks_events(groups: dict[str, WebhookGroupConfig]) -> None:
                 )
 
 
-def merge_all_groups(
+def extract_all_groups_from_token_group_override_mapping(
     token_group_override_hooks_mapping: WebhookMappingConfig,
 ) -> dict[str, WebhookGroupConfig]:
     all_groups: dict[str, WebhookGroupConfig] = {}
@@ -101,7 +102,9 @@ def validate_hooks_override_config(
     validate_hooks_tokens_are_in_token_mapping(
         token_mapping, token_group_override_hooks_mapping
     )
-    groups_paths: dict[str, WebhookGroupConfig] = merge_all_groups(
+    groups_paths: dict[
+        str, WebhookGroupConfig
+    ] = extract_all_groups_from_token_group_override_mapping(
         token_group_override_hooks_mapping
     )
 
@@ -149,29 +152,23 @@ def create_webhooks_by_client(
     gitlab_client = Gitlab(gitlab_host, token)
     gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
 
-    specified_groups: list[str] | None = None
-
-    if groups_hooks_events_override is not None:
-        specified_groups = list(groups_hooks_events_override.keys())
-
     groups_for_webhooks = gitlab_service.get_filtered_groups_for_webhooks(
-        specified_groups
+        list(groups_hooks_events_override.keys())
+        if groups_hooks_events_override
+        else None
     )
 
     webhooks_ids: list[str] = []
 
     for group in groups_for_webhooks:
-        group_events: list[str] | None = None
-
-        if groups_hooks_events_override:
-            webhook_group = groups_hooks_events_override.get(
-                group.attributes["full_path"]
-            )
-
-            if webhook_group:
-                group_events = webhook_group.events
-
-        webhook_id = gitlab_service.create_webhook(group, group_events)
+        webhook_id = gitlab_service.create_webhook(
+            group,
+            groups_hooks_events_override.get(
+                group.attributes["full_path"], WebhookGroupConfig(events=[])
+            ).events
+            if groups_hooks_events_override
+            else None,
+        )
 
         if webhook_id:
             webhooks_ids.append(webhook_id)
@@ -201,22 +198,32 @@ def setup_application(
         )
 
         client_to_webhooks: list[tuple[GitlabService, list[str]]] = []
-        for token, group_mapping in token_mapping.items():
-            groups_override_paths_to_events: dict[str, WebhookGroupConfig] | None = (
-                token_group_override_hooks_mapping.get_token_groups(token)
-                if token_group_override_hooks_mapping
-                else None
-            )
 
-            client_to_webhooks.append(
-                create_webhooks_by_client(
-                    gitlab_host,
-                    app_host,
-                    token,
-                    groups_override_paths_to_events,
-                    group_mapping,
+        for token, group_mapping in token_mapping.items():
+            if not token_group_override_hooks_mapping:
+                client_to_webhooks.append(
+                    create_webhooks_by_client(
+                        gitlab_host,
+                        app_host,
+                        token,
+                        None,
+                        group_mapping,
+                    )
                 )
-            )
+            else:
+                groups = token_group_override_hooks_mapping.tokens.get(
+                    token, WebhookTokenConfig(groups=[])
+                ).groups
+                if groups:
+                    client_to_webhooks.append(
+                        create_webhooks_by_client(
+                            gitlab_host,
+                            app_host,
+                            token,
+                            groups,
+                            group_mapping,
+                        )
+                    )
 
         for client, webhook_ids in client_to_webhooks:
             for webhook_id in webhook_ids:
