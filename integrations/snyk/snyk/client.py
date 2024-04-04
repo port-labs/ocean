@@ -66,7 +66,9 @@ class SnykClient:
 
         except httpx.HTTPStatusError as e:
             logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
+                f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
+                f"version: {version}, json: {json_data}. "
+                f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
             )
             raise
 
