@@ -16,8 +16,19 @@ resources:
             labels: .labels
             updatedAt: .connectionState.attemptedAt
             server: .server
+  - kind: cluster
+    selector:
+      query: "true"
+    port:
+      itemsToParse: .namespaces
+      entity:
+        mappings:
+          identifier: .name + "-" + .item | tostring
+          title: .name + "-" + .item
+          blueprint: '"argocdNamespace"'
+          properties: {}
           relations:
-            namespace: .namespaces
+            cluster: .name
   - kind: project
     selector:
       query: "true"
@@ -28,11 +39,8 @@ resources:
           title: .metadata.name
           blueprint: '"argocdProject"'
           properties:
-            namespace: .metadata.namespace
             createdAt: .metadata.creationTimestamp
             description: .spec.description
-          relations:
-            cluster: '[.spec.destinations[].name | select(test("^[a-zA-Z0-9@_.:/=-]+$"))]'
   - kind: application
     selector:
       query: "true"
@@ -53,7 +61,6 @@ resources:
             createdAt: .metadata.creationTimestamp
           relations:
             project: .spec.project
-            namespace: .metadata.namespace
             cluster: .spec.destination.name
   - kind: deployment-history
     selector:
