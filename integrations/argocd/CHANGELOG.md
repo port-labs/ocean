@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.35 (2024-04-04)
+
+### Improvements
+
+- Reveresed the relation between cluster and namespace, and other general enhancements on blueprints (PORT-7550)
+
+
 # Port_Ocean 0.1.34 (2024-04-01)
 
 ### Improvements
