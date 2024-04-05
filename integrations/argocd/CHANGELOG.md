@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Reveresed the relation between cluster and namespace, and other general enhancements on blueprints (PORT-7550)
+- Updated the default mapping for deployment-history and kubernetes-resource to use the itemsToParse functionality and introduced a deprecation warning for these two kinds
 
 
 # Port_Ocean 0.1.34 (2024-04-01)

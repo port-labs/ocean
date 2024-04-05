@@ -182,6 +182,12 @@
         "target": "argocdCluster",
         "required": false,
         "many": false
+      },
+      "namespace": {
+        "title": "ArgoCD Namespace",
+        "target": "argocdNamespace",
+        "required": false,
+        "many": false
       }
     }
   },

@@ -61,39 +61,42 @@ resources:
             createdAt: .metadata.creationTimestamp
           relations:
             project: .spec.project
+            namespace: .metadata.namespace
             cluster: .spec.destination.name
-  - kind: deployment-history
+  - kind: application
     selector:
       query: "true"
     port:
+      itemsToParse: .status.history
       entity:
         mappings:
-          identifier: .__applicationId + "-" + (.id | tostring)
-          title: .id | tostring
+          identifier: .metadata.uid + "-" + (.item.id | tostring)
+          title: .metadata.name + "-" + (.item.id | tostring)
           blueprint: '"argocdDeploymentHistory"'
           properties:
-            deployedAt: .deployedAt
-            deployStartedAt: .deployStartedAt
-            revision: .source.repoURL + "/commit/" + .revision
-            initiatedBy: .initiatedBy.username
-            repoURL: .source.repoURL
-            sourcePath: .source.path
+            deployedAt: .item.deployedAt
+            deployStartedAt: .item.deployStartedAt
+            revision: .item.source.repoURL + "/commit/" + .item.revision
+            initiatedBy: .item.initiatedBy.username
+            repoURL: .item.source.repoURL
+            sourcePath: .item.source.path
           relations:
-            application: .__applicationId
-  - kind: kubernetes-resource
+            application: .metadata.uid
+  - kind: application
     selector:
       query: "true"
     port:
+      itemsToParse: .status.resources
       entity:
         mappings:
-          identifier: .__applicationId + "-" + .name
-          title: .name
+          identifier: .item.name
+          title: .item.name
           blueprint: '"argocdKubernetesResource"'
           properties:
-            kind: .kind
-            version: .version
-            namespace: .namespace
-            syncStatus: .status
-            healthStatus: .health.status
+            kind: .item.kind
+            version: .item.version
+            namespace: .item.namespace
+            syncStatus: .item.status
+            healthStatus: .item.health.status
           relations:
-            application: .__applicationId
+            application: .metadata.uid
