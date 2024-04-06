@@ -6,13 +6,16 @@ from port_ocean.core.handlers.port_app_config.models import (
 from pydantic import Field
 
 
-class AzureSelector(Selector):
-    api_version: str | None = Field(alias="apiVersion", default=None)
-    resource_kinds: dict[str, str] | None = Field(alias="resourceKinds", default=None)
+class AzureSpecificKindSelector(Selector):
+    api_version: str = Field(alias="apiVersion")
+
+
+class AzureCloudResourceSelector(Selector):
+    resource_kinds: dict[str, str] = Field(alias="resourceKinds")
 
 
 class AzureResourceConfig(ResourceConfig):
-    selector: AzureSelector
+    selector: AzureSpecificKindSelector | AzureCloudResourceSelector
 
 
 class AzurePortAppConfig(PortAppConfig):

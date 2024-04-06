@@ -6,7 +6,12 @@ import fastapi
 from loguru import logger
 from starlette import responses
 
-from azure_integration.overrides import AzurePortAppConfig, AzureResourceConfig
+from azure_integration.overrides import (
+    AzurePortAppConfig,
+    AzureResourceConfig,
+    AzureSpecificKindSelector,
+    AzureCloudResourceSelector,
+)
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
@@ -37,8 +42,12 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         iterator_resync_method = resync_extension_resources
     else:
         iterator_resync_method = resync_base_resources
-    api_version = get_current_resource_config().selector.api_version
-    async for resources_batch in iterator_resync_method(kind, api_version):
+    resource_selector = typing.cast(
+        AzureSpecificKindSelector, get_current_resource_config().selector
+    )
+    async for resources_batch in iterator_resync_method(
+        kind, resource_selector.api_version
+    ):
         yield resources_batch
 
 
@@ -47,6 +56,9 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Re-syncs resource groups, this is done separately because the resource groups api is different from the other apis
     """
+    resource_selector = typing.cast(
+        AzureSpecificKindSelector, get_current_resource_config().selector
+    )
     async with DefaultAzureCredential() as credential:
         async with SubscriptionClient(credential=credential) as subscription_client:
             async for subscriptions_batch in batch_resources_iterator(
@@ -59,7 +71,7 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     ) as resource_groups_client:
                         async for resource_groups_batch in batch_resources_iterator(
                             resource_groups_client.resource_groups.list,
-                            api_version=get_current_resource_config().selector.api_version,
+                            api_version=resource_selector.api_version,
                         ):
                             yield resource_groups_batch
 
@@ -79,7 +91,9 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUD_RESOURCE)
 async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    resource_kinds = get_current_resource_config().selector.resource_kinds
+    resource_kinds = typing.cast(
+        AzureCloudResourceSelector, get_current_resource_config().selector
+    ).resource_kinds
     if not resource_kinds:
         logger.warning(
             "Resource kinds not found in port app config, skipping",
@@ -174,7 +188,9 @@ async def resync_extension_resources(
                                     api_version=api_version,
                                     resource_type=base_resource_kind,
                                 ):
-                                    async for resource_batch in loop_over_extension_resource_kind(
+                                    async for (
+                                        resource_batch
+                                    ) in loop_over_extension_resource_kind(
                                         client=client,
                                         full_resource_kind=kind,
                                         kind_level=1,
@@ -250,12 +266,14 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
     https://learn.microsoft.com/en-us/azure/event-grid/cloud-event-schema
     """
     cloud_event_data: dict[str, typing.Any] = cloud_event.data  # type: ignore
+    subscription_id = cloud_event_data["subscriptionId"]
     logger.info(
         "Received azure cloud event",
         event_id=cloud_event.id,
         event_type=cloud_event.type,
         resource_provider=cloud_event_data["resourceProvider"],
         operation_name=cloud_event_data["operationName"],
+        subscription_id=subscription_id,
     )
     resource_uri = cloud_event_data["resourceUri"]
     resource_type = resolve_resource_type_from_resource_uri(
@@ -271,29 +289,41 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
     matching_resource_configs: typing.List[AzureResourceConfig] = [
         resource
         for resource in typing.cast(AzurePortAppConfig, event.port_app_config).resources
-        if resource.kind == resource_type
+        if (
+            resource.kind == resource_type
+            and isinstance(resource.selector, AzureSpecificKindSelector)
+        )
+        or (
+            resource.kind == ResourceKindsWithSpecialHandling.CLOUD_RESOURCE
+            and isinstance(resource.selector, AzureCloudResourceSelector)
+            and resource_type in resource.selector.resource_kinds.keys()
+        )
     ]
     if not matching_resource_configs:
-        logger.debug(
+        logger.info(
             "Resource type not found in port app config, update port app config to include the resource type",
             resource_type=resource_type,
         )
         return fastapi.Response(status_code=http.HTTPStatus.NOT_FOUND)
 
-    async with resource_client_context() as client:
+    async with resource_client_context(subscription_id) as client:
         for resource_config in matching_resource_configs:
+            if isinstance(resource_config.selector, AzureSpecificKindSelector):
+                api_version = resource_config.selector.api_version
+            else:
+                api_version = resource_config.selector.resource_kinds[resource_type]
             blueprint = resource_config.port.entity.mappings.blueprint.strip('"')
-            logger.debug(
+            logger.info(
                 "Querying full resource",
                 id=resource_uri,
                 kind=resource_type,
-                api_version=resource_config.selector.api_version,
+                api_version=api_version,
                 blueprint=blueprint,
             )
             try:
                 resource = await client.resources.get_by_id(
                     resource_id=resource_uri,
-                    api_version=resource_config.selector.api_version,
+                    api_version=api_version,
                 )
                 await ocean.register_raw(resource_type, [dict(resource.as_dict())])
             except ResourceNotFoundError:
@@ -301,7 +331,7 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
                     "Resource not found in azure, unregistering from port",
                     id=resource_uri,
                     kind=resource_type,
-                    api_version=resource_config.selector.api_version,
+                    api_version=api_version,
                     blueprint=blueprint,
                 )
                 await ocean.unregister(
