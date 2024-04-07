@@ -7,8 +7,10 @@ from port_ocean.context.ocean import ocean
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
-from azure_integration.overrides import AzureResourceConfig
-
+from azure_integration.overrides import (
+    AzureSpecificKindsResourceConfig,
+    AzureCloudResourceConfig,
+)
 
 BATCH_SIZE = 20
 
@@ -24,7 +26,9 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     CLOUD_RESOURCE = "cloudResource"
 
 
-def get_current_resource_config() -> AzureResourceConfig:
+def get_current_resource_config() -> (
+    typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
+):
     """
     Returns the current resource config, accessible only inside an event context
     """

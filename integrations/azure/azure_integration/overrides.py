@@ -1,3 +1,5 @@
+import typing
+
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     PortAppConfig,
@@ -14,9 +16,16 @@ class AzureCloudResourceSelector(Selector):
     resource_kinds: dict[str, str] = Field(alias="resourceKinds")
 
 
-class AzureResourceConfig(ResourceConfig):
-    selector: AzureSpecificKindSelector | AzureCloudResourceSelector
+class AzureSpecificKindsResourceConfig(ResourceConfig):
+    selector: AzureSpecificKindSelector
+
+
+class AzureCloudResourceConfig(ResourceConfig):
+    kind: typing.Literal["cloudResource"]
+    selector: AzureCloudResourceSelector
 
 
 class AzurePortAppConfig(PortAppConfig):
-    resources: list[AzureResourceConfig] = None  # type: ignore
+    resources: typing.Sequence[
+        typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
+    ] = None

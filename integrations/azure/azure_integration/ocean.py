@@ -14,9 +14,10 @@ from azure_integration.iterators import (
 )
 from azure_integration.overrides import (
     AzurePortAppConfig,
-    AzureResourceConfig,
     AzureSpecificKindSelector,
     AzureCloudResourceSelector,
+    AzureSpecificKindsResourceConfig,
+    AzureCloudResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -218,7 +219,9 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
         )
         return fastapi.Response(status_code=http.HTTPStatus.NOT_FOUND)
 
-    matching_resource_configs: typing.List[AzureResourceConfig] = [
+    matching_resource_configs: typing.Sequence[
+        typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
+    ] = [
         resource
         for resource in typing.cast(AzurePortAppConfig, event.port_app_config).resources
         if (
@@ -246,32 +249,28 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
                 api_version = resource_config.selector.resource_kinds[resource_type]
             blueprint = resource_config.port.entity.mappings.blueprint.strip('"')
             logger.info(
-                "Querying full resource",
-                id=resource_uri,
-                kind=resource_type,
-                api_version=api_version,
-                blueprint=blueprint,
+                f"Querying full resource details for resource {resource_uri}, api version {api_version} for kind {resource_type} in subscription {subscription_id}"
             )
             try:
                 resource = await client.resources.get_by_id(
                     resource_id=resource_uri,
                     api_version=api_version,
                 )
-                await ocean.register_raw(resource_type, [dict(resource.as_dict())])
+                await ocean.register_raw(
+                    resource_config.kind, [dict(resource.as_dict())]
+                )
             except ResourceNotFoundError:
                 logger.info(
                     "Resource not found in azure, unregistering from port",
                     id=resource_uri,
-                    kind=resource_type,
+                    kind=resource_config.kind,
                     api_version=api_version,
                     blueprint=blueprint,
                 )
                 await ocean.unregister(
                     [
                         Entity(
-                            blueprint=resource_config.port.entity.mappings.blueprint.strip(
-                                '"'
-                            ),
+                            blueprint=blueprint,
                             identifier=resource_uri,
                         )
                     ]
