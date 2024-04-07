@@ -52,7 +52,6 @@ class SnykClient:
         query_params: Optional[dict[str, Any]] = None,
         version: str | None = None,
         json_data: Optional[dict[str, Any]] = None,
-        raise_for_snyk_error: bool = False,
     ) -> dict[str, Any]:
         query_params = {
             **(query_params or {}),
@@ -66,19 +65,10 @@ class SnykClient:
             return response.json()
 
         except httpx.HTTPStatusError as e:
-            response_json = e.response.json()
-            if not raise_for_snyk_error and any(
-                error.get("code") == "SNYK-9999"
-                for error in response_json.get("errors", [])
-            ):
-                logger.error(
-                    f"Encountered Synk internal error while sending request: method: {method}, "
-                    f"url: {url}, query_params: {query_params}, version: {version}, json: {json_data}"
-                )
-                return {}
-
             logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response: {response_json}"
+                f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
+                f"version: {version}, json: {json_data}. "
+                f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
             )
             raise
 
@@ -100,6 +90,7 @@ class SnykClient:
 
                 # Check if there is a "next" URL in the links object
                 url_path = data.get("links", {}).get("next")
+                query_params = {}  # Reset query params for the next iteration
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
@@ -326,7 +317,7 @@ class SnykClient:
 
             snyk_webhook_url = f"{self.api_url}/org/{org['id']}/webhooks"
             all_subscriptions = await self._send_api_request(
-                url=snyk_webhook_url, method="GET", raise_for_snyk_error=True
+                url=snyk_webhook_url, method="GET"
             )
 
             app_host_webhook_url = f"{self.app_host}/integration/webhook"
@@ -338,10 +329,7 @@ class SnykClient:
             body = {"url": app_host_webhook_url, "secret": self.webhook_secret}
             logger.info(f"Creating webhook subscription for organization: {org['id']}")
             await self._send_api_request(
-                url=snyk_webhook_url,
-                method="POST",
-                json_data=body,
-                raise_for_snyk_error=True,
+                url=snyk_webhook_url, method="POST", json_data=body
             )
 
     async def get_all_organizations(self) -> list[dict[str, Any]]:
