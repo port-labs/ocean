@@ -1,11 +1,17 @@
 import http
 import typing
 
+import aiostream
 from cloudevents.pydantic import CloudEvent
 import fastapi
 from loguru import logger
 from starlette import responses
 
+from azure_integration.iterators import (
+    resource_group_iterator,
+    resource_base_kind_iterator,
+    resource_extention_kind_iterator,
+)
 from azure_integration.overrides import (
     AzurePortAppConfig,
     AzureResourceConfig,
@@ -64,16 +70,18 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for subscriptions_batch in batch_resources_iterator(
                 subscription_client.subscriptions.list,
             ):
-                for subscription in subscriptions_batch:
-                    async with ResourceManagementClient(
+                tasks = [
+                    resource_group_iterator(
                         credential=credential,
                         subscription_id=subscription["subscription_id"],
-                    ) as resource_groups_client:
-                        async for resource_groups_batch in batch_resources_iterator(
-                            resource_groups_client.resource_groups.list,
-                            api_version=resource_selector.api_version,
-                        ):
-                            yield resource_groups_batch
+                        api_version=resource_selector.api_version,
+                    )
+                    for subscription in subscriptions_batch
+                ]
+                combine = aiostream.stream.merge(tasks[0], *tasks[1:])
+                async with combine.stream() as streamer:
+                    async for resource_groups_batch in streamer:
+                        yield resource_groups_batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SUBSCRIPTION)
@@ -118,20 +126,19 @@ async def resync_base_resources(
             async for subscriptions_batch in batch_resources_iterator(
                 subscription_client.subscriptions.list,
             ):
-                for subscription in subscriptions_batch:
-                    async with resource_client_context(
-                        subscription["subscription_id"]
-                    ) as client:
-                        logger.info(
-                            f"Listing resources for kind {kind} in subscription {subscription['subscription_id']}",
-                        )
-                        async for resources_batch in batch_resources_iterator(
-                            list_resources,
-                            resources_client=client,
-                            resource_type=kind,
-                            api_version=api_version,
-                        ):
-                            yield resources_batch
+                tasks = [
+                    resource_base_kind_iterator(
+                        credential=credential,
+                        subscription_id=subscription["subscription_id"],
+                        resource_kind=kind,
+                        api_version=api_version,
+                    )
+                    for subscription in subscriptions_batch
+                ]
+                combine = aiostream.stream.merge(tasks[0], *tasks[1:])
+                async with combine.stream() as streamer:
+                    async for resources_batch in streamer:
+                        yield resources_batch
 
 
 async def resync_extension_resources(
@@ -170,34 +177,19 @@ async def resync_extension_resources(
                 async for subscriptions_batch in batch_resources_iterator(
                     subscription_client.subscriptions.list,
                 ):
-                    for subscription in subscriptions_batch:
-                        with logger.contextualize(
-                            subscription_id=subscription["subscription_id"]
-                        ):
-                            async with resource_client_context(
-                                subscription["subscription_id"]
-                            ) as client:
-                                base_resource_kind, _ = get_resource_kind_by_level(
-                                    kind, 0
-                                )
-                                logger.info(
-                                    f"Listing resources for kind {kind} in subscription {subscription['subscription_id']}"
-                                )
-                                async for resource in list_resources(
-                                    client,
-                                    api_version=api_version,
-                                    resource_type=base_resource_kind,
-                                ):
-                                    async for (
-                                        resource_batch
-                                    ) in loop_over_extension_resource_kind(
-                                        client=client,
-                                        full_resource_kind=kind,
-                                        kind_level=1,
-                                        resource_id=resource.id,
-                                        api_version=api_version,
-                                    ):
-                                        yield resource_batch
+                    tasks = [
+                        resource_extention_kind_iterator(
+                            credential=credential,
+                            subscription_id=subscription["subscription_id"],
+                            resource_kind=kind,
+                            api_version=api_version,
+                        )
+                        for subscription in subscriptions_batch
+                    ]
+                    combine = aiostream.stream.merge(tasks[0], *tasks[1:])
+                    async with combine.stream() as streamer:
+                        async for resources_batch in streamer:
+                            yield resources_batch
 
 
 async def loop_over_extension_resource_kind(
