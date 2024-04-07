@@ -4,7 +4,6 @@ from gitlab import Gitlab
 from gitlab_integration.gitlab_service import GitlabService
 from loguru import logger
 from port_ocean.context.event import event
-
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.context import EventContextNotFoundError
 
