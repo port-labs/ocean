@@ -5,7 +5,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.utils import http_async_client
-import deprecation
+import deprecation  # type: ignore
 import toml
 
 
