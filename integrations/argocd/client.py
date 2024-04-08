@@ -5,6 +5,8 @@ import httpx
 from loguru import logger
 
 from port_ocean.utils import http_async_client
+import deprecation
+import toml
 
 
 class ObjectKind(StrEnum):
@@ -19,7 +21,7 @@ class ResourceKindsWithSpecialHandling(StrEnum):
     MANAGED_RESOURCE = "managed-resource"
 
 
-DEPRECATION_WARNING = "This resource kind will be deprecated in future release of the ArgoCD integration. Please use the application kind instead and map the resources using the itemsToParse key"
+DEPRECATION_WARNING = "Please use the get_resources method with the application kind and map the response using the itemsToParse functionality. You can read more about parsing items here https://ocean.getport.io/framework/features/resource-mapping/#fields"
 
 
 class ArgocdClient:
@@ -29,6 +31,14 @@ class ArgocdClient:
         self.api_auth_header = {"Authorization": f"Bearer {self.token}"}
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
+
+    @staticmethod
+    def get_current_version() -> str:
+        """Function to parse pyproject.toml and retrieve the version of the integration"""
+        logger.info("Getting current integration version from pyproject.toml")
+        with open("pyproject.toml", "r") as toml_file:
+            data = toml.load(toml_file)
+            return data["tool"]["poetry"]["version"]
 
     async def _send_api_request(
         self,
@@ -73,9 +83,13 @@ class ArgocdClient:
         application = await self._send_api_request(url=url)
         return application
 
+    @deprecation.deprecated(
+        deprecated_in="0.1.34",
+        current_version=get_current_version(),
+        details=DEPRECATION_WARNING,
+    )
     async def get_deployment_history(self) -> list[dict[str, Any]]:
         """The ArgoCD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
-        logger.warning(DEPRECATION_WARNING)
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
         all_history = [
             {**history_item, "__applicationId": application["metadata"]["uid"]}
@@ -84,9 +98,13 @@ class ArgocdClient:
         ]
         return all_history
 
+    @deprecation.deprecated(
+        deprecated_in="0.1.34",
+        current_version=get_current_version(),
+        details=DEPRECATION_WARNING,
+    )
     async def get_kubernetes_resource(self) -> list[dict[str, Any]]:
         """The ArgoCD application returns a list of managed kubernetes resources. This function reuses the output of the application endpoint"""
-        logger.warning(DEPRECATION_WARNING)
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
         all_k8s_resources = [
             {**resource, "__applicationId": application["metadata"]["uid"]}

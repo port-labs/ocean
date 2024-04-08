@@ -59,6 +59,8 @@ resources:
             syncStatus: .status.sync.status
             healthStatus: .status.health.status
             createdAt: .metadata.creationTimestamp
+            labels: .metadata.labels
+            annotations: .metadata.annotations
           relations:
             project: .spec.project
             namespace: .metadata.namespace

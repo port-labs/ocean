@@ -164,6 +164,16 @@
           "type": "string",
           "format": "date-time",
           "description": "The created timestamp of the application"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels",
+          "description": "Map of string keys and values that can be used to organize and categorize object"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations",
+          "description": "Annotations are unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata"
         }
       },
       "required": []
