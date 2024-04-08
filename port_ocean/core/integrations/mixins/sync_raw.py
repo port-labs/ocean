@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import typing
+from copy import deepcopy
 from typing import Callable, Awaitable, Any
 
 from loguru import logger
@@ -227,16 +228,36 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         """
         logger.info(f"Registering state for {kind}")
         config = await self.port_app_config_handler.get_port_app_config()
-        resource_mappings = [
-            resource for resource in config.resources if resource.kind == kind
-        ]
-
-        return await asyncio.gather(
-            *(
-                self._register_resource_raw(resource, results, user_agent_type)
-                for resource in resource_mappings
-            )
+        resource_mapping = next(
+            (resource for resource in config.resources if resource.kind == kind), {}
         )
+
+        all_mapping = deepcopy(resource_mapping)
+        all_mapping.selector.query = "true"
+
+        all_entities: list[Entity] = (
+            await self._calculate_raw(
+                [
+                    (
+                        all_mapping,
+                        {
+                            "before": [],
+                            "after": results,
+                        },
+                    )
+                ]
+            )
+        )[0]["after"]
+
+        created_entities: list[Entity] = await self._register_resource_raw(
+            resource_mapping, results, user_agent_type
+        )
+
+        await self.entities_state_applier.delete_diff(
+            {"before": all_entities, "after": created_entities},
+            user_agent_type,
+        )
+        return created_entities
 
     async def unregister_raw(
         self,

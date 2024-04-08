@@ -58,7 +58,7 @@ For example, if you configure the integration to listen to the `/webhook` endpoi
 
 :::
 
-Here is an example definition that exposes a `/integrations/webhook` route the integration will listen to:
+Here is an example definition that exposes a `/integration/webhook` route the integration will listen to:
 
 ```python showLineNumbers
 from port_ocean.context.ocean import ocean
