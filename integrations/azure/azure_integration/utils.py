@@ -3,7 +3,6 @@ import enum
 import typing
 
 from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 
