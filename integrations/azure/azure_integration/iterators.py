@@ -31,7 +31,7 @@ async def resource_group_iterator(
             api_version=api_version,
         ):
             logger.info(
-                f"Yielding a batch of {len(resource_groups_batch)} resource groups"
+                f"Yielding a batch of {len(resource_groups_batch)} resource groups in subscription {subscription_id}"
             )
             yield resource_groups_batch
 
@@ -59,7 +59,7 @@ async def resource_base_kind_iterator(
             api_version=api_version,
         ):
             logger.info(
-                f"Yielding a batch of {resource_kind} in subscription {subscription_id}, found {len(resources_batch)} resources in the batch"
+                f"Yielding a batch of {len(resources_batch)} {resource_kind} in subscription {subscription_id}"
             )
             yield resources_batch
 

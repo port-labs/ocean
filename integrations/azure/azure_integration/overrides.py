@@ -26,6 +26,6 @@ class AzureCloudResourceConfig(ResourceConfig):
 
 
 class AzurePortAppConfig(PortAppConfig):
-    resources: typing.Sequence[
-        typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
-    ] = None
+    resources: list[AzureCloudResourceConfig | AzureSpecificKindsResourceConfig] = (
+        Field(default_factory=list)  # type: ignore
+    )
