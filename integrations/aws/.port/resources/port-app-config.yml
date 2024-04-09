@@ -36,6 +36,19 @@ resources:
   - kind: cloudresource
     selector:
       query: 'true'
+      resourceKinds:
+        - AWS::Lambda::Function
+        - AWS::RDS::DBInstance
+        - AWS::S3::Bucket
+        - AWS::IAM::User
+        - AWS::ECS::Cluster
+        - AWS::ECS::Service
+        - AWS::Logs::LogGroup
+        - AWS::DynamoDB::Table
+        - AWS::SQS::Queue
+        - AWS::SNS::Topic
+        - AWS::Cognito::IdentityPool
+        - AWS::CloudFormation::Stack
     port:
       entity:
         mappings:

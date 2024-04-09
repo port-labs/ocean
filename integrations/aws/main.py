@@ -1,12 +1,17 @@
 import time
 from typing import Any
+import typing
 
 import boto3
 import json
+from overrides import AWSPortAppConfig
+from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from port_ocean.core.models import Entity
 from utils import ASYNC_GENERATOR_RESYNC_TYPE, ResourceKindsWithSpecialHandling, _describe_resources, _fix_unserializable_date_properties
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
+from port_ocean.context.event import event
 
 def get_accessible_accounts():
     """
@@ -46,6 +51,15 @@ def format_cloudcontrol_resource(kind: str, resource: dict[str, Any]) -> dict[st
                 'Kind': kind,
                 **json.loads(resource.get('Properties', {}))
             }
+
+def get_matching_kinds_from_config(kind: str) -> list[ResourceConfig]:
+    matching_resource_configs = []
+    for resource_config in typing.cast(AWSPortAppConfig, event.port_app_config).resources:
+        if resource_config.kind == kind:
+            matching_resource_configs.append(resource_config)
+        elif resource_config.selector.resource_kinds and kind in resource_config.selector.resource_kinds:
+            matching_resource_configs.append(resource_config)
+    return matching_resource_configs
 
 def describe_single_resource(kind: str, identifier: str, region: str) -> dict[str, Any]:
 
@@ -192,40 +206,58 @@ async def webhook(request: Request) -> dict[str, Any]:
     try:
         body = await request.json()
         logger.info("Webhook body", body=body)
-        resource = describe_single_resource(body.get("resource_type"), body.get("identifier"), body.get("awsRegion"))
-        if not resource: # Resource probably deleted
-            await ocean.unregister_raw(body.get("resource_type"), body.get("identifier"))
-            return {"ok": True}
-        await ocean.register_raw(body.get("resource_type"), _fix_unserializable_date_properties(resource))
+        resource_type = body.get("resource_type")
+        identifier = body.get("identifier")
+        if not resource_type or not identifier:
+            raise ValueError("Resource type or Identifier was not found in webhook body")
+        
+        matching_resource_configs = get_matching_kinds_from_config(resource_type)
+        
+        if not matching_resource_configs:
+            raise ValueError(
+                "Resource type not found in port app config, update port app config to include the resource type",
+                resource_type=resource_type,
+            )
+        
+        for resource_config in matching_resource_configs:
+            blueprint = resource_config.port.entity.mappings.blueprint.strip('"')
+            logger.debug(
+                "Querying full resource",
+                id=identifier,
+                kind=resource_type,
+                blueprint=blueprint,
+            )
+            resource = describe_single_resource(resource_type, identifier, body.get("awsRegion"))
+            if not resource: # Resource probably deleted
+                logger.info(
+                    "Resource not found in AWS, unregistering from port",
+                    id=identifier,
+                    kind=resource_type,
+                    blueprint=blueprint,
+                )
+                await ocean.unregister(
+                    [
+                        Entity(
+                            blueprint=blueprint,
+                            identifier=identifier,
+                        )
+                    ]
+                )
+                return {"ok": True}
+            
+            logger.info(
+                "Resource found in AWS, upserting port",
+                id=identifier,
+                kind=resource_type,
+                blueprint=blueprint,
+            )
+            await ocean.register_raw(resource_config.kind, _fix_unserializable_date_properties(resource))
+        logger.info("Webhook processed successfully")
+        return {"ok": True}
     except Exception as e:
         logger.error("Failed to process event from aws", error=e)
         return {"ok": False}
-    
-    logger.info("Webhook processed successfully")
-    return {"ok": True}
 
 @ocean.on_start()
 async def on_start() -> None:
     print("Starting integration")
-        # Initialize SQS client
-    # sqs = boto3.client('sqs')
-
-    # # Queue name as defined in the CloudFormation template
-    # queue_name = 'port-aws-sam-exporter-test-EventsQueue-vEbxeeDUOyFP'
-
-    # # Get the queue URL
-    # response = sqs.get_queue_url(QueueName=queue_name)
-    # queue_url = response['QueueUrl']
-    # await query_sqs(queue_url)
-
-    # aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
-    # aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")
-    # sts_client = boto3.client('sts', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
-    # sts_client.get_caller_identity()
-    # response = sts_client.assume_role(
-    #     RoleArn="arn:aws:iam::891377315606:role/ocean-integ-poc-role",
-    #     RoleSessionName="2ndSession"
-    # )
-    # credentials = response['Credentials']
-    # assumable_roles = get_accessible_accounts()
-    # print(assumable_roles)
