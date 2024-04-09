@@ -15,8 +15,6 @@ from azure_integration.overrides import (
     AzurePortAppConfig,
     AzureSpecificKindSelector,
     AzureCloudResourceSelector,
-    AzureSpecificKindsResourceConfig,
-    AzureCloudResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
