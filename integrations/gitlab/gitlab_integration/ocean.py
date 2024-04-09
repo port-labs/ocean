@@ -27,6 +27,7 @@ PROJECT_RESYNC_BATCH_SIZE = 10
 async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
     with logger.contextualize(event_id=event_id):
+        logger.info(f"Got an event from webhook. event_type and group_id: {event_id}")
         body = await request.json()
         await event_handler.notify(event_id, body)
         return {"ok": True}

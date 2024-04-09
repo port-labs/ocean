@@ -49,3 +49,7 @@ class PushHook(ProjectHandler):
                 f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
             )
             await ocean.register_raw(ObjectKind.PROJECT, [gitlab_project.asdict()])
+        else:
+            logger.info("The event was not sent on a branch that matches the configured branch, "
+                        "therefore the changes will not be imported to port. The event's ref: "
+                        f"{ref}, the configured branch as ref: {generate_ref(branch)}")
