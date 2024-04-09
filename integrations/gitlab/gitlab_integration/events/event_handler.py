@@ -23,10 +23,11 @@ class EventHandler:
         )
 
         if not observers:
-            logger.debug(f"event: {event} has no matching handler. the handlers available are for events: {self._observers.keys()}")
+            logger.debug(
+                f"event: {event} has no matching handler. the handlers available are for events: {self._observers.keys()}"
+            )
 
         return observers
-
 
 
 class SystemEventHandler:

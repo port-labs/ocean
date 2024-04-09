@@ -163,11 +163,13 @@ def create_webhooks_by_client(
     for group in groups_for_webhooks:
         webhook_id = gitlab_service.create_webhook(
             group,
-            groups_hooks_events_override.get(
-                group.attributes["full_path"], WebhookGroupConfig(events=[])
-            ).events
-            if groups_hooks_events_override
-            else None,
+            (
+                groups_hooks_events_override.get(
+                    group.attributes["full_path"], WebhookGroupConfig(events=[])
+                ).events
+                if groups_hooks_events_override
+                else None
+            ),
         )
 
         if webhook_id:
