@@ -1,18 +1,79 @@
-from typing import Any, AsyncIterator
+import time
+from typing import Any
 
 import boto3
 import json
 from utils import ASYNC_GENERATOR_RESYNC_TYPE, ResourceKindsWithSpecialHandling, _describe_resources, _fix_unserializable_date_properties
 from port_ocean.context.ocean import ocean
 from loguru import logger
+from starlette.requests import Request
 
+def get_accessible_accounts():
+    """
+    Fetches the AWS account IDs that the current IAM role can access.
+    
+    :return: List of AWS account IDs.
+    """
+    sts_client = boto3.client('sts')
+    caller_identity = sts_client.get_caller_identity()
+    current_account_id = caller_identity['Account']
+    ROLE_NAME = 'ocean-integ-poc-role'
 
-def _get_sessions() -> list[boto3.Session]:
+    # Get the list of all AWS accounts
+    organizations_client = boto3.client('organizations')
+    paginator = organizations_client.get_paginator('list_accounts')
+    accounts = []
+    for page in paginator.paginate():
+        for account in page['Accounts']:
+            try:
+                assumed_role = sts_client.assume_role(
+                    RoleArn=f'arn:aws:iam::{account["Id"]}:role/{ROLE_NAME}',
+                    RoleSessionName='AssumeRoleSession'
+                )
+                # If assume_role succeeds, add the account ID to the list
+                accounts.append(account['Id'])
+            except sts_client.exceptions.ClientError as e:
+                # If assume_role fails due to permission issues or non-existent role, skip the account
+                if e.response['Error']['Code'] == 'AccessDenied':
+                    continue
+                else:
+                    raise
+    return accounts
+
+def format_cloudcontrol_resource(kind: str, resource: dict[str, Any]) -> dict[str, Any]:
+    return {
+                'Identifier': resource.get('Identifier', ''),
+                'Kind': kind,
+                **json.loads(resource.get('Properties', {}))
+            }
+
+def describe_single_resource(kind: str, identifier: str, region: str) -> dict[str, Any]:
+
+    sessions = _get_sessions([region] if region else [])
+    for session in sessions:
+        region = session.region_name
+        try:
+            cloudcontrol = session.client('cloudcontrol')
+            response = cloudcontrol.get_resource(TypeName=kind, Identifier=identifier)
+            return format_cloudcontrol_resource(kind, response.get('ResourceDescription', {}))
+        except Exception as e:
+            if e.response['Error']['Code'] == 'ResourceNotFoundException':
+                logger.info(f"Resource not found: {kind} {identifier}")
+                return {}
+            logger.error(f"Failed to describe CloudControl Instance in region: {region}; error {e}")
+            break
+
+def _get_sessions(custom_aws_regions = []) -> list[boto3.Session]:
     aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
     aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")
     aws_regions = ocean.integration_config.get("aws_regions")
 
     aws_sessions = []
+    if len(custom_aws_regions) > 0:
+        for aws_region in custom_aws_regions:
+            aws_sessions.append(boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, region_name=aws_region))
+        return aws_sessions
+    
     for aws_region in aws_regions:
         aws_sessions.append(boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, region_name=aws_region))
     
@@ -125,10 +186,46 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             break
 
 
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
+@ocean.router.post("/webhook")
+async def webhook(request: Request) -> dict[str, Any]:
+    logger.info("Received webhook")
+    try:
+        body = await request.json()
+        logger.info("Webhook body", body=body)
+        resource = describe_single_resource(body.get("resource_type"), body.get("identifier"), body.get("awsRegion"))
+        if not resource: # Resource probably deleted
+            await ocean.unregister_raw(body.get("resource_type"), body.get("identifier"))
+            return {"ok": True}
+        await ocean.register_raw(body.get("resource_type"), _fix_unserializable_date_properties(resource))
+    except Exception as e:
+        logger.error("Failed to process event from aws", error=e)
+        return {"ok": False}
+    
+    logger.info("Webhook processed successfully")
+    return {"ok": True}
+
 @ocean.on_start()
 async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
     print("Starting integration")
+        # Initialize SQS client
+    # sqs = boto3.client('sqs')
+
+    # # Queue name as defined in the CloudFormation template
+    # queue_name = 'port-aws-sam-exporter-test-EventsQueue-vEbxeeDUOyFP'
+
+    # # Get the queue URL
+    # response = sqs.get_queue_url(QueueName=queue_name)
+    # queue_url = response['QueueUrl']
+    # await query_sqs(queue_url)
+
+    # aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
+    # aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")
+    # sts_client = boto3.client('sts', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+    # sts_client.get_caller_identity()
+    # response = sts_client.assume_role(
+    #     RoleArn="arn:aws:iam::891377315606:role/ocean-integ-poc-role",
+    #     RoleSessionName="2ndSession"
+    # )
+    # credentials = response['Credentials']
+    # assumable_roles = get_accessible_accounts()
+    # print(assumable_roles)

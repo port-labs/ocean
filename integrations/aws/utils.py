@@ -25,7 +25,7 @@ def _fix_unserializable_date_properties(obj: Any) -> Any:
     """
     return json.loads(json.dumps(obj, default=str))
 
-def _describe_resources(sessions: list[boto3.Session], service_name: str, describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def _describe_resources(sessions: list[boto3.Session], service_name: str, describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
     for session in sessions:
         region = session.region_name
         next_token = None
