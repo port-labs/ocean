@@ -1,7 +1,6 @@
 import http
 import typing
 
-import aiostream
 from cloudevents.pydantic import CloudEvent
 import fastapi
 from loguru import logger
@@ -34,6 +33,8 @@ from azure_integration.utils import (
     batch_resources_iterator,
     is_sub_resource,
     get_current_resource_config,
+    stream_async_iterators_tasks,
+    get_resource_configs_with_resource_kind,
 )
 
 
@@ -76,10 +77,8 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     )
                     for subscription in subscriptions_batch
                 ]
-                combine = aiostream.stream.merge(tasks[0], *tasks[1:])
-                async with combine.stream() as streamer:
-                    async for resource_groups_batch in streamer:
-                        yield resource_groups_batch
+                async for resource_groups_batch in stream_async_iterators_tasks(tasks):
+                    yield resource_groups_batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SUBSCRIPTION)
@@ -100,11 +99,6 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     resource_kinds = typing.cast(
         AzureCloudResourceSelector, get_current_resource_config().selector
     ).resource_kinds
-    if not resource_kinds:
-        logger.warning(
-            "Resource kinds not found in port app config, skipping",
-        )
-        return
     for resource_kind, resource_api_version in resource_kinds.items():
         if is_sub_resource(resource_kind):
             iterator_resync_method = resync_extension_resources
@@ -133,10 +127,8 @@ async def resync_base_resources(
                     )
                     for subscription in subscriptions_batch
                 ]
-                combine = aiostream.stream.merge(tasks[0], *tasks[1:])
-                async with combine.stream() as streamer:
-                    async for resources_batch in streamer:
-                        yield resources_batch
+                async for resources_batch in stream_async_iterators_tasks(tasks):
+                    yield resources_batch
 
 
 async def resync_extension_resources(
@@ -184,10 +176,8 @@ async def resync_extension_resources(
                         )
                         for subscription in subscriptions_batch
                     ]
-                    combine = aiostream.stream.merge(tasks[0], *tasks[1:])
-                    async with combine.stream() as streamer:
-                        async for resources_batch in streamer:
-                            yield resources_batch
+                    async for resources_batch in stream_async_iterators_tasks(tasks):
+                        yield resources_batch
 
 
 @ocean.router.post("/events")
@@ -200,15 +190,15 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
     """
     cloud_event_data: dict[str, typing.Any] = cloud_event.data  # type: ignore
     subscription_id = cloud_event_data["subscriptionId"]
+    resource_uri = cloud_event_data["resourceUri"]
     logger.info(
-        "Received azure cloud event",
+        f"Received event {cloud_event.id} of type {cloud_event.type} with operation {cloud_event_data['operationName']} for resource {resource_uri}",
         event_id=cloud_event.id,
         event_type=cloud_event.type,
         resource_provider=cloud_event_data["resourceProvider"],
         operation_name=cloud_event_data["operationName"],
         subscription_id=subscription_id,
     )
-    resource_uri = cloud_event_data["resourceUri"]
     resource_type = resolve_resource_type_from_resource_uri(
         resource_uri=resource_uri,
     )
@@ -219,21 +209,12 @@ async def handle_events(cloud_event: CloudEvent) -> fastapi.Response:
         )
         return fastapi.Response(status_code=http.HTTPStatus.NOT_FOUND)
 
-    matching_resource_configs: typing.Sequence[
-        typing.Union[AzureSpecificKindsResourceConfig, AzureCloudResourceConfig]
-    ] = [
-        resource
-        for resource in typing.cast(AzurePortAppConfig, event.port_app_config).resources
-        if (
-            resource.kind == resource_type
-            and isinstance(resource.selector, AzureSpecificKindSelector)
-        )
-        or (
-            resource.kind == ResourceKindsWithSpecialHandling.CLOUD_RESOURCE
-            and isinstance(resource.selector, AzureCloudResourceSelector)
-            and resource_type in resource.selector.resource_kinds.keys()
-        )
-    ]
+    matching_resource_configs = get_resource_configs_with_resource_kind(
+        resource_kind=resource_type,
+        resource_configs=typing.cast(
+            AzurePortAppConfig, event.port_app_config
+        ).resources,
+    )
     if not matching_resource_configs:
         logger.info(
             "Resource type not found in port app config, update port app config to include the resource type",
