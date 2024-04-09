@@ -9,8 +9,16 @@ import pyjq as jq  # type: ignore
 from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
-from port_ocean.core.ocean_types import RawEntityDiff, EntityDiff
+from port_ocean.core.ocean_types import (
+    RawEntityDiff,
+    EntityDiff,
+    RawEntity,
+    EntitySelectorDiff,
+)
 from port_ocean.exceptions.core import EntityProcessorException
+
+
+DOES_ENTITY_PASSED_SELECTOR_KEY = "_does_entity_passed_selector"
 
 
 class JQEntityProcessor(BaseEntityProcessor):
@@ -68,15 +76,19 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         return result
 
-    async def _get_entity_if_passed_selector(
+    async def _get_mapped_entity(
         self,
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
         selector_query: str,
+        ignore_selector: bool = False,
     ) -> dict[str, Any]:
         should_run = await self._search_as_bool(data, selector_query)
-        if should_run:
-            return await self._search_as_object(data, raw_entity_mappings)
+        if ignore_selector or should_run:
+            mapped_entity = await self._search_as_object(data, raw_entity_mappings)
+            mapped_entity[DOES_ENTITY_PASSED_SELECTOR_KEY] = should_run
+            return mapped_entity
+
         return {}
 
     async def _calculate_entity(
@@ -85,16 +97,18 @@ class JQEntityProcessor(BaseEntityProcessor):
         raw_entity_mappings: dict[str, Any],
         items_to_parse: str | None,
         selector_query: str,
+        parse_all: bool = False,
     ) -> list[dict[str, Any]]:
         if items_to_parse:
             items = await self._search(data, items_to_parse)
             if isinstance(items, list):
                 return await asyncio.gather(
                     *[
-                        self._get_entity_if_passed_selector(
+                        self._get_mapped_entity(
                             {"item": item, **data},
                             raw_entity_mappings,
                             selector_query,
+                            parse_all,
                         )
                         for item in items
                     ]
@@ -105,15 +119,18 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
         else:
             return [
-                await self._get_entity_if_passed_selector(
-                    data, raw_entity_mappings, selector_query
+                await self._get_mapped_entity(
+                    data, raw_entity_mappings, selector_query, parse_all
                 )
             ]
         return [{}]
 
-    async def _calculate_entities(
-        self, mapping: ResourceConfig, raw_data: list[dict[str, Any]]
-    ) -> list[Entity]:
+    async def _parse_items(
+        self,
+        mapping: ResourceConfig,
+        raw_results: list[RawEntity],
+        parse_all: bool = False,
+    ) -> EntitySelectorDiff:
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
@@ -124,32 +141,24 @@ class JQEntityProcessor(BaseEntityProcessor):
                     raw_entity_mappings,
                     mapping.port.items_to_parse,
                     mapping.selector.query,
+                    parse_all,
                 )
             )
-            for data in raw_data
+            for data in raw_results
         ]
         entities = await asyncio.gather(*entities_tasks)
 
-        return [
-            Entity.parse_obj(entity_data)
-            for flatten in entities
+        passed = []
+        failed = []
+        for flatten in entities:
             for entity_data in filter(
                 lambda entity: entity.get("identifier") and entity.get("blueprint"),
                 flatten,
-            )
-        ]
+            ):
+                parsed_entity = Entity.parse_obj(entity_data)
+                if entity_data[DOES_ENTITY_PASSED_SELECTOR_KEY]:
+                    passed.append(parsed_entity)
+                else:
+                    failed.append(parsed_entity)
 
-    async def _parse_items(
-        self, mapping: ResourceConfig, raw_results: RawEntityDiff
-    ) -> EntityDiff:
-        entities_before: list[Entity] = await self._calculate_entities(
-            mapping, raw_results["before"]
-        )
-        entities_after: list[Entity] = await self._calculate_entities(
-            mapping, raw_results["after"]
-        )
-
-        return {
-            "before": entities_before,
-            "after": entities_after,
-        }
+        return {"passed": passed, "failed": failed}
