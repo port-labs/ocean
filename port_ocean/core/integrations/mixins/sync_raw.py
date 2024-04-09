@@ -306,19 +306,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 [(mapping, raw_desired_state["after"]) for mapping in resource_mappings]
             )
 
-            bef = [
+            entities_before_flatten = [
                 item
                 for sublist in [d["passed"] for d in entities_before]
                 for item in sublist
             ]
-            aft = [
+            entities_after_flatten = [
                 item
                 for sublist in [d["passed"] for d in entities_after]
                 for item in sublist
             ]
 
             await self.entities_state_applier.apply_diff(
-                {"before": bef, "after": aft}, user_agent_type
+                {"before": entities_before_flatten, "after": entities_after_flatten},
+                user_agent_type,
             )
 
     async def sync_raw_all(
