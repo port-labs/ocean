@@ -10,8 +10,6 @@ from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
-    RawEntityDiff,
-    EntityDiff,
     RawEntity,
     EntitySelectorDiff,
 )
