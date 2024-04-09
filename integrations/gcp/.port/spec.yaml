@@ -9,3 +9,18 @@ configurations:
     required: false
     type: url
     description: The host of the Port Ocean app.
+  - name: parent
+    required: true
+    type: string
+  - name: serviceAccountFileLocation
+    required: true
+    type: string
+  - name: assetsFeedId
+    required: false
+    type: string
+  - name: assetsFeedAssetTypes
+    required: false
+    type: string
+  - name: assetsFeedTopicName
+    required: false
+    type: string

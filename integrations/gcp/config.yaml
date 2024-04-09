@@ -5,8 +5,11 @@ port:
 eventListener:
   type: POLLING
 integration:
-  identifier: "my-gcp-integration"
+  identifier: "ocean-gcp-integration"
   type: "gcp"
   config:
-    organizationId: "{{ from env ORGANIZATION_ID }}"
+    parent: "{{ from env PARENT }}"
     serviceAccountFileLocation: "{{ from env SERVICE_ACCOUNT_FILE_LOCATION }}"
+    assetsFeedId: "{{ from env ASSETS_FEED_ID }}"
+    assetsFeedAssetTypes: "{{ from env ASSETS_FEED_ASSET_TYPES }}"
+    assetsFeedTopicName: "{{ from env ASSETS_FEED_TOPIC_NAME }}"

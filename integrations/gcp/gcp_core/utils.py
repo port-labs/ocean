@@ -1,12 +1,36 @@
-from typing import Any, TypeVar
+import base64
+import json
 from collections.abc import MutableSequence
-import proto # type: ignore
+from typing import Any, TypeVar
+
+import proto  # type: ignore
+from fastapi import Request
+from port_ocean.context.ocean import ocean
+
+from gcp_core.types import CloudAssetInventoryFeed, SubscriptionMessage
 
 T = TypeVar("T", bound=proto.Message)
 
 
 def parseProtobufMessages(messages: MutableSequence[T]) -> list[dict[str, Any]]:
-    return [
-        proto.Message.to_dict(message)
-        for message in messages
-    ]
+    return [proto.Message.to_dict(message) for message in messages]
+
+
+async def parseSubscriptionMessageFromRequest(request: Request) -> SubscriptionMessage:
+    request_json = await request.json()
+    message_id = request_json["message"]["messageId"]
+    data = json.loads(base64.b64decode(request_json["message"]["data"]))
+    asset_type = data["asset"]["assetType"]
+    asset_name = data["asset"]["name"]
+    message = SubscriptionMessage(
+        message_id=message_id, asset_name=asset_name, asset_type=asset_type, data=data
+    )
+    return message
+
+
+def create_feed_from_ocean_config() -> CloudAssetInventoryFeed:
+    feed = CloudAssetInventoryFeed()
+    feed.id = ocean.integration_config["assets_feed_id"]
+    feed.asset_types = (ocean.integration_config["assets_feed_asset_types"]).split(",")
+    feed.topic_name = ocean.integration_config["assets_feed_topic_name"]
+    return feed
