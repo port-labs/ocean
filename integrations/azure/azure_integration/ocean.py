@@ -36,18 +36,23 @@ from azure_integration.utils import (
 )
 
 
+def _resolve_resync_method_for_resource(
+    kind: str,
+) -> typing.Callable[..., ASYNC_GENERATOR_RESYNC_TYPE]:
+    if is_sub_resource(kind):
+        return resync_extension_resources
+    return resync_base_resources
+
+
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
         logger.info("Kind already has a specific handling, skipping", kind=kind)
         return
-    if is_sub_resource(kind):
-        iterator_resync_method = resync_extension_resources
-    else:
-        iterator_resync_method = resync_base_resources
     resource_selector = typing.cast(
         AzureSpecificKindSelector, get_current_resource_config().selector
     )
+    iterator_resync_method = _resolve_resync_method_for_resource(kind)
     async for resources_batch in iterator_resync_method(
         kind, resource_selector.api_version
     ):
@@ -98,10 +103,7 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         AzureCloudResourceSelector, get_current_resource_config().selector
     ).resource_kinds
     for resource_kind, resource_api_version in resource_kinds.items():
-        if is_sub_resource(resource_kind):
-            iterator_resync_method = resync_extension_resources
-        else:
-            iterator_resync_method = resync_base_resources
+        iterator_resync_method = _resolve_resync_method_for_resource(resource_kind)
         async for resources_batch in iterator_resync_method(
             resource_kind, resource_api_version
         ):
