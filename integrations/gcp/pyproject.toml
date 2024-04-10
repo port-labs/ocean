@@ -6,7 +6,7 @@ authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = { version = "^0.5.7", extras = ["cli"] }
+port_ocean = { version = "^0.5.9", extras = ["cli"] }
 google-cloud-asset = "^3.25.1"
 ruff = "^0.3.4"
 types-protobuf = "^4.24.0.20240311"
