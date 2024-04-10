@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Fixed application settings to be loaded from the environment variables (#1)
+- Fixed application settings to be loaded from the environment variables
 
 ### Improvements
 
