@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 from urllib.parse import quote_plus
 
 import httpx
@@ -149,7 +150,7 @@ class EntityClientMixin:
         handle_status_code(response)
 
     async def search_entities(
-        self, user_agent_type: UserAgentType, query: dict = None
+        self, user_agent_type: UserAgentType, query: dict[Any, Any] | None = None
     ) -> list[Entity]:
         default_query = {
             "combinator": "or",
