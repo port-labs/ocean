@@ -120,25 +120,25 @@ async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM)
-async def resync_acm() -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
     for batch in _describe_resources(sessions, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE)
-async def resync_elasticache() -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
     for batch in _describe_resources(sessions, 'elasticache', 'describe_cache_clusters', 'CacheClusters', 'NextMarker'):
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
-async def resync_loadbalancer() -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_loadbalancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
     for batch in _describe_resources(sessions, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION)
-async def resync_cloudformation() -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
     for batch in _describe_resources(sessions, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
         yield batch
