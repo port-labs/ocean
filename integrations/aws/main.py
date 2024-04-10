@@ -72,9 +72,35 @@ def describe_single_resource(kind: str, identifier: str, region: str) -> dict[st
     for session in sessions:
         region = session.region_name
         try:
-            cloudcontrol = session.client('cloudcontrol')
-            response = cloudcontrol.get_resource(TypeName=kind, Identifier=identifier)
-            return format_cloudcontrol_resource(kind, response.get('ResourceDescription', {}))
+            if kind == ResourceKindsWithSpecialHandling.CLOUDRESOURCE:
+                cloudcontrol = session.client('cloudcontrol')
+                response = cloudcontrol.get_resource(TypeName=identifier)
+                return format_cloudcontrol_resource(kind, response.get('ResourceDescription', {}))
+            elif kind == ResourceKindsWithSpecialHandling.ACM:
+                acm = session.client('acm')
+                response = acm.describe_certificate(CertificateArn=identifier)
+                return response.get('Certificate', {})
+            elif kind == ResourceKindsWithSpecialHandling.ELASTICACHE:
+                elasticache = session.client('elasticache')
+                response = elasticache.describe_cache_clusters(CacheClusterId=identifier)
+                return response.get('CacheClusters', [])[0]
+            elif kind == ResourceKindsWithSpecialHandling.LOADBALANCER:
+                elbv2 = session.client('elbv2')
+                response = elbv2.describe_load_balancers(LoadBalancerArns=[identifier])
+                return response.get('LoadBalancers', [])[0]
+            elif kind == ResourceKindsWithSpecialHandling.CLOUDFORMATION:
+                cloudformation = session.client('cloudformation')
+                response = cloudformation.describe_stacks(StackName=identifier)
+                return response.get('Stacks', [])[0]
+            elif kind == ResourceKindsWithSpecialHandling.EC2:
+                ec2_client = session.client('ec2')
+                described_instance = ec2_client.describe_instances(InstanceIds=[identifier])
+                instance_definition = described_instance["Reservations"][0]["Instances"][0]
+                return instance_definition
+            else:
+                cloudcontrol = session.client('cloudcontrol')
+                response = cloudcontrol.get_resource(TypeName=kind, Identifier=identifier)
+                return format_cloudcontrol_resource(kind, response.get('ResourceDescription', {}))
         except Exception as e:
             if e.response['Error']['Code'] == 'ResourceNotFoundException':
                 logger.info(f"Resource not found: {kind} {identifier}")
@@ -247,7 +273,7 @@ async def webhook(request: Request) -> dict[str, Any]:
         logger.info("Webhook processed successfully")
         return {"ok": True}
     except Exception as e:
-        logger.error("Failed to process event from aws", error=e)
+        logger.error(f"Failed to process event from aws error", error=e)
         return {"ok": False}
 
 @ocean.on_start()
