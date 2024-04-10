@@ -188,7 +188,8 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 response = cloudcontrol.list_resources(**params)
                 next_token = response.get('NextToken')
                 for instance in response.get('ResourceDescriptions', []):
-                    all_instances.append(format_cloudcontrol_resource(kind, instance))
+                    described = describe_single_resource(kind, instance.get('Identifier'), region)
+                    all_instances.append({'Kind': kind, **_fix_unserializable_date_properties(described)})
                 yield all_instances
             except Exception as e:
                 logger.error(f"Failed to list CloudControl Instance in region: {region}; error {e}")
