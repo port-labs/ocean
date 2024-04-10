@@ -61,8 +61,13 @@ def get_matching_kinds_from_config(kind: str) -> list[ResourceConfig]:
             matching_resource_configs.append(resource_config)
     return matching_resource_configs
 
-def describe_single_resource(kind: str, identifier: str, region: str) -> dict[str, Any]:
+def get_resouce_kinds_from_config(kind: str) -> list[str]:
+    for resource_config in typing.cast(AWSPortAppConfig, event.port_app_config).resources:
+        if resource_config.kind == kind and resource_config.selector.resource_kinds:
+            return resource_config.selector.resource_kinds
+    return []
 
+def describe_single_resource(kind: str, identifier: str, region: str) -> dict[str, Any]:
     sessions = _get_sessions([region] if region else [])
     for session in sessions:
         region = session.region_name
@@ -103,22 +108,13 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDRESOURCE)
 async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    DEFAULT_AWS_CLOUD_CONTROL_RESOURCES = [
-        "AWS::Lambda::Function",
-        "AWS::RDS::DBInstance",
-        "AWS::S3::Bucket",
-        "AWS::IAM::User",
-        "AWS::ECS::Cluster",
-        "AWS::ECS::Service",
-        "AWS::Logs::LogGroup",
-        "AWS::DynamoDB::Table",
-        "AWS::SQS::Queue",
-        "AWS::SNS::Topic",
-        "AWS::Cognito::IdentityPool",
-        "AWS::CloudFormation::Stack"
-    ]
+    resource_kinds = get_resouce_kinds_from_config(kind)
 
-    for kind in DEFAULT_AWS_CLOUD_CONTROL_RESOURCES:
+    if len(resource_kinds) == 0:
+        logger.error(f"Resource kinds not found in port app config for {kind}")
+        return
+
+    for kind in resource_kinds:
         async for batch in resync_cloudcontrol(kind):
             yield batch
 
