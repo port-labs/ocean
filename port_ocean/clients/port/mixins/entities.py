@@ -133,21 +133,6 @@ class EntityClientMixin:
             return_exceptions=True,
         )
 
-    async def validate_entity_exist(self, identifier: str, blueprint: str) -> None:
-        logger.info(f"Validating entity {identifier} of blueprint {blueprint} exists")
-
-        response = await self.client.get(
-            f"{self.auth.api_url}/blueprints/{blueprint}/entities/{identifier}",
-            headers=await self.auth.headers(),
-        )
-        if response.is_error:
-            logger.error(
-                f"Error validating "
-                f"entity: {identifier} of "
-                f"blueprint: {blueprint}"
-            )
-        handle_status_code(response)
-
     async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
         query = {
             "combinator": "and",
@@ -174,6 +159,7 @@ class EntityClientMixin:
                 "exclude_calculated_properties": "true",
                 "include": ["blueprint", "identifier"],
             },
+            extensions={"retryable": True},
         )
         handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]

@@ -179,7 +179,9 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         transport.close()
 
     def _is_retryable_method(self, request: httpx.Request) -> bool:
-        return request.method in self._retryable_methods
+        return request.method in self._retryable_methods or request.extensions.get(
+            "retryable", False
+        )
 
     def _should_retry(self, response: httpx.Response) -> bool:
         return response.status_code in self._retry_status_codes
@@ -262,6 +264,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 ):
                     return response
                 await response.aclose()
+            except httpx.TimeoutException as e:
+                error = e
+                if remaining_attempts < 1:
+                    raise
             except httpx.HTTPError as e:
                 error = e
                 if remaining_attempts < 1:
