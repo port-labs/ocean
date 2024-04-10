@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+
+## 0.5.10 (2024-04-10)
+
+### Bug Fixes
+
+- Fixed application settings to be loaded from the environment variables
+
+### Improvements
+
+- Added integration version label to docker
+
+
 ## 0.5.9 (2024-03-30)
 
 ### Bug Fixes

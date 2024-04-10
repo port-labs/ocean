@@ -1,6 +1,7 @@
 from typing import Any, Literal
 
 from pydantic import Extra, AnyHttpUrl, parse_obj_as, validator
+from pydantic.env_settings import InitSettingsSource, EnvSettingsSource, BaseSettings
 from pydantic.fields import Field
 from pydantic.main import BaseModel
 
@@ -10,7 +11,7 @@ from port_ocean.core.event_listener import EventListenerSettingsType
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
 
-class ApplicationSettings(BaseOceanModel):
+class ApplicationSettings(BaseSettings):
     log_level: LogLevelType = "INFO"
     enable_http_logging: bool = True
     port: int = 8000
@@ -21,7 +22,13 @@ class ApplicationSettings(BaseOceanModel):
         env_file_encoding = "utf-8"
 
         @classmethod
-        def customise_sources(cls, init_settings, env_settings, *_, **__):  # type: ignore
+        def customise_sources(  # type: ignore
+            cls,
+            init_settings: InitSettingsSource,
+            env_settings: EnvSettingsSource,
+            *_,
+            **__,
+        ):
             return env_settings, init_settings
 
 
