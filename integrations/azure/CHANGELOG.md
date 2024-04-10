@@ -1,3 +1,15 @@
+0.1.39 (2024-04-06)
+
+### Features
+
+- Added support for multiple azure subscriptions (#1)
+- Added generic cloudResource kind (#2)
+
+### Improvements
+
+- Changed default blueprints and mapping to use the new generic cloudResource kind (#3)
+
+
 0.1.38 (2024-04-01)
 
 ### Improvements
