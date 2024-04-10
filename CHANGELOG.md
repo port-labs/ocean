@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.11 (2024-04-11)
+
+
+### Improvements
+
+- Improved the handling of integration entities by adding retries and running it after the upsert to prevent blocking the resync (#1)
+
 
 ## 0.5.10 (2024-04-10)
 
