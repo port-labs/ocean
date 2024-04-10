@@ -1,5 +1,6 @@
 import asyncio
 import functools
+from asyncio import Queue, Task
 from functools import lru_cache
 from typing import Any
 from loguru import logger
@@ -111,24 +112,44 @@ class JQEntityProcessor(BaseEntityProcessor):
             ]
         return [{}]
 
+    async def _helper(self, entities_queue: Queue, entities: list):
+        while True:
+            raw_params = await entities_queue.get()
+            try:
+                if raw_params is None:
+                    return
+                entities.append(await self._calculate_entity(*raw_params))
+            finally:
+                entities_queue.task_done()
+
     async def _calculate_entities(
         self, mapping: ResourceConfig, raw_data: list[dict[str, Any]]
     ) -> list[Entity]:
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
-        entities_tasks = [
-            asyncio.create_task(
-                self._calculate_entity(
-                    data,
+        workers_queue: Queue = Queue(maxsize=40)
+        workers_tasks: list[Task] = []
+        entities = []
+
+        for i in range(20):
+            workers_tasks.append(
+                asyncio.create_task(self._helper(workers_queue, entities))
+            )
+        for i in range(len(raw_data)):
+            await workers_queue.put(
+                (
+                    raw_data[i],
                     raw_entity_mappings,
                     mapping.port.items_to_parse,
                     mapping.selector.query,
                 )
             )
-            for data in raw_data
-        ]
-        entities = await asyncio.gather(*entities_tasks)
+        for i in range(20):
+            await workers_queue.put(None)
+
+        await workers_queue.join()
+        await asyncio.gather(*workers_tasks)
 
         return [
             Entity.parse_obj(entity_data)
