@@ -1,0 +1,1 @@
+Improved the handling of integration entities by adding retries and running it after the upsert to prevent blocking the resync
