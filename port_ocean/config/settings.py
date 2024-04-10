@@ -22,7 +22,7 @@ class ApplicationSettings(BaseSettings):
         env_file_encoding = "utf-8"
 
         @classmethod
-        def customise_sources(
+        def customise_sources(  # type: ignore
             cls,
             init_settings: InitSettingsSource,
             env_settings: EnvSettingsSource,
