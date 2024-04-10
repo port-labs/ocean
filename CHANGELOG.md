@@ -16,7 +16,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added integration version label to docker (#2)
+- Added integration version label to docker
 
 
 ## 0.5.9 (2024-03-30)
