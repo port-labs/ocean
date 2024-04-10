@@ -49,3 +49,4 @@ deploymentMethodOverride:
           - "Microsoft.Network/loadBalancers/read"
           - "Microsoft.Compute/virtualMachines/read"
         type: array
+        

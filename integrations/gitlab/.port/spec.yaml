@@ -45,3 +45,4 @@ configurations:
     sensitive: true
 deploymentMethodOverride:
   - type: helm
+  
