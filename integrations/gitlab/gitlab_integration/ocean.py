@@ -27,7 +27,7 @@ PROJECT_RESYNC_BATCH_SIZE = 10
 async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
     with logger.contextualize(event_id=event_id):
-        logger.info(f"Got an event from webhook. event_type and group_id: {event_id}")
+        logger.debug(f"Received webhook event {event_id} from Gitlab")
         body = await request.json()
         await event_handler.notify(event_id, body)
         return {"ok": True}
@@ -39,7 +39,7 @@ async def handle_system_webhook(request: Request) -> dict[str, Any]:
     # some system hooks have event_type instead of event_name in the body, such as merge_request events
     event_name = body.get("event_name") or body.get("event_type")
     with logger.contextualize(event_name=event_name):
-        logger.debug("Handling system hook")
+        logger.debug(f"Received system webhook event {event_name} from Gitlab")
         await system_event_handler.notify(event_name, body)
         return {"ok": True}
 

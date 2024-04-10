@@ -2,6 +2,8 @@ from typing import Type, List
 
 from gitlab import Gitlab
 
+from loguru import logger
+
 from gitlab_integration.events.event_handler import EventHandler, SystemEventHandler
 from gitlab_integration.events.hooks.base import HookHandler
 from gitlab_integration.events.hooks.issues import Issues
@@ -102,10 +104,10 @@ def validate_hooks_override_config(
     validate_hooks_tokens_are_in_token_mapping(
         token_mapping, token_group_override_hooks_mapping
     )
-    groups_paths: dict[
-        str, WebhookGroupConfig
-    ] = extract_all_groups_from_token_group_override_mapping(
-        token_group_override_hooks_mapping
+    groups_paths: dict[str, WebhookGroupConfig] = (
+        extract_all_groups_from_token_group_override_mapping(
+            token_group_override_hooks_mapping
+        )
     )
 
     validate_unique_groups_paths(groups_paths)
@@ -122,6 +124,9 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
         GroupHook(gitlab_service),
     ]
     for handler in handlers:
+        logger.info(
+            f"Setting up listeners for webhook {webhook_id} for group mapping {gitlab_service.group_mapping}"
+        )
         event_ids = [f"{event_name}:{webhook_id}" for event_name in handler.events]
         event_handler.on(event_ids, handler.on_hook)
 
