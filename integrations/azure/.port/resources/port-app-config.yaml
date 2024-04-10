@@ -8,7 +8,7 @@ resources:
         mappings:
           identifier: .id
           title: .display_name
-          blueprint: '"azure_subscription"'
+          blueprint: '"azureSubscription"'
           properties: {}
   - kind: Microsoft.Resources/resourceGroups
     selector:
@@ -21,7 +21,7 @@ resources:
             .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase |
             join("/")
           title: .name
-          blueprint: '"resource_group"'
+          blueprint: '"azureResourceGroup"'
           properties:
             location: .location
             provisioningState: .properties.provisioningState + .properties.provisioning_state
@@ -46,7 +46,7 @@ resources:
             .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase |
             join("/")
           title: .name
-          blueprint: '"cloud_resource"'
+          blueprint: '"azureCloudResource"'
           properties:
             location: .location
             type: .type

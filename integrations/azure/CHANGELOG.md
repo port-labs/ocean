@@ -1,3 +1,10 @@
+0.1.41 (2024-04-10)
+
+### Bug Fixes
+
+- Fixed blueprints identifiers names and adjusted relations between blueprints
+
+
 0.1.40 (2024-04-10)
 
 ### Improvements
