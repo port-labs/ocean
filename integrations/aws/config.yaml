@@ -15,5 +15,5 @@ integration:
   config:
     awsAccessKeyId: '{{ from env AWS_ACCESS_KEY_ID }}'
     awsSecretAccessKey: '{{ from env AWS_SECRET_ACCESS_KEY }}'
-    # awsRegions: '{{ from env AWS_REGIONS }}'
-    awsRegions: ['us-east-1', 'eu-west-1']
+    awsRegions: '{{ from env AWS_REGIONS }}'
+    # awsRegions: ['us-east-1', 'eu-west-1']
