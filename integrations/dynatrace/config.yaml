@@ -15,4 +15,3 @@ integration:
   config:
     dynatraceHostUrl: "{{ from env DYNATRACE_HOST_URL }}"
     dynatraceApiKey: "{{ from env DYNATRACE_API_KEY }}"
-    
