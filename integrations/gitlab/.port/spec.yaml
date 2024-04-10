@@ -43,3 +43,5 @@ configurations:
         \"subgroup_events\",
         \"confidential_issues_events\"]"
     sensitive: true
+deploymentMethodOverride:
+  - type: helm
