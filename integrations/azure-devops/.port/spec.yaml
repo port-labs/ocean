@@ -22,4 +22,3 @@ configurations:
     description: The host of the Port Ocean app.
 deploymentMethodOverride:
   - type: helm
-  
