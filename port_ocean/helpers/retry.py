@@ -186,7 +186,28 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
     def _should_retry(self, response: httpx.Response) -> bool:
         return response.status_code in self._retry_status_codes
 
-    def _log_failure(
+    def _log_error(
+        self,
+        request: httpx.Request,
+        error: Exception | None,
+    ) -> None:
+        if not self._logger:
+            return
+
+        if isinstance(error, httpx.ConnectTimeout):
+            self._logger.error(
+                f"Request {request.method} {request.url} failed to connect: {str(error)}"
+            )
+        elif isinstance(error, httpx.TimeoutException):
+            self._logger.error(
+                f"Request {request.method} {request.url} failed with a timeout exception: {str(error)}"
+            )
+        elif isinstance(error, httpx.HTTPError):
+            self._logger.error(
+                f"Request {request.method} {request.url} failed with an HTTP error: {str(error)}"
+            )
+
+    def _log_before_retry(
         self,
         request: httpx.Request,
         sleep_time: float,
@@ -251,7 +272,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         while True:
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
-                self._log_failure(request, sleep_time, response, error)
+                self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
 
             error = None
@@ -267,23 +288,17 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             except httpx.ConnectTimeout as e:
                 error = e
                 if remaining_attempts < 1:
-                    self._logger.error(
-                        f"Request {request.method} {request.url} failed to connect: {str(e)}"
-                    )
+                    self._log_error(request, error)
                     raise
             except httpx.TimeoutException as e:
                 error = e
                 if remaining_attempts < 1:
-                    self._logger.error(
-                        f"Request {request.method} {request.url} failed with a timeout exception: {str(e)}"
-                    )
+                    self._log_error(request, error)
                     raise
             except httpx.HTTPError as e:
                 error = e
                 if remaining_attempts < 1:
-                    self._logger.error(
-                        f"Request {request.method} {request.url} failed with an HTTP error: {str(e)}"
-                    )
+                    self._log_error(request, error)
                     raise
             attempts_made += 1
             remaining_attempts -= 1
@@ -300,7 +315,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         while True:
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
-                self._log_failure(request, sleep_time, response, error)
+                self._log_before_retry(request, sleep_time, response, error)
                 time.sleep(sleep_time)
 
             error = None
