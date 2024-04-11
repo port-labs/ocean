@@ -1,16 +1,66 @@
 [
   {
-    "identifier": "ec2",
+    "identifier": "ec2Instance",
+    "description": "This blueprint represents an AWS EC2 instance in our software catalog",
     "title": "EC2 Instance",
-    "icon": "AWS",
+    "icon": "EC2",
     "schema": {
       "properties": {
         "architecture": {
+          "type": "string",
           "title": "Architecture",
-          "type": "string"
+          "enum": ["i386", "x86_64", "arm64", "x86_64_mac", "arm64_mac"]
+        },
+        "availabilityZone": {
+          "type": "string",
+          "title": "Availability Zone"
+        },
+        "link": {
+          "type": "string",
+          "title": "Link",
+          "format": "url"
+        },
+        "platform": {
+          "type": "string",
+          "title": "Platform"
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "pending",
+            "running",
+            "shutting-down",
+            "terminated",
+            "stopping",
+            "stopped"
+          ],
+          "enumColors": {
+            "pending": "yellow",
+            "running": "green",
+            "shutting-down": "pink",
+            "stopped": "purple",
+            "stopping": "orange",
+            "terminated": "red"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        },
+        "type": {
+          "type": "string",
+          "title": "Instance Type"
+        },
+        "vpcId": {
+          "type": "string",
+          "title": "VPC ID"
         }
-      }
+      },
+      "required": []
     },
+    "mirrorProperties": {},
+    "calculationProperties": {},
     "relations": {}
   },
   {
@@ -99,6 +149,135 @@
         }
       }
     },
+    "relations": {}
+  },
+  {
+    "identifier": "cloudFormationStack",
+    "description": "This blueprint represents a service in our software catalog",
+    "title": "CloudFormation Stack",
+    "icon": "Microservice",
+    "schema": {
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "title": "Creation Time"
+        },
+        "status": {
+          "title": "Status",
+          "description": "The current status of the Stack",
+          "type": "string",
+          "enum": [
+            "CREATE_IN_PROGRESS",
+            "CREATE_FAILED",
+            "CREATE_COMPLETE",
+            "ROLLBACK_IN_PROGRESS",
+            "ROLLBACK_FAILED",
+            "ROLLBACK_COMPLETE",
+            "DELETE_IN_PROGRESS",
+            "DELETE_FAILED",
+            "UPDATE_IN_PROGRESS",
+            "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS",
+            "UPDATE_COMPLETE",
+            "UPDATE_FAILED",
+            "UPDATE_ROLLBACK_IN_PROGRESS",
+            "UPDATE_ROLLBACK_FAILED",
+            "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS",
+            "UPDATE_ROLLBACK_COMPLETE",
+            "REVIEW_IN_PROGRESS",
+            "IMPORT_IN_PROGRESS",
+            "IMPORT_COMPLETE",
+            "IMPORT_ROLLBACK_IN_PROGRESS",
+            "IMPORT_ROLLBACK_FAILED",
+            "IMPORT_ROLLBACK_COMPLETE",
+            "DELETE_COMPLETE"
+          ],
+          "enumColors": {
+            "CREATE_IN_PROGRESS": "orange",
+            "CREATE_FAILED": "red",
+            "CREATE_COMPLETE": "green",
+            "ROLLBACK_IN_PROGRESS": "orange",
+            "ROLLBACK_FAILED": "red",
+            "ROLLBACK_COMPLETE": "green",
+            "UPDATE_IN_PROGRESS": "orange",
+            "UPDATE_FAILED": "red",
+            "UPDATE_COMPLETE": "green"
+          }
+        },
+        "template": {
+          "title": "Template",
+          "type": "string",
+          "format": "yaml"
+        },
+        "tags": {
+          "items": {
+            "type": "object"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "link": {
+          "title": "link",
+          "description": "The aws console stack url",
+          "type": "string",
+          "format": "url"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "title": "Last Updated"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "s3",
+    "description": "This blueprint represents an AWS S3 bucket in our software catalog",
+    "title": "S3",
+    "icon": "Bucket",
+    "schema": {
+      "properties": {
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Link"
+        },
+        "regionalDomainName": {
+          "type": "string",
+          "title": "Regional Domain Name"
+        },
+        "versioningStatus": {
+          "type": "string",
+          "title": "Versioning Status",
+          "enum": ["Enabled", "Suspended"]
+        },
+        "encryption": {
+          "type": "array",
+          "title": "Encryption"
+        },
+        "lifecycleRules": {
+          "type": "array",
+          "title": "Lifecycle Rules"
+        },
+        "publicAccess": {
+          "type": "object",
+          "title": "Public Access"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        },
+        "arn": {
+          "type": "string",
+          "title": "ARN"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
     "relations": {}
   }
 ]
