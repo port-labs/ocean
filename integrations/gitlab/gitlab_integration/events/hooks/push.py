@@ -49,3 +49,8 @@ class PushHook(ProjectHandler):
                 f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
             )
             await ocean.register_raw(ObjectKind.PROJECT, [gitlab_project.asdict()])
+        else:
+            logger.debug(
+                f"Skipping push hook for project {gitlab_project.path_with_namespace} because the ref {ref} "
+                f"does not match the branch {branch}"
+            )

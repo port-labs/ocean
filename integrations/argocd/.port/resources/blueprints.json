@@ -111,7 +111,7 @@
         "destinationServer": {
           "type": "string",
           "title": "Destination Server",
-          "description": "The the URL of the target cluster's Kubernetes control plane API"
+          "description": "The URL of the target cluster's Kubernetes control plane API"
         },
         "revision": {
           "type": "string",
@@ -121,7 +121,7 @@
         "targetRevision": {
           "type": "string",
           "title": "Target Revision",
-          "description": "TargetRevision defines the revision of the source to sync the application to. In case of Git, this can be commit, tag, or branch"
+          "description": "Target Revision defines the revision of the source to sync the application to. In case of Git, this can be commit, tag, or branch"
         },
         "syncStatus": {
           "type": "string",
