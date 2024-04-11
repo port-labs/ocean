@@ -3,7 +3,7 @@ from typing import Any
 
 import boto3
 from port_ocean.core.models import Entity
-from utils import ASYNC_GENERATOR_RESYNC_TYPE, ResourceKindsWithSpecialHandling, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, validate_request, get_matching_kinds_from_config, get_resource_kinds_from_config
+from utils import ASYNC_GENERATOR_RESYNC_TYPE, ResourceKindsWithSpecialHandling, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, get_resource_kinds_from_config, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
