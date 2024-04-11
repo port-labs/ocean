@@ -54,9 +54,18 @@ class AzureDevopsClient(HTTPBaseClient):
                         member["__teamId"] = team["id"]
                     yield members
 
+    async def enrich_with_default_team(self, project):
+        project_url = (
+            f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project['id']}"
+        )
+        project = (await self.send_request("GET", project_url)).json()
+        return project
+
     @cache_iterator_result()
     async def generate_repositories(
-        self, include_disabled_repositories: bool = True
+        self,
+        include_disabled_repositories: bool = True,
+        sync_default_team: bool = False,
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -64,10 +73,23 @@ class AzureDevopsClient(HTTPBaseClient):
                 repositories = (await self.send_request("GET", repos_url)).json()[
                     "value"
                 ]
-                if include_disabled_repositories:
-                    yield repositories
-                else:
-                    yield [repo for repo in repositories if not repo.get("isDisabled")]
+
+                if not (include_disabled_repositories):
+                    repositories = [
+                        repo for repo in repositories if not repo.get("isDisabled")
+                    ]
+
+                if sync_default_team:
+                    repositories = [
+                        {
+                            **repo,
+                            "__project": await self.enrich_with_default_team(project),
+                        }
+                        for repo in repositories
+                    ]
+                    print("ENRICHED_REPOS: ", repositories)
+
+                yield repositories
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None

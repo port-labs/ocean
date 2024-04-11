@@ -4,9 +4,10 @@ from typing import Any
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
+    Selector,
 )
 from pydantic import Field
-from typing import List
+from typing import List, Literal
 
 
 class Kind(StrEnum):
@@ -32,10 +33,23 @@ PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
 ]
 
 
+class AzureDevopsRepositoryResourceConfig(ResourceConfig):
+    class AzureDevopsSelector(Selector):
+        query: str
+        default_team: bool | None = Field(
+            default=False,
+            description="If set to true, will ingest default team for each repository to Port. Default value is false",
+            alias="defaultTeam",
+        )
+
+    kind: Literal["repository"]
+    selector: AzureDevopsSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     branch: str = "main"
-    resources: list[ResourceConfig] = Field(default_factory=list)
+    resources: list[AzureDevopsRepositoryResourceConfig | ResourceConfig] = None
 
 
 def extract_branch_name_from_ref(ref: str) -> str:

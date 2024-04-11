@@ -4,6 +4,7 @@ resources:
   - kind: repository
     selector:
       query: "true"
+      defaultTeam: "true"
     port:
       entity:
         mappings:
@@ -13,6 +14,7 @@ resources:
           properties:
             url: '.url'
             readme: file://README.md
+            defaultTeam: '.__project.defaultTeam.name'
 
   - kind: repository-policy
     selector:
