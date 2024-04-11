@@ -9,6 +9,9 @@ from starlette.requests import Request
 from port_ocean.context.event import event
 
 from gitlab_integration.events.setup import event_handler, system_event_handler
+from gitlab_integration.models.webhook_groups_override_config import (
+    WebhookMappingConfig,
+)
 from gitlab_integration.events.setup import setup_application
 from gitlab_integration.git_integration import GitlabResourceConfig
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
@@ -24,6 +27,7 @@ PROJECT_RESYNC_BATCH_SIZE = 10
 async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
     with logger.contextualize(event_id=event_id):
+        logger.debug(f"Received webhook event {event_id} from Gitlab")
         body = await request.json()
         await event_handler.notify(event_id, body)
         return {"ok": True}
@@ -35,7 +39,7 @@ async def handle_system_webhook(request: Request) -> dict[str, Any]:
     # some system hooks have event_type instead of event_name in the body, such as merge_request events
     event_name = body.get("event_name") or body.get("event_type")
     with logger.contextualize(event_name=event_name):
-        logger.debug("Handling system hook")
+        logger.debug(f"Received system webhook event {event_name} from Gitlab")
         await system_event_handler.notify(event_name, body)
         return {"ok": True}
 
@@ -47,9 +51,10 @@ async def on_start() -> None:
     hook_override_mapping: dict = integration_config[
         "token_group_hooks_override_mapping"
     ]
-    sensitive_log_filter.hide_sensitive_strings(
-        *token_mapping.keys(), *hook_override_mapping.keys()
-    )
+    sensitive_log_filter.hide_sensitive_strings(*token_mapping.keys())
+
+    if hook_override_mapping is not None:
+        sensitive_log_filter.hide_sensitive_strings(*hook_override_mapping.keys())
 
     if ocean.event_listener_type == "ONCE":
         logger.info("Skipping webhook creation because the event listener is ONCE")
@@ -61,13 +66,20 @@ async def on_start() -> None:
         )
         return
 
+    token_webhook_mapping: WebhookMappingConfig | None = None
+
+    if integration_config["token_group_hooks_override_mapping"]:
+        token_webhook_mapping = WebhookMappingConfig(
+            tokens=integration_config["token_group_hooks_override_mapping"]
+        )
+
     try:
         setup_application(
             integration_config["token_mapping"],
             integration_config["gitlab_host"],
             integration_config["app_host"],
             integration_config["use_system_hook"],
-            integration_config["token_group_hooks_override_mapping"],
+            token_webhook_mapping,
         )
     except Exception as e:
         logger.warning(
@@ -124,7 +136,9 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             for folder_selector in selector.folders:
                 for project in projects_batch:
                     if project.name in folder_selector.repos:
-                        async for folders_batch in service.get_all_folders_in_project_path(
+                        async for (
+                            folders_batch
+                        ) in service.get_all_folders_in_project_path(
                             project, folder_selector
                         ):
                             yield folders_batch
