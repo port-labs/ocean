@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "azure_subscription",
+    "identifier": "azureSubscription",
     "title": "Azure Subscription",
     "icon": "Azure",
     "schema": {
@@ -46,7 +46,7 @@
     }
   },
   {
-    "identifier": "cloud_resource",
+    "identifier": "azureCloudResource",
     "title": "Cloud Resource",
     "icon": "Azure",
     "schema": {
@@ -75,7 +75,7 @@
     "relations": {
       "resource_group": {
         "title": "Resource Group",
-        "target": "resource_group",
+        "target": "azureResourceGroup",
         "required": false,
         "many": false
       }
