@@ -54,9 +54,9 @@ class AzureDevopsClient(HTTPBaseClient):
                         member["__teamId"] = team["id"]
                     yield members
 
-    async def get_single_project(self, project):
+    async def get_single_project(self, project_id: str) -> dict[str, Any]:
         project_url = (
-            f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project['id']}"
+            f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}"
         )
         project = (await self.send_request("GET", project_url)).json()
         return project
@@ -83,7 +83,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     repositories = [
                         {
                             **repo,
-                            "__project": await self.get_single_project(project),
+                            "__project": await self.get_single_project(project["id"]),
                         }
                         for repo in repositories
                     ]
