@@ -28,22 +28,48 @@ def get_accessible_accounts():
     organizations_client = boto3.client('organizations')
     paginator = organizations_client.get_paginator('list_accounts')
     accounts = []
-    for page in paginator.paginate():
-        for account in page['Accounts']:
-            try:
-                assumed_role = sts_client.assume_role(
-                    RoleArn=f'arn:aws:iam::{account["Id"]}:role/{ROLE_NAME}',
-                    RoleSessionName='AssumeRoleSession'
-                )
-                # If assume_role succeeds, add the account ID to the list
-                accounts.append(account['Id'])
-            except sts_client.exceptions.ClientError as e:
-                # If assume_role fails due to permission issues or non-existent role, skip the account
-                if e.response['Error']['Code'] == 'AccessDenied':
-                    continue
-                else:
-                    raise
+    try:
+        for page in paginator.paginate():
+            for account in page['Accounts']:
+                try:
+                    assumed_role = sts_client.assume_role(
+                        RoleArn=f'arn:aws:iam::{account["Id"]}:role/{ROLE_NAME}',
+                        RoleSessionName='AssumeRoleSession'
+                    )
+                    # If assume_role succeeds, add the account ID to the list
+                    accounts.append(account['Id'])
+                except sts_client.exceptions.ClientError as e:
+                    # If assume_role fails due to permission issues or non-existent role, skip the account
+                    if e.response['Error']['Code'] == 'AccessDenied':
+                        continue
+                    else:
+                        raise
+    except Exception as e:
+        logger.error(f"Failed to list AWS accounts; error {e}")
+    except organizations_client.exceptions.AccessDeniedException:
+        # If the caller is not a member of an AWS organization, assume_role will fail with AccessDenied
+        # In this case, assume the role in the current account
+        logger.error("Caller is not a member of an AWS organization. Assuming role in the current account.")
+        assumed_role = sts_client.assume_role(
+            RoleArn=f'arn:aws:iam::{current_account_id}:role/{ROLE_NAME}',
+            RoleSessionName='AssumeRoleSession'
+        )
+        accounts.append(current_account_id)
     return accounts
+
+def validate_request(request: Request) -> None:
+    """
+    Validates the request by checking for the presence of the API key in the request headers.
+    """
+    
+    api_key = request.headers.get('x-port-aws-ocean-api-key')
+    if not api_key:
+        raise ValueError("API key not found in request headers")
+    if not ocean.integration_config.get("aws_api_key"):
+        raise ValueError("API key not found in integration config")
+    if api_key != ocean.integration_config.get("aws_api_key"):
+        raise ValueError("Invalid API key")
+
 
 def format_cloudcontrol_resource(kind: str, resource: dict[str, Any]) -> dict[str, Any]:
     return {
@@ -222,6 +248,8 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.router.post("/webhook")
 async def webhook(request: Request) -> dict[str, Any]:
     logger.info("Received webhook")
+    validate_request(request)
+
     try:
         body = await request.json()
         logger.info("Webhook body", body=body)
@@ -274,9 +302,11 @@ async def webhook(request: Request) -> dict[str, Any]:
         logger.info("Webhook processed successfully")
         return {"ok": True}
     except Exception as e:
-        logger.error(f"Failed to process event from aws error", error=e)
+        logger.error(f"Failed to process event from aws error: {e}", error=e)
         return {"ok": False}
 
 @ocean.on_start()
 async def on_start() -> None:
     print("Starting integration")
+    # accessible_accounts = get_accessible_accounts()
+    # logger.info("Accessible accounts", accounts=accessible_accounts)

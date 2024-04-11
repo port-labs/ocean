@@ -7,6 +7,10 @@ features:
     resources:
       - kind: EC2
 configurations:
+  - name: awsApiKey
+    required: true
+    type: string
+    sensitive: true
   - name: awsAccessKeyId
     required: true
     type: string
