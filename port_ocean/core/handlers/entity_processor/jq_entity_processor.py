@@ -112,12 +112,15 @@ class JQEntityProcessor(BaseEntityProcessor):
             ]
         return [{}]
 
-    async def _helper(self, entities_queue: Queue, entities: list):
+    async def _start_entity_processor_worker(
+        self, entities_queue: Queue, entities: list
+    ):
         while True:
             raw_params = await entities_queue.get()
             try:
                 if raw_params is None:
                     return
+                logger.info(f"Starting to process entity: {raw_params[0]}")
                 entities.append(await self._calculate_entity(*raw_params))
             finally:
                 entities_queue.task_done()
@@ -128,13 +131,15 @@ class JQEntityProcessor(BaseEntityProcessor):
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
-        workers_queue: Queue = Queue(maxsize=40)
+        workers_queue: Queue = Queue(maxsize=100)
         workers_tasks: list[Task] = []
         entities = []
 
-        for i in range(20):
+        for i in range(50):
             workers_tasks.append(
-                asyncio.create_task(self._helper(workers_queue, entities))
+                asyncio.create_task(
+                    self._start_entity_processor_worker(workers_queue, entities)
+                )
             )
         for i in range(len(raw_data)):
             await workers_queue.put(
@@ -145,7 +150,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                     mapping.selector.query,
                 )
             )
-        for i in range(20):
+        for i in range(50):
             await workers_queue.put(None)
 
         await workers_queue.join()

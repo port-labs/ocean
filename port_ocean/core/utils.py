@@ -40,26 +40,30 @@ def get_port_diff(
     before: Iterable[Entity],
     after: Iterable[Entity],
 ) -> EntityPortDiff:
-    return EntityPortDiff(
-        deleted=get_unique(
-            [
-                item
-                for item in before
-                if not any(is_same_entity(item, item_after) for item_after in after)
-            ],
-        ),
-        created=get_unique(
-            [
-                item
-                for item in after
-                if not any(is_same_entity(item, item_before) for item_before in before)
-            ],
-        ),
-        modified=get_unique(
-            [
-                item
-                for item in after
-                if any(is_same_entity(item, item_before) for item_before in before)
-            ],
-        ),
-    )
+    before_dict = {}
+    after_dict = {}
+    created = []
+    modified = []
+    deleted = []
+
+    # Create dictionaries for before and after lists
+    for entity in before:
+        key = (entity.identifier, entity.blueprint)
+        before_dict[key] = entity
+
+    for entity in after:
+        key = (entity.identifier, entity.blueprint)
+        after_dict[key] = entity
+
+    # Find created, modified, and deleted objects
+    for key, obj in after_dict.items():
+        if key not in before_dict:
+            created.append(obj)
+        elif obj != before_dict[key]:
+            modified.append(obj)
+
+    for key, obj in before_dict.items():
+        if key not in after_dict:
+            deleted.append(obj)
+
+    return EntityPortDiff(created=created, modified=modified, deleted=deleted)
