@@ -14,6 +14,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Improved the handling of integration entities by adding retries and running it after the upsert to prevent blocking the resync (#1)
 
+### Features
+
+- Added a way to enable request retries for any request even if its request method is not part of the retryable methods
+
 
 ## 0.5.10 (2024-04-10)
 
