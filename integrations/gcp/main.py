@@ -53,7 +53,7 @@ async def feed_events_callback(feed_event: Request) -> Response:
                 await ocean.unregister_raw(message.asset_type, [resource])
             else:
                 await ocean.register_raw(message.asset_type, [resource])
-        elif len(results[0]) > 1:
+        elif len(results[0]) < 1:
             logger.warning(
                 f"Didn't find any resource named: {message.asset_name}",
                 **message.metadata,

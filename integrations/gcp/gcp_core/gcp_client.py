@@ -92,11 +92,16 @@ class GCPClient:
     async def create_assets_feed_if_not_exists(
         self, feed: CloudAssetInventoryFeed
     ) -> None:
-        existing_feeds = await self.list_feeds()
-        if feed.id in [
-            existing_feed["name"].split("/")[-1] for existing_feed in existing_feeds
-        ]:
-            logger.debug(f"Assets Feed {feed.id} already exists, not creating..")
-        else:
-            logger.info(f"Creating assets feed {feed.id}")
-            await self.create_feed(feed)
+        try:
+            existing_feeds = await self.list_feeds()
+            if feed.id in [
+                existing_feed["name"].split("/")[-1] for existing_feed in existing_feeds
+            ]:
+                logger.debug(f"Assets Feed {feed.id} already exists, not creating..")
+            else:
+                logger.info(f"Creating assets feed {feed.id}")
+                await self.create_feed(feed)
+        except PermissionDenied:
+            logger.warning(
+                "Service account has no permissions to list/create feeds. Please refer to our docs to find and set the correct permissions."
+            )
