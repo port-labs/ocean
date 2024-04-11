@@ -13,6 +13,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Improved the handling of integration entities by adding retries and running it after the upsert to prevent blocking the resync
+- Changed entities search timeout to 30 seconds to prevent blocking the resync
 
 ### Features
 
