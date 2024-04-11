@@ -264,13 +264,26 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 ):
                     return response
                 await response.aclose()
+            except httpx.ConnectTimeout as e:
+                error = e
+                if remaining_attempts < 1:
+                    self._logger.error(
+                        f"Request {request.method} {request.url} failed to connect: {str(e)}"
+                    )
+                    raise
             except httpx.TimeoutException as e:
                 error = e
                 if remaining_attempts < 1:
+                    self._logger.error(
+                        f"Request {request.method} {request.url} failed with a timeout exception: {str(e)}"
+                    )
                     raise
             except httpx.HTTPError as e:
                 error = e
                 if remaining_attempts < 1:
+                    self._logger.error(
+                        f"Request {request.method} {request.url} failed with an HTTP error: {str(e)}"
+                    )
                     raise
             attempts_made += 1
             remaining_attempts -= 1

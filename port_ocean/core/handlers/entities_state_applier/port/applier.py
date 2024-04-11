@@ -79,7 +79,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     async def _safe_delete(
         self,
         entities_to_delete: list[Entity],
-        related_entities_to_protect: list[Entity],
+        entities_to_protect: list[Entity],
         user_agent_type: UserAgentType,
     ) -> None:
         if not entities_to_delete:
@@ -88,7 +88,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         await self._validate_delete_dependent_entities(entities_to_delete)
 
         related_entities = await get_related_entities(
-            related_entities_to_protect, self.context.port_client
+            entities_to_protect, self.context.port_client
         )
 
         allowed_entities_to_delete = []
@@ -99,7 +99,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             )
             is_part_of_created = any(
                 is_same_entity(entity, entity_to_delete)
-                for entity in related_entities_to_protect
+                for entity in entities_to_protect
             )
             if is_part_of_related:
                 if event.port_app_config.create_missing_related_entities:
