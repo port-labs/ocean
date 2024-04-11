@@ -1,6 +1,3 @@
-import asyncio
-from itertools import chain
-
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
@@ -14,11 +11,9 @@ from port_ocean.core.handlers.entities_state_applier.port.get_related_entities i
 from port_ocean.core.handlers.entities_state_applier.port.order_by_entities_dependencies import (
     order_by_entities_dependencies,
 )
-from port_ocean.core.handlers.entity_processor.base import EntityPortDiff
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import EntityDiff
-from port_ocean.core.utils import is_same_entity, get_unique, get_port_diff
-from port_ocean.exceptions.core import RelationValidationException
+from port_ocean.core.utils import is_same_entity, get_port_diff
 
 
 class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
@@ -29,53 +24,6 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     through HTTP requests.
     """
 
-    async def _validate_delete_dependent_entities(self, entities: list[Entity]) -> None:
-        if event.port_app_config.delete_dependent_entities:
-            return
-
-        logger.info("Validating no dependent entities blocks the operation")
-        dependent_entities = await asyncio.gather(
-            *(
-                self.context.port_client.search_dependent_entities(entity)
-                for entity in entities
-            )
-        )
-        new_dependent_entities = get_unique(
-            [
-                entity
-                for entity in chain.from_iterable(dependent_entities)
-                if not any(is_same_entity(item, entity) for item in entities)
-            ]
-        )
-
-        if new_dependent_entities:
-            raise RelationValidationException(
-                f"Must enable delete_dependent_entities flag or delete all dependent entities: "
-                f" {[(dep.blueprint, dep.identifier) for dep in new_dependent_entities]}"
-            )
-
-    async def _validate_modified_or_created_entity_diff(
-        self, diff: EntityPortDiff
-    ) -> None:
-        config = event.port_app_config
-        modified_or_created_entities = diff.modified + diff.created
-
-        if modified_or_created_entities and not config.create_missing_related_entities:
-            logger.info(
-                "Validating modified or created entities for missing relation entities"
-            )
-
-            await asyncio.gather(
-                *(
-                    self.context.port_client.validate_entity_payload(
-                        entity,
-                        config.enable_merge_entity,
-                        create_missing_related_entities=config.create_missing_related_entities,
-                    )
-                    for entity in modified_or_created_entities
-                )
-            )
-
     async def _safe_delete(
         self,
         entities_to_delete: list[Entity],
@@ -84,8 +32,6 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
     ) -> None:
         if not entities_to_delete:
             return
-
-        await self._validate_delete_dependent_entities(entities_to_delete)
 
         related_entities = await get_related_entities(
             entities_to_protect, self.context.port_client
@@ -125,7 +71,6 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         logger.info(
             f"Updating entity diff (created: {len(diff.created)}, deleted: {len(diff.deleted)}, modified: {len(diff.modified)})"
         )
-        await self._validate_modified_or_created_entity_diff(diff)
         await self.upsert(kept_entities, user_agent_type)
 
         await self._safe_delete(diff.deleted, kept_entities, user_agent_type)
