@@ -25,7 +25,7 @@
           "default": 0,
           "type": "number"
         },
-        "defaultTeam" : {
+        "defaultTeam": {
           "type": "string",
           "description": "Default Team of the project"
         },

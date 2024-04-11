@@ -10,7 +10,7 @@ from starlette.requests import Request
 from azure_devops.misc import (
     Kind,
     PULL_REQUEST_SEARCH_CRITERIA,
-    AzureDevopsRepositoryResourceConfig
+    AzureDevopsRepositoryResourceConfig,
 )
 
 
@@ -75,7 +75,6 @@ async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
 
     selector = cast(AzureDevopsRepositoryResourceConfig, event.resource_config).selector
-
     sync_default_team = selector.default_team
 
     async for repositories in azure_devops_client.generate_repositories(

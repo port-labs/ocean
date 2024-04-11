@@ -54,7 +54,7 @@ class AzureDevopsClient(HTTPBaseClient):
                         member["__teamId"] = team["id"]
                     yield members
 
-    async def enrich_with_default_team(self, project):
+    async def get_single_project(self, project):
         project_url = (
             f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project['id']}"
         )
@@ -83,11 +83,10 @@ class AzureDevopsClient(HTTPBaseClient):
                     repositories = [
                         {
                             **repo,
-                            "__project": await self.enrich_with_default_team(project),
+                            "__project": await self.get_single_project(project),
                         }
                         for repo in repositories
                     ]
-                    print("ENRICHED_REPOS: ", repositories)
 
                 yield repositories
 
