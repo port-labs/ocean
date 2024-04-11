@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.5 (2024-04-11)
+
+### Bug Fixes
+
+- Updated documentation path (0.1.5)
+- Resolved an issue where the relationship between feature flags and environments was causing synchronization of feature flags to fail (0.1.5)
+
+
 # Port_Ocean 0.1.4 (2024-04-11)
 
 ### Improvements
