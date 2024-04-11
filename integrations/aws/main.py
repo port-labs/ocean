@@ -1,17 +1,12 @@
-import time
+import json
 from typing import Any
-import typing
 
 import boto3
-import json
-from overrides import AWSPortAppConfig
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
-from utils import ASYNC_GENERATOR_RESYNC_TYPE, ResourceKindsWithSpecialHandling, _describe_resources, _fix_unserializable_date_properties
+from utils import ASYNC_GENERATOR_RESYNC_TYPE, ResourceKindsWithSpecialHandling, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, validate_request, get_matching_kinds_from_config, get_resource_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
-from port_ocean.context.event import event
 
 def get_accessible_accounts():
     """
@@ -57,98 +52,6 @@ def get_accessible_accounts():
         accounts.append(current_account_id)
     return accounts
 
-def validate_request(request: Request) -> None:
-    """
-    Validates the request by checking for the presence of the API key in the request headers.
-    """
-    
-    api_key = request.headers.get('x-port-aws-ocean-api-key')
-    if not api_key:
-        raise ValueError("API key not found in request headers")
-    if not ocean.integration_config.get("aws_api_key"):
-        raise ValueError("API key not found in integration config")
-    if api_key != ocean.integration_config.get("aws_api_key"):
-        raise ValueError("Invalid API key")
-
-
-def format_cloudcontrol_resource(kind: str, resource: dict[str, Any]) -> dict[str, Any]:
-    return {
-                'Identifier': resource.get('Identifier', ''),
-                'Kind': kind,
-                **json.loads(resource.get('Properties', {}))
-            }
-
-def get_matching_kinds_from_config(kind: str) -> list[ResourceConfig]:
-    matching_resource_configs = []
-    for resource_config in typing.cast(AWSPortAppConfig, event.port_app_config).resources:
-        if resource_config.kind == kind:
-            matching_resource_configs.append(resource_config)
-        elif resource_config.selector.resource_kinds and kind in resource_config.selector.resource_kinds:
-            matching_resource_configs.append(resource_config)
-    return matching_resource_configs
-
-def get_resouce_kinds_from_config(kind: str) -> list[str]:
-    for resource_config in typing.cast(AWSPortAppConfig, event.port_app_config).resources:
-        if resource_config.kind == kind and resource_config.selector.resource_kinds:
-            return resource_config.selector.resource_kinds
-    return []
-
-def describe_single_resource(kind: str, identifier: str, region: str) -> dict[str, Any]:
-    sessions = _get_sessions([region] if region else [])
-    for session in sessions:
-        region = session.region_name
-        try:
-            if kind == ResourceKindsWithSpecialHandling.CLOUDRESOURCE:
-                cloudcontrol = session.client('cloudcontrol')
-                response = cloudcontrol.get_resource(TypeName=identifier)
-                return format_cloudcontrol_resource(kind, response.get('ResourceDescription', {}))
-            elif kind == ResourceKindsWithSpecialHandling.ACM:
-                acm = session.client('acm')
-                response = acm.describe_certificate(CertificateArn=identifier)
-                return response.get('Certificate', {})
-            elif kind == ResourceKindsWithSpecialHandling.ELASTICACHE:
-                elasticache = session.client('elasticache')
-                response = elasticache.describe_cache_clusters(CacheClusterId=identifier)
-                return response.get('CacheClusters', [])[0]
-            elif kind == ResourceKindsWithSpecialHandling.LOADBALANCER:
-                elbv2 = session.client('elbv2')
-                response = elbv2.describe_load_balancers(LoadBalancerArns=[identifier])
-                return response.get('LoadBalancers', [])[0]
-            elif kind == ResourceKindsWithSpecialHandling.CLOUDFORMATION:
-                cloudformation = session.client('cloudformation')
-                response = cloudformation.describe_stacks(StackName=identifier)
-                return response.get('Stacks', [])[0]
-            elif kind == ResourceKindsWithSpecialHandling.EC2:
-                ec2_client = session.client('ec2')
-                described_instance = ec2_client.describe_instances(InstanceIds=[identifier])
-                instance_definition = described_instance["Reservations"][0]["Instances"][0]
-                return instance_definition
-            else:
-                cloudcontrol = session.client('cloudcontrol')
-                response = cloudcontrol.get_resource(TypeName=kind, Identifier=identifier)
-                return format_cloudcontrol_resource(kind, response.get('ResourceDescription', {}))
-        except Exception as e:
-            if e.response['Error']['Code'] == 'ResourceNotFoundException':
-                logger.info(f"Resource not found: {kind} {identifier}")
-                return {}
-            logger.error(f"Failed to describe CloudControl Instance in region: {region}; error {e}")
-            break
-
-def _get_sessions(custom_aws_regions = []) -> list[boto3.Session]:
-    aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
-    aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")
-    aws_regions = ocean.integration_config.get("aws_regions")
-
-    aws_sessions = []
-    if len(custom_aws_regions) > 0:
-        for aws_region in custom_aws_regions:
-            aws_sessions.append(boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, region_name=aws_region))
-        return aws_sessions
-    
-    for aws_region in aws_regions:
-        aws_sessions.append(boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, region_name=aws_region))
-    
-    return aws_sessions
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -160,7 +63,7 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDRESOURCE)
 async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    resource_kinds = get_resouce_kinds_from_config(kind)
+    resource_kinds = get_resource_kinds_from_config(kind)
 
     if len(resource_kinds) == 0:
         logger.error(f"Resource kinds not found in port app config for {kind}")
@@ -174,25 +77,25 @@ async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    for batch in _describe_resources(sessions, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
+    for batch in describe_resources(sessions, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE)
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    for batch in _describe_resources(sessions, 'elasticache', 'describe_cache_clusters', 'CacheClusters', 'NextMarker'):
+    for batch in describe_resources(sessions, 'elasticache', 'describe_cache_clusters', 'CacheClusters', 'NextMarker'):
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
 async def resync_loadbalancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    for batch in _describe_resources(sessions, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
+    for batch in describe_resources(sessions, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    for batch in _describe_resources(sessions, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
+    for batch in describe_resources(sessions, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
         yield batch
 
 
@@ -237,8 +140,8 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 for instance in page:
                     described_instance = ec2_client.describe_instances(InstanceIds=[instance.id])
                     instance_definition = described_instance["Reservations"][0]["Instances"][0]
-                    seriliazable_instance = _fix_unserializable_date_properties(instance_definition)
-                    page_instances.append(seriliazable_instance)
+                    serializable_instance = _fix_unserializable_date_properties(instance_definition)
+                    page_instances.append(serializable_instance)
                 yield page_instances
         except Exception as e:
             logger.error(f"Failed to list EC2 Instance in region: {region}; error {e}")
@@ -249,7 +152,6 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def webhook(request: Request) -> dict[str, Any]:
     logger.info("Received webhook")
     validate_request(request)
-
     try:
         body = await request.json()
         logger.info("Webhook body", body=body)
@@ -277,7 +179,7 @@ async def webhook(request: Request) -> dict[str, Any]:
             resource = describe_single_resource(resource_type, identifier, body.get("awsRegion"))
             if not resource: # Resource probably deleted
                 logger.info(
-                    "Resource not found in AWS, unregistering from port",
+                    "Resource not found in AWS, un-registering from port",
                     id=identifier,
                     kind=resource_type,
                     blueprint=blueprint,
