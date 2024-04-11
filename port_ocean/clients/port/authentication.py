@@ -49,7 +49,9 @@ class PortAuthentication:
 
         credentials = {"clientId": client_id, "clientSecret": client_secret}
         response = await self.client.post(
-            f"{self.api_url}/auth/access_token", json=credentials
+            f"{self.api_url}/auth/access_token",
+            json=credentials,
+            extensions={"retryable": True},
         )
         handle_status_code(response)
         return TokenResponse(**response.json())
