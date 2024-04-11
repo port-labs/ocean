@@ -12,6 +12,10 @@ from gcp_core.types import CloudAssetInventoryFeed, SubscriptionMessage
 T = TypeVar("T", bound=proto.Message)
 
 
+class GotFeedCreatedSuccessfullyMessage(Exception):
+    pass
+
+
 def parseProtobufMessages(messages: MutableSequence[T]) -> list[dict[str, Any]]:
     return [proto.Message.to_dict(message) for message in messages]
 
@@ -19,7 +23,15 @@ def parseProtobufMessages(messages: MutableSequence[T]) -> list[dict[str, Any]]:
 async def parseSubscriptionMessageFromRequest(request: Request) -> SubscriptionMessage:
     request_json = await request.json()
     message_id = request_json["message"]["messageId"]
-    data = json.loads(base64.b64decode(request_json["message"]["data"]))
+    try:
+        data = json.loads(base64.b64decode(request_json["message"]["data"]))
+    except json.JSONDecodeError:
+        if (
+            base64.b64decode(request_json["message"]["data"])
+            .decode("utf-8")
+            .startswith("You have successfully configured real time feed ")
+        ):
+            raise GotFeedCreatedSuccessfullyMessage()
     asset_type = data["asset"]["assetType"]
     asset_name = data["asset"]["name"]
     message = SubscriptionMessage(

@@ -8,6 +8,7 @@ from starlette.requests import Request
 
 from gcp_core.gcp_client import GCPClient
 from gcp_core.utils import (
+    GotFeedCreatedSuccessfullyMessage,
     create_feed_from_ocean_config,
     parseSubscriptionMessageFromRequest,
 )
@@ -37,8 +38,8 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.router.post("/events")
 async def feed_events_callback(feed_event: Request) -> Response:
     gcp_client = GCPClient.create_from_ocean_config()
-    message = await parseSubscriptionMessageFromRequest(feed_event)
     try:
+        message = await parseSubscriptionMessageFromRequest(feed_event)
         results = [
             resources
             async for resources in gcp_client.generate_resources(
@@ -65,6 +66,9 @@ async def feed_events_callback(feed_event: Request) -> Response:
                 **message.metadata,
             )
             return Response(status_code=http.HTTPStatus.CONFLICT)
+    except GotFeedCreatedSuccessfullyMessage:
+        logger.info("Feed has been created successfully.")
+        return Response(status_code=http.HTTPStatus.OK)
     except Exception as e:
         logger.error(
             f"Got error while processing Feed event {message.message_id}: {str(e)}",
