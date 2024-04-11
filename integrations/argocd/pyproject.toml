@@ -6,9 +6,9 @@ authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
+port_ocean = {version = "^0.5.10", extras = ["cli"]}
 deprecation = "^2.1.0"
 toml = "^0.10.2"
-port_ocean = {version = "^0.5.10", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
