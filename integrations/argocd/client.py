@@ -5,8 +5,8 @@ import httpx
 from loguru import logger
 
 from port_ocean.utils import http_async_client
-import deprecation  # type: ignore
-import toml
+from deprecation import deprecated  # type: ignore
+from port_ocean.version import __integration_version__
 
 
 class ObjectKind(StrEnum):
@@ -31,14 +31,6 @@ class ArgocdClient:
         self.api_auth_header = {"Authorization": f"Bearer {self.token}"}
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
-
-    @staticmethod
-    def get_current_version() -> str:
-        """Function to parse pyproject.toml and retrieve the version of the integration"""
-        logger.info("Getting current integration version from pyproject.toml")
-        with open("pyproject.toml", "r") as toml_file:
-            data = toml.load(toml_file)
-            return data["tool"]["poetry"]["version"]
 
     async def _send_api_request(
         self,
@@ -83,9 +75,9 @@ class ArgocdClient:
         application = await self._send_api_request(url=url)
         return application
 
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="0.1.34",
-        current_version=get_current_version(),
+        current_version=__integration_version__,
         details=DEPRECATION_WARNING,
     )
     async def get_deployment_history(self) -> list[dict[str, Any]]:
@@ -98,9 +90,9 @@ class ArgocdClient:
         ]
         return all_history
 
-    @deprecation.deprecated(
+    @deprecated(
         deprecated_in="0.1.34",
-        current_version=get_current_version(),
+        current_version=__integration_version__,
         details=DEPRECATION_WARNING,
     )
     async def get_kubernetes_resource(self) -> list[dict[str, Any]]:

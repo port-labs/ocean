@@ -48,7 +48,7 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             application_name=application["metadata"]["name"]
         )
         application_resource = [
-            {**managed_resource, "__applicationId": application["metadata"]["uid"]}
+            {**managed_resource, "__application": application}
             for managed_resource in managed_resources
         ]
         yield application_resource

@@ -264,50 +264,31 @@
           "title": "Version",
           "type": "string"
         },
-        "syncStatus": {
-          "type": "string",
-          "title": "Sync Status",
-          "enum": [
-            "Synced",
-            "OutOfSync",
-            "Unknown"
-          ],
-          "enumColors": {
-            "Synced": "green",
-            "OutOfSync": "red",
-            "Unknown": "lightGray"
-          },
-          "description": "The sync status of the application"
-        },
-        "healthStatus": {
-          "type": "string",
-          "title": "Health Status",
-          "enum": [
-            "Healthy",
-            "Missing",
-            "Suspended",
-            "Degraded",
-            "Progressing",
-            "Unknown"
-          ],
-          "enumColors": {
-            "Healthy": "green",
-            "Missing": "yellow",
-            "Suspended": "purple",
-            "Degraded": "red",
-            "Progressing": "blue",
-            "Unknown": "lightGray"
-          },
-          "description": "The health status of the application"
-        },
         "namespace": {
           "title": "Namespace",
           "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
         }
       },
       "required": []
     },
-    "mirrorProperties": {},
+    "mirrorProperties": {
+      "healthStatus": {
+        "title": "Health Status",
+        "path": "application.healthStatus"
+      },
+      "syncStatus": {
+        "title": "Sync Status",
+        "path": "application.syncStatus"
+      }
+    },
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {

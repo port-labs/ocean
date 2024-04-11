@@ -84,21 +84,20 @@ resources:
             sourcePath: .item.source.path
           relations:
             application: .metadata.uid
-  - kind: application
+  - kind: managed-resource
     selector:
-      query: "true"
+      query: 'true'
     port:
-      itemsToParse: .status.resources
       entity:
         mappings:
-          identifier: .metadata.uid + "-" + .item.name
-          title: .metadata.name + "-" + .item.name
+          identifier: .__application.metadata.uid + "-" + .name
+          title: .__application.metadata.name + "-" + .name
           blueprint: '"argocdKubernetesResource"'
           properties:
-            kind: .item.kind
-            version: .item.version
-            namespace: .item.namespace
-            syncStatus: .item.status
-            healthStatus: .item.health.status
+            kind: .kind
+            namespace: .namespace
+            version: .resourceVersion
+            annotations: .liveState | fromjson | .metadata.annotations
+            labels: .liveState | fromjson | .metadata.labels
           relations:
-            application: .metadata.uid
+            application: .__application.metadata.uid
