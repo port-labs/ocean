@@ -86,7 +86,7 @@ resources:
             application: .metadata.uid
   - kind: managed-resource
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
