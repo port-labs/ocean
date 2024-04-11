@@ -84,6 +84,7 @@ jobs:
           echo "context_dir=$context_dir" >> $GITHUB_OUTPUT
 
           version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
+          echo "version=$version" >> $GITHUB_OUTPUT
 
           dockerfile_path=integrations/_infra/Dockerfile
           if test -e $folder/../Dockerfile; then
@@ -113,6 +114,7 @@ jobs:
           tags: ${{ steps.prepare_tags.outputs.tags }}
           build-args: |
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
+            INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
 
   upload-specs:
     runs-on: ubuntu-latest

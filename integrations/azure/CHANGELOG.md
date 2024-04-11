@@ -1,3 +1,29 @@
+0.1.41 (2024-04-10)
+
+### Bug Fixes
+
+- Fixed blueprints identifiers names and adjusted relations between blueprints
+
+
+0.1.40 (2024-04-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.10 (#1)
+
+
+0.1.39 (2024-04-06)
+
+### Features
+
+- Added support for multiple azure subscriptions (#1)
+- Added generic cloudResource kind (#2)
+
+### Improvements
+
+- Changed default blueprints and mapping to use the new generic cloudResource kind (#3)
+
+
 0.1.38 (2024-04-01)
 
 ### Improvements

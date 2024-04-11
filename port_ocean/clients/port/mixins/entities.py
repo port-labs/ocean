@@ -133,21 +133,6 @@ class EntityClientMixin:
             return_exceptions=True,
         )
 
-    async def validate_entity_exist(self, identifier: str, blueprint: str) -> None:
-        logger.info(f"Validating entity {identifier} of blueprint {blueprint} exists")
-
-        response = await self.client.get(
-            f"{self.auth.api_url}/blueprints/{blueprint}/entities/{identifier}",
-            headers=await self.auth.headers(),
-        )
-        if response.is_error:
-            logger.error(
-                f"Error validating "
-                f"entity: {identifier} of "
-                f"blueprint: {blueprint}"
-            )
-        handle_status_code(response)
-
     async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
         query = {
             "combinator": "and",
@@ -174,43 +159,8 @@ class EntityClientMixin:
                 "exclude_calculated_properties": "true",
                 "include": ["blueprint", "identifier"],
             },
+            extensions={"retryable": True},
+            timeout=30,
         )
         handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
-
-    async def search_dependent_entities(self, entity: Entity) -> list[Entity]:
-        body = {
-            "combinator": "and",
-            "rules": [
-                {
-                    "operator": "relatedTo",
-                    "blueprint": entity.blueprint,
-                    "value": entity.identifier,
-                    "direction": "downstream",
-                }
-            ],
-        }
-
-        logger.info(f"Searching dependent entity with body {body}")
-        response = await self.client.post(
-            f"{self.auth.api_url}/entities/search",
-            headers=await self.auth.headers(),
-            json=body,
-        )
-        handle_status_code(response)
-
-        return [Entity.parse_obj(result) for result in response.json()["entities"]]
-
-    async def validate_entity_payload(
-        self, entity: Entity, merge: bool, create_missing_related_entities: bool
-    ) -> None:
-        logger.info(f"Validating entity {entity.identifier}")
-        await self.upsert_entity(
-            entity,
-            {
-                "merge": merge,
-                "create_missing_related_entities": create_missing_related_entities,
-                "delete_dependent_entities": False,
-                "validation_only": True,
-            },
-        )

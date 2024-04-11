@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.65 (2024-04-10)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.10 (#1)
+
+
+0.1.64 (2024-04-09)
+===================
+
+### Features
+
+- Added more logs in event handling and webhook creation (PORT-7600)
+
+
 0.1.63 (2024-04-02)
 ===================
 

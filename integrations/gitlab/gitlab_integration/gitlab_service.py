@@ -208,6 +208,23 @@ class GitlabService:
                 groups_for_webhooks = self.filter_groups_by_paths(
                     groups_hooks_override_list
                 )
+
+                groups_paths_not_found = [
+                    group_path
+                    for group_path in groups_hooks_override_list
+                    if group_path
+                    not in [
+                        group.attributes["full_path"] for group in groups_for_webhooks
+                    ]
+                ]
+
+                if groups_paths_not_found:
+                    logger.warning(
+                        "Some groups where not found in gitlab to create webhooks for, "
+                        "probably because of groups that are not under the token's scope, or a mismatched "
+                        "groups full_path in tokenGroupHooksOverrideMapping with the groups full_path in gitlab. "
+                        f"full_paths of groups that where not found: {groups_paths_not_found}"
+                    )
         else:
             logger.info("Getting all the root groups to create their webhooks")
             root_groups = self.get_root_groups()
