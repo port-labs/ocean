@@ -25,7 +25,6 @@ resources:
             kind: .kind
             description: .description
             creationDate: .creationDate / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ")
-            includeInSnippet: .includeInSnippet
             clientSideAvailability: .clientSideAvailability
             temporary: .temporary
             tags: .tags
@@ -35,7 +34,7 @@ resources:
             customProperties: .customProperties
             archived: .archived
           relations:
-            environments: .environments
+            environments: .environments | keys
   - kind: environment
     selector:
       query: "true"
