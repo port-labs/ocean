@@ -5,8 +5,6 @@ import httpx
 from loguru import logger
 
 from port_ocean.utils import http_async_client
-from deprecation import deprecated  # type: ignore
-from port_ocean.version import __integration_version__
 
 
 class ObjectKind(StrEnum):
@@ -75,13 +73,11 @@ class ArgocdClient:
         application = await self._send_api_request(url=url)
         return application
 
-    @deprecated(
-        deprecated_in="0.1.34",
-        current_version=__integration_version__,
-        details=DEPRECATION_WARNING,
-    )
     async def get_deployment_history(self) -> list[dict[str, Any]]:
         """The ArgoCD application route returns a history of all deployments. This function reuses the output of the application endpoint"""
+        logger.warning(
+            f"get_deployment_history is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
+        )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
         all_history = [
             {**history_item, "__applicationId": application["metadata"]["uid"]}
@@ -90,13 +86,11 @@ class ArgocdClient:
         ]
         return all_history
 
-    @deprecated(
-        deprecated_in="0.1.34",
-        current_version=__integration_version__,
-        details=DEPRECATION_WARNING,
-    )
     async def get_kubernetes_resource(self) -> list[dict[str, Any]]:
         """The ArgoCD application returns a list of managed kubernetes resources. This function reuses the output of the application endpoint"""
+        logger.warning(
+            f"get_kubernetes_resource is deprecated as of 0.1.34. {DEPRECATION_WARNING}"
+        )
         applications = await self.get_resources(resource_kind=ObjectKind.APPLICATION)
         all_k8s_resources = [
             {**resource, "__applicationId": application["metadata"]["uid"]}

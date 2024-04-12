@@ -331,20 +331,6 @@ requests = ">=2.23.0"
 rich = "*"
 
 [[package]]
-name = "deprecation"
-version = "2.1.0"
-description = "A library to handle automated deprecations"
-optional = false
-python-versions = "*"
-files = [
-    {file = "deprecation-2.1.0-py2.py3-none-any.whl", hash = "sha256:a10811591210e1fb0e768a8c25517cabeabcba6f0bf96564f8ff45189f90b14a"},
-    {file = "deprecation-2.1.0.tar.gz", hash = "sha256:72b3bde64e5d778694b0cf68178aed03d15e15477116add3fb773e581f9518ff"},
-]
-
-[package.dependencies]
-packaging = "*"
-
-[[package]]
 name = "dill"
 version = "0.3.8"
 description = "serialize all of Python"
@@ -1400,4 +1386,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d1ba6e0febeb728412a06b70443eff067d6dd658fd0b0fc2a32b562f2a93e556"
+content-hash = "672d84ade7960e408df00d33df4debd49996f86543b6312c10712c3f90c4ae11"
