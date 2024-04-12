@@ -4,7 +4,7 @@ import aiostream
 
 
 async def stream_async_iterators_tasks(
-    tasks: typing.List[typing.AsyncIterable[typing.Any]],
+    *tasks: typing.AsyncIterable[typing.Any],
 ) -> typing.AsyncIterable[typing.Any]:
     """
     This function takes a list of async iterators and streams the results of each iterator as they are available.
@@ -35,6 +35,14 @@ async def stream_async_iterators_tasks(
     :param tasks: A list of async iterators
     :return: A stream of results
     """
+    if not tasks:
+        return
+
+    if len(tasks) == 1:
+        async for batch_items in tasks[0]:
+            yield batch_items
+        return
+
     combine = aiostream.stream.merge(tasks[0], *tasks[1:])
     async with combine.stream() as streamer:
         async for batch_items in streamer:
