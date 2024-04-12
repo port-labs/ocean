@@ -36,7 +36,7 @@ async def stream_async_iterators_tasks(
     :return: A stream of results
     """
     if not tasks:
-        return
+        raise StopAsyncIteration("No tasks provided")
 
     if len(tasks) == 1:
         async for batch_items in tasks[0]:
