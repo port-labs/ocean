@@ -1,5 +1,7 @@
-from typing import Any, AsyncGenerator, Optional
+from collections.abc import MutableSequence
+from typing import Any, AsyncGenerator, Optional, TypeVar
 
+import proto  # type: ignore
 from google.api_core.exceptions import PermissionDenied
 from google.cloud.asset_v1 import (
     AssetServiceAsyncClient,
@@ -10,9 +12,14 @@ from google.cloud.asset_v1.services.asset_service import pagers
 from loguru import logger
 
 from gcp_core.types import CloudAssetInventoryFeed
-from gcp_core.utils import parse_protobuf_messages
 
 RESOURCE_METADATA_CONTENT_TYPE = ContentType(1)
+
+T = TypeVar("T", bound=proto.Message)
+
+
+def parse_protobuf_messages(messages: MutableSequence[T]) -> list[dict[str, Any]]:
+    return [proto.Message.to_dict(message) for message in messages]
 
 
 class GCPClient:
