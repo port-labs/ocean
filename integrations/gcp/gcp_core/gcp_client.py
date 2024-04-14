@@ -8,11 +8,9 @@ from google.cloud.asset_v1 import (
 )
 from google.cloud.asset_v1.services.asset_service import pagers
 from loguru import logger
-from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
 
 from gcp_core.types import CloudAssetInventoryFeed
-from gcp_core.utils import parseProtobufMessages
+from gcp_core.utils import parse_protobuf_messages
 
 RESOURCE_METADATA_CONTENT_TYPE = ContentType(1)
 
@@ -23,19 +21,6 @@ class GCPClient:
             AssetServiceAsyncClient.from_service_account_file(service_account_file)
         )
         self._parent = parent
-
-    @classmethod
-    def create_from_ocean_config(cls) -> "GCPClient":
-        if cache := event.attributes.get("gcp_client"):
-            return cache
-        try:
-            parent = ocean.integration_config["parent"]
-            service_account = ocean.integration_config["service_account_file_location"]
-        except KeyError as e:
-            raise KeyError(f"Missing required integration key: {str(e)}")
-        gcp_client = cls(parent, service_account)
-        event.attributes["gcp_client"] = gcp_client
-        return gcp_client
 
     async def generate_resources(
         self, asset_type: str, asset_name: Optional[str] = None
@@ -54,7 +39,7 @@ class GCPClient:
                 )
             )
             async for paginated_response in paginated_responses.pages:
-                resources = parseProtobufMessages(paginated_response.results)
+                resources = parse_protobuf_messages(paginated_response.results)
                 logger.info(f"Generating {len(resources)} {asset_type}'s")
                 yield resources
         except PermissionDenied as e:
@@ -89,7 +74,7 @@ class GCPClient:
         request = ListFeedsRequest()
         request.parent = self._parent
         active_feeds = await self.async_assets_client.list_feeds(request=request)
-        return parseProtobufMessages(active_feeds.feeds)
+        return parse_protobuf_messages(active_feeds.feeds)
 
     async def create_assets_feed_if_not_exists(
         self, feed: CloudAssetInventoryFeed

@@ -6,17 +6,17 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from starlette.requests import Request
 
-from gcp_core.gcp_client import GCPClient
 from gcp_core.utils import (
     GotFeedCreatedSuccessfullyMessage,
     create_feed_from_ocean_config,
-    parseSubscriptionMessageFromRequest,
+    create_gcp_client_from_ocean_config,
+    parse_subscription_message_from_request,
 )
 
 
 @ocean.on_start()
 async def setup_feed() -> None:
-    gcp_client = GCPClient.create_from_ocean_config()
+    gcp_client = create_gcp_client_from_ocean_config()
     try:
         feed = create_feed_from_ocean_config()
         await gcp_client.create_assets_feed_if_not_exists(feed)
@@ -29,16 +29,16 @@ async def setup_feed() -> None:
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     # List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
-    gcp_client = GCPClient.create_from_ocean_config()
+    gcp_client = create_gcp_client_from_ocean_config()
     async for resources in gcp_client.generate_resources(kind):
         yield resources
 
 
 @ocean.router.post("/events")
 async def feed_events_callback(feed_event: Request) -> Response:
-    gcp_client = GCPClient.create_from_ocean_config()
+    gcp_client = create_gcp_client_from_ocean_config()
     try:
-        message = await parseSubscriptionMessageFromRequest(feed_event)
+        message = await parse_subscription_message_from_request(feed_event)
         results = [
             resources
             async for resources in gcp_client.generate_resources(
