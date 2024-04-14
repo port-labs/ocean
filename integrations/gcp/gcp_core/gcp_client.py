@@ -83,7 +83,7 @@ class GCPClient:
 
         await self.async_assets_client.create_feed(request=create_feed_request)
 
-    async def list_feeds(self) -> list[dict[Any, Any]]:
+    async def _list_feeds(self) -> list[dict[Any, Any]]:
         request = ListFeedsRequest()
         request.parent = self._parent
         active_feeds = await self.async_assets_client.list_feeds(request=request)
@@ -93,7 +93,7 @@ class GCPClient:
         self, feed: CloudAssetInventoryFeed
     ) -> None:
         try:
-            existing_feeds = await self.list_feeds()
+            existing_feeds = await self._list_feeds()
             if feed.id in [
                 existing_feed["name"].split("/")[-1] for existing_feed in existing_feeds
             ]:
