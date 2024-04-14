@@ -2,6 +2,8 @@ from typing import Type, List
 
 from gitlab import Gitlab
 
+from loguru import logger
+
 from gitlab_integration.events.event_handler import EventHandler, SystemEventHandler
 from gitlab_integration.events.hooks.base import HookHandler
 from gitlab_integration.events.hooks.issues import Issues
@@ -11,24 +13,17 @@ from gitlab_integration.events.hooks.pipelines import Pipelines
 from gitlab_integration.events.hooks.push import PushHook
 from gitlab_integration.events.hooks.group import GroupHook
 from gitlab_integration.gitlab_service import GitlabService
-from port_ocean.exceptions.core import OceanAbortException
-
-
-class GitlabTokenNotFoundException(OceanAbortException):
-    pass
-
-
-class GitlabTooManyTokensException(OceanAbortException):
-    def __init__(self):
-        super().__init__(
-            "There are too many tokens in tokenMapping. When useSystemHook = true,"
-            " there should be only one token configured"
-        )
-
-
-class GitlabEventListenerConflict(OceanAbortException):
-    pass
-
+from gitlab_integration.models.webhook_groups_override_config import (
+    WebhookMappingConfig,
+    WebhookGroupConfig,
+    WebhookTokenConfig,
+)
+from gitlab_integration.errors import (
+    GitlabTokenNotFoundException,
+    GitlabTooManyTokensException,
+    GitlabEventListenerConflict,
+    GitlabIllegalEventName,
+)
 
 event_handler = EventHandler()
 system_event_handler = SystemEventHandler()
@@ -48,29 +43,25 @@ def validate_use_system_hook(token_mapping: dict[str, list[str]]) -> None:
 
 def validate_hooks_tokens_are_in_token_mapping(
     token_mapping: dict[str, list[str]],
-    token_group_override_hooks_mapping: dict[str, list[str]],
+    token_group_override_hooks_mapping: WebhookMappingConfig,
 ) -> None:
-    for token in token_group_override_hooks_mapping:
+    for token in token_group_override_hooks_mapping.tokens:
         if token not in token_mapping:
             raise GitlabTokenNotFoundException(
                 "Tokens from tokenGroupHooksOverrideMapping should also be in tokenMapping"
             )
 
 
-def isHeirarchal(group_path: str, second_group_path: str):
+def isHeirarchal(group_path: str, second_group_path: str) -> bool:
     return (
         second_group_path.startswith(group_path)
         and second_group_path[len(group_path)] == "/"
     )
 
 
-def validate_unique_groups_paths(groups_paths: list[str]):
-    for group_path in groups_paths:
-        if groups_paths.count(group_path) > 1:
-            raise GitlabEventListenerConflict(
-                f"Cannot listen to the same group multiple times. group: {group_path}"
-            )
-        for second_group_path in groups_paths:
+def validate_unique_groups_paths(groups: dict[str, WebhookGroupConfig]) -> None:
+    for group_path in groups:
+        for second_group_path in groups:
             if second_group_path != group_path and isHeirarchal(
                 group_path, second_group_path
             ):
@@ -80,9 +71,32 @@ def validate_unique_groups_paths(groups_paths: list[str]):
                 )
 
 
+def validate_groups_hooks_events(groups: dict[str, WebhookGroupConfig]) -> None:
+    valid_events_names = GitlabService.all_events_in_webhook
+    for group_path, webhook_group in groups.items():
+        for event_name in webhook_group.events:
+            if event_name not in valid_events_names:
+                raise GitlabIllegalEventName(
+                    f"Configured illegal event name: '{event_name}' "
+                    f"in tokenGroupHooksOverrideMapping group: {group_path}. "
+                    f"valid events are: {valid_events_names}"
+                )
+
+
+def extract_all_groups_from_token_group_override_mapping(
+    token_group_override_hooks_mapping: WebhookMappingConfig,
+) -> dict[str, WebhookGroupConfig]:
+    all_groups: dict[str, WebhookGroupConfig] = {}
+
+    for webhook_token_obj in token_group_override_hooks_mapping.tokens.values():
+        all_groups.update(webhook_token_obj.groups)
+
+    return all_groups
+
+
 def validate_hooks_override_config(
     token_mapping: dict[str, list[str]],
-    token_group_override_hooks_mapping: dict[str, list[str]],
+    token_group_override_hooks_mapping: WebhookMappingConfig | None,
 ) -> None:
     if not token_group_override_hooks_mapping:
         return
@@ -90,11 +104,17 @@ def validate_hooks_override_config(
     validate_hooks_tokens_are_in_token_mapping(
         token_mapping, token_group_override_hooks_mapping
     )
-    groups_paths: list[str] = sum(token_group_override_hooks_mapping.values(), [])
+    groups_paths: dict[
+        str, WebhookGroupConfig
+    ] = extract_all_groups_from_token_group_override_mapping(
+        token_group_override_hooks_mapping
+    )
+
     validate_unique_groups_paths(groups_paths)
+    validate_groups_hooks_events(groups_paths)
 
 
-def setup_listeners(gitlab_service: GitlabService, webhook_id: str | int) -> None:
+def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
     handlers = [
         PushHook(gitlab_service),
         MergeRequest(gitlab_service),
@@ -104,6 +124,9 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str | int) -> Non
         GroupHook(gitlab_service),
     ]
     for handler in handlers:
+        logger.info(
+            f"Setting up listeners for webhook {webhook_id} for group mapping {gitlab_service.group_mapping}"
+        )
         event_ids = [f"{event_name}:{webhook_id}" for event_name in handler.events]
         event_handler.on(event_ids, handler.on_hook)
 
@@ -128,18 +151,36 @@ def create_webhooks_by_client(
     gitlab_host: str,
     app_host: str,
     token: str,
-    groups_hooks_override_paths: list[str] | None,
+    groups_hooks_events_override: dict[str, WebhookGroupConfig] | None,
     group_mapping: list[str],
-) -> tuple[GitlabService, list[int | str]]:
+) -> tuple[GitlabService, list[str]]:
     gitlab_client = Gitlab(gitlab_host, token)
     gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
 
     groups_for_webhooks = gitlab_service.get_filtered_groups_for_webhooks(
-        groups_hooks_override_paths
+        list(groups_hooks_events_override.keys())
+        if groups_hooks_events_override
+        else None
     )
-    webhook_ids = gitlab_service.create_webhooks(groups_for_webhooks)
 
-    return gitlab_service, webhook_ids
+    webhooks_ids: list[str] = []
+
+    for group in groups_for_webhooks:
+        webhook_id = gitlab_service.create_webhook(
+            group,
+            (
+                groups_hooks_events_override.get(
+                    group.attributes["full_path"], WebhookGroupConfig(events=[])
+                ).events
+                if groups_hooks_events_override
+                else None
+            ),
+        )
+
+        if webhook_id:
+            webhooks_ids.append(webhook_id)
+
+    return gitlab_service, webhooks_ids
 
 
 def setup_application(
@@ -147,7 +188,7 @@ def setup_application(
     gitlab_host: str,
     app_host: str,
     use_system_hook: bool,
-    token_group_override_hooks_mapping: dict[str, list[str]],
+    token_group_override_hooks_mapping: WebhookMappingConfig | None,
 ) -> None:
     validate_token_mapping(token_mapping)
 
@@ -163,23 +204,33 @@ def setup_application(
             token_mapping, token_group_override_hooks_mapping
         )
 
-        client_to_webhooks: list[tuple[GitlabService, list[int | str]]] = []
-        for token, group_mapping in token_mapping.items():
-            groups_override_paths_list: list[str] | None = (
-                token_group_override_hooks_mapping.get(token, [])
-                if token_group_override_hooks_mapping
-                else None
-            )
+        client_to_webhooks: list[tuple[GitlabService, list[str]]] = []
 
-            client_to_webhooks.append(
-                create_webhooks_by_client(
-                    gitlab_host,
-                    app_host,
-                    token,
-                    groups_override_paths_list,
-                    group_mapping,
+        for token, group_mapping in token_mapping.items():
+            if not token_group_override_hooks_mapping:
+                client_to_webhooks.append(
+                    create_webhooks_by_client(
+                        gitlab_host,
+                        app_host,
+                        token,
+                        None,
+                        group_mapping,
+                    )
                 )
-            )
+            else:
+                groups = token_group_override_hooks_mapping.tokens.get(
+                    token, WebhookTokenConfig(groups=[])
+                ).groups
+                if groups:
+                    client_to_webhooks.append(
+                        create_webhooks_by_client(
+                            gitlab_host,
+                            app_host,
+                            token,
+                            groups,
+                            group_mapping,
+                        )
+                    )
 
         for client, webhook_ids in client_to_webhooks:
             for webhook_id in webhook_ids:

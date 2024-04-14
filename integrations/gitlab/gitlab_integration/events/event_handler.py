@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from loguru import logger
 from typing import Awaitable, Callable, Any, Type
 
 from gitlab_integration.events.hooks.base import HookHandler
@@ -17,9 +18,16 @@ class EventHandler:
             self._observers[event].append(observer)
 
     async def notify(self, event: str, body: dict[str, Any]) -> Awaitable[Any]:
-        return asyncio.gather(
+        observers = asyncio.gather(
             *(observer(event, body) for observer in self._observers.get(event, []))
         )
+
+        if not observers:
+            logger.debug(
+                f"event: {event} has no matching handler. the handlers available are for events: {self._observers.keys()}"
+            )
+
+        return observers
 
 
 class SystemEventHandler:

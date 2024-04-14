@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.40 (2024-04-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.11 (#1)
+
+
+# Port_Ocean 0.1.39 (2024-04-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.10 (#1)
+
+
+# Port_Ocean 0.1.38 (2024-04-04)
+
+### Bug Fixes
+
+- Fixed request json error in snyk client and removed code section that handles SNYK-9999 code.
+
+
+# Port_Ocean 0.1.37 (2024-04-03)
+
+### Bug Fixes
+
+- Fixed a bug in the pagination logic that caused the integration to return SNYK-9999 error
+
+
+# Port_Ocean 0.1.36 (2024-04-03)
+
+### Bug Fixes
+
+- Fixed handling of code SNYK-9999 from Snyk Api
+
+
+# Port_Ocean 0.1.35 (2024-04-02)
+
+### Bug Fixes
+
+- Fixed _get_paginated_resources method to handle code SNYK-9999
+
+
 # Port_Ocean 0.1.34 (2024-04-01)
 
 ### Improvements
