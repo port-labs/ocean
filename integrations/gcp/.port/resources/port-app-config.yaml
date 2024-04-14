@@ -1,0 +1,72 @@
+resources:
+  - kind: cloudresourcemanager.googleapis.com/Organization
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.name'
+          blueprint: '"gcpOrganization"'
+          title: '.versioned_resources | max_by(.version).resource | .displayName'
+  - kind: cloudresourcemanager.googleapis.com/Project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.name'
+          blueprint: '"gcpProject"'
+          title: '.versioned_resources | max_by(.version).resource | .name'
+          properties:
+            lifecycleState: '.versioned_resources | max_by(.version).resource | .lifecycleState'
+            tags: '.versioned_resources | max_by(.version).resource | .tags'
+          relations:
+            organization: '.organization'
+  - kind: storage.googleapis.com/Bucket
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.name'
+          blueprint: '"bucket"'
+          title: '.versioned_resources | max_by(.version).resource | .name'
+          properties:
+            url: '.versioned_resources | max_by(.version).resource | .selfLink'
+            owner: '.versioned_resources | max_by(.version).resource | .owner.entity'
+            location: '.versioned_resources | max_by(.version).resource | .location'
+            objectRetention: '.versioned_resources | max_by(.version).resource | .objectRetention.mode'
+          relations:
+            project: '.project'
+  - kind: cloudfunctions.googleapis.com/CloudFunction
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.name'
+          blueprint: '"functions"'
+          title: '.versioned_resources | max_by(.version).resource | .name'
+          properties:
+            url: '.versioned_resources | max_by(.version).resource | .url'
+            state: '.versioned_resources | max_by(.version).resource | .state'
+            environment: '.versioned_resources | max_by(.version).resource | .environment'
+            eventTrigger: '.versioned_resources | max_by(.version).resource | .eventTrigger'
+          relations:
+            project: '.project'
+  - kind: pubsub.googleapis.com/Subscription
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.name'
+          blueprint: '"subscriptions"'
+          title: '.versioned_resources | max_by(.version).resource | .name'
+          properties:
+            state: '.versioned_resources | max_by(.version).resource | .state'
+            topic: '.versioned_resources | max_by(.version).resource | .topic'
+            pushConfig: '.versioned_resources | max_by(.version).resource | .pushConfig'
+          relations:
+            project: '.project'
+  

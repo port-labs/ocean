@@ -1,0 +1,157 @@
+[
+  {
+    "identifier": "gcpOrganization",
+    "title": "GCP Organization",
+    "icon": "GCP",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "gcpProject",
+    "title": "GCP Project",
+    "icon": "GCP",
+    "schema": {
+      "properties": {
+        "lifecycleState": {
+          "title": "Lifecycle State",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "organization": {
+        "target": "gcpOrganization",
+        "title": "Organization",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "bucket",
+    "title": "Bucket",
+    "icon": "GCP",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "format":"url",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "location": {
+          "title": "Location",
+          "type": "string"
+        },
+        "objectRetention": {
+          "title": "Object Retention",
+          "type": "string"
+        }
+      }
+    },
+    "relations": {
+      "project": {
+        "target": "gcpProject",
+        "title": "Project",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "functions",
+    "title": "Cloud Functions",
+    "icon": "GCP",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "format":"url",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "format": "url",
+          "type": "string"
+        },
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string"
+        },
+        "eventTrigger": {
+          "title": "Event Trigger",
+          "type": "object"
+        }
+      }
+    },
+    "relations": {
+      "project": {
+        "target": "gcpProject",
+        "title": "Project",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "subscriptions",
+    "title": "PubSub Subscriptions",
+    "icon": "GCP",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "topic": {
+          "title": "Topic",
+          "type": "string"
+        },
+        "pushConfig": {
+          "title": "Push Config",
+          "type": "object"
+        }
+      }
+    },
+    "relations": {
+      "project": {
+        "target": "gcpProject",
+        "title": "Project",
+        "required": false,
+        "many": false
+      }
+    }
+  }
+]
