@@ -18,6 +18,9 @@ class EventHandler:
             self._observers[event].append(observer)
 
     async def notify(self, event: str, body: dict[str, Any]) -> Awaitable[Any]:
+        logger.debug(
+            f"Looking for the matching handlers to notify about event: {event}"
+        )
         try:
             observers = asyncio.gather(
                 *(observer(event, body) for observer in self._observers.get(event, []))
