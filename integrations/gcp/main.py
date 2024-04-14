@@ -31,7 +31,6 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     # List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
     gcp_client = GCPClient.create_from_ocean_config()
     async for resources in gcp_client.generate_resources(kind):
-        logger.info(f"Generating {len(resources)} {kind}'s")
         yield resources
 
 

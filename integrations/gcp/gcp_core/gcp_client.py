@@ -54,7 +54,9 @@ class GCPClient:
                 )
             )
             async for paginated_response in paginated_responses.pages:
-                yield parseProtobufMessages(paginated_response.results)
+                resources = parseProtobufMessages(paginated_response.results)
+                logger.info(f"Generating {len(resources)} {asset_type}'s")
+                yield resources
         except PermissionDenied as e:
             logger.error(
                 f"Couldn't access the API to get kind {asset_type}: {str(e)}",
