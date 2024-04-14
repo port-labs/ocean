@@ -18,9 +18,15 @@ class EventHandler:
             self._observers[event].append(observer)
 
     async def notify(self, event: str, body: dict[str, Any]) -> Awaitable[Any]:
-        observers = asyncio.gather(
-            *(observer(event, body) for observer in self._observers.get(event, []))
-        )
+        try:
+            observers = asyncio.gather(
+                *(observer(event, body) for observer in self._observers.get(event, []))
+            )
+        except Exception as error:
+            logger.warning(
+                f"An error occurred while trying to initialize an event handler for {event}. Error was: {error}"
+            )
+            raise error
 
         if not observers:
             logger.debug(

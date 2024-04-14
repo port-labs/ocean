@@ -28,7 +28,14 @@ async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
     with logger.contextualize(event_id=event_id):
         logger.debug(f"Received webhook event {event_id} from Gitlab")
-        body = await request.json()
+        try:
+            body = await request.json()
+        except Exception as error:
+            logger.warning(
+                f"There might be an error when deserializing the request of {event_id}. Error was: {error} "
+                f"The request received: {request}"
+            )
+            raise error
         await event_handler.notify(event_id, body)
         return {"ok": True}
 
