@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.67-dev (2024-04-14)
+=======================
+
+### Bug Fixes
+
+- Added try except to some of the event handling logic to have more info about errors (PORT-7657)
+
+
 0.1.66 (2024-04-11)
 ===================
 
