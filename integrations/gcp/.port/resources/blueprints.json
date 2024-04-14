@@ -2,7 +2,7 @@
   {
     "identifier": "gcpOrganization",
     "title": "GCP Organization",
-    "icon": "GCP",
+    "icon": "GoogleCloud",
     "schema": {
       "properties": {},
       "required": []
@@ -15,7 +15,7 @@
   {
     "identifier": "gcpProject",
     "title": "GCP Project",
-    "icon": "GCP",
+    "icon": "GoogleCloud",
     "schema": {
       "properties": {
         "lifecycleState": {
@@ -47,7 +47,7 @@
   {
     "identifier": "bucket",
     "title": "Bucket",
-    "icon": "GCP",
+    "icon": "GoogleCloud",
     "schema": {
       "properties": {
         "url": {
@@ -85,7 +85,7 @@
   {
     "identifier": "functions",
     "title": "Cloud Functions",
-    "icon": "GCP",
+    "icon": "GoogleCloud",
     "schema": {
       "properties": {
         "url": {
@@ -124,7 +124,7 @@
   {
     "identifier": "subscriptions",
     "title": "PubSub Subscriptions",
-    "icon": "GCP",
+    "icon": "GoogleCloud",
     "schema": {
       "properties": {
         "name": {
