@@ -10,4 +10,4 @@ integration:
   config:
     launchdarklyToken: '{{ from env LAUNCHDARKLY_TOKEN }}'
     launchdarklyHost: '{{ from env LAUNCHDARKLY_HOST }}'
-    appHost: '{{ from env LAUNCHDARKLY_APP_HOST }}'
+    appHost: '{{ from env APP_HOST }}'

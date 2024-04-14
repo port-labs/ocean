@@ -347,8 +347,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         ):
             app_config = await self.port_app_config_handler.get_port_app_config()
 
-            entities_at_port = await ocean.port_client.search_entities(user_agent_type)
-
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
             try:
@@ -383,8 +381,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                     logger.error(message, exc_info=error_group)
                 else:
+                    entities_at_port = await ocean.port_client.search_entities(
+                        user_agent_type
+                    )
                     logger.info(
-                        f"Running resync diff calculation, number of entities at Port before resync: {len(entities_at_port)}, number of entities created during sync: {len(flat_created_entities)}"
+                        f"Running resync diff calculation, number of entities found at Port: {len(entities_at_port)}, number of entities found during sync: {len(flat_created_entities)}"
                     )
                     await self.entities_state_applier.delete_diff(
                         {"before": entities_at_port, "after": flat_created_entities},

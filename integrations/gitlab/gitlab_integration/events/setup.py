@@ -2,6 +2,8 @@ from typing import Type, List
 
 from gitlab import Gitlab
 
+from loguru import logger
+
 from gitlab_integration.events.event_handler import EventHandler, SystemEventHandler
 from gitlab_integration.events.hooks.base import HookHandler
 from gitlab_integration.events.hooks.issues import Issues
@@ -122,6 +124,9 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
         GroupHook(gitlab_service),
     ]
     for handler in handlers:
+        logger.info(
+            f"Setting up listeners for webhook {webhook_id} for group mapping {gitlab_service.group_mapping}"
+        )
         event_ids = [f"{event_name}:{webhook_id}" for event_name in handler.events]
         event_handler.on(event_ids, handler.on_hook)
 
@@ -163,11 +168,13 @@ def create_webhooks_by_client(
     for group in groups_for_webhooks:
         webhook_id = gitlab_service.create_webhook(
             group,
-            groups_hooks_events_override.get(
-                group.attributes["full_path"], WebhookGroupConfig(events=[])
-            ).events
-            if groups_hooks_events_override
-            else None,
+            (
+                groups_hooks_events_override.get(
+                    group.attributes["full_path"], WebhookGroupConfig(events=[])
+                ).events
+                if groups_hooks_events_override
+                else None
+            ),
         )
 
         if webhook_id:
