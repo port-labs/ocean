@@ -153,5 +153,38 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "topics",
+    "title": "PubSub Topics",
+    "icon": "GoogleCloud",
+    "schema": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "schemaSettings": {
+          "title": "Schema Settings",
+          "type": "object"
+        },
+        "messageRetentionDuration": {
+          "title": "Message Retention Duration",
+          "type": "string"
+        }
+      }
+    },
+    "relations": {
+      "project": {
+        "target": "gcpProject",
+        "title": "Project",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

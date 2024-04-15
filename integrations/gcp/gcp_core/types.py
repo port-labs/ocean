@@ -9,7 +9,7 @@ class CloudAssetInventoryFeed:
     topic_name: str
 
 
-class SubscriptionMessage(BaseModel):
+class FeedEvent(BaseModel):
     message_id: str
     asset_name: str
     asset_type: str

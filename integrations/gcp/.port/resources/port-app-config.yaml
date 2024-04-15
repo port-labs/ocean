@@ -69,3 +69,18 @@ resources:
             pushConfig: ".versioned_resources | max_by(.version).resource | .pushConfig"
           relations:
             project: ".project"
+  - kind: pubsub.googleapis.com/Topic
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          blueprint: '"topics"'
+          title: '.name | split("/") | .[-1]'
+          properties:
+            state: ".state"
+            schemaSettings: ".schema_settings"
+            messageRetentionDuration: ".message_retention_duration"
+          relations:
+            project: ".__project_id"
