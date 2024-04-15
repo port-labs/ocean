@@ -123,8 +123,10 @@ class AzureDevopsClient(HTTPBaseClient):
             for repo in repos:
                 params = {
                     "repositoryId": repo["id"],
-                    "refName": repo["defaultBranch"],
                 }
+                if default_branch := repo.get("defaultBranch"):
+                    params["refName"] = default_branch
+
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
                 repo_policies = (
                     await self.send_request("GET", policies_url, params=params)
