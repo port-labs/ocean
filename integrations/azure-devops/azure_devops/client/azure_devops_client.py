@@ -69,9 +69,18 @@ class AzureDevopsClient(HTTPBaseClient):
                         member["__teamId"] = team["id"]
                     yield members
 
+    async def get_single_project(self, project_id: str) -> dict[str, Any]:
+        project_url = (
+            f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}"
+        )
+        project = (await self.send_request("GET", project_url)).json()
+        return project
+
     @cache_iterator_result()
     async def generate_repositories(
-        self, include_disabled_repositories: bool = True
+        self,
+        include_disabled_repositories: bool = True,
+        sync_default_team: bool = False,
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -85,6 +94,18 @@ class AzureDevopsClient(HTTPBaseClient):
                         repo for repo in repositories if not repo.get("isDisabled")
                     ]
 
+<<<<<<< HEAD
+=======
+                if sync_default_team:
+                    repositories = [
+                        {
+                            **repo,
+                            "__project": await self.get_single_project(project["id"]),
+                        }
+                        for repo in repositories
+                    ]
+
+>>>>>>> 7d0d0812b80235be42b1094735e5b96559336fbe
                 yield repositories
 
     async def generate_pull_requests(

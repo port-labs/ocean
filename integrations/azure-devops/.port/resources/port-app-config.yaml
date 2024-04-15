@@ -4,6 +4,7 @@ resources:
   - kind: repository
     selector:
       query: "true"
+      defaultTeam: "false"
     port:
       entity:
         mappings:

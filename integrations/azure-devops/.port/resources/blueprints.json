@@ -27,6 +27,12 @@
           "default": 0,
           "type": "number"
         },
+        "defaultTeam": {
+          "title": "Default Team",
+          "type": "string",
+          "icon": "Team",
+          "description": "Default Team of the project"
+        },
         "slack": {
           "icon": "Slack",
           "type": "string",
