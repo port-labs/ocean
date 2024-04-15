@@ -8,7 +8,6 @@ authors = ["Matan Geva <matang@getport.io>"]
 python = "^3.11"
 port_ocean = { version = "^0.5.11", extras = ["cli"] }
 google-cloud-asset = "^3.25.1"
-ruff = "^0.3.4"
 types-protobuf = "^4.24.0.20240311"
 
 [tool.poetry.group.dev.dependencies]
