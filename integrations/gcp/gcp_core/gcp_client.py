@@ -50,12 +50,9 @@ class GCPClient:
                 logger.info(f"Generating {len(resources)} {asset_type}'s")
                 yield resources
         except PermissionDenied as e:
-            logger.error(
-                f"Couldn't access the API to get kind {asset_type}: {str(e)}",
-                kind=asset_type,
-            )
+            logger.error(f"Couldn't access the API to get kind {asset_type}: {str(e)}")
         except Exception as e:
-            logger.error(str(e), kind=asset_type)
+            logger.error(str(e))
         return
 
     async def create_feed(self, feed: CloudAssetInventoryFeed) -> None:
