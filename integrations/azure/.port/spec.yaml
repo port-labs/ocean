@@ -12,12 +12,7 @@ features:
       - kind: storageAccount
       - kind: virtualMachine
       - kind: storageContainer
-configurations:
-  - name: subscriptionId
-    required: true
-    type: string
-    sensitive: true
-    description: Azure subscription ID to export resources from
+configurations: []
 deploymentMethodOverride:
   - type: terraform
     module: port-labs/integration-factory/ocean
@@ -38,8 +33,8 @@ deploymentMethodOverride:
           - "Microsoft.App/containerApp"
           - "Microsoft.Storage/storageAccounts"
           - "Microsoft.Compute/virtualMachines"
-          - "Microsoft.Network/loadBalancers"
           - "Microsoft.ContainerService/managedClusters"
+          - "Microsoft.Network/loadBalancers"
           - "Microsoft.Network/virtualNetworks"
         type: array
       - name: action_permissions_list

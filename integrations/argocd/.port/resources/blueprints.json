@@ -1,19 +1,5 @@
 [
   {
-    "identifier": "argocdNamespace",
-    "description": "This blueprint represents an ArgoCD namespace",
-    "title": "ArgoCD Namespace",
-    "icon": "Argo",
-    "schema": {
-      "properties": {},
-      "required": []
-    },
-    "aggregationProperties": {},
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {}
-  },
-  {
     "identifier": "argocdCluster",
     "description": "This blueprint represents an ArgoCD cluster",
     "title": "ArgoCD Cluster",
@@ -55,12 +41,26 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "argocdNamespace",
+    "description": "This blueprint represents an ArgoCD namespace",
+    "title": "ArgoCD Namespace",
+    "icon": "Argo",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "aggregationProperties": {},
+    "mirrorProperties": {},
+    "calculationProperties": {},
     "relations": {
-      "namespace": {
-        "title": "ArgoCD Namespace",
-        "target": "argocdNamespace",
+      "cluster": {
+        "title": "ArgoCD Cluster",
+        "target": "argocdCluster",
         "required": false,
-        "many": true
+        "many": false
       }
     }
   },
@@ -71,11 +71,6 @@
     "icon": "Argo",
     "schema": {
       "properties": {
-        "namespace": {
-          "title": "Namespace",
-          "type": "string",
-          "icon": "DefaultProperty"
-        },
         "createdAt": {
           "title": "Created At",
           "type": "string",
@@ -93,14 +88,7 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {
-      "cluster": {
-        "title": "ArgoCD Cluster",
-        "target": "argocdCluster",
-        "required": false,
-        "many": true
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "argocdApplication",
@@ -122,15 +110,18 @@
         },
         "destinationServer": {
           "type": "string",
-          "title": "Destination Server"
+          "title": "Destination Server",
+          "description": "The URL of the target cluster's Kubernetes control plane API"
         },
         "revision": {
           "type": "string",
-          "title": "Revision"
+          "title": "Revision",
+          "description": "Revision contains information about the revision the comparison has been performed to"
         },
         "targetRevision": {
           "type": "string",
-          "title": "Target Revision"
+          "title": "Target Revision",
+          "description": "Target Revision defines the revision of the source to sync the application to. In case of Git, this can be commit, tag, or branch"
         },
         "syncStatus": {
           "type": "string",
@@ -145,7 +136,7 @@
             "OutOfSync": "red",
             "Unknown": "lightGray"
           },
-          "description": "The sync status of the application"
+          "description": "Status is the sync state of the comparison"
         },
         "healthStatus": {
           "type": "string",
@@ -166,12 +157,23 @@
             "Progressing": "blue",
             "Unknown": "lightGray"
           },
-          "description": "The health status of the application"
+          "description": "Status holds the status code of the application or resource"
         },
         "createdAt": {
           "title": "Created At",
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "The created timestamp of the application"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels",
+          "description": "Map of string keys and values that can be used to organize and categorize object"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations",
+          "description": "Annotations are unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata"
         }
       },
       "required": []
@@ -262,50 +264,31 @@
           "title": "Version",
           "type": "string"
         },
-        "syncStatus": {
-          "type": "string",
-          "title": "Sync Status",
-          "enum": [
-            "Synced",
-            "OutOfSync",
-            "Unknown"
-          ],
-          "enumColors": {
-            "Synced": "green",
-            "OutOfSync": "red",
-            "Unknown": "lightGray"
-          },
-          "description": "The sync status of the application"
-        },
-        "healthStatus": {
-          "type": "string",
-          "title": "Health Status",
-          "enum": [
-            "Healthy",
-            "Missing",
-            "Suspended",
-            "Degraded",
-            "Progressing",
-            "Unknown"
-          ],
-          "enumColors": {
-            "Healthy": "green",
-            "Missing": "yellow",
-            "Suspended": "purple",
-            "Degraded": "red",
-            "Progressing": "blue",
-            "Unknown": "lightGray"
-          },
-          "description": "The health status of the application"
-        },
         "namespace": {
           "title": "Namespace",
           "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
         }
       },
       "required": []
     },
-    "mirrorProperties": {},
+    "mirrorProperties": {
+      "healthStatus": {
+        "title": "Health Status",
+        "path": "application.healthStatus"
+      },
+      "syncStatus": {
+        "title": "Sync Status",
+        "path": "application.syncStatus"
+      }
+    },
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
