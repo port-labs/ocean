@@ -128,15 +128,14 @@ async def webhook(request: Request) -> dict[str, Any]:
                 resource_type=resource_type,
             )
         
+        logger.debug(
+            "Querying full resource",
+            id=identifier,
+            kind=resource_type,
+        )
+        resource = describe_single_resource(resource_type, identifier, account_id, body.get("awsRegion"))
         for resource_config in matching_resource_configs:
             blueprint = resource_config.port.entity.mappings.blueprint.strip('"')
-            logger.debug(
-                "Querying full resource",
-                id=identifier,
-                kind=resource_type,
-                blueprint=blueprint,
-            )
-            resource = describe_single_resource(resource_type, identifier, account_id, body.get("awsRegion"))
             if not resource: # Resource probably deleted
                 logger.info(
                     "Resource not found in AWS, un-registering from port",
@@ -152,7 +151,7 @@ async def webhook(request: Request) -> dict[str, Any]:
                         )
                     ]
                 )
-                return {"ok": True}
+                continue
             
             logger.info(
                 "Resource found in AWS, upserting port",
@@ -160,7 +159,7 @@ async def webhook(request: Request) -> dict[str, Any]:
                 kind=resource_type,
                 blueprint=blueprint,
             )
-            await ocean.register_raw(resource_config.kind, _fix_unserializable_date_properties(resource))
+            await ocean.register_raw(resource_config.kind, [_fix_unserializable_date_properties(resource)])
         logger.info("Webhook processed successfully")
         return {"ok": True}
     except Exception as e:
