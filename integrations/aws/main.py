@@ -11,7 +11,6 @@ from starlette.requests import Request
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    update_available_access_credentials()
     if kind in iter(ResourceKindsWithSpecialHandling):
         logger.info("Kind already has a specific handling, skipping", kind=kind)
         return
