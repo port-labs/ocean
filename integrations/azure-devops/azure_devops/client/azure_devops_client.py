@@ -103,8 +103,8 @@ class AzureDevopsClient(HTTPBaseClient):
                 params = {
                     "repositoryId": repo["id"],
                 }
-                if "defaultBranch" in repo.keys():
-                    params["refName"] = repo["defaultBranch"]
+                if default_branch := repo.get("defaultBranch"):
+                    params["refName"] = default_branch
 
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
                 repo_policies = (
