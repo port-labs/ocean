@@ -420,13 +420,13 @@ socks = ["socksio (==1.*)"]
 
 [[package]]
 name = "idna"
-version = "3.6"
+version = "3.7"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
 python-versions = ">=3.5"
 files = [
-    {file = "idna-3.6-py3-none-any.whl", hash = "sha256:c05567e9c24a6b9faaa835c4821bad0590fbb9d5779e7caa6e1cc4978e7eb24f"},
-    {file = "idna-3.6.tar.gz", hash = "sha256:9ecdbbd083b06798ae1e86adcbfe8ab1479cf864e4ee30fe4e46a003d12491ca"},
+    {file = "idna-3.7-py3-none-any.whl", hash = "sha256:82fee1fc78add43492d3a1898bfa6d8a904cc97d8427f683ed8e798d07761aa0"},
+    {file = "idna-3.7.tar.gz", hash = "sha256:028ff3aadf0609c1fd278d8ea3089299412a7a8b9bd005dd08b9f8285bcb5cfc"},
 ]
 
 [[package]]
@@ -766,13 +766,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.9"
+version = "0.5.11"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.9-py3-none-any.whl", hash = "sha256:43dc020edcc604fdb297254acbe55f4d6b9c69d92ceb1219c6d0ef23f6d429f2"},
-    {file = "port_ocean-0.5.9.tar.gz", hash = "sha256:53fd289c91f18c2eec67e85639a2dc42a5998339fce8e5ba30374b87a7faa5fb"},
+    {file = "port_ocean-0.5.11-py3-none-any.whl", hash = "sha256:6914a873a72f17fef2700f56cdbe7ee69a367bcfa977def00ea21ce042e896ec"},
+    {file = "port_ocean-0.5.11.tar.gz", hash = "sha256:68236bed8b9c12b39074fc25353af95466e37456a92afcdc994c76f857d17176"},
 ]
 
 [package.dependencies]
@@ -1414,4 +1414,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "656e747d050d17fb69b5daccba99b8f84e3bf0e0b375e677326c2a4b187ddd5d"
+content-hash = "d9ffbc329ebd355b3cbaab77008b24d858905944de95f9590910e4df94bd9e19"
