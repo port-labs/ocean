@@ -43,8 +43,9 @@ class AzureDevopsClient(HTTPBaseClient):
         sync_default_team:bool | List projects endpoint of ADO API excludes default team of a project.
         By setting leveraging the sync_default_team flag, we optionally fetch the default team from the get project
         endpoint using the project id which we obtain from the list projects endpoint.
+        docs -> https://learn.microsoft.com/en-us/rest/api/azure/devops/core/projects/list?view=azure-devops-rest-7.1&tabs=HTTP#teamprojectreference
         """
-        
+
         params = {"includeCapabilities": "true"}
         projects_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects"
         async for projects in self._get_paginated_by_top_and_continuation_token(
