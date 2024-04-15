@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.1.11 (2024-04-15)
 
-### Improvements
+### Bug Fixes
 
 - Made defaultBranch not required in the repository body when fetching repository policies (#1)
 
