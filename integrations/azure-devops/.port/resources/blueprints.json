@@ -18,10 +18,12 @@
           "icon": "Book"
         },
         "workItemLinking": {
+          "title": "Work Item Linking",
           "default": false,
           "type": "boolean"
         },
         "minimumApproverCount": {
+          "title": "Minimum Approver Count",
           "default": 0,
           "type": "number"
         },
@@ -48,6 +50,58 @@
             "Other": "yellow"
           },
           "icon": "DefaultProperty"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "project",
+        "required": true
+      }
+    }
+  },
+  {
+    "identifier": "project",
+    "title": "Project",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string",
+          "icon": "AzureDevops",
+          "description": "The current lifecycle state of the project."
+        },
+        "revision": {
+          "title": "Revision",
+          "type": "string",
+          "icon": "AzureDevops",
+          "description": "The revision number, indicating how many times the project configuration has been updated."
+
+        },
+        "visibility": {
+          "title": "Visibility",
+          "type": "string",
+          "icon": "AzureDevops",
+          "description": "Indicates whether the project is private or public"
+        },
+        "defaultTeam": {
+          "title": "Default Team",
+          "type": "string",
+          "icon": "Team",
+          "description": "Default Team of the project"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to azure devops project"
         }
       },
       "required": []

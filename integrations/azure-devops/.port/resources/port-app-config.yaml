@@ -13,6 +13,9 @@ resources:
           properties:
             url: '.url'
             readme: file://README.md
+          relations:
+            project: .project.id
+
 
   - kind: repository-policy
     selector:
@@ -35,3 +38,20 @@ resources:
           blueprint: '"service"'
           properties:
             workItemLinking: '.isEnabled and .isBlocking'
+
+  - kind: project
+    selector:
+      query: 'true'
+      defaultTeam: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.id'
+          blueprint: '"project"'
+          "title": .name
+          properties:
+            "state": '.state'
+            "revision": '.revision'
+            "visibility": '.visibility'
+            "defaultTeam": '.defaultTeam.name'
+            "link": '.url | gsub("_apis/projects/"; "")'
