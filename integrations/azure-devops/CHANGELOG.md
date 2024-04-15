@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Fixed case where defaultBranch isn't available (#1)
+- Made defaultBranch not required in the repository body when fetching repository policies (#1)
 
 # Port_Ocean 0.1.10 (2024-04-11)
 
