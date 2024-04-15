@@ -36,12 +36,6 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for batch in describe_resources(sessions, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
         yield batch
 
-@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE)
-async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sessions = _get_sessions()
-    for batch in describe_resources(sessions, 'elasticache', 'describe_cache_clusters', 'CacheClusters', 'NextMarker'):
-        yield batch
-
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
 async def resync_loadbalancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
@@ -78,7 +72,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     all_instances.append({'Kind': kind, **_fix_unserializable_date_properties(described)})
                 yield all_instances
             except Exception as e:
-                logger.error(f"Failed to list CloudControl Instance in region: {region}; error {e}")
+                logger.error(f"Failed to list CloudControl Instance in account {account_id} kind {kind} region: {region}; error {e}")
                 break
             if not next_token:
                 break

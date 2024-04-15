@@ -22,9 +22,8 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     CLOUDRESOURCE = "cloudresource"
     EC2 = "AWS::EC2::Instance"
     CLOUDFORMATION = "AWS::CloudFormation::Stack"
-    LOADBALANCER = "loadbalancer"
-    ELASTICACHE = "elasticache"
-    ACM = "acm"
+    LOADBALANCER = "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    ACM = "AWS::ACMPCA::Certificate"
 
 class AwsCredentials:
     def __init__(self, account_id: str, access_key_id: str, secret_access_key: str, session_token: Optional[str] = None):
@@ -162,11 +161,6 @@ def describe_single_resource(kind: str, identifier: str, account_id: Optional[st
                 acm = session.client('acm')
                 response = acm.describe_certificate(CertificateArn=identifier)
                 return response.get('Certificate', {})
-            
-            elif kind == ResourceKindsWithSpecialHandling.ELASTICACHE:
-                elasticache = session.client('elasticache')
-                response = elasticache.describe_cache_clusters(CacheClusterId=identifier)
-                return response.get('CacheClusters', [])[0]
             
             elif kind == ResourceKindsWithSpecialHandling.LOADBALANCER:
                 elbv2 = session.client('elbv2')
