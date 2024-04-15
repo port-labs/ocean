@@ -69,13 +69,6 @@ class AzureDevopsClient(HTTPBaseClient):
                         member["__teamId"] = team["id"]
                     yield members
 
-    async def get_single_project(self, project_id: str) -> dict[str, Any]:
-        project_url = (
-            f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}"
-        )
-        project = (await self.send_request("GET", project_url)).json()
-        return project
-
     @cache_iterator_result()
     async def generate_repositories(
         self,
