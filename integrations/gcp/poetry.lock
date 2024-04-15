@@ -1539,17 +1539,6 @@ jinja2 = "*"
 dev = ["furo", "packaging", "sphinx (>=5)", "twisted"]
 
 [[package]]
-name = "types-protobuf"
-version = "4.25.0.20240410"
-description = "Typing stubs for protobuf"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "types-protobuf-4.25.0.20240410.tar.gz", hash = "sha256:86576c2e7e691b8b75f4cabec430f7405edef411b5d191e847c91307935b1b38"},
-    {file = "types_protobuf-4.25.0.20240410-py3-none-any.whl", hash = "sha256:335b2e8cf9f39c233dbf0f977a2a4fbc2c0bac720225c544cc1412a67ab1e1d3"},
-]
-
-[[package]]
 name = "types-python-dateutil"
 version = "2.9.0.20240316"
 description = "Typing stubs for python-dateutil"
@@ -1718,4 +1707,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "ba1a5bdb414ccb61eb84e5e148fcae9bc8bca0d0b984bd1b2beeec73417b46d1"
+content-hash = "50814a87b169d7f949de44d221d1fd7773310e6a06f0a2add6623d041c266b6b"
