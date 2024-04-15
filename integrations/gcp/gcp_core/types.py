@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -16,5 +16,5 @@ class SubscriptionMessage(BaseModel):
     data: dict[Any, Any]
 
     @property
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         return self.dict(exclude={"data"})
