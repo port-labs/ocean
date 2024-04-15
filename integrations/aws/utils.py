@@ -1,6 +1,6 @@
 import enum
 import json
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Optional
 import typing
 import boto3
 from loguru import logger
@@ -26,22 +26,121 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     ELASTICACHE = "elasticache"
     ACM = "acm"
 
-def _get_sessions(custom_aws_regions = []) -> list[boto3.Session]:
+class AwsCredentials:
+    def __init__(self, account_id: str, access_key_id: str, secret_access_key: str, session_token: Optional[str] = None):
+        self.account_id = account_id
+        self.access_key_id = access_key_id
+        self.secret_access_key = secret_access_key
+        self.session_token = session_token
+    
+    def isRole(self):
+        return self.session_token is not None
+    
+    def createSession(self, region: Optional[str] = None):
+        if self.isRole():
+            if region:
+                return boto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
+            return boto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
+        else:
+            if region:
+                return boto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key, region_name=region)
+            return boto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key)
+
+
+_aws_credentials: list[AwsCredentials] = []
+
+def find_credentials_by_account_id(account_id: str) -> AwsCredentials:
+    for cred in _aws_credentials:
+        if cred.account_id == account_id:
+            return cred
+    raise ValueError(f"Cannot find credentials linked with this account id {account_id}")
+
+def find_account_id_by_session(session: boto3.Session) -> str:
+    for cred in _aws_credentials:
+        if cred.access_key_id == session.get_credentials().access_key:
+            return cred.account_id
+    raise ValueError(f"Cannot find credentials linked with this session {session}")
+
+def update_available_access_credentials() -> None:
+    """
+    Fetches the AWS account IDs that the current IAM role can access.
+    and saves them up to use as sessions
+    
+    :return: List of AWS account IDs.
+    """
+    logger.info("Updating AWS credentials")
+    aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
+    aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")
+    if not aws_access_key_id or not aws_secret_access_key:
+        logger.error("Did not specify AWS account to use, please add aws user credentials")
+        return
+    
+    sts_client = boto3.client('sts', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+    caller_identity = sts_client.get_caller_identity()
+    current_account_id = caller_identity['Account']
+
+    _aws_credentials.append(AwsCredentials(
+        account_id=current_account_id,
+        access_key_id=aws_access_key_id,
+        secret_access_key=aws_secret_access_key,
+    ))
+
+    # TODO: change to be dynamic
+    ROLE_NAME = 'ocean-integ-poc-role'
+    organizations_client = sts_client.assume_role(
+        # TODO: change to be dynamic
+        RoleArn=f'arn:aws:iam::362207926288:role/AWS-Exporter-Ocean-POC-Organization-Role',
+        RoleSessionName='AssumeRoleSession'
+    )
+
+    credentials = organizations_client['Credentials']
+    # Get the list of all AWS accounts
+    organizations_client = boto3.client('organizations', 
+        aws_access_key_id=credentials['AccessKeyId'],
+        aws_secret_access_key=credentials['SecretAccessKey'],
+        aws_session_token=credentials['SessionToken']
+    )
+    paginator = organizations_client.get_paginator('list_accounts')
+    try:
+        for page in paginator.paginate():
+            for account in page['Accounts']:
+                try:
+                    account_role = sts_client.assume_role(
+                        RoleArn=f'arn:aws:iam::{account["Id"]}:role/{ROLE_NAME}',
+                        RoleSessionName='AssumeRoleSession'
+                    )
+                    credentials = account_role['Credentials']
+                    _aws_credentials.append(AwsCredentials(
+                        account_id=account['Id'],
+                        access_key_id=credentials['AccessKeyId'],
+                        secret_access_key=credentials['SecretAccessKey'],
+                        session_token=credentials['SessionToken']
+                    ))
+                except sts_client.exceptions.ClientError as e:
+                    # If assume_role fails due to permission issues or non-existent role, skip the account
+                    if e.response['Error']['Code'] == 'AccessDenied':
+                        continue
+                    else:
+                        raise
+    except organizations_client.exceptions.AccessDeniedException:
+        # If the caller is not a member of an AWS organization, assume_role will fail with AccessDenied
+        # In this case, assume the role in the current account
+        logger.error("Caller is not a member of an AWS organization. Assuming role in the current account.")
+
+# TODO: change custom_aws_regions to custom role or something
+def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None) -> list[boto3.Session]:
     """
     Gets boto3 sessions for the AWS regions
     """
-    aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
-    aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")
-    aws_regions = ocean.integration_config.get("aws_regions")
-
     aws_sessions = []
-    if len(custom_aws_regions) > 0:
-        for aws_region in custom_aws_regions:
-            aws_sessions.append(boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, region_name=aws_region))
-        return aws_sessions
+
+    if custom_account_id:
+        credentials = find_credentials_by_account_id(custom_account_id)
+        return [credentials.createSession(custom_region)]
     
-    for aws_region in aws_regions:
-        aws_sessions.append(boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, region_name=aws_region))
+    
+    for credentials in _aws_credentials:
+        aws_sessions.append(credentials.createSession(custom_region if custom_region else None))
     
     return aws_sessions
 
@@ -51,11 +150,11 @@ def _fix_unserializable_date_properties(obj: Any) -> Any:
     """
     return json.loads(json.dumps(obj, default=str))
 
-def describe_single_resource(kind: str, identifier: str, region: str) -> dict[str, Any]:
+def describe_single_resource(kind: str, identifier: str, account_id: Optional[str] = None, region: Optional[str] = None) -> dict[str, Any]:
     """
     Describes a single resource using the CloudControl API.
     """
-    sessions = _get_sessions([region] if region else [])
+    sessions = _get_sessions(account_id, region)
     for session in sessions:
         region = session.region_name
         try:
@@ -126,7 +225,6 @@ def describe_resources(sessions: list[boto3.Session], service_name: str, describ
                 break
             if not next_token:
                 break
-
 
 def get_matching_kinds_from_config(kind: str) -> list[ResourceConfig]:
     """

@@ -3,58 +3,15 @@ from typing import Any
 
 import boto3
 from port_ocean.core.models import Entity
-from utils import ASYNC_GENERATOR_RESYNC_TYPE, ResourceKindsWithSpecialHandling, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, get_resource_kinds_from_config, validate_request, get_matching_kinds_from_config
+from utils import ASYNC_GENERATOR_RESYNC_TYPE, ResourceKindsWithSpecialHandling, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
 
-def get_accessible_accounts():
-    """
-    Fetches the AWS account IDs that the current IAM role can access.
-    
-    :return: List of AWS account IDs.
-    """
-    sts_client = boto3.client('sts')
-    caller_identity = sts_client.get_caller_identity()
-    current_account_id = caller_identity['Account']
-    ROLE_NAME = 'ocean-integ-poc-role'
-
-    # Get the list of all AWS accounts
-    organizations_client = boto3.client('organizations')
-    paginator = organizations_client.get_paginator('list_accounts')
-    accounts = []
-    try:
-        for page in paginator.paginate():
-            for account in page['Accounts']:
-                try:
-                    assumed_role = sts_client.assume_role(
-                        RoleArn=f'arn:aws:iam::{account["Id"]}:role/{ROLE_NAME}',
-                        RoleSessionName='AssumeRoleSession'
-                    )
-                    # If assume_role succeeds, add the account ID to the list
-                    accounts.append(account['Id'])
-                except sts_client.exceptions.ClientError as e:
-                    # If assume_role fails due to permission issues or non-existent role, skip the account
-                    if e.response['Error']['Code'] == 'AccessDenied':
-                        continue
-                    else:
-                        raise
-    except Exception as e:
-        logger.error(f"Failed to list AWS accounts; error {e}")
-    except organizations_client.exceptions.AccessDeniedException:
-        # If the caller is not a member of an AWS organization, assume_role will fail with AccessDenied
-        # In this case, assume the role in the current account
-        logger.error("Caller is not a member of an AWS organization. Assuming role in the current account.")
-        assumed_role = sts_client.assume_role(
-            RoleArn=f'arn:aws:iam::{current_account_id}:role/{ROLE_NAME}',
-            RoleSessionName='AssumeRoleSession'
-        )
-        accounts.append(current_account_id)
-    return accounts
-
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    update_available_access_credentials()
     if kind in iter(ResourceKindsWithSpecialHandling):
         logger.info("Kind already has a specific handling, skipping", kind=kind)
         return
@@ -104,6 +61,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     next_token = None
     for session in sessions:
         region = session.region_name
+        account_id = find_account_id_by_session(session)
         while True:
             all_instances = []
             try:
@@ -117,7 +75,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 response = cloudcontrol.list_resources(**params)
                 next_token = response.get('NextToken')
                 for instance in response.get('ResourceDescriptions', []):
-                    described = describe_single_resource(kind, instance.get('Identifier'), region)
+                    described = describe_single_resource(kind, instance.get('Identifier'), account_id, region)
                     all_instances.append({'Kind': kind, **_fix_unserializable_date_properties(described)})
                 yield all_instances
             except Exception as e:
@@ -157,8 +115,10 @@ async def webhook(request: Request) -> dict[str, Any]:
         logger.info("Webhook body", body=body)
         resource_type = body.get("resource_type")
         identifier = body.get("identifier")
-        if not resource_type or not identifier:
-            raise ValueError("Resource type or Identifier was not found in webhook body")
+        account_id = body.get("accountId")
+
+        if not resource_type or not identifier or not account_id:
+            raise ValueError("Resource type, Identifier or accountId was not found in webhook body")
         
         matching_resource_configs = get_matching_kinds_from_config(resource_type)
         
@@ -176,7 +136,7 @@ async def webhook(request: Request) -> dict[str, Any]:
                 kind=resource_type,
                 blueprint=blueprint,
             )
-            resource = describe_single_resource(resource_type, identifier, body.get("awsRegion"))
+            resource = describe_single_resource(resource_type, identifier, account_id, body.get("awsRegion"))
             if not resource: # Resource probably deleted
                 logger.info(
                     "Resource not found in AWS, un-registering from port",
@@ -210,5 +170,4 @@ async def webhook(request: Request) -> dict[str, Any]:
 @ocean.on_start()
 async def on_start() -> None:
     print("Starting integration")
-    # accessible_accounts = get_accessible_accounts()
-    # logger.info("Accessible accounts", accounts=accessible_accounts)
+    update_available_access_credentials()
