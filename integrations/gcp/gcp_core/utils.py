@@ -52,11 +52,8 @@ def create_feed_from_ocean_config() -> CloudAssetInventoryFeed:
 def create_gcp_client_from_ocean_config() -> GCPClient:
     if cache := event.attributes.get("gcp_client"):
         return cache
-    try:
-        parent = ocean.integration_config["parent"]
-        service_account = ocean.integration_config["service_account_file_location"]
-    except KeyError as e:
-        raise KeyError(f"Missing required integration key: {str(e)}")
+    parent = ocean.integration_config["parent"]
+    service_account = ocean.integration_config["service_account_file_location"]
     gcp_client = GCPClient(parent, service_account)
     event.attributes["gcp_client"] = gcp_client
     return gcp_client
