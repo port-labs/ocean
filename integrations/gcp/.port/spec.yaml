@@ -1,14 +1,10 @@
 type: gcp
 description: gcp integration for Port Ocean
-icon: Cookiecutter # Should be one of the available icons in Port
+icon: GoogleCloud
 features:
   - type: exporter
     section: Cloud Providers
 configurations:
-  - name: appHost
-    required: false
-    type: url
-    description: The host of the Port Ocean app.
   - name: parent
     required: true
     type: string
