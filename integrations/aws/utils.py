@@ -11,6 +11,8 @@ from starlette.requests import Request
 
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
+ACCOUNT_ID_PROPERTY = 'AccountId'
+
 ASYNC_GENERATOR_RESYNC_TYPE = AsyncIterator[list[dict[Any, Any]]]
 
 class ResourceKindsWithSpecialHandling(enum.StrEnum):
@@ -200,6 +202,7 @@ def describe_resources(sessions: list[boto3.Session], service_name: str, describ
     """
     for session in sessions:
         region = session.region_name
+        account_id = find_account_id_by_session(session)
         next_token = None
         while True:
             try:
@@ -212,6 +215,7 @@ def describe_resources(sessions: list[boto3.Session], service_name: str, describ
                     response = getattr(client, describe_method)()
                 next_token = response.get(marker_param)
                 for resource in response.get(list_param, []):
+                    resource.update({ACCOUNT_ID_PROPERTY: account_id})
                     all_resources.append(_fix_unserializable_date_properties(resource))
                 yield all_resources
             except Exception as e:
