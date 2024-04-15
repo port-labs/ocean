@@ -8,7 +8,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 from gcp_core.gcp_client import GCPClient
-from gcp_core.types import CloudAssetInventoryFeed, SubscriptionMessage
+from gcp_core.types import SubscriptionMessage
 
 T = TypeVar("T", bound=proto.Message)
 
@@ -39,14 +39,6 @@ async def parse_subscription_message_from_request(
         message_id=message_id, asset_name=asset_name, asset_type=asset_type, data=data
     )
     return message
-
-
-def create_feed_from_ocean_config() -> CloudAssetInventoryFeed:
-    feed = CloudAssetInventoryFeed()
-    feed.id = ocean.integration_config["assets_feed_id"]
-    feed.asset_types = (ocean.integration_config["assets_feed_asset_types"]).split(",")
-    feed.topic_name = ocean.integration_config["assets_feed_topic_name"]
-    return feed
 
 
 def create_gcp_client_from_ocean_config() -> GCPClient:

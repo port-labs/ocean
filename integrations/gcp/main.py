@@ -8,22 +8,9 @@ from starlette.requests import Request
 
 from gcp_core.utils import (
     GotFeedCreatedSuccessfullyMessage,
-    create_feed_from_ocean_config,
     create_gcp_client_from_ocean_config,
     parse_subscription_message_from_request,
 )
-
-
-@ocean.on_start()
-async def setup_feed() -> None:
-    gcp_client = create_gcp_client_from_ocean_config()
-    try:
-        feed = create_feed_from_ocean_config()
-        await gcp_client.create_assets_feed_if_not_exists(feed)
-    except Exception as e:
-        logger.warning(
-            f"Couldn't setup feed, continuing integration without real-time events. Error: {str(e)}"
-        )
 
 
 @ocean.on_resync()
