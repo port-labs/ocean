@@ -36,9 +36,9 @@ PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [
 class AzureDevopsProjectResourceConfig(ResourceConfig):
     class AzureDevopsSelector(Selector):
         query: str
-        default_team: bool | None = Field(
+        default_team: bool = Field(
             default=False,
-            description="If set to true, will ingest default team for each project to Port. Default value is false",
+            description="If set to true, it ingests default team for each project to Port. This causes latency while syncing the entities to Port.  Default value is false. ",
             alias="defaultTeam",
         )
 

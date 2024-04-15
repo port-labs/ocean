@@ -17,7 +17,6 @@ resources:
           relations:
             project: .project.id
 
-
   - kind: repository-policy
     selector:
       query: '.type.displayName=="Minimum number of reviewers"'
@@ -49,10 +48,10 @@ resources:
         mappings:
           identifier: '.id'
           blueprint: '"project"'
-          "title": .name
+          title: .name
           properties:
-            "state": '.state'
-            "revision": '.revision'
-            "visibility": '.visibility'
-            "defaultTeam": '.defaultTeam.name'
-            "link": '.url | gsub("_apis/projects/"; "")'
+            state: '.state'
+            revision: '.revision'
+            visibility": '.visibility'
+            defaultTeam: '.defaultTeam.name'
+            link: '.url | gsub("_apis/projects/"; "")'

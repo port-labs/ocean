@@ -37,8 +37,14 @@ class AzureDevopsClient(HTTPBaseClient):
 
     @cache_iterator_result()
     async def generate_projects(
-        self, sync_default_team: bool = False
+        self, sync_default_team: bool = False 
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        sync_default_team:bool | List projects endpoint of ADO API excludes default team of a project.
+        By setting leveraging the sync_default_team flag, we optionally fetch the default team from the get project
+        endpoint using the project id which we obtain from the list projects endpoint.
+        """
+        
         params = {"includeCapabilities": "true"}
         projects_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects"
         async for projects in self._get_paginated_by_top_and_continuation_token(
@@ -71,9 +77,7 @@ class AzureDevopsClient(HTTPBaseClient):
 
     @cache_iterator_result()
     async def generate_repositories(
-        self,
-        include_disabled_repositories: bool = True,
-        sync_default_team: bool = False,
+        self, include_disabled_repositories: bool = True
     ) -> AsyncGenerator[list[dict[Any, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
@@ -81,13 +85,10 @@ class AzureDevopsClient(HTTPBaseClient):
                 repositories = (await self.send_request("GET", repos_url)).json()[
                     "value"
                 ]
-
-                if not (include_disabled_repositories):
-                    repositories = [
-                        repo for repo in repositories if not repo.get("isDisabled")
-                    ]
-
-                yield repositories
+                if include_disabled_repositories:
+                    yield repositories
+                else:
+                    yield [repo for repo in repositories if not repo.get("isDisabled")]
 
     async def generate_pull_requests(
         self, search_filters: Optional[dict[str, Any]] = None
@@ -122,8 +123,10 @@ class AzureDevopsClient(HTTPBaseClient):
             for repo in repos:
                 params = {
                     "repositoryId": repo["id"],
-                    "refName": repo["defaultBranch"],
                 }
+                if default_branch := repo.get("defaultBranch"):
+                    params["refName"] = default_branch
+
                 policies_url = f"{self._organization_base_url}/{repo['project']['id']}/{API_URL_PREFIX}/git/policy/configurations"
                 repo_policies = (
                     await self.send_request("GET", policies_url, params=params)

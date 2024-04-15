@@ -27,12 +27,6 @@
           "default": 0,
           "type": "number"
         },
-        "defaultTeam": {
-          "title": "Default Team",
-          "type": "string",
-          "icon": "Team",
-          "description": "Default Team of the project"
-        },
         "slack": {
           "icon": "Slack",
           "type": "string",
@@ -60,14 +54,20 @@
       },
       "required": []
     },
-    "mirrorProperties": {},
+    "mirrorProperties": {
+      "defaultTeam": {
+        "title": "Default Team",
+        "path": "project.defaultTeam"
+      }
+    },
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
       "project": {
         "title": "Project",
         "target": "project",
-        "required": true
+        "required": true,
+        "many": false
       }
     }
   },
@@ -88,7 +88,6 @@
           "type": "string",
           "icon": "AzureDevops",
           "description": "The revision number, indicating how many times the project configuration has been updated."
-
         },
         "visibility": {
           "title": "Visibility",
