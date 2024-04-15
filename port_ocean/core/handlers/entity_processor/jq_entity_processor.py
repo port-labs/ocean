@@ -113,8 +113,10 @@ class JQEntityProcessor(BaseEntityProcessor):
         return [{}]
 
     async def _start_entity_processor_worker(
-        self, entities_queue: Queue, entities: list
-    ):
+        self,
+        entities_queue: Queue[Any | None],
+        entities: list[list[dict[str, Any]]],
+    ) -> None:
         while True:
             raw_params = await entities_queue.get()
             try:
@@ -131,9 +133,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
-        workers_queue: Queue = Queue(maxsize=100)
-        workers_tasks: list[Task] = []
-        entities = []
+        workers_queue: Queue[Any | None] = Queue(maxsize=100)
+        workers_tasks: list[Task[Any]] = []
+        entities: list[list[dict[str, Any]]] = []
 
         for i in range(50):
             workers_tasks.append(
