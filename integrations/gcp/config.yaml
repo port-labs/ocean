@@ -5,7 +5,7 @@ port:
 eventListener:
   type: POLLING
 integration:
-  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
+  identifier: "my-gcp-integration"
   type: "gcp"
   config:
     parent: "{{ from env PARENT }}"
