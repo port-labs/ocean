@@ -125,7 +125,7 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
     ]
     for handler in handlers:
         logger.info(
-            f"Setting up listeners for webhook {webhook_id} for group mapping {gitlab_service.group_mapping}"
+            f"Setting up {handler.events} listeners for webhook {webhook_id} for group mapping {gitlab_service.group_mapping}"
         )
         event_ids = [f"{event_name}:{webhook_id}" for event_name in handler.events]
         event_handler.on(event_ids, handler.on_hook)
