@@ -145,14 +145,12 @@ class JQEntityProcessor(BaseEntityProcessor):
         passed = []
         failed = []
         for flatten in entities:
-            for entity_data, did_entity_pass_selector in filter(
-                lambda entity: entity.get("identifier") and entity.get("blueprint"),
-                flatten,
-            ):
-                parsed_entity = Entity.parse_obj(entity_data)
-                if did_entity_pass_selector:
-                    passed.append(parsed_entity)
-                else:
-                    failed.append(parsed_entity)
+            for entity_data, did_entity_pass_selector in flatten:
+                if entity_data.get("identifier") and entity_data.get("blueprint"):
+                    parsed_entity = Entity.parse_obj(entity_data)
+                    if did_entity_pass_selector:
+                        passed.append(parsed_entity)
+                    else:
+                        failed.append(parsed_entity)
 
         return {"passed": passed, "failed": failed}
