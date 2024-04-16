@@ -13,15 +13,3 @@ configurations:
     required: true
     type: string
     description: The location of the service account's key file.
-  - name: assetsFeedId
-    required: false
-    type: string
-    description: The name of the feed created by the integration.
-  - name: assetsFeedAssetTypes
-    required: false
-    type: string
-    description: The asset types you want to get real-time updates on. Refer to https://cloud.google.com/asset-inventory/docs/supported-asset-types
-  - name: assetsFeedTopicName
-    required: false
-    type: string
-    description: The name of the topic the feed pushes events to.
