@@ -1,10 +1,14 @@
 import asyncio
 from typing import Any, Optional, AsyncGenerator, cast
 import base64
+import typing
 import httpx
 from loguru import logger
 
 from port_ocean.utils import http_async_client
+
+from integration import SonarQubeIssueResourceConfig, SonarQubeProjectResourceConfig, ObjectKind
+from port_ocean.context.event import event
 
 
 class Endpoints:
@@ -73,6 +77,7 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
+        logger.info(f"`Sending API request to {method} {endpoint} with query params: {query_params}")
         try:
             response = await self.http_client.request(
                 method=method,
@@ -97,6 +102,8 @@ class SonarQubeClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         try:
+            logger.info(f"`Sending API request to {method} {endpoint} with query params: {query_params}")
+
             all_resources = []  # List to hold all fetched resources
 
             while True:
@@ -138,16 +145,31 @@ class SonarQubeClient:
 
         :return: A list of components associated with the specified organization.
         """
-        params = {}
+        query_params = {}
         if self.organization_id:
-            params["organization"] = self.organization_id
-        logger.info(f"Fetching all components in organization: {self.organization_id}")
+            query_params["organization"] = self.organization_id
+            logger.info(f"Fetching all components in organization: {self.organization_id}")
+
+        app_config_resources = event.port_app_config.resources
+
+        project_resource = None
+        for resource in app_config_resources:
+            if resource.kind == ObjectKind.PROJECTS:
+                project_resource = resource
+                break
+        
+        if project_resource:
+            selector = typing.cast(SonarQubeProjectResourceConfig, project_resource).selector
+            selector_query_params = selector.api_query_params.generate_request_params()
+            query_params.update(selector_query_params)
+
         try:
             response = await self.send_paginated_api_request(
                 endpoint=Endpoints.PROJECTS,
                 data_key="components",
-                query_params=params,
+                query_params=query_params,
             )
+            
             return response
         except Exception as e:
             logger.error(f"Error occurred while fetching components: {e}")
@@ -239,7 +261,6 @@ class SonarQubeClient:
         :return (list[Any]): A list containing issues data for all projects.
         """
         components = await self.get_components()
-
         for component in components:
             response = await self.get_issues_by_component(component=component)
             yield response
@@ -257,10 +278,16 @@ class SonarQubeClient:
         component_issues = []
         component_key = component.get("key")
         logger.info(f"Fetching all issues in component: {component_key}")
+
+        selector = typing.cast(SonarQubeIssueResourceConfig, event.resource_config).selector
+        query_params = selector.api_query_params.generate_request_params()
+
+        query_params["componentKeys"] = component_key
+
         response = await self.send_paginated_api_request(
             endpoint=Endpoints.ISSUES,
             data_key="issues",
-            query_params={"componentKeys": component_key},
+            query_params=query_params,
         )
 
         for issue in response:

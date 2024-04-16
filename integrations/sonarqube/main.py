@@ -1,19 +1,11 @@
 from typing import Any
-
 from loguru import logger
 
 from client import SonarQubeClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-
-class ObjectKind:
-    PROJECTS = "projects"
-    ISSUES = "issues"
-    ANALYSIS = "analysis"
-    SASS_ANALYSIS = "saas_analysis"
-    ONPREM_ANALYSIS = "onprem_analysis"
-
+from integration import ObjectKind
 
 def init_sonar_client() -> SonarQubeClient:
     return SonarQubeClient(
@@ -28,14 +20,14 @@ def init_sonar_client() -> SonarQubeClient:
 @ocean.on_resync(ObjectKind.PROJECTS)
 async def on_project_resync(kind: str) -> list[dict[str, Any]]:
     logger.info(f"Listing Sonarqube resource: {kind}")
+
     sonar_client = init_sonar_client()
     return await sonar_client.get_all_projects()
 
 
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Sonarqube resource: {kind}")
-
+    
     sonar_client = init_sonar_client()
     async for issues_list in sonar_client.get_all_issues():
         yield issues_list
@@ -44,7 +36,6 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ANALYSIS)
 @ocean.on_resync(ObjectKind.SASS_ANALYSIS)
 async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Sonarqube resource: {kind}")
 
     sonar_client = init_sonar_client()
     if not ocean.integration_config["sonar_is_on_premise"]:
@@ -54,7 +45,6 @@ async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ONPREM_ANALYSIS)
 async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Listing Sonarqube resource: {kind}")
 
     sonar_client = init_sonar_client()
     if ocean.integration_config["sonar_is_on_premise"]:
@@ -99,7 +89,6 @@ async def on_start() -> None:
             raise ValueError(
                 "Organization ID is required for SonarCloud. Please specify a valid sonarOrganizationId"
             )
-        logger.warning("Organization key is missing for an on-premise Sonarqube setup")
 
     sonar_client = init_sonar_client()
     sonar_client.sanity_check()

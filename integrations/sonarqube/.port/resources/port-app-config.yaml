@@ -4,6 +4,9 @@ resources:
   - kind: projects
     selector:
       query: 'true'
+      apiQueryParams:
+        filter:
+          qualifier: TRK
     port:
       entity:
         mappings:
@@ -61,6 +64,8 @@ resources:
   - kind: issues
     selector:
       query: 'true'
+      apiQueryParams:
+        resolved: 'false'
     port:
       entity:
         mappings:
