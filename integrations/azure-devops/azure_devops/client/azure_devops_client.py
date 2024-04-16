@@ -37,13 +37,13 @@ class AzureDevopsClient(HTTPBaseClient):
 
     @cache_iterator_result()
     async def generate_projects(
-        self, sync_default_team: bool = False 
+        self, sync_default_team: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        sync_default_team:bool | List projects endpoint of ADO API excludes default team of a project.
+        sync_default_team:bool | The List projects endpoint of ADO API excludes default team of a project.
         By setting leveraging the sync_default_team flag, we optionally fetch the default team from the get project
         endpoint using the project id which we obtain from the list projects endpoint.
-        docs -> https://learn.microsoft.com/en-us/rest/api/azure/devops/core/projects/list?view=azure-devops-rest-7.1&tabs=HTTP#teamprojectreference
+        read more -> https://learn.microsoft.com/en-us/rest/api/azure/devops/core/projects/list?view=azure-devops-rest-7.1&tabs=HTTP#teamprojectreference
         """
 
         params = {"includeCapabilities": "true"}
