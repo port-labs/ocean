@@ -1,10 +1,26 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: project
+    selector:
+      query: 'true'
+      defaultTeam: "true"
+    port:
+      entity:
+        mappings:
+          identifier: '.id'
+          blueprint: '"project"'
+          title: .name
+          properties:
+            state: '.state'
+            revision: '.revision'
+            visibility": '.visibility'
+            defaultTeam: '.defaultTeam.name'
+            link: '.url | gsub("_apis/projects/"; "")'
+
   - kind: repository
     selector:
       query: "true"
-      defaultTeam: "false"
     port:
       entity:
         mappings:
@@ -38,20 +54,3 @@ resources:
           blueprint: '"service"'
           properties:
             workItemLinking: '.isEnabled and .isBlocking'
-
-  - kind: project
-    selector:
-      query: 'true'
-      defaultTeam: "true"
-    port:
-      entity:
-        mappings:
-          identifier: '.id'
-          blueprint: '"project"'
-          title: .name
-          properties:
-            state: '.state'
-            revision: '.revision'
-            visibility": '.visibility'
-            defaultTeam: '.defaultTeam.name'
-            link: '.url | gsub("_apis/projects/"; "")'

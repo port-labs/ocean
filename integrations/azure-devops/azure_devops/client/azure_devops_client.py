@@ -7,6 +7,7 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from .base_client import HTTPBaseClient
 from port_ocean.utils.cache import cache_iterator_result
+import asyncio
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -40,7 +41,7 @@ class AzureDevopsClient(HTTPBaseClient):
         self, sync_default_team: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
-        sync_default_team:bool - The List projects endpoint of ADO API excludes default team of a project.
+        sync_default_team: bool - The List projects endpoint of ADO API excludes default team of a project.
         By setting leveraging the sync_default_team flag, we optionally fetch the default team from the get project
         endpoint using the project id which we obtain from the list projects endpoint.
         read more -> https://learn.microsoft.com/en-us/rest/api/azure/devops/core/projects/list?view=azure-devops-rest-7.1&tabs=HTTP#teamprojectreference
@@ -53,9 +54,8 @@ class AzureDevopsClient(HTTPBaseClient):
         ):
             if sync_default_team:
                 logger.info("Adding default team to projects")
-                projects = [
-                    await self.get_single_project(project["id"]) for project in projects
-                ]
+                tasks = [self.get_single_project(project["id"]) for project in projects]
+                projects = await asyncio.gather(*tasks)
 
             yield projects
 

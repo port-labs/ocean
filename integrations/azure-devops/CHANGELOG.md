@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added the default team of a project (PORT-7573)
+- Added project kind as well as relation between repo and project, to get the team mirror property (PORT-7573)
 
 
 # Port_Ocean 0.1.11 (2024-04-15)
