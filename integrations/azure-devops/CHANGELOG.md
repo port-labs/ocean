@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.12 (2024-04-15)
+
+### Features
+
+- Added project kind as well as relation between repo and project, to get the team mirror property (PORT-7573)
+
+
 # Port_Ocean 0.1.11 (2024-04-15)
 
 ### Bug Fixes
 
 - Made defaultBranch not required in the repository body when fetching repository policies
+
 
 # Port_Ocean 0.1.10 (2024-04-11)
 
