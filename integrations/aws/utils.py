@@ -8,12 +8,10 @@ from overrides import AWSPortAppConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from starlette.requests import Request
-
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 ACCOUNT_ID_PROPERTY = 'AccountId'
-
-ASYNC_GENERATOR_RESYNC_TYPE = AsyncIterator[list[dict[Any, Any]]]
 
 class ResourceKindsWithSpecialHandling(enum.StrEnum):
     """
