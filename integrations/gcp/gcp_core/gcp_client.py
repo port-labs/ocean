@@ -71,16 +71,16 @@ class GCPClient:
         return raw_topic
 
     async def generate_resources(
-        self, asset_type: str, asset_name: Optional[str] = None
+        self, asset_type: str, asset_name: str | None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        try:
-            search_all_resources_request = {
+        search_all_resources_request = {
                 "scope": self._parent,
                 "asset_types": [asset_type],
                 "read_mask": "*",
             }
-            if asset_name:
-                search_all_resources_request["query"] = f"name={asset_name}"
+        if asset_name:
+            search_all_resources_request["query"] = f"name={asset_name}"
+        try:
             paginated_responses: pagers.SearchAllResourcesAsyncPager = (
                 await self.async_assets_client.search_all_resources(
                     search_all_resources_request
@@ -93,11 +93,9 @@ class GCPClient:
                     yield resources
         except PermissionDenied as e:
             logger.error(f"Couldn't access the API to get kind {asset_type}: {str(e)}")
-        except Exception as e:
-            logger.error(str(e))
         return
 
-    async def get_resource(self, asset_name: str, asset_type: str) -> RAW_ITEM:
+    async def get_single_resource(self, asset_name: str, asset_type: str) -> RAW_ITEM:
         try:
             return [
                 resources
