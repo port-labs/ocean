@@ -140,17 +140,17 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
             for data in raw_results
         ]
-        entities = await asyncio.gather(*entities_tasks)
+        entities_results = await asyncio.gather(*entities_tasks)
 
-        passed = []
-        failed = []
-        for flatten in entities:
-            for entity_data, did_entity_pass_selector in flatten:
-                if entity_data.get("identifier") and entity_data.get("blueprint"):
-                    parsed_entity = Entity.parse_obj(entity_data)
+        passed_entities = []
+        failed_entities = []
+        for entity_result in entities_results:
+            for entity, did_entity_pass_selector in entity_result:
+                if entity.get("identifier") and entity.get("blueprint"):
+                    parsed_entity = Entity.parse_obj(entity)
                     if did_entity_pass_selector:
-                        passed.append(parsed_entity)
+                        passed_entities.append(parsed_entity)
                     else:
-                        failed.append(parsed_entity)
+                        failed_entities.append(parsed_entity)
 
-        return {"passed": passed, "failed": failed}
+        return {"passed": passed_entities, "failed": failed_entities}
