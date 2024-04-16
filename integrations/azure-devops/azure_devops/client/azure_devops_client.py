@@ -7,6 +7,7 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from .base_client import HTTPBaseClient
 from port_ocean.utils.cache import cache_iterator_result
+import asyncio
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -28,13 +29,34 @@ class AzureDevopsClient(HTTPBaseClient):
         event.attributes["azure_devops_client"] = azure_devops_client
         return azure_devops_client
 
+    async def get_single_project(self, project_id: str) -> dict[str, Any]:
+        project_url = (
+            f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}"
+        )
+        project = (await self.send_request("GET", project_url)).json()
+        return project
+
     @cache_iterator_result()
-    async def generate_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_projects(
+        self, sync_default_team: bool = False
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        sync_default_team: bool - The List projects endpoint of ADO API excludes default team of a project.
+        By setting leveraging the sync_default_team flag, we optionally fetch the default team from the get project
+        endpoint using the project id which we obtain from the list projects endpoint.
+        read more -> https://learn.microsoft.com/en-us/rest/api/azure/devops/core/projects/list?view=azure-devops-rest-7.1&tabs=HTTP#teamprojectreference
+        """
+
         params = {"includeCapabilities": "true"}
         projects_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects"
         async for projects in self._get_paginated_by_top_and_continuation_token(
             projects_url, additional_params=params
         ):
+            if sync_default_team:
+                logger.info("Adding default team to projects")
+                tasks = [self.get_single_project(project["id"]) for project in projects]
+                projects = await asyncio.gather(*tasks)
+
             yield projects
 
     @cache_iterator_result()
