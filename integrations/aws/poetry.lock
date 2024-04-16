@@ -114,17 +114,17 @@ uvloop = ["uvloop (>=0.15.2)"]
 
 [[package]]
 name = "boto3"
-version = "1.34.76"
+version = "1.34.84"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "boto3-1.34.76-py3-none-any.whl", hash = "sha256:530a4cea3d40a6bd2f15a368ea395beef1ea6dff4491823bc48bd20c7d4da655"},
-    {file = "boto3-1.34.76.tar.gz", hash = "sha256:8c598382e8fb61cfa8f75056197e9b509eb52039ebc291af3b1096241ba2542c"},
+    {file = "boto3-1.34.84-py3-none-any.whl", hash = "sha256:7a02f44af32095946587d748ebeb39c3fa15b9d7275307ff612a6760ead47e04"},
+    {file = "boto3-1.34.84.tar.gz", hash = "sha256:91e6343474173e9b82f603076856e1d5b7b68f44247bdd556250857a3f16b37b"},
 ]
 
 [package.dependencies]
-botocore = ">=1.34.76,<1.35.0"
+botocore = ">=1.34.84,<1.35.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.10.0,<0.11.0"
 
@@ -564,13 +564,13 @@ xray = ["mypy-boto3-xray (>=1.34.0,<1.35.0)"]
 
 [[package]]
 name = "botocore"
-version = "1.34.76"
+version = "1.34.84"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.34.76-py3-none-any.whl", hash = "sha256:62e45e7374844ee39e86a96fe7f5e973eb5bf3469da028b4e3a8caba0909fb1f"},
-    {file = "botocore-1.34.76.tar.gz", hash = "sha256:68be44487a95132fccbc0b836fded4190dae30324f6bf822e1b6efd385ffdc83"},
+    {file = "botocore-1.34.84-py3-none-any.whl", hash = "sha256:da1ae0a912e69e10daee2a34dafd6c6c106450d20b8623665feceb2d96c173eb"},
+    {file = "botocore-1.34.84.tar.gz", hash = "sha256:a2b309bf5594f0eb6f63f355ade79ba575ce8bf672e52e91da1a7933caa245e6"},
 ]
 
 [package.dependencies]
@@ -583,13 +583,13 @@ crt = ["awscrt (==0.19.19)"]
 
 [[package]]
 name = "botocore-stubs"
-version = "1.34.69"
+version = "1.34.84"
 description = "Type annotations and code completion for botocore"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "botocore_stubs-1.34.69-py3-none-any.whl", hash = "sha256:0c3835c775db1387246c1ba8063b197604462fba8603d9b36b5dc60297197b2f"},
-    {file = "botocore_stubs-1.34.69.tar.gz", hash = "sha256:463248fd1d6e7b68a0c57bdd758d04c6bd0c5c2c3bfa81afdf9d64f0930b59bc"},
+    {file = "botocore_stubs-1.34.84-py3-none-any.whl", hash = "sha256:fa6d7e3792ce195d0fd7be12e938df8a26d627c14b15ea52b158819b59318ae7"},
+    {file = "botocore_stubs-1.34.84.tar.gz", hash = "sha256:b7e0fef9d3cb0fb630f86bc1601dc62e392f31eafd59db41e32d0f22a529c1c7"},
 ]
 
 [package.dependencies]
@@ -907,13 +907,13 @@ socks = ["socksio (==1.*)"]
 
 [[package]]
 name = "idna"
-version = "3.6"
+version = "3.7"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
 python-versions = ">=3.5"
 files = [
-    {file = "idna-3.6-py3-none-any.whl", hash = "sha256:c05567e9c24a6b9faaa835c4821bad0590fbb9d5779e7caa6e1cc4978e7eb24f"},
-    {file = "idna-3.6.tar.gz", hash = "sha256:9ecdbbd083b06798ae1e86adcbfe8ab1479cf864e4ee30fe4e46a003d12491ca"},
+    {file = "idna-3.7-py3-none-any.whl", hash = "sha256:82fee1fc78add43492d3a1898bfa6d8a904cc97d8427f683ed8e798d07761aa0"},
+    {file = "idna-3.7.tar.gz", hash = "sha256:028ff3aadf0609c1fd278d8ea3089299412a7a8b9bd005dd08b9f8285bcb5cfc"},
 ]
 
 [[package]]
@@ -1296,13 +1296,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-cloudformation"
-version = "1.34.66"
-description = "Type annotations for boto3.CloudFormation 1.34.66 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.84"
+description = "Type annotations for boto3.CloudFormation 1.34.84 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-cloudformation-1.34.66.tar.gz", hash = "sha256:295ddb878f3f4b61489b83bd4bad949382deb8a478ff5ae66c22ca3ffbabbe95"},
-    {file = "mypy_boto3_cloudformation-1.34.66-py3-none-any.whl", hash = "sha256:e0080e4ba0cd464479f3ee285faddd863e40147e8f331b78445aef210afc91ed"},
+    {file = "mypy_boto3_cloudformation-1.34.84-py3-none-any.whl", hash = "sha256:580954031cb3650588b91f592e8f51855b2ff435d763ac0d69cf271c8433315f"},
+    {file = "mypy_boto3_cloudformation-1.34.84.tar.gz", hash = "sha256:82d14df3757f30b5a1d34650839d415d265d4de41cf355d63e10221fcc67f177"},
 ]
 
 [package.dependencies]
@@ -1310,13 +1310,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-cloudwatch"
-version = "1.34.75"
-description = "Type annotations for boto3.CloudWatch 1.34.75 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.83"
+description = "Type annotations for boto3.CloudWatch 1.34.83 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-cloudwatch-1.34.75.tar.gz", hash = "sha256:434433f34f68e8570de4e568b4b2c5ddf81e6edfb699b16785f04229364ed1a5"},
-    {file = "mypy_boto3_cloudwatch-1.34.75-py3-none-any.whl", hash = "sha256:5954e58b0f929863e8468a158d01a604e641f6d6f0510a9eba6912436e0a4abf"},
+    {file = "mypy-boto3-cloudwatch-1.34.83.tar.gz", hash = "sha256:766e166c5b463d9885a5929dc16bb592e0fa7d7beaf569aa4f501d85a848bc13"},
+    {file = "mypy_boto3_cloudwatch-1.34.83-py3-none-any.whl", hash = "sha256:6af4fff0ec7c09e423df5a69fff4df8a74044462686e8679b4fe73c106787854"},
 ]
 
 [package.dependencies]
@@ -1338,13 +1338,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-ec2"
-version = "1.34.73"
-description = "Type annotations for boto3.EC2 1.34.73 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.78"
+description = "Type annotations for boto3.EC2 1.34.78 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-ec2-1.34.73.tar.gz", hash = "sha256:fef12d24221404778e5f4b6dc8e203dbf0ecd950a6ebf78612a45713fca7aebe"},
-    {file = "mypy_boto3_ec2-1.34.73-py3-none-any.whl", hash = "sha256:eb4cc465bfe40a0543a454dc169967c925f1cb7a1d70599815514cb4a06beea5"},
+    {file = "mypy-boto3-ec2-1.34.78.tar.gz", hash = "sha256:bdf29ab265ed3d5f0094d9b0c8d340ead9e6b609f5c3b9b6790601e8661f8a48"},
+    {file = "mypy_boto3_ec2-1.34.78-py3-none-any.whl", hash = "sha256:512b2c7822eddcd33325c957c8a7e9fda11fb6f4a3f04f4d137e71110b855671"},
 ]
 
 [package.dependencies]
@@ -1450,13 +1450,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-iam"
-version = "1.34.8"
-description = "Type annotations for boto3.IAM 1.34.8 service generated with mypy-boto3-builder 7.23.0"
+version = "1.34.83"
+description = "Type annotations for boto3.IAM 1.34.83 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-iam-1.34.8.tar.gz", hash = "sha256:6faf68cf800182924687b6711b3f9afa8d940ad993f259a3b91e55e82892d641"},
-    {file = "mypy_boto3_iam-1.34.8-py3-none-any.whl", hash = "sha256:0d13057a2141c5633b78ed0b1aed8f2f8a11a9c58a8a17a25622d966428a41b0"},
+    {file = "mypy-boto3-iam-1.34.83.tar.gz", hash = "sha256:7261315616757ebf7509df0e9b091d5942e470eb51c4b23c662a06873a9a8eca"},
+    {file = "mypy_boto3_iam-1.34.83-py3-none-any.whl", hash = "sha256:dec66a98e29ec1e36178c24b8ff57aab6b91230df97557363bbd90ec06874768"},
 ]
 
 [package.dependencies]
@@ -1464,13 +1464,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-lambda"
-version = "1.34.58"
-description = "Type annotations for boto3.Lambda 1.34.58 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.77"
+description = "Type annotations for boto3.Lambda 1.34.77 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-lambda-1.34.58.tar.gz", hash = "sha256:903822c74bd1b34748eb2d72eab0f132fbc3b392c8041aa8fe4d9552a44b0c65"},
-    {file = "mypy_boto3_lambda-1.34.58-py3-none-any.whl", hash = "sha256:6ab1b9611ff396e9310ad77f02994a6e03d40c8a0eea51085e355b4fd2a0cbc9"},
+    {file = "mypy-boto3-lambda-1.34.77.tar.gz", hash = "sha256:7b81d2a5604fb592e92fe0b284ecd259de071703360a33b71c9b54df46d81c9c"},
+    {file = "mypy_boto3_lambda-1.34.77-py3-none-any.whl", hash = "sha256:e21022d2eef12aa731af80790410afdba9412b056339823252813bae2adbf553"},
 ]
 
 [package.dependencies]
@@ -1506,13 +1506,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-rds"
-version = "1.34.65"
-description = "Type annotations for boto3.RDS 1.34.65 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.83"
+description = "Type annotations for boto3.RDS 1.34.83 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-rds-1.34.65.tar.gz", hash = "sha256:b8482c23f32c69c89d1991185a1bd70d513645415db6e874dbb6196cbe0bc9bf"},
-    {file = "mypy_boto3_rds-1.34.65-py3-none-any.whl", hash = "sha256:7cc2299c2a241d2a4717af1838d805cb740e1d775f27bbf751e86f9468ca368a"},
+    {file = "mypy-boto3-rds-1.34.83.tar.gz", hash = "sha256:fc7f7dc434695fd7a0b37f6945a624bc9dc633ab3287e7da9899934d1b02818b"},
+    {file = "mypy_boto3_rds-1.34.83-py3-none-any.whl", hash = "sha256:cca89c1acdb3041fd548e57d07a4ac930c0aa0edf316aa82d95bfdafb5840d18"},
 ]
 
 [package.dependencies]
@@ -1695,13 +1695,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.9"
+version = "0.5.11"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.9-py3-none-any.whl", hash = "sha256:43dc020edcc604fdb297254acbe55f4d6b9c69d92ceb1219c6d0ef23f6d429f2"},
-    {file = "port_ocean-0.5.9.tar.gz", hash = "sha256:53fd289c91f18c2eec67e85639a2dc42a5998339fce8e5ba30374b87a7faa5fb"},
+    {file = "port_ocean-0.5.11-py3-none-any.whl", hash = "sha256:6914a873a72f17fef2700f56cdbe7ee69a367bcfa977def00ea21ce042e896ec"},
+    {file = "port_ocean-0.5.11.tar.gz", hash = "sha256:68236bed8b9c12b39074fc25353af95466e37456a92afcdc994c76f857d17176"},
 ]
 
 [package.dependencies]
@@ -1887,6 +1887,20 @@ files = [
 
 [package.dependencies]
 six = ">=1.5"
+
+[[package]]
+name = "python-dotenv"
+version = "1.0.1"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca"},
+    {file = "python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"},
+]
+
+[package.extras]
+cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-slugify"
@@ -2140,13 +2154,13 @@ dev = ["furo", "packaging", "sphinx (>=5)", "twisted"]
 
 [[package]]
 name = "types-awscrt"
-version = "0.20.5"
+version = "0.20.9"
 description = "Type annotations and code completion for awscrt"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = "<4.0,>=3.7"
 files = [
-    {file = "types_awscrt-0.20.5-py3-none-any.whl", hash = "sha256:79d5bfb01f64701b6cf442e89a37d9c4dc6dbb79a46f2f611739b2418d30ecfd"},
-    {file = "types_awscrt-0.20.5.tar.gz", hash = "sha256:61811bbf4de95248939f9276a434be93d2b95f6ccfe8aa94e56999e9778cfcc2"},
+    {file = "types_awscrt-0.20.9-py3-none-any.whl", hash = "sha256:3ae374b553e7228ba41a528cf42bd0b2ad7303d806c73eff4aaaac1515e3ea4e"},
+    {file = "types_awscrt-0.20.9.tar.gz", hash = "sha256:64898a2f4a2468f66233cb8c29c5f66de907cf80ba1ef5bb1359aef2f81bb521"},
 ]
 
 [[package]]
@@ -2162,24 +2176,24 @@ files = [
 
 [[package]]
 name = "types-s3transfer"
-version = "0.10.0"
+version = "0.10.1"
 description = "Type annotations and code completion for s3transfer"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "types_s3transfer-0.10.0-py3-none-any.whl", hash = "sha256:44fcdf0097b924a9aab1ee4baa1179081a9559ca62a88c807e2b256893ce688f"},
-    {file = "types_s3transfer-0.10.0.tar.gz", hash = "sha256:35e4998c25df7f8985ad69dedc8e4860e8af3b43b7615e940d53c00d413bdc69"},
+    {file = "types_s3transfer-0.10.1-py3-none-any.whl", hash = "sha256:49a7c81fa609ac1532f8de3756e64b58afcecad8767933310228002ec7adff74"},
+    {file = "types_s3transfer-0.10.1.tar.gz", hash = "sha256:02154cce46528287ad76ad1a0153840e0492239a0887e8833466eccf84b98da0"},
 ]
 
 [[package]]
 name = "typing-extensions"
-version = "4.10.0"
+version = "4.11.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "typing_extensions-4.10.0-py3-none-any.whl", hash = "sha256:69b1a937c3a517342112fb4c6df7e72fc39a38e7891a5730ed4985b5214b5475"},
-    {file = "typing_extensions-4.10.0.tar.gz", hash = "sha256:b0abd7c89e8fb96f98db18d86106ff1d90ab692004eb746cf6eda2682f91b3cb"},
+    {file = "typing_extensions-4.11.0-py3-none-any.whl", hash = "sha256:c1f94d72897edaf4ce775bb7558d5b79d8126906a14ea5ed1635921406c0387a"},
+    {file = "typing_extensions-4.11.0.tar.gz", hash = "sha256:83f085bd5ca59c80295fc2a82ab5dac679cbe02b9f33f7d83af68e241bea51b0"},
 ]
 
 [[package]]
@@ -2329,4 +2343,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "baf5ecd16ca9f09c3e6379f085336f61062b8fcaad44b7c7d4fd22a2f6dbbfac"
+content-hash = "4644493899d6c1594e5b304498f466921a55ebf51139901ced4097529f282599"
