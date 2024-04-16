@@ -7,6 +7,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from integration import ObjectKind
 
+
 def init_sonar_client() -> SonarQubeClient:
     return SonarQubeClient(
         ocean.integration_config.get("sonar_url", "https://sonarcloud.io"),
@@ -27,7 +28,6 @@ async def on_project_resync(kind: str) -> list[dict[str, Any]]:
 
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    
     sonar_client = init_sonar_client()
     async for issues_list in sonar_client.get_all_issues():
         yield issues_list
@@ -36,7 +36,6 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ANALYSIS)
 @ocean.on_resync(ObjectKind.SASS_ANALYSIS)
 async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     sonar_client = init_sonar_client()
     if not ocean.integration_config["sonar_is_on_premise"]:
         async for analyses_list in sonar_client.get_all_sonarcloud_analyses():
@@ -45,7 +44,6 @@ async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ONPREM_ANALYSIS)
 async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     sonar_client = init_sonar_client()
     if ocean.integration_config["sonar_is_on_premise"]:
         async for analyses_list in sonar_client.get_all_sonarqube_analyses():

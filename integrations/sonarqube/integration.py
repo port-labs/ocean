@@ -11,12 +11,14 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 
+
 class ObjectKind:
     PROJECTS = "projects"
     ISSUES = "issues"
     ANALYSIS = "analysis"
     SASS_ANALYSIS = "saas_analysis"
     ONPREM_ANALYSIS = "onprem_analysis"
+
 
 class SonarQubeComponentSearchFilter(BaseModel):
     query: str | None
@@ -43,6 +45,7 @@ class SonarQubeComponentSearchFilter(BaseModel):
                     params.append(f"{field}={value}")
         return " and ".join(params)
 
+
 class SonarQubeProjectAPIQueryParams(BaseModel):
     q: str | None
     s: str | None
@@ -60,22 +63,31 @@ class SonarQubeProjectAPIQueryParams(BaseModel):
 
         return value
 
+
 class SonarQubeIssueAPIQueryParams(BaseModel):
     assigned: Literal["yes", "no", "true", "false"] | None
     assignees: list[str] | None
-    clean_code_attribute_categories: list[Literal[
-                "ADAPTABLE",
-                "CONSISTENT",
-                "INTENTIONAL",
-                "RESPONSIBLE",
-            ]] | None = Field(alias="cleanCodeAttributeCategories")
+    clean_code_attribute_categories: list[
+        Literal[
+            "ADAPTABLE",
+            "CONSISTENT",
+            "INTENTIONAL",
+            "RESPONSIBLE",
+        ]
+    ] | None = Field(alias="cleanCodeAttributeCategories")
     code_variants: list[str] | None = Field(alias="codeVariants")
     created_before: str | None = Field(alias="createdBefore")
     created_after: str | None = Field(alias="createdAfter")
     cwe: list[str] | None
-    impact_severities: list[Literal["HIGH", "LOW", "MEDIUM"]] | None = Field(alias="impactSeverities")
-    impact_software_qualities: list[Literal["MAINTAINABILITY", "RELIABILITY", "SECURITY"]] | None = Field(alias="impactSoftwareQualities")
-    statuses: list[Literal["OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED", "FIXED"]] | None
+    impact_severities: list[Literal["HIGH", "LOW", "MEDIUM"]] | None = Field(
+        alias="impactSeverities"
+    )
+    impact_software_qualities: list[
+        Literal["MAINTAINABILITY", "RELIABILITY", "SECURITY"]
+    ] | None = Field(alias="impactSoftwareQualities")
+    statuses: list[
+        Literal["OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED", "FIXED"]
+    ] | None
     languages: list[str] | None
     owasp_asvs_level: Literal["1", "2", "3"] | None = Field(alias="owaspAsvsLevel")
     resolved: Literal["yes", "no", "true", "false"] | None
@@ -84,15 +96,18 @@ class SonarQubeIssueAPIQueryParams(BaseModel):
     sonarsource_security: list[str] | None = Field(alias="sonarsourceSecurity")
     tags: list[str] | None
 
-
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
         if assigned := value.pop("assigned", None):
             value["assigned"] = assigned
         if assignees := value.pop("assignees", None):
             value["assignees"] = ",".join(assignees)
-        if clean_code_attribute_categories := value.pop("clean_code_attribute_categories", None):
-            value["cleanCodeAttributeCategories"] = ",".join(clean_code_attribute_categories)
+        if clean_code_attribute_categories := value.pop(
+            "clean_code_attribute_categories", None
+        ):
+            value["cleanCodeAttributeCategories"] = ",".join(
+                clean_code_attribute_categories
+            )
         if code_variants := value.pop("code_variants", None):
             value["codeVariants"] = ",".join(code_variants)
         if created_before := value.pop("created_before", None):
@@ -123,7 +138,7 @@ class SonarQubeIssueAPIQueryParams(BaseModel):
             value["tags"] = ",".join(tags)
 
         return value
-    
+
 
 class SonarQubeProjectResourceConfig(ResourceConfig):
     class SonarQubeProjectSelector(Selector):
@@ -133,6 +148,7 @@ class SonarQubeProjectResourceConfig(ResourceConfig):
 
     kind: Literal["projects"]
     selector: SonarQubeProjectSelector
+
 
 class SonarQubeIssueResourceConfig(ResourceConfig):
     class SonarQubeIssueSelector(Selector):
@@ -145,11 +161,16 @@ class SonarQubeIssueResourceConfig(ResourceConfig):
 
 
 class SonarQubePortAppConfig(PortAppConfig):
-    resources: list[ SonarQubeProjectResourceConfig |
-        SonarQubeIssueResourceConfig | ResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore
+    # resources: list[
+    #     SonarQubeProjectResourceConfig | SonarQubeIssueResourceConfig | ResourceConfig
+    # ] = Field(
+    #     default_factory=list
+    # )  # type: ignore
+    resources: list[
+        Union[
+            SonarQubeProjectResourceConfig, SonarQubeIssueResourceConfig, ResourceConfig
+        ]
+    ] = Field(default_factory=list)
 
 
 class SonarQubeIntegration(BaseIntegration):

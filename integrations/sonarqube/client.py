@@ -7,7 +7,11 @@ from loguru import logger
 
 from port_ocean.utils import http_async_client
 
-from integration import SonarQubeIssueResourceConfig, SonarQubeProjectResourceConfig, ObjectKind
+from integration import (
+    SonarQubeIssueResourceConfig,
+    SonarQubeProjectResourceConfig,
+    ObjectKind,
+)
 from port_ocean.context.event import event
 
 
@@ -77,7 +81,9 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        logger.info(f"`Sending API request to {method} {endpoint} with query params: {query_params}")
+        logger.info(
+            f"`Sending API request to {method} {endpoint} with query params: {query_params}"
+        )
         try:
             response = await self.http_client.request(
                 method=method,
@@ -102,7 +108,9 @@ class SonarQubeClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         try:
-            logger.info(f"`Sending API request to {method} {endpoint} with query params: {query_params}")
+            logger.info(
+                f"`Sending API request to {method} {endpoint} with query params: {query_params}"
+            )
 
             all_resources = []  # List to hold all fetched resources
 
@@ -148,7 +156,9 @@ class SonarQubeClient:
         query_params = {}
         if self.organization_id:
             query_params["organization"] = self.organization_id
-            logger.info(f"Fetching all components in organization: {self.organization_id}")
+            logger.info(
+                f"Fetching all components in organization: {self.organization_id}"
+            )
 
         app_config_resources = event.port_app_config.resources
 
@@ -157,11 +167,16 @@ class SonarQubeClient:
             if resource.kind == ObjectKind.PROJECTS:
                 project_resource = resource
                 break
-        
+
         if project_resource:
-            selector = typing.cast(SonarQubeProjectResourceConfig, project_resource).selector
-            selector_query_params = selector.api_query_params.generate_request_params()
-            query_params.update(selector_query_params)
+            selector = typing.cast(
+                SonarQubeProjectResourceConfig, project_resource
+            ).selector
+            if selector.api_query_params:
+                selector_query_params = (
+                    selector.api_query_params.generate_request_params()
+                )
+                query_params.update(selector_query_params)
 
         try:
             response = await self.send_paginated_api_request(
@@ -169,7 +184,7 @@ class SonarQubeClient:
                 data_key="components",
                 query_params=query_params,
             )
-            
+
             return response
         except Exception as e:
             logger.error(f"Error occurred while fetching components: {e}")
@@ -277,12 +292,16 @@ class SonarQubeClient:
         """
         component_issues = []
         component_key = component.get("key")
+        query_params = {"componentKeys": component_key}
         logger.info(f"Fetching all issues in component: {component_key}")
 
-        selector = typing.cast(SonarQubeIssueResourceConfig, event.resource_config).selector
-        query_params = selector.api_query_params.generate_request_params()
+        selector = typing.cast(
+            SonarQubeIssueResourceConfig, event.resource_config
+        ).selector
+        if selector.api_query_params:
+            selector_query_params = selector.api_query_params.generate_request_params()
 
-        query_params["componentKeys"] = component_key
+        query_params.update(selector_query_params)
 
         response = await self.send_paginated_api_request(
             endpoint=Endpoints.ISSUES,
@@ -291,9 +310,9 @@ class SonarQubeClient:
         )
 
         for issue in response:
-            issue["__link"] = (
-                f"{self.base_url}/project/issues?open={issue.get('key')}&id={component_key}"
-            )
+            issue[
+                "__link"
+            ] = f"{self.base_url}/project/issues?open={issue.get('key')}&id={component_key}"
             component_issues.append(issue)
 
         return component_issues
