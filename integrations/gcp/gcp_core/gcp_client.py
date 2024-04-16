@@ -1,30 +1,26 @@
-from collections.abc import MutableSequence
-from typing import Any, Optional, TypeVar
+import enum
 import proto  # type: ignore
 from google.api_core.exceptions import PermissionDenied, NotFound
 from google.cloud.asset_v1 import (
     AssetServiceAsyncClient,
-    ContentType,
 )
 from google.cloud.asset_v1.services.asset_service import pagers
 from loguru import logger
 from google.pubsub_v1.services.publisher import PublisherAsyncClient
+from integrations.gcp.gcp_core.utils import parse_protobuf_messages
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
-RESOURCE_METADATA_CONTENT_TYPE = ContentType(1)
-GCP_PUBSUB_TOPIC_ASSET_KIND = "pubsub.googleapis.com/Topic"
+
+class AssetTypesWithSpecialHandling(enum.StrEnum):
+    TOPIC = "pubsub.googleapis.com/Topic"
+
+
 TOPIC_PROJECT_FIELD = "__project_id"
 GCP_RESOURCE_MANAGER_PROJECT_KIND = "cloudresourcemanager.googleapis.com/Project"
-
-T = TypeVar("T", bound=proto.Message)
 
 
 class ResourceNotFoundError(Exception):
     pass
-
-
-def parse_protobuf_messages(messages: MutableSequence[T]) -> list[dict[str, Any]]:
-    return [proto.Message.to_dict(message) for message in messages]
 
 
 class GCPClient:
@@ -51,7 +47,7 @@ class GCPClient:
                         topics = parse_protobuf_messages(paginated_response.topics)
                         if topics:
                             logger.info(
-                                f"Generating {len(topics)} {GCP_PUBSUB_TOPIC_ASSET_KIND}'s"
+                                f"Generating {len(topics)} {AssetTypesWithSpecialHandling.TOPIC}'s"
                             )
                             for topic in topics:
                                 topic[TOPIC_PROJECT_FIELD] = project_id
@@ -74,10 +70,10 @@ class GCPClient:
         self, asset_type: str, asset_name: str | None = None
     ) -> ASYNC_GENERATOR_RESYNC_TYPE:
         search_all_resources_request = {
-                "scope": self._parent,
-                "asset_types": [asset_type],
-                "read_mask": "*",
-            }
+            "scope": self._parent,
+            "asset_types": [asset_type],
+            "read_mask": "*",
+        }
         if asset_name:
             search_all_resources_request["query"] = f"name={asset_name}"
         try:

@@ -1,17 +1,26 @@
 import base64
+from collections.abc import MutableSequence
 import json
-from typing import Any, TypedDict
+from typing import Any, TypeVar, TypedDict
 from fastapi import Request
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-
+import proto  # type: ignore
 from gcp_core.gcp_client import GCPClient
+
+T = TypeVar("T", bound=proto.Message)
+
+
+def parse_protobuf_messages(messages: MutableSequence[T]) -> list[dict[str, Any]]:
+    return [proto.Message.to_dict(message) for message in messages]
+
 
 class FeedEvent(TypedDict):
     message_id: str
     asset_name: str
     asset_type: str
     data: dict[Any, Any]
+
 
 class GotFeedCreatedSuccessfullyMessage(Exception):
     pass

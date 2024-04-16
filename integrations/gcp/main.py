@@ -1,9 +1,8 @@
-import enum
 import http
 
 from fastapi import Response
 from loguru import logger
-from gcp_core.gcp_client import GCP_PUBSUB_TOPIC_ASSET_KIND, ResourceNotFoundError
+from gcp_core.gcp_client import AssetTypesWithSpecialHandling, ResourceNotFoundError
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from starlette.requests import Request
@@ -13,10 +12,6 @@ from gcp_core.utils import (
     create_gcp_client_from_ocean_config,
     parse_feed_event_from_request,
 )
-
-
-class AssetTypesWithSpecialHandling(enum.StrEnum):
-    TOPIC = GCP_PUBSUB_TOPIC_ASSET_KIND
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.TOPIC)
@@ -52,7 +47,7 @@ async def feed_events_callback(request: Request) -> Response:
             resource = await gcp_client.get_single_resource(
                 feed_event["asset_name"], feed_event["asset_type"]
             )
-            if feed_event["asset_type"] == GCP_PUBSUB_TOPIC_ASSET_KIND:
+            if feed_event["asset_type"] == AssetTypesWithSpecialHandling.TOPIC:
                 resource = await gcp_client.get_pubsub_topic(
                     feed_event["asset_name"], resource["project"]
                 )
