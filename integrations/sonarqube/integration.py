@@ -161,11 +161,6 @@ class SonarQubeIssueResourceConfig(ResourceConfig):
 
 
 class SonarQubePortAppConfig(PortAppConfig):
-    # resources: list[
-    #     SonarQubeProjectResourceConfig | SonarQubeIssueResourceConfig | ResourceConfig
-    # ] = Field(
-    #     default_factory=list
-    # )  # type: ignore
     resources: list[
         Union[
             SonarQubeProjectResourceConfig, SonarQubeIssueResourceConfig, ResourceConfig

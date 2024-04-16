@@ -172,7 +172,7 @@ class SonarQubeClient:
             selector = typing.cast(
                 SonarQubeProjectResourceConfig, project_resource
             ).selector
-            if selector.api_query_params:
+            if hasattr(selector, "api_query_params") and selector.api_query_params:
                 selector_query_params = (
                     selector.api_query_params.generate_request_params()
                 )
@@ -298,10 +298,10 @@ class SonarQubeClient:
         selector = typing.cast(
             SonarQubeIssueResourceConfig, event.resource_config
         ).selector
-        if selector.api_query_params:
-            selector_query_params = selector.api_query_params.generate_request_params()
 
-        query_params.update(selector_query_params)
+        if hasattr(selector, "api_query_params") and selector.api_query_params:
+            selector_query_params = selector.api_query_params.generate_request_params()
+            query_params.update(selector_query_params)
 
         response = await self.send_paginated_api_request(
             endpoint=Endpoints.ISSUES,
