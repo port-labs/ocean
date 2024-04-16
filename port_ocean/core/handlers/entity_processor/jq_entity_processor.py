@@ -16,9 +16,6 @@ from port_ocean.core.ocean_types import (
 from port_ocean.exceptions.core import EntityProcessorException
 
 
-DOES_ENTITY_PASSED_SELECTOR_KEY = "_does_entity_passed_selector"
-
-
 class JQEntityProcessor(BaseEntityProcessor):
     """Processes and parses entities using JQ expressions.
 
@@ -79,15 +76,14 @@ class JQEntityProcessor(BaseEntityProcessor):
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
         selector_query: str,
-        ignore_selector: bool = False,
-    ) -> dict[str, Any]:
+        parse_all: bool = False,
+    ) -> tuple[dict[str, Any], bool]:
         should_run = await self._search_as_bool(data, selector_query)
-        if ignore_selector or should_run:
+        if parse_all or should_run:
             mapped_entity = await self._search_as_object(data, raw_entity_mappings)
-            mapped_entity[DOES_ENTITY_PASSED_SELECTOR_KEY] = should_run
-            return mapped_entity
+            return mapped_entity, should_run
 
-        return {}
+        return {}, False
 
     async def _calculate_entity(
         self,
@@ -96,7 +92,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         items_to_parse: str | None,
         selector_query: str,
         parse_all: bool = False,
-    ) -> list[dict[str, Any]]:
+    ) -> list[tuple[dict[str, Any], bool]]:
         if items_to_parse:
             items = await self._search(data, items_to_parse)
             if isinstance(items, list):
@@ -121,7 +117,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                     data, raw_entity_mappings, selector_query, parse_all
                 )
             ]
-        return [{}]
+        return [({}, False)]
 
     async def _parse_items(
         self,
@@ -149,12 +145,12 @@ class JQEntityProcessor(BaseEntityProcessor):
         passed = []
         failed = []
         for flatten in entities:
-            for entity_data in filter(
+            for entity_data, did_entity_pass_selector in filter(
                 lambda entity: entity.get("identifier") and entity.get("blueprint"),
                 flatten,
             ):
                 parsed_entity = Entity.parse_obj(entity_data)
-                if entity_data[DOES_ENTITY_PASSED_SELECTOR_KEY]:
+                if did_entity_pass_selector:
                     passed.append(parsed_entity)
                 else:
                     failed.append(parsed_entity)

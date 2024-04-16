@@ -138,7 +138,7 @@ class EntityClientMixin:
         self, user_agent_type: UserAgentType, query: dict[Any, Any] | None = None
     ) -> list[Entity]:
         default_query = {
-            "combinator": "or",
+            "combinator": "and",
             "rules": [
                 {
                     "property": "$datasource",
