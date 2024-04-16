@@ -113,7 +113,7 @@ async def webhook(request: Request) -> dict[str, Any]:
         account_id = body.get("accountId")
 
         if not resource_type or not identifier or not account_id:
-            raise ValueError("Resource type, Identifier or accountId was not found in webhook body")
+            raise ValueError("Resource type, Identifier or Account id was not found in webhook body")
         
         matching_resource_configs = get_matching_kinds_from_config(resource_type)
         
