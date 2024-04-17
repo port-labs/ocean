@@ -2,8 +2,9 @@ import typing
 from typing import Any, AsyncIterable, Callable
 
 import aiostream  # type: ignore
-from gcp_core.searches import search_all_projects
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from gcp_core.search.searches import search_all_projects
 
 
 async def stream_async_iterators_tasks(

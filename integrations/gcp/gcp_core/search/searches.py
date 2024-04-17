@@ -12,23 +12,30 @@ from google.cloud.resourcemanager_v3 import (
 
 from google.cloud.asset_v1.services.asset_service import pagers
 from loguru import logger
-from gcp_core.utils import (
+from gcp_core.search.utils import (
+    EXTRA_PROJECT_FIELD,
     AssetTypesWithSpecialHandling,
+    parse_protobuf_message,
     parse_protobuf_messages,
 )
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
-
-EXTRA_PROJECT_FIELD = "__project"
 
 
 async def search_all_resources(
-    project: dict[str, Any], asset_type: str, asset_name: str | None = None
+    project: dict[str, Any], asset_type: str
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    project_name = project["name"]
+    async for resources in search_all_resources_in_project(project_name, asset_type):
+        yield resources
+
+
+async def search_all_resources_in_project(
+    project_name: str, asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
     """
-    project_name = project["name"]
     logger.info(f"Searching all {asset_type}'s in project {project_name}")
     async with AssetServiceAsyncClient() as async_assets_client:
         search_all_resources_request = {
@@ -53,7 +60,9 @@ async def search_all_resources(
             logger.error(f"Couldn't access the API to get kind {asset_type}: {str(e)}")
 
 
-async def search_all_topics(project: dict[str, Any]) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def list_all_topics_per_project(
+    project: dict[str, Any],
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Search for topics that the caller has ``pubsub.topics.list`` permission on within the project's scope.
     """
@@ -112,3 +121,50 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
         search_organizations_pager = await organizations_client.search_organizations()
         async for organizations_page in search_organizations_pager.pages:
             yield parse_protobuf_messages(organizations_page.organizations)
+
+
+async def get_project(project_name: str) -> RAW_ITEM:
+    async with ProjectsAsyncClient() as projects_client:
+        return parse_protobuf_message(
+            await projects_client.get_project(name=project_name)
+        )
+
+
+async def get_folder(folder_name: str) -> RAW_ITEM:
+    async with FoldersAsyncClient() as folders_client:
+        return parse_protobuf_message(await folders_client.get_folder(name=folder_name))
+
+
+async def get_organization(organization_name: str) -> RAW_ITEM:
+    async with OrganizationsAsyncClient() as organizations_client:
+        return parse_protobuf_message(
+            await organizations_client.get_organization(name=organization_name)
+        )
+
+
+async def get_topic(topic_id: str) -> RAW_ITEM:
+    async with PublisherAsyncClient() as async_publisher_client:
+        return parse_protobuf_message(
+            await async_publisher_client.get_topic(topic=topic_id)
+        )
+
+
+class ResourceNotFoundError(Exception):
+    pass
+
+
+async def search_resource(
+    project_id: str, asset_kind: str, asset_name: str
+) -> RAW_ITEM:
+    try:
+        resource = [
+            resources
+            async for resources in search_all_resources_in_project(
+                project_id, asset_kind, asset_name
+            )
+        ][0][0]
+    except IndexError:
+        raise ResourceNotFoundError(
+            f"Found no asset named {asset_name} with type {asset_kind}"
+        )
+    return resource

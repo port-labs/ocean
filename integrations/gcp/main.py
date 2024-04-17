@@ -1,18 +1,27 @@
+import http
+
 from fastapi import Request, Response
 from loguru import logger
+from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from gcp_core.iterators import iterate_per_available_project
-from gcp_core.searches import (
+from gcp_core.feed_event import (
+    GotFeedCreatedSuccessfullyMessage,
+    feed_event_to_resource,
+    parse_feed_event_from_request,
+)
+from gcp_core.search.iterators import iterate_per_available_project
+from gcp_core.search.searches import (
+    ResourceNotFoundError,
+    list_all_topics_per_project,
     search_all_folders,
     search_all_organizations,
     search_all_projects,
     search_all_resources,
-    search_all_topics,
 )
-from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
-from gcp_core.utils import AssetTypesWithSpecialHandling, parse_feed_event_from_request
+from gcp_core.search.utils import (
+    AssetTypesWithSpecialHandling,
+)
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
@@ -39,7 +48,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.TOPIC)
 async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(kind=AssetTypesWithSpecialHandling.TOPIC):
-        async for batch in iterate_per_available_project(search_all_topics):
+        async for batch in iterate_per_available_project(list_all_topics_per_project):
             yield batch
 
 
@@ -61,29 +70,21 @@ async def feed_events_callback(request: Request) -> Response:
     try:
         feed_event = await parse_feed_event_from_request(request)
         with logger.contextualize(
-            message_id=feed_event["message_id"],
-            asset_name=feed_event["asset_name"],
-            asset_type=feed_event["asset_type"],
+            kind=feed_event["asset_type"],
+            name=feed_event["asset_name"],
+            project=feed_event["project_id"],
         ):
-            resource = await gcp_client.get_single_resource(
-                feed_event["asset_name"], feed_event["asset_type"]
-            )
-            if feed_event["asset_type"] == AssetTypesWithSpecialHandling.TOPIC:
-                resource = await gcp_client.get_pubsub_topic(
-                    feed_event["asset_name"], resource["project"]
-                )
-            logger.info("Got Cloud Asset Inventory Feed event")
+            logger.info("Got Real-Time event")
+            resource = await feed_event_to_resource(feed_event)
             if feed_event["data"].get("deleted") is True:
+                logger.info("Deleting Entity")
                 await ocean.unregister_raw(feed_event["asset_type"], [resource])
             else:
+                logger.info("Upserting Entity")
                 await ocean.register_raw(feed_event["asset_type"], [resource])
     except ResourceNotFoundError:
-        logger.warning(f"Didn't find any resource named: {feed_event['asset_name']}")
+        logger.exception(f"Didn't find any resource named: {feed_event['asset_name']}")
         return Response(status_code=http.HTTPStatus.NOT_FOUND)
     except GotFeedCreatedSuccessfullyMessage:
-        logger.info("Feed has been created successfully.")
-    except Exception:
-        logger.exception(
-            f"Got error while processing Feed event {feed_event['message_id']}"
-        )
-    return Response(status_code=http.HTTPStatus.OK)
+        logger.info("Assets Feed created successfully")
+    return Response(status_code=200)
