@@ -107,10 +107,11 @@ async def webhook(request: Request) -> dict[str, Any]:
     validate_request(request)
     try:
         body = await request.json()
-        logger.info("Webhook body", body=body)
         resource_type = body.get("resource_type")
         identifier = body.get("identifier")
         account_id = body.get("accountId")
+
+        logger.info(f"Webhook body Account ID: {account_id} Type: {resource_type} Identifier: {identifier}")
 
         if not resource_type or not identifier or not account_id:
             raise ValueError("Resource type, Identifier or Account id was not found in webhook body")
