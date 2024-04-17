@@ -7,6 +7,4 @@ eventListener:
 integration:
   identifier: "my-gcp-integration"
   type: "gcp"
-  config:
-    parent: "{{ from env PARENT }}"
-    serviceAccountFileLocation: "{{ from env SERVICE_ACCOUNT_FILE_LOCATION }}"
+  config: []

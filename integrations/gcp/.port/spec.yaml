@@ -4,12 +4,4 @@ icon: GoogleCloud
 features:
   - type: exporter
     section: Cloud Providers
-configurations:
-  - name: parent
-    required: true
-    type: string
-    description: The Organization/Folder/Project you want the integration to fetch resources from.
-  - name: serviceAccountFileLocation
-    required: true
-    type: string
-    description: The location of the service account's key file.
+configurations: []
