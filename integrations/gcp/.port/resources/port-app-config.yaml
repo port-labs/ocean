@@ -7,7 +7,7 @@ resources:
         mappings:
           identifier: ".name"
           blueprint: '"gcpOrganization"'
-          title: ".versioned_resources | max_by(.version).resource | .displayName"
+          title: ".display_name"
   - kind: cloudresourcemanager.googleapis.com/Project
     selector:
       query: "true"
@@ -16,12 +16,7 @@ resources:
         mappings:
           identifier: ".name"
           blueprint: '"gcpProject"'
-          title: ".versioned_resources | max_by(.version).resource | .name"
-          properties:
-            lifecycleState: ".versioned_resources | max_by(.version).resource | .lifecycleState"
-            tags: ".versioned_resources | max_by(.version).resource | .tags"
-          relations:
-            organization: ".organization"
+          title: ".display_name"
   - kind: storage.googleapis.com/Bucket
     selector:
       query: "true"
@@ -83,4 +78,4 @@ resources:
             schemaSettings: ".schema_settings"
             messageRetentionDuration: ".message_retention_duration"
           relations:
-            project: ".__project_id"
+            project: ".__project.name"

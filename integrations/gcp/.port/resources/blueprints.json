@@ -17,32 +17,11 @@
     "title": "GCP Project",
     "icon": "GoogleCloud",
     "schema": {
-      "properties": {
-        "lifecycleState": {
-          "title": "Lifecycle State",
-          "type": "string"
-        },
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "tags": {
-          "title": "Tags",
-          "type": "object"
-        }
-      }
+      "properties": {}
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "organization": {
-        "target": "gcpOrganization",
-        "title": "Organization",
-        "required": false,
-        "many": false
-      }
-    }
+    "aggregationProperties": {}
   },
   {
     "identifier": "bucket",
