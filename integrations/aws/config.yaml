@@ -4,8 +4,8 @@ port:
 eventListener:
   type: POLLING
 integration:
-  identifier: 'azure'
-  type: 'azure'
+  identifier: 'AWS'
+  type: 'aws'
   config:
     awsAccessKeyId: '{{ from env AWS_ACCESS_KEY_ID }}'
     awsSecretAccessKey: '{{ from env AWS_SECRET_ACCESS_KEY }}'
