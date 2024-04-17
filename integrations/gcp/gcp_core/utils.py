@@ -1,19 +1,28 @@
 import base64
 from collections.abc import MutableSequence
+import enum
 import json
 from typing import Any, TypeVar, TypedDict
+import typing
 from fastapi import Request
-from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
 import proto  # type: ignore
-from gcp_core.gcp_client import GCPClient
+import aiostream
 
 T = TypeVar("T", bound=proto.Message)
 
 
-def parse_protobuf_messages(messages: MutableSequence[T]) -> list[dict[str, Any]]:
-    return [proto.Message.to_dict(message) for message in messages]
+def parse_protobuf_message(message: T) -> dict[str, Any]:
+    return proto.Message.to_dict(message)
 
+def parse_protobuf_messages(messages: MutableSequence[T]) -> list[dict[str, Any]]:
+    return [parse_protobuf_message(message) for message in messages]
+
+
+class AssetTypesWithSpecialHandling(enum.StrEnum):
+    TOPIC = "pubsub.googleapis.com/Topic"
+    PROJECT = "cloudresourcemanager.googleapis.com/Project"
+    ORGANIZATION = "cloudresourcemanager.googleapis.com/Organization"
+    FOLDER = "cloudresourcemanager.googleapis.com/Folder"
 
 class FeedEvent(TypedDict):
     message_id: str
@@ -52,12 +61,3 @@ async def parse_feed_event_from_request(
     )
     return feed_event
 
-
-def create_gcp_client_from_ocean_config() -> GCPClient:
-    if cache := event.attributes.get("gcp_client"):
-        return cache
-    parent = ocean.integration_config["parent"]
-    service_account = ocean.integration_config["service_account_file_location"]
-    gcp_client = GCPClient(parent, service_account)
-    event.attributes["gcp_client"] = gcp_client
-    return gcp_client

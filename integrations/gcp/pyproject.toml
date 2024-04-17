@@ -9,6 +9,8 @@ python = "^3.11"
 port_ocean = { version = "^0.5.11", extras = ["cli"] }
 google-cloud-asset = "^3.25.1"
 google-cloud-pubsub = "^2.21.1"
+google-cloud-resource-manager = "^1.12.3"
+aiostream = "^0.5.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
