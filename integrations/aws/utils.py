@@ -86,11 +86,14 @@ def update_available_access_credentials() -> None:
         secret_access_key=aws_secret_access_key,
     ))
 
-    # TODO: change to be dynamic
-    ROLE_NAME = 'ocean-integ-poc-role'
+    account_read_role_name = ocean.integration_config.get("account_read_role_name")
+    organization_role_arn = ocean.integration_config.get("organization_role_arn")
+    if not account_read_role_name or not organization_role_arn:
+        logger.warning("Did not specify account read role name or organization role ARN, only using the current account.")
+        return
+    
     organizations_client = sts_client.assume_role(
-        # TODO: change to be dynamic
-        RoleArn=f'arn:aws:iam::362207926288:role/AWS-Exporter-Ocean-POC-Organization-Role',
+        RoleArn=organization_role_arn,
         RoleSessionName='AssumeRoleSession'
     )
 
@@ -107,7 +110,7 @@ def update_available_access_credentials() -> None:
             for account in page['Accounts']:
                 try:
                     account_role = sts_client.assume_role(
-                        RoleArn=f'arn:aws:iam::{account["Id"]}:role/{ROLE_NAME}',
+                        RoleArn=f'arn:aws:iam::{account["Id"]}:role/{account_read_role_name}',
                         RoleSessionName='AssumeRoleSession'
                     )
                     credentials = account_role['Credentials']

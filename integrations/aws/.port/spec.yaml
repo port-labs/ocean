@@ -7,10 +7,6 @@ features:
     resources:
       - kind: EC2
 configurations:
-  - name: awsApiKey
-    required: true
-    type: string
-    sensitive: true
   - name: awsAccessKeyId
     required: true
     type: string
@@ -23,3 +19,15 @@ configurations:
     required: true
     type: array
     description: List of AWS regions to export resources from
+  - name: organizationRoleArn
+    required: false
+    type: string
+    sensitive: true
+  - name: accountReadRoleName
+    required: false
+    type: string
+    sensitive: true
+  - name: awsApiKey
+    required: false
+    type: string
+    sensitive: true
