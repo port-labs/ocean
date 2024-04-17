@@ -34,7 +34,16 @@ async def search_all_resources_in_project(
     project_name: str, asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
+    List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
     Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
+    The format to get the most updated value of a resource's property in the port app config is:
+
+        .versioned_resources | max_by(.version).resource | <resource_property>
+
+    for example, to get the object retention load of a bucket the currect way of getting that is: 
+    
+        .versioned_resources | max_by(.version).resource | .objectRetention.mode
+
     """
     logger.info(f"Searching all {asset_type}'s in project {project_name}")
     async with AssetServiceAsyncClient() as async_assets_client:
@@ -63,9 +72,6 @@ async def search_all_resources_in_project(
 async def list_all_topics_per_project(
     project: dict[str, Any],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Search for topics that the caller has ``pubsub.topics.list`` permission on within the project's scope.
-    """
     project_name = project["name"]
     logger.info(
         f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"

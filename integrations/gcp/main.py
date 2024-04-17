@@ -54,7 +54,6 @@ async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    # List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
     if kind in iter(AssetTypesWithSpecialHandling):
         logger.debug("Kind already has a specific handling, skipping")
         return
