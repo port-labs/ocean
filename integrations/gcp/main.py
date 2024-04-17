@@ -6,9 +6,11 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gcp_core.feed_event import (
+    AssetHasNoProjectAncestorError,
     GotFeedCreatedSuccessfullyMessage,
     feed_event_to_resource,
-    parse_feed_event_from_request,
+    get_project_from_ancestors,
+    parse_asset_data,
 )
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.searches import (
@@ -66,23 +68,43 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/events")
 async def feed_events_callback(request: Request) -> Response:
+    """
+    This is the real-time events handler. The subscription which is connected to the Feeds Topic will send events here once 
+    the events are inserted into the Assets Inventory.
+
+    NOTICE that there might be a 10 minute delay here, as documented: 
+    https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#limitations
+
+    The request has a message, which contains a 64based data of the asset.
+    The message schema: https://cloud.google.com/pubsub/docs/push?_gl=1*thv8i4*_ga*NDQwMTA2MzM5LjE3MTEyNzQ2MDY.*_ga_WH2QY8WWF5*MTcxMzA3NzU3Ni40My4xLjE3MTMwNzgxMjUuMC4wLjA.&_ga=2.161162040.-440106339.1711274606&_gac=1.184150868.1711468720.CjwKCAjw5ImwBhBtEiwAFHDZx1mm-z19UdKpEARcG2-F_TXXbXw7j7_gVPKiQ9Z5KcpsvXF1fFb_MBoCUFkQAvD_BwE#receive_push
+    The Asset schema: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#creating_feeds
+    """
+    
+    request_json = await request.json()
     try:
-        feed_event = await parse_feed_event_from_request(request)
-        with logger.contextualize(
-            kind=feed_event["asset_type"],
-            name=feed_event["asset_name"],
-            project=feed_event["project_id"],
-        ):
-            logger.info("Got Real-Time event")
-            resource = await feed_event_to_resource(feed_event)
-            if feed_event["data"].get("deleted") is True:
-                logger.info("Deleting Entity")
-                await ocean.unregister_raw(feed_event["asset_type"], [resource])
-            else:
-                logger.info("Upserting Entity")
-                await ocean.register_raw(feed_event["asset_type"], [resource])
+        asset_data = await parse_asset_data(request_json["message"]["data"])
+        asset_type = asset_data["asset"]["assetType"]
+        asset_name = asset_data["asset"]["name"]
+        asset_project = get_project_from_ancestors(asset_data["asset"]["ancestors"])
+        logging_mapping = {
+            "asset_type": asset_type,
+            "asset_name": asset_name,
+            "asset_project": asset_project,
+        }
+        logger.info("Got Real-Time event", **logging_mapping)
+        resource = await feed_event_to_resource(
+            asset_type=asset_type, project_id=asset_project, asset_name=asset_name
+        )
+        if asset_data["data"].get("deleted") is True:
+            logger.info("Deleting Entity", **logging_mapping)
+            await ocean.unregister_raw(asset_type, [resource])
+        else:
+            logger.info("Upserting Entity", **logging_mapping)
+            await ocean.register_raw(asset_type, [resource])
+    except AssetHasNoProjectAncestorError:
+        logger.exception(f"Couldn't find project ancestor to asset {asset_name}")
     except ResourceNotFoundError:
-        logger.exception(f"Didn't find any resource named: {feed_event['asset_name']}")
+        logger.exception(f"Didn't find any {asset_type} resource named: {asset_name}")
         return Response(status_code=http.HTTPStatus.NOT_FOUND)
     except GotFeedCreatedSuccessfullyMessage:
         logger.info("Assets Feed created successfully")
