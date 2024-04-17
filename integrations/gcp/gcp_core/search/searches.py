@@ -72,6 +72,11 @@ async def search_all_resources_in_project(
 async def list_all_topics_per_project(
     project: dict[str, Any],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    This lists all Topics under a certain project. 
+    The Topics are handled specifically due to lacks of data in the asset itselfwithin the asset inventory - e.g. some properties missing.
+    The listing is being done via the PublisherAsyncClient, ignoring state in assets inventory
+    """
     project_name = project["name"]
     logger.info(
         f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"
@@ -149,6 +154,10 @@ async def get_organization(organization_name: str) -> RAW_ITEM:
 
 
 async def get_topic(topic_id: str) -> RAW_ITEM:
+    """
+    The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
+    Here the PublisherAsyncClient is used, ignoring state in assets inventory
+    """
     async with PublisherAsyncClient() as async_publisher_client:
         return parse_protobuf_message(
             await async_publisher_client.get_topic(topic=topic_id)
