@@ -108,4 +108,3 @@ resources:
             tags: .Tags
             arn: .Arn
             link: '"https://console.aws.amazon.com/go/view?arn=" + .Arn'
-            create_at: .CreatedAt

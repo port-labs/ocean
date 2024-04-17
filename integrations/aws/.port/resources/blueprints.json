@@ -154,11 +154,6 @@
           "type": "array",
           "title": "Tags"
         },
-        "created_at": {
-          "type": "string",
-          "title": "Created At",
-          "format": "date-time"
-        },
         "arn": {
           "type": "string",
           "title": "ARN"
