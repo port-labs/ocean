@@ -90,6 +90,7 @@ def update_available_access_credentials() -> None:
     organization_role_arn = ocean.integration_config.get("organization_role_arn")
     if not account_read_role_name or not organization_role_arn:
         logger.warning("Did not specify account read role name or organization role ARN, only using the current account.")
+        logger.warning("Please specify account read role name and organization role ARN to access other accounts.")
         return
     
     organizations_client = sts_client.assume_role(
