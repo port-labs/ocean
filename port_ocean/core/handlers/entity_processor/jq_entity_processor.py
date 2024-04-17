@@ -128,7 +128,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
-        entities_tasks = [
+        calculate_entities_tasks = [
             asyncio.create_task(
                 self._calculate_entity(
                     data,
@@ -140,12 +140,12 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
             for data in raw_results
         ]
-        entities_results = await asyncio.gather(*entities_tasks)
+        calculate_entities_results = await asyncio.gather(*calculate_entities_tasks)
 
         passed_entities = []
         failed_entities = []
-        for entity_result in entities_results:
-            for entity, did_entity_pass_selector in entity_result:
+        for entities_results in calculate_entities_results:
+            for entity, did_entity_pass_selector in entities_results:
                 if entity.get("identifier") and entity.get("blueprint"):
                     parsed_entity = Entity.parse_obj(entity)
                     if did_entity_pass_selector:
