@@ -2,6 +2,7 @@ import enum
 import json
 from typing import Any, AsyncIterator, Optional
 import typing
+import aioboto3
 import boto3
 from loguru import logger
 from overrides import AWSPortAppConfig
@@ -37,15 +38,15 @@ class AwsCredentials:
     def isRole(self):
         return self.session_token is not None
     
-    def createSession(self, region: Optional[str] = None):
+    async def createSession(self, region: Optional[str] = None):
         if self.isRole():
             if region:
-                return boto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
-            return boto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
+                return aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
+            return aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
         else:
             if region:
-                return boto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key, region_name=region)
-            return boto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key)
+                return  aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key, region_name=region)
+            return aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key)
 
 
 _aws_credentials: list[AwsCredentials] = []
@@ -56,9 +57,10 @@ def find_credentials_by_account_id(account_id: str) -> AwsCredentials:
             return cred
     raise ValueError(f"Cannot find credentials linked with this account id {account_id}")
 
-def find_account_id_by_session(session: boto3.Session) -> str:
+async def find_account_id_by_session(session: aioboto3.Session) -> str:
+    session_credentials = await session.get_credentials()
     for cred in _aws_credentials:
-        if cred.access_key_id == session.get_credentials().access_key:
+        if cred.access_key_id == session_credentials.access_key:
             return cred.account_id
     raise ValueError(f"Cannot find credentials linked with this session {session}")
 
@@ -133,66 +135,63 @@ def update_available_access_credentials() -> None:
         logger.error("Caller is not a member of an AWS organization. Assuming role in the current account.")
 
 # TODO: change custom_aws_regions to custom role or something
-def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None) -> list[boto3.Session]:
+async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None) -> AsyncIterator[aioboto3.Session]:
     """
     Gets boto3 sessions for the AWS regions
     """
-    aws_sessions = []
-
     if custom_account_id:
         credentials = find_credentials_by_account_id(custom_account_id)
-        return [credentials.createSession(custom_region)]
+        yield credentials.createSession(custom_region)
+        return
     
     
     for credentials in _aws_credentials:
-        aws_sessions.append(credentials.createSession(custom_region if custom_region else None))
+        yield credentials.createSession(custom_region if custom_region else None)
     
-    return aws_sessions
-
 def _fix_unserializable_date_properties(obj: Any) -> Any:
     """
     Handles unserializable date properties in the JSON by turning them into a string
     """
     return json.loads(json.dumps(obj, default=str))
 
-def describe_single_resource(kind: str, identifier: str, account_id: Optional[str] = None, region: Optional[str] = None) -> dict[str, Any]:
+async def describe_single_resource(kind: str, identifier: str, account_id: Optional[str] = None, region: Optional[str] = None) -> dict[str, Any]:
     """
     Describes a single resource using the CloudControl API.
     """
-    sessions = _get_sessions(account_id, region)
-    for session in sessions:
+    async for session in _get_sessions(account_id, region):
+        session = await session
         region = session.region_name
         try:
             if kind == ResourceKindsWithSpecialHandling.ACM:
-                acm = session.client('acm')
-                response = acm.describe_certificate(CertificateArn=identifier)
-                return response.get('Certificate', {})
+                async with session.client('acm') as acm:
+                    response = await acm.describe_certificate(CertificateArn=identifier)
+                    return response.get('Certificate', {})
             
             elif kind == ResourceKindsWithSpecialHandling.LOADBALANCER:
-                elbv2 = session.client('elbv2')
-                response = elbv2.describe_load_balancers(LoadBalancerArns=[identifier])
-                return response.get('LoadBalancers', [])[0]
+                async with session.client('elbv2') as elbv2:
+                    response = await elbv2.describe_load_balancers(LoadBalancerArns=[identifier])
+                    return response.get('LoadBalancers', [])[0]
             
             elif kind == ResourceKindsWithSpecialHandling.CLOUDFORMATION:
-                cloudformation = session.client('cloudformation')
-                response = cloudformation.describe_stacks(StackName=identifier)
-                return response.get('Stacks', [])[0]
+                async with session.client('cloudformation') as cloudformation:
+                    response = await cloudformation.describe_stacks(StackName=identifier)
+                    return response.get('Stacks', [])[0]
             
             elif kind == ResourceKindsWithSpecialHandling.EC2:
-                ec2_client = session.client('ec2')
-                described_instance = ec2_client.describe_instances(InstanceIds=[identifier])
-                instance_definition = described_instance["Reservations"][0]["Instances"][0]
-                return instance_definition
-            
+                async with session.client('ec2') as ec2_client:
+                    described_instance = await ec2_client.describe_instances(InstanceIds=[identifier])
+                    instance_definition = described_instance["Reservations"][0]["Instances"][0]
+                    return instance_definition
+                
             else:
-                cloudcontrol = session.client('cloudcontrol')
-                response = cloudcontrol.get_resource(TypeName=kind, Identifier=identifier)
-                resource_description = response.get('ResourceDescription', {})
-                return {
-                    'Identifier': resource_description.get('Identifier', ''),
-                    'Kind': kind,
-                    **json.loads(resource_description.get('Properties', {}))
-                }
+                async with session.client('cloudcontrol') as cloudcontrol:
+                    response = await cloudcontrol.get_resource(TypeName=kind, Identifier=identifier)
+                    resource_description = response.get('ResourceDescription', {})
+                    return {
+                        'Identifier': resource_description.get('Identifier', ''),
+                        'Kind': kind,
+                        **json.loads(resource_description.get('Properties', {}))
+                    }
         except Exception as e:
             if e.response['Error']['Code'] == 'ResourceNotFoundException':
                 logger.info(f"Resource not found: {kind} {identifier}")
@@ -200,33 +199,32 @@ def describe_single_resource(kind: str, identifier: str, account_id: Optional[st
             logger.error(f"Failed to describe CloudControl Instance in region: {region}; error {e}")
             break
 
-def describe_resources(kind: str, sessions: list[boto3.Session], service_name: str, describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def describe_resources(kind: str, session: aioboto3.Session, service_name: str, describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Describes a list of resources in the AWS account
     """
-    for session in sessions:
-        region = session.region_name
-        account_id = find_account_id_by_session(session)
-        next_token = None
-        while True:
-            try:
-                all_resources = []
-                client = session.client(service_name)
+    region = session.region_name
+    account_id = await find_account_id_by_session(session)
+    next_token = None
+    while True:
+        try:
+            all_resources = []
+            async with session.client(service_name) as client:
                 if next_token:
                     pointer_param = marker_param if marker_param == "NextToken" else "Marker"
-                    response = getattr(client, describe_method)(**{pointer_param: next_token})
+                    response = await getattr(client, describe_method)(**{pointer_param: next_token})
                 else:
-                    response = getattr(client, describe_method)()
+                    response = await getattr(client, describe_method)()
                 next_token = response.get(marker_param)
                 for resource in response.get(list_param, []):
                     resource.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region})
                     all_resources.append(_fix_unserializable_date_properties(resource))
                 yield all_resources
-            except Exception as e:
-                logger.error(f"Failed to list resources in region: {region}; error {e}")
-                break
-            if not next_token:
-                break
+        except Exception as e:
+            logger.error(f"Failed to list resources in region: {region}; error {e}")
+            break
+        if not next_token:
+            break
 
 def get_matching_kinds_from_config(kind: str) -> list[ResourceConfig]:
     """
