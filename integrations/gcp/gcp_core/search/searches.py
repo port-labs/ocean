@@ -1,25 +1,26 @@
 from typing import Any
-from google.api_core.exceptions import PermissionDenied, NotFound
+
+from google.api_core.exceptions import NotFound, PermissionDenied
 from google.cloud.asset_v1 import (
     AssetServiceAsyncClient,
 )
-from google.pubsub_v1.services.publisher import PublisherAsyncClient
+from google.cloud.asset_v1.services.asset_service import pagers
 from google.cloud.resourcemanager_v3 import (
-    ProjectsAsyncClient,
     FoldersAsyncClient,
     OrganizationsAsyncClient,
+    ProjectsAsyncClient,
 )
-
-from google.cloud.asset_v1.services.asset_service import pagers
+from google.pubsub_v1.services.publisher import PublisherAsyncClient
 from loguru import logger
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from port_ocean.utils.cache import cache_iterator_result
+
 from gcp_core.search.utils import (
     EXTRA_PROJECT_FIELD,
     AssetTypesWithSpecialHandling,
     parse_protobuf_message,
     parse_protobuf_messages,
 )
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-from port_ocean.utils.cache import cache_iterator_result
 
 
 async def search_all_resources(
@@ -40,8 +41,8 @@ async def search_all_resources_in_project(
 
         .versioned_resources | max_by(.version).resource | <resource_property>
 
-    for example, to get the object retention load of a bucket the currect way of getting that is: 
-    
+    for example, to get the object retention load of a bucket the currect way of getting that is:
+
         .versioned_resources | max_by(.version).resource | .objectRetention.mode
 
     """
@@ -73,7 +74,7 @@ async def list_all_topics_per_project(
     project: dict[str, Any],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
-    This lists all Topics under a certain project. 
+    This lists all Topics under a certain project.
     The Topics are handled specifically due to lacks of data in the asset itselfwithin the asset inventory - e.g. some properties missing.
     The listing is being done via the PublisherAsyncClient, ignoring state in assets inventory
     """

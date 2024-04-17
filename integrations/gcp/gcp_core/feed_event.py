@@ -1,7 +1,8 @@
 import base64
 import json
 from typing import Any, NotRequired, TypedDict
-from fastapi import Request
+
+from port_ocean.core.ocean_types import RAW_ITEM
 
 from .search.searches import (
     get_folder,
@@ -11,7 +12,6 @@ from .search.searches import (
     search_resource,
 )
 from .search.utils import EXTRA_PROJECT_FIELD, AssetTypesWithSpecialHandling
-from port_ocean.core.ocean_types import RAW_ITEM
 
 
 class FeedEvent(TypedDict):
@@ -24,6 +24,7 @@ class FeedEvent(TypedDict):
 
 class GotFeedCreatedSuccessfullyMessage(Exception):
     pass
+
 
 class AssetHasNoProjectAncestorError(Exception):
     pass
@@ -50,7 +51,7 @@ async def parse_asset_data(encoded_data: str) -> dict[str, Any]:
 
 
 async def feed_event_to_resource(
-    asset_type: str, asset_name: str,project_id: str
+    asset_type: str, asset_name: str, project_id: str
 ) -> RAW_ITEM:
     resource = None
     if asset_type == AssetTypesWithSpecialHandling.TOPIC:

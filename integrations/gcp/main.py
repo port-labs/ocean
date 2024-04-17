@@ -69,17 +69,17 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.router.post("/events")
 async def feed_events_callback(request: Request) -> Response:
     """
-    This is the real-time events handler. The subscription which is connected to the Feeds Topic will send events here once 
+    This is the real-time events handler. The subscription which is connected to the Feeds Topic will send events here once
     the events are inserted into the Assets Inventory.
 
-    NOTICE that there might be a 10 minute delay here, as documented: 
+    NOTICE that there might be a 10 minute delay here, as documented:
     https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#limitations
 
     The request has a message, which contains a 64based data of the asset.
     The message schema: https://cloud.google.com/pubsub/docs/push?_gl=1*thv8i4*_ga*NDQwMTA2MzM5LjE3MTEyNzQ2MDY.*_ga_WH2QY8WWF5*MTcxMzA3NzU3Ni40My4xLjE3MTMwNzgxMjUuMC4wLjA.&_ga=2.161162040.-440106339.1711274606&_gac=1.184150868.1711468720.CjwKCAjw5ImwBhBtEiwAFHDZx1mm-z19UdKpEARcG2-F_TXXbXw7j7_gVPKiQ9Z5KcpsvXF1fFb_MBoCUFkQAvD_BwE#receive_push
     The Asset schema: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#creating_feeds
     """
-    
+
     request_json = await request.json()
     try:
         asset_data = await parse_asset_data(request_json["message"]["data"])
