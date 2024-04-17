@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.12 (2024-04-12)
+
+### Features
+
+- Added a util function that allows to iterate over a list of async iterators and stream the results of each iterator as they are available
+
+
 ## 0.5.11 (2024-04-11)
 
 
