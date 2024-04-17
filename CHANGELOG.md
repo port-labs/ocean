@@ -7,6 +7,75 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.13 (2024-04-17)
+
+### Features
+
+- Delete entities that doesn't passed the selector on real time events
+
+
+## 0.5.12 (2024-04-12)
+
+### Features
+
+- Added a util function that allows to iterate over a list of async iterators and stream the results of each iterator as they are available
+
+
+## 0.5.11 (2024-04-11)
+
+
+### Improvements
+
+- Improved the handling of integration entities by adding retries and running it after the upsert to prevent blocking the resync
+- Changed entities search timeout to 30 seconds to prevent blocking the resync
+
+### Features
+
+- Added a way to enable request retries for any request even if its request method is not part of the retryable methods
+
+
+## 0.5.10 (2024-04-10)
+
+### Bug Fixes
+
+- Fixed application settings to be loaded from the environment variables
+
+### Improvements
+
+- Added integration version label to docker
+
+
+## 0.5.9 (2024-03-30)
+
+### Bug Fixes
+
+- Fixed a bug where every time after the first token expiration, the framework didn't actually marked that the token got refreshed, causing the token to be refreshed every time when a request is made to Port. (#1)
+
+
+## 0.5.8 (2024-03-27)
+
+
+### Bug Fixes
+
+- Fixed a bug in loguru which fails to deserialize an exceptions (#1)
+
+
+## 0.5.7 (2024-03-20)
+
+
+### Features
+
+- Added the ability to map entities from raw array attributes by introducing `itemsToParse` key in the mapping configuration
+
+
+## 0.5.6 (2024-03-17)
+
+
+### Features
+
+- Added array to possible integration configuration types (PORT-7262)
+
+
 ## 0.5.5 (2024-03-06)
 
 

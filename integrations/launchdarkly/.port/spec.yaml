@@ -1,0 +1,24 @@
+type: launchdarkly
+description: launchdarkly integration for Port Ocean
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/feature-management/launchdarkly
+icon: Launchdarkly
+features:
+  - type: exporter
+    section: Feature Management
+    resources:
+      - kind: project
+      - kind: flag
+      - kind: auditlog
+      - kind: environment
+configurations:
+  - name: launchdarklyToken
+    required: true
+    sensitive: true
+    type: string
+  - name: launchdarklyHost
+    required: false
+    type: string
+    default: https://app.launchdarkly.com
+  - name: appHost
+    type: url
+    required: false

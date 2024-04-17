@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.11
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Make install and build
         run: |
             make install
@@ -29,3 +29,59 @@ jobs:
           user: ${{ env.PYPI_USERNAME }}
           password: ${{ env.PYPI_PASSWORD }}
           packages-dir: ${{github.workspace}}/dist
+
+      - name: Remove 'v' from version name
+        continue-on-error: true
+        run: echo "VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//g')" >> $GITHUB_ENV
+
+      - name: Send internal release notification
+        if: env.VERSION != ''
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.OCEAN_SLACK_WEBHOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": ":tada: *New Version of Ocean Framework Released!* :tada:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "We are excited to announce the release of a new version of the Ocean framework! :ocean: :rocket:"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Version:* `${{ env.VERSION }}`"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "<https://ocean.getport.io/changelog/${{ env.VERSION }}|Check out the Changelog>"
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Happy sailing! :ocean: :heart:"
+                  }
+                }
+              ]
+            }

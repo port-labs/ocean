@@ -29,13 +29,15 @@ class PushHook(ProjectHandler):
             GitlabPortAppConfig, event.port_app_config
         )
 
-        if generate_ref(config.branch) == ref:
+        branch = config.branch or gitlab_project.default_branch
+
+        if generate_ref(branch) == ref:
             entities_before, entities_after = self.gitlab_service.get_entities_diff(
                 gitlab_project,
                 config.spec_path,
                 before,
                 after,
-                config.branch,
+                branch,
             )
             # update the entities diff found in the `config.spec_path` file the user configured
             await ocean.update_diff(
@@ -47,3 +49,8 @@ class PushHook(ProjectHandler):
                 f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
             )
             await ocean.register_raw(ObjectKind.PROJECT, [gitlab_project.asdict()])
+        else:
+            logger.debug(
+                f"Skipping push hook for project {gitlab_project.path_with_namespace} because the ref {ref} "
+                f"does not match the branch {branch}"
+            )

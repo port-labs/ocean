@@ -5,9 +5,12 @@ title: Overview
 sidebar_label: 🌊 Overview
 ---
 
+import OceanExporterArchSvg from '../static/img/ExportArchitecture.svg'
+import OceanRealTimeArchSvg from '../static/img/RealTimeUpdatesArchitecture.svg'
+
 # Overview
 
-![Thumbnail](https://github.com/port-labs/ocean/blob/f61343caa69d886f8ffe48fe05326f7442bca294/assets/Thumbnail.jpg?raw=true)
+![Thumbnail](https://raw.githubusercontent.com/port-labs/ocean/main/assets/Thumbnail.png)
 
 <p align="center">
 <a href="https://github.com/tiangolo/fastapi/actions?query=lint+event:push+branch:main" target="_blank" style={{marginRight: "0.5em"}}>
@@ -28,6 +31,8 @@ Ocean is an open source extensibility framework for [Port](https://getport.io). 
 Ocean does this by providing a streamlined interface to interact with Port, including abstractions and commonly required functionality to interact with [Port's REST API](https://api.getport.io/).
 
 This out-of-the-box functionality greatly simplifies the process of writing a new integration for Port, because as a developer your only requirement is to implement the logic that will query your desired 3rd-party system.
+
+Port encourages members of its community to contribute their own integrations, as well as improve existing integrations and the core of the Ocean framework itself.
 
 This documentation is meant to describe two main use cases for the Ocean framework:
 
@@ -66,24 +71,28 @@ The goal of Ocean is to provide a layer of abstraction for a multitude of common
   - Trigger by querying configuration from Port
   - Trigger by reading a message from a Kafka topic provided by Port
 - Support a multitude of deployment methods to account for any environment, infrastructure or architecture:
-  - Kubernetes (using helm)
+  - Kubernetes (using helm or ArgoCD)
   - AWS ECS (using Terraform module)
   - Azure Container App (using Terraform module)
+  - Docker
+  - As part of your CI pipeline, either manually or as part of a schedule
 
 To learn more about the tools and abstractions provided by the Ocean framework to make it easier to develop new integrations, refer to the [features](./framework/features/features.md) docs.
 
-## How do integrations powered by the Ocean framework work?
+## How do Ocean integrations work?
 
-Since Ocean provides many abstractions and common functionality out-of-the-box, creating a new integration for Port, powered by the Ocean framework is as easy as:
+Integrations powered by the Ocean framework support two methods to get the desired information from the desired 3rd-party:
 
-1. Scaffolding a new integration
-2. Defining the inputs required by the integration
-3. Writing the business logic to query information from the 3rd-party service
-4. Testing the integration locally
-5. Opening a PR to the Port team using the [Port Ocean](https://github.com/port-labs/port-ocean) repository on GitHub
-6. Done! once the PR is approved and merged, the new integration will appear for all users in the list of available data sources
+**Exporter mode** - when the integration starts, and also every time its configuration changes, it will query the 3rd-party system, gather the desired information and send it to Port:
 
-Port encourages members of its community to contribute their own integrations, as well as improve existing integrations and the core of the Ocean framework itself.
+<OceanExporterArchSvg/>
+
+<br/>
+<br/>
+
+**Real-time updates mode** - (optional) as the integration runs, it can listen to webhook events sent by the 3rd-party system and send the results to Port in real-time:
+
+<OceanRealTimeArchSvg/>
 
 ## Next steps
 

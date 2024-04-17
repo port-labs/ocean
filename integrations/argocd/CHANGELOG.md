@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.38 (2024-04-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.12 (#1)
+
+
+# Port_Ocean 0.1.37 (2024-04-11)
+
+### Deprecations
+- Added deprecation warnings to the deployment-history and kubernetes-resource kind, urging users to utilize the itemsToParse functionality instead
+
+### Improvements
+
+- Reveresed the relation between cluster and namespace, and other general enhancements on blueprints (PORT-7550)
+- Updated the default mapping for deployment-history and kubernetes-resource kind to reuse the application kind's response and parse items using the itemsToParse functionality for improved efficiency
+
+
+# Port_Ocean 0.1.36 (2024-04-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.11 (#1)
+
+
+# Port_Ocean 0.1.35 (2024-04-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.10 (#1)
+
+
+# Port_Ocean 0.1.34 (2024-04-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.9 (#1)
+
+
+# Port_Ocean 0.1.33 (2024-03-28)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.8 (#1)
+
+
+# Port_Ocean 0.1.32 (2024-03-21)
+
+### Improvements
+
+- Added support for ArgoCD kubernetes resources (PORT-6911)
+
+
+# Port_Ocean 0.1.31 (2024-03-20)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.7 (#1)
+
+
+# Port_Ocean 0.1.30 (2024-03-18)
+
+### Improvements
+
+- Added support for Application managed resources kind
+
+
+# Port_Ocean 0.1.29 (2024-03-18)
+
+### Improvements
+
+- Enhanced the application blueprint by adding relation to the cluster and two revision properties (actual and target) (PORT-6528)
+- Updated the deployment history revision property from string to url, linking the user the specific revision (PORT-6854)
+- Added namespace blueprint and created relevant relations(PORT-7187)
+
+# Port_Ocean 0.1.28 (2024-03-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.6 (#1)
+
+
 # Port_Ocean 0.1.27 (2024-03-06)
 
 ### Improvements

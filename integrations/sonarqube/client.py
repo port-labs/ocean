@@ -264,9 +264,9 @@ class SonarQubeClient:
         )
 
         for issue in response:
-            issue[
-                "__link"
-            ] = f"{self.base_url}/project/issues?open={issue.get('key')}&id={component_key}"
+            issue["__link"] = (
+                f"{self.base_url}/project/issues?open={issue.get('key')}&id={component_key}"
+            )
             component_issues.append(issue)
 
         return component_issues

@@ -1,0 +1,56 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"launchDarklyProject"'
+          properties:
+            tags: .tags
+  - kind: flag
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"launchDarklyFeatureFlag"'
+          properties:
+            kind: .kind
+            description: .description
+            creationDate: .creationDate / 1000 | strftime("%Y-%m-%dT%H:%M:%SZ")
+            clientSideAvailability: .clientSideAvailability
+            temporary: .temporary
+            tags: .tags
+            maintainer: ._maintainer.email
+            deprecated: .deprecated
+            variations: .variations
+            customProperties: .customProperties
+            archived: .archived
+          relations:
+            environments: .environments | keys
+  - kind: environment
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"launchDarklyEnvironment"'
+          properties:
+            defaultTtl: .defaultTtl
+            secureMode: .secureMode
+            defaultTrackEvents: .defaultTrackEvents
+            requireComments: .requireComments
+            confirmChanges: .confirmChanges
+            tags: .tags
+            critical: .critical
+          relations:
+            project: .__projectKey

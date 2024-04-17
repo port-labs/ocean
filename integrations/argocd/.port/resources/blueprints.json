@@ -6,15 +6,6 @@
     "icon": "Argo",
     "schema": {
       "properties": {
-        "namespaces": {
-          "items": {
-            "type": "string"
-          },
-          "icon": "DefaultProperty",
-          "title": "Namespace",
-          "type": "array",
-          "description": "Holds list of namespaces which are accessible in that cluster."
-        },
         "applicationsCount": {
           "title": "Applications Count",
           "type": "number",
@@ -53,17 +44,33 @@
     "relations": {}
   },
   {
+    "identifier": "argocdNamespace",
+    "description": "This blueprint represents an ArgoCD namespace",
+    "title": "ArgoCD Namespace",
+    "icon": "Argo",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "aggregationProperties": {},
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "cluster": {
+        "title": "ArgoCD Cluster",
+        "target": "argocdCluster",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "argocdProject",
     "description": "This blueprint represents an ArgoCD Project",
     "title": "ArgoCD Project",
     "icon": "Argo",
     "schema": {
       "properties": {
-        "namespace": {
-          "title": "Namespace",
-          "type": "string",
-          "icon": "DefaultProperty"
-        },
         "createdAt": {
           "title": "Created At",
           "type": "string",
@@ -81,19 +88,12 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {
-      "cluster": {
-        "title": "Cluster",
-        "target": "argocdCluster",
-        "required": false,
-        "many": true
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "argocdApplication",
     "description": "This blueprint represents an ArgoCD Application",
-    "title": "ArgoCD Application",
+    "title": "Running Service",
     "icon": "Argo",
     "schema": {
       "properties": {
@@ -110,11 +110,18 @@
         },
         "destinationServer": {
           "type": "string",
-          "title": "Destination Server"
+          "title": "Destination Server",
+          "description": "The URL of the target cluster's Kubernetes control plane API"
         },
-        "namespace": {
+        "revision": {
           "type": "string",
-          "title": "Namespace"
+          "title": "Revision",
+          "description": "Revision contains information about the revision the comparison has been performed to"
+        },
+        "targetRevision": {
+          "type": "string",
+          "title": "Target Revision",
+          "description": "Target Revision defines the revision of the source to sync the application to. In case of Git, this can be commit, tag, or branch"
         },
         "syncStatus": {
           "type": "string",
@@ -129,7 +136,7 @@
             "OutOfSync": "red",
             "Unknown": "lightGray"
           },
-          "description": "The sync status of the application"
+          "description": "Status is the sync state of the comparison"
         },
         "healthStatus": {
           "type": "string",
@@ -150,12 +157,23 @@
             "Progressing": "blue",
             "Unknown": "lightGray"
           },
-          "description": "The health status of the application"
+          "description": "Status holds the status code of the application or resource"
         },
         "createdAt": {
           "title": "Created At",
           "type": "string",
-          "format": "date-time"
+          "format": "date-time",
+          "description": "The created timestamp of the application"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels",
+          "description": "Map of string keys and values that can be used to organize and categorize object"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations",
+          "description": "Annotations are unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata"
         }
       },
       "required": []
@@ -164,8 +182,20 @@
     "calculationProperties": {},
     "relations": {
       "project": {
-        "title": "Project",
+        "title": "ArgoCD Project",
         "target": "argocdProject",
+        "required": false,
+        "many": false
+      },
+      "cluster": {
+        "title": "ArgoCD Cluster",
+        "target": "argocdCluster",
+        "required": false,
+        "many": false
+      },
+      "namespace": {
+        "title": "ArgoCD Namespace",
+        "target": "argocdNamespace",
         "required": false,
         "many": false
       }
@@ -198,8 +228,7 @@
         },
         "repoURL": {
           "title": "Repository URL",
-          "type": "string",
-          "format": "url"
+          "type": "string"
         },
         "sourcePath": {
           "title": "Source Path",
@@ -209,6 +238,57 @@
       "required": []
     },
     "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "application": {
+        "title": "Application",
+        "target": "argocdApplication",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "argocdKubernetesResource",
+    "description": "This blueprint represents an ArgoCD kubernetes resource",
+    "title": "Kubernetes Resource",
+    "icon": "Argo",
+    "schema": {
+      "properties": {
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "namespace": {
+          "title": "Namespace",
+          "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {
+      "healthStatus": {
+        "title": "Health Status",
+        "path": "application.healthStatus"
+      },
+      "syncStatus": {
+        "title": "Sync Status",
+        "path": "application.syncStatus"
+      }
+    },
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {

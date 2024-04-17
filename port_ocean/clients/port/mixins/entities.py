@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 from urllib.parse import quote_plus
 
 import httpx
@@ -133,23 +134,10 @@ class EntityClientMixin:
             return_exceptions=True,
         )
 
-    async def validate_entity_exist(self, identifier: str, blueprint: str) -> None:
-        logger.info(f"Validating entity {identifier} of blueprint {blueprint} exists")
-
-        response = await self.client.get(
-            f"{self.auth.api_url}/blueprints/{blueprint}/entities/{identifier}",
-            headers=await self.auth.headers(),
-        )
-        if response.is_error:
-            logger.error(
-                f"Error validating "
-                f"entity: {identifier} of "
-                f"blueprint: {blueprint}"
-            )
-        handle_status_code(response)
-
-    async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
-        query = {
+    async def search_entities(
+        self, user_agent_type: UserAgentType, query: dict[Any, Any] | None = None
+    ) -> list[Entity]:
+        default_query = {
             "combinator": "and",
             "rules": [
                 {
@@ -165,6 +153,11 @@ class EntityClientMixin:
             ],
         }
 
+        if query is None:
+            query = default_query
+        elif query.get("rules"):
+            query["rules"].append(default_query)
+
         logger.info(f"Searching entities with query {query}")
         response = await self.client.post(
             f"{self.auth.api_url}/entities/search",
@@ -174,43 +167,33 @@ class EntityClientMixin:
                 "exclude_calculated_properties": "true",
                 "include": ["blueprint", "identifier"],
             },
+            extensions={"retryable": True},
+            timeout=30,
         )
         handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
-    async def search_dependent_entities(self, entity: Entity) -> list[Entity]:
-        body = {
-            "combinator": "and",
-            "rules": [
-                {
-                    "operator": "relatedTo",
-                    "blueprint": entity.blueprint,
-                    "value": entity.identifier,
-                    "direction": "downstream",
-                }
-            ],
-        }
-
-        logger.info(f"Searching dependent entity with body {body}")
-        response = await self.client.post(
-            f"{self.auth.api_url}/entities/search",
-            headers=await self.auth.headers(),
-            json=body,
-        )
-        handle_status_code(response)
-
-        return [Entity.parse_obj(result) for result in response.json()["entities"]]
-
-    async def validate_entity_payload(
-        self, entity: Entity, merge: bool, create_missing_related_entities: bool
-    ) -> None:
-        logger.info(f"Validating entity {entity.identifier}")
-        await self.upsert_entity(
-            entity,
+    async def does_integration_has_ownership_over_entity(
+        self, entity: Entity, user_agent_type: UserAgentType
+    ) -> bool:
+        logger.info(f"Validating ownership on entity {entity.identifier}")
+        found_entities: list[Entity] = await self.search_entities(
+            user_agent_type,
             {
-                "merge": merge,
-                "create_missing_related_entities": create_missing_related_entities,
-                "delete_dependent_entities": False,
-                "validation_only": True,
+                "combinator": "and",
+                "rules": [
+                    {
+                        "property": "$identifier",
+                        "operator": "contains",
+                        "value": entity.identifier,
+                    },
+                    {
+                        "property": "$blueprint",
+                        "operator": "contains",
+                        "value": entity.blueprint,
+                    },
+                ],
             },
         )
+
+        return len(found_entities) > 0

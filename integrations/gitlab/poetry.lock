@@ -12,6 +12,20 @@ files = [
 ]
 
 [[package]]
+name = "aiostream"
+version = "0.5.2"
+description = "Generator-based operators for asynchronous iteration"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "aiostream-0.5.2-py3-none-any.whl", hash = "sha256:054660370be9d37f6fe3ece3851009240416bd082e469fd90cc8673d3818cf71"},
+    {file = "aiostream-0.5.2.tar.gz", hash = "sha256:b71b519a2d66c38f0872403ab86417955b77352f08d9ad02ad46fc3926b389f4"},
+]
+
+[package.dependencies]
+typing-extensions = "*"
+
+[[package]]
 name = "anyio"
 version = "4.2.0"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
@@ -420,13 +434,13 @@ socks = ["socksio (==1.*)"]
 
 [[package]]
 name = "idna"
-version = "3.6"
+version = "3.7"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
 python-versions = ">=3.5"
 files = [
-    {file = "idna-3.6-py3-none-any.whl", hash = "sha256:c05567e9c24a6b9faaa835c4821bad0590fbb9d5779e7caa6e1cc4978e7eb24f"},
-    {file = "idna-3.6.tar.gz", hash = "sha256:9ecdbbd083b06798ae1e86adcbfe8ab1479cf864e4ee30fe4e46a003d12491ca"},
+    {file = "idna-3.7-py3-none-any.whl", hash = "sha256:82fee1fc78add43492d3a1898bfa6d8a904cc97d8427f683ed8e798d07761aa0"},
+    {file = "idna-3.7.tar.gz", hash = "sha256:028ff3aadf0609c1fd278d8ea3089299412a7a8b9bd005dd08b9f8285bcb5cfc"},
 ]
 
 [[package]]
@@ -766,21 +780,22 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.5"
+version = "0.5.12"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
-python-versions = ">=3.11,<4.0"
+python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.5-py3-none-any.whl", hash = "sha256:15dcb850a3e9e91c4aca87e4756f85eab46aa5525ecb909c17960a37b506699d"},
-    {file = "port_ocean-0.5.5.tar.gz", hash = "sha256:d07cd5135fdf7649878dcebadeb3983677722cae125c83b88f56747beefa6af6"},
+    {file = "port_ocean-0.5.12-py3-none-any.whl", hash = "sha256:2ef5d5312c621b9076120bf61a64ddc197ecc54824aa9c57f9dd25c9ca4d8354"},
+    {file = "port_ocean-0.5.12.tar.gz", hash = "sha256:ab8162658a9ba8f3ea53a9e23cfc66747382c2736259485619a9e07e5f61d33f"},
 ]
 
 [package.dependencies]
+aiostream = ">=0.5.2,<0.6.0"
 click = {version = ">=8.1.3,<9.0.0", optional = true, markers = "extra == \"cli\""}
 confluent-kafka = ">=2.1.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
 fastapi = ">=0.100,<0.110"
-httpx = ">=0.24.1,<0.25.0"
+httpx = ">=0.24.1,<0.28.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
 pydantic = ">=1.10.8,<2.0.0"
@@ -792,7 +807,7 @@ rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli
 six = ">=1.16.0,<2.0.0"
 tomli = ">=2.0.1,<3.0.0"
 urllib3 = ">=1.26.16,<2.0.0"
-uvicorn = ">=0.22.0,<0.23.0"
+uvicorn = ">=0.22,<0.30"
 werkzeug = ">=2.3.4,<4.0.0"
 
 [package.extras]
@@ -1414,4 +1429,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "8917d4383dd64e58d4bae50c3f282c75e710027f448ef3ee6bdd043ad622d0e0"
+content-hash = "a0c36286f6f27fe3f6c3ee5b6779c3036f8485263de872a3b15f6b29020b4c63"

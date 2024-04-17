@@ -34,6 +34,18 @@ if TYPE_CHECKING:
 
 
 class GitlabService:
+    all_events_in_webhook: list[str] = [
+        "push_events",
+        "merge_requests_events",
+        "issues_events",
+        "job_events",
+        "pipeline_events",
+        "releases_events",
+        "tag_push_events",
+        "subgroup_events",
+        "confidential_issues_events",
+    ]
+
     def __init__(
         self,
         gitlab_client: Gitlab,
@@ -44,26 +56,28 @@ class GitlabService:
         self.app_host = app_host
         self.group_mapping = group_mapping
 
-    def _is_exists(self, group: RESTObject) -> bool:
+    def _does_webhook_exist_for_group(self, group: RESTObject) -> bool:
         for hook in group.hooks.list(iterator=True):
             if hook.url == f"{self.app_host}/integration/hook/{group.get_id()}":
                 return True
         return False
 
-    def _create_group_webhook(self, group: RESTObject) -> None:
-        logger.info(f"Creating webhook for {group.get_id()}")
+    def _create_group_webhook(
+        self, group: RESTObject, events: list[str] | None
+    ) -> None:
+        webhook_events = {
+            event: event in (events if events else self.all_events_in_webhook)
+            for event in self.all_events_in_webhook
+        }
+
+        logger.info(
+            f"Creating webhook for {group.get_id()} with events: {[event for event in webhook_events if webhook_events[event]]}"
+        )
+
         resp = group.hooks.create(
             {
                 "url": f"{self.app_host}/integration/hook/{group.get_id()}",
-                "push_events": True,
-                "merge_requests_events": True,
-                "issues_events": True,
-                "job_events": True,
-                "pipeline_events": True,
-                "releases_events": True,
-                "tag_push_events": True,
-                "subgroup_events": True,
-                "confidential_issues_events": True,
+                **webhook_events,
             }
         )
         logger.info(
@@ -170,38 +184,79 @@ class GitlabService:
             List[Group], [group for group in groups if group.parent_id is None]
         )
 
-    def create_webhooks(self) -> list[int | str]:
-        root_partial_groups = self.get_root_groups()
-        logger.info("Getting all the root groups to create webhooks for")
-        # Filter out root groups that are not in the group mapping and creating webhooks for the rest
-        filtered_partial_groups = [
-            group
-            for group in root_partial_groups
-            if any(
-                does_pattern_apply(mapping.split("/")[0], group.attributes["full_path"])
-                for mapping in self.group_mapping
-            )
-        ]
-        logger.info(
-            f"Creating webhooks for the root groups. Groups: {[group.attributes['full_path'] for group in filtered_partial_groups]}"
+    def filter_groups_by_paths(self, groups_full_paths: list[str]) -> List[Group]:
+        groups = self.gitlab_client.groups.list(get_all=True)
+        return typing.cast(
+            List[Group],
+            [
+                group
+                for group in groups
+                if group.attributes["full_path"] in groups_full_paths
+            ],
         )
-        webhook_ids = []
-        for partial_group in filtered_partial_groups:
-            group_id = partial_group.get_id()
-            if group_id is None:
-                logger.info(
-                    f"Group {partial_group.attributes['full_path']} has no id. skipping..."
-                )
-            else:
-                if self._is_exists(partial_group):
-                    logger.info(
-                        f"Webhook already exists for group {partial_group.get_id()}"
-                    )
-                else:
-                    self._create_group_webhook(partial_group)
-                webhook_ids.append(group_id)
 
-        return webhook_ids
+    def get_filtered_groups_for_webhooks(
+        self,
+        groups_hooks_override_list: list[str] | None,
+    ) -> List[Group]:
+        groups_for_webhooks = []
+        if groups_hooks_override_list is not None:
+            if groups_hooks_override_list:
+                logger.info(
+                    "Getting all the specified groups in the mapping for a token to create their webhooks"
+                )
+                groups_for_webhooks = self.filter_groups_by_paths(
+                    groups_hooks_override_list
+                )
+
+                groups_paths_not_found = [
+                    group_path
+                    for group_path in groups_hooks_override_list
+                    if group_path
+                    not in [
+                        group.attributes["full_path"] for group in groups_for_webhooks
+                    ]
+                ]
+
+                if groups_paths_not_found:
+                    logger.warning(
+                        "Some groups where not found in gitlab to create webhooks for, "
+                        "probably because of groups that are not under the token's scope, or a mismatched "
+                        "groups full_path in tokenGroupHooksOverrideMapping with the groups full_path in gitlab. "
+                        f"full_paths of groups that where not found: {groups_paths_not_found}"
+                    )
+        else:
+            logger.info("Getting all the root groups to create their webhooks")
+            root_groups = self.get_root_groups()
+            groups_for_webhooks = [
+                group
+                for group in root_groups
+                if any(
+                    does_pattern_apply(
+                        mapping.split("/")[0], group.attributes["full_path"]
+                    )
+                    for mapping in self.group_mapping
+                )
+            ]
+
+        return groups_for_webhooks
+
+    def create_webhook(self, group: Group, events: list[str] | None) -> str | None:
+        logger.info(f"Creating webhook for the group: {group.attributes['full_path']}")
+
+        webhook_id = None
+        group_id = group.get_id()
+
+        if group_id is None:
+            logger.info(f"Group {group.attributes['full_path']} has no id. skipping...")
+        else:
+            if self._does_webhook_exist_for_group(group):
+                logger.info(f"Webhook already exists for group {group.get_id()}")
+            else:
+                self._create_group_webhook(group, events)
+            webhook_id = str(group_id)
+
+        return webhook_id
 
     def create_system_hook(self) -> None:
         logger.info("Checking if system hook already exists")

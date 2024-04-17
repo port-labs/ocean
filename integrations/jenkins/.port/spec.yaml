@@ -22,3 +22,5 @@ configurations:
     required: true
     type: string
     sensitive: true
+deploymentMethodOverride:
+  - type: helm

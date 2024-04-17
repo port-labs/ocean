@@ -66,7 +66,9 @@ class SnykClient:
 
         except httpx.HTTPStatusError as e:
             logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+                f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
+                f"version: {version}, json: {json_data}. "
+                f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
             )
             raise
 
@@ -78,20 +80,17 @@ class SnykClient:
     ) -> AsyncGenerator[list[Any], None]:
         while url_path:
             try:
-                full_url = f"{self.rest_api_url}{url_path}"
-
-                response = await self.http_client.request(
+                data = await self._send_api_request(
+                    url=f"{self.rest_api_url}{url_path}",
                     method=method,
-                    url=full_url,
-                    params={**(query_params or {}), "limit": 50},
+                    query_params={**(query_params or {}), "limit": 50},
                 )
-                response.raise_for_status()
-                data = response.json()
 
-                yield data["data"]
+                yield data.get("data", [])
 
                 # Check if there is a "next" URL in the links object
                 url_path = data.get("links", {}).get("next")
+                query_params = {}  # Reset query params for the next iteration
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
@@ -111,7 +110,8 @@ class SnykClient:
                 method="POST",
                 version=self.snyk_api_version,
             )
-        )["issues"]
+        ).get("issues", [])
+
         event.attributes[cache_key] = issues
         return issues
 
@@ -179,6 +179,9 @@ class SnykClient:
         response = await self._send_api_request(
             url=url, method="GET", version=f"{self.snyk_api_version}~beta"
         )
+
+        if not response:
+            return {}
 
         target = response["data"]
         async for projects_data_of_target in self.get_paginated_projects(target["id"]):
@@ -253,6 +256,10 @@ class SnykClient:
             user_details = await self._send_api_request(
                 url=f"{self.api_url}/user/{user_id}"
             )
+
+            if not user_details:
+                return {}
+
             event.attributes[f"{CacheKeys.USER}-{user_id}"] = user_details
             return user_details
         except httpx.HTTPStatusError as e:
@@ -328,7 +335,7 @@ class SnykClient:
     async def get_all_organizations(self) -> list[dict[str, Any]]:
         url = f"{self.api_url}/orgs"
         response = await self._send_api_request(url=url)
-        organizations = response["orgs"]
+        organizations = response.get("orgs", [])
 
         logger.info(f"Fetched {len(organizations)} organizations for the given token.")
         return organizations

@@ -1,32 +1,35 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
-  - kind: project
+  - kind: project-tag
     selector:
       query: "true"
+      tag: "environment"
     port:
       entity:
         mappings:
-          identifier: .slug
-          title: .name
+          identifier: .slug + "-" + .__tags.name
+          title: .name + "-" + .__tags.name
           blueprint: '"sentryProject"'
           properties:
             dateCreated: .dateCreated
             platform: .platform
             status: .status
             link: .organization.links.organizationUrl + "/projects/" + .name
-  - kind: issue
+
+  - kind: issue-tag
     selector:
       query: "true"
+      tag: "environment"
     port:
       entity:
         mappings:
-          identifier: ".id"
-          title: ".title"
+          identifier: .id
+          title: .title
           blueprint: '"sentryIssue"'
           properties:
-            link: ".permalink"
-            status: ".status"
-            isUnhandled: ".isUnhandled"
+            link: .permalink
+            status: .status
+            isUnhandled: .isUnhandled
           relations:
-            project: ".project.slug"
+            projectEnvironment: '[(.project.slug as $slug | .__tags[] | "\($slug)-\(.name)")]'

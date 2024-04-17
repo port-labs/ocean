@@ -15,11 +15,6 @@ class TokenRetryTransport(RetryTransport):
         super().__init__(**kwargs)
         self.port_client = port_client
 
-    def _is_retryable_method(self, request: httpx.Request) -> bool:
-        return super()._is_retryable_method(request) or request.url.path.endswith(
-            "/auth/access_token"
-        )
-
     async def _handle_unauthorized(self, response: httpx.Response) -> None:
         token = await self.port_client.auth.token
         response.headers["Authorization"] = f"Bearer {token}"

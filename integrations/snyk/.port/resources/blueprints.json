@@ -266,7 +266,10 @@
             "nexus-cr",
             "pivotal",
             "quay-cr",
-            "terraform-cloud"
+            "terraform-cloud",
+            "bitbucket-connect-app",
+            "acr",
+            "api"
           ]
         }
       },
