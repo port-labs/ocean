@@ -3,7 +3,7 @@ from typing import Any
 
 import boto3
 from port_ocean.core.models import Entity
-from utils import ACCOUNT_ID_PROPERTY, ResourceKindsWithSpecialHandling, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, update_available_access_credentials, validate_request, get_matching_kinds_from_config
+from utils import ACCOUNT_ID_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
@@ -33,19 +33,19 @@ async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    for batch in describe_resources(sessions, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
+    for batch in describe_resources(kind, sessions, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
 async def resync_loadbalancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    for batch in describe_resources(sessions, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
+    for batch in describe_resources(kind, sessions, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
         yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
-    for batch in describe_resources(sessions, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
+    for batch in describe_resources(kind, sessions, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
         yield batch
 
 
@@ -69,7 +69,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 next_token = response.get('NextToken')
                 for instance in response.get('ResourceDescriptions', []):
                     described = describe_single_resource(kind, instance.get('Identifier'), account_id, region)
-                    described.update({'Kind': kind, ACCOUNT_ID_PROPERTY: account_id})
+                    described.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region})
                     all_instances.append(_fix_unserializable_date_properties(described))
                 yield all_instances
             except Exception as e:
@@ -93,7 +93,7 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 for instance in page:
                     described_instance = ec2_client.describe_instances(InstanceIds=[instance.id])
                     instance_definition = described_instance["Reservations"][0]["Instances"][0]
-                    instance_definition.update({ACCOUNT_ID_PROPERTY: account_id})
+                    instance_definition.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region})
                     page_instances.append(_fix_unserializable_date_properties(instance_definition))
                 yield page_instances
         except Exception as e:
@@ -154,7 +154,7 @@ async def webhook(request: Request) -> dict[str, Any]:
                 kind=resource_type,
                 blueprint=blueprint,
             )
-            resource.update({ACCOUNT_ID_PROPERTY: account_id})
+            resource.update({KIND_PROPERTY: resource_type, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: body.get("awsRegion")})
             await ocean.register_raw(resource_config.kind, [_fix_unserializable_date_properties(resource)])
         logger.info("Webhook processed successfully")
         return {"ok": True}

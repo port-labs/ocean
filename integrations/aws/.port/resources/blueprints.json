@@ -146,8 +146,35 @@
         "kind": {
           "title": "Kind",
           "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array",
+          "title": "Tags"
+        },
+        "created_at": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        },
+        "arn": {
+          "type": "string",
+          "title": "ARN"
+        },
+        "link": {
+          "type": "string",
+          "title": "Link",
+          "icon": "AWS",
+          "format": "url"
+        },
+        "region": {
+          "type": "string",
+          "title": "Region"
         }
-      }
+      },
+      "required": ["arn"]
     },
     "relations": {}
   },

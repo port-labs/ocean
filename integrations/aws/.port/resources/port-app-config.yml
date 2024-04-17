@@ -104,3 +104,8 @@ resources:
           blueprint: '"cloud_resource"'
           properties:
             kind: .Kind
+            region: .Region
+            tags: .Tags
+            arn: .Arn
+            link: '"https://console.aws.amazon.com/go/view?arn=" + .Arn'
+            create_at: .CreatedAt

@@ -12,6 +12,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 ACCOUNT_ID_PROPERTY = 'AccountId'
+KIND_PROPERTY = 'Kind'
+REGION_PROPERTY = 'Region'
 
 class ResourceKindsWithSpecialHandling(enum.StrEnum):
     """
@@ -194,7 +196,7 @@ def describe_single_resource(kind: str, identifier: str, account_id: Optional[st
             logger.error(f"Failed to describe CloudControl Instance in region: {region}; error {e}")
             break
 
-def describe_resources(sessions: list[boto3.Session], service_name: str, describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
+def describe_resources(kind: str, sessions: list[boto3.Session], service_name: str, describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Describes a list of resources in the AWS account
     """
@@ -213,7 +215,7 @@ def describe_resources(sessions: list[boto3.Session], service_name: str, describ
                     response = getattr(client, describe_method)()
                 next_token = response.get(marker_param)
                 for resource in response.get(list_param, []):
-                    resource.update({ACCOUNT_ID_PROPERTY: account_id})
+                    resource.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region})
                     all_resources.append(_fix_unserializable_date_properties(resource))
                 yield all_resources
             except Exception as e:
