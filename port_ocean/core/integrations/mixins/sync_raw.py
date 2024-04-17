@@ -154,8 +154,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             if not is_owner:
                 logger.info(
-                    f"Entity {entity_to_delete.identifier} hasn't been created by this integration, "
-                    f"skipping deletion..."
+                    f"Entity {entity_to_delete.identifier} either hasn't been created by this integration "
+                    f"or it doesn't exist, skipping deletion..."
                 )
                 continue
             await self.entities_state_applier.delete(
