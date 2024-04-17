@@ -1,12 +1,17 @@
-from typing import Any
+from typing import Any, cast
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.webhooks.webhook_event import WebhookEvent
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from bootstrap import setup_listeners, webhook_event_handler
 from starlette.requests import Request
-from azure_devops.misc import Kind, PULL_REQUEST_SEARCH_CRITERIA
+from azure_devops.misc import (
+    Kind,
+    PULL_REQUEST_SEARCH_CRITERIA,
+    AzureDevopsProjectResourceConfig,
+)
 
 
 @ocean.on_start()
@@ -25,7 +30,11 @@ async def setup_webhooks() -> None:
 @ocean.on_resync(Kind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for projects in azure_devops_client.generate_projects():
+
+    selector = cast(AzureDevopsProjectResourceConfig, event.resource_config).selector
+    sync_default_team = selector.default_team
+
+    async for projects in azure_devops_client.generate_projects(sync_default_team):
         logger.info(f"Resyncing {len(projects)} projects")
         yield projects
 
@@ -68,6 +77,7 @@ async def resync_pull_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.REPOSITORY)
 async def resync_repositories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+
     async for repositories in azure_devops_client.generate_repositories():
         logger.info(f"Resyncing {len(repositories)} repositories")
         yield repositories
