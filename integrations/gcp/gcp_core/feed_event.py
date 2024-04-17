@@ -36,10 +36,9 @@ def get_project_from_ancestors(ancestors: list[str]) -> str:
     raise AssetHasNoProjectAncestorError
 
 
-async def parse_asset_data(request: Request) -> dict[str, Any]:
-    request_json = await request.json()
+async def parse_asset_data(encoded_data: str) -> dict[str, Any]:
     try:
-        data = base64.b64decode(request_json["message"]["data"])
+        data = base64.b64decode(encoded_data)
         asset_data = json.loads(data)
     except json.JSONDecodeError as e:
         if data.decode("utf-8").startswith(

@@ -95,7 +95,7 @@ async def feed_events_callback(request: Request) -> Response:
         resource = await feed_event_to_resource(
             asset_type=asset_type, project_id=asset_project, asset_name=asset_name
         )
-        if asset_data["data"].get("deleted") is True:
+        if asset_data.get("deleted") is True:
             logger.info("Deleting Entity", **logging_mapping)
             await ocean.unregister_raw(asset_type, [resource])
         else:
