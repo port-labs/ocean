@@ -1,4 +1,14 @@
 resources:
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: .Name
+          blueprint: '"aws_account"'
+
   - kind: AWS::EC2::Instance
     selector:
       query: .State.Name | startswith("terminated") | not

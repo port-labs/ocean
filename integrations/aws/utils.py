@@ -21,7 +21,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     Resource kinds with special handling
     These resource kinds are handled separately from the other resource kinds
     """
-
+    ACCOUNT = "AWS::Organizations::Account"
     CLOUDRESOURCE = "cloudresource"
     EC2 = "AWS::EC2::Instance"
     CLOUDFORMATION = "AWS::CloudFormation::Stack"
@@ -50,6 +50,7 @@ class AwsCredentials:
 
 
 _aws_credentials: list[AwsCredentials] = []
+_aws_accessible_accounts: list[dict[str, Any]] = []
 
 def find_credentials_by_account_id(account_id: str) -> AwsCredentials:
     for cred in _aws_credentials:
@@ -72,6 +73,9 @@ async def update_available_access_credentials() -> None:
     :return: List of AWS account IDs.
     """
     logger.info("Updating AWS credentials")
+    _aws_accessible_accounts.clear()
+    _aws_credentials.clear()
+
     aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
     aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")
     if not aws_access_key_id or not aws_secret_access_key:
@@ -92,6 +96,11 @@ async def update_available_access_credentials() -> None:
         account_read_role_name = ocean.integration_config.get("account_read_role_name")
         organization_role_arn = ocean.integration_config.get("organization_role_arn")
         if not account_read_role_name or not organization_role_arn:
+            # In case the account read role name or organization role ARN is not specified, only use the current account
+            _aws_accessible_accounts.append({
+                'Id': current_account_id,
+                'Name': 'Current Account',
+            })
             logger.warning("Did not specify account read role name or organization role ARN, only using the current account.")
             logger.warning("Please specify account read role name and organization role ARN to access other accounts.")
             return
@@ -113,18 +122,25 @@ async def update_available_access_credentials() -> None:
             try:
                 async for page in paginator.paginate():
                     for account in page['Accounts']:
+                        if account['Id'] == current_account_id:
+                            _aws_accessible_accounts.append(account)
+                            logger.warning(f"Skipping current account {current_account_id}, since it is the caller's account.")
+                            continue
                         try:
                             account_role = await sts_client.assume_role(
                                 RoleArn=f'arn:aws:iam::{account["Id"]}:role/{account_read_role_name}',
                                 RoleSessionName='AssumeRoleSession'
                             )
                             credentials = account_role['Credentials']
+                            # Add the credentials to the list of available credentials, to use to read all resources
                             _aws_credentials.append(AwsCredentials(
                                 account_id=account['Id'],
                                 access_key_id=credentials['AccessKeyId'],
                                 secret_access_key=credentials['SecretAccessKey'],
                                 session_token=credentials['SessionToken']
                             ))
+                            # Add the account to the list of accessible accounts, to create account entities
+                            _aws_accessible_accounts.append(account)
                         except sts_client.exceptions.ClientError as e:
                             # If assume_role fails due to permission issues or non-existent role, skip the account
                             if e.response['Error']['Code'] == 'AccessDenied':
@@ -137,6 +153,9 @@ async def update_available_access_credentials() -> None:
                 logger.error("Caller is not a member of an AWS organization. Assuming role in the current account.")
             finally:
                 logger.info(f"Found {len(_aws_credentials)} AWS accounts")
+
+def describe_accessible_accounts() -> list[dict[str, Any]]:
+    return _aws_accessible_accounts
 
 # TODO: change custom_aws_regions to custom role or something
 async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None) -> AsyncIterator[aioboto3.Session]:

@@ -3,7 +3,7 @@ from typing import Any
 
 import boto3
 from port_ocean.core.models import Entity
-from utils import ACCOUNT_ID_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, update_available_access_credentials, validate_request, get_matching_kinds_from_config
+from utils import ACCOUNT_ID_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_accessible_accounts, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
@@ -16,6 +16,13 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
     async for batch in resync_cloudcontrol(kind):
         yield batch
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
+async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    serializable_account_accounts = []
+    for account in describe_accessible_accounts():
+        serializable_account_accounts.append(_fix_unserializable_date_properties(account))
+    yield serializable_account_accounts
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDRESOURCE)
 async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:

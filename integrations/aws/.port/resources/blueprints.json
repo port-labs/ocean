@@ -138,6 +138,16 @@
     "relations": {}
   },
   {
+    "identifier": "aws_account",
+    "title": "AWS account",
+    "icon": "AWS",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "relations": {}
+  },
+  {
     "identifier": "cloud_resource",
     "title": "AWS Cloud Resource",
     "icon": "AWS",
@@ -171,7 +181,14 @@
       },
       "required": ["arn"]
     },
-    "relations": {}
+    "relations": {
+      "account": {
+        "title": "Account",
+        "target": "aws_account",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "cloudFormationStack",
