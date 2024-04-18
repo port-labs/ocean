@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.14 (2024-04-18)
+
+### Improvements
+
+- Delete entities on real time events improvements
+
 ## 0.5.13 (2024-04-17)
 
 ### Features

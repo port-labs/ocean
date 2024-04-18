@@ -3,12 +3,19 @@ from typing import TypedDict, Any, AsyncIterator, Callable, Awaitable
 from port_ocean.core.models import Entity
 
 
-RawEntity = dict[Any, Any]
+RAW_ITEM = dict[Any, Any]
+RAW_RESULT = list[RAW_ITEM]
+ASYNC_GENERATOR_RESYNC_TYPE = AsyncIterator[RAW_RESULT]
+RESYNC_RESULT = list[RAW_ITEM | ASYNC_GENERATOR_RESYNC_TYPE]
+
+LISTENER_RESULT = Awaitable[RAW_RESULT] | ASYNC_GENERATOR_RESYNC_TYPE
+RESYNC_EVENT_LISTENER = Callable[[str], LISTENER_RESULT]
+START_EVENT_LISTENER = Callable[[], Awaitable[None]]
 
 
 class RawEntityDiff(TypedDict):
-    before: list[RawEntity]
-    after: list[RawEntity]
+    before: list[RAW_ITEM]
+    after: list[RAW_ITEM]
 
 
 class EntityDiff(TypedDict):
@@ -19,16 +26,6 @@ class EntityDiff(TypedDict):
 class EntitySelectorDiff(TypedDict):
     passed: list[Entity]
     failed: list[Entity]
-
-
-RAW_ITEM = dict[Any, Any]
-RAW_RESULT = list[RAW_ITEM]
-ASYNC_GENERATOR_RESYNC_TYPE = AsyncIterator[RAW_RESULT]
-RESYNC_RESULT = list[RAW_ITEM | ASYNC_GENERATOR_RESYNC_TYPE]
-
-LISTENER_RESULT = Awaitable[RAW_RESULT] | ASYNC_GENERATOR_RESYNC_TYPE
-RESYNC_EVENT_LISTENER = Callable[[str], LISTENER_RESULT]
-START_EVENT_LISTENER = Callable[[], Awaitable[None]]
 
 
 class IntegrationEventsCallbacks(TypedDict):

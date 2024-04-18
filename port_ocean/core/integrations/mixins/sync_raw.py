@@ -22,9 +22,8 @@ from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
     RawEntityDiff,
-    EntityDiff,
     ASYNC_GENERATOR_RESYNC_TYPE,
-    RawEntity,
+    RAW_ITEM,
     EntitySelectorDiff,
 )
 from port_ocean.core.utils import zip_and_sum
@@ -123,7 +122,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     async def _calculate_raw(
         self,
-        raw_diff: list[tuple[ResourceConfig, list[RawEntity]]],
+        raw_diff: list[tuple[ResourceConfig, list[RAW_ITEM]]],
         parse_all: bool = False,
     ) -> list[EntitySelectorDiff]:
         return await asyncio.gather(
@@ -139,35 +138,18 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
         parse_all: bool = False,
-    ) -> list[Entity]:
+    ) -> EntitySelectorDiff:
         objects_diff = await self._calculate_raw([(resource, results)], parse_all)
+        await self.entities_state_applier.upsert(
+            objects_diff[0]["passed"], user_agent_type
+        )
 
-        entities_after: list[Entity] = objects_diff[0]["passed"]
-        await self.entities_state_applier.upsert(entities_after, user_agent_type)
-
-        # If an entity didn't pass the JQ selector, we want to delete it if it exists in Port
-        for entity_to_delete in objects_diff[0]["failed"]:
-            is_owner = (
-                await ocean.port_client.does_integration_has_ownership_over_entity(
-                    entity_to_delete, user_agent_type
-                )
-            )
-            if not is_owner:
-                logger.info(
-                    f"Skipping deletion of entity {entity_to_delete.identifier}, "
-                    f"Couldn't find an entity that's related to the current integration."
-                )
-                continue
-            await self.entities_state_applier.delete(
-                objects_diff[0]["failed"], user_agent_type
-            )
-
-        return entities_after
+        return objects_diff[0]
 
     async def _unregister_resource_raw(
         self,
         resource: ResourceConfig,
-        results: list[RawEntity],
+        results: list[RAW_ITEM],
         user_agent_type: UserAgentType,
     ) -> list[Entity]:
         objects_diff = await self._calculate_raw([(resource, results)])
@@ -189,17 +171,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 async_generators.append(result)
 
-        entities = await self._register_resource_raw(
-            resource_config, raw_results, user_agent_type
-        )
+        entities = (
+            await self._register_resource_raw(
+                resource_config, raw_results, user_agent_type
+            )
+        )["passed"]
 
         for generator in async_generators:
             try:
                 async for items in generator:
                     entities.extend(
-                        await self._register_resource_raw(
-                            resource_config, items, user_agent_type
-                        )
+                        (
+                            await self._register_resource_raw(
+                                resource_config, items, user_agent_type
+                            )
+                        )["passed"]
                     )
             except* OceanAbortException as error:
                 errors.append(error)
@@ -233,12 +219,47 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resource for resource in config.resources if resource.kind == kind
         ]
 
-        return await asyncio.gather(
+        diffs: list[EntitySelectorDiff] = await asyncio.gather(
             *(
                 self._register_resource_raw(resource, results, user_agent_type, True)
                 for resource in resource_mappings
             )
         )
+
+        registered_entities: list[Entity] = [
+            item for d in diffs for item in d["passed"]
+        ]
+        passed_identifiers_blueprints = set(
+            (item.identifier, item.blueprint) for d in diffs for item in d["passed"]
+        )
+
+        entities_to_delete = [
+            item
+            for d in diffs
+            for item in d["failed"]
+            if (item.identifier, item.blueprint) not in passed_identifiers_blueprints
+        ]
+
+        filtered_entities_to_delete: list[Entity] = []
+        for entity_to_delete in entities_to_delete:
+            is_owner = (
+                await ocean.port_client.does_integration_has_ownership_over_entity(
+                    entity_to_delete, user_agent_type
+                )
+            )
+            if not is_owner:
+                logger.info(
+                    f"Skipping deletion of entity {entity_to_delete.identifier}, "
+                    f"Couldn't find an entity that's related to the current integration."
+                )
+                continue
+            filtered_entities_to_delete.append(entity_to_delete)
+
+        await self.entities_state_applier.delete(
+            filtered_entities_to_delete, user_agent_type
+        )
+
+        return registered_entities
 
     async def unregister_raw(
         self,
