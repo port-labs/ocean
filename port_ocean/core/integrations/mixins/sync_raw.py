@@ -195,6 +195,33 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
         return entities, errors
 
+    async def _search_deleted_entities(
+        self, user_agent_type: UserAgentType, entities_to_delete: list[Entity]
+    ) -> list[Entity]:
+        search_rules = []
+        for entity in entities_to_delete:
+            search_rules.append(
+                {
+                    "combinator": "and",
+                    "rules": [
+                        {
+                            "property": "$identifier",
+                            "operator": "contains",
+                            "value": entity.identifier,
+                        },
+                        {
+                            "property": "$blueprint",
+                            "operator": "contains",
+                            "value": entity.blueprint,
+                        },
+                    ],
+                }
+            )
+
+        return await ocean.port_client.search_entities(
+            user_agent_type, {"combinator": "or", "rules": search_rules}
+        )
+
     async def register_raw(
         self,
         kind: str,
@@ -240,20 +267,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             if (item.identifier, item.blueprint) not in passed_identifiers_blueprints
         ]
 
-        filtered_entities_to_delete: list[Entity] = []
-        for entity_to_delete in entities_to_delete:
-            is_owner = (
-                await ocean.port_client.does_integration_has_ownership_over_entity(
-                    entity_to_delete, user_agent_type
-                )
+        filtered_entities_to_delete: list[Entity] = await self._search_deleted_entities(
+            user_agent_type, entities_to_delete
+        )
+
+        if len(entities_to_delete) < len(filtered_entities_to_delete):
+            logger.info(
+                f"Skipping deletion for {len(filtered_entities_to_delete) - len(entities_to_delete)} entities "
+                f"as we couldn't find matching entities that's related to the current integration."
             )
-            if not is_owner:
-                logger.info(
-                    f"Skipping deletion of entity {entity_to_delete.identifier}, "
-                    f"Couldn't find an entity that's related to the current integration."
-                )
-                continue
-            filtered_entities_to_delete.append(entity_to_delete)
 
         await self.entities_state_applier.delete(
             filtered_entities_to_delete, user_agent_type
