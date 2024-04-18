@@ -33,19 +33,27 @@ class AwsCredentials:
         self.access_key_id = access_key_id
         self.secret_access_key = secret_access_key
         self.session_token = session_token
+        self.enabled_regions = []
     
+    async def updateEnabledRegions(self):
+        session = aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token)
+        async with session.client("account") as account_client:
+            response = await account_client.list_regions(RegionOptStatusContains=['ENABLED', 'ENABLED_BY_DEFAULT'])
+            regions = response.get("Regions", [])
+            self.enabled_regions = [region["RegionName"] for region in regions]
+
     def isRole(self):
         return self.session_token is not None
     
-    async def createSession(self, region: Optional[str] = None):
+    async def createSession(self, region: str) -> aioboto3.Session:
         if self.isRole():
-            if region:
-                return aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
             return aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
         else:
-            if region:
-                return aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key, region_name=region)
-            return aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key)
+            return aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key, region_name=region)
+        
+    async def createSessionForEachRegion(self) -> AsyncIterator[aioboto3.Session]:
+        for region in self.enabled_regions:
+            yield self.createSession(region)
 
 # aws credentials for syncing resources
 _aws_credentials: list[AwsCredentials] = []
@@ -87,12 +95,13 @@ async def update_available_access_credentials() -> None:
     async with user_session.client('sts') as sts_client:
         caller_identity = await sts_client.get_caller_identity()
         current_account_id = caller_identity['Account']
-
-        _aws_credentials.append(AwsCredentials(
+        user_credentials = AwsCredentials(
             account_id=current_account_id,
             access_key_id=aws_access_key_id,
             secret_access_key=aws_secret_access_key,
-        ))
+        )
+        await user_credentials.updateEnabledRegions()
+        _aws_credentials.append(user_credentials)
 
         account_read_role_name = ocean.integration_config.get("account_read_role_name")
         organization_role_arn = ocean.integration_config.get("organization_role_arn")
@@ -133,13 +142,15 @@ async def update_available_access_credentials() -> None:
                                 RoleSessionName='AssumeRoleSession'
                             )
                             credentials = account_role['Credentials']
-                            # Add the credentials to the list of available credentials, to use to read all resources
-                            _aws_credentials.append(AwsCredentials(
+                            credentials = AwsCredentials(
                                 account_id=account['Id'],
                                 access_key_id=credentials['AccessKeyId'],
                                 secret_access_key=credentials['SecretAccessKey'],
                                 session_token=credentials['SessionToken']
-                            ))
+                            )
+                            await credentials.updateEnabledRegions()
+                            # Add the credentials to the list of available credentials, to use to read all resources
+                            _aws_credentials.append(credentials)
                             # Add the account to the list of accessible accounts, to create account entities
                             _aws_accessible_accounts.append(account)
                         except sts_client.exceptions.ClientError as e:
@@ -158,19 +169,27 @@ async def update_available_access_credentials() -> None:
 def describe_accessible_accounts() -> list[dict[str, Any]]:
     return _aws_accessible_accounts
 
-# TODO: change custom_aws_regions to custom role or something
+
 async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None) -> AsyncIterator[aioboto3.Session]:
     """
     Gets boto3 sessions for the AWS regions
     """
     if custom_account_id:
         credentials = find_credentials_by_account_id(custom_account_id)
-        yield await credentials.createSession(custom_region if custom_region else None)
+        if custom_region:
+            yield await credentials.createSession(custom_region)
+        else:
+            async for session in credentials.createSessionForEachRegion():
+                yield await session
         return
     
     
     for credentials in _aws_credentials:
-        yield await credentials.createSession(custom_region if custom_region else None)
+        if custom_region:
+            yield await credentials.createSession(custom_region)
+        else:
+            async for session in credentials.createSessionForEachRegion():
+                yield await session
     
 def _fix_unserializable_date_properties(obj: Any) -> Any:
     """

@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-import boto3
+import aioboto3
 from port_ocean.core.models import Entity
 from utils import ACCOUNT_ID_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_accessible_accounts, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
@@ -61,10 +61,10 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    next_token = None
     async for session in _get_sessions():
         region = session.region_name
         account_id = await find_account_id_by_session(session)
+        next_token = None
         while True:
             all_instances = []
             try:
