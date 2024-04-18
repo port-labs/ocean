@@ -5,14 +5,13 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from gcp_core.feed_event import (
+from gcp_core.errors import (
     AssetHasNoProjectAncestorError,
     GotFeedCreatedSuccessfullyMessageError,
-    feed_event_to_resource,
-    get_project_from_ancestors,
-    parse_asset_data,
 )
+from gcp_core.feed_event import get_project_from_ancestors, parse_asset_data
 from gcp_core.search.iterators import iterate_per_available_project
+from gcp_core.search.search_utils import feed_event_to_resource
 from gcp_core.search.searches import (
     ResourceNotFoundError,
     list_all_topics_per_project,
@@ -42,16 +41,14 @@ async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    with logger.contextualize(kind=AssetTypesWithSpecialHandling.PROJECT):
-        async for batch in search_all_projects():
-            yield batch
+    async for batch in search_all_projects():
+        yield batch
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.TOPIC)
 async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    with logger.contextualize(kind=AssetTypesWithSpecialHandling.TOPIC):
-        async for batch in iterate_per_available_project(list_all_topics_per_project):
-            yield batch
+    async for batch in iterate_per_available_project(list_all_topics_per_project):
+        yield batch
 
 
 @ocean.on_resync()
@@ -59,11 +56,8 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(AssetTypesWithSpecialHandling):
         logger.debug("Kind already has a specific handling, skipping")
         return
-    with logger.contextualize(kind=kind):
-        async for batch in iterate_per_available_project(
-            search_all_resources, asset_type=kind
-        ):
-            yield batch
+    async for batch in iterate_per_available_project(search_all_resources, asset_type=kind):
+        yield batch
 
 
 @ocean.router.post("/events")
@@ -79,7 +73,6 @@ async def feed_events_callback(request: Request) -> Response:
     The message schema: https://cloud.google.com/pubsub/docs/push?_gl=1*thv8i4*_ga*NDQwMTA2MzM5LjE3MTEyNzQ2MDY.*_ga_WH2QY8WWF5*MTcxMzA3NzU3Ni40My4xLjE3MTMwNzgxMjUuMC4wLjA.&_ga=2.161162040.-440106339.1711274606&_gac=1.184150868.1711468720.CjwKCAjw5ImwBhBtEiwAFHDZx1mm-z19UdKpEARcG2-F_TXXbXw7j7_gVPKiQ9Z5KcpsvXF1fFb_MBoCUFkQAvD_BwE#receive_push
     The Asset schema: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes#creating_feeds
     """
-
     request_json = await request.json()
     try:
         asset_data = await parse_asset_data(request_json["message"]["data"])
