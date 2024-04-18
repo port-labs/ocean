@@ -22,10 +22,9 @@ from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
     RawEntityDiff,
-    EntityDiff,
     ASYNC_GENERATOR_RESYNC_TYPE,
-    RawEntity,
     EntitySelectorDiff,
+    RAW_ITEM,
 )
 from port_ocean.core.utils import zip_and_sum
 from port_ocean.exceptions.core import OceanAbortException
@@ -123,7 +122,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     async def _calculate_raw(
         self,
-        raw_diff: list[tuple[ResourceConfig, list[RawEntity]]],
+        raw_diff: list[tuple[ResourceConfig, list[RAW_ITEM]]],
         parse_all: bool = False,
     ) -> list[EntitySelectorDiff]:
         return await asyncio.gather(
@@ -167,7 +166,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _unregister_resource_raw(
         self,
         resource: ResourceConfig,
-        results: list[RawEntity],
+        results: list[RAW_ITEM],
         user_agent_type: UserAgentType,
     ) -> list[Entity]:
         objects_diff = await self._calculate_raw([(resource, results)])

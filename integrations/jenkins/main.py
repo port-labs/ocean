@@ -4,7 +4,7 @@ from enum import StrEnum
 
 from client import JenkinsClient
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 
 
 class ObjectKind(StrEnum):
@@ -31,42 +31,52 @@ def init_client() -> JenkinsClient:
 
 
 @ocean.on_resync(ObjectKind.JOB)
-async def on_resync_jobs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    jenkins_client = init_client()
+async def on_resync_jobs(kind: str) -> RAW_RESULT:
 
-    async for jobs in jenkins_client.get_jobs():
-        logger.info(f"Received batch with {len(jobs)} jobs")
+    for j in range(1):
+        jobs = []
+        for i in range(10):
+            jobs.append(
+                {
+                    "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+                    "buildable": True,
+                    "color": "blue",
+                    "displayName": f"{j}yes{i}",
+                    "fullName": f"{j}-yes{i}",
+                    "name": f"{j}-yes{i}",
+                    "url": f"http://my-jenkins:8080/job/{j}yes{i}/",
+                }
+            )
         yield jobs
 
 
 @ocean.on_resync(ObjectKind.BUILD)
-async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    jenkins_client = init_client()
-
-    async for builds in jenkins_client.get_builds():
-        logger.info(f"Received batch with {len(builds)} builds")
-        yield builds
+async def on_resync_builds(kind: str) -> RAW_RESULT:
+    return []
 
 
 @ocean.on_resync(ObjectKind.USER)
-async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    jenkins_client = init_client()
-
-    async for users in jenkins_client.get_users():
-        logger.info(f"Received {len(users)} users")
-        yield users
+async def on_resync_users(kind: str) -> RAW_RESULT:
+    return []
 
 
 @ocean.router.post("/events")
 async def handle_events(event: dict[str, Any]) -> dict[str, bool]:
-    jenkins_client = init_client()
-    logger.info(f'Received {event["dataType"]} event {event["id"]} | {event["type"]}')
 
-    kind = ObjectKind.get_object_kind_for_event(event["type"])
-
-    if kind:
-        resource = await jenkins_client.get_single_resource(event["url"])
-        await ocean.register_raw(kind, [resource])
+    await ocean.register_raw(
+        "job",
+        [
+            {
+                "_class": "org.jenkinsci.plugins.workflow.job.WorkflowJob",
+                "buildable": True,
+                "color": "blue",
+                "displayName": event.get("name"),
+                "fullName": event.get("name"),
+                "name": event.get("name"),
+                "url": f"http://my-jenkins:8080/job/{event.get('name')}/",
+            }
+        ],
+    )
 
     logger.info("Webhook event processed")
     return {"ok": True}
