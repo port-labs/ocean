@@ -1,5 +1,5 @@
 
-from gcp_core.search.searches import get_single_folder, get_single_organization, get_single_project, get_single_topic, search_single_resource
+from gcp_core.search.resource_searches import get_single_folder, get_single_organization, get_single_project, get_single_topic, search_single_resource
 from gcp_core.utils import EXTRA_PROJECT_FIELD, AssetTypesWithSpecialHandling
 from port_ocean.core.ocean_types import RAW_ITEM
 

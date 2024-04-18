@@ -12,7 +12,7 @@ from gcp_core.errors import (
 from gcp_core.feed_event import get_project_from_ancestors, parse_asset_data
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.search_utils import feed_event_to_resource
-from gcp_core.search.searches import (
+from gcp_core.search.resource_searches import (
     ResourceNotFoundError,
     list_all_topics_per_project,
     search_all_folders,
