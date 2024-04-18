@@ -64,7 +64,7 @@ async def find_account_id_by_session(session: aioboto3.Session) -> str:
             return cred.account_id
     raise ValueError(f"Cannot find credentials linked with this session {session}")
 
-def update_available_access_credentials() -> None:
+async def update_available_access_credentials() -> None:
     """
     Fetches the AWS account IDs that the current IAM role can access.
     and saves them up to use as sessions
@@ -77,62 +77,66 @@ def update_available_access_credentials() -> None:
     if not aws_access_key_id or not aws_secret_access_key:
         logger.error("Did not specify AWS account to use, please add aws user credentials")
         return
-    
-    sts_client = boto3.client('sts', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
-    caller_identity = sts_client.get_caller_identity()
-    current_account_id = caller_identity['Account']
 
-    _aws_credentials.append(AwsCredentials(
-        account_id=current_account_id,
-        access_key_id=aws_access_key_id,
-        secret_access_key=aws_secret_access_key,
-    ))
+    user_session = aioboto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+    async with user_session.client('sts') as sts_client:
+        caller_identity = await sts_client.get_caller_identity()
+        current_account_id = caller_identity['Account']
 
-    account_read_role_name = ocean.integration_config.get("account_read_role_name")
-    organization_role_arn = ocean.integration_config.get("organization_role_arn")
-    if not account_read_role_name or not organization_role_arn:
-        logger.warning("Did not specify account read role name or organization role ARN, only using the current account.")
-        logger.warning("Please specify account read role name and organization role ARN to access other accounts.")
-        return
-    
-    organizations_client = sts_client.assume_role(
-        RoleArn=organization_role_arn,
-        RoleSessionName='AssumeRoleSession'
-    )
+        _aws_credentials.append(AwsCredentials(
+            account_id=current_account_id,
+            access_key_id=aws_access_key_id,
+            secret_access_key=aws_secret_access_key,
+        ))
 
-    credentials = organizations_client['Credentials']
-    # Get the list of all AWS accounts
-    organizations_client = boto3.client('organizations', 
-        aws_access_key_id=credentials['AccessKeyId'],
-        aws_secret_access_key=credentials['SecretAccessKey'],
-        aws_session_token=credentials['SessionToken']
-    )
-    paginator = organizations_client.get_paginator('list_accounts')
-    try:
-        for page in paginator.paginate():
-            for account in page['Accounts']:
-                try:
-                    account_role = sts_client.assume_role(
-                        RoleArn=f'arn:aws:iam::{account["Id"]}:role/{account_read_role_name}',
-                        RoleSessionName='AssumeRoleSession'
-                    )
-                    credentials = account_role['Credentials']
-                    _aws_credentials.append(AwsCredentials(
-                        account_id=account['Id'],
-                        access_key_id=credentials['AccessKeyId'],
-                        secret_access_key=credentials['SecretAccessKey'],
-                        session_token=credentials['SessionToken']
-                    ))
-                except sts_client.exceptions.ClientError as e:
-                    # If assume_role fails due to permission issues or non-existent role, skip the account
-                    if e.response['Error']['Code'] == 'AccessDenied':
-                        continue
-                    else:
-                        raise
-    except organizations_client.exceptions.AccessDeniedException:
-        # If the caller is not a member of an AWS organization, assume_role will fail with AccessDenied
-        # In this case, assume the role in the current account
-        logger.error("Caller is not a member of an AWS organization. Assuming role in the current account.")
+        account_read_role_name = ocean.integration_config.get("account_read_role_name")
+        organization_role_arn = ocean.integration_config.get("organization_role_arn")
+        if not account_read_role_name or not organization_role_arn:
+            logger.warning("Did not specify account read role name or organization role ARN, only using the current account.")
+            logger.warning("Please specify account read role name and organization role ARN to access other accounts.")
+            return
+        
+        organizations_client = await sts_client.assume_role(
+            RoleArn=organization_role_arn,
+            RoleSessionName='AssumeRoleSession'
+        )
+
+        credentials = organizations_client['Credentials']
+        organization_role_session = aioboto3.Session(
+            aws_access_key_id=credentials['AccessKeyId'],
+            aws_secret_access_key=credentials['SecretAccessKey'],
+            aws_session_token=credentials['SessionToken']
+        )
+        # Get the list of all AWS accounts
+        async with organization_role_session.client('organizations') as organizations_client:
+            paginator = organizations_client.get_paginator('list_accounts')
+            try:
+                async for page in paginator.paginate():
+                    for account in page['Accounts']:
+                        try:
+                            account_role = await sts_client.assume_role(
+                                RoleArn=f'arn:aws:iam::{account["Id"]}:role/{account_read_role_name}',
+                                RoleSessionName='AssumeRoleSession'
+                            )
+                            credentials = account_role['Credentials']
+                            _aws_credentials.append(AwsCredentials(
+                                account_id=account['Id'],
+                                access_key_id=credentials['AccessKeyId'],
+                                secret_access_key=credentials['SecretAccessKey'],
+                                session_token=credentials['SessionToken']
+                            ))
+                        except sts_client.exceptions.ClientError as e:
+                            # If assume_role fails due to permission issues or non-existent role, skip the account
+                            if e.response['Error']['Code'] == 'AccessDenied':
+                                continue
+                            else:
+                                raise
+            except organizations_client.exceptions.AccessDeniedException:
+                # If the caller is not a member of an AWS organization, assume_role will fail with AccessDenied
+                # In this case, assume the role in the current account
+                logger.error("Caller is not a member of an AWS organization. Assuming role in the current account.")
+            finally:
+                logger.info(f"Found {len(_aws_credentials)} AWS accounts")
 
 # TODO: change custom_aws_regions to custom role or something
 async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None) -> AsyncIterator[aioboto3.Session]:

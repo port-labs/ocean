@@ -166,4 +166,4 @@ async def webhook(request: Request) -> dict[str, Any]:
 @ocean.on_start()
 async def on_start() -> None:
     print("Starting integration")
-    update_available_access_credentials()
+    await update_available_access_credentials()
