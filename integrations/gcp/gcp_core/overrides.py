@@ -28,4 +28,4 @@ class GCPCloudResourceConfig(ResourceConfig):
 class GCPPortAppConfig(PortAppConfig):
     resources: list[GCPCloudResourceConfig | ResourceConfig] = Field(
         default_factory=list
-    )  # type: ignore
+    )
