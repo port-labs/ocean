@@ -1,4 +1,3 @@
-
 class GotFeedCreatedSuccessfullyMessageError(Exception):
     pass
 

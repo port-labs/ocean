@@ -67,7 +67,9 @@ async def search_all_resources_in_project(
                     logger.info(f"Generating {len(resources)} {asset_type}'s")
                     yield resources
         except PermissionDenied as e:
-            logger.exception(f"Couldn't access the API Cloud Assets to get kind {asset_type}. Please set cloudasset.assets.searchAllResources permissions for project {project_name}")
+            logger.exception(
+                f"Couldn't access the API Cloud Assets to get kind {asset_type}. Please set cloudasset.assets.searchAllResources permissions for project {project_name}"
+            )
             raise e
 
 

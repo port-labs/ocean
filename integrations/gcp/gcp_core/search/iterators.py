@@ -15,10 +15,13 @@ async def iterate_per_available_project(
     try:
         async for projects in search_all_projects():
             tasks = [
-                project_dependent_callable(project, *args, **kwargs) for project in projects
+                project_dependent_callable(project, *args, **kwargs)
+                for project in projects
             ]
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
     except StopAsyncIteration:
-        logger.error("Got no `resourcemanager.projects.get`` permissions to run on any project")
+        logger.error(
+            "Got no `resourcemanager.projects.get`` permissions to run on any project"
+        )
         raise NoGetProjectPermissionsError()

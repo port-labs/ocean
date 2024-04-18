@@ -56,7 +56,9 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(AssetTypesWithSpecialHandling):
         logger.debug("Kind already has a specific handling, skipping")
         return
-    async for batch in iterate_per_available_project(search_all_resources, asset_type=kind):
+    async for batch in iterate_per_available_project(
+        search_all_resources, asset_type=kind
+    ):
         yield batch
 
 
