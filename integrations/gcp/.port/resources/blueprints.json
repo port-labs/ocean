@@ -55,7 +55,7 @@
       "properties": {
         "url": {
           "title": "URL",
-          "format":"url",
+          "format": "url",
           "type": "string"
         },
         "name": {
@@ -118,5 +118,33 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "gcpCloudResource",
+    "title": "Cloud Resource",
+    "icon": "GCP",
+    "schema": {
+      "properties": {
+        "type": {
+          "icon": "Service",
+          "title": "Type",
+          "type": "string"
+        },
+        "location": {
+          "icon": "Home",
+          "title": "Location",
+          "type": "string"
+        },
+        "updateTime": {
+          "title": "Update Time",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]

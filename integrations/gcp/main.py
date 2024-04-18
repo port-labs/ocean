@@ -1,4 +1,5 @@
 import http
+import typing
 
 from fastapi import Request, Response
 from loguru import logger
@@ -11,6 +12,7 @@ from gcp_core.errors import (
     ResourceNotFoundError,
 )
 from gcp_core.feed_event import get_project_from_ancestors, parse_asset_data
+from gcp_core.overrides import GCPCloudResourceSelector
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
     feed_event_to_resource,
@@ -22,21 +24,36 @@ from gcp_core.search.resource_searches import (
 )
 from gcp_core.utils import (
     AssetTypesWithSpecialHandling,
+    get_current_resource_config,
 )
+
+
+def _resolve_resync_method_for_resource(
+    kind: str,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    match kind:
+        case AssetTypesWithSpecialHandling.TOPIC:
+            return iterate_per_available_project(list_all_topics_per_project)
+        case AssetTypesWithSpecialHandling.FOLDER:
+            return search_all_folders()
+        case AssetTypesWithSpecialHandling.ORGANIZATION:
+            return search_all_organizations()
+        case AssetTypesWithSpecialHandling.PROJECT:
+            return search_all_projects()
+        case _:
+            return iterate_per_available_project(search_all_resources, asset_type=kind)
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
 async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    with logger.contextualize(kind=AssetTypesWithSpecialHandling.FOLDER):
-        async for batch in search_all_folders():
-            yield batch
+    async for batch in search_all_folders():
+        yield batch
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.ORGANIZATION)
 async def resync_organizations(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    with logger.contextualize(kind=AssetTypesWithSpecialHandling.ORGANIZATION):
-        async for batch in search_all_organizations():
-            yield batch
+    async for batch in search_all_organizations():
+        yield batch
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.PROJECT)
@@ -60,6 +77,17 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         search_all_resources, asset_type=kind
     ):
         yield batch
+
+
+@ocean.on_resync(kind=AssetTypesWithSpecialHandling.CLOUD_RESOURCE)
+async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    resource_kinds = typing.cast(
+        GCPCloudResourceSelector, get_current_resource_config().selector
+    ).resource_kinds
+    for resource_kind in resource_kinds:
+        iterator_resync_method = _resolve_resync_method_for_resource(resource_kind)
+        async for resources_batch in iterator_resync_method:
+            yield resources_batch
 
 
 @ocean.router.post("/events")

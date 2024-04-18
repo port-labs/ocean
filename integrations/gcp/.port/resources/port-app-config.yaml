@@ -56,3 +56,18 @@ resources:
             messageRetentionDuration: ".message_retention_duration"
           relations:
             project: ".__project.name"
+  - kind: cloudResource
+    selector:
+      query: 'true'
+      resourceKinds: ["compute.googleapis.com/Disk","pubsub.googleapis.com/Subscription","iam.googleapis.com/ServiceAccount"]
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          title: '.name | split("/") | .[-1]'
+          blueprint: '"gcpCloudResource"'
+          properties:
+            type: ".assetType"
+            location: ".location"
+            updateTime: ".updateTime"
+
