@@ -95,7 +95,7 @@ async def feed_events_callback(request: Request) -> Response:
                 logger.info("Registering a change in the data")
                 await ocean.register_raw(asset_type, [resource])
     except AssetHasNoProjectAncestorError:
-        logger.exception(f"Couldn't find project ancestor to asset {asset_name}")
+        logger.exception(f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet.")
     except ResourceNotFoundError:
         logger.exception(f"Didn't find any {asset_type} resource named: {asset_name}")
         return Response(status_code=http.HTTPStatus.NOT_FOUND)

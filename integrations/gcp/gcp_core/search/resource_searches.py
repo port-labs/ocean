@@ -100,10 +100,11 @@ async def list_all_topics_per_project(
                     for topic in topics:
                         topic[EXTRA_PROJECT_FIELD] = project
                     yield topics
-        except PermissionDenied:
-            logger.info(
+        except PermissionDenied as e:
+            logger.exception(
                 f"Service account doesn't have permissions to list topics from project {project_name}"
             )
+            raise e
         except NotFound:
             logger.debug(f"Project {project_name} is deleted")
 
