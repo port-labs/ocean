@@ -1,18 +1,5 @@
 [
   {
-    "identifier": "gcpOrganization",
-    "title": "GCP Organization",
-    "icon": "GoogleCloud",
-    "schema": {
-      "properties": {},
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
-  },
-  {
     "identifier": "gcpProject",
     "title": "GCP Project",
     "icon": "GoogleCloud",
@@ -24,30 +11,29 @@
     "aggregationProperties": {}
   },
   {
-    "identifier": "bucket",
-    "title": "Bucket",
+    "identifier": "containerCluster",
+    "title": "Container Cluster",
     "icon": "GoogleCloud",
     "schema": {
       "properties": {
-        "url": {
-          "title": "URL",
-          "format":"url",
+        "description": {
+          "title": "Description",
           "type": "string"
         },
-        "name": {
-          "title": "Name",
+        "currentNodeCount": {
+          "title": "Current Node Count",
+          "type": "number"
+        },
+        "currentNodeVersion": {
+          "title": "Current Node Version",
           "type": "string"
         },
-        "owner": {
-          "title": "Owner",
-          "type": "string"
+        "initialNodeCount": {
+          "title": "Initial Node Count",
+          "type": "number"
         },
         "location": {
           "title": "Location",
-          "type": "string"
-        },
-        "objectRetention": {
-          "title": "Object Retention",
           "type": "string"
         }
       }
@@ -87,39 +73,6 @@
         },
         "eventTrigger": {
           "title": "Event Trigger",
-          "type": "object"
-        }
-      }
-    },
-    "relations": {
-      "project": {
-        "target": "gcpProject",
-        "title": "Project",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "subscriptions",
-    "title": "PubSub Subscriptions",
-    "icon": "GoogleCloud",
-    "schema": {
-      "properties": {
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "state": {
-          "title": "State",
-          "type": "string"
-        },
-        "topic": {
-          "title": "Topic",
-          "type": "string"
-        },
-        "pushConfig": {
-          "title": "Push Config",
           "type": "object"
         }
       }
