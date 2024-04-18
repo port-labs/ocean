@@ -79,8 +79,14 @@ class JQEntityProcessor(BaseEntityProcessor):
         parse_all: bool = False,
     ) -> tuple[dict[str, Any], bool]:
         should_run = await self._search_as_bool(data, selector_query)
+        mappings = raw_entity_mappings
         if parse_all or should_run:
-            mapped_entity = await self._search_as_object(data, raw_entity_mappings)
+            if not should_run:
+                mappings = {
+                    "identifier": raw_entity_mappings.get("identifier"),
+                    "blueprint": raw_entity_mappings.get("blueprint"),
+                }
+            mapped_entity = await self._search_as_object(data, mappings)
             return mapped_entity, should_run
 
         return {}, False
