@@ -58,17 +58,21 @@ resources:
             project: ".__project.name"
   - kind: cloudResource
     selector:
-      query: 'true'
-      resourceKinds: ["compute.googleapis.com/Disk","pubsub.googleapis.com/Subscription","iam.googleapis.com/ServiceAccount"]
+      query: "true"
+      resourceKinds:
+        [
+          "compute.googleapis.com/Disk",
+          "pubsub.googleapis.com/Subscription",
+          "iam.googleapis.com/ServiceAccount",
+        ]
     port:
       entity:
         mappings:
           identifier: ".name"
-          title: '.display_name'
+          title: ".display_name"
           blueprint: '"gcpCloudResource"'
           properties:
             type: ".asset_type"
             location: ".location"
           relations:
             project: ".project"
-
