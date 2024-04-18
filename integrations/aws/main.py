@@ -11,6 +11,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
+
     if kind in iter(ResourceKindsWithSpecialHandling):
         logger.info("Kind already has a specific handling, skipping", kind=kind)
         return
@@ -173,4 +175,3 @@ async def webhook(request: Request) -> dict[str, Any]:
 @ocean.on_start()
 async def on_start() -> None:
     print("Starting integration")
-    await update_available_access_credentials()
