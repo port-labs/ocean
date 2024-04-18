@@ -2,21 +2,11 @@ import base64
 import json
 from typing import Any
 
-from port_ocean.core.ocean_types import RAW_ITEM
 
 from gcp_core.errors import (
     AssetHasNoProjectAncestorError,
     GotFeedCreatedSuccessfullyMessageError,
 )
-
-from .search.searches import (
-    get_folder,
-    get_organization,
-    get_project,
-    get_topic,
-    search_resource,
-)
-from .utils import EXTRA_PROJECT_FIELD, AssetTypesWithSpecialHandling
 
 
 def get_project_from_ancestors(ancestors: list[str]) -> str:
@@ -38,4 +28,3 @@ async def parse_asset_data(encoded_data: str) -> dict[str, Any]:
             raise GotFeedCreatedSuccessfullyMessageError()
         raise e
     return asset_data
-
