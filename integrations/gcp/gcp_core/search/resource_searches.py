@@ -15,6 +15,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 
+from gcp_core.errors import ResourceNotFoundError
 from gcp_core.utils import (
     EXTRA_PROJECT_FIELD,
     AssetTypesWithSpecialHandling,
@@ -168,10 +169,6 @@ async def get_single_topic(topic_id: str) -> RAW_ITEM:
         )
 
 
-class ResourceNotFoundError(Exception):
-    pass
-
-
 async def search_single_resource(
     project_id: str, asset_kind: str, asset_name: str
 ) -> RAW_ITEM:
@@ -186,4 +183,23 @@ async def search_single_resource(
         raise ResourceNotFoundError(
             f"Found no asset named {asset_name} with type {asset_kind}"
         )
+    return resource
+
+
+async def feed_event_to_resource(
+    asset_type: str, asset_name: str, project_id: str
+) -> RAW_ITEM:
+    resource = None
+    match asset_type:
+        case AssetTypesWithSpecialHandling.TOPIC:
+            resource = await get_single_topic(asset_name)
+            resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id)
+        case AssetTypesWithSpecialHandling.FOLDER:
+            resource = await get_single_folder(asset_name)
+        case AssetTypesWithSpecialHandling.ORGANIZATION:
+            resource = await get_single_organization(asset_name)
+        case AssetTypesWithSpecialHandling.PROJECT:
+            resource = await get_single_project(asset_name)
+        case _:
+            resource = await search_single_resource(project_id, asset_type, asset_name)
     return resource

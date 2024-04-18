@@ -1,2 +1,0 @@
-class NoGetProjectPermissionsError(Exception):
-    pass
