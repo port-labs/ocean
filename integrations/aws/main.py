@@ -3,11 +3,13 @@ from typing import Any
 
 import aioboto3
 from port_ocean.core.models import Entity
-from utils import ACCOUNT_ID_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_accessible_accounts, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, update_available_access_credentials, validate_request, get_matching_kinds_from_config
+from utils import ACCOUNT_ID_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_accessible_accounts, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, is_global_resource, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+DEFAULT_REGION = "us-east-1"
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -61,8 +63,10 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in _get_sessions():
+    is_global = is_global_resource(kind)
+    async for session in _get_sessions(None, DEFAULT_REGION if is_global else None):
         region = session.region_name
+        logger.info(f"Resyncing {kind} in region {region}")
         account_id = await find_account_id_by_session(session)
         next_token = None
         while True:
@@ -77,6 +81,9 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     
                     response = await cloudcontrol.list_resources(**params)
                     next_token = response.get('NextToken')
+                    resources = response.get('ResourceDescriptions', [])
+                    if not resources:
+                        break
                     for instance in response.get('ResourceDescriptions', []):
                         described = await describe_single_resource(kind, instance.get('Identifier'), account_id, region)
                         described.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region})

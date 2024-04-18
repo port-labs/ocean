@@ -169,7 +169,6 @@ async def update_available_access_credentials() -> None:
 def describe_accessible_accounts() -> list[dict[str, Any]]:
     return _aws_accessible_accounts
 
-
 async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None) -> AsyncIterator[aioboto3.Session]:
     """
     Gets boto3 sessions for the AWS regions
@@ -190,7 +189,15 @@ async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: 
         else:
             async for session in credentials.createSessionForEachRegion():
                 yield await session
-    
+
+def is_global_resource(kind: str) -> bool:
+    """
+    Checks if the resource kind is a global resource
+    """
+    global_services = ['cloudfront', 'route53', 'waf', 'waf-regional', 's3', 'iam', 'organizations']
+    service = kind.split('::')[1].lower()
+    return service in global_services
+
 def _fix_unserializable_date_properties(obj: Any) -> Any:
     """
     Handles unserializable date properties in the JSON by turning them into a string
