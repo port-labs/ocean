@@ -39,21 +39,3 @@ async def parse_asset_data(encoded_data: str) -> dict[str, Any]:
         raise e
     return asset_data
 
-
-async def feed_event_to_resource(
-    asset_type: str, asset_name: str, project_id: str
-) -> RAW_ITEM:
-    resource = None
-    match asset_type:  
-        case AssetTypesWithSpecialHandling.TOPIC:  
-            resource = await get_topic(asset_name)  
-            resource[EXTRA_PROJECT_FIELD] = await get_project(project_id)  
-        case AssetTypesWithSpecialHandling.FOLDER:  
-            resource = await get_folder(asset_name)  
-        case AssetTypesWithSpecialHandling.ORGANIZATION:  
-            resource = await get_organization(asset_name)  
-        case AssetTypesWithSpecialHandling.PROJECT:  
-            resource = await get_project(asset_name)  
-        case _:  
-            resource = await search_resource(project_id, asset_type, asset_name)  
-    return resource

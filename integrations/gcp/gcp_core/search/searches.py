@@ -136,26 +136,26 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield parse_protobuf_messages(organizations_page.organizations)
 
 
-async def get_project(project_name: str) -> RAW_ITEM:
+async def get_single_project(project_name: str) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         return parse_protobuf_message(
             await projects_client.get_project(name=project_name)
         )
 
 
-async def get_folder(folder_name: str) -> RAW_ITEM:
+async def get_single_folder(folder_name: str) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(await folders_client.get_folder(name=folder_name))
 
 
-async def get_organization(organization_name: str) -> RAW_ITEM:
+async def get_single_organization(organization_name: str) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
             await organizations_client.get_organization(name=organization_name)
         )
 
 
-async def get_topic(topic_id: str) -> RAW_ITEM:
+async def get_single_topic(topic_id: str) -> RAW_ITEM:
     """
     The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
     Here the PublisherAsyncClient is used, ignoring state in assets inventory
@@ -170,7 +170,7 @@ class ResourceNotFoundError(Exception):
     pass
 
 
-async def search_resource(
+async def search_single_resource(
     project_id: str, asset_kind: str, asset_name: str
 ) -> RAW_ITEM:
     try:
