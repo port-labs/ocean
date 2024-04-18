@@ -41,22 +41,19 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_loadbalancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
     async for session in sessions:
-        session = await session
         async for batch in describe_resources(kind, session, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
             yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for session in _get_sessions():
-        session = await session
         async for batch in describe_resources(kind, session, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
             yield batch
 
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     next_token = None
-    async for session_coroutine in _get_sessions():
-        session = await session_coroutine
+    async for session in _get_sessions():
         region = session.region_name
         account_id = await find_account_id_by_session(session)
         while True:
@@ -85,8 +82,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.EC2)
 async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session_coroutine in _get_sessions():
-        session = await session_coroutine
+    async for session in _get_sessions():
         region = session.region_name
         account_id = await find_account_id_by_session(session)
         try:

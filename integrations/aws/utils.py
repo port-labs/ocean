@@ -41,12 +41,12 @@ class AwsCredentials:
     async def createSession(self, region: Optional[str] = None):
         if self.isRole():
             if region:
-                return aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
-            return aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
+                return await aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
+            return await aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
         else:
             if region:
-                return  aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key, region_name=region)
-            return aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key)
+                return  await aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key, region_name=region)
+            return await aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key)
 
 
 _aws_credentials: list[AwsCredentials] = []
@@ -141,7 +141,7 @@ async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: 
     """
     if custom_account_id:
         credentials = find_credentials_by_account_id(custom_account_id)
-        yield credentials.createSession(custom_region)
+        yield credentials.createSession(custom_region if custom_region else None)
         return
     
     
@@ -159,7 +159,6 @@ async def describe_single_resource(kind: str, identifier: str, account_id: Optio
     Describes a single resource using the CloudControl API.
     """
     async for session in _get_sessions(account_id, region):
-        session = await session
         region = session.region_name
         try:
             if kind == ResourceKindsWithSpecialHandling.ACM:
