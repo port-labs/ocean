@@ -9,87 +9,6 @@ resources:
           title: .Name
           blueprint: '"aws_account"'
 
-  - kind: AWS::EC2::Instance
-    selector:
-      query: .State.Name | startswith("terminated") | not
-    port:
-      entity:
-        mappings:
-          identifier: .InstanceId
-          title: (.Tags[]? | select(.Key == "Name") | .Value) // .InstanceId
-          blueprint: '"ec2Instance"'
-          properties:
-            state: '.State.Name'
-            type: '.InstanceType'
-            vpcId: '.VpcId'
-            link:
-              '"https://console.aws.amazon.com/ec2/home?region=" + .Placement.AvailabilityZone[:-1]
-              + "#InstanceDetails:instanceId=" + .InstanceId'
-            availabilityZone: '.Placement.AvailabilityZone'
-            platform: '.PlatformDetails'
-            architecture: '.Architecture'
-            tags: '.Tags'
-
-  - kind: AWS::Lambda::Function
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: '.FunctionName'
-          title: '.FunctionName'
-          blueprint: '"lambda"'
-          properties:
-            link: '"https://console.aws.amazon.com/go/view?arn=" + .Arn'
-            description: '.Description'
-            memorySize: '.MemorySize'
-            ephemeralStorageSize: '.EphemeralStorage.Size'
-            timeout: '.Timeout'
-            runtime: '.Runtime'
-            packageType: '.PackageType'
-            environment: '.Environment'
-            architectures: '.Architectures'
-            layers: '.Layers'
-            tags: '.Tags'
-            iamRole: '"https://console.aws.amazon.com/go/view?arn=" + .Role'
-            arn: '.Arn'
-
-  - kind: AWS::CloudFormation::Stack
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: '.StackName'
-          title: '.StackName'
-          blueprint: '"cloudFormationStack"'
-          properties:
-            lastUpdated: '.LastUpdatedTime'
-            createdAt: '.CreationTime'
-            status: '.StackStatus'
-            link: '"https://console.aws.amazon.com/go/view?arn=" + .StackId'
-            template: '.TemplateBody'
-            tags: '.Tags'
-
-  - kind: AWS::S3::Bucket
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: '.BucketName'
-          title: '.BucketName'
-          blueprint: '"s3"'
-          properties:
-            link: '"https://console.aws.amazon.com/go/view?arn=" + .Arn'
-            regionalDomainName: '.RegionalDomainName'
-            versioningStatus: '.VersioningConfiguration.Status'
-            encryption: '.BucketEncryption.ServerSideEncryptionConfiguration'
-            lifecycleRules: '.LifecycleConfiguration.Rules'
-            publicAccess: '.PublicAccessBlockConfiguration'
-            tags: '.Tags'
-            arn: '.Arn'
-
   - kind: cloudresource
     selector:
       query: 'true'
@@ -106,6 +25,7 @@ resources:
         - AWS::SNS::Topic
         - AWS::Cognito::IdentityPool
         - AWS::CloudFormation::Stack
+
     port:
       entity:
         mappings:
@@ -113,8 +33,10 @@ resources:
           title: .Identifier
           blueprint: '"cloud_resource"'
           properties:
-            kind: .Kind
-            region: .Region
+            kind: .__Kind
+            region: .__Region
             tags: .Tags
             arn: .Arn
             link: '"https://console.aws.amazon.com/go/view?arn=" + .Arn'
+          relations:
+            account: .__AccountId

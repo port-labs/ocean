@@ -12,9 +12,9 @@ from starlette.requests import Request
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-ACCOUNT_ID_PROPERTY = 'AccountId'
-KIND_PROPERTY = 'Kind'
-REGION_PROPERTY = 'Region'
+ACCOUNT_ID_PROPERTY = '__AccountId'
+KIND_PROPERTY = '__Kind'
+REGION_PROPERTY = '__Region'
 
 class ResourceKindsWithSpecialHandling(enum.StrEnum):
     """
