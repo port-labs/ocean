@@ -10,7 +10,10 @@ import pyjq as jq  # type: ignore
 from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
-from port_ocean.core.ocean_types import RawEntityDiff, EntityDiff
+from port_ocean.core.ocean_types import (
+    RawEntity,
+    EntitySelectorDiff,
+)
 from port_ocean.exceptions.core import EntityProcessorException
 
 
@@ -69,16 +72,19 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         return result
 
-    async def _get_entity_if_passed_selector(
+    async def _get_mapped_entity(
         self,
         data: dict[str, Any],
         raw_entity_mappings: dict[str, Any],
         selector_query: str,
-    ) -> dict[str, Any]:
+        parse_all: bool = False,
+    ) -> tuple[dict[str, Any], bool]:
         should_run = await self._search_as_bool(data, selector_query)
-        if should_run:
-            return await self._search_as_object(data, raw_entity_mappings)
-        return {}
+        if parse_all or should_run:
+            mapped_entity = await self._search_as_object(data, raw_entity_mappings)
+            return mapped_entity, should_run
+
+        return {}, False
 
     async def _calculate_entity(
         self,
@@ -86,16 +92,18 @@ class JQEntityProcessor(BaseEntityProcessor):
         raw_entity_mappings: dict[str, Any],
         items_to_parse: str | None,
         selector_query: str,
-    ) -> list[dict[str, Any]]:
+        parse_all: bool = False,
+    ) -> list[tuple[dict[str, Any], bool]]:
         if items_to_parse:
             items = await self._search(data, items_to_parse)
             if isinstance(items, list):
                 return await asyncio.gather(
                     *[
-                        self._get_entity_if_passed_selector(
+                        self._get_mapped_entity(
                             {"item": item, **data},
                             raw_entity_mappings,
                             selector_query,
+                            parse_all,
                         )
                         for item in items
                     ]
@@ -106,16 +114,16 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
         else:
             return [
-                await self._get_entity_if_passed_selector(
-                    data, raw_entity_mappings, selector_query
+                await self._get_mapped_entity(
+                    data, raw_entity_mappings, selector_query, parse_all
                 )
             ]
-        return [{}]
+        return [({}, False)]
 
     async def _start_entity_processor_worker(
         self,
         entities_queue: Queue[Any | None],
-        entities: list[list[dict[str, Any]]],
+        entities: list[list[tuple[dict[str, Any], bool]]],
     ) -> None:
         while True:
             raw_params = await entities_queue.get()
@@ -127,29 +135,33 @@ class JQEntityProcessor(BaseEntityProcessor):
             finally:
                 entities_queue.task_done()
 
-    async def _calculate_entities(
-        self, mapping: ResourceConfig, raw_data: list[dict[str, Any]]
-    ) -> list[Entity]:
+    async def _parse_items(
+        self,
+        mapping: ResourceConfig,
+        raw_results: list[RawEntity],
+        parse_all: bool = False,
+    ) -> EntitySelectorDiff:
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
         workers_queue: Queue[Any | None] = Queue(maxsize=100)
         workers_tasks: list[Task[Any]] = []
-        entities: list[list[dict[str, Any]]] = []
+        calculate_entities_results: list[list[tuple[dict[str, Any], bool]]] = []
 
         for i in range(50):
             workers_tasks.append(
                 asyncio.create_task(
-                    self._start_entity_processor_worker(workers_queue, entities)
+                    self._start_entity_processor_worker(workers_queue, calculate_entities_results)
                 )
             )
-        for i in range(len(raw_data)):
+        for i in range(len(raw_results)):
             await workers_queue.put(
                 (
-                    raw_data[i],
+                    raw_results[i],
                     raw_entity_mappings,
                     mapping.port.items_to_parse,
                     mapping.selector.query,
+                    parse_all
                 )
             )
         for i in range(50):
@@ -158,26 +170,15 @@ class JQEntityProcessor(BaseEntityProcessor):
         await workers_queue.join()
         await asyncio.gather(*workers_tasks)
 
-        return [
-            Entity.parse_obj(entity_data)
-            for flatten in entities
-            for entity_data in filter(
-                lambda entity: entity.get("identifier") and entity.get("blueprint"),
-                flatten,
-            )
-        ]
+        passed_entities = []
+        failed_entities = []
+        for entities_results in calculate_entities_results:
+            for entity, did_entity_pass_selector in entities_results:
+                if entity.get("identifier") and entity.get("blueprint"):
+                    parsed_entity = Entity.parse_obj(entity)
+                    if did_entity_pass_selector:
+                        passed_entities.append(parsed_entity)
+                    else:
+                        failed_entities.append(parsed_entity)
 
-    async def _parse_items(
-        self, mapping: ResourceConfig, raw_results: RawEntityDiff
-    ) -> EntityDiff:
-        entities_before: list[Entity] = await self._calculate_entities(
-            mapping, raw_results["before"]
-        )
-        entities_after: list[Entity] = await self._calculate_entities(
-            mapping, raw_results["after"]
-        )
-
-        return {
-            "before": entities_before,
-            "after": entities_after,
-        }
+        return {"passed": passed_entities, "failed": failed_entities}
