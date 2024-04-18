@@ -124,7 +124,7 @@ async def update_available_access_credentials() -> None:
                     for account in page['Accounts']:
                         if account['Id'] == current_account_id:
                             _aws_accessible_accounts.append(account)
-                            logger.warning(f"Skipping current account {current_account_id}, since it is the caller's account.")
+                            # Skipping current account {current_account_id}, since it is the caller's account.
                             continue
                         try:
                             account_role = await sts_client.assume_role(
