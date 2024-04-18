@@ -134,10 +134,6 @@
           "icon": "Home",
           "title": "Location",
           "type": "string"
-        },
-        "updateTime": {
-          "title": "Update Time",
-          "type": "string"
         }
       },
       "required": []
@@ -145,6 +141,13 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "project": {
+        "target": "gcpProject",
+        "title": "Project",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

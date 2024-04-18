@@ -64,10 +64,11 @@ resources:
       entity:
         mappings:
           identifier: ".name"
-          title: '.name | split("/") | .[-1]'
+          title: '.display_name'
           blueprint: '"gcpCloudResource"'
           properties:
-            type: ".assetType"
+            type: ".asset_type"
             location: ".location"
-            updateTime: ".updateTime"
+          relations:
+            project: ".project"
 
