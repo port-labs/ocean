@@ -15,10 +15,6 @@ configurations:
     required: true
     type: string
     sensitive: true
-  - name: awsRegions
-    required: true
-    type: array
-    description: List of AWS regions to export resources from
   - name: organizationRoleArn
     required: false
     type: string
