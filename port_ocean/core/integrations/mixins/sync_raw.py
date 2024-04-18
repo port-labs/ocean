@@ -219,7 +219,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
         return await ocean.port_client.search_entities(
-            user_agent_type, {"combinator": "or", "rules": search_rules}
+            user_agent_type,
+            {
+                "combinator": "and",
+                "rules": [{"combinator": "or", "rules": search_rules}],
+            },
         )
 
     async def register_raw(
@@ -271,9 +275,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             user_agent_type, entities_to_delete
         )
 
-        if len(entities_to_delete) < len(filtered_entities_to_delete):
+        if len(entities_to_delete) > len(filtered_entities_to_delete):
             logger.info(
-                f"Skipping deletion for {len(filtered_entities_to_delete) - len(entities_to_delete)} entities "
+                f"Skipping deletion for {len(entities_to_delete) - len(filtered_entities_to_delete)} entities "
                 f"as we couldn't find matching entities that's related to the current integration."
             )
 
