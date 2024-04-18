@@ -151,7 +151,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         for i in range(50):
             workers_tasks.append(
                 asyncio.create_task(
-                    self._start_entity_processor_worker(workers_queue, calculate_entities_results)
+                    self._start_entity_processor_worker(
+                        workers_queue, calculate_entities_results
+                    )
                 )
             )
         for i in range(len(raw_results)):
@@ -161,7 +163,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                     raw_entity_mappings,
                     mapping.port.items_to_parse,
                     mapping.selector.query,
-                    parse_all
+                    parse_all,
                 )
             )
         for i in range(50):
