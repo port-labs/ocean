@@ -38,7 +38,7 @@
     "aggregationProperties": {},
     "relations": {
       "subscription": {
-        "target": "azure_subscription",
+        "target": "azureSubscription",
         "title": "Subscription",
         "required": false,
         "many": false

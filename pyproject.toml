@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.5.11"
+version = "0.5.13"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -50,6 +50,7 @@ six = "^1.16.0"
 pyhumps = "^3.8.0"
 pydispatcher = "^2.0.7"
 tomli = "^2.0.1"
+aiostream = "^0.5.2"
 
 # CLI
 click = { version = "^8.1.3", optional = true }

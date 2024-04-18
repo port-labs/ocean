@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 from urllib.parse import quote_plus
 
 import httpx
@@ -133,8 +134,10 @@ class EntityClientMixin:
             return_exceptions=True,
         )
 
-    async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
-        query = {
+    async def search_entities(
+        self, user_agent_type: UserAgentType, query: dict[Any, Any] | None = None
+    ) -> list[Entity]:
+        default_query = {
             "combinator": "and",
             "rules": [
                 {
@@ -150,6 +153,11 @@ class EntityClientMixin:
             ],
         }
 
+        if query is None:
+            query = default_query
+        elif query.get("rules"):
+            query["rules"].append(default_query)
+
         logger.info(f"Searching entities with query {query}")
         response = await self.client.post(
             f"{self.auth.api_url}/entities/search",
@@ -164,3 +172,28 @@ class EntityClientMixin:
         )
         handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
+
+    async def does_integration_has_ownership_over_entity(
+        self, entity: Entity, user_agent_type: UserAgentType
+    ) -> bool:
+        logger.info(f"Validating ownership on entity {entity.identifier}")
+        found_entities: list[Entity] = await self.search_entities(
+            user_agent_type,
+            {
+                "combinator": "and",
+                "rules": [
+                    {
+                        "property": "$identifier",
+                        "operator": "contains",
+                        "value": entity.identifier,
+                    },
+                    {
+                        "property": "$blueprint",
+                        "operator": "contains",
+                        "value": entity.blueprint,
+                    },
+                ],
+            },
+        )
+
+        return len(found_entities) > 0
