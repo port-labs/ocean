@@ -15,7 +15,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
 
-from gcp_core.search.utils import (
+from gcp_core.utils import (
     EXTRA_PROJECT_FIELD,
     AssetTypesWithSpecialHandling,
     parse_protobuf_message,
@@ -24,9 +24,9 @@ from gcp_core.search.utils import (
 
 
 async def search_all_resources(
-    project: dict[str, Any], asset_type: str
+    project_data: dict[str, Any], asset_type: str
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    project_name = project["name"]
+    project_name = project_data["name"]
     async for resources in search_all_resources_in_project(project_name, asset_type):
         yield resources
 
@@ -66,8 +66,8 @@ async def search_all_resources_in_project(
                 if resources:
                     logger.info(f"Generating {len(resources)} {asset_type}'s")
                     yield resources
-        except PermissionDenied as e:
-            logger.error(f"Couldn't access the API to get kind {asset_type}: {str(e)}")
+        except PermissionDenied:
+            logger.exception(f"Couldn't access the API to get kind {asset_type}")
 
 
 async def list_all_topics_per_project(

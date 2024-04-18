@@ -1,16 +1,14 @@
 from collections.abc import MutableSequence
 import enum
-from typing import Any, TypeVar
+from typing import Any
 import proto  # type: ignore
 
-T = TypeVar("T", bound=proto.Message)
 
-
-def parse_protobuf_message(message: T) -> dict[str, Any]:
+def parse_protobuf_message(message: proto.Message) -> dict[str, Any]:
     return proto.Message.to_dict(message)
 
 
-def parse_protobuf_messages(messages: MutableSequence[T]) -> list[dict[str, Any]]:
+def parse_protobuf_messages(messages: MutableSequence[proto.Message]) -> list[dict[str, Any]]:
     return [parse_protobuf_message(message) for message in messages]
 
 

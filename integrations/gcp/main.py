@@ -7,7 +7,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gcp_core.feed_event import (
     AssetHasNoProjectAncestorError,
-    GotFeedCreatedSuccessfullyMessage,
+    GotFeedCreatedSuccessfullyMessageError,
     feed_event_to_resource,
     get_project_from_ancestors,
     parse_asset_data,
@@ -21,7 +21,7 @@ from gcp_core.search.searches import (
     search_all_projects,
     search_all_resources,
 )
-from gcp_core.search.utils import (
+from gcp_core.utils import (
     AssetTypesWithSpecialHandling,
 )
 
@@ -86,26 +86,27 @@ async def feed_events_callback(request: Request) -> Response:
         asset_type = asset_data["asset"]["assetType"]
         asset_name = asset_data["asset"]["name"]
         asset_project = get_project_from_ancestors(asset_data["asset"]["ancestors"])
-        logging_mapping = {
-            "asset_type": asset_type,
-            "asset_name": asset_name,
-            "asset_project": asset_project,
-        }
-        logger.info("Got Real-Time event", **logging_mapping)
-        resource = await feed_event_to_resource(
-            asset_type=asset_type, project_id=asset_project, asset_name=asset_name
-        )
-        if asset_data.get("deleted") is True:
-            logger.info("Deleting Entity", **logging_mapping)
-            await ocean.unregister_raw(asset_type, [resource])
-        else:
-            logger.info("Upserting Entity", **logging_mapping)
-            await ocean.register_raw(asset_type, [resource])
+        with logger.contextualize(
+            asset_type=asset_type, asset_name=asset_name, asset_project=asset_project
+        ):
+            logger.info("Got Real-Time event")
+            resource = await feed_event_to_resource(
+                asset_type=asset_type, project_id=asset_project, asset_name=asset_name
+            )
+            if asset_data.get("deleted") is True:
+                logger.info("Registering a deleted resource")
+                await ocean.unregister_raw(asset_type, [resource])
+            else:
+                logger.info("Registering a change in the data")
+                await ocean.register_raw(asset_type, [resource])
     except AssetHasNoProjectAncestorError:
         logger.exception(f"Couldn't find project ancestor to asset {asset_name}")
     except ResourceNotFoundError:
         logger.exception(f"Didn't find any {asset_type} resource named: {asset_name}")
         return Response(status_code=http.HTTPStatus.NOT_FOUND)
-    except GotFeedCreatedSuccessfullyMessage:
+    except GotFeedCreatedSuccessfullyMessageError:
         logger.info("Assets Feed created successfully")
+    except Exception:
+        logger.exception("Got error while handling a real time event")
+        return Response(status_code=http.HTTPStatus.INTERNAL_SERVER_ERROR)
     return Response(status_code=200)
