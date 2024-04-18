@@ -5,7 +5,7 @@ from gcp_core.search.searches import search_all_projects
 
 
 async def iterate_per_available_project(
-    project_dependent_callable: Callable[..., AsyncIterable[Any]],
+    project_dependent_callable: Callable[[dict[str, Any], Any], AsyncIterable[Any]],
     *args: Any,
     **kwargs: Any,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
