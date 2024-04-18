@@ -3,7 +3,6 @@ import json
 from typing import Any, AsyncIterator, Optional
 import typing
 import aioboto3
-import boto3
 from loguru import logger
 from overrides import AWSPortAppConfig
 from port_ocean.context.event import event
@@ -48,8 +47,10 @@ class AwsCredentials:
                 return aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key, region_name=region)
             return aioboto3.Session(aws_access_key_id=self.access_key_id, aws_secret_access_key=self.secret_access_key)
 
-
+# aws credentials for syncing resources
 _aws_credentials: list[AwsCredentials] = []
+
+# aws accessible accounts for account entity
 _aws_accessible_accounts: list[dict[str, Any]] = []
 
 def find_credentials_by_account_id(account_id: str) -> AwsCredentials:
