@@ -161,6 +161,20 @@ files = [
 frozenlist = ">=1.1.0"
 
 [[package]]
+name = "aiostream"
+version = "0.5.2"
+description = "Generator-based operators for asynchronous iteration"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "aiostream-0.5.2-py3-none-any.whl", hash = "sha256:054660370be9d37f6fe3ece3851009240416bd082e469fd90cc8673d3818cf71"},
+    {file = "aiostream-0.5.2.tar.gz", hash = "sha256:b71b519a2d66c38f0872403ab86417955b77352f08d9ad02ad46fc3926b389f4"},
+]
+
+[package.dependencies]
+typing-extensions = "*"
+
+[[package]]
 name = "anyio"
 version = "4.3.0"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
@@ -762,13 +776,13 @@ crt = ["awscrt (==0.19.19)"]
 
 [[package]]
 name = "botocore-stubs"
-version = "1.34.84"
+version = "1.34.86"
 description = "Type annotations and code completion for botocore"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "botocore_stubs-1.34.84-py3-none-any.whl", hash = "sha256:fa6d7e3792ce195d0fd7be12e938df8a26d627c14b15ea52b158819b59318ae7"},
-    {file = "botocore_stubs-1.34.84.tar.gz", hash = "sha256:b7e0fef9d3cb0fb630f86bc1601dc62e392f31eafd59db41e32d0f22a529c1c7"},
+    {file = "botocore_stubs-1.34.86-py3-none-any.whl", hash = "sha256:24276781a437702c96e05cba01a808ef6d9c5d2df8f615e540cf2e55987fe7bf"},
+    {file = "botocore_stubs-1.34.86.tar.gz", hash = "sha256:2e0d170d627454a1d8b685ef3f4eed8c0adf634f19e9c96f195ca3aef737a62e"},
 ]
 
 [package.dependencies]
@@ -1128,39 +1142,40 @@ files = [
 
 [[package]]
 name = "httpcore"
-version = "0.17.3"
+version = "1.0.5"
 description = "A minimal low-level HTTP client."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "httpcore-0.17.3-py3-none-any.whl", hash = "sha256:c2789b767ddddfa2a5782e3199b2b7f6894540b17b16ec26b2c4d8e103510b87"},
-    {file = "httpcore-0.17.3.tar.gz", hash = "sha256:a6f30213335e34c1ade7be6ec7c47f19f50c56db36abef1a9dfa3815b1cb3888"},
+    {file = "httpcore-1.0.5-py3-none-any.whl", hash = "sha256:421f18bac248b25d310f3cacd198d55b8e6125c107797b609ff9b7a6ba7991b5"},
+    {file = "httpcore-1.0.5.tar.gz", hash = "sha256:34a38e2f9291467ee3b44e89dd52615370e152954ba21721378a87b2960f7a61"},
 ]
 
 [package.dependencies]
-anyio = ">=3.0,<5.0"
 certifi = "*"
 h11 = ">=0.13,<0.15"
-sniffio = "==1.*"
 
 [package.extras]
+asyncio = ["anyio (>=4.0,<5.0)"]
 http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
+trio = ["trio (>=0.22.0,<0.26.0)"]
 
 [[package]]
 name = "httpx"
-version = "0.24.1"
+version = "0.27.0"
 description = "The next generation HTTP client."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "httpx-0.24.1-py3-none-any.whl", hash = "sha256:06781eb9ac53cde990577af654bd990a4949de37a28bdb4a230d434f3a30b9bd"},
-    {file = "httpx-0.24.1.tar.gz", hash = "sha256:5853a43053df830c20f8110c5e69fe44d035d850b2dfe795e196f00fdb774bdd"},
+    {file = "httpx-0.27.0-py3-none-any.whl", hash = "sha256:71d5465162c13681bff01ad59b2cc68dd838ea1f10e51574bac27103f00c91a5"},
+    {file = "httpx-0.27.0.tar.gz", hash = "sha256:a0cb88a46f32dc874e04ee956e4c2764aba2aa228f650b06788ba6bda2962ab5"},
 ]
 
 [package.dependencies]
+anyio = "*"
 certifi = "*"
-httpcore = ">=0.15.0,<0.18.0"
+httpcore = "==1.*"
 idna = "*"
 sniffio = "*"
 
@@ -1702,13 +1717,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-ec2"
-version = "1.34.78"
-description = "Type annotations for boto3.EC2 1.34.78 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.86"
+description = "Type annotations for boto3.EC2 1.34.86 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-ec2-1.34.78.tar.gz", hash = "sha256:bdf29ab265ed3d5f0094d9b0c8d340ead9e6b609f5c3b9b6790601e8661f8a48"},
-    {file = "mypy_boto3_ec2-1.34.78-py3-none-any.whl", hash = "sha256:512b2c7822eddcd33325c957c8a7e9fda11fb6f4a3f04f4d137e71110b855671"},
+    {file = "mypy_boto3_ec2-1.34.86-py3-none-any.whl", hash = "sha256:da1c24964155775266791ef6063642432578bc085def82128be0ec710873df8e"},
+    {file = "mypy_boto3_ec2-1.34.86.tar.gz", hash = "sha256:7bd8b00399aeb47cc7a6f2781107cca9da859f8dd2d5bcbdd7816dcb6076eff1"},
 ]
 
 [package.dependencies]
@@ -2059,21 +2074,22 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.11"
+version = "0.5.13"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.11-py3-none-any.whl", hash = "sha256:6914a873a72f17fef2700f56cdbe7ee69a367bcfa977def00ea21ce042e896ec"},
-    {file = "port_ocean-0.5.11.tar.gz", hash = "sha256:68236bed8b9c12b39074fc25353af95466e37456a92afcdc994c76f857d17176"},
+    {file = "port_ocean-0.5.13-py3-none-any.whl", hash = "sha256:4abd18bcc7a8a43ca382feb866d5cbe392d9f55fde03a0de7d67f9249c17c974"},
+    {file = "port_ocean-0.5.13.tar.gz", hash = "sha256:a9426d2910ec5039ecb517834cceb4376a31fd3e949ed2abbd59643ac30f977f"},
 ]
 
 [package.dependencies]
+aiostream = ">=0.5.2,<0.6.0"
 click = {version = ">=8.1.3,<9.0.0", optional = true, markers = "extra == \"cli\""}
 confluent-kafka = ">=2.1.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
 fastapi = ">=0.100,<0.110"
-httpx = ">=0.24.1,<0.25.0"
+httpx = ">=0.24.1,<0.28.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
 pydantic = ">=1.10.8,<2.0.0"
@@ -2085,7 +2101,7 @@ rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli
 six = ">=1.16.0,<2.0.0"
 tomli = ">=2.0.1,<3.0.0"
 urllib3 = ">=1.26.16,<2.0.0"
-uvicorn = ">=0.22.0,<0.23.0"
+uvicorn = ">=0.22,<0.30"
 werkzeug = ">=2.3.4,<4.0.0"
 
 [package.extras]
@@ -3378,13 +3394,13 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 
 [[package]]
 name = "uvicorn"
-version = "0.22.0"
+version = "0.29.0"
 description = "The lightning-fast ASGI server."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "uvicorn-0.22.0-py3-none-any.whl", hash = "sha256:e9434d3bbf05f310e762147f769c9f21235ee118ba2d2bf1155a7196448bd996"},
-    {file = "uvicorn-0.22.0.tar.gz", hash = "sha256:79277ae03db57ce7d9aa0567830bbb51d7a612f54d6e1e3e92da3ef24c2c8ed8"},
+    {file = "uvicorn-0.29.0-py3-none-any.whl", hash = "sha256:2c2aac7ff4f4365c206fd773a39bf4ebd1047c238f8b8268ad996829323473de"},
+    {file = "uvicorn-0.29.0.tar.gz", hash = "sha256:6a69214c0b6a087462412670b3ef21224fa48cae0e452b5883e8e8bdfdd11dd0"},
 ]
 
 [package.dependencies]
@@ -3610,4 +3626,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "8b339a7c9c956317993f66f48a6d027508b7b652ba78a10b38cf2b48b1a6b182"
+content-hash = "4c1edf145310346db4f14f03cc14f4809d559070c8ec9a86810eadd9036a20f5"
