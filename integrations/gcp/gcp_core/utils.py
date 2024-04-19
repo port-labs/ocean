@@ -36,5 +36,6 @@ def get_current_resource_config() -> (
     """
     Returns the current resource config, accessible only inside an event context
     """
-    # for some reason mypy doesn't recognize the `resource_config` as defined in the event context, ignoring it
-    return event.resource_config  # type: ignore
+    return typing.cast(
+        typing.Union[ResourceConfig, GCPCloudResourceConfig], event.resource_config
+    )
