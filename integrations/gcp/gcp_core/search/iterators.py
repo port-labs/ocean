@@ -3,7 +3,7 @@ from typing import Any
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
-from gcp_core.errors import ResourceNotFoundError
+from gcp_core.errors import FoundNoProjectsError
 from gcp_core.search.resource_searches import search_all_projects
 
 
@@ -21,4 +21,4 @@ async def iterate_per_available_project(
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
     except StopAsyncIteration:
-        raise ResourceNotFoundError("Found to accessable Projects")
+        raise FoundNoProjectsError("Performed a search_projects actions, and found no accessable Projects. This may be due to unset permissions or no current existing projects.")
