@@ -21,4 +21,6 @@ async def iterate_per_available_project(
             async for batch in stream_async_iterators_tasks(*tasks):
                 yield batch
     except StopAsyncIteration:
-        raise FoundNoProjectsError("Performed a search_projects actions, and found no accessable Projects. This may be due to unset permissions or no current existing projects.")
+        raise FoundNoProjectsError(
+            "Performed a search_projects actions, and found no accessable Projects. This may be due to unset permissions or no current existing projects."
+        )

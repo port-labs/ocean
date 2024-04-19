@@ -85,7 +85,9 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         GCPCloudResourceSelector, get_current_resource_config().selector
     ).resource_kinds
     for resource_kind in resource_kinds:
-        logger.info(f"Found Cloud Resource kind {resource_kind}, finding relevant resources..")
+        logger.info(
+            f"Found Cloud Resource kind {resource_kind}, finding relevant resources.."
+        )
         iterator_resync_method = _resolve_resync_method_for_resource(resource_kind)
         async for resources_batch in iterator_resync_method:
             yield resources_batch
