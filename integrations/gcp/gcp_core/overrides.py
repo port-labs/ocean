@@ -5,19 +5,11 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic import Field, validator
+from pydantic import Field
 
 
 class GCPCloudResourceSelector(Selector):
-    resource_kinds: list[str] = Field(
-        alias="resourceKinds",
-    )
-
-    @validator("resource_kinds")
-    def validate_resource_kinds_min_size(cls, v: list[str]) -> list[str]:
-        if len(v) < 1:
-            raise ValueError("resourceKinds must have at least one item")
-        return v
+    resource_kinds: list[str] = Field(alias="resourceKinds", min_items=1)
 
 
 class GCPCloudResourceConfig(ResourceConfig):
