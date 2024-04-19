@@ -33,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.5.14 (#1)
+# 0.1.14 (2024-04-19)
+
+### Improvements
+
+- Enhanced wizIssue blueprint with properties for vulnerability details (0.1.14)
 
 
 # Port_Ocean 0.1.13 (2024-04-17)
