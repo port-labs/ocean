@@ -13,5 +13,5 @@ class ResourceNotFoundError(Exception):
     pass
 
 
-class FoundNoProjectsError(ResourceNotFoundError, OceanAbortException):
+class NoProjectsFoundError(ResourceNotFoundError, OceanAbortException):
     pass
