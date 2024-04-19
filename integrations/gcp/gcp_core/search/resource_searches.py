@@ -65,7 +65,7 @@ async def search_all_resources_in_project(
             async for paginated_response in paginated_responses.pages:
                 resources = parse_protobuf_messages(paginated_response.results)
                 if resources:
-                    logger.info(f"Generating {len(resources)} {asset_type}'s")
+                    logger.info(f"Found {len(resources)} {asset_type}'s")
                     yield resources
         except PermissionDenied as e:
             logger.exception(
@@ -95,7 +95,7 @@ async def list_all_topics_per_project(
                 topics = parse_protobuf_messages(paginated_response.topics)
                 if topics:
                     logger.info(
-                        f"Generating {len(topics)} {AssetTypesWithSpecialHandling.TOPIC}'s"
+                        f"Found {len(topics)} {AssetTypesWithSpecialHandling.TOPIC}'s"
                     )
                     for topic in topics:
                         topic[EXTRA_PROJECT_FIELD] = project
@@ -106,7 +106,9 @@ async def list_all_topics_per_project(
             )
             raise e
         except NotFound:
-            logger.debug(f"Project {project_name} is deleted")
+            logger.debug(
+                f"Couldn't perform list_topics on project {project_name} since it's deleted."
+            )
 
 
 @cache_iterator_result()
