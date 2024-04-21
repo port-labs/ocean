@@ -48,8 +48,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
 async def resync_loadbalancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sessions = _get_sessions()
-    async for session in sessions:
+    async for session in _get_sessions():
         async for batch in batch_resources(kind, session, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
             yield batch
 
