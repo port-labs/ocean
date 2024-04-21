@@ -142,7 +142,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> EntitySelectorDiff:
         objects_diff = await self._calculate_raw([(resource, results)], parse_all)
         await self.entities_state_applier.upsert(
-            objects_diff[0]["passed"], user_agent_type
+            objects_diff[0].passed, user_agent_type
         )
 
         return objects_diff[0]
@@ -155,7 +155,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> list[Entity]:
         objects_diff = await self._calculate_raw([(resource, results)])
 
-        entities_after: list[Entity] = objects_diff[0]["passed"]
+        entities_after: list[Entity] = objects_diff[0].passed
         await self.entities_state_applier.delete(entities_after, user_agent_type)
         logger.info("Finished unregistering change")
         return entities_after
@@ -176,7 +176,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             await self._register_resource_raw(
                 resource_config, raw_results, user_agent_type
             )
-        )["passed"]
+        ).passed
 
         for generator in async_generators:
             try:
@@ -186,7 +186,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                             await self._register_resource_raw(
                                 resource_config, items, user_agent_type
                             )
-                        )["passed"]
+                        ).passed
                     )
             except* OceanAbortException as error:
                 errors.append(error)
@@ -227,27 +227,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
-        registered_entities: list[Entity] = []
-        passed_identifiers_blueprints: set[tuple[Any, Any]] = set()
+        registered_entities, entities_to_delete = zip_and_sum(
+            (entities_diff.passed, entities_diff.failed) for entities_diff in diffs
+        )
 
-        for entities_diff in diffs:
-            registered_entities.extend(entities_diff["passed"])
-            passed_identifiers_blueprints.update(
-                (entity.identifier, entity.blueprint)
-                for entity in entities_diff["passed"]
-            )
-
-        entities_to_delete = [
-            entity
-            for entities_diff in diffs
-            for entity in entities_diff["failed"]
-            if (entity.identifier, entity.blueprint)
-            not in passed_identifiers_blueprints
-        ]
+        registered_entities_attributes = {
+            (entity.identifier, entity.blueprint) for entity in registered_entities
+        }
 
         filtered_entities_to_delete: list[Entity] = (
             await ocean.port_client.search_batch_entities(
-                user_agent_type, entities_to_delete
+                user_agent_type,
+                [
+                    entity
+                    for entity in entities_to_delete
+                    if (entity.identifier, entity.blueprint)
+                    not in registered_entities_attributes
+                ],
             )
         )
 
@@ -330,12 +326,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             entities_before_flatten = [
                 item
-                for sublist in [d["passed"] for d in entities_before]
+                for sublist in [d.passed for d in entities_before]
                 for item in sublist
             ]
             entities_after_flatten = [
                 item
-                for sublist in [d["passed"] for d in entities_after]
+                for sublist in [d.passed for d in entities_after]
                 for item in sublist
             ]
 

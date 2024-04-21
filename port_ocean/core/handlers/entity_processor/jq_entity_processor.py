@@ -153,4 +153,4 @@ class JQEntityProcessor(BaseEntityProcessor):
                     else:
                         failed_entities.append(parsed_entity)
 
-        return {"passed": passed_entities, "failed": failed_entities}
+        return EntitySelectorDiff(passed=passed_entities, failed=failed_entities)
