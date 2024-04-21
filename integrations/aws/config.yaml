@@ -4,7 +4,7 @@ port:
 eventListener:
   type: POLLING
 integration:
-  identifier: 'AWS'
+  identifier: 'my-aws-integration'
   type: 'aws'
   config:
     awsAccessKeyId: '{{ from env AWS_ACCESS_KEY_ID }}'
