@@ -206,12 +206,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     "rules": [
                         {
                             "property": "$identifier",
-                            "operator": "contains",
+                            "operator": "=",
                             "value": entity.identifier,
                         },
                         {
                             "property": "$blueprint",
-                            "operator": "contains",
+                            "operator": "=",
                             "value": entity.blueprint,
                         },
                     ],

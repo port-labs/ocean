@@ -7,11 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.5.14 (2024-04-18)
+## 0.5.14 (2024-04-21)
 
 ### Improvements
 
-- Delete entities on real time events improvements
+- Delete entities on real time events improvements:
+  - Delete entities only if they didn't pass any of the selectors
+  - Calculated JQ of only identifier and blueprint to raw entities that didn't pass any selector
 
 ## 0.5.13 (2024-04-17)
 
