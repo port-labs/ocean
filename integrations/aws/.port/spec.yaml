@@ -8,12 +8,12 @@ features:
       - kind: EC2
 configurations:
   - name: awsAccessKeyId
-    required: true
+    required: false
     type: string
     sensitive: true
     description: AWS User Access Key ID.
   - name: awsSecretAccessKey
-    required: true
+    required: false
     type: string
     sensitive: true
     description: AWS User Secret Access Key.

@@ -29,14 +29,14 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .Identifier
-          title: .Identifier
+          identifier: .__Identifier
+          title: .__Identifier
           blueprint: '"cloud_resource"'
           properties:
             kind: .__Kind
             region: .__Region
             tags: .Tags
             arn: .Arn
-            link: '"https://console.aws.amazon.com/go/view?arn=" + .Arn'
+            link: 'if has("Arn") then "https://console.aws.amazon.com/go/view?arn=" + .Arn else empty end'
           relations:
             account: .__AccountId

@@ -3,7 +3,7 @@ from typing import Any
 
 import aioboto3
 from port_ocean.core.models import Entity
-from utils import ACCOUNT_ID_PROPERTY, IDENTIFIER_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_accessible_accounts, batch_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, is_global_resource, update_available_access_credentials, validate_request, get_matching_kinds_from_config
+from utils import ACCOUNT_ID_PROPERTY, IDENTIFIER_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, _session_manager, describe_accessible_accounts, batch_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, get_resource_kinds_from_config, is_global_resource, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
@@ -67,7 +67,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for session in _get_sessions(None, DEFAULT_REGION if is_global else None):
         region = session.region_name
         logger.info(f"Resyncing {kind} in region {region}")
-        account_id = await find_account_id_by_session(session)
+        account_id = await _session_manager.find_account_id_by_session(session)
         next_token = None
         while True:
             all_instances = []
@@ -100,7 +100,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for session in _get_sessions():
         region = session.region_name
-        account_id = await find_account_id_by_session(session)
+        account_id = await _session_manager.find_account_id_by_session(session)
         try:
             async with session.resource('ec2') as ec2:
                 async with session.client('ec2') as ec2_client:
