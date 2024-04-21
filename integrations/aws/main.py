@@ -9,8 +9,6 @@ from loguru import logger
 from starlette.requests import Request
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-DEFAULT_REGION = "us-east-1"
-
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
@@ -64,7 +62,7 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     is_global = is_global_resource(kind)
-    async for session in _get_sessions(None, DEFAULT_REGION if is_global else None):
+    async for session in _get_sessions(None, None, is_global):
         region = session.region_name
         logger.info(f"Resyncing {kind} in region {region}")
         account_id = await _session_manager.find_account_id_by_session(session)

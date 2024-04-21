@@ -45,13 +45,15 @@ async def update_available_access_credentials() -> None:
 def describe_accessible_accounts() -> list[dict[str, Any]]:
     return _session_manager._aws_accessible_accounts
 
-async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None) -> AsyncIterator[aioboto3.Session]:
+async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None, use_default_region: Optional[bool] = None) -> AsyncIterator[aioboto3.Session]:
     """
     Gets boto3 sessions for the AWS regions
     """
     if custom_account_id:
         credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
-        if custom_region:
+        if use_default_region:
+            yield await credentials.createSession()
+        elif custom_region:
             yield await credentials.createSession(custom_region)
         else:
             async for session in credentials.createSessionForEachRegion():
@@ -60,7 +62,9 @@ async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: 
     
     
     for credentials in _session_manager._aws_credentials:
-        if custom_region:
+        if use_default_region:
+            yield await credentials.createSession()
+        elif custom_region:
             yield await credentials.createSession(custom_region)
         else:
             async for session in credentials.createSessionForEachRegion():

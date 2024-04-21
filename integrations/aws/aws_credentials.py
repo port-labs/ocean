@@ -20,7 +20,7 @@ class AwsCredentials:
     def isRole(self):
         return self.session_token is not None
     
-    async def createSession(self, region: str) -> aioboto3.Session:
+    async def createSession(self, region: Optional[str] = None) -> aioboto3.Session:
         if self.isRole():
             return aioboto3.Session(self.access_key_id, self.secret_access_key, self.session_token, region)
         else:

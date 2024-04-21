@@ -5,7 +5,6 @@ from aws_credentials import AwsCredentials
 from port_ocean.context.ocean import ocean
 from loguru import logger
 
-DEFAULT_REGION = "us-east-1"
 
 class SessionManager:
     def __init__(self):
@@ -16,8 +15,7 @@ class SessionManager:
         application_credentials = await self._get_application_credentials()
         await application_credentials.updateEnabledRegions()
         self._application_account_id = application_credentials.account_id
-        region = os.environ.get('AWS_DEFAULT_REGION', DEFAULT_REGION)
-        self._application_session = await application_credentials.createSession(region)
+        self._application_session = await application_credentials.createSession()
 
         self._aws_credentials.append(application_credentials)
         self._aws_accessible_accounts.append({
