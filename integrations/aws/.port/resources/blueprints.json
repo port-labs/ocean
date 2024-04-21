@@ -40,8 +40,7 @@
           "type": "string",
           "title": "Region"
         }
-      },
-      "required": ["arn"]
+      }
     },
     "relations": {
       "account": {
