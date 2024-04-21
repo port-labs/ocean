@@ -251,9 +251,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
-        logger.info(
-            f"Deleting {len(filtered_entities_to_delete)} entities that didn't pass any of the selectors"
-        )
+        if len(filtered_entities_to_delete):
+            logger.info(
+                f"Deleting {len(filtered_entities_to_delete)} entities that didn't pass any of the selectors"
+            )
 
         await self.entities_state_applier.delete(
             filtered_entities_to_delete, user_agent_type
