@@ -52,22 +52,22 @@ async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: 
     if custom_account_id:
         credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
         if use_default_region:
-            yield await credentials.createSession()
+            yield await credentials.create_session()
         elif custom_region:
-            yield await credentials.createSession(custom_region)
+            yield await credentials.create_session(custom_region)
         else:
-            async for session in credentials.createSessionForEachRegion():
+            async for session in credentials.create_session_for_each_region():
                 yield await session
         return
     
     
     for credentials in _session_manager._aws_credentials:
         if use_default_region:
-            yield await credentials.createSession()
+            yield await credentials.create_session()
         elif custom_region:
-            yield await credentials.createSession(custom_region)
+            yield await credentials.create_session(custom_region)
         else:
-            async for session in credentials.createSessionForEachRegion():
+            async for session in credentials.create_session_for_each_region():
                 yield await session
 
 def is_global_resource(kind: str) -> bool:
