@@ -11,6 +11,7 @@ from starlette.requests import Request
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
+IDENTIFIER_PROPERTY = '__Identifier'
 ACCOUNT_ID_PROPERTY = '__AccountId'
 KIND_PROPERTY = '__Kind'
 REGION_PROPERTY = '__Region'
@@ -194,7 +195,7 @@ def is_global_resource(kind: str) -> bool:
     """
     Checks if the resource kind is a global resource
     """
-    global_services = ['cloudfront', 'route53', 'waf', 'waf-regional', 's3', 'iam', 'organizations']
+    global_services = ['cloudfront', 'route53', 'waf', 'waf-regional', 'iam', 'organizations']
     service = kind.split('::')[1].lower()
     return service in global_services
 
@@ -266,7 +267,7 @@ async def batch_resources(kind: str, session: aioboto3.Session, service_name: st
                     response = await getattr(client, describe_method)()
                 next_token = response.get(marker_param)
                 for resource in response.get(list_param, []):
-                    resource.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region})
+                    resource.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region, IDENTIFIER_PROPERTY: resource.get('Identifier')})
                     all_resources.append(_fix_unserializable_date_properties(resource))
                 yield all_resources
         except Exception as e:

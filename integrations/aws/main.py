@@ -3,7 +3,7 @@ from typing import Any
 
 import aioboto3
 from port_ocean.core.models import Entity
-from utils import ACCOUNT_ID_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_accessible_accounts, batch_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, is_global_resource, update_available_access_credentials, validate_request, get_matching_kinds_from_config
+from utils import ACCOUNT_ID_PROPERTY, IDENTIFIER_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_accessible_accounts, batch_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, is_global_resource, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
@@ -86,7 +86,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         break
                     for instance in response.get('ResourceDescriptions', []):
                         described = await describe_single_resource(kind, instance.get('Identifier'), account_id, region)
-                        described.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region})
+                        described.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region, IDENTIFIER_PROPERTY: instance.get('Identifier')})
                         all_instances.append(_fix_unserializable_date_properties(described))
                     yield all_instances
             except Exception as e:
@@ -109,7 +109,7 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         for instance in page:
                             described_instance = await ec2_client.describe_instances(InstanceIds=[instance.id])
                             instance_definition = described_instance["Reservations"][0]["Instances"][0]
-                            instance_definition.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region})
+                            instance_definition.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region, IDENTIFIER_PROPERTY: instance.id})
                             page_instances.append(_fix_unserializable_date_properties(instance_definition))
                         yield page_instances
         except Exception as e:
