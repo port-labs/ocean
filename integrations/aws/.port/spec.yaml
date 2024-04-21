@@ -11,19 +11,24 @@ configurations:
     required: true
     type: string
     sensitive: true
+    description: AWS User Access Key ID.
   - name: awsSecretAccessKey
     required: true
     type: string
     sensitive: true
+    description: AWS User Secret Access Key.
   - name: organizationRoleArn
     required: false
     type: string
     sensitive: true
+    description: AWS Organization Role ARN, used for multi-account access.
   - name: accountReadRoleName
     required: false
     type: string
     sensitive: true
+    description: AWS Account Read Role Name, used for multi-account access.
   - name: awsApiKey
     required: false
     type: string
     sensitive: true
+    description: AWS API Key for custom events, used to validate the event source for real-time event updates.
