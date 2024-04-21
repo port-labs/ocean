@@ -3,14 +3,22 @@ from typing import TypedDict, Any, AsyncIterator, Callable, Awaitable
 from port_ocean.core.models import Entity
 
 
+RawEntity = dict[Any, Any]
+
+
 class RawEntityDiff(TypedDict):
-    before: list[dict[Any, Any]]
-    after: list[dict[Any, Any]]
+    before: list[RawEntity]
+    after: list[RawEntity]
 
 
 class EntityDiff(TypedDict):
     before: list[Entity]
     after: list[Entity]
+
+
+class EntitySelectorDiff(TypedDict):
+    passed: list[Entity]
+    failed: list[Entity]
 
 
 RAW_ITEM = dict[Any, Any]

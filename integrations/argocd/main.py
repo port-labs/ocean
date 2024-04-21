@@ -47,8 +47,13 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         managed_resources = await argocd_client.get_managed_resources(
             application_name=application["metadata"]["name"]
         )
+        # TODO: Remove __applicationId in the future version
         application_resource = [
-            {**managed_resource, "__applicationId": application["metadata"]["uid"]}
+            {
+                **managed_resource,
+                "__application": application,
+                "__applicationId": application["metadata"]["uid"],
+            }
             for managed_resource in managed_resources
         ]
         yield application_resource

@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
       - name: Get all changed integrations
         id: changed-integrations
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v44
         with:
           json: true
           dir_names: true

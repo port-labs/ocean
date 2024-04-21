@@ -7,6 +7,32 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.13 (2024-04-17)
+
+### Features
+
+- Delete entities that doesn't passed the selector on real time events
+
+
+## 0.5.12 (2024-04-12)
+
+### Features
+
+- Added a util function that allows to iterate over a list of async iterators and stream the results of each iterator as they are available
+
+
+## 0.5.11 (2024-04-11)
+
+
+### Improvements
+
+- Improved the handling of integration entities by adding retries and running it after the upsert to prevent blocking the resync
+- Changed entities search timeout to 30 seconds to prevent blocking the resync
+
+### Features
+
+- Added a way to enable request retries for any request even if its request method is not part of the retryable methods
+
 
 ## 0.5.10 (2024-04-10)
 

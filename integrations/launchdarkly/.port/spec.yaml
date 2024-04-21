@@ -1,6 +1,6 @@
 type: launchdarkly
 description: launchdarkly integration for Port Ocean
-docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/launchdarkly
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/feature-management/launchdarkly
 icon: Launchdarkly
 features:
   - type: exporter

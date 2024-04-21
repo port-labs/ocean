@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.38 (2024-04-17)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.12 (#1)
+
+
+# Port_Ocean 0.1.37 (2024-04-11)
+
+### Deprecations
+- Added deprecation warnings to the deployment-history and kubernetes-resource kind, urging users to utilize the itemsToParse functionality instead
+
+### Improvements
+
+- Reveresed the relation between cluster and namespace, and other general enhancements on blueprints (PORT-7550)
+- Updated the default mapping for deployment-history and kubernetes-resource kind to reuse the application kind's response and parse items using the itemsToParse functionality for improved efficiency
+
+
+# Port_Ocean 0.1.36 (2024-04-11)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.11 (#1)
+
+
 # Port_Ocean 0.1.35 (2024-04-10)
 
 ### Improvements
