@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import typing
+from itertools import chain
 from typing import Callable, Awaitable, Any
 
 from loguru import logger
@@ -195,37 +196,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
         return entities, errors
 
-    async def _search_deleted_entities(
-        self, user_agent_type: UserAgentType, entities_to_delete: list[Entity]
-    ) -> list[Entity]:
-        search_rules = []
-        for entity in entities_to_delete:
-            search_rules.append(
-                {
-                    "combinator": "and",
-                    "rules": [
-                        {
-                            "property": "$identifier",
-                            "operator": "=",
-                            "value": entity.identifier,
-                        },
-                        {
-                            "property": "$blueprint",
-                            "operator": "=",
-                            "value": entity.blueprint,
-                        },
-                    ],
-                }
-            )
-
-        return await ocean.port_client.search_entities(
-            user_agent_type,
-            {
-                "combinator": "and",
-                "rules": [{"combinator": "or", "rules": search_rules}],
-            },
-        )
-
     async def register_raw(
         self,
         kind: str,
@@ -257,29 +227,32 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
-        registered_entities: list[Entity] = [
-            item for d in diffs for item in d["passed"]
-        ]
-        passed_identifiers_blueprints = set(
-            (item.identifier, item.blueprint) for d in diffs for item in d["passed"]
-        )
+        registered_entities: list[Entity] = []
+        passed_identifiers_blueprints: set[tuple[Any, Any]] = set()
+
+        for entities_diff in diffs:
+            registered_entities.extend(entities_diff["passed"])
+            passed_identifiers_blueprints.update(
+                (entity.identifier, entity.blueprint) for entity in entities_diff["passed"]
+            )
 
         entities_to_delete = [
-            item
-            for d in diffs
-            for item in d["failed"]
-            if (item.identifier, item.blueprint) not in passed_identifiers_blueprints
+            entity
+            for entities_diff in diffs
+            for entity in entities_diff["failed"]
+            if (entity.identifier, entity.blueprint)
+            not in passed_identifiers_blueprints
         ]
 
-        filtered_entities_to_delete: list[Entity] = await self._search_deleted_entities(
-            user_agent_type, entities_to_delete
+        filtered_entities_to_delete: list[Entity] = (
+            await ocean.port_client.search_batch_entities(
+                user_agent_type, entities_to_delete
+            )
         )
 
-        if len(entities_to_delete) > len(filtered_entities_to_delete):
-            logger.info(
-                f"Skipping deletion for {len(entities_to_delete) - len(filtered_entities_to_delete)} entities "
-                f"as we couldn't find matching entities that's related to the current integration."
-            )
+        logger.info(
+            f"Deleting {len(filtered_entities_to_delete)} entities that didn't pass any of the selectors"
+        )
 
         await self.entities_state_applier.delete(
             filtered_entities_to_delete, user_agent_type
