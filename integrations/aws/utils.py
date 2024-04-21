@@ -248,7 +248,7 @@ async def describe_single_resource(kind: str, identifier: str, account_id: Optio
             logger.error(f"Failed to describe CloudControl Instance in region: {region}; error {e}")
             break
 
-async def describe_resources(kind: str, session: aioboto3.Session, service_name: str, describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def batch_resources(kind: str, session: aioboto3.Session, service_name: str, describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Describes a list of resources in the AWS account
     """

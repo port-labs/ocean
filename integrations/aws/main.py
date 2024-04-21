@@ -3,7 +3,7 @@ from typing import Any
 
 import aioboto3
 from port_ocean.core.models import Entity
-from utils import ACCOUNT_ID_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_accessible_accounts, describe_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, is_global_resource, update_available_access_credentials, validate_request, get_matching_kinds_from_config
+from utils import ACCOUNT_ID_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, describe_accessible_accounts, batch_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, find_account_id_by_session, get_resource_kinds_from_config, is_global_resource, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
@@ -45,20 +45,20 @@ async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for session in _get_sessions():
         session = await session
-        async for batch in describe_resources(kind, session, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
+        async for batch in batch_resources(kind, session, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
             yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
 async def resync_loadbalancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sessions = _get_sessions()
     async for session in sessions:
-        async for batch in describe_resources(kind, session, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
+        async for batch in batch_resources(kind, session, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
             yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for session in _get_sessions():
-        async for batch in describe_resources(kind, session, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
+        async for batch in batch_resources(kind, session, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
             yield batch
 
 
