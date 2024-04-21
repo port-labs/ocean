@@ -233,7 +233,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         for entities_diff in diffs:
             registered_entities.extend(entities_diff["passed"])
             passed_identifiers_blueprints.update(
-                (entity.identifier, entity.blueprint) for entity in entities_diff["passed"]
+                (entity.identifier, entity.blueprint)
+                for entity in entities_diff["passed"]
             )
 
         entities_to_delete = [
