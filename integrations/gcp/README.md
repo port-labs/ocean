@@ -2,9 +2,9 @@
 
 An integration used to import gcp resources into Port.
 
-## Install & use the integration
+## Install & use the integration Locally
 
-### Create a service account with the following permissions:
+### Create a service account with the following permissions
 
 **IMPORTANT- These can be granted at a Project/Folder/Organization Level, and the integration will digest all resources of all projects with these permissions.**
 
@@ -14,7 +14,7 @@ An integration used to import gcp resources into Port.
 - pubsub.topics.list
 - resourcemanager.projects.get
 
-#### Suggested way of achieving this:
+#### Suggested way of achieving this
 
 1. Create a service account in a **project**
 2. Create a role in the scope you want the integration to run (= Make sure you selected the right resource in the top left corner).
@@ -45,7 +45,7 @@ An integration used to import gcp resources into Port.
     - **CONDITION_EXPRESSION** - Quote surrounded query that controls what types of events create a feed event. For more information: https://cloud.google.com/asset-inventory/docs/monitoring-asset-changes-with-condition
         - Suggestion: `"'<YOUR PROJECT/FOLDER/ORGANIZATION ID>' in temporal_asset.asset.ancestors"`
 
-### Starting up Ocean:
+### Starting up Ocean
 
 1. Use service account’s permissions
     1. Create a key from the Service-account window (this will download a json file) 
