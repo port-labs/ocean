@@ -154,7 +154,6 @@ jobs:
           # Extract the version from pyproject.toml
           integration_dir=$(dirname "$file")
           if [ $integration_dir != "integrations/gcp/.port" ]; then
-          echo "integration_dir: $integration_dir"
           version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
           echo "- " >> "$temp_file"
