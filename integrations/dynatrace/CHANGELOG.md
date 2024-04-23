@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.8 (2024-04-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.13 (0.1.8)
+
+### Bug Fixes
+
+- Fixed bug causing missing fields in entities (0.1.8)
+
+
 # Port_Ocean 0.1.7 (2024-04-17)
 
 ### Improvements
