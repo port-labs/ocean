@@ -63,10 +63,15 @@ class DynatraceClient:
     async def _get_entities_from_type(
         self, type_: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        ENTITY_FIELDS = "firstSeenTms,lastSeenTms,tags"
         async for entities in self._get_paginated_resources(
             f"{self.host_url}/entities",
             "entities",
-            params={"entitySelector": f'type("{type_}")', "pageSize": 100},
+            params={
+                "entitySelector": f'type("{type_}")',
+                "pageSize": 100,
+                "fields": ENTITY_FIELDS,
+            },
         ):
             yield entities
 
