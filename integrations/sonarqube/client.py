@@ -14,6 +14,8 @@ from integration import (
 )
 from port_ocean.context.event import event
 
+from port_ocean.core.handlers.port_app_config.models import Selector
+
 
 class Endpoints:
     PROJECTS = "components/search_projects"
@@ -147,6 +149,11 @@ class SonarQubeClient:
             logger.error(f"HTTP occurred while fetching paginated data: {e}")
             raise
 
+    def process_selector_query_params(self, selector: Selector) -> dict[str, Any]:
+        if hasattr(selector, "api_query_params") and selector.api_query_params:
+            return selector.api_query_params.generate_request_params()
+        return {}
+
     async def get_components(self) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
@@ -172,11 +179,9 @@ class SonarQubeClient:
             selector = typing.cast(
                 SonarQubeProjectResourceConfig, project_resource
             ).selector
-            if hasattr(selector, "api_query_params") and selector.api_query_params:
-                selector_query_params = (
-                    selector.api_query_params.generate_request_params()
-                )
-                query_params.update(selector_query_params)
+
+            selector_query_params = self.process_selector_query_params(selector)
+            query_params.update(selector_query_params)
 
         try:
             response = await self.send_paginated_api_request(
@@ -299,9 +304,8 @@ class SonarQubeClient:
             SonarQubeIssueResourceConfig, event.resource_config
         ).selector
 
-        if hasattr(selector, "api_query_params") and selector.api_query_params:
-            selector_query_params = selector.api_query_params.generate_request_params()
-            query_params.update(selector_query_params)
+        selector_query_params = self.process_selector_query_params(selector)
+        query_params.update(selector_query_params)
 
         response = await self.send_paginated_api_request(
             endpoint=Endpoints.ISSUES,
@@ -310,9 +314,9 @@ class SonarQubeClient:
         )
 
         for issue in response:
-            issue[
-                "__link"
-            ] = f"{self.base_url}/project/issues?open={issue.get('key')}&id={component_key}"
+            issue["__link"] = (
+                f"{self.base_url}/project/issues?open={issue.get('key')}&id={component_key}"
+            )
             component_issues.append(issue)
 
         return component_issues

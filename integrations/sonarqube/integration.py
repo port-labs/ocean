@@ -67,14 +67,17 @@ class SonarQubeProjectAPIQueryParams(BaseModel):
 class SonarQubeIssueAPIQueryParams(BaseModel):
     assigned: Literal["yes", "no", "true", "false"] | None
     assignees: list[str] | None
-    clean_code_attribute_categories: list[
-        Literal[
-            "ADAPTABLE",
-            "CONSISTENT",
-            "INTENTIONAL",
-            "RESPONSIBLE",
+    clean_code_attribute_categories: (
+        list[
+            Literal[
+                "ADAPTABLE",
+                "CONSISTENT",
+                "INTENTIONAL",
+                "RESPONSIBLE",
+            ]
         ]
-    ] | None = Field(alias="cleanCodeAttributeCategories")
+        | None
+    ) = Field(alias="cleanCodeAttributeCategories")
     code_variants: list[str] | None = Field(alias="codeVariants")
     created_before: str | None = Field(alias="createdBefore")
     created_after: str | None = Field(alias="createdAfter")
@@ -82,12 +85,12 @@ class SonarQubeIssueAPIQueryParams(BaseModel):
     impact_severities: list[Literal["HIGH", "LOW", "MEDIUM"]] | None = Field(
         alias="impactSeverities"
     )
-    impact_software_qualities: list[
-        Literal["MAINTAINABILITY", "RELIABILITY", "SECURITY"]
-    ] | None = Field(alias="impactSoftwareQualities")
-    statuses: list[
-        Literal["OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED", "FIXED"]
-    ] | None
+    impact_software_qualities: (
+        list[Literal["MAINTAINABILITY", "RELIABILITY", "SECURITY"]] | None
+    ) = Field(alias="impactSoftwareQualities")
+    statuses: (
+        list[Literal["OPEN", "CONFIRMED", "FALSE_POSITIVE", "ACCEPTED", "FIXED"]] | None
+    )
     languages: list[str] | None
     owasp_asvs_level: Literal["1", "2", "3"] | None = Field(alias="owaspAsvsLevel")
     resolved: Literal["yes", "no", "true", "false"] | None
