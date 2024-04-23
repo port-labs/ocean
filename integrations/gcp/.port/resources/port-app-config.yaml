@@ -1,0 +1,78 @@
+resources:
+  - kind: cloudresourcemanager.googleapis.com/Project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          blueprint: '"gcpProject"'
+          title: ".display_name"
+  - kind: container.googleapis.com/Cluster
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          blueprint: '"containerCluster"'
+          title: ".versioned_resources | max_by(.version).resource | .name"
+          properties:
+            description: ".versioned_resources | max_by(.version).resource | .description"
+            currentNodeCount: ".versioned_resources | max_by(.version).resource | .currentNodeCount"
+            currentNodeVersion: ".versioned_resources | max_by(.version).resource | .currentNodeVersion"
+            initialNodeCount: ".versioned_resources | max_by(.version).resource | .initialNodeCount"
+            location: ".versioned_resources | max_by(.version).resource | .location"
+          relations:
+            project: ".project"
+  - kind: cloudfunctions.googleapis.com/CloudFunction
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          blueprint: '"functions"'
+          title: ".versioned_resources | max_by(.version).resource | .name"
+          properties:
+            url: ".versioned_resources | max_by(.version).resource | .url"
+            state: ".versioned_resources | max_by(.version).resource | .state"
+            environment: ".versioned_resources | max_by(.version).resource | .environment"
+            eventTrigger: ".versioned_resources | max_by(.version).resource | .eventTrigger"
+          relations:
+            project: ".project"
+  - kind: pubsub.googleapis.com/Topic
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          blueprint: '"topics"'
+          title: '.name | split("/") | .[-1]'
+          properties:
+            state: ".state"
+            schemaSettings: ".schema_settings"
+            messageRetentionDuration: ".message_retention_duration"
+          relations:
+            project: ".__project.name"
+  - kind: cloudResource
+    selector:
+      query: "true"
+      resourceKinds:
+        [
+          "compute.googleapis.com/Disk",
+          "pubsub.googleapis.com/Subscription",
+          "iam.googleapis.com/ServiceAccount",
+        ]
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          title: ".display_name"
+          blueprint: '"gcpCloudResource"'
+          properties:
+            type: ".asset_type"
+            location: ".location"
+          relations:
+            project: ".project"
