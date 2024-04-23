@@ -18,7 +18,7 @@ class CacheKeys:
     SERVICES = "_cache_services"
 
 
-def insert_credentials(url: str, username: str, token: str) -> str:
+def embed_credentials_in_url(url: str, username: str, token: str) -> str:
     """
     Inserts username and token into a given URL for Datadog compatibility.
 
@@ -34,7 +34,7 @@ def insert_credentials(url: str, username: str, token: str) -> str:
         str: The modified URL with inserted credentials, ready for Datadog use.
 
     Example:
-        new_url = insert_credentials("https://my.service.example.com", "my_username", "my_api_key")
+        new_url = embed_credentials_in_url("https://my.service.example.com", "my_username", "my_api_key")
         # Use new_url in your Datadog webhook configuration
     """
     parsed_url = urlparse(url)
@@ -231,7 +231,7 @@ class DatadogClient:
         logger.info("Subscribing to Datadog webhooks...")
 
         app_host_webhook_url = f"{app_host}/integration/webhook"
-        modified_url = insert_credentials(app_host_webhook_url, "port", token)
+        modified_url = embed_credentials_in_url(app_host_webhook_url, "port", token)
 
         body = {
             "name": "PORT",

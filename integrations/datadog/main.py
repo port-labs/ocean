@@ -61,7 +61,7 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    logger.info(f"Received event type {data['event_type']} \n {data}")
+    logger.info(f"Received event type {data['event_type']} - Alert ID: {data['alert_id']}")
 
     dd_client = init_client()
 
