@@ -99,49 +99,23 @@ class SonarQubeIssueAPIQueryParams(BaseModel):
     sonarsource_security: list[str] | None = Field(alias="sonarsourceSecurity")
     tags: list[str] | None
 
+    def transform_underscore_to_camelcase(self, value: str) -> str:
+        components = value.split('_')
+        return components[0] + ''.join(x.capitalize() for x in components[1:])
+
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
-        if assigned := value.pop("assigned", None):
-            value["assigned"] = assigned
-        if assignees := value.pop("assignees", None):
-            value["assignees"] = ",".join(assignees)
-        if clean_code_attribute_categories := value.pop(
-            "clean_code_attribute_categories", None
-        ):
-            value["cleanCodeAttributeCategories"] = ",".join(
-                clean_code_attribute_categories
-            )
-        if code_variants := value.pop("code_variants", None):
-            value["codeVariants"] = ",".join(code_variants)
-        if created_before := value.pop("created_before", None):
-            value["createdBefore"] = created_before
-        if created_after := value.pop("created_after", None):
-            value["createdAfter"] = created_after
-        if cwe := value.pop("cwe", None):
-            value["cwe"] = ",".join(cwe)
-        if impact_severities := value.pop("impact_severities", None):
-            value["impactSeverities"] = ",".join(impact_severities)
-        if impact_software_qualities := value.pop("impact_software_qualities", None):
-            value["impactSoftwareQualities"] = ",".join(impact_software_qualities)
-        if statuses := value.pop("statuses", None):
-            value["statuses"] = ",".join(statuses)
-        if languages := value.pop("languages", None):
-            value["languages"] = ",".join(languages)
-        if owasp_asvs_level := value.pop("owasp_asvs_level", None):
-            value["owaspAsvsLevel"] = owasp_asvs_level
-        if resolved := value.pop("resolved", None):
-            value["resolved"] = resolved
-        if rules := value.pop("rules", None):
-            value["rules"] = ",".join(rules)
-        if scopes := value.pop("scopes", None):
-            value["scopes"] = ",".join(scopes)
-        if sonarsource_security := value.pop("sonarsource_security", None):
-            value["sonarsourceSecurity"] = ",".join(sonarsource_security)
-        if tags := value.pop("tags", None):
-            value["tags"] = ",".join(tags)
+
+        for key in list(value.keys()):
+            val = value[key]
+            if val is None:
+                continue
+            
+            ## SonarQube API expects camelcase keys for query parameters
+            camelcase_key = self.transform_underscore_to_camelcase(key)
+            value[camelcase_key] = ",".join(val) if isinstance(val, list) else val
 
         return value
-
 
 class SonarQubeProjectResourceConfig(ResourceConfig):
     class SonarQubeProjectSelector(Selector):

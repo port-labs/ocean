@@ -14,4 +14,5 @@ integration:
   type: "sonarqube"
   config:
     sonarApiToken: "{{ from env SONAR_API_TOKEN }}"
-    sonarIsOnPremise: "{{ from env SONAR_IS_ON_PREMISE }}"
+    #sonarIsOnPremise: "{{ from env SONAR_IS_ON_PREMISE }}"
+    sonarOrganizationId: "{{ from env SONAR_ORGANIZATION_ID }}"
