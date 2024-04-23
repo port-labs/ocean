@@ -1,3 +1,10 @@
+0.1.44 (2024-04-17)
+
+### Bug Fixes
+
+- Fixed azure subscription relation in resource group blueprint
+
+
 0.1.43 (2024-04-17)
 
 ### Improvements
