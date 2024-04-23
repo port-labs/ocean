@@ -100,8 +100,8 @@ class SonarQubeIssueAPIQueryParams(BaseModel):
     tags: list[str] | None
 
     def transform_underscore_to_camelcase(self, value: str) -> str:
-        components = value.split('_')
-        return components[0] + ''.join(x.capitalize() for x in components[1:])
+        components = value.split("_")
+        return components[0] + "".join(x.capitalize() for x in components[1:])
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -110,12 +110,13 @@ class SonarQubeIssueAPIQueryParams(BaseModel):
             val = value[key]
             if val is None:
                 continue
-            
+
             ## SonarQube API expects camelcase keys for query parameters
             camelcase_key = self.transform_underscore_to_camelcase(key)
             value[camelcase_key] = ",".join(val) if isinstance(val, list) else val
 
         return value
+
 
 class SonarQubeProjectResourceConfig(ResourceConfig):
     class SonarQubeProjectSelector(Selector):
