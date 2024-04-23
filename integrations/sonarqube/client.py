@@ -108,7 +108,7 @@ class SonarQubeClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         try:
-            logger.info(
+            logger.debug(
                 f"`Sending API request to {method} {endpoint} with query params: {query_params}"
             )
 
