@@ -37,8 +37,8 @@ async def _handle_webhook(
 async def handle_webhook_request(
     group_id: str, request: Request, background_tasks: BackgroundTasks
 ) -> dict[str, Any]:
-    gitlab_event_name = request.headers.get("X-Gitlab-Event")
-    body = await request.json()
+    gitlab_event_name: str = request.headers.get("X-Gitlab-Event")
+    body: dict[str, Any] = await request.json()
     background_tasks.add_task(_handle_webhook, group_id, body, gitlab_event_name)
 
     return {"ok": True}
@@ -46,7 +46,7 @@ async def handle_webhook_request(
 
 async def _handle_system_webhook(request_body: dict[str, Any]) -> None:
     # some system hooks have event_type instead of event_name in the body, such as merge_request events
-    event_name = request_body.get("event_name") or request_body.get("event_type")
+    event_name: str = request_body.get("event_name") or request_body.get("event_type")
     with logger.contextualize(event_name=event_name):
         logger.debug(f"Received system webhook event {event_name} from Gitlab")
         await system_event_handler.notify(event_name, request_body)
@@ -56,7 +56,7 @@ async def _handle_system_webhook(request_body: dict[str, Any]) -> None:
 async def handle_system_webhook_request(
     request: Request, background_tasks: BackgroundTasks
 ) -> dict[str, Any]:
-    body = await request.json()
+    body: dict[str, Any] = await request.json()
     background_tasks.add_task(_handle_system_webhook, body)
 
     return {"ok": True}
