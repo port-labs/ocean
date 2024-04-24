@@ -153,11 +153,13 @@ jobs:
           while IFS= read -r file; do
           # Extract the version from pyproject.toml
           integration_dir=$(dirname "$file")
+          if [ $integration_dir != "integrations/gcp/.port" ]; then
           version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
           echo "- " >> "$temp_file"
           sed 's/^/  /' "$file" >> "$temp_file"
           echo "  version: $version" >> "$temp_file"
+          fi
           done < file_list.txt
 
           yq -j . < "$temp_file" > "$output_file"
