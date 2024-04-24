@@ -34,7 +34,7 @@ resources:
             customProperties: .customProperties
             archived: .archived
           relations:
-            environments: .environments | keys
+            project: .__projectKey
   - kind: environment
     selector:
       query: "true"
@@ -54,3 +54,17 @@ resources:
             critical: .critical
           relations:
             project: .__projectKey
+  - kind: flag
+    selector:
+      query: "true"
+    port:
+      itemsToParse: .environments | keys
+      entity:
+        mappings:
+          identifier: .key + "-" + .item
+          title: .key + "-" + .item
+          blueprint: '"featureFlagInEnvironment"'
+          properties: {}
+          relations:
+            environment: .item
+            featureFlag: .key
