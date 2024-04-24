@@ -6,6 +6,8 @@ import httpx
 from loguru import logger
 
 from port_ocean.utils import http_async_client
+from port_ocean.utils.cache import cache_iterator_result
+
 
 from integration import (
     SonarQubeIssueResourceConfig,
@@ -84,7 +86,7 @@ class SonarQubeClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         logger.info(
-            f"`Sending API request to {method} {endpoint} with query params: {query_params}"
+            f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
         try:
             response = await self.http_client.request(
@@ -110,8 +112,8 @@ class SonarQubeClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         try:
-            logger.debug(
-                f"`Sending API request to {method} {endpoint} with query params: {query_params}"
+            logger.info(
+                f"Sending API request to {method} {endpoint} with query params: {query_params}"
             )
 
             all_resources = []  # List to hold all fetched resources
@@ -153,7 +155,7 @@ class SonarQubeClient:
         if hasattr(selector, "api_query_params") and selector.api_query_params:
             return selector.api_query_params.generate_request_params()
         return {}
-
+    
     async def get_components(self) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
@@ -260,7 +262,8 @@ class SonarQubeClient:
 
         return project
 
-    async def get_all_projects(self) -> list[dict[str, Any]]:
+    @cache_iterator_result()
+    async def get_all_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve all projects from SonarQube API.
 
@@ -268,11 +271,9 @@ class SonarQubeClient:
         """
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
         components = await self.get_components()
-        all_projects = []
         for component in components:
             project_data = await self.get_single_project(project=component)
-            all_projects.append(project_data)
-        return all_projects
+            yield project_data
 
     async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """

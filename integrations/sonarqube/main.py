@@ -19,11 +19,13 @@ def init_sonar_client() -> SonarQubeClient:
 
 
 @ocean.on_resync(ObjectKind.PROJECTS)
-async def on_project_resync(kind: str) -> list[dict[str, Any]]:
+async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
 
     sonar_client = init_sonar_client()
-    return await sonar_client.get_all_projects()
+    async for project_list in sonar_client.get_all_projects():
+        yield project_list
+    #return await sonar_client.get_all_projects()
 
 
 @ocean.on_resync(ObjectKind.ISSUES)
