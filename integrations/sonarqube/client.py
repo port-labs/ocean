@@ -155,7 +155,7 @@ class SonarQubeClient:
         if hasattr(selector, "api_query_params") and selector.api_query_params:
             return selector.api_query_params.generate_request_params()
         return {}
-    
+
     async def get_components(self) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
@@ -273,7 +273,7 @@ class SonarQubeClient:
         components = await self.get_components()
         for component in components:
             project_data = await self.get_single_project(project=component)
-            yield project_data
+            yield [project_data]
 
     async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """

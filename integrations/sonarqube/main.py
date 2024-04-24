@@ -25,7 +25,7 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sonar_client = init_sonar_client()
     async for project_list in sonar_client.get_all_projects():
         yield project_list
-    #return await sonar_client.get_all_projects()
+    # return await sonar_client.get_all_projects()
 
 
 @ocean.on_resync(ObjectKind.ISSUES)
