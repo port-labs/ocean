@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.43 (2024-04-18)
+# Port_Ocean 0.1.44 (2024-04-18)
 
 ### Improvements
 
 - Add support for filtering SonarQube projects and issues
+
+
+# Port_Ocean 0.1.43 (2024-04-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.14 (#1)
 
 
 # Port_Ocean 0.1.42 (2024-04-17)

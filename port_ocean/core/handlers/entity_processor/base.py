@@ -7,7 +7,7 @@ from port_ocean.core.handlers.base import BaseHandler
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
-    RawEntity,
+    RAW_ITEM,
     EntitySelectorDiff,
 )
 
@@ -38,7 +38,7 @@ class BaseEntityProcessor(BaseHandler):
     async def _parse_items(
         self,
         mapping: ResourceConfig,
-        raw_data: list[RawEntity],
+        raw_data: list[RAW_ITEM],
         parse_all: bool = False,
     ) -> EntitySelectorDiff:
         pass
@@ -46,7 +46,7 @@ class BaseEntityProcessor(BaseHandler):
     async def parse_items(
         self,
         mapping: ResourceConfig,
-        raw_data: list[RawEntity],
+        raw_data: list[RAW_ITEM],
         parse_all: bool = False,
     ) -> EntitySelectorDiff:
         """Public method to parse raw entity data and map it to an EntityDiff.

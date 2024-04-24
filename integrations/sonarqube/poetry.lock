@@ -798,13 +798,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.13"
+version = "0.5.14"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.13-py3-none-any.whl", hash = "sha256:4abd18bcc7a8a43ca382feb866d5cbe392d9f55fde03a0de7d67f9249c17c974"},
-    {file = "port_ocean-0.5.13.tar.gz", hash = "sha256:a9426d2910ec5039ecb517834cceb4376a31fd3e949ed2abbd59643ac30f977f"},
+    {file = "port_ocean-0.5.14-py3-none-any.whl", hash = "sha256:e972114eab69e9f00ea5684e46596cacce7b5d42383942c7274e7eee6ca6419c"},
+    {file = "port_ocean-0.5.14.tar.gz", hash = "sha256:331476426c91ff9fee639af0390bb3f832c381bd8310c45b34efc61e48479cac"},
 ]
 
 [package.dependencies]
@@ -812,7 +812,7 @@ aiostream = ">=0.5.2,<0.6.0"
 click = {version = ">=8.1.3,<9.0.0", optional = true, markers = "extra == \"cli\""}
 confluent-kafka = ">=2.1.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
-fastapi = ">=0.100,<0.110"
+fastapi = ">=0.100,<0.111"
 httpx = ">=0.24.1,<0.28.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
@@ -824,7 +824,7 @@ pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
 six = ">=1.16.0,<2.0.0"
 tomli = ">=2.0.1,<3.0.0"
-urllib3 = ">=1.26.16,<2.0.0"
+urllib3 = ">=1.26.16,<3.0.0"
 uvicorn = ">=0.22,<0.30"
 werkzeug = ">=2.3.4,<4.0.0"
 
@@ -1387,4 +1387,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "a68bb474612876903ad5bcf0f22d20c10c7f129eb2bae70668bf41a2b539a67a"
+content-hash = "e03a26058626cdf588da1d7226759c5cbd785e0a67f84fd72e2de9c0b48f8871"
