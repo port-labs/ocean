@@ -1,7 +1,6 @@
 import asyncio
 import inspect
 import typing
-from itertools import chain
 from typing import Callable, Awaitable, Any
 
 from loguru import logger
@@ -247,7 +246,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
         )
 
-        if len(filtered_entities_to_delete):
+        if filtered_entities_to_delete:
             logger.info(
                 f"Deleting {len(filtered_entities_to_delete)} entities that didn't pass any of the selectors"
             )
@@ -324,16 +323,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 [(mapping, raw_desired_state["after"]) for mapping in resource_mappings]
             )
 
-            entities_before_flatten = [
-                item
-                for sublist in [d.passed for d in entities_before]
-                for item in sublist
-            ]
-            entities_after_flatten = [
-                item
-                for sublist in [d.passed for d in entities_after]
-                for item in sublist
-            ]
+            entities_before_flatten: list[Entity] = sum(
+                (entities_diff.passed for entities_diff in entities_before), []
+            )
+
+            entities_after_flatten: list[Entity] = sum(
+                (entities_diff.passed for entities_diff in entities_after), []
+            )
 
             await self.entities_state_applier.apply_diff(
                 {"before": entities_before_flatten, "after": entities_after_flatten},
