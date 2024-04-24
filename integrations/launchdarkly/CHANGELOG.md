@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.1.6 (2024-04-24)
 
-### Improvements
+### Features
 
 - Added a new blueprint (Feature Flags In Enviroment) and remodeled entity relationships (0.1.6)
 
