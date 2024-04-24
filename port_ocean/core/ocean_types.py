@@ -1,4 +1,3 @@
-from collections import namedtuple
 from typing import TypedDict, Any, AsyncIterator, Callable, Awaitable, NamedTuple
 
 from port_ocean.core.models import Entity

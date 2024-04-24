@@ -251,9 +251,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 f"Deleting {len(filtered_entities_to_delete)} entities that didn't pass any of the selectors"
             )
 
-        await self.entities_state_applier.delete(
-            filtered_entities_to_delete, user_agent_type
-        )
+            await self.entities_state_applier.delete(
+                filtered_entities_to_delete, user_agent_type
+            )
 
         return registered_entities
 
