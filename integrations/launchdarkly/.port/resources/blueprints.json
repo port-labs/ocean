@@ -156,8 +156,8 @@
   },
   {
     "identifier": "featureFlagInEnvironment",
-    "description": "This blueprint represents a feature flags in LaunchDarkly Environments.",
-    "title": "Feature Flag In Environments",
+    "description": "This blueprint represents a feature flag in LaunchDarkly Environment.",
+    "title": "Feature Flag In Environment",
     "icon": "Launchdarkly",
     "schema": {
       "properties": {},
