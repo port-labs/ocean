@@ -4,14 +4,14 @@ from aws_credentials import AwsCredentials
 from port_ocean.context.ocean import ocean
 from loguru import logger
 
-
+from types_aiobotocore_sts import STSClient
 class SessionManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self._aws_accessible_accounts: list[dict[str, Any]] = []
         self._aws_credentials: list[AwsCredentials] = []
         self._application_account_id: str = ""
-        self._application_session: aioboto3.Session = None
-        self._organization_reader: aioboto3.Session = None
+        self._application_session: aioboto3.Session | None = None
+        self._organization_reader: aioboto3.Session | None  = None
         
     
     async def reset(self) -> None:
@@ -29,7 +29,7 @@ class SessionManager:
         self._organization_reader = await self._get_organization_session()
         await self._update_available_access_credentials()
     
-    async def _get_application_credentials(self):
+    async def _get_application_credentials(self) -> AwsCredentials:
         aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
         aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")
         if not aws_access_key_id or not aws_secret_access_key:
@@ -44,7 +44,7 @@ class SessionManager:
         async with default_session.client('sts') as sts_client:
             caller_identity = await sts_client.get_caller_identity()
             current_account_id = caller_identity['Account']
-            default_credentials = await default_session.get_credentials()
+            default_credentials = await default_session.get_credentials() # type: ignore
             return AwsCredentials(
                 account_id=current_account_id,
                 access_key_id=default_credentials.access_key,
@@ -52,11 +52,14 @@ class SessionManager:
                 session_token=default_credentials.token
             )
 
-    async def _get_organization_session(self) -> aioboto3.Session:
+    async def _get_organization_session(self) -> aioboto3.Session | None:
         organization_role_arn = ocean.integration_config.get("organization_role_arn")
         if not organization_role_arn:
             logger.warning("Did not specify organization role ARN, assuming application role has access to organization accounts.")
             return self._application_session
+        
+        if not self._application_session:
+            raise ValueError("Application session not initialized yet")
         
         async with self._application_session.client('sts') as sts_client:
             organizations_client = await sts_client.assume_role(
@@ -78,6 +81,9 @@ class SessionManager:
     
     async def _update_available_access_credentials(self) -> None:
         logger.info("Updating AWS credentials")
+        if not self._application_session or not self._organization_reader:
+            raise ValueError("Application session or organization reader session not initialized yet")
+
         async with self._application_session.client('sts') as sts_client, self._organization_reader.client('organizations') as organizations_client:
                 paginator = organizations_client.get_paginator('list_accounts')
                 try:
@@ -93,18 +99,18 @@ class SessionManager:
                     logger.error("Caller is not a member of an AWS organization. Assuming role in the current account.")
         logger.info(f"Found {len(self._aws_credentials)} AWS accounts")
 
-    async def _assume_role_and_update_credentials(self, sts_client, account) -> None:
+    async def _assume_role_and_update_credentials(self, sts_client: STSClient, account: dict[str, Any]) -> None:
         try:
             account_role = await sts_client.assume_role(
                 RoleArn=f'arn:aws:iam::{account["Id"]}:role/{self._get_account_read_role_name()}',
                 RoleSessionName='AssumeRoleSession'
             )
-            credentials = account_role['Credentials']
+            raw_credentials = account_role['Credentials']
             credentials = AwsCredentials(
                 account_id=account['Id'],
-                access_key_id=credentials['AccessKeyId'],
-                secret_access_key=credentials['SecretAccessKey'],
-                session_token=credentials['SessionToken']
+                access_key_id=raw_credentials['AccessKeyId'],
+                secret_access_key=raw_credentials['SecretAccessKey'],
+                session_token=raw_credentials['SessionToken']
             )
             await credentials.update_enabled_regions()
             self._aws_credentials.append(credentials)
@@ -117,7 +123,7 @@ class SessionManager:
                 raise
 
     async def find_account_id_by_session(self, session: aioboto3.Session) -> str:
-        session_credentials = await session.get_credentials()
+        session_credentials = await session.get_credentials() # type: ignore
         frozen_credentials = await session_credentials.get_frozen_credentials()
         for cred in self._aws_credentials:
             if cred.access_key_id == frozen_credentials.access_key:

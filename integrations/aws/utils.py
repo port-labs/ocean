@@ -1,6 +1,6 @@
 import enum
 import json
-from typing import Any, AsyncIterator, Optional
+from typing import Any, AsyncIterator, Awaitable, Literal, Optional
 import typing
 import aioboto3
 from loguru import logger
@@ -11,6 +11,7 @@ from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from botocore.exceptions import ClientError
 
 IDENTIFIER_PROPERTY = '__Identifier'
 ACCOUNT_ID_PROPERTY = '__AccountId'
@@ -77,7 +78,7 @@ def is_global_resource(kind: str) -> bool:
 def fix_unserializable_date_properties(obj: Any) -> Any:
     return json.loads(json.dumps(obj, default=str))
 
-async def describe_single_resource(kind: str, identifier: str, account_id: str | None = None, region: str | None = None) -> dict[str, Any]:
+async def describe_single_resource(kind: str, identifier: str, account_id: str | None = None, region: str | None = None) -> dict[str, str]:
     async for session in get_sessions(account_id, region):
         region = session.region_name
         try:
@@ -110,20 +111,22 @@ async def describe_single_resource(kind: str, identifier: str, account_id: str |
                         return {
                             **json.loads(resource_description.get('Properties', {}))
                         }
-        except Exception as e:
+        except ClientError as e:
             if e.response['Error']['Code'] == 'ResourceNotFoundException':
                 logger.info(f"Resource not found: {kind} {identifier}")
                 return {}
             logger.error(f"Failed to describe CloudControl Instance in region: {region}; error {e}")
+            return {}
+    return {}
 
-async def batch_resources(kind: str, session: aioboto3.Session, service_name: str, describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def batch_resources(kind: str, session: aioboto3.Session, service_name: Literal['acm', 'elbv2', 'cloudformation'], describe_method: str, list_param: str, marker_param: str = "NextToken") -> ASYNC_GENERATOR_RESYNC_TYPE:
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
     next_token = None
     while True:
         try:
             async with session.client(service_name) as client:
-                params = {}  
+                params: dict[str, Any] = {}
                 if next_token:  
                     pointer_param = marker_param if marker_param == "NextToken" else "Marker"  
                     params[pointer_param] = next_token
