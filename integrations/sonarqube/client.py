@@ -5,18 +5,14 @@ import typing
 import httpx
 from loguru import logger
 
-from port_ocean.utils import http_async_client
-from port_ocean.utils.cache import cache_iterator_result
-
-
 from integration import (
     SonarQubeIssueResourceConfig,
     SonarQubeProjectResourceConfig,
     ObjectKind,
 )
-from port_ocean.context.event import event
 
-from port_ocean.core.handlers.port_app_config.models import Selector
+from port_ocean.utils import http_async_client
+from port_ocean.context.event import event
 
 
 class Endpoints:
@@ -85,7 +81,7 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        logger.info(
+        logger.debug(
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
         try:
@@ -112,7 +108,7 @@ class SonarQubeClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         try:
-            logger.info(
+            logger.debug(
                 f"Sending API request to {method} {endpoint} with query params: {query_params}"
             )
 
@@ -151,11 +147,6 @@ class SonarQubeClient:
             logger.error(f"HTTP occurred while fetching paginated data: {e}")
             raise
 
-    def process_selector_query_params(self, selector: Selector) -> dict[str, Any]:
-        if hasattr(selector, "api_query_params") and selector.api_query_params:
-            return selector.api_query_params.generate_request_params()
-        return {}
-
     async def get_components(self) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
@@ -181,9 +172,7 @@ class SonarQubeClient:
             selector = typing.cast(
                 SonarQubeProjectResourceConfig, project_resource
             ).selector
-
-            selector_query_params = self.process_selector_query_params(selector)
-            query_params.update(selector_query_params)
+            query_params.update(selector.generate_request_params())
 
         try:
             response = await self.send_paginated_api_request(
@@ -262,7 +251,6 @@ class SonarQubeClient:
 
         return project
 
-    @cache_iterator_result()
     async def get_all_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve all projects from SonarQube API.
@@ -299,14 +287,11 @@ class SonarQubeClient:
         component_issues = []
         component_key = component.get("key")
         query_params = {"componentKeys": component_key}
-        logger.info(f"Fetching all issues in component: {component_key}")
 
         selector = typing.cast(
             SonarQubeIssueResourceConfig, event.resource_config
         ).selector
-
-        selector_query_params = self.process_selector_query_params(selector)
-        query_params.update(selector_query_params)
+        query_params.update(selector.generate_request_params())
 
         response = await self.send_paginated_api_request(
             endpoint=Endpoints.ISSUES,

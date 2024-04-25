@@ -141,8 +141,27 @@ class SonarQubeIssueAPIQueryParams(BaseModel):
         return value
 
 
-class SonarQubeProjectResourceConfig(ResourceConfig):
-    class SonarQubeProjectSelector(Selector):
+class CustomSelector(Selector):
+    def generate_request_params(self) -> dict[str, Any]:
+        if hasattr(self, "api_query_params") and self.api_query_params:
+            return self.api_query_params.generate_request_params()
+        return {}
+
+
+class CustomResource(ResourceConfig):
+    selector: CustomSelector
+
+    # def generate_api_request_params(self) -> dict[str, Any]:
+    #     if (
+    #         hasattr(self.selector, "api_query_params")
+    #         and self.selector.api_query_params
+    #     ):
+    #         return self.selector.api_query_params.generate_request_params()
+    #     return {}
+
+
+class SonarQubeProjectResourceConfig(CustomResource):
+    class SonarQubeProjectSelector(CustomSelector):
         api_query_params: SonarQubeProjectAPIQueryParams | None = Field(
             alias="apiQueryParams"
         )
@@ -151,8 +170,8 @@ class SonarQubeProjectResourceConfig(ResourceConfig):
     selector: SonarQubeProjectSelector
 
 
-class SonarQubeIssueResourceConfig(ResourceConfig):
-    class SonarQubeIssueSelector(Selector):
+class SonarQubeIssueResourceConfig(CustomResource):
+    class SonarQubeIssueSelector(CustomSelector):
         api_query_params: SonarQubeIssueAPIQueryParams | None = Field(
             alias="apiQueryParams"
         )
