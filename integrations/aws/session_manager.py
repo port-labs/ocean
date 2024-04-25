@@ -15,7 +15,7 @@ class SessionManager:
         self._organization_reader: aioboto3.Session = None
         
     
-    async def reset(self):
+    async def reset(self) -> None:
         application_credentials = await self._get_application_credentials()
         await application_credentials.update_enabled_regions()
         self._application_account_id = application_credentials.account_id
@@ -53,7 +53,7 @@ class SessionManager:
                 session_token=default_credentials.token
             )
 
-    async def _get_organization_session(self):
+    async def _get_organization_session(self) -> aioboto3.Session:
         organization_role_arn = ocean.integration_config.get("organization_role_arn")
         if not organization_role_arn:
             logger.warning("Did not specify organization role ARN, assuming application role has access to organization accounts.")
@@ -74,7 +74,7 @@ class SessionManager:
 
             return organization_role_session
     
-    def _get_account_read_role_name(self):
+    def _get_account_read_role_name(self) -> str:
         return ocean.integration_config.get("account_read_role_name", "")
     
     async def _update_available_access_credentials(self) -> None:
@@ -94,7 +94,7 @@ class SessionManager:
                     logger.error("Caller is not a member of an AWS organization. Assuming role in the current account.")
         logger.info(f"Found {len(self._aws_credentials)} AWS accounts")
 
-    async def _assume_role_and_update_credentials(self, sts_client, account):
+    async def _assume_role_and_update_credentials(self, sts_client, account) -> None:
         try:
             account_role = await sts_client.assume_role(
                 RoleArn=f'arn:aws:iam::{account["Id"]}:role/{self._get_account_read_role_name()}',
