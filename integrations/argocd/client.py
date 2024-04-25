@@ -104,5 +104,5 @@ class ArgocdClient:
     ) -> list[dict[str, Any]]:
         logger.info(f"Fetching managed resources for application: {application_name}")
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
-        managed_resources = (await self._send_api_request(url=url))["items"]
+        managed_resources = (await self._send_api_request(url=url)).get("items", [])
         return managed_resources
