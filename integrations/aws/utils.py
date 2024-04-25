@@ -71,23 +71,14 @@ async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: 
                 yield await session
 
 def is_global_resource(kind: str) -> bool:
-    """
-    Checks if the resource kind is a global resource
-    """
     global_services = ['cloudfront', 'route53', 'waf', 'waf-regional', 'iam', 'organizations']
     service = kind.split('::')[1].lower()
     return service in global_services
 
 def _fix_unserializable_date_properties(obj: Any) -> Any:
-    """
-    Handles unserializable date properties in the JSON by turning them into a string
-    """
     return json.loads(json.dumps(obj, default=str))
 
 async def describe_single_resource(kind: str, identifier: str, account_id: str | None = None, region: str | None = None) -> dict[str, Any]:
-    """
-    Describes a single resource using the CloudControl API.
-    """
     async for session in _get_sessions(account_id, region):
         region = session.region_name
         try:
@@ -183,7 +174,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 break
             if not next_token:
                 break
-            
+
 def get_matching_kinds_from_config(kind: str) -> list[ResourceConfig]:
     return list(
         filter(
@@ -204,9 +195,6 @@ def get_resource_kinds_from_config(kind: str) -> list[str]:
     return []
 
 def validate_request(request: Request) -> None:
-    """
-    Validates the request by checking for the presence of the API key in the request headers.
-    """
     api_key = request.headers.get('x-port-aws-ocean-api-key')
     if not api_key:
         raise ValueError("API key not found in request headers")
