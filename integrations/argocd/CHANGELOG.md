@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.40 (2024-04-25)
+
+### Bug Fixes
+
+- Fixed a bug in the managed-resources kind that caused the integration to throw a KeyError
+
+### Improvements
+
+- Added a default empty array to the deployment history mapping to stop spanning the logs with JQ NoneType error
+
+
 # Port_Ocean 0.1.39 (2024-04-24)
 
 ### Improvements
