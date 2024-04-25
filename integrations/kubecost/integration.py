@@ -57,17 +57,21 @@ class DurationField(str):
 
 
 class KubecostSelector(Selector):
-    window: Literal[
-        "today",
-        "week",
-        "month",
-        "yesterday",
-        "lastweek",
-        "lastmonth",
-        "30m",
-        "12h",
-        "7d",
-    ] | DatePairField | UnixtimePairField = Field(default="today")
+    window: (
+        Literal[
+            "today",
+            "week",
+            "month",
+            "yesterday",
+            "lastweek",
+            "lastmonth",
+            "30m",
+            "12h",
+            "7d",
+        ]
+        | DatePairField
+        | UnixtimePairField
+    ) = Field(default="today")
     aggregate: AggregationField | None = Field(
         description="Field by which to aggregate the results.",
     )
