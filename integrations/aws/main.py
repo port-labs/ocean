@@ -1,7 +1,7 @@
 from typing import Any
 
 from port_ocean.core.models import Entity
-from utils import ACCOUNT_ID_PROPERTY, IDENTIFIER_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, _session_manager, describe_accessible_accounts, batch_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, get_resource_kinds_from_config, is_global_resource, update_available_access_credentials, validate_request, get_matching_kinds_from_config
+from utils import ACCOUNT_ID_PROPERTY, IDENTIFIER_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, _session_manager, describe_accessible_accounts, batch_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, get_resource_kinds_from_config, is_global_resource, resync_cloudcontrol, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
@@ -52,38 +52,6 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for session in _get_sessions():
         async for batch in batch_resources(kind, session, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
             yield batch
-
-
-async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    is_global = is_global_resource(kind)
-    async for session in _get_sessions(None, None, is_global):
-        region = session.region_name
-        logger.info(f"Resyncing {kind} in region {region}")
-        account_id = await _session_manager.find_account_id_by_session(session)
-        next_token = None
-        while True:
-            try:
-                async with session.client("cloudcontrol") as cloudcontrol:
-                    params = {
-                        'TypeName': kind,
-                    }
-                    if next_token:
-                        params['NextToken'] = next_token
-                    
-                    response = await cloudcontrol.list_resources(**params)
-                    next_token = response.get('NextToken')
-                    resources = response.get('ResourceDescriptions', [])
-                    if not resources:
-                        break
-                    for instance in response.get('ResourceDescriptions', []):
-                        described = await describe_single_resource(kind, instance.get('Identifier'), account_id, region)
-                        described.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region, IDENTIFIER_PROPERTY: instance.get('Identifier')})
-                        yield _fix_unserializable_date_properties(described)
-            except Exception as e:
-                logger.exception(f"Failed to list CloudControl Instance in account {account_id} kind {kind} region: {region}")
-                break
-            if not next_token:
-                break
                 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.EC2)
