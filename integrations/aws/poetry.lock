@@ -776,13 +776,13 @@ crt = ["awscrt (==0.19.19)"]
 
 [[package]]
 name = "botocore-stubs"
-version = "1.34.86"
+version = "1.34.91"
 description = "Type annotations and code completion for botocore"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "botocore_stubs-1.34.86-py3-none-any.whl", hash = "sha256:24276781a437702c96e05cba01a808ef6d9c5d2df8f615e540cf2e55987fe7bf"},
-    {file = "botocore_stubs-1.34.86.tar.gz", hash = "sha256:2e0d170d627454a1d8b685ef3f4eed8c0adf634f19e9c96f195ca3aef737a62e"},
+    {file = "botocore_stubs-1.34.91-py3-none-any.whl", hash = "sha256:c87a70d86107564f79f02058122f0dee7d1b18874e5b2dfdcab7ef0af39230aa"},
+    {file = "botocore_stubs-1.34.91.tar.gz", hash = "sha256:debedbf0aa52bfb62791750eb0f3695aeb0dc6f3a4b06feb3c834731a77d9d4d"},
 ]
 
 [package.dependencies]
@@ -1026,18 +1026,18 @@ profile = ["gprof2dot (>=2022.7.29)"]
 
 [[package]]
 name = "fastapi"
-version = "0.109.2"
+version = "0.110.2"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fastapi-0.109.2-py3-none-any.whl", hash = "sha256:2c9bab24667293b501cad8dd388c05240c850b58ec5876ee3283c47d6e1e3a4d"},
-    {file = "fastapi-0.109.2.tar.gz", hash = "sha256:f3817eac96fe4f65a2ebb4baa000f394e55f5fccdaf7f75250804bc58f354f73"},
+    {file = "fastapi-0.110.2-py3-none-any.whl", hash = "sha256:239403f2c0a3dda07a9420f95157a7f014ddb2b770acdbc984f9bdf3ead7afdb"},
+    {file = "fastapi-0.110.2.tar.gz", hash = "sha256:b53d673652da3b65e8cd787ad214ec0fe303cad00d2b529b86ce7db13f17518d"},
 ]
 
 [package.dependencies]
 pydantic = ">=1.7.4,<1.8 || >1.8,<1.8.1 || >1.8.1,<2.0.0 || >2.0.0,<2.0.1 || >2.0.1,<2.1.0 || >2.1.0,<3.0.0"
-starlette = ">=0.36.3,<0.37.0"
+starlette = ">=0.37.2,<0.38.0"
 typing-extensions = ">=4.8.0"
 
 [package.extras]
@@ -1559,38 +1559,38 @@ files = [
 
 [[package]]
 name = "mypy"
-version = "1.9.0"
+version = "1.10.0"
 description = "Optional static typing for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-1.9.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:f8a67616990062232ee4c3952f41c779afac41405806042a8126fe96e098419f"},
-    {file = "mypy-1.9.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d357423fa57a489e8c47b7c85dfb96698caba13d66e086b412298a1a0ea3b0ed"},
-    {file = "mypy-1.9.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:49c87c15aed320de9b438ae7b00c1ac91cd393c1b854c2ce538e2a72d55df150"},
-    {file = "mypy-1.9.0-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:48533cdd345c3c2e5ef48ba3b0d3880b257b423e7995dada04248725c6f77374"},
-    {file = "mypy-1.9.0-cp310-cp310-win_amd64.whl", hash = "sha256:4d3dbd346cfec7cb98e6cbb6e0f3c23618af826316188d587d1c1bc34f0ede03"},
-    {file = "mypy-1.9.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:653265f9a2784db65bfca694d1edd23093ce49740b2244cde583aeb134c008f3"},
-    {file = "mypy-1.9.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:3a3c007ff3ee90f69cf0a15cbcdf0995749569b86b6d2f327af01fd1b8aee9dc"},
-    {file = "mypy-1.9.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2418488264eb41f69cc64a69a745fad4a8f86649af4b1041a4c64ee61fc61129"},
-    {file = "mypy-1.9.0-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:68edad3dc7d70f2f17ae4c6c1b9471a56138ca22722487eebacfd1eb5321d612"},
-    {file = "mypy-1.9.0-cp311-cp311-win_amd64.whl", hash = "sha256:85ca5fcc24f0b4aeedc1d02f93707bccc04733f21d41c88334c5482219b1ccb3"},
-    {file = "mypy-1.9.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:aceb1db093b04db5cd390821464504111b8ec3e351eb85afd1433490163d60cd"},
-    {file = "mypy-1.9.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:0235391f1c6f6ce487b23b9dbd1327b4ec33bb93934aa986efe8a9563d9349e6"},
-    {file = "mypy-1.9.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d4d5ddc13421ba3e2e082a6c2d74c2ddb3979c39b582dacd53dd5d9431237185"},
-    {file = "mypy-1.9.0-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:190da1ee69b427d7efa8aa0d5e5ccd67a4fb04038c380237a0d96829cb157913"},
-    {file = "mypy-1.9.0-cp312-cp312-win_amd64.whl", hash = "sha256:fe28657de3bfec596bbeef01cb219833ad9d38dd5393fc649f4b366840baefe6"},
-    {file = "mypy-1.9.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:e54396d70be04b34f31d2edf3362c1edd023246c82f1730bbf8768c28db5361b"},
-    {file = "mypy-1.9.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:5e6061f44f2313b94f920e91b204ec600982961e07a17e0f6cd83371cb23f5c2"},
-    {file = "mypy-1.9.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:81a10926e5473c5fc3da8abb04119a1f5811a236dc3a38d92015cb1e6ba4cb9e"},
-    {file = "mypy-1.9.0-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:b685154e22e4e9199fc95f298661deea28aaede5ae16ccc8cbb1045e716b3e04"},
-    {file = "mypy-1.9.0-cp38-cp38-win_amd64.whl", hash = "sha256:5d741d3fc7c4da608764073089e5f58ef6352bedc223ff58f2f038c2c4698a89"},
-    {file = "mypy-1.9.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:587ce887f75dd9700252a3abbc9c97bbe165a4a630597845c61279cf32dfbf02"},
-    {file = "mypy-1.9.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:f88566144752999351725ac623471661c9d1cd8caa0134ff98cceeea181789f4"},
-    {file = "mypy-1.9.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:61758fabd58ce4b0720ae1e2fea5cfd4431591d6d590b197775329264f86311d"},
-    {file = "mypy-1.9.0-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:e49499be624dead83927e70c756970a0bc8240e9f769389cdf5714b0784ca6bf"},
-    {file = "mypy-1.9.0-cp39-cp39-win_amd64.whl", hash = "sha256:571741dc4194b4f82d344b15e8837e8c5fcc462d66d076748142327626a1b6e9"},
-    {file = "mypy-1.9.0-py3-none-any.whl", hash = "sha256:a260627a570559181a9ea5de61ac6297aa5af202f06fd7ab093ce74e7181e43e"},
-    {file = "mypy-1.9.0.tar.gz", hash = "sha256:3cc5da0127e6a478cddd906068496a97a7618a21ce9b54bde5bf7e539c7af974"},
+    {file = "mypy-1.10.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:da1cbf08fb3b851ab3b9523a884c232774008267b1f83371ace57f412fe308c2"},
+    {file = "mypy-1.10.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:12b6bfc1b1a66095ab413160a6e520e1dc076a28f3e22f7fb25ba3b000b4ef99"},
+    {file = "mypy-1.10.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9e36fb078cce9904c7989b9693e41cb9711e0600139ce3970c6ef814b6ebc2b2"},
+    {file = "mypy-1.10.0-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:2b0695d605ddcd3eb2f736cd8b4e388288c21e7de85001e9f85df9187f2b50f9"},
+    {file = "mypy-1.10.0-cp310-cp310-win_amd64.whl", hash = "sha256:cd777b780312ddb135bceb9bc8722a73ec95e042f911cc279e2ec3c667076051"},
+    {file = "mypy-1.10.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:3be66771aa5c97602f382230165b856c231d1277c511c9a8dd058be4784472e1"},
+    {file = "mypy-1.10.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:8b2cbaca148d0754a54d44121b5825ae71868c7592a53b7292eeb0f3fdae95ee"},
+    {file = "mypy-1.10.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1ec404a7cbe9fc0e92cb0e67f55ce0c025014e26d33e54d9e506a0f2d07fe5de"},
+    {file = "mypy-1.10.0-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:e22e1527dc3d4aa94311d246b59e47f6455b8729f4968765ac1eacf9a4760bc7"},
+    {file = "mypy-1.10.0-cp311-cp311-win_amd64.whl", hash = "sha256:a87dbfa85971e8d59c9cc1fcf534efe664d8949e4c0b6b44e8ca548e746a8d53"},
+    {file = "mypy-1.10.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:a781f6ad4bab20eef8b65174a57e5203f4be627b46291f4589879bf4e257b97b"},
+    {file = "mypy-1.10.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b808e12113505b97d9023b0b5e0c0705a90571c6feefc6f215c1df9381256e30"},
+    {file = "mypy-1.10.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8f55583b12156c399dce2df7d16f8a5095291354f1e839c252ec6c0611e86e2e"},
+    {file = "mypy-1.10.0-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:4cf18f9d0efa1b16478c4c129eabec36148032575391095f73cae2e722fcf9d5"},
+    {file = "mypy-1.10.0-cp312-cp312-win_amd64.whl", hash = "sha256:bc6ac273b23c6b82da3bb25f4136c4fd42665f17f2cd850771cb600bdd2ebeda"},
+    {file = "mypy-1.10.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:9fd50226364cd2737351c79807775136b0abe084433b55b2e29181a4c3c878c0"},
+    {file = "mypy-1.10.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:f90cff89eea89273727d8783fef5d4a934be2fdca11b47def50cf5d311aff727"},
+    {file = "mypy-1.10.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fcfc70599efde5c67862a07a1aaf50e55bce629ace26bb19dc17cece5dd31ca4"},
+    {file = "mypy-1.10.0-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:075cbf81f3e134eadaf247de187bd604748171d6b79736fa9b6c9685b4083061"},
+    {file = "mypy-1.10.0-cp38-cp38-win_amd64.whl", hash = "sha256:3f298531bca95ff615b6e9f2fc0333aae27fa48052903a0ac90215021cdcfa4f"},
+    {file = "mypy-1.10.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:fa7ef5244615a2523b56c034becde4e9e3f9b034854c93639adb667ec9ec2976"},
+    {file = "mypy-1.10.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:3236a4c8f535a0631f85f5fcdffba71c7feeef76a6002fcba7c1a8e57c8be1ec"},
+    {file = "mypy-1.10.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4a2b5cdbb5dd35aa08ea9114436e0d79aceb2f38e32c21684dcf8e24e1e92821"},
+    {file = "mypy-1.10.0-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:92f93b21c0fe73dc00abf91022234c79d793318b8a96faac147cd579c1671746"},
+    {file = "mypy-1.10.0-cp39-cp39-win_amd64.whl", hash = "sha256:28d0e038361b45f099cc086d9dd99c15ff14d0188f44ac883010e172ce86c38a"},
+    {file = "mypy-1.10.0-py3-none-any.whl", hash = "sha256:f8c083976eb530019175aabadb60921e73b4f45736760826aa1689dda8208aee"},
+    {file = "mypy-1.10.0.tar.gz", hash = "sha256:3d087fcbec056c4ee34974da493a826ce316947485cef3901f511848e687c131"},
 ]
 
 [package.dependencies]
@@ -1703,13 +1703,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-dynamodb"
-version = "1.34.67"
-description = "Type annotations for boto3.DynamoDB 1.34.67 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.91"
+description = "Type annotations for boto3.DynamoDB 1.34.91 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-dynamodb-1.34.67.tar.gz", hash = "sha256:09447ef3ea6bdfe0be4e32ca23283820573341d340bea3065ded2153cc593d22"},
-    {file = "mypy_boto3_dynamodb-1.34.67-py3-none-any.whl", hash = "sha256:081ee9e184c0c2d93f648b25cec798e75533af26e631fbe80259f48fddb89758"},
+    {file = "mypy_boto3_dynamodb-1.34.91-py3-none-any.whl", hash = "sha256:ec07e3f8826135ebb78cd782fb2edf54a355ad2f00ca0bdd24315dc7687a26cf"},
+    {file = "mypy_boto3_dynamodb-1.34.91.tar.gz", hash = "sha256:b13e081ccfbbeb208fd4c759c1c50a7759c23cd6937c790c8bdbffa80fe662d7"},
 ]
 
 [package.dependencies]
@@ -1717,13 +1717,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-ec2"
-version = "1.34.86"
-description = "Type annotations for boto3.EC2 1.34.86 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.91"
+description = "Type annotations for boto3.EC2 1.34.91 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_ec2-1.34.86-py3-none-any.whl", hash = "sha256:da1c24964155775266791ef6063642432578bc085def82128be0ec710873df8e"},
-    {file = "mypy_boto3_ec2-1.34.86.tar.gz", hash = "sha256:7bd8b00399aeb47cc7a6f2781107cca9da859f8dd2d5bcbdd7816dcb6076eff1"},
+    {file = "mypy_boto3_ec2-1.34.91-py3-none-any.whl", hash = "sha256:c48e9f6532e37b25ecfe91b557e51bf270b593f503e8a9491f7d297ee8cb067c"},
+    {file = "mypy_boto3_ec2-1.34.91.tar.gz", hash = "sha256:76006e9cd2053b0c8002a9e69963ca7b060e0c1a12d28080c47efb51cb9dda79"},
 ]
 
 [package.dependencies]
@@ -1885,13 +1885,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-rds"
-version = "1.34.83"
-description = "Type annotations for boto3.RDS 1.34.83 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.91"
+description = "Type annotations for boto3.RDS 1.34.91 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-rds-1.34.83.tar.gz", hash = "sha256:fc7f7dc434695fd7a0b37f6945a624bc9dc633ab3287e7da9899934d1b02818b"},
-    {file = "mypy_boto3_rds-1.34.83-py3-none-any.whl", hash = "sha256:cca89c1acdb3041fd548e57d07a4ac930c0aa0edf316aa82d95bfdafb5840d18"},
+    {file = "mypy_boto3_rds-1.34.91-py3-none-any.whl", hash = "sha256:aa9fbc96d69873149b75db971a45a9d73a3d5cd046fc9b655b3c8b716ca14168"},
+    {file = "mypy_boto3_rds-1.34.91.tar.gz", hash = "sha256:e56e52b3027ce59720c566b3a7750c9ac01a1049f28047143a612d44b84a15bc"},
 ]
 
 [package.dependencies]
@@ -1913,13 +1913,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-s3"
-version = "1.34.65"
-description = "Type annotations for boto3.S3 1.34.65 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.91"
+description = "Type annotations for boto3.S3 1.34.91 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-s3-1.34.65.tar.gz", hash = "sha256:2fcdf412ce2924b2f0b34db59abf06a9c0bbe4cd3361f14f0d2c1e211c0f7ddd"},
-    {file = "mypy_boto3_s3-1.34.65-py3-none-any.whl", hash = "sha256:2aecfbe1c00654bc21f839068218d60123366954bf43a708baa50f9543e3f205"},
+    {file = "mypy_boto3_s3-1.34.91-py3-none-any.whl", hash = "sha256:0d37161fd0cd7ebf194cf9ccadb9101bf5c9b2426c2d00677b7e644d6f2298e4"},
+    {file = "mypy_boto3_s3-1.34.91.tar.gz", hash = "sha256:70c8bad00db70704fb7ac0ee1440c7eb0587578ae9a2b00997f29f17f60f45e7"},
 ]
 
 [package.dependencies]
@@ -1927,13 +1927,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-sagemaker"
-version = "1.34.74"
-description = "Type annotations for boto3.SageMaker 1.34.74 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.89"
+description = "Type annotations for boto3.SageMaker 1.34.89 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-sagemaker-1.34.74.tar.gz", hash = "sha256:8134a4b0eb041f82112eac3e019fc234b3b6f08af5f28cbb88fda1e9adfcae61"},
-    {file = "mypy_boto3_sagemaker-1.34.74-py3-none-any.whl", hash = "sha256:2bca330e440adaeee0eeeee4648c063470c7949591050290894fac58426902f3"},
+    {file = "mypy_boto3_sagemaker-1.34.89-py3-none-any.whl", hash = "sha256:e64efbfb476602128e5d06b033db558c10416ca2d2d1463e1ab82d8b3553c3ac"},
+    {file = "mypy_boto3_sagemaker-1.34.89.tar.gz", hash = "sha256:90efcbfcbf8b8c35877ea252ffa1e8b66cb016653c6862d804b8daf6735fd907"},
 ]
 
 [package.dependencies]
@@ -1983,13 +1983,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-ssm"
-version = "1.34.61"
-description = "Type annotations for boto3.SSM 1.34.61 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.91"
+description = "Type annotations for boto3.SSM 1.34.91 service generated with mypy-boto3-builder 7.23.2"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-ssm-1.34.61.tar.gz", hash = "sha256:4cbc99f42b6913c536c6cc41c02d3f165920d1e7babb9bb17782b410556cde00"},
-    {file = "mypy_boto3_ssm-1.34.61-py3-none-any.whl", hash = "sha256:8ce8d6fc185c07161b5cc3a589df10130d6bbe3182aeeb01549eb95b5580f51c"},
+    {file = "mypy_boto3_ssm-1.34.91-py3-none-any.whl", hash = "sha256:7ff84d33bdeb3b91bfc4af25a5d52ea8fa99f1e5c8247b33bdea51f174f492a8"},
+    {file = "mypy_boto3_ssm-1.34.91.tar.gz", hash = "sha256:30097b0b2ead699e983f7faadd8b25b658c4cab02b21fcf67340b758ed45f874"},
 ]
 
 [package.dependencies]
@@ -2044,28 +2044,29 @@ files = [
 
 [[package]]
 name = "platformdirs"
-version = "4.2.0"
-description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
+version = "4.2.1"
+description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "platformdirs-4.2.0-py3-none-any.whl", hash = "sha256:0614df2a2f37e1a662acbd8e2b25b92ccf8632929bc6d43467e17fe89c75e068"},
-    {file = "platformdirs-4.2.0.tar.gz", hash = "sha256:ef0cc731df711022c174543cb70a9b5bd22e5a9337c8624ef2c2ceb8ddad8768"},
+    {file = "platformdirs-4.2.1-py3-none-any.whl", hash = "sha256:17d5a1161b3fd67b390023cb2d3b026bbd40abde6fdb052dfbd3a29c3ba22ee1"},
+    {file = "platformdirs-4.2.1.tar.gz", hash = "sha256:031cd18d4ec63ec53e82dceaac0417d218a6863f7745dfcc9efe7793b7039bdf"},
 ]
 
 [package.extras]
 docs = ["furo (>=2023.9.10)", "proselint (>=0.13)", "sphinx (>=7.2.6)", "sphinx-autodoc-typehints (>=1.25.2)"]
 test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=7.4.3)", "pytest-cov (>=4.1)", "pytest-mock (>=3.12)"]
+type = ["mypy (>=1.8)"]
 
 [[package]]
 name = "pluggy"
-version = "1.4.0"
+version = "1.5.0"
 description = "plugin and hook calling mechanisms for python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pluggy-1.4.0-py3-none-any.whl", hash = "sha256:7db9f7b503d67d1c5b95f59773ebb58a8c1c288129a88665838012cfb07b8981"},
-    {file = "pluggy-1.4.0.tar.gz", hash = "sha256:8c85c2876142a764e5b7548e7d9a0e0ddb46f5185161049a79b7e974454223be"},
+    {file = "pluggy-1.5.0-py3-none-any.whl", hash = "sha256:44e1ad92c8ca002de6377e165f3e0f1be63266ab4d554740532335b9d75ea669"},
+    {file = "pluggy-1.5.0.tar.gz", hash = "sha256:2cffa88e94fdc978c4c574f15f9e59b7f4201d439195c3715ca9e2486f1d0cf1"},
 ]
 
 [package.extras]
@@ -2074,13 +2075,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.13"
+version = "0.5.14"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.13-py3-none-any.whl", hash = "sha256:4abd18bcc7a8a43ca382feb866d5cbe392d9f55fde03a0de7d67f9249c17c974"},
-    {file = "port_ocean-0.5.13.tar.gz", hash = "sha256:a9426d2910ec5039ecb517834cceb4376a31fd3e949ed2abbd59643ac30f977f"},
+    {file = "port_ocean-0.5.14-py3-none-any.whl", hash = "sha256:e972114eab69e9f00ea5684e46596cacce7b5d42383942c7274e7eee6ca6419c"},
+    {file = "port_ocean-0.5.14.tar.gz", hash = "sha256:331476426c91ff9fee639af0390bb3f832c381bd8310c45b34efc61e48479cac"},
 ]
 
 [package.dependencies]
@@ -2088,7 +2089,7 @@ aiostream = ">=0.5.2,<0.6.0"
 click = {version = ">=8.1.3,<9.0.0", optional = true, markers = "extra == \"cli\""}
 confluent-kafka = ">=2.1.1,<3.0.0"
 cookiecutter = {version = ">=2.1.1,<3.0.0", optional = true, markers = "extra == \"cli\""}
-fastapi = ">=0.100,<0.110"
+fastapi = ">=0.100,<0.111"
 httpx = ">=0.24.1,<0.28.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
@@ -2100,7 +2101,7 @@ pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
 six = ">=1.16.0,<2.0.0"
 tomli = ">=2.0.1,<3.0.0"
-urllib3 = ">=1.26.16,<2.0.0"
+urllib3 = ">=1.26.16,<3.0.0"
 uvicorn = ">=0.22,<0.30"
 werkzeug = ">=2.3.4,<4.0.0"
 
@@ -2465,13 +2466,13 @@ files = [
 
 [[package]]
 name = "starlette"
-version = "0.36.3"
+version = "0.37.2"
 description = "The little ASGI library that shines."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "starlette-0.36.3-py3-none-any.whl", hash = "sha256:13d429aa93a61dc40bf503e8c801db1f1bca3dc706b10ef2434a36123568f044"},
-    {file = "starlette-0.36.3.tar.gz", hash = "sha256:90a671733cfb35771d8cc605e0b679d23b992f8dcfad48cc60b38cb29aeb7080"},
+    {file = "starlette-0.37.2-py3-none-any.whl", hash = "sha256:6fe59f29268538e5d0d182f2791a479a0c64638e6935d1c6989e63fb2699c6ee"},
+    {file = "starlette-0.37.2.tar.gz", hash = "sha256:9af890290133b79fc3db55474ade20f6220a364a0402e0b556e7cd5e1e093823"},
 ]
 
 [package.dependencies]
@@ -3378,19 +3379,20 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "1.26.18"
+version = "2.2.1"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
+python-versions = ">=3.8"
 files = [
-    {file = "urllib3-1.26.18-py2.py3-none-any.whl", hash = "sha256:34b97092d7e0a3a8cf7cd10e386f401b3737364026c45e622aa02903dffe0f07"},
-    {file = "urllib3-1.26.18.tar.gz", hash = "sha256:f8ecc1bba5667413457c529ab955bf8c67b45db799d159066261719e328580a0"},
+    {file = "urllib3-2.2.1-py3-none-any.whl", hash = "sha256:450b20ec296a467077128bff42b73080516e71b56ff59a60a02bef2232c4fa9d"},
+    {file = "urllib3-2.2.1.tar.gz", hash = "sha256:d0570876c61ab9e520d776c38acbbb5b05a776d3f9ff98a5c8fd5162a444cf19"},
 ]
 
 [package.extras]
-brotli = ["brotli (==1.0.9)", "brotli (>=1.0.9)", "brotlicffi (>=0.8.0)", "brotlipy (>=0.6.0)"]
-secure = ["certifi", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "ipaddress", "pyOpenSSL (>=0.14)", "urllib3-secure-extra"]
-socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
+brotli = ["brotli (>=1.0.9)", "brotlicffi (>=0.8.0)"]
+h2 = ["h2 (>=4,<5)"]
+socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
+zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "uvicorn"
@@ -3626,4 +3628,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "4c1edf145310346db4f14f03cc14f4809d559070c8ec9a86810eadd9036a20f5"
+content-hash = "e36548952e3d2a39775e6ea16389d02ed3622ccb887049efb7abc00434e28cc3"

@@ -6,7 +6,7 @@ authors = ["Shalev Avhar <shalev@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = { version = "^0.5.13", extras = ["cli"] }
+port_ocean = { version = "^0.5.14", extras = ["cli"] }
 python-dotenv = "^1.0.1"
 aioboto3 = "^12.4.0"
 
