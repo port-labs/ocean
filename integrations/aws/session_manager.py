@@ -10,6 +10,10 @@ class SessionManager:
     def __init__(self):
         self._aws_accessible_accounts: list[dict[str, Any]] = []
         self._aws_credentials: list[AwsCredentials] = []
+        self._application_account_id: str = ""
+        self._application_session: aioboto3.Session = None
+        self._organization_reader: aioboto3.Session = None
+        
     
     async def reset(self):
         application_credentials = await self._get_application_credentials()
@@ -30,21 +34,23 @@ class SessionManager:
         aws_access_key_id = ocean.integration_config.get("aws_access_key_id")
         aws_secret_access_key = ocean.integration_config.get("aws_secret_access_key")
         if not aws_access_key_id or not aws_secret_access_key:
-            logger.warning("Did not specify AWS access key ID or secret access key, using the role credentials from env.")
+            logger.warning("Did not specify AWS access key ID or secret access key, Trying to fetch credentials using boto")
+
         credentials = {
-            'aws_access_key_id': aws_access_key_id or os.environ.get('AWS_ACCESS_KEY_ID'),
-            'aws_secret_access_key': aws_secret_access_key or os.environ.get('AWS_SECRET_ACCESS_KEY'),
-            'aws_session_token': os.environ.get('AWS_SESSION_TOKEN')
+            'aws_access_key_id': aws_access_key_id,
+            'aws_secret_access_key': aws_secret_access_key,
         }
-        tmp_session = aioboto3.Session(**credentials)
-        async with tmp_session.client('sts') as sts_client:
+
+        default_session = aioboto3.Session(**credentials)
+        async with default_session.client('sts') as sts_client:
             caller_identity = await sts_client.get_caller_identity()
             current_account_id = caller_identity['Account']
+            default_credentials = await default_session.get_credentials()
             return AwsCredentials(
                 account_id=current_account_id,
-                access_key_id=credentials['aws_access_key_id'],
-                secret_access_key=credentials['aws_secret_access_key'],
-                session_token=credentials['aws_session_token']
+                access_key_id=default_credentials.access_key,
+                secret_access_key=default_credentials.secret_key,
+                session_token=default_credentials.token
             )
 
     async def _get_organization_session(self):
@@ -69,12 +75,11 @@ class SessionManager:
             return organization_role_session
     
     def _get_account_read_role_name(self):
-        return ocean.integration_config.get("account_read_role_name", "AwsPortOceanIntegrationReadOnlyRole")
+        return ocean.integration_config.get("account_read_role_name", "")
     
     async def _update_available_access_credentials(self) -> None:
         logger.info("Updating AWS credentials")
-        async with self._application_session.client('sts') as sts_client:
-            async with self._organization_reader.client('organizations') as organizations_client:
+        async with self._application_session.client('sts') as sts_client, self._organization_reader.client('organizations') as organizations_client:
                 paginator = organizations_client.get_paginator('list_accounts')
                 try:
                     async for page in paginator.paginate():
@@ -107,6 +112,7 @@ class SessionManager:
             self._aws_accessible_accounts.append(account)
         except sts_client.exceptions.ClientError as e:
             if e.response['Error']['Code'] == 'AccessDenied':
+                logger.info(f"Cannot assume role in account {account['Id']}. Skipping.")
                 pass  # Skip the account if assume_role fails due to permission issues or non-existent role
             else:
                 raise

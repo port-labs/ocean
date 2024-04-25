@@ -9,6 +9,6 @@ integration:
   config:
     awsAccessKeyId: '{{ from env AWS_ACCESS_KEY_ID }}'
     awsSecretAccessKey: '{{ from env AWS_SECRET_ACCESS_KEY }}'
-    awsApiKey: '{{ from env AWS_API_KEY }}'
+    awsRealTimeUpdatesRequestsApiKey: '{{ from env AWS_API_KEY }}'
     organizationRoleArn: '{{ from env ORGANIZATION_ROLE_ARN }}'
     accountReadRoleName: '{{ from env ACCOUNT_READ_ROLE_NAME }}'
