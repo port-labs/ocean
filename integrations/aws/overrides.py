@@ -5,6 +5,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from pydantic import Field
 
+
 class AWSSelector(Selector):
     resource_kinds: list[str] = Field(alias="resourceKinds", default=[], min_items=1)
 
@@ -12,5 +13,6 @@ class AWSSelector(Selector):
 class AWSResourceConfig(ResourceConfig):
     selector: AWSSelector
 
+
 class AWSPortAppConfig(PortAppConfig):
-    resources: list[AWSResourceConfig] = [] # type: ignore
+    resources: list[AWSResourceConfig] = []  # type: ignore
