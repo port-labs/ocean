@@ -10,7 +10,7 @@ class AWSSelector(Selector):
 
 
 class AWSResourceConfig(ResourceConfig):
-    selector: AWSSelector = None
+    selector: AWSSelector | None = None
 
 class AWSPortAppConfig(PortAppConfig):
-    resources: list[AWSResourceConfig] = None
+    resources: list[AWSResourceConfig] = []
