@@ -151,6 +151,7 @@ class CustomSelector(Selector):
 class CustomResource(ResourceConfig):
     selector: CustomSelector
 
+
 class SonarQubeProjectResourceConfig(CustomResource):
     class SonarQubeProjectSelector(CustomSelector):
         api_query_params: SonarQubeProjectAPIQueryParams | None = Field(
