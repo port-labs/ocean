@@ -1,6 +1,6 @@
 import enum
 import json
-from typing import Any, AsyncIterator, Awaitable, Literal, Optional
+from typing import Any, AsyncIterator, Literal, Optional
 import typing
 import aioboto3
 from loguru import logger

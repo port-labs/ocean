@@ -10,7 +10,7 @@ class AWSSelector(Selector):
 
 
 class AWSResourceConfig(ResourceConfig):
-    selector: AWSSelector # type: ignore[override]
+    selector: AWSSelector
 
 class AWSPortAppConfig(PortAppConfig):
     resources: list[AWSResourceConfig] = [] # type: ignore
