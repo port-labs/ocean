@@ -151,15 +151,6 @@ class CustomSelector(Selector):
 class CustomResource(ResourceConfig):
     selector: CustomSelector
 
-    # def generate_api_request_params(self) -> dict[str, Any]:
-    #     if (
-    #         hasattr(self.selector, "api_query_params")
-    #         and self.selector.api_query_params
-    #     ):
-    #         return self.selector.api_query_params.generate_request_params()
-    #     return {}
-
-
 class SonarQubeProjectResourceConfig(CustomResource):
     class SonarQubeProjectSelector(CustomSelector):
         api_query_params: SonarQubeProjectAPIQueryParams | None = Field(
