@@ -4,10 +4,8 @@ from datetime import datetime, timedelta
 from itertools import islice
 from typing import Any
 
-from fastapi import BackgroundTasks
 from loguru import logger
 from starlette.requests import Request
-from port_ocean.context.event import event
 
 from gitlab_integration.events.setup import event_handler, system_event_handler
 from gitlab_integration.models.webhook_groups_override_config import (
@@ -24,40 +22,25 @@ NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not e
 PROJECT_RESYNC_BATCH_SIZE = 10
 
 
-async def _handle_webhook(
-    group_id: str, request_body: dict[str, Any], gitlab_event_name: str
-) -> None:
-    event_id = f"{gitlab_event_name}:{group_id}"
+@ocean.router.post("/hook/{group_id}")
+async def handle_webhook_request(group_id: str, request: Request) -> dict[str, Any]:
+    body: dict[str, Any] = await request.json()
+    event_id = f"{request.headers.get('X-Gitlab-Event')}:{group_id}"
     with logger.contextualize(event_id=event_id):
         logger.debug(f"Received webhook event {event_id} from Gitlab")
-        await event_handler.notify(event_id, request_body)
-
-
-@ocean.router.post("/hook/{group_id}")
-async def handle_webhook_request(
-    group_id: str, request: Request, background_tasks: BackgroundTasks
-) -> dict[str, Any]:
-    gitlab_event_name: str = request.headers.get("X-Gitlab-Event")
-    body: dict[str, Any] = await request.json()
-    background_tasks.add_task(_handle_webhook, group_id, body, gitlab_event_name)
+        await event_handler.webhook_tasks_queue.put((event_id, body))
 
     return {"ok": True}
 
 
-async def _handle_system_webhook(request_body: dict[str, Any]) -> None:
+@ocean.router.post("/system/hook")
+async def handle_system_webhook_request(request: Request) -> dict[str, Any]:
+    body: dict[str, Any] = await request.json()
     # some system hooks have event_type instead of event_name in the body, such as merge_request events
-    event_name: str = request_body.get("event_name") or request_body.get("event_type")
+    event_name: str = body.get("event_name") or body.get("event_type")
     with logger.contextualize(event_name=event_name):
         logger.debug(f"Received system webhook event {event_name} from Gitlab")
-        await system_event_handler.notify(event_name, request_body)
-
-
-@ocean.router.post("/system/hook")
-async def handle_system_webhook_request(
-    request: Request, background_tasks: BackgroundTasks
-) -> dict[str, Any]:
-    body: dict[str, Any] = await request.json()
-    background_tasks.add_task(_handle_system_webhook, body)
+        await system_event_handler.notify(event_name, body)
 
     return {"ok": True}
 
@@ -99,6 +82,9 @@ async def on_start() -> None:
             integration_config["use_system_hook"],
             token_webhook_mapping,
         )
+
+        asyncio.create_task(event_handler.start_event_processor())
+        asyncio.create_task(system_event_handler.start_event_processor())
     except Exception as e:
         logger.warning(
             f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}",
