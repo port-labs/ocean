@@ -14,7 +14,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 class DatePairField(str):
     @classmethod
-    def validate(cls, value: str) -> None:
+    def validate(zcls, value: str) -> None:
         # Regular expression to validate the format of the date pair value
         regex = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z,\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
         if not re.match(regex, value):
