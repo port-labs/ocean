@@ -1,4 +1,3 @@
-import os
 from typing import Any
 import aioboto3
 from aws_credentials import AwsCredentials

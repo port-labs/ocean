@@ -4,7 +4,6 @@ from typing import Any, AsyncIterator, Optional
 import typing
 import aioboto3
 from loguru import logger
-from aws_credentials import AwsCredentials
 from session_manager import SessionManager
 from overrides import AWSPortAppConfig, AWSResourceConfig
 from port_ocean.context.event import event
@@ -169,7 +168,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         described = await describe_single_resource(kind, instance.get('Identifier'), account_id, region)
                         described.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region, IDENTIFIER_PROPERTY: instance.get('Identifier')})
                         yield fix_unserializable_date_properties(described)
-            except Exception as e:
+            except Exception:
                 logger.exception(f"Failed to list CloudControl Instance in account {account_id} kind {kind} region: {region}")
                 break
             if not next_token:

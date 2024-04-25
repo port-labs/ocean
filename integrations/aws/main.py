@@ -1,7 +1,7 @@
 from typing import Any
 
 from port_ocean.core.models import Entity
-from utils import ACCOUNT_ID_PROPERTY, IDENTIFIER_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, _session_manager, describe_accessible_accounts, batch_resources, describe_single_resource, fix_unserializable_date_properties, get_sessions, get_resource_kinds_from_config, is_global_resource, resync_cloudcontrol, update_available_access_credentials, validate_request, get_matching_kinds_from_config
+from utils import ACCOUNT_ID_PROPERTY, IDENTIFIER_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, _session_manager, describe_accessible_accounts, batch_resources, describe_single_resource, fix_unserializable_date_properties, get_sessions, get_resource_kinds_from_config, resync_cloudcontrol, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
