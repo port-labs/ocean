@@ -1,7 +1,7 @@
 from typing import Any
 
 from port_ocean.core.models import Entity
-from utils import ACCOUNT_ID_PROPERTY, IDENTIFIER_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, _session_manager, describe_accessible_accounts, batch_resources, describe_single_resource, _fix_unserializable_date_properties, _get_sessions, get_resource_kinds_from_config, is_global_resource, resync_cloudcontrol, update_available_access_credentials, validate_request, get_matching_kinds_from_config
+from utils import ACCOUNT_ID_PROPERTY, IDENTIFIER_PROPERTY, KIND_PROPERTY, REGION_PROPERTY, ResourceKindsWithSpecialHandling, _session_manager, describe_accessible_accounts, batch_resources, describe_single_resource, fix_unserializable_date_properties, get_sessions, get_resource_kinds_from_config, is_global_resource, resync_cloudcontrol, update_available_access_credentials, validate_request, get_matching_kinds_from_config
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
@@ -20,7 +20,7 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
 async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for account in describe_accessible_accounts():
-        yield _fix_unserializable_date_properties(account)
+        yield fix_unserializable_date_properties(account)
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDRESOURCE)
 async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -37,26 +37,26 @@ async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in _get_sessions():
+    async for session in get_sessions():
         async for batch in batch_resources(kind, session, 'acm', 'list_certificates', 'CertificateSummaryList', 'NextToken'):
             yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
 async def resync_loadbalancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in _get_sessions():
+    async for session in get_sessions():
         async for batch in batch_resources(kind, session, 'elbv2', 'describe_load_balancers', 'LoadBalancers', 'NextMarker'):
             yield batch
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in _get_sessions():
+    async for session in get_sessions():
         async for batch in batch_resources(kind, session, 'cloudformation', 'list_stacks', 'StackSummaries', 'NextToken'):
             yield batch
                 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.EC2)
 async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in _get_sessions():
+    async for session in get_sessions():
         region = session.region_name
         account_id = await _session_manager.find_account_id_by_session(session)
         try:
@@ -67,7 +67,7 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             described_instance = await ec2_client.describe_instances(InstanceIds=[instance.id])
                             instance_definition = described_instance["Reservations"][0]["Instances"][0]
                             instance_definition.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region, IDENTIFIER_PROPERTY: instance.id})
-                            yield _fix_unserializable_date_properties(instance_definition)
+                            yield fix_unserializable_date_properties(instance_definition)
         except Exception as e:
             logger.error(f"Failed to list EC2 Instance in region: {region}; error {e}")
 
@@ -110,7 +110,7 @@ async def webhook(request: Request) -> dict[str, Any]:
                 
                 logger.info("Resource found in AWS, registering change in port")
                 resource.update({KIND_PROPERTY: resource_type, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region, IDENTIFIER_PROPERTY: identifier})
-                await ocean.register_raw(resource_config.kind, [_fix_unserializable_date_properties(resource)])
+                await ocean.register_raw(resource_config.kind, [fix_unserializable_date_properties(resource)])
             logger.info("Webhook processed successfully")
             return {"ok": True}
     except Exception as e:

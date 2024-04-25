@@ -45,7 +45,7 @@ async def update_available_access_credentials() -> None:
 def describe_accessible_accounts() -> list[dict[str, Any]]:
     return _session_manager._aws_accessible_accounts
 
-async def _get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None, use_default_region: Optional[bool] = None) -> AsyncIterator[aioboto3.Session]:
+async def get_sessions(custom_account_id: Optional[str] = None, custom_region: Optional[str] = None, use_default_region: Optional[bool] = None) -> AsyncIterator[aioboto3.Session]:
     """
     Gets boto3 sessions for the AWS regions
     """
@@ -75,11 +75,11 @@ def is_global_resource(kind: str) -> bool:
     service = kind.split('::')[1].lower()
     return service in global_services
 
-def _fix_unserializable_date_properties(obj: Any) -> Any:
+def fix_unserializable_date_properties(obj: Any) -> Any:
     return json.loads(json.dumps(obj, default=str))
 
 async def describe_single_resource(kind: str, identifier: str, account_id: str | None = None, region: str | None = None) -> dict[str, Any]:
-    async for session in _get_sessions(account_id, region):
+    async for session in get_sessions(account_id, region):
         region = session.region_name
         try:
             match kind:
@@ -133,7 +133,7 @@ async def batch_resources(kind: str, session: aioboto3.Session, service_name: st
                 if results := response.get(list_param, []):
                     yield [  
                         {  
-                            **_fix_unserializable_date_properties(resource),  
+                            **fix_unserializable_date_properties(resource),  
                             **{KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region, IDENTIFIER_PROPERTY: resource.get('Identifier')},  
                         }  
                         for resource in results  
@@ -146,7 +146,7 @@ async def batch_resources(kind: str, session: aioboto3.Session, service_name: st
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     is_global = is_global_resource(kind)
-    async for session in _get_sessions(None, None, is_global):
+    async for session in get_sessions(None, None, is_global):
         region = session.region_name
         logger.info(f"Resyncing {kind} in region {region}")
         account_id = await _session_manager.find_account_id_by_session(session)
@@ -168,7 +168,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     for instance in response.get('ResourceDescriptions', []):
                         described = await describe_single_resource(kind, instance.get('Identifier'), account_id, region)
                         described.update({KIND_PROPERTY: kind, ACCOUNT_ID_PROPERTY: account_id, REGION_PROPERTY: region, IDENTIFIER_PROPERTY: instance.get('Identifier')})
-                        yield _fix_unserializable_date_properties(described)
+                        yield fix_unserializable_date_properties(described)
             except Exception as e:
                 logger.exception(f"Failed to list CloudControl Instance in account {account_id} kind {kind} region: {region}")
                 break
