@@ -170,6 +170,7 @@ class LaunchDarklyClient:
             for feature_flags in feature_flags_batches:
                 yield feature_flags
         else:
+            logger.info("Adding fetching flag status to feature flags")
             for feature_flags_batch in asyncio.as_completed(tasks):
                 feature_flags = await feature_flags_batch
                 updated_feature_flags = await self.append_feature_flag_statuses(

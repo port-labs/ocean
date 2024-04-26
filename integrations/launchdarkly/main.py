@@ -28,10 +28,10 @@ async def enrich_feature_flag_with_status(
     feature_flag: dict[str, Any]
 ) -> dict[str, Any]:
     projectKey = feature_flag["__projectKey"]
-    featureFlagKey = feature_flag["kind"]
+    featureFlagKey = feature_flag["key"]
 
     launchdarkly_client = initialize_client()
-    feature_flag_status = launchdarkly_client.get_feature_flag_status(
+    feature_flag_status = await launchdarkly_client.get_feature_flag_status(
         projectKey, featureFlagKey
     )
     feature_flag.update({"__status": feature_flag_status})
@@ -67,7 +67,6 @@ async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         sync_feature_flag_status
     ):
         logger.info(f"Received {kind} batch with {len(flags)} items")
-        print(flags)
         yield flags
 
 
@@ -84,7 +83,6 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
     launchdarkly_client = initialize_client()
 
     kind = data["kind"]
-    print(data)
     endpoint = data["_links"]["canonical"]["href"]
 
     logger.info(f"Received webhook event for {kind}")
@@ -99,6 +97,7 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
             if kind == ObjectKind.FEATURE_FLAG
             else item
         )
+        
         await ocean.register_raw(kind, [item])
 
     logger.info("Launchdarkly webhook event processed")
