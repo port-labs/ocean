@@ -14,7 +14,6 @@ class ObjectKind(StrEnum):
 
 
 def initialize_client() -> OpenCostClient:
-    logger.info("syncing stuff")
     return OpenCostClient(ocean.integration_config["opencost_host"])
 
 
@@ -28,8 +27,8 @@ async def on_cost_resync(kind: str) -> list[dict[Any, Any]]:
 @ocean.on_resync(ObjectKind.CLOUDCOST)
 async def on_cloudcost_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
-    sets = await client.get_cloudcost()
-    for cloudcost in sets:
+    cloudcost_data = await client.get_cloudcost()
+    for cloudcost in cloudcost_data:
         # data cannot be ingested by port except it is of `list` type
         cloudcost_values = list(cloudcost.values())[0]
         data = list(cloudcost_values.values())
