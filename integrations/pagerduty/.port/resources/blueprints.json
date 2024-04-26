@@ -31,11 +31,8 @@
         },
         "oncall": {
           "title": "On Call",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "user"
-          }
+          "type": "string",
+          "format": "user"
         },
         "meanSecondsToResolve": {
           "title": "Mean Seconds to Resolve",
