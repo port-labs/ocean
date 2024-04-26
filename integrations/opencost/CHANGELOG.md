@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.35 (2024-04-26)
+
+### Features
+
+- Added cloudcost integration to ingest costs per cloud provider (0.1.35)
+
+### Bug Fixes
+
+- Fixed bug causing 'OPENCOST_HOST' environment variable to be parsed incorrectly (0.1.35)
+
+
 # Port_Ocean 0.1.34 (2024-04-24)
 
 ### Improvements
