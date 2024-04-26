@@ -1,11 +1,36 @@
+from enum import StrEnum
 from typing import Any
 
-from client import OpenCostClient
+from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from client import OpenCostClient
 
 
-@ocean.on_resync("cost")
+class ObjectKind(StrEnum):
+    COST = "cost"
+    CLOUDCOST = "cloudcost"
+
+
+def initialize_client() -> OpenCostClient:
+    logger.info("syncing stuff")
+    return OpenCostClient(ocean.integration_config["opencost_host"])
+
+
+@ocean.on_resync(ObjectKind.COST)
 async def on_cost_resync(kind: str) -> list[dict[Any, Any]]:
-    client = OpenCostClient(ocean.integration_config["opencost_host"])
+    client = initialize_client()
     data = await client.get_cost_allocation()
     return [value for item in data for value in item.values()]
+
+
+@ocean.on_resync(ObjectKind.CLOUDCOST)
+async def on_cloudcost_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = initialize_client()
+    sets = await client.get_cloudcost()
+    for cloudcost in sets:
+        # data cannot be ingested by port except it is of `list` type
+        cloudcost_values = list(cloudcost.values())[0]
+        data = list(cloudcost_values.values())
+        yield data

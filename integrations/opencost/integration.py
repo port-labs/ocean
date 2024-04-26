@@ -1,8 +1,6 @@
 import re
 from typing import Literal
 
-from pydantic.fields import Field
-
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -10,6 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from pydantic.fields import Field
 
 
 class DatePairField(str):
@@ -67,6 +66,18 @@ class ResolutionField(str):
             )
 
 
+class CloudCostAggregateField(str):
+    @classmethod
+    def validate(cls, value: str) -> None:
+        # Regular expression to validate the format of the aggregation value
+        regex = r"^((invoiceEntityID|accountID|provider|providerID|category|service)(,(invoiceEntityID|accountID|provider|providerID|category|service))*)*$"
+        if not re.match(regex, value):
+            raise ValueError(
+                "Invalid aggregation format. Use 'invoiceEntityID', 'accountID', 'provider', "
+                "'providerID', 'category', 'service' or comma-separated list of values."
+            )
+
+
 class OpencostSelector(Selector):
     window: (
         Literal[
@@ -91,6 +102,15 @@ class OpencostSelector(Selector):
     )
     resolution: ResolutionField | None = Field(
         description="Duration to use as resolution in Prometheus queries",
+    )
+    cloudcost_aggregate: CloudCostAggregateField | None = Field(
+        description="Field by which to aggregate the results of cloudcost",
+        alias="cloudcostAggregate",
+    )
+    accumulate: Literal["all", "hour", "day", "week", "month", "quarter"] | None = (
+        Field(
+            description="Step size of the accumulation.",
+        )
     )
 
 

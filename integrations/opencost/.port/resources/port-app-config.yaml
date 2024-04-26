@@ -3,7 +3,7 @@ deleteDependentEntities: true
 resources:
   - kind: cost
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -30,3 +30,22 @@ resources:
             externalCost: .externalCost
             totalCost: .totalCost
             totalEfficiency: .totalEfficiency
+
+  - kind: cloudcost
+    selector:
+      query: "true"
+      cloudcostAggregate: "provider"
+    port:
+      entity:
+        mappings:
+          blueprint: '"openCostCloudcost"'
+          identifier: .properties.provider + "-" + .window.start + "-" + .window.end
+          title: .properties.provider + "-" + .window.start + "-" + .window.end
+          properties:
+            startDate: .window.start
+            endDate: .window.end
+            listCost: .listCost.cost
+            netCost: .netCost.cost
+            amortizedNetCost: .amortizedNetCost.cost
+            invoicedCost: .invoicedCost.cost
+            amortizedCost: .amortizedCost.cost
