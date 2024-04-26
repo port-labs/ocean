@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.52 (2024-04-26)
+
+### Improvements
+
+- Updated the who is oncall for a service to map the first escalation level
+
+
 # Port_Ocean 0.1.51 (2024-04-24)
 
 ### Improvements
