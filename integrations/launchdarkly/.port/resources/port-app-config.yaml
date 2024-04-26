@@ -3,7 +3,7 @@ deleteDependentEntities: true
 resources:
   - kind: project
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -14,7 +14,8 @@ resources:
             tags: .tags
   - kind: flag
     selector:
-      query: "true"
+      query: 'true'
+      featureFlagStatus: 'false'
     port:
       entity:
         mappings:
@@ -37,7 +38,7 @@ resources:
             project: .__projectKey
   - kind: environment
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -56,15 +57,19 @@ resources:
             project: .__projectKey
   - kind: flag
     selector:
-      query: "true"
+      query: 'true'
+      featureFlagStatus: 'true'
     port:
-      itemsToParse: .environments | keys
+      itemsToParse: .__status.environments | to_entries | map({key, value})
       entity:
         mappings:
-          identifier: .key + "-" + .item
-          title: .key + "-" + .item
+          identifier: .key + "-" + .item.key
+          title: .key + "-" + .item.key
           blueprint: '"featureFlagInEnvironment"'
-          properties: {}
+          properties:
+            status: .item.value.name
+            kind: .kind
+            description: .description
           relations:
-            environment: .item
+            environment: .item.key
             featureFlag: .key

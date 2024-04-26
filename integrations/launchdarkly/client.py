@@ -135,8 +135,29 @@ class LaunchDarklyClient:
             environments.extend(updated_batch)
         return environments
 
+    async def get_feature_flag_status(
+        self, projectKey: str, featureFlagKey: str
+    ) -> dict[str, Any]:
+        endpoint = f"flag-status/{projectKey}/{featureFlagKey}"
+        feature_flag_status = await self.send_api_request(endpoint)
+        return feature_flag_status
+
+    async def append_feature_flag_statuses(
+        self, feature_flags: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        tasks = [
+            self.get_feature_flag_status(
+                feature_flag["__projectKey"], feature_flag["key"]
+            )
+            for feature_flag in feature_flags
+        ]
+        statuses = await asyncio.gather(*tasks)
+        for feature_flag, status in zip(feature_flags, statuses):
+            feature_flag["__status"] = status
+        return feature_flags
+
     async def get_paginated_feature_flags(
-        self,
+        self, sync_feature_flag_status: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         batch_project = [project async for project in self.get_paginated_projects()]
         tasks = [
@@ -144,9 +165,17 @@ class LaunchDarklyClient:
             for projects in batch_project
             for project in projects
         ]
-        feature_flags_batches = await asyncio.gather(*tasks)
-        for feature_flags in feature_flags_batches:
-            yield feature_flags
+        if not sync_feature_flag_status:
+            feature_flags_batches = await asyncio.gather(*tasks)
+            for feature_flags in feature_flags_batches:
+                yield feature_flags
+        else:
+            for feature_flags_batch in asyncio.as_completed(tasks):
+                feature_flags = await feature_flags_batch
+                updated_feature_flags = await self.append_feature_flag_statuses(
+                    feature_flags
+                )
+                yield updated_feature_flags
 
     async def fetch_feature_flags_for_project(
         self, project: dict[str, Any]

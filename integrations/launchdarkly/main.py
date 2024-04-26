@@ -2,7 +2,10 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from client import LaunchDarklyClient, ObjectKind
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+import typing
 from typing import Any
+from integration import LaunchdarklyFeatureFlagResourceConfig
+from port_ocean.context.event import event
 
 
 def initialize_client() -> LaunchDarklyClient:
@@ -19,6 +22,20 @@ async def enrich_resource_with_project(endpoint: str, kind: str) -> dict[str, An
     project_key = endpoint.split(f"/api/v2/{kind}s/")[1].split("/")[0]
     response.update({"__projectKey": project_key})
     return response
+
+
+async def enrich_feature_flag_with_status(
+    feature_flag: dict[str, Any]
+) -> dict[str, Any]:
+    projectKey = feature_flag["__projectKey"]
+    featureFlagKey = feature_flag["kind"]
+
+    launchdarkly_client = initialize_client()
+    feature_flag_status = launchdarkly_client.get_feature_flag_status(
+        projectKey, featureFlagKey
+    )
+    feature_flag.update({"__status": feature_flag_status})
+    return feature_flag
 
 
 @ocean.on_resync(kind=ObjectKind.AUDITLOG)
@@ -41,8 +58,16 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ObjectKind.FEATURE_FLAG)
 async def on_resync_flags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     launchdarkly_client = initialize_client()
-    async for flags in launchdarkly_client.get_paginated_feature_flags():
+
+    sync_feature_flag_status = typing.cast(
+        LaunchdarklyFeatureFlagResourceConfig, event.resource_config
+    ).selector.feature_flag_status
+
+    async for flags in launchdarkly_client.get_paginated_feature_flags(
+        sync_feature_flag_status
+    ):
         logger.info(f"Received {kind} batch with {len(flags)} items")
+        print(flags)
         yield flags
 
 
@@ -59,11 +84,8 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
     launchdarkly_client = initialize_client()
 
     kind = data["kind"]
-    endpoint = (
-        data["_links"]["canonical"]
-        if kind not in [ObjectKind.AUDITLOG, ObjectKind.PROJECT]
-        else data["_links"]["canonical"]["href"]
-    )
+    print(data)
+    endpoint = data["_links"]["canonical"]["href"]
 
     logger.info(f"Received webhook event for {kind}")
     if kind in [ObjectKind.AUDITLOG, ObjectKind.PROJECT]:
@@ -72,6 +94,11 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
 
     elif kind in [ObjectKind.FEATURE_FLAG, ObjectKind.ENVIRONMENT]:
         item = await enrich_resource_with_project(endpoint, kind)
+        item = (
+            await enrich_feature_flag_with_status(item)
+            if kind == ObjectKind.FEATURE_FLAG
+            else item
+        )
         await ocean.register_raw(kind, [item])
 
     logger.info("Launchdarkly webhook event processed")

@@ -160,10 +160,29 @@
     "title": "Feature Flag In Environment",
     "icon": "Launchdarkly",
     "schema": {
-      "properties": {},
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "Status of the feature flag"
+        }
+      },
       "required": []
     },
-    "mirrorProperties": {},
+    "mirrorProperties": {
+      "kind": {
+        "title": "Kind",
+        "path": "featureFlag.kind"
+      },
+      "description": {
+        "title": "Description",
+        "path": "featureFlag.description"
+      },
+      "deprecated": {
+        "title": "Deprecated",
+        "path": "featureFlag.deprecated"
+      }
+    },
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {

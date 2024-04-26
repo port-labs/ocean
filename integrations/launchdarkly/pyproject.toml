@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "launchdarkly"
-version = "0.1.7"
+version = "0.1.8"
 description = "Launchdarkly integration for Port"
 authors = ["Michael Armah <michaelarmah@getport.io>"]
 
