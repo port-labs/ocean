@@ -69,7 +69,7 @@ resources:
     selector:
       query: "true"
     port:
-      itemsToParse: .status.history
+      itemsToParse: .status.history // []
       entity:
         mappings:
           identifier: .metadata.uid + "-" + (.item.id | tostring)
