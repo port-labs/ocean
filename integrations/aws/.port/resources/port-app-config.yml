@@ -9,7 +9,7 @@ resources:
           title: .Name
           blueprint: '"aws_account"'
 
-  - kind: cloudresource
+  - kind: cloudResource
     selector:
       query: 'true'
       resourceKinds:

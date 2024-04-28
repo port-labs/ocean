@@ -26,7 +26,7 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     """
 
     ACCOUNT = "AWS::Organizations::Account"
-    CLOUDRESOURCE = "cloudresource"
+    CLOUDRESOURCE = "cloudResource"
     EC2 = "AWS::EC2::Instance"
     CLOUDFORMATION = "AWS::CloudFormation::Stack"
     LOADBALANCER = "AWS::ElasticLoadBalancingV2::LoadBalancer"
