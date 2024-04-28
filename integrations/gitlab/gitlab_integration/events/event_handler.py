@@ -1,5 +1,6 @@
 import asyncio
 from abc import abstractmethod, ABC
+from asyncio import Queue
 from collections import defaultdict
 from loguru import logger
 from typing import Awaitable, Callable, Any, Type
@@ -12,17 +13,15 @@ Observer = Callable[[str, dict[str, Any]], Awaitable[Any]]
 
 class BaseEventHandler(ABC):
     def __init__(self) -> None:
-        self._webhook_handling_concurrency = asyncio.Semaphore(20)
-        self.webhook_tasks_queue: asyncio.Queue = asyncio.Queue()
+        self.webhook_tasks_queue: Queue = Queue()
 
     async def start_event_processor(self) -> None:
-        logger.error(f"Started {self.__class__.__name__} worker")
+        logger.info(f"Started {self.__class__.__name__} worker")
         while True:
             event_id, body = await self.webhook_tasks_queue.get()
-            await asyncio.sleep(3)
             try:
-                async with self._webhook_handling_concurrency:
-                    await self._notify(event_id, body)
+                await asyncio.sleep(3)
+                await self._notify(event_id, body)
             finally:
                 self.webhook_tasks_queue.task_done()
 
