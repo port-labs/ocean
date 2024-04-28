@@ -1,3 +1,5 @@
+from asyncio import get_event_loop
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from gitlab.v4.objects import Project
@@ -12,5 +14,8 @@ class Issues(ProjectHandler):
     system_events = ["issue"]
 
     async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
-        issue = gitlab_project.issues.get(body["object_attributes"]["id"])
+        with ThreadPoolExecutor() as executor:
+            issue = await get_event_loop().run_in_executor(
+                executor, gitlab_project.issues.get, body["object_attributes"]["id"]
+            )
         await ocean.register_raw(ObjectKind.ISSUE, [issue.asdict()])

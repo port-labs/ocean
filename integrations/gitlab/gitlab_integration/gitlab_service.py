@@ -1,5 +1,7 @@
 import asyncio
 import typing
+from asyncio import get_event_loop
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import List, Tuple, Any, Union, TYPE_CHECKING
 
@@ -285,7 +287,7 @@ class GitlabService:
         except Exception:
             logger.error("Failed to create system hook")
 
-    def get_project(self, project_id: int) -> Project | None:
+    async def get_project(self, project_id: int) -> Project | None:
         """
         Returns project if it should be processed, None otherwise
         If the project is not in the cache, it will be fetched from gitlab and validated against the group mapping
@@ -301,7 +303,10 @@ class GitlabService:
         if project := filtered_projects.get(project_id):
             return project
 
-        project = self.gitlab_client.projects.get(project_id)
+        with ThreadPoolExecutor() as executor:
+            project = await get_event_loop().run_in_executor(
+                executor, self.gitlab_client.projects.get, project_id
+            )
         if self.should_run_for_project(project):
             event.attributes[PROJECTS_CACHE_KEY][self.gitlab_client.private_token][
                 project_id
@@ -310,9 +315,12 @@ class GitlabService:
         else:
             return None
 
-    def get_group(self, group_id: int) -> Group | None:
+    async def get_group(self, group_id: int) -> Group | None:
         logger.info(f"fetching group {group_id}")
-        group = self.gitlab_client.groups.get(group_id)
+        with ThreadPoolExecutor() as executor:
+            group = await get_event_loop().run_in_executor(
+                executor, self.gitlab_client.groups.get, group_id
+            )
         if self.should_run_for_group(group):
             return group
         else:
