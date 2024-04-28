@@ -97,7 +97,7 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
             if kind == ObjectKind.FEATURE_FLAG
             else item
         )
-        
+
         await ocean.register_raw(kind, [item])
 
     logger.info("Launchdarkly webhook event processed")
