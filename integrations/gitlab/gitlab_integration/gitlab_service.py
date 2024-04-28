@@ -314,10 +314,8 @@ class GitlabService:
 
     async def get_group(self, group_id: int) -> Group | None:
         logger.info(f"fetching group {group_id}")
-        group = await AsyncFetcher.fetch_single(
-            self.gitlab_client.groups.get, group_id
-        )  # type: Group
-        if self.should_run_for_group(group):
+        group = await AsyncFetcher.fetch_single(self.gitlab_client.groups.get, group_id)
+        if isinstance(group, Group) and self.should_run_for_group(group):
             return group
         else:
             return None
