@@ -1,6 +1,6 @@
 from typing import Any
 import aioboto3
-from aws_credentials import AwsCredentials
+from aws.aws_credentials import AwsCredentials
 from port_ocean.context.ocean import ocean
 from loguru import logger
 

@@ -1,7 +1,7 @@
 from typing import Any
 
 from port_ocean.core.models import Entity
-from utils import (
+from aws.utils import (
     ACCOUNT_ID_PROPERTY,
     IDENTIFIER_PROPERTY,
     KIND_PROPERTY,
@@ -189,8 +189,3 @@ async def webhook(request: Request) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to process event from aws error: {e}")
         return {"ok": False}
-
-
-@ocean.on_start()
-async def on_start() -> None:
-    print("Starting integration")

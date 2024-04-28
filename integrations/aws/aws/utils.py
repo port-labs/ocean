@@ -4,7 +4,7 @@ from typing import Any, AsyncIterator, Literal, Optional
 import typing
 import aioboto3
 from loguru import logger
-from session_manager import SessionManager
+from aws.session_manager import SessionManager
 from overrides import AWSPortAppConfig, AWSResourceConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -218,7 +218,8 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     resources = response.get("ResourceDescriptions", [])
                     if not resources:
                         break
-                    for instance in response.get("ResourceDescriptions", []):
+                    page_resources = []
+                    for instance in resources:
                         described = await describe_single_resource(
                             kind, instance.get("Identifier"), account_id, region
                         )
@@ -230,7 +231,8 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 IDENTIFIER_PROPERTY: instance.get("Identifier"),
                             }
                         )
-                        yield fix_unserializable_date_properties(described)
+                        page_resources.append(fix_unserializable_date_properties(described))
+                    yield page_resources
             except Exception:
                 logger.exception(
                     f"Failed to list CloudControl Instance in account {account_id} kind {kind} region: {region}"
@@ -257,11 +259,15 @@ def get_resource_kinds_from_config(kind: str) -> list[str]:
     """
     Gets the `resourceKinds` property from the port_app_config that match the given resource kind
     """
-    for resource_config in typing.cast(
-        AWSPortAppConfig, event.port_app_config
-    ).resources:
-        if resource_config.kind == kind and resource_config.selector.resource_kinds:
-            return resource_config.selector.resource_kinds
+    resource_config = typing.cast(
+        AWSPortAppConfig, event.resource_config
+    )
+    if (
+        resource_config.kind == kind
+        and hasattr(resource_config.selector, "resource_kinds")
+        and resource_config.selector.resource_kinds
+    ):
+        return resource_config.selector.resource_kinds
     return []
 
 
