@@ -16,6 +16,6 @@ class Issues(ProjectHandler):
     async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
         with ThreadPoolExecutor() as executor:
             issue = await get_event_loop().run_in_executor(
-                executor, gitlab_project.issues.get, body["object_attributes"]["id"]
+                executor, gitlab_project.issues.get, body["object_attributes"]["iid"]
             )
         await ocean.register_raw(ObjectKind.ISSUE, [issue.asdict()])
