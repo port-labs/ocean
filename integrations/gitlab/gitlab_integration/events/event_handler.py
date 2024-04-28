@@ -20,7 +20,9 @@ class BaseEventHandler(ABC):
         while True:
             event_id, body = await self.webhook_tasks_queue.get()
             try:
-                await asyncio.sleep(3)
+                # Needed to free the event loop so the webhook response could be returned without waiting
+                # for the blocking self._notify method
+                await asyncio.sleep(10)
                 await self._notify(event_id, body)
             finally:
                 self.webhook_tasks_queue.task_done()
