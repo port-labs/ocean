@@ -22,9 +22,8 @@ from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
     RawEntityDiff,
-    EntityDiff,
     ASYNC_GENERATOR_RESYNC_TYPE,
-    RawEntity,
+    RAW_ITEM,
     EntitySelectorDiff,
 )
 from port_ocean.core.utils import zip_and_sum
@@ -123,7 +122,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     async def _calculate_raw(
         self,
-        raw_diff: list[tuple[ResourceConfig, list[RawEntity]]],
+        raw_diff: list[tuple[ResourceConfig, list[RAW_ITEM]]],
         parse_all: bool = False,
     ) -> list[EntitySelectorDiff]:
         return await asyncio.gather(
@@ -139,40 +138,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
         parse_all: bool = False,
-    ) -> list[Entity]:
+    ) -> EntitySelectorDiff:
         objects_diff = await self._calculate_raw([(resource, results)], parse_all)
+        await self.entities_state_applier.upsert(
+            objects_diff[0].passed, user_agent_type
+        )
 
-        entities_after: list[Entity] = objects_diff[0]["passed"]
-        await self.entities_state_applier.upsert(entities_after, user_agent_type)
-
-        # If an entity didn't pass the JQ selector, we want to delete it if it exists in Port
-        for entity_to_delete in objects_diff[0]["failed"]:
-            is_owner = (
-                await ocean.port_client.does_integration_has_ownership_over_entity(
-                    entity_to_delete, user_agent_type
-                )
-            )
-            if not is_owner:
-                logger.info(
-                    f"Skipping deletion of entity {entity_to_delete.identifier}, "
-                    f"Couldn't find an entity that's related to the current integration."
-                )
-                continue
-            await self.entities_state_applier.delete(
-                objects_diff[0]["failed"], user_agent_type
-            )
-
-        return entities_after
+        return objects_diff[0]
 
     async def _unregister_resource_raw(
         self,
         resource: ResourceConfig,
-        results: list[RawEntity],
+        results: list[RAW_ITEM],
         user_agent_type: UserAgentType,
     ) -> list[Entity]:
         objects_diff = await self._calculate_raw([(resource, results)])
 
-        entities_after: list[Entity] = objects_diff[0]["passed"]
+        entities_after: list[Entity] = objects_diff[0].passed
         await self.entities_state_applier.delete(entities_after, user_agent_type)
         logger.info("Finished unregistering change")
         return entities_after
@@ -189,17 +171,21 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 async_generators.append(result)
 
-        entities = await self._register_resource_raw(
-            resource_config, raw_results, user_agent_type
-        )
+        entities = (
+            await self._register_resource_raw(
+                resource_config, raw_results, user_agent_type
+            )
+        ).passed
 
         for generator in async_generators:
             try:
                 async for items in generator:
                     entities.extend(
-                        await self._register_resource_raw(
-                            resource_config, items, user_agent_type
-                        )
+                        (
+                            await self._register_resource_raw(
+                                resource_config, items, user_agent_type
+                            )
+                        ).passed
                     )
             except* OceanAbortException as error:
                 errors.append(error)
@@ -233,12 +219,43 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resource for resource in config.resources if resource.kind == kind
         ]
 
-        return await asyncio.gather(
+        diffs: list[EntitySelectorDiff] = await asyncio.gather(
             *(
                 self._register_resource_raw(resource, results, user_agent_type, True)
                 for resource in resource_mappings
             )
         )
+
+        registered_entities, entities_to_delete = zip_and_sum(
+            (entities_diff.passed, entities_diff.failed) for entities_diff in diffs
+        )
+
+        registered_entities_attributes = {
+            (entity.identifier, entity.blueprint) for entity in registered_entities
+        }
+
+        filtered_entities_to_delete: list[Entity] = (
+            await ocean.port_client.search_batch_entities(
+                user_agent_type,
+                [
+                    entity
+                    for entity in entities_to_delete
+                    if (entity.identifier, entity.blueprint)
+                    not in registered_entities_attributes
+                ],
+            )
+        )
+
+        if filtered_entities_to_delete:
+            logger.info(
+                f"Deleting {len(filtered_entities_to_delete)} entities that didn't pass any of the selectors"
+            )
+
+            await self.entities_state_applier.delete(
+                filtered_entities_to_delete, user_agent_type
+            )
+
+        return registered_entities
 
     async def unregister_raw(
         self,
@@ -306,16 +323,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 [(mapping, raw_desired_state["after"]) for mapping in resource_mappings]
             )
 
-            entities_before_flatten = [
-                item
-                for sublist in [d["passed"] for d in entities_before]
-                for item in sublist
-            ]
-            entities_after_flatten = [
-                item
-                for sublist in [d["passed"] for d in entities_after]
-                for item in sublist
-            ]
+            entities_before_flatten: list[Entity] = sum(
+                (entities_diff.passed for entities_diff in entities_before), []
+            )
+
+            entities_after_flatten: list[Entity] = sum(
+                (entities_diff.passed for entities_diff in entities_after), []
+            )
 
             await self.entities_state_applier.apply_diff(
                 {"before": entities_before_flatten, "after": entities_after_flatten},

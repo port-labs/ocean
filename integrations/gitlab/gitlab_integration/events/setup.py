@@ -104,10 +104,10 @@ def validate_hooks_override_config(
     validate_hooks_tokens_are_in_token_mapping(
         token_mapping, token_group_override_hooks_mapping
     )
-    groups_paths: dict[
-        str, WebhookGroupConfig
-    ] = extract_all_groups_from_token_group_override_mapping(
-        token_group_override_hooks_mapping
+    groups_paths: dict[str, WebhookGroupConfig] = (
+        extract_all_groups_from_token_group_override_mapping(
+            token_group_override_hooks_mapping
+        )
     )
 
     validate_unique_groups_paths(groups_paths)
