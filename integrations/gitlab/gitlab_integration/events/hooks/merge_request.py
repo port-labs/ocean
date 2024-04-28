@@ -1,4 +1,3 @@
-import asyncio
 from asyncio import get_event_loop
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
