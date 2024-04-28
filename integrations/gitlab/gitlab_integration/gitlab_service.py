@@ -1,7 +1,5 @@
 import asyncio
 import typing
-from asyncio import get_event_loop
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import List, Tuple, Any, Union, TYPE_CHECKING
 
@@ -303,10 +301,9 @@ class GitlabService:
         if project := filtered_projects.get(project_id):
             return project
 
-        with ThreadPoolExecutor() as executor:
-            project = await get_event_loop().run_in_executor(
-                executor, self.gitlab_client.projects.get, project_id
-            )
+        project = await AsyncFetcher.fetch_single(
+            self.gitlab_client.projects.get, project_id
+        )
         if self.should_run_for_project(project):
             event.attributes[PROJECTS_CACHE_KEY][self.gitlab_client.private_token][
                 project_id
@@ -317,10 +314,9 @@ class GitlabService:
 
     async def get_group(self, group_id: int) -> Group | None:
         logger.info(f"fetching group {group_id}")
-        with ThreadPoolExecutor() as executor:
-            group = await get_event_loop().run_in_executor(
-                executor, self.gitlab_client.groups.get, group_id
-            )
+        group = await AsyncFetcher.fetch_single(
+            self.gitlab_client.groups.get, group_id
+        )  # type: Group
         if self.should_run_for_group(group):
             return group
         else:
@@ -328,8 +324,7 @@ class GitlabService:
 
     async def get_all_groups(self) -> typing.AsyncIterator[List[Group]]:
         logger.info("fetching all groups for the token")
-        async_fetcher = AsyncFetcher(self.gitlab_client)
-        async for groups_batch in async_fetcher.fetch(
+        async for groups_batch in AsyncFetcher.fetch_batch(
             fetch_func=self.gitlab_client.groups.list,
             validation_func=self.should_run_for_group,
             pagination="offset",
@@ -348,7 +343,6 @@ class GitlabService:
             "GitlabPortAppConfig", event.port_app_config
         )
 
-        async_fetcher = AsyncFetcher(self.gitlab_client)
         cached_projects = event.attributes.setdefault(
             PROJECTS_CACHE_KEY, {}
         ).setdefault(self.gitlab_client.private_token, {})
@@ -357,7 +351,7 @@ class GitlabService:
             yield cached_projects.values()
             return
 
-        async for projects_batch in async_fetcher.fetch(
+        async for projects_batch in AsyncFetcher.fetch_batch(
             fetch_func=self.gitlab_client.projects.list,
             validation_func=self.should_run_for_project,
             include_subgroups=True,
@@ -417,8 +411,7 @@ class GitlabService:
     ) -> typing.AsyncIterator[List[dict[str, Any]]]:
         branch = folder_selector.branch or project.default_branch
         try:
-            async_fetcher = AsyncFetcher(self.gitlab_client)
-            async for repository_tree_batch in async_fetcher.fetch(
+            async for repository_tree_batch in AsyncFetcher.fetch_batch(
                 fetch_func=project.repository_tree,
                 validation_func=self.validate_file_is_directory,
                 path=folder_selector.path,
@@ -456,8 +449,7 @@ class GitlabService:
             return True
 
         logger.info(f"fetching jobs for project {project.path_with_namespace}")
-        async_fetcher = AsyncFetcher(self.gitlab_client)
-        async for pipeline_jobs_batch in async_fetcher.fetch(
+        async for pipeline_jobs_batch in AsyncFetcher.fetch_batch(
             fetch_func=project.jobs.list,
             validation_func=should_run_for_job,
             pagination="offset",
@@ -485,8 +477,7 @@ class GitlabService:
         logger.info(
             f"Fetching pipelines for project {project.path_with_namespace} created after {created_after}"
         )
-        async_fetcher = AsyncFetcher(self.gitlab_client)
-        async for pipelines_batch in async_fetcher.fetch(
+        async for pipelines_batch in AsyncFetcher.fetch_batch(
             fetch_func=project.pipelines.list,
             validation_func=should_run_for_pipeline,
             pagination="offset",
@@ -503,8 +494,7 @@ class GitlabService:
     async def get_opened_merge_requests(
         self, group: Group
     ) -> typing.AsyncIterator[List[MergeRequest]]:
-        async_fetcher = AsyncFetcher(self.gitlab_client)
-        async for merge_request_batch in async_fetcher.fetch(
+        async for merge_request_batch in AsyncFetcher.fetch_batch(
             fetch_func=group.mergerequests.list,
             validation_func=self.should_run_for_merge_request,
             pagination="offset",
@@ -520,8 +510,7 @@ class GitlabService:
     async def get_closed_merge_requests(
         self, group: Group, updated_after: datetime
     ) -> typing.AsyncIterator[List[MergeRequest]]:
-        async_fetcher = AsyncFetcher(self.gitlab_client)
-        async for merge_request_batch in async_fetcher.fetch(
+        async for merge_request_batch in AsyncFetcher.fetch_batch(
             fetch_func=group.mergerequests.list,
             validation_func=self.should_run_for_merge_request,
             pagination="offset",
@@ -536,8 +525,7 @@ class GitlabService:
             yield merge_requests
 
     async def get_all_issues(self, group: Group) -> typing.AsyncIterator[List[Issue]]:
-        async_fetcher = AsyncFetcher(self.gitlab_client)
-        async for issues_batch in async_fetcher.fetch(
+        async for issues_batch in AsyncFetcher.fetch_batch(
             fetch_func=group.issues.list,
             validation_func=self.should_run_for_issue,
             pagination="offset",

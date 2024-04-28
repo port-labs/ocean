@@ -1,10 +1,12 @@
 import asyncio
+from asyncio import get_event_loop
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 
 import gitlab.exceptions
-from gitlab import GitlabList, Gitlab
+from gitlab import GitlabList
 from gitlab.base import RESTObject, RESTObjectList
-from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue
+from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue, Group
 from loguru import logger
 
 T = TypeVar("T", bound=RESTObject)
@@ -13,11 +15,34 @@ DEFAULT_PAGINATION_PAGE_SIZE = 100
 
 
 class AsyncFetcher:
-    def __init__(self, gitlab_client: Gitlab):
-        self.gitlab_client = gitlab_client
+    @staticmethod
+    async def fetch_single(
+        fetch_func: Callable[
+            ...,
+            Union[
+                RESTObject,
+                ProjectPipelineJob,
+                ProjectPipeline,
+                Issue,
+                Project,
+                Group,
+            ],
+        ],
+        *args,
+    ) -> Union[
+        RESTObject,
+        RESTObject,
+        ProjectPipelineJob,
+        ProjectPipeline,
+        Issue,
+        Project,
+        Group,
+    ]:
+        with ThreadPoolExecutor() as executor:
+            return await get_event_loop().run_in_executor(executor, fetch_func, *args)
 
     @staticmethod
-    async def fetch(
+    async def fetch_batch(
         fetch_func: Callable[
             ...,
             Union[
@@ -51,7 +76,7 @@ class AsyncFetcher:
             GitlabList,
         ]
     ]:
-        def fetch_batch(
+        def fetch_page(
             page_idx: int,
         ) -> Union[
             List[Union[RESTObject, Dict[str, Any]]],
@@ -74,7 +99,7 @@ class AsyncFetcher:
             batch = None
             try:
                 batch = await asyncio.get_running_loop().run_in_executor(
-                    None, fetch_batch, page
+                    None, fetch_page, page
                 )
             except gitlab.exceptions.GitlabListError as err:
                 if err.response_code in (403, 404):
