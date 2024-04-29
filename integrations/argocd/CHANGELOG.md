@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added a default empty array to the deployment history mapping to stop spanning the logs with JQ NoneType error
+- Added a default empty array to the deployment history mapping to stop spamming the logs with JQ NoneType error
 
 
 # Port_Ocean 0.1.39 (2024-04-24)
