@@ -7,6 +7,27 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.14 (2024-04-24)
+
+### Improvements
+
+- Implemented real-time entity deletion exclusively for instances that haven't matched any selectors.
+- Change the JQ calculation to process only identifier and blueprint for raw entities not selected during real-time events to only get the required data for the delete.
+
+## 0.5.13 (2024-04-17)
+
+### Features
+
+- Delete entities that doesn't passed the selector on real time events
+
+
+## 0.5.12 (2024-04-12)
+
+### Features
+
+- Added a util function that allows to iterate over a list of async iterators and stream the results of each iterator as they are available
+
+
 ## 0.5.11 (2024-04-11)
 
 

@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 from urllib.parse import quote_plus
 
 import httpx
@@ -133,8 +134,10 @@ class EntityClientMixin:
             return_exceptions=True,
         )
 
-    async def search_entities(self, user_agent_type: UserAgentType) -> list[Entity]:
-        query = {
+    async def search_entities(
+        self, user_agent_type: UserAgentType, query: dict[Any, Any] | None = None
+    ) -> list[Entity]:
+        default_query = {
             "combinator": "and",
             "rules": [
                 {
@@ -150,6 +153,11 @@ class EntityClientMixin:
             ],
         }
 
+        if query is None:
+            query = default_query
+        elif query.get("rules"):
+            query["rules"].append(default_query)
+
         logger.info(f"Searching entities with query {query}")
         response = await self.client.post(
             f"{self.auth.api_url}/entities/search",
@@ -164,3 +172,34 @@ class EntityClientMixin:
         )
         handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
+
+    async def search_batch_entities(
+        self, user_agent_type: UserAgentType, entities_to_search: list[Entity]
+    ) -> list[Entity]:
+        search_rules = []
+        for entity in entities_to_search:
+            search_rules.append(
+                {
+                    "combinator": "and",
+                    "rules": [
+                        {
+                            "property": "$identifier",
+                            "operator": "=",
+                            "value": entity.identifier,
+                        },
+                        {
+                            "property": "$blueprint",
+                            "operator": "=",
+                            "value": entity.blueprint,
+                        },
+                    ],
+                }
+            )
+
+        return await self.search_entities(
+            user_agent_type,
+            {
+                "combinator": "and",
+                "rules": [{"combinator": "or", "rules": search_rules}],
+            },
+        )
