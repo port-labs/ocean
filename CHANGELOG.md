@@ -7,13 +7,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.5.15 (2024-04-28)
-
-### Bug Fixes
-
-- Fixed error in register_raw when there's no relevant mappings for a specific kind
-
-
 ## 0.5.14 (2024-04-24)
 
 ### Improvements

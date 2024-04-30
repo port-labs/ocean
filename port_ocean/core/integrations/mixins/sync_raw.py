@@ -219,9 +219,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resource for resource in config.resources if resource.kind == kind
         ]
 
-        if not resource_mappings:
-            return []
-
         diffs: list[EntitySelectorDiff] = await asyncio.gather(
             *(
                 self._register_resource_raw(resource, results, user_agent_type, True)
