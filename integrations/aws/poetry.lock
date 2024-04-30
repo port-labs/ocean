@@ -776,13 +776,13 @@ crt = ["awscrt (==0.19.19)"]
 
 [[package]]
 name = "botocore-stubs"
-version = "1.34.91"
+version = "1.34.94"
 description = "Type annotations and code completion for botocore"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "botocore_stubs-1.34.91-py3-none-any.whl", hash = "sha256:c87a70d86107564f79f02058122f0dee7d1b18874e5b2dfdcab7ef0af39230aa"},
-    {file = "botocore_stubs-1.34.91.tar.gz", hash = "sha256:debedbf0aa52bfb62791750eb0f3695aeb0dc6f3a4b06feb3c834731a77d9d4d"},
+    {file = "botocore_stubs-1.34.94-py3-none-any.whl", hash = "sha256:b0345f55babd8b901c53804fc5c326a4a0bd2e23e3b71f9ea5d9f7663466e6ba"},
+    {file = "botocore_stubs-1.34.94.tar.gz", hash = "sha256:64d80a3467e3b19939e9c2750af33328b3087f8f524998dbdf7ed168227f507d"},
 ]
 
 [package.dependencies]
@@ -1026,13 +1026,13 @@ profile = ["gprof2dot (>=2022.7.29)"]
 
 [[package]]
 name = "fastapi"
-version = "0.110.2"
+version = "0.110.3"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fastapi-0.110.2-py3-none-any.whl", hash = "sha256:239403f2c0a3dda07a9420f95157a7f014ddb2b770acdbc984f9bdf3ead7afdb"},
-    {file = "fastapi-0.110.2.tar.gz", hash = "sha256:b53d673652da3b65e8cd787ad214ec0fe303cad00d2b529b86ce7db13f17518d"},
+    {file = "fastapi-0.110.3-py3-none-any.whl", hash = "sha256:fd7600612f755e4050beb74001310b5a7e1796d149c2ee363124abdfa0289d32"},
+    {file = "fastapi-0.110.3.tar.gz", hash = "sha256:555700b0159379e94fdbfc6bb66a0f1c43f4cf7060f25239af3d84b63a656626"},
 ]
 
 [package.dependencies]
@@ -1041,7 +1041,7 @@ starlette = ">=0.37.2,<0.38.0"
 typing-extensions = ">=4.8.0"
 
 [package.extras]
-all = ["email-validator (>=2.0.0)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=2.11.2)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.7)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
+all = ["email_validator (>=2.0.0)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=2.11.2)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.7)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
 
 [[package]]
 name = "frozenlist"
@@ -1885,13 +1885,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-rds"
-version = "1.34.91"
-description = "Type annotations for boto3.RDS 1.34.91 service generated with mypy-boto3-builder 7.24.0"
+version = "1.34.93"
+description = "Type annotations for boto3.RDS 1.34.93 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_rds-1.34.91-py3-none-any.whl", hash = "sha256:aa9fbc96d69873149b75db971a45a9d73a3d5cd046fc9b655b3c8b716ca14168"},
-    {file = "mypy_boto3_rds-1.34.91.tar.gz", hash = "sha256:e56e52b3027ce59720c566b3a7750c9ac01a1049f28047143a612d44b84a15bc"},
+    {file = "mypy_boto3_rds-1.34.93-py3-none-any.whl", hash = "sha256:4c4b96eebf653ec498e8b01d6a87dd4cf1901fc3647c2fcc825b51d061370f58"},
+    {file = "mypy_boto3_rds-1.34.93.tar.gz", hash = "sha256:3896edc3697e1e6e9482b312b8b982d087d68c6338ff469510b4ab49896a0b4f"},
 ]
 
 [package.dependencies]
@@ -2075,13 +2075,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.14"
+version = "0.5.15"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.14-py3-none-any.whl", hash = "sha256:e972114eab69e9f00ea5684e46596cacce7b5d42383942c7274e7eee6ca6419c"},
-    {file = "port_ocean-0.5.14.tar.gz", hash = "sha256:331476426c91ff9fee639af0390bb3f832c381bd8310c45b34efc61e48479cac"},
+    {file = "port_ocean-0.5.15-py3-none-any.whl", hash = "sha256:f2ede4fdd28fd42bf61d0c9df5b6851b8951096839f19c927febb33a504de908"},
+    {file = "port_ocean-0.5.15.tar.gz", hash = "sha256:494495b56d576c06bc6c1a7f630e8fe050d2189185d13b150b247be20d39001c"},
 ]
 
 [package.dependencies]
@@ -3643,4 +3643,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "e0f188c023d27d93f311cdc23436c0e645d522cb6a0acb16519b8a72b2ae4186"
+content-hash = "79e16bf410339c29cfb9fd1bb295a8dd7ca3381b60c6b37f056095f8f5a00efb"
