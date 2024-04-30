@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "Wiz"
-version = "0.1.13"
+version = "0.1.14"
 description = "Wiz Port integration in Ocean"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.5.12", extras = ["cli"]}
+port_ocean = {version = "^0.5.14", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"

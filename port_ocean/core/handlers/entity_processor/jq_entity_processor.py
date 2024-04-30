@@ -11,7 +11,7 @@ from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
-    RawEntity,
+    RAW_ITEM,
     EntitySelectorDiff,
 )
 from port_ocean.exceptions.core import EntityProcessorException
@@ -138,7 +138,7 @@ class JQEntityProcessor(BaseEntityProcessor):
     async def _parse_items(
         self,
         mapping: ResourceConfig,
-        raw_results: list[RawEntity],
+        raw_results: list[RAW_ITEM],
         parse_all: bool = False,
     ) -> EntitySelectorDiff:
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
@@ -183,4 +183,4 @@ class JQEntityProcessor(BaseEntityProcessor):
                     else:
                         failed_entities.append(parsed_entity)
 
-        return {"passed": passed_entities, "failed": failed_entities}
+        return EntitySelectorDiff(passed=passed_entities, failed=failed_entities)

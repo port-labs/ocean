@@ -1,0 +1,7 @@
+type: gcp
+description: gcp integration for Port Ocean
+icon: GoogleCloud
+features:
+  - type: exporter
+    section: Cloud Providers
+configurations: []
