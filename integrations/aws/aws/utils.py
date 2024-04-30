@@ -104,7 +104,7 @@ async def describe_single_resource(
         region = session.region_name
         try:
             match kind:
-                case ResourceKindsWithSpecialHandling.ACCOUNT:
+                case ResourceKindsWithSpecialHandling.ACM:
                     async with session.client("acm") as acm:
                         response = await acm.describe_certificate(
                             CertificateArn=identifier
