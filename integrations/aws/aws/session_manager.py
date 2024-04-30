@@ -89,11 +89,10 @@ class SessionManager:
                 "Application session or organization reader session not initialized yet"
             )
 
-        async with self._application_session.client(
-            "sts"
-        ) as sts_client, self._organization_reader.client(
-            "organizations"
-        ) as organizations_client:
+        async with (
+            self._application_session.client("sts") as sts_client,
+            self._organization_reader.client("organizations") as organizations_client,
+        ):
             paginator = organizations_client.get_paginator("list_accounts")
             try:
                 async for page in paginator.paginate():
