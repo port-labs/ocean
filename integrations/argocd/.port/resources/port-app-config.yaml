@@ -90,8 +90,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__application.metadata.uid + "-" + .name
-          title: .__application.metadata.name + "-" + .name
+          identifier: .__application.metadata.uid + "-" + .kind + "-" + .name
+          title: .__application.metadata.name + "-" + .kind + "-" + .name
           blueprint: '"argocdKubernetesResource"'
           properties:
             kind: .kind
@@ -101,3 +101,4 @@ resources:
             labels: .liveState | fromjson | .metadata.labels
           relations:
             application: .__application.metadata.uid
+            image: 'if .kind == "Deployment" then [.liveState | fromjson | .spec.template.spec.containers[] | .image] else [] end'
