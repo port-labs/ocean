@@ -9,14 +9,16 @@ from typing import Awaitable, Callable, Any, Type
 
 from gitlab_integration.events.hooks.base import HookHandler
 from gitlab_integration.gitlab_service import GitlabService
-from port_ocean.context.event import event, event_context
+from port_ocean.context.event import event as current_event, event_context, EventContext
 
 Observer = Callable[[str, dict[str, Any]], Awaitable[Any]]
 
 
 class BaseEventHandler(ABC):
     def __init__(self) -> None:
-        self.webhook_tasks_queue = Queue()
+        self.webhook_tasks_queue: Queue[tuple[EventContext, str, dict[str, Any]]] = (
+            Queue()
+        )
 
     async def start_event_processor(self) -> None:
         logger.info(f"Started {self.__class__.__name__} worker")
@@ -24,11 +26,9 @@ class BaseEventHandler(ABC):
             event_ctx, event_id, body = await self.webhook_tasks_queue.get()
             try:
                 async with event_context(
-                    event_type="http_event_async_worker", parent_override=event_ctx
+                    "http_event_async_worker", parent_override=event_ctx
                 ):
                     await self._notify(event_id, body)
-            except:
-                logger.exception(f"")
             finally:
                 self.webhook_tasks_queue.task_done()
 
@@ -39,7 +39,7 @@ class BaseEventHandler(ABC):
     async def notify(self, event_id: str, body: dict[str, Any]) -> None:
         await self.webhook_tasks_queue.put(
             (
-                deepcopy(event),
+                deepcopy(current_event),
                 event_id,
                 body,
             )
