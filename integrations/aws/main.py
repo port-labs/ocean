@@ -1,5 +1,7 @@
 from typing import Any
 
+from fastapi import Response, status
+
 from port_ocean.core.models import Entity
 from aws.utils import (
     ACCOUNT_ID_PROPERTY,
@@ -129,8 +131,12 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.router.post("/webhook")
-async def webhook(request: Request) -> dict[str, Any]:
-    validate_request(request)
+async def webhook(request: Request, response: Response) -> dict[str, Any]:
+    validation = validate_request(request)
+    if validation.status == False:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        return {"ok": False, "message": validation.message}
+
     try:
         body = await request.json()
         logger.info(f"Received AWS Webhook request body: {body}")
@@ -143,6 +149,7 @@ async def webhook(request: Request) -> dict[str, Any]:
             account_id=account_id, resource_type=resource_type, identifier=identifier
         ):
             if not resource_type or not identifier or not account_id:
+                response.status_code = status.HTTP_400_BAD_REQUEST
                 raise ValueError(
                     "Resource type, Identifier or Account id was not found in webhook body"
                 )
@@ -150,6 +157,7 @@ async def webhook(request: Request) -> dict[str, Any]:
             matching_resource_configs = get_matching_kinds_from_config(resource_type)
 
             if not matching_resource_configs:
+                response.status_code = status.HTTP_400_BAD_REQUEST
                 raise ValueError(
                     "Resource type not found in port app config, update port app config to include the resource type"
                 )
@@ -170,6 +178,7 @@ async def webhook(request: Request) -> dict[str, Any]:
                             )
                         ]
                     )
+                    response.status_code = status.HTTP_204_NO_CONTENT
                     continue
 
                 logger.info("Resource found in AWS, registering change in port")
@@ -185,7 +194,10 @@ async def webhook(request: Request) -> dict[str, Any]:
                     resource_config.kind, [fix_unserializable_date_properties(resource)]
                 )
             logger.info("Webhook processed successfully")
+            response.status_code = status.HTTP_204_NO_CONTENT
             return {"ok": True}
     except Exception as e:
         logger.error(f"Failed to process event from aws error: {e}")
+        if response.status_code <= 299:
+            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"ok": False}

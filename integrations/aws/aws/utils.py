@@ -271,13 +271,21 @@ def get_resource_kinds_from_config(kind: str) -> list[str]:
     return []
 
 
-def validate_request(request: Request) -> None:
+class ValidationResponse:
+    status: bool
+    message: str
+    def __init__(self, status: bool, message: str) -> None:
+        self.status = status
+        self.message = message
+
+def validate_request(request: Request) -> ValidationResponse:
     api_key = request.headers.get("x-port-aws-ocean-api-key")
     if not api_key:
-        raise ValueError("API key not found in request headers")
+        return ValidationResponse(status=False, message="API key not found in request headers")
     if not ocean.integration_config.get("aws_real_time_updates_requests_api_key"):
-        raise ValueError("API key not found in integration config")
+        return ValidationResponse(status=False, message="API key not found in integration config")
     if api_key != ocean.integration_config.get(
         "aws_real_time_updates_requests_api_key"
     ):
-        raise ValueError("Invalid API key")
+        return ValidationResponse(status=False, message="Invalid API key")
+    return ValidationResponse(status=True, message="Request validated")
