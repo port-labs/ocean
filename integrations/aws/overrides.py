@@ -23,6 +23,6 @@ class AWSResourceConfig(ResourceConfig):
 
 
 class AWSPortAppConfig(PortAppConfig):
-    resources: list[AWSResourceConfig | ResourceConfig] = (
-        Field(default_factory=list)  # type: ignore
-    )
+    resources: list[AWSResourceConfig | ResourceConfig] = Field(
+        default_factory=list
+    )  # type: ignore

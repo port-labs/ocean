@@ -140,7 +140,10 @@ async def describe_single_resource(
                             TypeName=kind, Identifier=identifier
                         )
                         resource_description = response.get("ResourceDescription")
-                        return {"Identifier": resource_description.get("Identifier"), **json.loads(resource_description.get("Properties", {}))}
+                        return {
+                            "Identifier": resource_description.get("Identifier"),
+                            **json.loads(resource_description.get("Properties", {})),
+                        }
         except ClientError as e:
             if e.response["Error"]["Code"] == "ResourceNotFoundException":
                 logger.info(f"Resource not found: {kind} {identifier}")
@@ -216,7 +219,10 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         break
                     page_resources = []
                     for instance in resources:
-                        described = {"Identifier": instance.get("Identifier"), **json.loads(instance.get("Properties", {}))}
+                        described = {
+                            "Identifier": instance.get("Identifier"),
+                            **json.loads(instance.get("Properties", {})),
+                        }
                         described.update(
                             {
                                 KIND_PROPERTY: kind,
@@ -224,7 +230,9 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 REGION_PROPERTY: region,
                             }
                         )
-                        page_resources.append(fix_unserializable_date_properties(described))
+                        page_resources.append(
+                            fix_unserializable_date_properties(described)
+                        )
                     yield page_resources
             except Exception:
                 logger.exception(
@@ -252,9 +260,7 @@ def get_resource_kinds_from_config(kind: str) -> list[str]:
     """
     Gets the `resourceKinds` property from the port_app_config that match the given resource kind
     """
-    resource_config = typing.cast(
-        AWSPortAppConfig, event.resource_config
-    )
+    resource_config = typing.cast(AWSPortAppConfig, event.resource_config)
     if (
         resource_config.kind == kind
         and hasattr(resource_config.selector, "resource_kinds")
@@ -267,16 +273,22 @@ def get_resource_kinds_from_config(kind: str) -> list[str]:
 class ValidationResponse:
     status: bool
     message: str
+
     def __init__(self, status: bool, message: str) -> None:
         self.status = status
         self.message = message
 
+
 def validate_request(request: Request) -> ValidationResponse:
     api_key = request.headers.get("x-port-aws-ocean-api-key")
     if not api_key:
-        return ValidationResponse(status=False, message="API key not found in request headers")
+        return ValidationResponse(
+            status=False, message="API key not found in request headers"
+        )
     if not ocean.integration_config.get("aws_real_time_updates_requests_api_key"):
-        return ValidationResponse(status=False, message="API key not found in integration config")
+        return ValidationResponse(
+            status=False, message="API key not found in integration config"
+        )
     if api_key != ocean.integration_config.get(
         "aws_real_time_updates_requests_api_key"
     ):

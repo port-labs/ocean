@@ -112,8 +112,8 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         page_instances = []
                         instance_ids = [instance.id for instance in page]
                         described_instances = await ec2_client.describe_instances(
-                                InstanceIds=instance_ids,
-                            )
+                            InstanceIds=instance_ids,
+                        )
                         for reservation in described_instances["Reservations"]:
                             for instance in reservation["Instances"]:
                                 instance.update(
@@ -123,7 +123,9 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                         REGION_PROPERTY: region,
                                     }
                                 )
-                                page_instances.append(fix_unserializable_date_properties(instance))
+                                page_instances.append(
+                                    fix_unserializable_date_properties(instance)
+                                )
                         yield page_instances
         except Exception as e:
             logger.error(f"Failed to list EC2 Instance in region: {region}; error {e}")
