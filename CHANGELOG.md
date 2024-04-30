@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Fixed error in register_raw when there's no relevant mappings for a specific kind
+- Fixed error in `register_raw` when there's no relevant mappings for a specific kind
 
 
 ## 0.5.14 (2024-04-24)
