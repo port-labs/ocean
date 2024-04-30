@@ -116,30 +116,39 @@ async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Search for projects that the caller has ``resourcemanager.projects.get`` permission on
     """
+    logger.info("Searching projects")
     async with ProjectsAsyncClient() as projects_client:
         search_projects_pager = await projects_client.search_projects()
         async for projects_page in search_projects_pager.pages:
-            yield parse_protobuf_messages(projects_page.projects)
+            raw_projects = projects_page.projects
+            logger.info(f"Found {len(raw_projects)} Projects")
+            yield parse_protobuf_messages(raw_projects)
 
 
 async def search_all_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Search for folders that the caller has ``resourcemanager.folders.get`` permission on
     """
+    logger.info("Searching folders")
     async with FoldersAsyncClient() as folders_client:
         search_folders_pager = await folders_client.search_folders()
         async for folders_page in search_folders_pager.pages:
-            yield parse_protobuf_messages(folders_page.folders)
+            raw_folders = folders_page.folders
+            logger.info(f"Found {len(raw_folders)} Folders")
+            yield parse_protobuf_messages(raw_folders)
 
 
 async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Search for organizations that the caller has ``resourcemanager.organizations.get``` permission on
     """
+    logger.info("Searching organizations")
     async with OrganizationsAsyncClient() as organizations_client:
         search_organizations_pager = await organizations_client.search_organizations()
         async for organizations_page in search_organizations_pager.pages:
-            yield parse_protobuf_messages(organizations_page.organizations)
+            raw_orgs = organizations_page.organizations
+            logger.info(f"Found {len(raw_orgs)} organizations")
+            yield parse_protobuf_messages(raw_orgs)
 
 
 async def get_single_project(project_name: str) -> RAW_ITEM:
