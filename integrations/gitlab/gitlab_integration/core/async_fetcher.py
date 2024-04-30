@@ -9,6 +9,8 @@ from gitlab.base import RESTObject, RESTObjectList
 from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue, Group
 from loguru import logger
 
+from port_ocean.core.models import Entity
+
 T = TypeVar("T", bound=RESTObject)
 
 DEFAULT_PAGINATION_PAGE_SIZE = 100
@@ -116,3 +118,23 @@ class AsyncFetcher:
             yield filtered_batch
 
             page += 1
+
+    @staticmethod
+    async def fetch_entities_diff(
+        gitlab_service,
+        project: Project,
+        spec_path: str | List[str],
+        before: str,
+        after: str,
+        ref: str,
+    ) -> tuple[list[Entity], list[Entity]]:
+        with ThreadPoolExecutor() as executor:
+            return await get_event_loop().run_in_executor(
+                executor,
+                gitlab_service.get_entities_diff,
+                project,
+                spec_path,
+                before,
+                after,
+                ref,
+            )

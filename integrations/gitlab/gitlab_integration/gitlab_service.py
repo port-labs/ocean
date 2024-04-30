@@ -20,7 +20,7 @@ from loguru import logger
 from yaml.parser import ParserError
 
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
-from gitlab_integration.core.paging import AsyncFetcher
+from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.utils import does_pattern_apply
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
