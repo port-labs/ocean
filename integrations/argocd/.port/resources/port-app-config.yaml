@@ -101,15 +101,4 @@ resources:
             labels: .liveState | fromjson | .metadata.labels
           relations:
             application: .__application.metadata.uid
-  - kind: managed-resource
-    selector:
-      query: .kind == "Deployment"
-    port:
-      entity:
-        mappings:
-          identifier: .__application.metadata.uid + "-" + .kind + "-" + .name
-          title: .__application.metadata.name + "-" + .kind + "-" + .name
-          blueprint: '"argocdKubernetesResource"'
-          properties: {}
-          relations:
-            image: '[.liveState | fromjson | .spec.template.spec.containers[] | .image]'
+            image: 'if .kind == "Deployment" then [.liveState | fromjson | .spec.template.spec.containers[] | .image] else [] end'
