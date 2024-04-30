@@ -13,7 +13,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from botocore.exceptions import ClientError
 
-IDENTIFIER_PROPERTY = "__Identifier"
 ACCOUNT_ID_PROPERTY = "__AccountId"
 KIND_PROPERTY = "__Kind"
 REGION_PROPERTY = "__Region"
@@ -141,9 +140,7 @@ async def describe_single_resource(
                             TypeName=kind, Identifier=identifier
                         )
                         resource_description = response.get("ResourceDescription")
-                        return {
-                            **json.loads(resource_description.get("Properties", {}))
-                        }
+                        return {"Identifier": resource_description.get("Identifier"), **json.loads(resource_description.get("Properties", {}))}
         except ClientError as e:
             if e.response["Error"]["Code"] == "ResourceNotFoundException":
                 logger.info(f"Resource not found: {kind} {identifier}")
@@ -185,7 +182,6 @@ async def batch_resources(
                                 KIND_PROPERTY: kind,
                                 ACCOUNT_ID_PROPERTY: account_id,
                                 REGION_PROPERTY: region,
-                                IDENTIFIER_PROPERTY: resource.get("Identifier"),
                             },
                         }
                         for resource in results
@@ -220,15 +216,12 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         break
                     page_resources = []
                     for instance in resources:
-                        described = await describe_single_resource(
-                            kind, instance.get("Identifier"), account_id, region
-                        )
+                        described = {"Identifier": instance.get("Identifier"), **json.loads(instance.get("Properties", {}))}
                         described.update(
                             {
                                 KIND_PROPERTY: kind,
                                 ACCOUNT_ID_PROPERTY: account_id,
                                 REGION_PROPERTY: region,
-                                IDENTIFIER_PROPERTY: instance.get("Identifier"),
                             }
                         )
                         page_resources.append(fix_unserializable_date_properties(described))

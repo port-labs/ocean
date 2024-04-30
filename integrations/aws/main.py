@@ -5,7 +5,6 @@ from fastapi import Response, status
 from port_ocean.core.models import Entity
 from aws.utils import (
     ACCOUNT_ID_PROPERTY,
-    IDENTIFIER_PROPERTY,
     KIND_PROPERTY,
     REGION_PROPERTY,
     ResourceKindsWithSpecialHandling,
@@ -108,24 +107,24 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async with session.resource("ec2") as ec2:
                 async with session.client("ec2") as ec2_client:
                     async for page in ec2.instances.pages():
-                        for instance in page:
-                            described_instance = await ec2_client.describe_instances(
-                                InstanceIds=[instance.id]
+                        if not page:
+                            continue
+                        page_instances = []
+                        instance_ids = [instance.id for instance in page]
+                        described_instances = await ec2_client.describe_instances(
+                                InstanceIds=instance_ids,
                             )
-                            instance_definition = described_instance["Reservations"][0][
-                                "Instances"
-                            ][0]
-                            instance_definition.update(
-                                {
-                                    KIND_PROPERTY: kind,
-                                    ACCOUNT_ID_PROPERTY: account_id,
-                                    REGION_PROPERTY: region,
-                                    IDENTIFIER_PROPERTY: instance.id,
-                                }
-                            )
-                            yield fix_unserializable_date_properties(
-                                instance_definition
-                            )
+                        for reservation in described_instances["Reservations"]:
+                            for instance in reservation["Instances"]:
+                                instance.update(
+                                    {
+                                        KIND_PROPERTY: kind,
+                                        ACCOUNT_ID_PROPERTY: account_id,
+                                        REGION_PROPERTY: region,
+                                    }
+                                )
+                                page_instances.append(fix_unserializable_date_properties(instance))
+                        yield page_instances
         except Exception as e:
             logger.error(f"Failed to list EC2 Instance in region: {region}; error {e}")
 
@@ -187,7 +186,6 @@ async def webhook(request: Request, response: Response) -> dict[str, Any]:
                         KIND_PROPERTY: resource_type,
                         ACCOUNT_ID_PROPERTY: account_id,
                         REGION_PROPERTY: region,
-                        IDENTIFIER_PROPERTY: identifier,
                     }
                 )
                 await ocean.register_raw(

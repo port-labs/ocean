@@ -29,8 +29,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .__Identifier
-          title: .__Identifier
+          identifier: .Identifier
+          title: .Identifier
           blueprint: '"cloud_resource"'
           properties:
             kind: .__Kind
