@@ -27,13 +27,11 @@ class BaseEventHandler(ABC):
         )
 
     def __signal_handler(self, sig, frame):
-        # Handle the termination signal
-        print("Signal received, exiting...")
+        logger.info("Signal received, exiting...")
         sys.exit(0)
 
     async def _start_event_processor(self) -> None:
         logger.info(f"Started {self.__class__.__name__} worker")
-        # Register the signal handler
         signal(SIGINT, self.__signal_handler)
 
         while True:
