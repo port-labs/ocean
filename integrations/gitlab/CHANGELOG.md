@@ -7,12 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.1.70 (2024-04-30)
+0.1.71 (2024-05-01)
 ===================
 
 ### Bug Fixes
 
 - Using queue and return immediate response to webhooks to avoid Gitlab's timeout
+
+
+0.1.70 (2024-05-01)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.16 (#1)
 
 
 0.1.69 (2024-04-30)

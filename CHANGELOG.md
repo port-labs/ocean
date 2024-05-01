@@ -7,11 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.5.16 (2024-04-30)
+## 0.5.16 (2024-05-01)
 
 ### Features
 
-- Allow to override parent event in ocean's event context manager 
+- Allowing override of parent event context in ocean's event context manager
+
 
 ## 0.5.15 (2024-04-30)
 
