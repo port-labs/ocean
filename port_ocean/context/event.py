@@ -130,7 +130,6 @@ async def event_context(
     parent = parent_override or _event_context_stack.top
     parent_attributes = parent.attributes if parent else {}
 
-    parent = _event_context_stack.top
     attributes = {**parent_attributes, **(attributes or {})}
     new_event = EventContext(
         event_type,
