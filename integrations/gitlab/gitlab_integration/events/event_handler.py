@@ -1,8 +1,10 @@
 import asyncio
+import sys
 from abc import abstractmethod, ABC
 from asyncio import Queue
 from collections import defaultdict
 from copy import deepcopy
+from signal import signal, SIGINT
 
 from loguru import logger
 from typing import Awaitable, Callable, Any, Type
@@ -24,8 +26,16 @@ class BaseEventHandler(ABC):
             Queue()
         )
 
+    def __signal_handler(self, sig, frame):
+        # Handle the termination signal
+        print("Signal received, exiting...")
+        sys.exit(0)
+
     async def _start_event_processor(self) -> None:
         logger.info(f"Started {self.__class__.__name__} worker")
+        # Register the signal handler
+        signal(SIGINT, self.__signal_handler)
+
         while True:
             event_ctx, event_id, body = await self.webhook_tasks_queue.get()
             try:
