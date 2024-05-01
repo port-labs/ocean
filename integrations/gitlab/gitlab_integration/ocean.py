@@ -84,8 +84,8 @@ async def on_start() -> None:
             token_webhook_mapping,
         )
 
-        asyncio.create_task(event_handler.start_event_processor())
-        asyncio.create_task(system_event_handler.start_event_processor())
+        await event_handler.start_event_processor()
+        await system_event_handler.start_event_processor()
     except Exception as e:
         logger.warning(
             f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}",

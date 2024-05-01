@@ -24,7 +24,7 @@ class BaseEventHandler(ABC):
             Queue()
         )
 
-    async def start_event_processor(self) -> None:
+    async def _start_event_processor(self) -> None:
         logger.info(f"Started {self.__class__.__name__} worker")
         while True:
             event_ctx, event_id, body = await self.webhook_tasks_queue.get()
@@ -35,6 +35,9 @@ class BaseEventHandler(ABC):
                     await self._notify(event_id, body)
             finally:
                 self.webhook_tasks_queue.task_done()
+
+    async def start_event_processor(self) -> None:
+        asyncio.create_task(self._start_event_processor())
 
     @abstractmethod
     async def _notify(self, event_id: str, body: dict[str, Any]) -> None:
