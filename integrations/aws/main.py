@@ -134,7 +134,7 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.router.post("/webhook")
 async def webhook(request: Request, response: Response) -> dict[str, Any]:
     validation = validate_request(request)
-    if validation.status == False:
+    if validation.status is False:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         return {"ok": False, "message": validation.message}
 
