@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Added Terraform deployment method as main deployment method (#1)
+- Added logs for Project/Folder/Org Injestion
 
 
 # Port_Ocean 0.1.2 (2024-04-30)
