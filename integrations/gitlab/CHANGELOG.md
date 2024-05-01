@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Using queue and return immediate response to webhooks to avoid Gitlab's timeout
+- Fixed webhooks responses timeouts to gitlab using queue to return immediate response 
 
 
 0.1.70 (2024-05-01)
