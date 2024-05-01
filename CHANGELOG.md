@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Fix typo remove unneeded line in event context manager
+- Fixed an issue in creating a child event context from the parent context by removing an unnecessary line of code
 
 
 
