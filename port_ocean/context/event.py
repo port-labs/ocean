@@ -125,10 +125,13 @@ async def event_context(
     event_type: str,
     trigger_type: TriggerType = "manual",
     attributes: dict[str, Any] | None = None,
+    parent_override: EventContext | None = None,
 ) -> AsyncIterator[EventContext]:
-    attributes = attributes or {}
+    parent = parent_override or _event_context_stack.top
+    parent_attributes = parent.attributes if parent else {}
 
     parent = _event_context_stack.top
+    attributes = {**parent_attributes, **(attributes or {})}
     new_event = EventContext(
         event_type,
         trigger_type=trigger_type,
