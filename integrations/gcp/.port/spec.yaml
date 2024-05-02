@@ -6,7 +6,7 @@ features:
     section: Cloud Providers
 configurations: []
 deploymentMethodOverride:
-  - type: terraform
+  - type: terraform-gcp
     module: port-labs/integration-factory/ocean
     example: gcp_integration_with_real_time
     title: GCP's Cloud Run
