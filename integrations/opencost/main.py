@@ -30,5 +30,5 @@ async def on_cloudcost_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for cloudcost in cloudcost_data:
         # data cannot be ingested by port except it is of `list` type
         cloudcost_values = list(cloudcost.values())[0]
-        data = list(cloudcost_values.values())
+        data: list[dict[str, Any]] = list(cloudcost_values.values())
         yield data

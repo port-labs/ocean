@@ -6,7 +6,7 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
-from integration import OpencostResourceConfig
+from integration import CloudCostResourceConfig, OpencostResourceConfig
 
 
 class OpenCostClient:
@@ -48,12 +48,12 @@ class OpenCostClient:
         and usage reports.
         Docs: https://www.opencost.io/docs/integrations/api#cloud-costs-api
         """
-        selector = typing.cast(OpencostResourceConfig, event.resource_config).selector
+        selector = typing.cast(CloudCostResourceConfig, event.resource_config).selector
         params: dict[str, str] = {
             "window": selector.window,
         }
-        if selector.cloudcost_aggregate:
-            params["aggregate"] = selector.cloudcost_aggregate
+        if selector.aggregate:
+            params["aggregate"] = selector.aggregate
         if selector.accumulate:
             params["accumulate"] = selector.accumulate
 
