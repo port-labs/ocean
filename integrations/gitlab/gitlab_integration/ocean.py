@@ -27,21 +27,33 @@ PROJECT_RESYNC_BATCH_SIZE = 10
 async def handle_webhook(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f'{request.headers.get("X-Gitlab-Event")}:{group_id}'
     with logger.contextualize(event_id=event_id):
-        logger.debug(f"Received webhook event {event_id} from Gitlab")
-        body = await request.json()
-        await event_handler.notify(event_id, body)
-        return {"ok": True}
+        try:
+            logger.debug(f"Received webhook event {event_id} from Gitlab")
+            body = await request.json()
+            await event_handler.notify(event_id, body)
+            return {"ok": True}
+        except Exception as e:
+            logger.exception(
+                f"Failed to handle webhook event {event_id} from Gitlab, error: {e}"
+            )
+            return {"ok": False, "error": str(e)}
 
 
 @ocean.router.post("/system/hook")
 async def handle_system_webhook(request: Request) -> dict[str, Any]:
-    body = await request.json()
-    # some system hooks have event_type instead of event_name in the body, such as merge_request events
-    event_name = body.get("event_name") or body.get("event_type")
-    with logger.contextualize(event_name=event_name):
-        logger.debug(f"Received system webhook event {event_name} from Gitlab")
-        await system_event_handler.notify(event_name, body)
-        return {"ok": True}
+    try:
+        body = await request.json()
+        # some system hooks have event_type instead of event_name in the body, such as merge_request events
+        event_name = body.get("event_name") or body.get("event_type")
+        with logger.contextualize(event_name=event_name):
+            logger.debug(f"Received system webhook event {event_name} from Gitlab")
+            await system_event_handler.notify(event_name, body)
+            return {"ok": True}
+    except Exception as e:
+        logger.exception(
+            "Failed to handle system webhook event from Gitlab, error: {e}"
+        )
+        return {"ok": False, "error": str(e)}
 
 
 @ocean.on_start()
