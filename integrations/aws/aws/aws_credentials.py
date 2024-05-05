@@ -27,11 +27,11 @@ class AwsCredentials:
             regions = response.get("Regions", [])
             self.enabled_regions = [region["RegionName"] for region in regions]
 
-    def isRole(self) -> bool:
+    def is_role(self) -> bool:
         return self.session_token is not None
 
     async def create_session(self, region: Optional[str] = None) -> aioboto3.Session:
-        if self.isRole():
+        if self.is_role():
             return aioboto3.Session(
                 self.access_key_id, self.secret_access_key, self.session_token, region
             )
