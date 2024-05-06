@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added a new blueprint (Feature Flags In Enviroment) and remodeled entity relationships (0.1.6)
+- Added a new blueprint (Feature Flags In Environment) and remodeled entity relationships
 
 
 # Port_Ocean 0.1.7 (2024-04-24)
