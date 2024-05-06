@@ -302,7 +302,7 @@
         "title": "Image",
         "target": "image",
         "required": false,
-        "many": true
+        "many": false
       }
     }
   },
