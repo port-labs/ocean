@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated the relationshup between images and k8s resource from many to one
+- Updated the relationship between images and k8s resource from many to one
 - Deleted all the properties from the image blueprint since none of the properties can be extracted from the k8s resource
 
 
