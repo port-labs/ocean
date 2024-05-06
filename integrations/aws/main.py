@@ -3,27 +3,32 @@ from typing import Any
 from fastapi import Response, status
 
 from port_ocean.core.models import Entity
-from aws.utils import (
-    ACCOUNT_ID_PROPERTY,
-    KIND_PROPERTY,
-    REGION_PROPERTY,
-    ResourceKindsWithSpecialHandling,
-    _session_manager,
-    describe_accessible_accounts,
+
+from utils.resources import (
     batch_resources,
     describe_single_resource,
     fix_unserializable_date_properties,
-    get_sessions,
-    get_resource_kinds_from_config,
     resync_cloudcontrol,
+)
+from utils.config import get_resource_kinds_from_config, get_matching_kinds_from_config
+
+from utils.aws import (
+    _session_manager,
+    describe_accessible_accounts,
+    get_sessions,
     update_available_access_credentials,
     validate_request,
-    get_matching_kinds_from_config,
 )
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from starlette.requests import Request
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from utils.enums import (
+    ACCOUNT_ID_PROPERTY,
+    KIND_PROPERTY,
+    REGION_PROPERTY,
+    ResourceKindsWithSpecialHandling,
+)
 
 
 @ocean.on_resync()
@@ -46,11 +51,6 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDRESOURCE)
 async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     resource_kinds = get_resource_kinds_from_config(kind)
-
-    if len(resource_kinds) == 0:
-        logger.error(f"Resource kinds not found in port app config for {kind}")
-        return
-
     for kind in resource_kinds:
         async for batch in resync_cloudcontrol(kind):
             yield batch
@@ -104,39 +104,44 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         region = session.region_name
         account_id = await _session_manager.find_account_id_by_session(session)
         try:
-            async with session.resource("ec2") as ec2:
-                async with session.client("ec2") as ec2_client:
-                    async for page in ec2.instances.pages():
-                        if not page:
-                            continue
-                        page_instances = []
-                        instance_ids = [instance.id for instance in page]
-                        described_instances = await ec2_client.describe_instances(
-                            InstanceIds=instance_ids,
-                        )
-                        for reservation in described_instances["Reservations"]:
-                            for instance in reservation["Instances"]:
-                                instance.update(
-                                    {
-                                        KIND_PROPERTY: kind,
-                                        ACCOUNT_ID_PROPERTY: account_id,
-                                        REGION_PROPERTY: region,
-                                    }
-                                )
-                                page_instances.append(
-                                    fix_unserializable_date_properties(instance)
-                                )
-                        yield page_instances
+            async with (
+                session.resource("ec2") as ec2,
+                session.client("ec2") as ec2_client,
+            ):
+                async for page in ec2.instances.pages():
+                    if not page:
+                        continue
+                    page_instances = []
+                    instance_ids = [instance.id for instance in page]
+                    described_instances = await ec2_client.describe_instances(
+                        InstanceIds=instance_ids,
+                    )
+                    for reservation in described_instances["Reservations"]:
+                        for instance in reservation["Instances"]:
+                            instance.update(
+                                {
+                                    KIND_PROPERTY: kind,
+                                    ACCOUNT_ID_PROPERTY: account_id,
+                                    REGION_PROPERTY: region,
+                                }
+                            )
+                            page_instances.append(
+                                fix_unserializable_date_properties(instance)
+                            )
+                    yield page_instances
         except Exception as e:
-            logger.error(f"Failed to list EC2 Instance in region: {region}; error {e}")
+            logger.exception(f"Failed to list EC2 Instance in region: {region}")
 
 
 @ocean.router.post("/webhook")
 async def webhook(request: Request, response: Response) -> dict[str, Any]:
     validation = validate_request(request)
-    if validation.status is False:
+    validation_status = validation[0]
+    message = validation[1]
+
+    if validation_status is False:
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"ok": False, "message": validation.message}
+        return {"ok": False, "message": message}
 
     try:
         body = await request.json()
@@ -152,7 +157,7 @@ async def webhook(request: Request, response: Response) -> dict[str, Any]:
             if not resource_type or not identifier or not account_id:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 raise ValueError(
-                    "Resource type, Identifier or Account id was not found in webhook body"
+                    "resource_type, identifier or account_id is missing in webhook body, please add them to the event `InputTemplate` https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-events-rule-inputtransformer.html"
                 )
 
             matching_resource_configs = get_matching_kinds_from_config(resource_type)
@@ -197,7 +202,7 @@ async def webhook(request: Request, response: Response) -> dict[str, Any]:
             response.status_code = status.HTTP_204_NO_CONTENT
             return {"ok": True}
     except Exception as e:
-        logger.error(f"Failed to process event from aws error: {e}")
+        logger.exception(f"Failed to process event from aws")
         if response.status_code <= 299:
             response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {"ok": False}

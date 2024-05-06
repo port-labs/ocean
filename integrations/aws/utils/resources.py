@@ -1,82 +1,19 @@
-import enum
 import json
-from typing import Any, AsyncIterator, Literal, Optional
-import typing
+from typing import Any, Literal
+
 import aioboto3
 from loguru import logger
-from aws.session_manager import SessionManager
-from overrides import AWSPortAppConfig, AWSResourceConfig
-from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
-from starlette.requests import Request
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
+from utils.enums import (
+    ACCOUNT_ID_PROPERTY,
+    KIND_PROPERTY,
+    REGION_PROPERTY,
+    ResourceKindsWithSpecialHandling,
+)
+from utils.aws import get_sessions
 from botocore.exceptions import ClientError
 
-ACCOUNT_ID_PROPERTY = "__AccountId"
-KIND_PROPERTY = "__Kind"
-REGION_PROPERTY = "__Region"
-
-
-class ResourceKindsWithSpecialHandling(enum.StrEnum):
-    """
-    Resource kinds with special handling
-    These resource kinds are handled separately from the other resource kinds
-    """
-
-    ACCOUNT = "AWS::Organizations::Account"
-    CLOUDRESOURCE = "cloudResource"
-    EC2 = "AWS::EC2::Instance"
-    CLOUDFORMATION = "AWS::CloudFormation::Stack"
-    LOADBALANCER = "AWS::ElasticLoadBalancingV2::LoadBalancer"
-    ACM = "AWS::ACMPCA::Certificate"
-
-
-_session_manager: SessionManager = SessionManager()
-
-
-async def update_available_access_credentials() -> None:
-    """
-    Fetches the AWS account IDs that the current IAM role can access.
-    and saves them up to use as sessions
-
-    :return: List of AWS account IDs.
-    """
-    logger.info("Updating AWS credentials")
-    await _session_manager.reset()
-
-
-def describe_accessible_accounts() -> list[dict[str, Any]]:
-    return _session_manager._aws_accessible_accounts
-
-
-async def get_sessions(
-    custom_account_id: Optional[str] = None,
-    custom_region: Optional[str] = None,
-    use_default_region: Optional[bool] = None,
-) -> AsyncIterator[aioboto3.Session]:
-    """
-    Gets boto3 sessions for the AWS regions
-    """
-    if custom_account_id:
-        credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
-        if use_default_region:
-            yield await credentials.create_session()
-        elif custom_region:
-            yield await credentials.create_session(custom_region)
-        else:
-            async for session in credentials.create_session_for_each_region():
-                yield await session
-        return
-
-    for credentials in _session_manager._aws_credentials:
-        if use_default_region:
-            yield await credentials.create_session()
-        elif custom_region:
-            yield await credentials.create_session(custom_region)
-        else:
-            async for session in credentials.create_session_for_each_region():
-                yield await session
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from utils.aws import _session_manager
 
 
 def is_global_resource(kind: str) -> bool:
@@ -241,57 +178,3 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 break
             if not next_token:
                 break
-
-
-def get_matching_kinds_from_config(kind: str) -> list[ResourceConfig]:
-    return list(
-        filter(
-            lambda resource_config: resource_config.kind == kind
-            or (
-                isinstance(resource_config, AWSResourceConfig)
-                and kind in resource_config.selector.resource_kinds
-            ),
-            typing.cast(AWSPortAppConfig, event.port_app_config).resources,
-        )
-    )
-
-
-def get_resource_kinds_from_config(kind: str) -> list[str]:
-    """
-    Gets the `resourceKinds` property from the port_app_config that match the given resource kind
-    """
-    resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    resource_config
-    if (
-        resource_config.kind == kind
-        and hasattr(resource_config.selector, "resource_kinds")
-        and resource_config.selector.resource_kinds
-    ):
-        return resource_config.selector.resource_kinds
-    return []
-
-
-class ValidationResponse:
-    status: bool
-    message: str
-
-    def __init__(self, status: bool, message: str) -> None:
-        self.status = status
-        self.message = message
-
-
-def validate_request(request: Request) -> ValidationResponse:
-    api_key = request.headers.get("x-port-aws-ocean-api-key")
-    if not api_key:
-        return ValidationResponse(
-            status=False, message="API key not found in request headers"
-        )
-    if not ocean.integration_config.get("aws_real_time_updates_requests_api_key"):
-        return ValidationResponse(
-            status=False, message="API key not found in integration config"
-        )
-    if api_key != ocean.integration_config.get(
-        "aws_real_time_updates_requests_api_key"
-    ):
-        return ValidationResponse(status=False, message="Invalid API key")
-    return ValidationResponse(status=True, message="Request validated")
