@@ -1,7 +1,7 @@
 import asyncio
-from typing import Any, Optional, AsyncGenerator, cast
 import base64
-import typing
+from typing import Any, Optional, AsyncGenerator, cast
+
 import httpx
 from loguru import logger
 
@@ -161,7 +161,7 @@ class SonarQubeClient:
             query_params.update(api_query_params)
         else:
             resource_config = event.resource_config
-            selector = typing.cast(
+            selector = cast(
                 SonarQubeProjectResourceConfig, resource_config
             ).selector
             query_params.update(selector.generate_request_params())
@@ -262,7 +262,7 @@ class SonarQubeClient:
         :return (list[Any]): A list containing issues data for all projects.
         """
 
-        selector = typing.cast(
+        selector = cast(
             SonarQubeIssueResourceConfig, event.resource_config
         ).selector
         api_query_params = selector.generate_request_params()
@@ -461,8 +461,11 @@ class SonarQubeClient:
             response = httpx.get(f"{self.base_url}/api/system/status", timeout=5)
             response.raise_for_status()
             logger.info("Sonarqube sanity check passed")
-            logger.info(f"Sonarqube status: {response.json().get('status')}")
-            logger.info(f"Sonarqube version: {response.json().get('version')}")
+            if response.headers.get("content-type") == "application/json":
+                logger.info(f"Sonarqube status: {response.json().get('status')}")
+                logger.info(f"Sonarqube version: {response.json().get('version')}")
+            else:
+                logger.info(f"Sonarqube sanity check response: {response.text}")
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"Sonarqube failed connectivity check to the sonarqube instance because of HTTP error: {e.response.status_code} and response text: {e.response.text}"

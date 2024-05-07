@@ -14,7 +14,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 class DatePairField(str):
     @classmethod
-    def validate(cls, value: str) -> None:
+    def validate(zcls, value: str) -> None:
         # Regular expression to validate the format of the date pair value
         regex = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z,\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
         if not re.match(regex, value):
@@ -57,17 +57,21 @@ class DurationField(str):
 
 
 class KubecostSelector(Selector):
-    window: Literal[
-        "today",
-        "week",
-        "month",
-        "yesterday",
-        "lastweek",
-        "lastmonth",
-        "30m",
-        "12h",
-        "7d",
-    ] | DatePairField | UnixtimePairField = Field(default="today")
+    window: (
+        Literal[
+            "today",
+            "week",
+            "month",
+            "yesterday",
+            "lastweek",
+            "lastmonth",
+            "30m",
+            "12h",
+            "7d",
+        ]
+        | DatePairField
+        | UnixtimePairField
+    ) = Field(default="today")
     aggregate: AggregationField | None = Field(
         description="Field by which to aggregate the results.",
     )
