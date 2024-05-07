@@ -130,7 +130,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             try:
                 if raw_params is None:
                     return
-                logger.info(f"Starting to process entity: {raw_params[0]}")
+                logger.debug(f"Starting to process entity: {raw_params[0]}")
                 entities.append(await self._calculate_entity(*raw_params))
             finally:
                 entities_queue.task_done()
