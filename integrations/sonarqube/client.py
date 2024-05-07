@@ -161,9 +161,7 @@ class SonarQubeClient:
             query_params.update(api_query_params)
         else:
             resource_config = event.resource_config
-            selector = cast(
-                SonarQubeProjectResourceConfig, resource_config
-            ).selector
+            selector = cast(SonarQubeProjectResourceConfig, resource_config).selector
             query_params.update(selector.generate_request_params())
 
         try:
@@ -262,9 +260,7 @@ class SonarQubeClient:
         :return (list[Any]): A list containing issues data for all projects.
         """
 
-        selector = cast(
-            SonarQubeIssueResourceConfig, event.resource_config
-        ).selector
+        selector = cast(SonarQubeIssueResourceConfig, event.resource_config).selector
         api_query_params = selector.generate_request_params()
 
         project_api_query_params = (
