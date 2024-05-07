@@ -5,11 +5,7 @@ import typing
 import httpx
 from loguru import logger
 
-from integration import (
-    SonarQubeIssueResourceConfig,
-    SonarQubeProjectResourceConfig,
-    ObjectKind,
-)
+from integration import SonarQubeIssueResourceConfig, SonarQubeProjectResourceConfig
 
 from port_ocean.utils import http_async_client
 from port_ocean.context.event import event
@@ -147,7 +143,9 @@ class SonarQubeClient:
             logger.error(f"HTTP occurred while fetching paginated data: {e}")
             raise
 
-    async def get_components(self) -> list[dict[str, Any]]:
+    async def get_components(
+        self, api_query_params: Optional[dict[str, Any]] = None
+    ) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
 
@@ -159,18 +157,12 @@ class SonarQubeClient:
             logger.info(
                 f"Fetching all components in organization: {self.organization_id}"
             )
-
-        app_config_resources = event.port_app_config.resources
-
-        project_resource = None
-        for resource in app_config_resources:
-            if resource.kind == ObjectKind.PROJECTS:
-                project_resource = resource
-                break
-
-        if project_resource:
+        if api_query_params:
+            query_params.update(api_query_params)
+        else:
+            resource_config = event.resource_config
             selector = typing.cast(
-                SonarQubeProjectResourceConfig, project_resource
+                SonarQubeProjectResourceConfig, resource_config
             ).selector
             query_params.update(selector.generate_request_params())
 
@@ -269,13 +261,31 @@ class SonarQubeClient:
 
         :return (list[Any]): A list containing issues data for all projects.
         """
-        components = await self.get_components()
+
+        selector = typing.cast(
+            SonarQubeIssueResourceConfig, event.resource_config
+        ).selector
+        api_query_params = selector.generate_request_params()
+
+        project_api_query_params = (
+            selector.project_api_query_params.generate_request_params()
+            if selector.project_api_query_params
+            else None
+        )
+
+        components = await self.get_components(
+            api_query_params=project_api_query_params
+        )
         for component in components:
-            response = await self.get_issues_by_component(component=component)
+            response = await self.get_issues_by_component(
+                component=component, api_query_params=api_query_params
+            )
             yield response
 
     async def get_issues_by_component(
-        self, component: dict[str, Any]
+        self,
+        component: dict[str, Any],
+        api_query_params: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         """
         Retrieve issues data across a single component (in this case, project) from SonarQube API.
@@ -288,10 +298,8 @@ class SonarQubeClient:
         component_key = component.get("key")
         query_params = {"componentKeys": component_key}
 
-        selector = typing.cast(
-            SonarQubeIssueResourceConfig, event.resource_config
-        ).selector
-        query_params.update(selector.generate_request_params())
+        if api_query_params:
+            query_params.update(api_query_params)
 
         response = await self.send_paginated_api_request(
             endpoint=Endpoints.ISSUES,

@@ -148,11 +148,11 @@ class CustomSelector(Selector):
         return {}
 
 
-class CustomResource(ResourceConfig):
+class CustomResourceConfig(ResourceConfig):
     selector: CustomSelector
 
 
-class SonarQubeProjectResourceConfig(CustomResource):
+class SonarQubeProjectResourceConfig(CustomResourceConfig):
     class SonarQubeProjectSelector(CustomSelector):
         api_query_params: SonarQubeProjectAPIQueryParams | None = Field(
             alias="apiQueryParams"
@@ -162,10 +162,14 @@ class SonarQubeProjectResourceConfig(CustomResource):
     selector: SonarQubeProjectSelector
 
 
-class SonarQubeIssueResourceConfig(CustomResource):
+class SonarQubeIssueResourceConfig(CustomResourceConfig):
     class SonarQubeIssueSelector(CustomSelector):
         api_query_params: SonarQubeIssueAPIQueryParams | None = Field(
             alias="apiQueryParams"
+        )
+        project_api_query_params: SonarQubeProjectAPIQueryParams | None = Field(
+            alias="projectApiQueryParams",
+            description="Allows users to control which projects to query the issues for",
         )
 
     kind: Literal["issues"]
@@ -175,9 +179,13 @@ class SonarQubeIssueResourceConfig(CustomResource):
 class SonarQubePortAppConfig(PortAppConfig):
     resources: list[
         Union[
-            SonarQubeProjectResourceConfig, SonarQubeIssueResourceConfig, ResourceConfig
+            SonarQubeProjectResourceConfig,
+            SonarQubeIssueResourceConfig,
+            CustomResourceConfig,
         ]
-    ] = Field(default_factory=list)
+    ] = Field(
+        default_factory=list
+    )  # type: ignore
 
 
 class SonarQubeIntegration(BaseIntegration):
