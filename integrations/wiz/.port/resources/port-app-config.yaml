@@ -28,8 +28,20 @@ resources:
             url: .id as $id | "https://app.wiz.io/issues#~(issue~'" + $id + ")"
             status: .status
             severity: .severity
-            type: .type
+            vulnerabilityType: .type
             notes: .notes
+            wizIssueID: .entitySnapshot.id
+            cloudResourceType: .entitySnapshot.type
+            resourceName: .entitySnapshot.name
+            cloudPlatform: .entitySnapshot.cloudPlatform
+            linkToResource: if .entitySnapshot.cloudProviderURL == "" then null else .entitySnapshot.cloudProviderURL end
+            cloudResourceID: .entitySnapshot.providerId
+            cloudRegion: .entitySnapshot.region
+            resourceGroupExternalId: .entitySnapshot.resourceGroupExternalId
+            subscriptionExternalId: .entitySnapshot.subscriptionExternalId
+            subscriptionName: .entitySnapshot.subscriptionName
+            subscriptionTags: .entitySnapshot.subscriptionTags
+            resourceTags: .entitySnapshot.tags
             vulnerability: .entitySnapshot
             createdAt: .createdAt
             updatedAt: .updatedAt
