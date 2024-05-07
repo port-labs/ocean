@@ -160,7 +160,9 @@ class SonarQubeClient:
         if api_query_params:
             query_params.update(api_query_params)
         else:
-            selector = cast(SonarQubeProjectResourceConfig, event.resource_config).selector
+            selector = cast(
+                SonarQubeProjectResourceConfig, event.resource_config
+            ).selector
             query_params.update(selector.generate_request_params())
 
         try:
