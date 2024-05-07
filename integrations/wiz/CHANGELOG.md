@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Enhanced wizIssue blueprint with properties for vulnerability details (0.1.14)
+- Enhanced wizIssue blueprint with properties for vulnerability details
 
 # Port_Ocean 0.1.17 (2024-05-01)
 
