@@ -25,7 +25,6 @@ resources:
         - AWS::SNS::Topic
         - AWS::Cognito::IdentityPool
         - AWS::CloudFormation::Stack
-
     port:
       entity:
         mappings:

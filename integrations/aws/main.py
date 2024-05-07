@@ -1,6 +1,10 @@
 from typing import Any
+import typing
 
 from fastapi import Response, status
+import fastapi
+from starlette import responses
+from pydantic import BaseModel
 
 from port_ocean.core.models import Entity
 
@@ -133,48 +137,63 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.exception(f"Failed to list EC2 Instance in region: {region}")
 
 
-@ocean.router.post("/webhook")
-async def webhook(request: Request, response: Response) -> dict[str, Any]:
+@ocean.app.fast_api_app.middleware("aws_cloud_event")
+async def cloud_event_validation_middleware_handler(
+    request: fastapi.Request,
+    call_next: typing.Callable[[fastapi.Request], typing.Awaitable[responses.Response]],
+) -> responses.Response:
+    if request.method == "OPTIONS" and request.url.path.startswith("/integration"):
+        logger.info("Detected cloud event validation request")
+        headers = {
+            "WebHook-Allowed-Rate": "100",
+            "WebHook-Allowed-Origin": "*",
+        }
+        response = fastapi.Response(status_code=200, headers=headers)
+        return response
+
     validation = validate_request(request)
     validation_status = validation[0]
     message = validation[1]
-
     if validation_status is False:
-        response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {"ok": False, "message": message}
+        return fastapi.Response(
+            status_code=status.HTTP_401_UNAUTHORIZED, content=message
+        )
 
+    return await call_next(request)
+
+
+class ResourceUpdate(BaseModel):
+    resource_type: str
+    identifier: str
+    accountId: str
+    awsRegion: str
+
+
+@ocean.router.post("/webhook")
+async def webhook(update: ResourceUpdate, response: Response) -> dict[str, Any]:
     try:
-        body = await request.json()
-        logger.info(f"Received AWS Webhook request body: {body}")
-        resource_type = body.get("resource_type")
-        identifier = body.get("identifier")
-        account_id = body.get("accountId")
-        region = body.get("awsRegion")
+        logger.info(f"Received AWS Webhook request body: {update}")
+        resource_type = update.resource_type
+        identifier = update.identifier
+        account_id = update.accountId
+        region = update.awsRegion
 
         with logger.contextualize(
             account_id=account_id, resource_type=resource_type, identifier=identifier
         ):
-            if not resource_type or not identifier or not account_id:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                raise ValueError(
-                    "resource_type, identifier or account_id is missing in webhook body, please add them to the event `InputTemplate` https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-events-rule-inputtransformer.html"
-                )
-
             matching_resource_configs = get_matching_kinds_from_config(resource_type)
 
-            if not matching_resource_configs:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                raise ValueError(
-                    "Resource type not found in port app config, update port app config to include the resource type"
-                )
-
-            logger.debug("Querying full resource")
+            logger.debug(
+                "Querying full resource on AWS before registering change in port"
+            )
             resource = await describe_single_resource(
                 resource_type, identifier, account_id, region
             )
-            for resource_config in matching_resource_configs:
-                blueprint = resource_config.port.entity.mappings.blueprint.strip('"')
-                if not resource:  # Resource probably deleted
+            if not resource:  # Resource probably deleted
+                for resource_config in matching_resource_configs:
+                    blueprint = resource_config.port.entity.mappings.blueprint.strip(
+                        '"'
+                    )
                     logger.info("Resource not found in AWS, un-registering from port")
                     await ocean.unregister(
                         [
@@ -184,9 +203,7 @@ async def webhook(request: Request, response: Response) -> dict[str, Any]:
                             )
                         ]
                     )
-                    response.status_code = status.HTTP_204_NO_CONTENT
-                    continue
-
+            else:  # Resource found in AWS, update port
                 logger.info("Resource found in AWS, registering change in port")
                 resource.update(
                     {
@@ -195,11 +212,13 @@ async def webhook(request: Request, response: Response) -> dict[str, Any]:
                         REGION_PROPERTY: region,
                     }
                 )
+
                 await ocean.register_raw(
                     resource_config.kind, [fix_unserializable_date_properties(resource)]
                 )
+
             logger.info("Webhook processed successfully")
-            response.status_code = status.HTTP_204_NO_CONTENT
+            response.status_code = status.HTTP_200_OK
             return {"ok": True}
     except Exception as e:
         logger.exception(f"Failed to process event from aws")
