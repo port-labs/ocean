@@ -1,4 +1,5 @@
 from typing import Any
+import typing
 import aioboto3
 from aws.aws_credentials import AwsCredentials
 from port_ocean.context.ocean import ocean
@@ -63,10 +64,9 @@ class SessionManager:
             )
             return self._application_session
 
-        if not self._application_session:
-            raise ValueError("Application session not initialized yet")
+        application_session = typing.cast(aioboto3.Session, self._application_session)
 
-        async with self._application_session.client("sts") as sts_client:
+        async with application_session.client("sts") as sts_client:
             organizations_client = await sts_client.assume_role(
                 RoleArn=organization_role_arn, RoleSessionName="AssumeRoleSession"
             )
