@@ -6,8 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-# Port_Ocean 0.1.35 (2024-04-26)
+# Port_Ocean 0.1.38 (2024-05-08)
 
 ### Features
 
@@ -16,6 +15,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 - Fixed bug causing `OPENCOST_HOST` environment variable to be parsed incorrectly (0.1.35)
+
+
+# Port_Ocean 0.1.37 (2024-05-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.17 (#1)
+
+
+# Port_Ocean 0.1.36 (2024-05-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.16 (#1)
+
+
+# Port_Ocean 0.1.35 (2024-04-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.15 (#1)
 
 
 # Port_Ocean 0.1.34 (2024-04-24)
