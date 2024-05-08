@@ -5,7 +5,6 @@ from urllib.parse import urlparse, urlunparse
 import httpx
 from loguru import logger
 
-from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
 MAX_PAGE_SIZE = 100
@@ -93,11 +92,6 @@ class DatadogClient:
         return response.json()
 
     async def get_hosts(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if cache := event.attributes.get(CacheKeys.HOSTS):
-            logger.info("Picking Datadog Hosts from cache")
-            yield cache
-            return
-
         start = 0
         count = MAX_PAGE_SIZE
 
@@ -111,16 +105,10 @@ class DatadogClient:
             if not hosts:
                 break
 
-            event.attributes.setdefault(CacheKeys.HOSTS, []).extend(hosts)
             yield hosts
             start += count
 
     async def get_monitors(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if cache := event.attributes.get(CacheKeys.MONITORS):
-            logger.info("Picking Datadog Monitors from cache")
-            yield cache
-            return
-
         page = 0
         page_size = MAX_PAGE_SIZE
 
@@ -133,16 +121,10 @@ class DatadogClient:
             if not monitors:
                 break
 
-            event.attributes.setdefault(CacheKeys.MONITORS, []).extend(monitors)
             yield monitors
             page += 1
 
     async def get_services(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if cache := event.attributes.get(CacheKeys.SERVICES):
-            logger.info("Picking Datadog Service Catalogs from cache")
-            yield cache
-            return
-
         page = 0
         page_size = MAX_PAGE_SIZE
 
@@ -156,7 +138,6 @@ class DatadogClient:
             if not services:
                 break
 
-            event.attributes.setdefault(CacheKeys.SERVICES, []).extend(services)
             yield services
             page += 1
 
@@ -165,8 +146,7 @@ class DatadogClient:
         Asynchronously fetches Datadog SLOs (Service Level Objectives).
 
         This method retrieves SLOs from Datadog, handling pagination to ensure
-        all SLOs are fetched. If the SLOs are available in the cache, it retrieves
-        them from the cache.
+        all SLOs are fetched.
 
         Yields:
             List[Dict[str, Any]]: A list of dictionaries representing Datadog SLOs.
@@ -178,11 +158,6 @@ class DatadogClient:
             async for slo_batch in your_instance.get_slos():
                 process_slo_batch(slo_batch)
         """
-        if cache := event.attributes.get(CacheKeys.SLOS):
-            logger.info("Picking Datadog SLOs from cache")
-            yield cache
-            return
-
         offset = 0
         limit = MAX_PAGE_SIZE
 
@@ -196,7 +171,6 @@ class DatadogClient:
             if not slos:
                 break
 
-            event.attributes.setdefault(CacheKeys.SLOS, []).extend(slos)
             yield slos
             offset += limit
 
