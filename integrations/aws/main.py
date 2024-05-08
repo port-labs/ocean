@@ -6,7 +6,9 @@ import fastapi
 from starlette import responses
 from pydantic import BaseModel
 
+from aws.overrides import AWSResourceConfig
 from port_ocean.core.models import Entity
+from port_ocean.context.event import event
 
 from utils.resources import (
     batch_resources,
@@ -14,7 +16,7 @@ from utils.resources import (
     fix_unserializable_date_properties,
     resync_cloudcontrol,
 )
-from utils.config import get_resource_kinds_from_config, get_matching_kinds_from_config
+from utils.config import get_matching_kinds_from_config
 
 from utils.aws import (
     _session_manager,
@@ -53,7 +55,9 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDRESOURCE)
 async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    resource_kinds = get_resource_kinds_from_config(kind)
+    resource_kinds = typing.cast(
+        AWSResourceConfig, event.resource_config
+    ).selector.resource_kinds
     for kind in resource_kinds:
         async for batch in resync_cloudcontrol(kind):
             yield batch

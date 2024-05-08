@@ -17,18 +17,3 @@ def get_matching_kinds_from_config(kind: str) -> list[ResourceConfig]:
             )
         )
     )
-
-
-def get_resource_kinds_from_config(kind: str) -> list[str]:
-    """
-    Gets the `resourceKinds` property from the port_app_config that match the given resource kind
-    """
-    resource_config = typing.cast(AWSResourceConfig, event.resource_config)
-    resource_config
-    if (
-        resource_config.kind == kind
-        and hasattr(resource_config.selector, "resource_kinds")
-        and resource_config.selector.resource_kinds
-    ):
-        return resource_config.selector.resource_kinds
-    return []
