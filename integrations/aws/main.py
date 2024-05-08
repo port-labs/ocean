@@ -6,7 +6,7 @@ import fastapi
 from starlette import responses
 from pydantic import BaseModel
 
-from integration import AWSResourceConfig
+from aws.override import AWSResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.context.event import event
 
@@ -186,9 +186,14 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
             logger.debug(
                 "Querying full resource on AWS before registering change in port"
             )
-            resource = await describe_single_resource(
-                resource_type, identifier, account_id, region
-            )
+
+            try:
+                resource = await describe_single_resource(
+                    resource_type, identifier, account_id, region
+                )
+            except Exception as e:
+                resource = None
+
             for resource_config in matching_resource_configs:
                 if not resource:  # Resource probably deleted
                     blueprint = resource_config.port.entity.mappings.blueprint.strip(
