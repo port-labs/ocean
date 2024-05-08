@@ -10,15 +10,15 @@ features:
       - kind: datadogServiceCatalog
       - kind: datadogSlo
 configurations:
-  - name: datadogBaseUrl # For Datadog EU, set to https://api.datadoghq.eu (overrides default US site).
+  - name: datadogBaseUrl  # For Datadog EU, set to https://api.datadoghq.eu (overrides default US site).
     type: url
     required: true
     default: "https://api.datadoghq.com"
-  - name: datadogApiKey # https://docs.datadoghq.com/account_management/api-app-keys/#add-an-api-key-or-client-token
+  - name: datadogApiKey  # https://docs.datadoghq.com/account_management/api-app-keys/#add-an-api-key-or-client-token
     required: true
     type: string
     sensitive: true
-  - name: datadogApplicationKey # https://docs.datadoghq.com/account_management/api-app-keys/#add-application-keys
+  - name: datadogApplicationKey  # https://docs.datadoghq.com/account_management/api-app-keys/#add-application-keys
     required: true
     type: string
     sensitive: true
@@ -26,7 +26,7 @@ configurations:
     type: url
     required: false
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
-  - name: datadogWebhookToken # https://docs.datadoghq.com/integrations/webhooks/#setup
+  - name: datadogWebhookToken  # https://docs.datadoghq.com/integrations/webhooks/#setup
     type: string
     required: false
     sensitive: true
