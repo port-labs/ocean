@@ -1,5 +1,4 @@
 import json
-from typing import Any
 import typing
 
 from fastapi import Response, status
@@ -26,7 +25,6 @@ from utils.aws import (
 )
 from port_ocean.context.ocean import ocean
 from loguru import logger
-from starlette.requests import Request
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.enums import (
     ACCOUNT_ID_PROPERTY,
@@ -134,7 +132,7 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                                 fix_unserializable_date_properties(instance)
                             )
                     yield page_instances
-        except Exception as e:
+        except Exception:
             logger.exception(f"Failed to list EC2 Instance in region: {region}")
 
 
@@ -223,7 +221,7 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                 status_code=status.HTTP_200_OK, content=json.dumps({"ok": True})
             )
     except Exception as e:
-        logger.exception(f"Failed to process event from aws")
+        logger.exception("Failed to process event from aws")
         return fastapi.Response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=json.dumps({"ok": False, "error": str(e)}),
