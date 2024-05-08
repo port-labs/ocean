@@ -27,7 +27,6 @@ async def process_in_queue(
     objects_to_process: list[Any],
     func: Callable[[Any], Awaitable[T]],
     *args,
-    item_override: Callable[[Any], Any] = lambda item: item,
     concurrency: int = 50,
 ) -> list[T]:
     queue: Queue[Any | None] = Queue(maxsize=concurrency * 2)
@@ -42,7 +41,7 @@ async def process_in_queue(
         )
 
     for i in range(len(objects_to_process)):
-        await queue.put((item_override(objects_to_process[i]), *args))
+        await queue.put((objects_to_process[i], *args))
 
     for i in range(concurrency):
         await queue.put(None)
