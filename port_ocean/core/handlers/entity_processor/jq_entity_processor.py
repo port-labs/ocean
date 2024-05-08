@@ -1,6 +1,5 @@
 import asyncio
 import functools
-from asyncio import Queue, Task
 from functools import lru_cache
 from typing import Any
 from loguru import logger
@@ -98,16 +97,13 @@ class JQEntityProcessor(BaseEntityProcessor):
         if items_to_parse:
             items = await self._search(data, items_to_parse)
             if isinstance(items, list):
-                return await asyncio.gather(
-                    *[
-                        self._get_mapped_entity(
-                            {"item": item, **data},
-                            raw_entity_mappings,
-                            selector_query,
-                            parse_all,
-                        )
-                        for item in items
-                    ]
+                return await process_in_queue(
+                    items,
+                    self._get_mapped_entity,  # type: ignore
+                    raw_entity_mappings,
+                    selector_query,
+                    parse_all,
+                    item_override=lambda item: {"item": item, **data},
                 )
             logger.warning(
                 f"Failed to parse items for JQ expression {items_to_parse}, Expected list but got {type(items)}."
