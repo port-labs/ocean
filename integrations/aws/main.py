@@ -1,3 +1,4 @@
+import json
 from typing import Any
 import typing
 
@@ -170,7 +171,7 @@ class ResourceUpdate(BaseModel):
 
 
 @ocean.router.post("/webhook")
-async def webhook(update: ResourceUpdate, response: Response) -> dict[str, Any]:
+async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Response:
     try:
         logger.info(f"Received AWS Webhook request body: {update}")
         resource_type = update.resource_type
@@ -189,8 +190,8 @@ async def webhook(update: ResourceUpdate, response: Response) -> dict[str, Any]:
             resource = await describe_single_resource(
                 resource_type, identifier, account_id, region
             )
-            if not resource:  # Resource probably deleted
-                for resource_config in matching_resource_configs:
+            for resource_config in matching_resource_configs:
+                if not resource:  # Resource probably deleted
                     blueprint = resource_config.port.entity.mappings.blueprint.strip(
                         '"'
                     )
@@ -203,25 +204,27 @@ async def webhook(update: ResourceUpdate, response: Response) -> dict[str, Any]:
                             )
                         ]
                     )
-            else:  # Resource found in AWS, update port
-                logger.info("Resource found in AWS, registering change in port")
-                resource.update(
-                    {
-                        KIND_PROPERTY: resource_type,
-                        ACCOUNT_ID_PROPERTY: account_id,
-                        REGION_PROPERTY: region,
-                    }
-                )
-
-                await ocean.register_raw(
-                    resource_config.kind, [fix_unserializable_date_properties(resource)]
-                )
+                else:  # Resource found in AWS, update port
+                    logger.info("Resource found in AWS, registering change in port")
+                    resource.update(
+                        {
+                            KIND_PROPERTY: resource_type,
+                            ACCOUNT_ID_PROPERTY: account_id,
+                            REGION_PROPERTY: region,
+                        }
+                    )
+                    await ocean.register_raw(
+                        resource_config.kind,
+                        [fix_unserializable_date_properties(resource)],
+                    )
 
             logger.info("Webhook processed successfully")
-            response.status_code = status.HTTP_200_OK
-            return {"ok": True}
+            return fastapi.Response(
+                status_code=status.HTTP_200_OK, content=json.dumps({"ok": True})
+            )
     except Exception as e:
         logger.exception(f"Failed to process event from aws")
-        if response.status_code <= 299:
-            response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        return {"ok": False}
+        return fastapi.Response(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=json.dumps({"ok": False, "error": str(e)}),
+        )

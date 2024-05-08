@@ -4,7 +4,6 @@ from loguru import logger
 from aws.session_manager import SessionManager
 from port_ocean.context.ocean import ocean
 from starlette.requests import Request
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 _session_manager: SessionManager = SessionManager()
