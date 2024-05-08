@@ -28,7 +28,7 @@ resources:
           blueprint: '"service"'
           title: .name
           properties:
-            url: '.url'
+            url: '.remoteUrl'
             readme: file://README.md
           relations:
             project: .project.id
