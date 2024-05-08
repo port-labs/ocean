@@ -38,57 +38,46 @@ async def describe_single_resource(
 ) -> dict[str, str]:
     async for session in get_sessions(account_id, region):
         region = session.region_name
-        try:
-            match kind:
-                case ResourceKindsWithSpecialHandling.ACM:
-                    async with session.client("acm") as acm:
-                        response = await acm.describe_certificate(
-                            CertificateArn=identifier
-                        )
-                        return response.get("Certificate")
+        match kind:
+            case ResourceKindsWithSpecialHandling.ACM:
+                async with session.client("acm") as acm:
+                    response = await acm.describe_certificate(CertificateArn=identifier)
+                    return response.get("Certificate")
 
-                case ResourceKindsWithSpecialHandling.LOADBALANCER:
-                    async with session.client("elbv2") as elbv2:
-                        response = await elbv2.describe_load_balancers(
-                            LoadBalancerArns=[identifier]
-                        )
-                        return response.get("LoadBalancers")[0]
+            case ResourceKindsWithSpecialHandling.LOADBALANCER:
+                async with session.client("elbv2") as elbv2:
+                    response = await elbv2.describe_load_balancers(
+                        LoadBalancerArns=[identifier]
+                    )
+                    return response.get("LoadBalancers")[0]
 
-                case ResourceKindsWithSpecialHandling.CLOUDFORMATION:
-                    async with session.client("cloudformation") as cloudformation:
-                        response = await cloudformation.describe_stacks(
-                            StackName=identifier
-                        )
-                        return response.get("Stacks")[0]
+            case ResourceKindsWithSpecialHandling.CLOUDFORMATION:
+                async with session.client("cloudformation") as cloudformation:
+                    response = await cloudformation.describe_stacks(
+                        StackName=identifier
+                    )
+                    return response.get("Stacks")[0]
 
-                case ResourceKindsWithSpecialHandling.EC2:
-                    async with session.client("ec2") as ec2_client:
-                        described_instance = await ec2_client.describe_instances(
-                            InstanceIds=[identifier]
-                        )
-                        instance_definition = described_instance["Reservations"][0][
-                            "Instances"
-                        ][0]
-                        return instance_definition
+            case ResourceKindsWithSpecialHandling.EC2:
+                async with session.client("ec2") as ec2_client:
+                    described_instance = await ec2_client.describe_instances(
+                        InstanceIds=[identifier]
+                    )
+                    instance_definition = described_instance["Reservations"][0][
+                        "Instances"
+                    ][0]
+                    return instance_definition
 
-                case _:
-                    async with session.client("cloudcontrol") as cloudcontrol:
-                        response = await cloudcontrol.get_resource(
-                            TypeName=kind, Identifier=identifier
-                        )
-                        resource_description = response.get("ResourceDescription")
-                        return {
-                            "Identifier": resource_description.get("Identifier"),
-                            **json.loads(resource_description.get("Properties", {})),
-                        }
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "ResourceNotFoundException":
-                logger.info(f"Resource not found: {kind} {identifier}")
-                return {}
-            logger.error(
-                f"Failed to describe CloudControl Instance in region: {region}; error {e}"
-            )
-            return {}
+            case _:
+                async with session.client("cloudcontrol") as cloudcontrol:
+                    response = await cloudcontrol.get_resource(
+                        TypeName=kind, Identifier=identifier
+                    )
+                    resource_description = response.get("ResourceDescription")
+                    return {
+                        "Identifier": resource_description.get("Identifier"),
+                        **json.loads(resource_description.get("Properties", {})),
+                    }
     return {}
 
 

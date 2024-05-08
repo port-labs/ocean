@@ -1,5 +1,5 @@
 import typing
-from aws.overrides import AWSPortAppConfig, AWSResourceConfig
+from integration import AWSPortAppConfig, AWSResourceConfig
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 

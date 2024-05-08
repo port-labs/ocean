@@ -6,7 +6,7 @@ import fastapi
 from starlette import responses
 from pydantic import BaseModel
 
-from aws.overrides import AWSResourceConfig
+from integration import AWSResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.context.event import event
 
@@ -110,34 +110,31 @@ async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for session in get_sessions():
         region = session.region_name
         account_id = await _session_manager.find_account_id_by_session(session)
-        try:
-            async with (
-                session.resource("ec2") as ec2,
-                session.client("ec2") as ec2_client,
-            ):
-                async for page in ec2.instances.pages():
-                    if not page:
-                        continue
-                    page_instances = []
-                    instance_ids = [instance.id for instance in page]
-                    described_instances = await ec2_client.describe_instances(
-                        InstanceIds=instance_ids,
-                    )
-                    for reservation in described_instances["Reservations"]:
-                        for instance in reservation["Instances"]:
-                            instance.update(
-                                {
-                                    KIND_PROPERTY: kind,
-                                    ACCOUNT_ID_PROPERTY: account_id,
-                                    REGION_PROPERTY: region,
-                                }
-                            )
-                            page_instances.append(
-                                fix_unserializable_date_properties(instance)
-                            )
-                    yield page_instances
-        except Exception:
-            logger.exception(f"Failed to list EC2 Instance in region: {region}")
+        async with (
+            session.resource("ec2") as ec2,
+            session.client("ec2") as ec2_client,
+        ):
+            async for page in ec2.instances.pages():
+                if not page:
+                    continue
+                page_instances = []
+                instance_ids = [instance.id for instance in page]
+                described_instances = await ec2_client.describe_instances(
+                    InstanceIds=instance_ids,
+                )
+                for reservation in described_instances["Reservations"]:
+                    for instance in reservation["Instances"]:
+                        instance.update(
+                            {
+                                KIND_PROPERTY: kind,
+                                ACCOUNT_ID_PROPERTY: account_id,
+                                REGION_PROPERTY: region,
+                            }
+                        )
+                        page_instances.append(
+                            fix_unserializable_date_properties(instance)
+                        )
+                yield page_instances
 
 
 @ocean.app.fast_api_app.middleware("aws_cloud_event")
