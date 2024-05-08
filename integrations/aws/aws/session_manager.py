@@ -2,6 +2,7 @@ from typing import Any
 import typing
 import aioboto3
 from aws.aws_credentials import AwsCredentials
+from aws.custom_errors import AccountNotFoundError
 from port_ocean.context.ocean import ocean
 from loguru import logger
 
@@ -85,14 +86,13 @@ class SessionManager:
 
     async def _update_available_access_credentials(self) -> None:
         logger.info("Updating AWS credentials")
-        if not self._application_session or not self._organization_reader:
-            raise ValueError(
-                "Application session or organization reader session not initialized yet"
-            )
-
         async with (
-            self._application_session.client("sts") as sts_client,
-            self._organization_reader.client("organizations") as organizations_client,
+            typing.cast(aioboto3.Session, self._application_session).client(
+                "sts"
+            ) as sts_client,
+            typing.cast(aioboto3.Session, self._organization_reader).client(
+                "organizations"
+            ) as organizations_client,
         ):
             paginator = organizations_client.get_paginator("list_accounts")
             try:
@@ -143,7 +143,10 @@ class SessionManager:
         for cred in self._aws_credentials:
             if cred.access_key_id == frozen_credentials.access_key:
                 return cred.account_id
-        raise ValueError(f"Cannot find credentials linked with this session {session}")
+
+        raise AccountNotFoundError(
+            f"Cannot find credentials linked with this session {session}"
+        )
 
     def find_credentials_by_account_id(self, account_id: str) -> AwsCredentials:
         for cred in self._aws_credentials:
@@ -153,6 +156,6 @@ class SessionManager:
         if len(self._aws_credentials) == 1:
             return self._aws_credentials[0]
 
-        raise ValueError(
+        raise AccountNotFoundError(
             f"Cannot find credentials linked with this account id {account_id}"
         )
