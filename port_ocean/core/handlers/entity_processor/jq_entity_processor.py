@@ -15,6 +15,7 @@ from port_ocean.core.ocean_types import (
     EntitySelectorDiff,
 )
 from port_ocean.exceptions.core import EntityProcessorException
+from port_ocean.utils.queue_utils import process_in_queue
 
 
 class JQEntityProcessor(BaseEntityProcessor):
@@ -120,21 +121,6 @@ class JQEntityProcessor(BaseEntityProcessor):
             ]
         return [({}, False)]
 
-    async def _start_entity_processor_worker(
-        self,
-        entities_queue: Queue[Any | None],
-        entities: list[list[tuple[dict[str, Any], bool]]],
-    ) -> None:
-        while True:
-            raw_params = await entities_queue.get()
-            try:
-                if raw_params is None:
-                    return
-                logger.debug(f"Starting to process entity: {raw_params[0]}")
-                entities.append(await self._calculate_entity(*raw_params))
-            finally:
-                entities_queue.task_done()
-
     async def _parse_items(
         self,
         mapping: ResourceConfig,
@@ -144,37 +130,19 @@ class JQEntityProcessor(BaseEntityProcessor):
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
-        workers_queue: Queue[Any | None] = Queue(maxsize=100)
-        workers_tasks: list[Task[Any]] = []
-        calculate_entities_results: list[list[tuple[dict[str, Any], bool]]] = []
 
-        for i in range(50):
-            workers_tasks.append(
-                asyncio.create_task(
-                    self._start_entity_processor_worker(
-                        workers_queue, calculate_entities_results
-                    )
-                )
-            )
-        for i in range(len(raw_results)):
-            await workers_queue.put(
-                (
-                    raw_results[i],
-                    raw_entity_mappings,
-                    mapping.port.items_to_parse,
-                    mapping.selector.query,
-                    parse_all,
-                )
-            )
-        for i in range(50):
-            await workers_queue.put(None)
-
-        await workers_queue.join()
-        await asyncio.gather(*workers_tasks)
+        calculated_entities_results = await process_in_queue(
+            raw_results,
+            self._calculate_entity,  # type: ignore
+            raw_entity_mappings,
+            mapping.port.items_to_parse,
+            mapping.selector.query,
+            parse_all,
+        )
 
         passed_entities = []
         failed_entities = []
-        for entities_results in calculate_entities_results:
+        for entities_results in calculated_entities_results:
             for entity, did_entity_pass_selector in entities_results:
                 if entity.get("identifier") and entity.get("blueprint"):
                     parsed_entity = Entity.parse_obj(entity)
