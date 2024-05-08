@@ -107,7 +107,7 @@ class SessionManager:
                             sts_client, account
                         )
             except organizations_client.exceptions.AccessDeniedException:
-                logger.error(
+                logger.warning(
                     "Caller is not a member of an AWS organization. Assuming role in the current account."
                 )
         logger.info(f"Found {len(self._aws_credentials)} AWS accounts")
@@ -143,10 +143,6 @@ class SessionManager:
         for cred in self._aws_credentials:
             if cred.access_key_id == frozen_credentials.access_key:
                 return cred.account_id
-
-        if len(self._aws_credentials) == 1:
-            return self._aws_credentials[0].account_id
-
         raise ValueError(f"Cannot find credentials linked with this session {session}")
 
     def find_credentials_by_account_id(self, account_id: str) -> AwsCredentials:
