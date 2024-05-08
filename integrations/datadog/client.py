@@ -199,6 +199,7 @@ class DatadogClient:
             elif err.response.status_code == 500:
                 # Webhooks are not yet enabled in Datadog
                 logger.error(err.response.text)
+                raise err
             else:
                 raise
 
