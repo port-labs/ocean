@@ -173,27 +173,33 @@ class EntityClientMixin:
         handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
-    async def does_integration_has_ownership_over_entity(
-        self, entity: Entity, user_agent_type: UserAgentType
-    ) -> bool:
-        logger.info(f"Validating ownership on entity {entity.identifier}")
-        found_entities: list[Entity] = await self.search_entities(
+    async def search_batch_entities(
+        self, user_agent_type: UserAgentType, entities_to_search: list[Entity]
+    ) -> list[Entity]:
+        search_rules = []
+        for entity in entities_to_search:
+            search_rules.append(
+                {
+                    "combinator": "and",
+                    "rules": [
+                        {
+                            "property": "$identifier",
+                            "operator": "=",
+                            "value": entity.identifier,
+                        },
+                        {
+                            "property": "$blueprint",
+                            "operator": "=",
+                            "value": entity.blueprint,
+                        },
+                    ],
+                }
+            )
+
+        return await self.search_entities(
             user_agent_type,
             {
                 "combinator": "and",
-                "rules": [
-                    {
-                        "property": "$identifier",
-                        "operator": "contains",
-                        "value": entity.identifier,
-                    },
-                    {
-                        "property": "$blueprint",
-                        "operator": "contains",
-                        "value": entity.blueprint,
-                    },
-                ],
+                "rules": [{"combinator": "or", "rules": search_rules}],
             },
         )
-
-        return len(found_entities) > 0

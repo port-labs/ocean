@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+# 0.1.18 (2024-05-01)
+
+### Improvements
+
+- Enhanced wizIssue blueprint with properties for vulnerability details
+
+# Port_Ocean 0.1.17 (2024-05-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.17 (#1)
+
+
+# Port_Ocean 0.1.16 (2024-05-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.16 (#1)
+
+
+# Port_Ocean 0.1.15 (2024-04-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.15 (#1)
+
+
+# Port_Ocean 0.1.14 (2024-04-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.14 (#1)
 
 # Port_Ocean 0.1.13 (2024-04-17)
 

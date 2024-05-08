@@ -31,9 +31,9 @@ async def _upsert_webhooks(
 ) -> None:
     events_to_create = []
     events_to_delete = []
-    existing_subscriptions: list[
-        WebhookEvent
-    ] = await azure_devops_client.generate_subscriptions_webhook_events()
+    existing_subscriptions: list[WebhookEvent] = (
+        await azure_devops_client.generate_subscriptions_webhook_events()
+    )
     for event in webhook_events:
         webhook_subscription = event.get_event_by_subscription(existing_subscriptions)
         if webhook_subscription is not None and not webhook_subscription.is_enabled():

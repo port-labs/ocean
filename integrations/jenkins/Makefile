@@ -4,9 +4,8 @@ define run_checks
 	exit_code=0; \
 	cd $1; \
 	poetry check || exit_code=$$?;\
-  	poetry lock --check || exit_code=$$?;\
 	mypy . || exit_code=$$?; \
-	ruff . || exit_code=$$?; \
+	ruff check . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
 		echo "\033[0;31mOne or more checks failed with exit code $$exit_code\033[0m"; \

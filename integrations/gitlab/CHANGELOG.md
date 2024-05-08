@@ -7,6 +7,45 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.72 (2024-05-05)
+===================
+
+### Improvements
+
+- Added try-catch blocks to api endpoints
+
+0.1.71 (2024-05-01)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.17 (#1)
+
+
+0.1.70 (2024-05-01)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.16 (#1)
+
+
+0.1.69 (2024-04-30)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.15 (#1)
+
+
+0.1.68 (2024-04-24)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.14 (#1)
+
+
 0.1.67 (2024-04-17)
 ===================
 

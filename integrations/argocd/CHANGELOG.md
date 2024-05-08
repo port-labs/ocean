@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.45 (2024-05-06)
+
+### Improvements
+
+- Updated the relationship between images and k8s resource from many to one
+- Deleted all the properties from the image blueprint since none of the properties can be extracted from the k8s resource
+
+
+# Port_Ocean 0.1.44 (2024-05-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.17 (#1)
+
+
+# Port_Ocean 0.1.43 (2024-05-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.16 (#1)
+
+
+# Port_Ocean 0.1.42 (2024-04-30)
+
+### Improvements
+
+- Updated the default mapping to ingest all images used by deployments and establish a relationship between them
+
+
+# Port_Ocean 0.1.41 (2024-04-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.15 (#1)
+
+
+# Port_Ocean 0.1.40 (2024-04-25)
+
+### Bug Fixes
+
+- Fixed a bug in the managed-resources kind that caused the integration to throw a KeyError
+
+### Improvements
+
+- Added a default empty array to the deployment history mapping to stop spamming the logs with JQ NoneType error
+
+
+# Port_Ocean 0.1.39 (2024-04-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.14 (#1)
+
+
 # Port_Ocean 0.1.38 (2024-04-17)
 
 ### Improvements

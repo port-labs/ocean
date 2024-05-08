@@ -7,6 +7,35 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.17 (2024-05-01)
+
+### Bug Fixes
+
+- Fixed an issue in creating a child event context from the parent context by removing an unnecessary line of code
+
+
+
+## 0.5.16 (2024-05-01)
+
+### Features
+
+- Allowing override of parent event context in ocean's event context manager
+
+
+## 0.5.15 (2024-04-30)
+
+### Bug Fixes
+
+- Fixed error in `register_raw` when there's no relevant mappings for a specific kind
+
+
+## 0.5.14 (2024-04-24)
+
+### Improvements
+
+- Implemented real-time entity deletion exclusively for instances that haven't matched any selectors.
+- Change the JQ calculation to process only identifier and blueprint for raw entities not selected during real-time events to only get the required data for the delete.
+
 ## 0.5.13 (2024-04-17)
 
 ### Features
