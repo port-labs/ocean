@@ -28,7 +28,7 @@ from utils.aws import (
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from utils.enums import (
+from utils.misc import (
     ACCOUNT_ID_PROPERTY,
     KIND_PROPERTY,
     REGION_PROPERTY,

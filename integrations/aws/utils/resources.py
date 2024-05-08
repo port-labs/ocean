@@ -3,7 +3,7 @@ from typing import Any, Literal
 
 import aioboto3
 from loguru import logger
-from utils.enums import (
+from utils.misc import (
     ACCOUNT_ID_PROPERTY,
     KIND_PROPERTY,
     REGION_PROPERTY,
