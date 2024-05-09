@@ -11,6 +11,13 @@ from types_aiobotocore_sts import STSClient
 
 class SessionManager:
     def __init__(self) -> None:
+        """
+        This class manages the AWS sessions and credentials required to interact with AWS services.
+        _aws_accessible_accounts is a list of dictionaries containing the account ID and name of all AWS accounts that the application can access.
+        _aws_credentials is a list of AwsCredentials objects containing the credentials required to assume roles in each account.
+        _application_session is the session object for the application account where the application is running on.
+        _organization_reader is the session object for the organization account if the application has access to it, used to read all the organization accounts.
+        """
         self._aws_accessible_accounts: list[dict[str, Any]] = []
         self._aws_credentials: list[AwsCredentials] = []
         self._application_account_id: str = ""
@@ -18,6 +25,14 @@ class SessionManager:
         self._organization_reader: aioboto3.Session | None = None
 
     async def reset(self) -> None:
+        """
+        This method ensures that the application has up-to-date AWS credentials and access to all relevant AWS accounts,
+        enabling it to perform operations across multiple accounts or a single account in a secure manner.
+
+        if the application has access to the organization account,
+        it will assume the role specified in the configuration to read all the organization accounts,
+        and then assume the role in each account to get the credentials required to interact with AWS services.
+        """
         application_credentials = await self._get_application_credentials()
         await application_credentials.update_enabled_regions()
         self._application_account_id = application_credentials.account_id
