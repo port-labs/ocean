@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.19 (2024-05-08)
+
+### Improvements
+
+- Removed spaces from service identifier field (#1)
+
+
+# Port_Ocean 0.1.18 (2024-05-08)
+
+### Improvements
+
+- Changed url to service from api url to remoteUrl (#1)
+
+
 # Port_Ocean 0.1.17 (2024-05-01)
 
 ### Improvements
