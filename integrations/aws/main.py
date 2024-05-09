@@ -31,19 +31,16 @@ from utils.misc import (
 )
 
 
-@ocean.on_resync()
-async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    await update_available_access_credentials()
-
-
 @ocean.on_resync(kind=ResourceKinds.ACCOUNT)
 async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
     for account in describe_accessible_accounts():
         yield fix_unserializable_date_properties(account)
 
 
 @ocean.on_resync(kind=ResourceKinds.CLOUD_CONTROL_RESOURCE)
 async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
     resource_kinds = typing.cast(
         AWSResourceConfig, event.resource_config
     ).selector.resource_kinds
@@ -86,6 +83,7 @@ class ResourceUpdate(BaseModel):
 
 @ocean.router.post("/webhook")
 async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Response:
+    await update_available_access_credentials()
     try:
         logger.info(f"Received AWS Webhook request body: {update}")
         resource_type = update.resource_type

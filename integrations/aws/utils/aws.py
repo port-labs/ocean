@@ -4,6 +4,7 @@ from loguru import logger
 from aws.session_manager import SessionManager
 from port_ocean.context.ocean import ocean
 from starlette.requests import Request
+from port_ocean.context.event import event
 
 
 _session_manager: SessionManager = SessionManager()
@@ -16,8 +17,15 @@ async def update_available_access_credentials() -> None:
 
     :return: List of AWS account IDs.
     """
+    CACHE_KEY = "CREDENTIALS_CACHE"
+
+    if CACHE_KEY in event.attributes:
+        return
+
     logger.info("Updating AWS credentials")
     await _session_manager.reset()
+    # makes this run once per resync
+    event.attributes[CACHE_KEY] = True
 
 
 def describe_accessible_accounts() -> list[dict[str, Any]]:
@@ -32,6 +40,8 @@ async def get_sessions(
     """
     Gets boto3 sessions for the AWS regions
     """
+    await update_available_access_credentials()
+
     if custom_account_id:
         credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
         if use_default_region:
