@@ -11,7 +11,6 @@ from port_ocean.core.models import Entity
 from port_ocean.context.event import event
 
 from utils.resources import (
-    batch_resources,
     describe_single_resource,
     fix_unserializable_date_properties,
     resync_cloudcontrol,
@@ -19,9 +18,7 @@ from utils.resources import (
 from utils.config import get_matching_kinds_from_config
 
 from utils.aws import (
-    _session_manager,
     describe_accessible_accounts,
-    get_sessions,
     update_available_access_credentials,
     validate_request,
 )
@@ -32,7 +29,7 @@ from utils.misc import (
     ACCOUNT_ID_PROPERTY,
     KIND_PROPERTY,
     REGION_PROPERTY,
-    ResourceKindsWithSpecialHandling,
+    ResourceKinds,
 )
 
 
@@ -40,20 +37,14 @@ from utils.misc import (
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
 
-    if kind in iter(ResourceKindsWithSpecialHandling):
-        logger.info("Kind already has a specific handling, skipping", kind=kind)
-        return
-    async for batch in resync_cloudcontrol(kind):
-        yield batch
 
-
-@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
+@ocean.on_resync(kind=ResourceKinds.ACCOUNT)
 async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for account in describe_accessible_accounts():
         yield fix_unserializable_date_properties(account)
 
 
-@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDRESOURCE)
+@ocean.on_resync(kind=ResourceKinds.CLOUDRESOURCE)
 async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     resource_kinds = typing.cast(
         AWSResourceConfig, event.resource_config
@@ -61,80 +52,6 @@ async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     for kind in resource_kinds:
         async for batch in resync_cloudcontrol(kind):
             yield batch
-
-
-@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM)
-async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in get_sessions():
-        async for batch in batch_resources(
-            kind,
-            session,
-            "acm",
-            "list_certificates",
-            "CertificateSummaryList",
-            "NextToken",
-        ):
-            yield batch
-
-
-@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.LOADBALANCER)
-async def resync_loadbalancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in get_sessions():
-        async for batch in batch_resources(
-            kind,
-            session,
-            "elbv2",
-            "describe_load_balancers",
-            "LoadBalancers",
-            "NextMarker",
-        ):
-            yield batch
-
-
-@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION)
-async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in get_sessions():
-        async for batch in batch_resources(
-            kind,
-            session,
-            "cloudformation",
-            "list_stacks",
-            "StackSummaries",
-            "NextToken",
-        ):
-            yield batch
-
-
-@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.EC2)
-async def resync_ec2(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for session in get_sessions():
-        region = session.region_name
-        account_id = await _session_manager.find_account_id_by_session(session)
-        async with (
-            session.resource("ec2") as ec2,
-            session.client("ec2") as ec2_client,
-        ):
-            async for page in ec2.instances.pages():
-                if not page:
-                    continue
-                page_instances = []
-                instance_ids = [instance.id for instance in page]
-                described_instances = await ec2_client.describe_instances(
-                    InstanceIds=instance_ids,
-                )
-                for reservation in described_instances["Reservations"]:
-                    for instance in reservation["Instances"]:
-                        instance.update(
-                            {
-                                KIND_PROPERTY: kind,
-                                ACCOUNT_ID_PROPERTY: account_id,
-                                REGION_PROPERTY: region,
-                            }
-                        )
-                        page_instances.append(
-                            fix_unserializable_date_properties(instance)
-                        )
-                yield page_instances
 
 
 @ocean.app.fast_api_app.middleware("aws_cloud_event")
