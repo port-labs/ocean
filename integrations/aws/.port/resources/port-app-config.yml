@@ -34,8 +34,8 @@ resources:
           properties:
             kind: .__Kind
             region: .__Region
-            tags: .Tags
-            arn: .Arn
-            link: 'if has("Arn") then "https://console.aws.amazon.com/go/view?arn=" + .Arn else empty end'
+            tags: .Properties.Tags
+            arn: .Properties.Arn
+            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
           relations:
             account: .__AccountId

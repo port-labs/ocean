@@ -10,7 +10,6 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
 )
 from utils.aws import get_sessions
-from botocore.exceptions import ClientError
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.aws import _session_manager
@@ -74,10 +73,15 @@ async def describe_single_resource(
                         TypeName=kind, Identifier=identifier
                     )
                     resource_description = response.get("ResourceDescription")
-                    return {
-                        "Identifier": resource_description.get("Identifier"),
-                        **json.loads(resource_description.get("Properties", {})),
-                    }
+                    serialized = resource_description.copy()
+                    serialized.update(
+                        {
+                            "Properties": json.loads(
+                                resource_description.get("Properties")
+                            ),
+                        }
+                    )
+                    return serialized
     return {}
 
 
@@ -145,19 +149,17 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         break
                     page_resources = []
                     for instance in resources:
-                        described = {
-                            "Identifier": instance.get("Identifier"),
-                            **json.loads(instance.get("Properties", {})),
-                        }
-                        described.update(
+                        serialized = instance.copy()
+                        serialized.update(
                             {
                                 KIND_PROPERTY: kind,
                                 ACCOUNT_ID_PROPERTY: account_id,
                                 REGION_PROPERTY: region,
+                                "Properties": json.loads(instance.get("Properties")),
                             }
                         )
                         page_resources.append(
-                            fix_unserializable_date_properties(described)
+                            fix_unserializable_date_properties(serialized)
                         )
                     yield page_resources
             except Exception:
