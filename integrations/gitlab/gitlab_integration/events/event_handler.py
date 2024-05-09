@@ -1,10 +1,8 @@
 import asyncio
-import sys
 from abc import abstractmethod, ABC
 from asyncio import Queue
 from collections import defaultdict
 from copy import deepcopy
-from signal import signal, SIGINT
 
 from loguru import logger
 from typing import Awaitable, Callable, Any, Type
