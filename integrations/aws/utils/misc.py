@@ -8,4 +8,4 @@ REGION_PROPERTY = "__Region"
 
 class ResourceKinds(enum.StrEnum):
     ACCOUNT = "AWS::Organizations::Account"
-    CLOUDRESOURCE = "cloudResource"
+    CLOUD_CONTROL_RESOURCE = "AWS::CloudControl::Resource"

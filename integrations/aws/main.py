@@ -44,7 +44,7 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield fix_unserializable_date_properties(account)
 
 
-@ocean.on_resync(kind=ResourceKinds.CLOUDRESOURCE)
+@ocean.on_resync(kind=ResourceKinds.CLOUD_CONTROL_RESOURCE)
 async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     resource_kinds = typing.cast(
         AWSResourceConfig, event.resource_config
