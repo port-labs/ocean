@@ -6,3 +6,4 @@ eventListener:
 integration:
   identifier: 'my-aws-integration'
   type: 'aws'
+  config: {}
