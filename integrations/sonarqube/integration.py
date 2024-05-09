@@ -58,10 +58,7 @@ class SonarQubeComponentSearchFilter(BaseModel):
         allow_population_by_field_name = True
 
 
-class SonarQubeProjectAPIQueryParams(BaseModel):
-    s: str | None = Field(
-        description="Sort projects by numeric metric key such as alert_status, analysisDate, new_coverage etc"
-    )
+class SonarQubeProjectApiFilter(BaseModel):
     filter: SonarQubeComponentSearchFilter | None
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -75,7 +72,7 @@ class SonarQubeProjectAPIQueryParams(BaseModel):
         return value
 
 
-class SonarQubeIssueAPIQueryParams(BaseModel):
+class SonarQubeIssueApiFilter(BaseModel):
     assigned: Literal["yes", "no", "true", "false"] | None = Field(
         description="To retrieve assigned or unassigned issues"
     )
@@ -143,8 +140,8 @@ class SonarQubeIssueAPIQueryParams(BaseModel):
 
 class CustomSelector(Selector):
     def generate_request_params(self) -> dict[str, Any]:
-        if hasattr(self, "api_query_params") and self.api_query_params:
-            return self.api_query_params.generate_request_params()
+        if hasattr(self, "api_filters") and self.api_filters:
+            return self.api_filters.generate_request_params()
         return {}
 
 
@@ -154,9 +151,7 @@ class CustomResourceConfig(ResourceConfig):
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
     class SonarQubeProjectSelector(CustomSelector):
-        api_query_params: SonarQubeProjectAPIQueryParams | None = Field(
-            alias="apiQueryParams"
-        )
+        api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
 
     kind: Literal["projects"]
     selector: SonarQubeProjectSelector
@@ -164,11 +159,9 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
 
 class SonarQubeIssueResourceConfig(CustomResourceConfig):
     class SonarQubeIssueSelector(CustomSelector):
-        api_query_params: SonarQubeIssueAPIQueryParams | None = Field(
-            alias="apiQueryParams"
-        )
-        project_api_query_params: SonarQubeProjectAPIQueryParams | None = Field(
-            alias="projectApiQueryParams",
+        api_filters: SonarQubeIssueApiFilter | None = Field(alias="apiFilters")
+        project_api_filters: SonarQubeProjectApiFilter | None = Field(
+            alias="projectApiFilters",
             description="Allows users to control which projects to query the issues for",
         )
 

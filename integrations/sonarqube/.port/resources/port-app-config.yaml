@@ -4,7 +4,7 @@ resources:
   - kind: projects
     selector:
       query: 'true'
-      apiQueryParams:
+      apiFilters:
         filter:
           qualifier: TRK
     port:
@@ -64,9 +64,9 @@ resources:
   - kind: issues
     selector:
       query: 'true'
-      apiQueryParams:
+      apiFilters:
         resolved: 'false'
-      projectApiQueryParams:
+      projectApiFilters:
         filter:
           qualifier: TRK
     port:

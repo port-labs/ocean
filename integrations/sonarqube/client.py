@@ -265,8 +265,8 @@ class SonarQubeClient:
         api_query_params = selector.generate_request_params()
 
         project_api_query_params = (
-            selector.project_api_query_params.generate_request_params()
-            if selector.project_api_query_params
+            selector.project_api_filters.generate_request_params()
+            if selector.project_api_filters
             else None
         )
 
