@@ -1,6 +1,6 @@
 import asyncio
 from asyncio import Queue, Task
-from typing import Any, TypeVar, Callable, Awaitable
+from typing import Any, TypeVar, Callable, Coroutine
 
 from loguru import logger
 
@@ -9,7 +9,7 @@ T = TypeVar("T")
 
 async def _start_processor_worker(
     queue: Queue[Any | None],
-    func: Callable[[Any], Awaitable[T]],
+    func: Callable[..., Coroutine[Any, Any, T]],
     results: list[T],
 ) -> None:
     while True:
@@ -25,8 +25,8 @@ async def _start_processor_worker(
 
 async def process_in_queue(
     objects_to_process: list[Any],
-    func: Callable[[Any], Awaitable[T]],
-    *args,
+    func: Callable[..., Coroutine[Any, Any, T]],
+    *args: Any,
     concurrency: int = 50,
 ) -> list[T]:
     queue: Queue[Any | None] = Queue(maxsize=concurrency * 2)

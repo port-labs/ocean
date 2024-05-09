@@ -132,7 +132,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         calculated_entities_results = await process_in_queue(
             raw_results,
-            self._calculate_entity,  # type: ignore
+            self._calculate_entity,
             raw_entity_mappings,
             mapping.port.items_to_parse,
             mapping.selector.query,
