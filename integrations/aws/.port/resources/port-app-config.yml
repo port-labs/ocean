@@ -1,5 +1,5 @@
 resources:
-  - kind: account
+  - kind: AWS::Organizations::Account
     selector:
       query: 'true'
     port:

@@ -7,5 +7,5 @@ REGION_PROPERTY = "__Region"
 
 
 class ResourceKinds(enum.StrEnum):
-    ACCOUNT = "account"
+    ACCOUNT = "AWS::Organizations::Account"
     CLOUD_CONTROL_RESOURCE = "cloudResource"
