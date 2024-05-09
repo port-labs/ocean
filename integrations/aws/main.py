@@ -15,7 +15,6 @@ from utils.resources import (
     fix_unserializable_date_properties,
     resync_cloudcontrol,
 )
-from utils.config import get_matching_kinds_from_config
 
 from utils.aws import (
     describe_accessible_accounts,
@@ -26,9 +25,7 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.misc import (
-    ACCOUNT_ID_PROPERTY,
-    KIND_PROPERTY,
-    REGION_PROPERTY,
+    CustomProperties,
     ResourceKinds,
 )
 
@@ -129,9 +126,9 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     logger.info("Resource found in AWS, registering change in port")
                     resource.update(
                         {
-                            KIND_PROPERTY: resource_type,
-                            ACCOUNT_ID_PROPERTY: account_id,
-                            REGION_PROPERTY: region,
+                            CustomProperties.KIND: resource_type,
+                            CustomProperties.ACCOUNT_ID: account_id,
+                            CustomProperties.REGION: region,
                         }
                     )
                     await ocean.register_raw(

@@ -3,9 +3,7 @@ from typing import Any
 
 from loguru import logger
 from utils.misc import (
-    ACCOUNT_ID_PROPERTY,
-    KIND_PROPERTY,
-    REGION_PROPERTY,
+    CustomProperties,
 )
 from utils.aws import get_sessions
 
@@ -75,9 +73,9 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         serialized = instance.copy()
                         serialized.update(
                             {
-                                KIND_PROPERTY: kind,
-                                ACCOUNT_ID_PROPERTY: account_id,
-                                REGION_PROPERTY: region,
+                                CustomProperties.KIND: kind,
+                                CustomProperties.ACCOUNT_ID: account_id,
+                                CustomProperties.REGION: region,
                                 "Properties": json.loads(instance.get("Properties")),
                             }
                         )
