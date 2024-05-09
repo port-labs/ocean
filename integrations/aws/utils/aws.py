@@ -57,10 +57,8 @@ def validate_request(request: Request) -> tuple[bool, str]:
     api_key = request.headers.get("x-port-aws-ocean-api-key")
     if not api_key:
         return (False, "API key not found in request headers")
-    if not ocean.integration_config.get("aws_real_time_updates_requests_api_key"):
+    if not ocean.integration_config.get("live_events_api_key"):
         return (False, "API key not found in integration config")
-    if api_key != ocean.integration_config.get(
-        "aws_real_time_updates_requests_api_key"
-    ):
+    if api_key != ocean.integration_config.get("live_events_api_key"):
         return (False, "Invalid API key")
     return (True, "Request validated")
