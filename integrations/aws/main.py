@@ -25,6 +25,7 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.misc import (
+    get_matching_kinds_from_config,
     CustomProperties,
     ResourceKinds,
 )
