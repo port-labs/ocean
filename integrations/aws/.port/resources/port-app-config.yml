@@ -1,5 +1,5 @@
 resources:
-  - kind: AWS::Organizations::Account
+  - kind: account
     selector:
       query: 'true'
     port:
@@ -9,7 +9,7 @@ resources:
           title: .Name
           blueprint: '"aws_account"'
 
-  - kind: AWS::CloudControl::Resource
+  - kind: cloudResource
     selector:
       query: 'true'
       resourceKinds:
