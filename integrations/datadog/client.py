@@ -79,7 +79,7 @@ class DatadogClient:
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
     ) -> Any:
-        logger.info(f"Making datadog API {method} request to endpoint {url}")
+        logger.debug(f"Sending request {method} to endpoint {url}")
 
         response = await self.http_client.request(
             url=url,
