@@ -297,7 +297,27 @@
         "target": "argocdApplication",
         "required": false,
         "many": false
+      },
+      "image": {
+        "title": "Image",
+        "target": "image",
+        "required": false,
+        "many": false
       }
     }
+  },
+  {
+    "identifier": "image",
+    "description": "This blueprint represents an image",
+    "title": "Image",
+    "icon": "AWS",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]

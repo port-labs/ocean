@@ -8,7 +8,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.id'
+          identifier: '.id | gsub(" "; "")'
           blueprint: '"project"'
           title: .name
           properties:
@@ -24,11 +24,11 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.project.name + "/" + .name'
+          identifier: '.project.name + "/" + .name | gsub(" "; "")'
           blueprint: '"service"'
           title: .name
           properties:
-            url: '.url'
+            url: '.remoteUrl'
             readme: file://README.md
           relations:
             project: .project.id
@@ -39,7 +39,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.__repository.project.name + "/" + .__repository.name'
+          identifier: '.__repository.project.name + "/" + .__repository.name | gsub(" "; "")'
           blueprint: '"service"'
           properties:
             minimumApproverCount: '.settings.minimumApproverCount'
@@ -50,7 +50,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.__repository.project.name + "/" + .__repository.name'
+          identifier: '.__repository.project.name + "/" + .__repository.name | gsub(" "; "")'
           blueprint: '"service"'
           properties:
             workItemLinking: '.isEnabled and .isBlocking'

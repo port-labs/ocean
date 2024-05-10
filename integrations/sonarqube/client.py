@@ -1,6 +1,7 @@
 import asyncio
-from typing import Any, Optional, AsyncGenerator, cast
 import base64
+from typing import Any, Optional, AsyncGenerator, cast
+
 import httpx
 from loguru import logger
 
@@ -417,8 +418,11 @@ class SonarQubeClient:
             response = httpx.get(f"{self.base_url}/api/system/status", timeout=5)
             response.raise_for_status()
             logger.info("Sonarqube sanity check passed")
-            logger.info(f"Sonarqube status: {response.json().get('status')}")
-            logger.info(f"Sonarqube version: {response.json().get('version')}")
+            if response.headers.get("content-type") == "application/json":
+                logger.info(f"Sonarqube status: {response.json().get('status')}")
+                logger.info(f"Sonarqube version: {response.json().get('version')}")
+            else:
+                logger.info(f"Sonarqube sanity check response: {response.text}")
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"Sonarqube failed connectivity check to the sonarqube instance because of HTTP error: {e.response.status_code} and response text: {e.response.text}"
