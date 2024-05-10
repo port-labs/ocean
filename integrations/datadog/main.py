@@ -12,7 +12,7 @@ class ObjectKind(StrEnum):
     HOST = "host"
     MONITOR = "monitor"
     SLO = "slo"
-    SERVICE = "serviceCatalog"
+    SERVICE = "service"
 
 
 def init_client() -> DatadogClient:

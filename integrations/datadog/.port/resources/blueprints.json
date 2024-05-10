@@ -19,12 +19,31 @@
         "description": {
           "type": "string",
           "title": "Description",
-          "description": "the project description"
+          "description": "the host description"
         },
-        "metrics": {
-          "title": "Metrics",
-          "type": "object",
-          "description": "The host metrics"
+        "platform": {
+          "type": "string",
+          "title": "Platform",
+          "description": "the host platform"
+        },
+        "machine": {
+          "type": "string",
+          "title": "Machine"
+        },
+        "cpuCores": {
+          "type": "number",
+          "title": "CPU Cores",
+          "description": "the host CPU cores"
+        },
+        "agent_version": {
+          "type": "string",
+          "title": "Datadog Agent Version",
+          "description": "the Datadog agent version installed on the host"
+        },
+        "is_muted": {
+          "type": "boolean",
+          "title": "Is Host Muted?",
+          "description": "Indicates whether alerts for that specific host are temporarily suppressed."
         },
         "sources": {
           "title": "Sources",
@@ -96,9 +115,9 @@
     "relations": {}
   },
   {
-    "identifier": "datadogServiceCatalog",
-    "description": "This blueprint represents a Datadog service catalog",
-    "title": "Datadog Service Catalog",
+    "identifier": "datadogService",
+    "description": "This blueprint represents a Datadog service",
+    "title": "Datadog Service",
     "icon": "Datadog",
     "schema": {
       "properties": {
@@ -146,9 +165,10 @@
             "mobile": "lightGray"
           }
         },
-        "code_repositories": {
-          "title": "Code Repositories",
+        "links": {
+          "title": "Service Links",
           "type": "array",
+          "description": "Links to external resources and repositories",
           "items": {
             "type": "string",
             "format": "url"
@@ -217,7 +237,7 @@
         "many": true
       },
       "services": {
-        "target": "datadogServiceCatalog",
+        "target": "datadogService",
         "title": "Services",
         "description": "The services tracked by this SLO",
         "required": false,

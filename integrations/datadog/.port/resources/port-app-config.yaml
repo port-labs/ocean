@@ -13,9 +13,13 @@ resources:
           properties:
             up: .up
             hostName: .host_name
+            platform: .meta.platform
+            is_muted: .is_muted
+            machine: .meta.machine
             description: .description
-            metrics: .metrics
             sources: .sources
+            cpuCores: .meta.cpuCores
+            agent_version: .meta.agent_version
   - kind: monitor
     selector:
       query: 'true'
@@ -31,16 +35,16 @@ resources:
             overallState: .overall_state
             thresholds: .thresholds
             priority: .priority
-            createdBy: .creator.name
+            createdBy: .creator.email
             createdAt: .created
             updatedAt: .modified
-  - kind: serviceCatalog
+  - kind: service
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"datadogServiceCatalog"'
+          blueprint: '"datadogService"'
           identifier: .attributes.schema."dd-service"
           title: .attributes.schema."dd-service"
           properties:
@@ -49,7 +53,7 @@ resources:
             description: .attributes.schema.description
             tags: .attributes.schema.tags
             type: .attributes.schema.type
-            code_repositories: .attributes.schema.links | map(.url)
+            links: .attributes.schema.links | map(.url)
   - kind: slo
     selector:
       query: 'true'
@@ -65,7 +69,7 @@ resources:
             description: .description
             warningThreshold: .warning_threshold
             targetThreshold: .target_threshold
-            createdBy: .creator.name
+            createdBy: .creator.email
             createdAt: .created_at | todate
             updatedAt: .modified_at | todate
           relations:
