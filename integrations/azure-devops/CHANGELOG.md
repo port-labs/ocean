@@ -7,11 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.18 (2024-05-06)
+# Port_Ocean 0.1.20 (2024-05-10)
 
 ### Improvements
 
 - Enhanced the jq functionality for both 'repository' and 'repository-policy' identifiers, automatically removing spaces and converting all characters to lowercase by default. (PORT-7916)
+
+
+# Port_Ocean 0.1.19 (2024-05-08)
+
+### Improvements
+
+- Removed spaces from service identifier field (#1)
+
+
+# Port_Ocean 0.1.18 (2024-05-08)
+
+### Improvements
+
+- Changed url to service from api url to remoteUrl (#1)
 
 
 # Port_Ocean 0.1.17 (2024-05-01)
