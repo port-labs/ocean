@@ -30,9 +30,9 @@ async def process_in_queue(
     concurrency: int = 50,
 ) -> list[T]:
     """
-    This function takes a list of objects and process the within a queue buffer
-    allowing for smoother handling of bursts of incoming objects
-    This can help prevent overload and improve memory issues when dealing with large sset of data
+    This function executes multiple asynchronous tasks in a bounded way
+    (e.g. having 200 tasks to execute, while running only 20 concurrently),
+    to prevent overload and improve memory issues when dealing with large sets of data and tasks.
 
     Usage:
     ```python
@@ -70,6 +70,8 @@ async def process_in_queue(
         await queue.put((objects_to_process[i], *args))
 
     for i in range(concurrency):
+        # We put None value into the queue, so the workers will know that we
+        # are done sending more input and they can terminate
         await queue.put(None)
 
     await queue.join()
