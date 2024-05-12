@@ -2,11 +2,16 @@ from typing import Any
 import typing
 import aioboto3
 from aws.aws_credentials import AwsCredentials
-from aws.custom_errors import AccountNotFoundError
 from port_ocean.context.ocean import ocean
 from loguru import logger
 
 from types_aiobotocore_sts import STSClient
+
+from port_ocean.exceptions.core import OceanAbortException
+
+
+class AccountNotFoundError(OceanAbortException):
+    pass
 
 
 class SessionManager:
