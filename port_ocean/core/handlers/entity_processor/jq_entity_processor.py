@@ -14,6 +14,7 @@ from port_ocean.core.ocean_types import (
     EntitySelectorDiff,
 )
 from port_ocean.exceptions.core import EntityProcessorException
+from port_ocean.utils.queue_utils import process_in_queue
 
 
 class JQEntityProcessor(BaseEntityProcessor):
@@ -128,23 +129,19 @@ class JQEntityProcessor(BaseEntityProcessor):
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
         )
-        calculate_entities_tasks = [
-            asyncio.create_task(
-                self._calculate_entity(
-                    data,
-                    raw_entity_mappings,
-                    mapping.port.items_to_parse,
-                    mapping.selector.query,
-                    parse_all,
-                )
-            )
-            for data in raw_results
-        ]
-        calculate_entities_results = await asyncio.gather(*calculate_entities_tasks)
+
+        calculated_entities_results = await process_in_queue(
+            raw_results,
+            self._calculate_entity,
+            raw_entity_mappings,
+            mapping.port.items_to_parse,
+            mapping.selector.query,
+            parse_all,
+        )
 
         passed_entities = []
         failed_entities = []
-        for entities_results in calculate_entities_results:
+        for entities_results in calculated_entities_results:
             for entity, did_entity_pass_selector in entities_results:
                 if entity.get("identifier") and entity.get("blueprint"):
                     parsed_entity = Entity.parse_obj(entity)

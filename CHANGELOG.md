@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.18 (2024-05-12)
+
+### Improvements
+
+- Added a util function that allows to run multiple asynchronous tasks in a bounded way to prevent overload and memory issues
+- Use that utility when calculating JQ mapping for raw entities
+
+
+
 ## 0.5.17 (2024-05-01)
 
 ### Bug Fixes
