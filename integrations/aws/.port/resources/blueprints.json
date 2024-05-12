@@ -1,6 +1,6 @@
 [
   {
-    "identifier": "aws_account",
+    "identifier": "awsAccount",
     "title": "AWS account",
     "icon": "AWS",
     "schema": {
@@ -10,7 +10,7 @@
     "relations": {}
   },
   {
-    "identifier": "cloud_resource",
+    "identifier": "cloudResource",
     "title": "AWS Cloud Resource",
     "icon": "AWS",
     "schema": {
