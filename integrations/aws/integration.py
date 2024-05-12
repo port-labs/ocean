@@ -1,5 +1,3 @@
-import typing
-
 from aws.override import AWSPortAppConfig
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig

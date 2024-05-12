@@ -106,7 +106,7 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                 resource = await describe_single_resource(
                     resource_type, identifier, account_id, region
                 )
-            except Exception as e:
+            except Exception:
                 resource = None
 
             for kind in matching_resource_configs:

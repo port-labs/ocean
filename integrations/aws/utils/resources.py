@@ -45,6 +45,7 @@ async def describe_single_resource(
                 }
             )
             return serialized
+    return {}
 
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
