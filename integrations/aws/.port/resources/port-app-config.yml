@@ -8,6 +8,12 @@ resources:
           identifier: .Id
           title: .Name
           blueprint: '"awsAccount"'
+          properties:
+            arn: .Arn
+            email: .Email
+            status: .Status
+            joined_method: .JoinedMethod
+            joined_timestamp: .JoinedTimestamp
 
   - kind: cloudResource
     selector:

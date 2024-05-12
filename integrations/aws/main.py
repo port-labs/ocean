@@ -35,7 +35,7 @@ from utils.misc import (
 async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     for account in describe_accessible_accounts():
-        yield fix_unserializable_date_properties(account)
+        yield [fix_unserializable_date_properties(account)]
 
 
 @ocean.on_resync(kind=ResourceKinds.CLOUD_CONTROL_RESOURCE)
