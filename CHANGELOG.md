@@ -11,7 +11,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Use Queue processor when calculating JQ mapping for raw entities to avoid memory issues
+- Added a util function that allows to run multiple asynchronous tasks in a bounded way to prevent overload and memory issues
+- Use that utility when calculating JQ mapping for raw entities
 
 
 
