@@ -28,7 +28,7 @@ configurations:
     sensitive: true
     default: 'AwsPortOceanIntegrationReadOnlyRole'
     description: AWS Account Read Role Name, the role name used to read the account in which the integration is not installed on, used for multi-account access.
-  - name: liveEventApiKey
+  - name: liveEventsApiKey
     required: false
     type: string
     sensitive: true
