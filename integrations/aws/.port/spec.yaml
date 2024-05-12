@@ -5,7 +5,8 @@ features:
   - type: exporter
     section: Cloud Providers
     resources:
-      - kind: EC2
+      - kind: AWS::Organizations::Account
+      - kind: cloudResource
 configurations:
   - name: awsAccessKeyId
     required: false
