@@ -45,7 +45,7 @@ class SessionManager:
 
         self._aws_credentials.append(application_credentials)
         self._aws_accessible_accounts.append(
-            {"Id": self._application_account_id, "Name": "Current Account"}
+            {"Id": self._application_account_id, "Name": "No name found"}
         )
 
         self._organization_reader = await self._get_organization_session()
