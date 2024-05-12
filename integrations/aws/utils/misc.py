@@ -16,21 +16,20 @@ class ResourceKinds(enum.StrEnum):
     CLOUD_CONTROL_RESOURCE = "cloudResource"
 
 
-def get_matching_kinds_from_config(
+def get_matching_kinds_and_blueprints_from_config(
     kind: str,
-) -> list[ResourceConfig | AWSResourceConfig]:
-    result: list[ResourceConfig | AWSResourceConfig] = []
-    kinds_cache: list[str] = []
+) -> dict[str, list[str]]:
+    kinds: dict[str, list[str]] = {}
     resources = typing.cast(AWSPortAppConfig, event.port_app_config).resources
 
     for resource in resources:
-        if resource.kind in kinds_cache:
-            continue
-        if (
+        blueprint = resource.port.entity.mappings.blueprint.strip('"')
+        if resource.kind in kinds:
+            kinds[resource.kind].append(blueprint)
+        elif (
             isinstance(resource, AWSResourceConfig)
             and kind in resource.selector.resource_kinds
         ) or kind == resource.kind:
-            result.append(resource)
-            kinds_cache.append(resource.kind)
+            kinds[resource.kind] = [blueprint]
 
-    return result
+    return kinds

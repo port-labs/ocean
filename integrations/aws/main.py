@@ -25,7 +25,7 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.misc import (
-    get_matching_kinds_from_config,
+    get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
     ResourceKinds,
 )
@@ -94,7 +94,9 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
         with logger.contextualize(
             account_id=account_id, resource_type=resource_type, identifier=identifier
         ):
-            matching_resource_configs = get_matching_kinds_from_config(resource_type)
+            matching_resource_configs = get_matching_kinds_and_blueprints_from_config(
+                resource_type
+            )
 
             logger.debug(
                 "Querying full resource on AWS before registering change in port"
@@ -107,20 +109,21 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
             except Exception as e:
                 resource = None
 
-            for resource_config in matching_resource_configs:
+            for kind in matching_resource_configs:
+                blueprints = matching_resource_configs[kind]
                 if not resource:  # Resource probably deleted
-                    blueprint = resource_config.port.entity.mappings.blueprint.strip(
-                        '"'
-                    )
-                    logger.info("Resource not found in AWS, un-registering from port")
-                    await ocean.unregister(
-                        [
-                            Entity(
-                                blueprint=blueprint,
-                                identifier=identifier,
-                            )
-                        ]
-                    )
+                    for blueprint in blueprints:
+                        logger.info(
+                            "Resource not found in AWS, un-registering from port"
+                        )
+                        await ocean.unregister(
+                            [
+                                Entity(
+                                    blueprint=blueprint,
+                                    identifier=identifier,
+                                )
+                            ]
+                        )
                 else:  # Resource found in AWS, update port
                     logger.info("Resource found in AWS, registering change in port")
                     resource.update(
@@ -131,7 +134,7 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                         }
                     )
                     await ocean.register_raw(
-                        resource_config.kind,
+                        kind,
                         [fix_unserializable_date_properties(resource)],
                     )
 
