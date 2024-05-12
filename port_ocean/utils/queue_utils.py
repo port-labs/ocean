@@ -29,6 +29,32 @@ async def process_in_queue(
     *args: Any,
     concurrency: int = 50,
 ) -> list[T]:
+    """
+    This function takes a list of objects and process the within a queue buffer
+    allowing for smoother handling of bursts of incoming objects
+    This can help prevent overload and improve memory issues when dealing with large sset of data
+
+    Usage:
+    ```python
+    async def incrementBy(num: int, increment_by: int) -> int:
+        await asyncio.sleep(3)
+        return num + increment_by
+
+    async def main():
+        raw_objects = [1, 2, 3, 4, 5]
+        processed_objects = await process_in_queue(
+            raw_objects,
+            incrementBy,
+            5
+        )
+    ```
+
+    :param objects_to_process: A list of the raw objects to process
+    :param func: An async function that turns raw object into result object
+    :param args: Static arguments to pass to the func when called
+    :param concurrency: An integer specifying the concurrent workers count
+    :return: A list of result objects
+    """
     queue: Queue[Any | None] = Queue(maxsize=concurrency * 2)
     tasks: list[Task[Any]] = []
     processing_results: list[T] = []

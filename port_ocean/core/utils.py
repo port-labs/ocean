@@ -59,7 +59,7 @@ def get_port_diff(
     for key, obj in after_dict.items():
         if key not in before_dict:
             created.append(obj)
-        elif obj != before_dict[key]:
+        else:
             modified.append(obj)
 
     for key, obj in before_dict.items():
