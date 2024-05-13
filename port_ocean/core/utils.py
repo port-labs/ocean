@@ -28,14 +28,6 @@ def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
     )
 
 
-def get_unique(array: list[Entity]) -> list[Entity]:
-    result: list[Entity] = []
-    for item in array:
-        if all(not is_same_entity(item, seen_item) for seen_item in result):
-            result.append(item)
-    return result
-
-
 def get_port_diff(
     before: Iterable[Entity],
     after: Iterable[Entity],
