@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.57 (2024-05-13)
+
+### Improvements
+
+- Added priority and description property to the incident blueprint
+
+
 # Port_Ocean 0.1.56 (2024-05-12)
 
 ### Improvements
