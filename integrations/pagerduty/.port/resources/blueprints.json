@@ -86,6 +86,28 @@
             "low"
           ]
         },
+        "priority": {
+          "type": "string",
+          "title": "Priority",
+          "enum": [
+            "P1",
+            "P2",
+            "P3",
+            "P4",
+            "P5"
+          ],
+          "enumColors": {
+            "P1": "red",
+            "P2": "yellow",
+            "P3": "blue",
+            "P4": "lightGray",
+            "P5": "darkGray"
+          }
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
         "responder": {
           "type": "string",
           "title": "Assignee",
