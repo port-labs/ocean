@@ -33,6 +33,7 @@ async def process_in_queue(
     This function executes multiple asynchronous tasks in a bounded way
     (e.g. having 200 tasks to execute, while running only 20 concurrently),
     to prevent overload and memory issues when dealing with large sets of data and tasks.
+    read more -> https://stackoverflow.com/questions/38831322/making-1-milion-requests-with-aiohttp-asyncio-literally
 
     Usage:
     ```python

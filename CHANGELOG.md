@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.19 (2024-05-13)
+
+### Improvements
+
+- Added a discussion link to process_in_queue util function
+- Removed unused util function
+
+
 ## 0.5.18 (2024-05-12)
 
 ### Improvements
