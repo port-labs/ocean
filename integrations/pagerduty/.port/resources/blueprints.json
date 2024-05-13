@@ -71,7 +71,16 @@
             "escalated",
             "reopened",
             "resolved"
-          ]
+          ],
+          "enumColors": {
+            "triggered": "red",
+            "annotated": "blue",
+            "acknowledged": "yellow",
+            "reassigned": "blue",
+            "escalated": "yellow",
+            "reopened": "red",
+            "resolved": "green"
+          }
         },
         "url": {
           "type": "string",
@@ -79,12 +88,17 @@
           "title": "Incident URL"
         },
         "urgency": {
-          "type": "string",
+          "icon": "DefaultProperty",
           "title": "Incident Urgency",
+          "type": "string",
           "enum": [
             "high",
             "low"
-          ]
+          ],
+          "enumColors": {
+            "high": "red",
+            "low": "green"
+          }
         },
         "priority": {
           "type": "string",

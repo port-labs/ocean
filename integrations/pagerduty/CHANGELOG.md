@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added priority and description property to the incident blueprint
+- Added priority and description properties to the incident blueprint
+- Updated incident status and urgency to have colored meaning
 
 
 # Port_Ocean 0.1.56 (2024-05-12)

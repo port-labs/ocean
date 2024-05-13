@@ -35,7 +35,7 @@ resources:
             escalation_policy: .escalation_policy.summary
             created_at: .created_at
             updated_at: .updated_at
-            priority: .priority
+            priority: if .priority != null then .priority.summary else null end
             description: .description
           relations:
             pagerdutyService: .service.id
