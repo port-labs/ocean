@@ -3,7 +3,7 @@ deleteDependentEntities: true
 resources:
   - kind: project
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -14,8 +14,7 @@ resources:
             tags: .tags
   - kind: flag
     selector:
-      query: 'true'
-      featureFlagStatus: 'false'
+      query: "true"
     port:
       entity:
         mappings:
@@ -38,7 +37,7 @@ resources:
             project: .__projectKey
   - kind: environment
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -55,21 +54,17 @@ resources:
             critical: .critical
           relations:
             project: .__projectKey
-  - kind: flag
+  - kind: flag-status
     selector:
-      query: 'true'
-      featureFlagStatus: 'true'
+      query: "true"
     port:
-      itemsToParse: .__status.environments | to_entries | map({key, value})
       entity:
         mappings:
-          identifier: .key + "-" + .item.key
-          title: .key + "-" + .item.key
-          blueprint: '"featureFlagInEnvironment"'
+          identifier: . as $root | ._links.self.href | split("/") | last as $last | "\($last)-\($root.__environmentKey)"
+          title: . as $root | ._links.self.href | split("/") | last as $last | "\($last)-\($root.__environmentKey)"
+          blueprint: '"launchDarklyFFInEnvironment"'
           properties:
-            status: .item.value.name
-            kind: .kind
-            description: .description
+            status: .name
           relations:
-            environment: .item.key
-            featureFlag: .key
+            environment: .__environmentKey
+            featureFlag: ._links.self.href | split("/") | last
