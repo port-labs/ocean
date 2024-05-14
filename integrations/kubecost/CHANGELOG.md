@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Updated the URL of the KubeCost cloud cost endpoint to resolve 404 error
+- Updated the URL of KubeCost cloud cost endpoint from version 1.X (`/model/cloudCost/aggregate`) to 2.2 (`/model/cloudCost`)
 
 
 # Port_Ocean 0.1.38 (2024-05-12)
