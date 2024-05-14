@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.39 (2024-05-14)
+
+### Bug Fixes
+
+- Updated the URL of the KubeCost cloud cost endpoint to resolve 404 error
+
+
 # Port_Ocean 0.1.38 (2024-05-12)
 
 ### Improvements
