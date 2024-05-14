@@ -38,8 +38,8 @@ resources:
       entity:
         mappings:
           blueprint: '"kubecostCloudAllocation"'
-          identifier: .properties.service
-          title: .properties.service
+          identifier: .properties.provider + "/" + .properties.providerID + "/" + .properties.category + "/" + .properties.service | gsub("[^A-Za-z0-9@_.:\\\\/=-]"; "-")
+          title: .properties.provider + "/" + .properties.service
           properties:
             provider: .properties.provider
             accountID: .properties.accountID
