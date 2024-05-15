@@ -57,7 +57,7 @@ class KubeCostClient:
 
         try:
             response = await self.http_client.get(
-                url=f"{self.kubecost_host}/model/cloudCost/aggregate",
+                url=f"{self.kubecost_host}/model/cloudCost",
                 params=params,
             )
             response.raise_for_status()
