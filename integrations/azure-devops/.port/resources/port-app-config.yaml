@@ -24,14 +24,14 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.project.name + "/" + .name | gsub(" "; "")'
+          identifier: '"\(.project.name | ascii_downcase | gsub(" "; ""))/\(.name | ascii_downcase | gsub(" "; ""))"'
           blueprint: '"service"'
           title: .name
           properties:
             url: '.remoteUrl'
             readme: file://README.md
           relations:
-            project: .project.id
+            project: '.project.id | gsub(" "; "")'
 
   - kind: repository-policy
     selector:
@@ -39,7 +39,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.__repository.project.name + "/" + .__repository.name | gsub(" "; "")'
+          identifier: '"\(.__repository.project.name | ascii_downcase | gsub(" "; ""))/\(.__repository.name | ascii_downcase | gsub(" "; ""))"'
           blueprint: '"service"'
           properties:
             minimumApproverCount: '.settings.minimumApproverCount'
@@ -50,7 +50,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: '.__repository.project.name + "/" + .__repository.name | gsub(" "; "")'
+          identifier: '"\(.__repository.project.name | ascii_downcase | gsub(" "; ""))/\(.__repository.name | ascii_downcase | gsub(" "; ""))"'
           blueprint: '"service"'
           properties:
             workItemLinking: '.isEnabled and .isBlocking'

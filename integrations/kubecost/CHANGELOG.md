@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.39 (2024-05-15)
+
+### Bug Fixes
+
+- Updated the URL of KubeCost cloud cost endpoint from version 1.X (`/model/cloudCost/aggregate`) to 2.2 (`/model/cloudCost`)
+
+
+# Port_Ocean 0.1.38 (2024-05-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.18 (#1)
+
+
 # Port_Ocean 0.1.37 (2024-05-01)
 
 ### Improvements
