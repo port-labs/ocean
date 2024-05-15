@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added backwards compatibility to the integration to support clients using Kubecost v1 (0.1.40)
+- Added backwards compatibility to the integration to support clients using Kubecost v1
 
 
 # Port_Ocean 0.1.39 (2024-05-15)
