@@ -1717,13 +1717,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-ec2"
-version = "1.34.97"
-description = "Type annotations for boto3.EC2 1.34.97 service generated with mypy-boto3-builder 7.24.0"
+version = "1.34.101"
+description = "Type annotations for boto3.EC2 1.34.101 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_ec2-1.34.97-py3-none-any.whl", hash = "sha256:fea2cb78e0a55ad77b79fac0702d0c28c17798fc116bf7b84cbea421c5fd9b9c"},
-    {file = "mypy_boto3_ec2-1.34.97.tar.gz", hash = "sha256:a38be6ad39bb18839ae349a0d1a6fe1c87ab8fe9cbc4a28a87aa5a972eedc361"},
+    {file = "mypy_boto3_ec2-1.34.101-py3-none-any.whl", hash = "sha256:17c368d5496663f05e42d314e89acd76c4c42c6722c015f54b7ce90e0377ad9f"},
+    {file = "mypy_boto3_ec2-1.34.101.tar.gz", hash = "sha256:5673e3cb6d287ca132282e8252712a721b2997d9e3fdae28e50d86ba1dc69a54"},
 ]
 
 [package.dependencies]
@@ -1745,13 +1745,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-ecr"
-version = "1.34.0"
-description = "Type annotations for boto3.ECR 1.34.0 service generated with mypy-boto3-builder 7.21.0"
+version = "1.34.101"
+description = "Type annotations for boto3.ECR 1.34.101 service generated with mypy-boto3-builder 7.24.0"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-ecr-1.34.0.tar.gz", hash = "sha256:b83fb0311e968a42d4ca821b006c18d4a3e3e364b8cebee758ea4fa97c5ac345"},
-    {file = "mypy_boto3_ecr-1.34.0-py3-none-any.whl", hash = "sha256:3346c02c22b16068c9acc67d990e32060bf7cdaea5f3d43c50e44308fbbc3439"},
+    {file = "mypy_boto3_ecr-1.34.101-py3-none-any.whl", hash = "sha256:723a3e6b65ec7451cc7c40232eb94e500fa51a77e360a52e028388e2b9afd161"},
+    {file = "mypy_boto3_ecr-1.34.101.tar.gz", hash = "sha256:e9acb57088daa41b3fb378f8bb966ca4a4f1b62edb9a2483de582bcf9486a4fc"},
 ]
 
 [package.dependencies]
@@ -1815,13 +1815,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-events"
-version = "1.34.17"
-description = "Type annotations for boto3.EventBridge 1.34.17 service generated with mypy-boto3-builder 7.23.1"
+version = "1.34.104"
+description = "Type annotations for boto3.EventBridge 1.34.104 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-events-1.34.17.tar.gz", hash = "sha256:2ffefc6bdef99855b0e71047e1eb74d63e016bdfda19be4d50aeddfdb3edb095"},
-    {file = "mypy_boto3_events-1.34.17-py3-none-any.whl", hash = "sha256:97f55ede04c94111e6460646e822399402dc70797fed09c5509f384861da9a1a"},
+    {file = "mypy_boto3_events-1.34.104-py3-none-any.whl", hash = "sha256:e750aca0c68ccfb74c2d9b6117f9469ad69715e67786a952b500232ed0cb109d"},
+    {file = "mypy_boto3_events-1.34.104.tar.gz", hash = "sha256:98279718883a11f788008e48ab750e3757493e10babdafa2913b1976b2fee538"},
 ]
 
 [package.dependencies]
@@ -1913,13 +1913,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-s3"
-version = "1.34.91"
-description = "Type annotations for boto3.S3 1.34.91 service generated with mypy-boto3-builder 7.24.0"
+version = "1.34.105"
+description = "Type annotations for boto3.S3 1.34.105 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_s3-1.34.91-py3-none-any.whl", hash = "sha256:0d37161fd0cd7ebf194cf9ccadb9101bf5c9b2426c2d00677b7e644d6f2298e4"},
-    {file = "mypy_boto3_s3-1.34.91.tar.gz", hash = "sha256:70c8bad00db70704fb7ac0ee1440c7eb0587578ae9a2b00997f29f17f60f45e7"},
+    {file = "mypy_boto3_s3-1.34.105-py3-none-any.whl", hash = "sha256:95fbc6bcba2bb03c20a97cc5cf60ff66c6842c8c4fc4183c49bfa35905d5a1ee"},
+    {file = "mypy_boto3_s3-1.34.105.tar.gz", hash = "sha256:a137bca9bbe86c0fe35bbf36a2d44ab62526f41bb683550dd6cfbb5a10ede832"},
 ]
 
 [package.dependencies]
@@ -1927,13 +1927,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-sagemaker"
-version = "1.34.98"
-description = "Type annotations for boto3.SageMaker 1.34.98 service generated with mypy-boto3-builder 7.24.0"
+version = "1.34.103"
+description = "Type annotations for boto3.SageMaker 1.34.103 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_sagemaker-1.34.98-py3-none-any.whl", hash = "sha256:5b3bef01bed7c060eff9f4fdce5701f0ada89a5630c893c75444a6d141e54aa8"},
-    {file = "mypy_boto3_sagemaker-1.34.98.tar.gz", hash = "sha256:76799533b351185ef35bbd2cdbaffc2bc7c3e9d909d70a80ab2ab45e2477a1ae"},
+    {file = "mypy_boto3_sagemaker-1.34.103-py3-none-any.whl", hash = "sha256:f00deadbcaf89c9f1af62a23a697e5d5590453fc8211faf9ed84871499d51dad"},
+    {file = "mypy_boto3_sagemaker-1.34.103.tar.gz", hash = "sha256:7e2c9dd16866314080c8aa1cbc561301599a87e3dce4759e293090e93ed8b5ef"},
 ]
 
 [package.dependencies]
@@ -1969,13 +1969,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-sqs"
-version = "1.34.0"
-description = "Type annotations for boto3.SQS 1.34.0 service generated with mypy-boto3-builder 7.21.0"
+version = "1.34.101"
+description = "Type annotations for boto3.SQS 1.34.101 service generated with mypy-boto3-builder 7.24.0"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "mypy-boto3-sqs-1.34.0.tar.gz", hash = "sha256:0bf8995f58919ab295398100e72eaa7da898adcfd9d339a42f3c48ce473419d5"},
-    {file = "mypy_boto3_sqs-1.34.0-py3-none-any.whl", hash = "sha256:94d8aea4ae75605f70e58e440d706e04d5c614101ddb2f0c73d306d776d10995"},
+    {file = "mypy_boto3_sqs-1.34.101-py3-none-any.whl", hash = "sha256:3d9ce3968006838e5c8ea422c5da2b8ef0ec0d4690a3fa0c0ac1ee472a6d738c"},
+    {file = "mypy_boto3_sqs-1.34.101.tar.gz", hash = "sha256:827b4a8c03107b475da6f087bc13d2eca30fd672e6edb7310332787011752806"},
 ]
 
 [package.dependencies]
@@ -2044,13 +2044,13 @@ files = [
 
 [[package]]
 name = "platformdirs"
-version = "4.2.1"
+version = "4.2.2"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "platformdirs-4.2.1-py3-none-any.whl", hash = "sha256:17d5a1161b3fd67b390023cb2d3b026bbd40abde6fdb052dfbd3a29c3ba22ee1"},
-    {file = "platformdirs-4.2.1.tar.gz", hash = "sha256:031cd18d4ec63ec53e82dceaac0417d218a6863f7745dfcc9efe7793b7039bdf"},
+    {file = "platformdirs-4.2.2-py3-none-any.whl", hash = "sha256:2d7a1657e36a80ea911db832a8a6ece5ee53d8de21edd5cc5879af6530b1bfee"},
+    {file = "platformdirs-4.2.2.tar.gz", hash = "sha256:38b7b51f512eed9e84a22788b4bce1de17c0adb134d6becb09836e37d8654cd3"},
 ]
 
 [package.extras]
@@ -2075,13 +2075,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.17"
+version = "0.5.18"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.17-py3-none-any.whl", hash = "sha256:4a69930b4ea1f3053bae516db2797155d03b6921c0bfc4ba422be08ef7552516"},
-    {file = "port_ocean-0.5.17.tar.gz", hash = "sha256:21d6b0e14adbf4fdc54b2feb3d6ebfd4013116c6013139a4e7b5c78dc102064b"},
+    {file = "port_ocean-0.5.18-py3-none-any.whl", hash = "sha256:0c485808d7126d08de3c44aae157ec6b5db588b79bdd8e3a44de9d0d01b8b4fa"},
+    {file = "port_ocean-0.5.18.tar.gz", hash = "sha256:c60f46618b3c5256803f6a5744a10106c9ceefb91de9de854ad6c05ec6cdbe22"},
 ]
 
 [package.dependencies]
@@ -2504,13 +2504,13 @@ files = [
 
 [[package]]
 name = "tomlkit"
-version = "0.12.4"
+version = "0.12.5"
 description = "Style preserving TOML library"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "tomlkit-0.12.4-py3-none-any.whl", hash = "sha256:5cd82d48a3dd89dee1f9d64420aa20ae65cfbd00668d6f094d7578a78efbb77b"},
-    {file = "tomlkit-0.12.4.tar.gz", hash = "sha256:7ca1cfc12232806517a8515047ba66a19369e71edf2439d0f5824f91032b6cc3"},
+    {file = "tomlkit-0.12.5-py3-none-any.whl", hash = "sha256:af914f5a9c59ed9d0762c7b64d3b5d5df007448eb9cd2edc8a46b1eafead172f"},
+    {file = "tomlkit-0.12.5.tar.gz", hash = "sha256:eef34fba39834d4d6b73c9ba7f3e4d1c417a4e56f89a7e96e090dd0d24b8fb3c"},
 ]
 
 [[package]]
@@ -3642,4 +3642,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "60546c16d1b99f8cac96c003ce8ca3cb6917dbab1e5cb852aa1fe657d1463033"
+content-hash = "121fa213139865084e0173629c887e550cfbe3e1020d66488fc926bcc05c4bc6"
