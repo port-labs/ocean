@@ -12,14 +12,14 @@ from port_ocean.utils.misc import get_time
 
 
 class PortAppConfigCache:
-    _port_app_config: PortAppConfig | None = None
+    _port_app_config: PortAppConfig
     _retrieval_time: float
 
     def __init__(self, cache_ttl: int):
         self._cache_ttl = cache_ttl
 
     @property
-    def port_app_config(self) -> PortAppConfig | None:
+    def port_app_config(self) -> PortAppConfig:
         return self._port_app_config
 
     @port_app_config.setter
@@ -30,7 +30,7 @@ class PortAppConfigCache:
     @property
     def is_cache_invalid(self) -> bool:
         return (
-            self._port_app_config is None
+            not self._port_app_config
             or self._retrieval_time + self._cache_ttl < get_time()
         )
 
