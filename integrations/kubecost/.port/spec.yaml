@@ -13,3 +13,8 @@ configurations:
     type: string
     required: true
     description: The URL of your Kubecost server, for example http://localhost:9090
+  - name: kubecostApiVersion
+    type: string
+    required: true
+    default: v2
+    description: The target API version of your Kubecost instance. Accepts values such as v1 and v2 only
