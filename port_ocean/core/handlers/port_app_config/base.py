@@ -23,8 +23,8 @@ class BasePortAppConfig(BaseHandler):
 
     CONFIG_CLASS: Type[PortAppConfig] = PortAppConfig
     STALE_TIMEOUT: timedelta = timedelta(minutes=1)
-    app_config_cache: PortAppConfig | None = None
-    retrieval_time: float | None = None
+    app_config_cache: PortAppConfig
+    retrieval_time: float
 
     @abstractmethod
     async def _get_port_app_config(self) -> dict[str, Any]:
