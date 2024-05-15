@@ -36,6 +36,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_id: str = Field(..., sensitive=True)
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
+    port_app_config_cache_ttl: int = 60
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):

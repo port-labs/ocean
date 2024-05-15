@@ -1,14 +1,38 @@
 from abc import abstractmethod
-from datetime import timedelta
 from typing import Type, Any
 
 from loguru import logger
 from pydantic import ValidationError
 
 from port_ocean.context.event import event
+from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.base import BaseHandler
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.utils.misc import get_time
+
+
+class PortAppConfigCache:
+    _port_app_config: PortAppConfig | None = None
+    _retrieval_time: float
+
+    def __init__(self, cache_ttl: int):
+        self._cache_ttl = cache_ttl
+
+    @property
+    def port_app_config(self) -> PortAppConfig | None:
+        return self._port_app_config
+
+    @port_app_config.setter
+    def port_app_config(self, value: PortAppConfig) -> None:
+        self._retrieval_time = get_time()
+        self._port_app_config = value
+
+    @property
+    def is_cache_invalid(self) -> bool:
+        return (
+            self._port_app_config is None
+            or self._retrieval_time + self._cache_ttl < get_time()
+        )
 
 
 class BasePortAppConfig(BaseHandler):
@@ -22,33 +46,34 @@ class BasePortAppConfig(BaseHandler):
     """
 
     CONFIG_CLASS: Type[PortAppConfig] = PortAppConfig
-    STALE_TIMEOUT: timedelta = timedelta(minutes=1)
-    app_config_cache: PortAppConfig | None = None
-    retrieval_time: float
+
+    def __init__(self, context: PortOceanContext):
+        super().__init__(context)
+        self._app_config_cache = PortAppConfigCache(
+            self.context.config.port.port_app_config_cache_ttl
+        )
 
     @abstractmethod
     async def _get_port_app_config(self) -> dict[str, Any]:
         pass
 
-    async def get_port_app_config(self) -> PortAppConfig:
+    async def get_port_app_config(self, use_cache: bool = True) -> PortAppConfig:
         """Retrieve and parse the port application configuration.
 
         Returns:
             PortAppConfig: The parsed port application configuration.
         """
-        if (
-            not self.app_config_cache
-            or self.retrieval_time + self.STALE_TIMEOUT.total_seconds() < get_time()
-        ):
+        if not use_cache or self._app_config_cache.is_cache_invalid:
             raw_config = await self._get_port_app_config()
             try:
-                self.app_config_cache = self.CONFIG_CLASS.parse_obj(raw_config)
-                self.retrieval_time = get_time()
+                self._app_config_cache.port_app_config = self.CONFIG_CLASS.parse_obj(
+                    raw_config
+                )
             except ValidationError:
                 logger.error(
                     "Invalid port app config found. Please check that the integration has been configured correctly."
                 )
                 raise
 
-        event.port_app_config = self.app_config_cache
-        return self.app_config_cache
+        event.port_app_config = self._app_config_cache.port_app_config
+        return self._app_config_cache.port_app_config
