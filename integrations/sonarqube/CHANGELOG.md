@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for filtering SonarQube projects and issues
 
 
+# Port_Ocean 0.1.49 (2024-05-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.19 (#1)
+
+
 # Port_Ocean 0.1.48 (2024-05-12)
 
 ### Improvements
