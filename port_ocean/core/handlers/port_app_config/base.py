@@ -12,7 +12,7 @@ from port_ocean.utils.misc import get_time
 
 
 class PortAppConfigCache:
-    _port_app_config: PortAppConfig
+    _port_app_config: PortAppConfig | None
     _retrieval_time: float
 
     def __init__(self, cache_ttl: int):
@@ -20,6 +20,8 @@ class PortAppConfigCache:
 
     @property
     def port_app_config(self) -> PortAppConfig:
+        if self._port_app_config is None:
+            raise ValueError("Port app config is not set")
         return self._port_app_config
 
     @port_app_config.setter
