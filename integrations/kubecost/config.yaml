@@ -15,4 +15,3 @@ integration:
   type: "kubecost"
   config:
     kubecostHost: "{{ from env KUBECOST_HOST }}"
-    kubecostApiVersion: "{{ from env KUBECOST_API_VERSION }}"
