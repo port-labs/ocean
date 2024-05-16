@@ -138,7 +138,10 @@ jobs:
       - name: Upload specifications to s3
         run: |
           # Temporary file to store the concatenated YAML content
-          temp_file="temp.yaml"
+          all_integrations_temp_file="all_integrations_temp_file.yaml"
+          
+          # Temporary file to store each integration YAML content
+          specific_integration_temp_file="specific_integration_temp_file.yaml"
 
           # Output file name
           output_file="index.json"
@@ -149,16 +152,23 @@ jobs:
           # Find all ocean-spec.yaml files under the specified directory
           find integrations/*/.port -type f -name "spec.yaml" > file_list.txt
 
-          # Concatenate the YAML files into a temporary file
           while IFS= read -r file; do
           # Extract the version from pyproject.toml
           integration_dir=$(dirname "$file")
           version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-          echo "- " >> "$temp_file"
-          sed 's/^/  /' "$file" >> "$temp_file"
-          echo "  version: $version" >> "$temp_file"
+          # Store the integration's yaml file content into a temporary file
+          integration_dest="$(echo "$integration_dir" | awk -F'/' '{print $2}').json"
+          sed 's/^/  /' "$file" > "$specific_integration_temp_file"
+          echo "  version: $version" >> "$specific_integration_temp_file"
+
+          yq -o=json . < "$specific_integration_temp_file" > "$integration_dest"
+          aws s3 cp "integration_dest" "s3://$aws_s3_bucket/$output_file"
+
+          # Concatenate the YAML files into a temporary file
+          echo "- " >> "$all_integrations_temp_file"
+          cat "$specific_integration_temp_file" >> "$all_integrations_temp_file"
           done < file_list.txt
 
-          yq -j . < "$temp_file" > "$output_file"
+          yq -o=json . < "$all_integrations_temp_file" > "$output_file"
           aws s3 cp "$output_file" "s3://$aws_s3_bucket/$output_file"
