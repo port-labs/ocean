@@ -22,8 +22,8 @@
           "icon": "Clock",
           "title": "Last Analysis Date"
         },
-        "lastAnalysisStatus": {
-          "title": "Last Analysis Status",
+        "qualityGateStatus": {
+          "title": "Quality Gate Status",
           "type": "string",
           "enum": [
             "OK",
