@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+# Port_Ocean 0.1.50 (2024-05-16)
+
+### Improvements
+
+- Added support for filtering SonarQube projects and issues
+
 
 # Port_Ocean 0.1.49 (2024-05-16)
 
