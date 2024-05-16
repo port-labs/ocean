@@ -139,7 +139,7 @@ jobs:
         run: |
           # Temporary file to store the concatenated YAML content
           all_integrations_temp_file="all_integrations_temp_file.yaml"
-          
+
           # Temporary file to store each integration YAML content
           specific_integration_temp_file="specific_integration_temp_file.yaml"
 
