@@ -58,10 +58,11 @@ class BasePortAppConfig(BaseHandler):
         pass
 
     async def get_port_app_config(self, use_cache: bool = True) -> PortAppConfig:
-        """Retrieve and parse the port application configuration.
+        """
+        Retrieve and parse the port application configuration.
 
-        Returns:
-            PortAppConfig: The parsed port application configuration.
+        :param use_cache: Determines whether to use the cached port-app-config if it exists, or to fetch it regardless
+        :return: The parsed port application configuration.
         """
         if not use_cache or self._app_config_cache.is_cache_invalid:
             raw_config = await self._get_port_app_config()

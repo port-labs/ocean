@@ -362,6 +362,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             EventType.RESYNC,
             trigger_type=trigger_type,
         ):
+            # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
+            # rather than the old cache
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
