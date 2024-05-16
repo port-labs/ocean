@@ -4,6 +4,9 @@ resources:
   - kind: projects
     selector:
       query: 'true'
+      apiFilters:
+        filter:
+          qualifier: TRK
     port:
       entity:
         mappings:
@@ -61,6 +64,11 @@ resources:
   - kind: issues
     selector:
       query: 'true'
+      apiFilters:
+        resolved: 'false'
+      projectApiFilters:
+        filter:
+          qualifier: TRK
     port:
       entity:
         mappings:
