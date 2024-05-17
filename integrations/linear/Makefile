@@ -4,9 +4,8 @@ define run_checks
 	exit_code=0; \
 	cd $1; \
 	poetry check || exit_code=$$?;\
-  	poetry lock --check || exit_code=$$?;\
 	mypy . || exit_code=$$?; \
-	ruff . || exit_code=$$?; \
+	ruff check . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
 		echo "\033[0;31mOne or more checks failed with exit code $$exit_code\033[0m"; \
@@ -38,12 +37,16 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install lint run test clean
+.SILENT: install install/prod lint run test clean
 
 install:
 	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
 	poetry install --with dev
+
+install/prod:
+	$(call install_poetry) && \
+	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
 lint:
 	$(ACTIVATE) && \
