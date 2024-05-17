@@ -1,6 +1,5 @@
 QUERIES = {
-    "GET_SINGLE_ISSUE": 
-    """
+    "GET_SINGLE_ISSUE": """
     query Issue {
         issue(id: "{{ issue_identifier }}") {
             id
@@ -58,8 +57,7 @@ QUERIES = {
         }
     }
     """,
-    "GET_SINGLE_LABEL":
-    """
+    "GET_SINGLE_LABEL": """
     query IssueLabel {
         issueLabel(id: "{{ label_id }}") {
             id
@@ -83,8 +81,7 @@ QUERIES = {
         }
     }
     """,
-    "GET_FIRST_ISSUES_PAGE":
-    """
+    "GET_FIRST_ISSUES_PAGE": """
     query Issues {
         issues(first: {{ page_size }}) {
             edges {
@@ -152,8 +149,7 @@ QUERIES = {
         }
     }
     """,
-    "GET_NEXT_ISSUES_PAGE":
-    """
+    "GET_NEXT_ISSUES_PAGE": """
     query Issues {
         issues(first: {{ page_size }}, after: "{{ end_cursor }}") {
             edges {
@@ -221,8 +217,7 @@ QUERIES = {
         }
     }
     """,
-    "GET_FIRST_TEAMS_PAGE":
-    """
+    "GET_FIRST_TEAMS_PAGE": """
     query Teams {
         teams(first: {{ page_size }}) {
             edges {
@@ -247,8 +242,7 @@ QUERIES = {
         }
     }
     """,
-    "GET_NEXT_TEAMS_PAGE":
-    """
+    "GET_NEXT_TEAMS_PAGE": """
     query Teams {
         teams(first: {{ page_size }}, after: "{{ end_cursor }}") {
             edges {
@@ -273,8 +267,7 @@ QUERIES = {
         }
     }
     """,
-    "GET_FIRST_LABELS_PAGE":
-    """
+    "GET_FIRST_LABELS_PAGE": """
     query IssueLabels {
         issueLabels(first: {{ page_size }}) {
             edges {
@@ -308,8 +301,7 @@ QUERIES = {
         }
     }
     """,
-    "GET_NEXT_LABELS_PAGE":
-    """
+    "GET_NEXT_LABELS_PAGE": """
     query IssueLabels {
         issueLabels(first: {{ page_size }}, after: "{{ end_cursor }}") {
             edges {
@@ -343,8 +335,7 @@ QUERIES = {
         }
     }
     """,
-    "GET_LIVE_EVENTS_WEBHOOKS":
-    """
+    "GET_LIVE_EVENTS_WEBHOOKS": """
     query {
         webhooks {
             nodes {
@@ -360,8 +351,7 @@ QUERIES = {
         }
     }
     """,
-    "CREATE_LIVE_EVENTS_WEBHOOK":
-    """
+    "CREATE_LIVE_EVENTS_WEBHOOK": """
     mutation {
         webhookCreate (
             input: {
@@ -378,5 +368,5 @@ QUERIES = {
             }
         }
     }
-    """
+    """,
 }
