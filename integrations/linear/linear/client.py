@@ -1,8 +1,6 @@
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 
-from httpx import Timeout
-
 from loguru import logger
 import jinja2
 from linear.queries import QUERIES
@@ -34,23 +32,22 @@ class LinearClient:
         self.api_auth_header = {"Authorization": self.linear_api_key}
         self.client = http_async_client
         self.client.headers.update(self.api_auth_header)
-        self.client.timeout = Timeout(30)
 
     async def _get_paginated_objects(
         self, object_type: str, page_size: int, end_cursor: Optional[str]
     ) -> dict[str, Any]:
         if end_cursor:
             template = jinja2.Template(
-                QUERIES[f"GET_NEXT_{object_type}_PAGE"], enable_async=True
+                QUERIES[f"GET_{object_type}_PAGE"], enable_async=True
             )
             query = await template.render_async(
-                page_size=page_size, end_cursor=end_cursor
+                page_size=page_size, after_cursor=f', after: "{end_cursor}"'
             )
         else:
             template = jinja2.Template(
-                QUERIES[f"GET_FIRST_{object_type}_PAGE"], enable_async=True
+                QUERIES[f"GET_{object_type}_PAGE"], enable_async=True
             )
-            query = await template.render_async(page_size=page_size)
+            query = await template.render_async(page_size=page_size, after_cursor="")
         logger.debug(f"{object_type} query: {query}")
         response = await self.client.post(self.linear_url, json={"query": query})
         response.raise_for_status()
@@ -153,7 +150,6 @@ class LinearClient:
         # Changing to { node: {...} } for mapping consistency
         issue_json = issue_response.json()
         issue_json["node"] = issue_json["data"]["issue"]
-        del issue_json["data"]
         return issue_json
 
     async def get_single_label(self, label_id: str) -> dict[str, Any]:
@@ -167,5 +163,4 @@ class LinearClient:
         # Changing to { node: {...} } for mapping consistency
         label_json = label_response.json()
         label_json["node"] = label_json["data"]["issueLabel"]
-        del label_json["data"]
         return label_json

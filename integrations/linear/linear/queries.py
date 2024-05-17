@@ -81,9 +81,9 @@ QUERIES = {
         }
     }
     """,
-    "GET_FIRST_ISSUES_PAGE": """
+    "GET_ISSUES_PAGE": """
     query Issues {
-        issues(first: {{ page_size }}) {
+        issues(first: {{ page_size }}{{ after_cursor }}) {
             edges {
                 cursor
                 node {
@@ -149,77 +149,9 @@ QUERIES = {
         }
     }
     """,
-    "GET_NEXT_ISSUES_PAGE": """
-    query Issues {
-        issues(first: {{ page_size }}, after: "{{ end_cursor }}") {
-            edges {
-                cursor
-                node {
-                    id
-                    createdAt
-                    updatedAt
-                    archivedAt
-                    number
-                    title
-                    priority
-                    estimate
-                    sortOrder
-                    startedAt
-                    completedAt
-                    startedTriageAt
-                    triagedAt
-                    canceledAt
-                    autoClosedAt
-                    autoArchivedAt
-                    dueDate
-                    slaStartedAt
-                    slaBreachesAt
-                    trashed
-                    snoozedUntilAt
-                    labelIds
-                    previousIdentifiers
-                    subIssueSortOrder
-                    priorityLabel
-                    integrationSourceType
-                    identifier
-                    url
-                    branchName
-                    customerTicketCount
-                    description
-                    descriptionState
-                    team {
-                        id
-                        name
-                        key
-                    }
-                    state {
-                        name
-                    }
-                    creator {
-                        name
-                        email
-                    }
-                    assignee {
-                        name
-                        email
-                    }
-                    parent {
-                        id
-                        identifier
-                    }
-                }
-            }
-            pageInfo {
-                hasNextPage
-                startCursor
-                endCursor
-            }
-        }
-    }
-    """,
-    "GET_FIRST_TEAMS_PAGE": """
+    "GET_TEAMS_PAGE": """
     query Teams {
-        teams(first: {{ page_size }}) {
+        teams(first: {{ page_size }}{{ after_cursor }}) {
             edges {
                 cursor
                 node {
@@ -242,68 +174,9 @@ QUERIES = {
         }
     }
     """,
-    "GET_NEXT_TEAMS_PAGE": """
-    query Teams {
-        teams(first: {{ page_size }}, after: "{{ end_cursor }}") {
-            edges {
-                cursor
-                node {
-                    id
-                    name
-                    key
-                    description
-                    organization {
-                        id
-                        name
-                        urlKey
-                    }
-                }
-            }
-            pageInfo {
-                hasNextPage
-                startCursor
-                endCursor
-            }
-        }
-    }
-    """,
-    "GET_FIRST_LABELS_PAGE": """
+    "GET_LABELS_PAGE": """
     query IssueLabels {
-        issueLabels(first: {{ page_size }}) {
-            edges {
-                cursor
-                node {
-                    id
-                    createdAt
-                    updatedAt
-                    archivedAt
-                    name
-                    description
-                    color
-                    isGroup
-                    parent {
-                    id
-                    }
-                    children{
-                        edges {
-                            node {
-                                id
-                            }
-                        }
-                    }
-                }
-            }
-            pageInfo {
-                hasNextPage
-                startCursor
-                endCursor
-            }
-        }
-    }
-    """,
-    "GET_NEXT_LABELS_PAGE": """
-    query IssueLabels {
-        issueLabels(first: {{ page_size }}, after: "{{ end_cursor }}") {
+        issueLabels(first: {{ page_size }}{{ after_cursor }}) {
             edges {
                 cursor
                 node {
