@@ -71,7 +71,7 @@ class LinearClient:
                 return
 
         template = jinja2.Template(
-            QUERIES[f"CREATE_LIVE_EVENTS_WEBHOOK"], enable_async=True
+            QUERIES["CREATE_LIVE_EVENTS_WEBHOOK"], enable_async=True
         )
         query = await template.render_async(
             webhook_label=f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
