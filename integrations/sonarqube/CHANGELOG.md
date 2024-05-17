@@ -6,6 +6,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+# Port_Ocean 0.1.50 (2024-05-16)
+
+### Improvements
+
+- Added support for filtering SonarQube projects and issues
+
+
+# Port_Ocean 0.1.49 (2024-05-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.19 (#1)
+
+
+# Port_Ocean 0.1.48 (2024-05-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.18 (#1)
+
+
+# Port_Ocean 0.1.47 (2024-05-02)
+
+### Bug Fixes
+
+- Fixed an issue with the integration startup when the sanity-check return a non json response
+
+
+# Port_Ocean 0.1.46 (2024-05-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.17 (#1)
+
+
+# Port_Ocean 0.1.45 (2024-05-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.16 (#1)
+
+
+# Port_Ocean 0.1.44 (2024-04-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.15 (#1)
+
 
 # Port_Ocean 0.1.43 (2024-04-24)
 

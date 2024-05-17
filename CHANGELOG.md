@@ -7,6 +7,44 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.19 (2024-05-16)
+
+### Improvements
+
+- Added caching to port-app-config.yml retrieval from port api (only for live events)
+
+
+## 0.5.18 (2024-05-12)
+
+### Improvements
+
+- Added a util function that allows to run multiple asynchronous tasks in a bounded way to prevent overload and memory issues
+- Use that utility when calculating JQ mapping for raw entities
+
+
+
+## 0.5.17 (2024-05-01)
+
+### Bug Fixes
+
+- Fixed an issue in creating a child event context from the parent context by removing an unnecessary line of code
+
+
+
+## 0.5.16 (2024-05-01)
+
+### Features
+
+- Allowing override of parent event context in ocean's event context manager
+
+
+## 0.5.15 (2024-04-30)
+
+### Bug Fixes
+
+- Fixed error in `register_raw` when there's no relevant mappings for a specific kind
+
+
 ## 0.5.14 (2024-04-24)
 
 ### Improvements

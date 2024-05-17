@@ -1,10 +1,14 @@
 import asyncio
-from typing import Any, Optional, AsyncGenerator, cast
 import base64
+from typing import Any, Optional, AsyncGenerator, cast
+
 import httpx
 from loguru import logger
 
+from integration import SonarQubeIssueResourceConfig, SonarQubeProjectResourceConfig
+
 from port_ocean.utils import http_async_client
+from port_ocean.context.event import event
 
 
 class Endpoints:
@@ -73,6 +77,9 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
+        logger.debug(
+            f"Sending API request to {method} {endpoint} with query params: {query_params}"
+        )
         try:
             response = await self.http_client.request(
                 method=method,
@@ -97,6 +104,10 @@ class SonarQubeClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         try:
+            logger.debug(
+                f"Sending API request to {method} {endpoint} with query params: {query_params}"
+            )
+
             all_resources = []  # List to hold all fetched resources
 
             while True:
@@ -132,22 +143,35 @@ class SonarQubeClient:
             logger.error(f"HTTP occurred while fetching paginated data: {e}")
             raise
 
-    async def get_components(self) -> list[dict[str, Any]]:
+    async def get_components(
+        self, api_query_params: Optional[dict[str, Any]] = None
+    ) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
 
         :return: A list of components associated with the specified organization.
         """
-        params = {}
+        query_params = {}
         if self.organization_id:
-            params["organization"] = self.organization_id
-        logger.info(f"Fetching all components in organization: {self.organization_id}")
+            query_params["organization"] = self.organization_id
+            logger.info(
+                f"Fetching all components in organization: {self.organization_id}"
+            )
+        if api_query_params:
+            query_params.update(api_query_params)
+        else:
+            selector = cast(
+                SonarQubeProjectResourceConfig, event.resource_config
+            ).selector
+            query_params.update(selector.generate_request_params())
+
         try:
             response = await self.send_paginated_api_request(
                 endpoint=Endpoints.PROJECTS,
                 data_key="components",
-                query_params=params,
+                query_params=query_params,
             )
+
             return response
         except Exception as e:
             logger.error(f"Error occurred while fetching components: {e}")
@@ -218,7 +242,7 @@ class SonarQubeClient:
 
         return project
 
-    async def get_all_projects(self) -> list[dict[str, Any]]:
+    async def get_all_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve all projects from SonarQube API.
 
@@ -226,11 +250,9 @@ class SonarQubeClient:
         """
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
         components = await self.get_components()
-        all_projects = []
         for component in components:
             project_data = await self.get_single_project(project=component)
-            all_projects.append(project_data)
-        return all_projects
+            yield [project_data]
 
     async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
@@ -238,14 +260,29 @@ class SonarQubeClient:
 
         :return (list[Any]): A list containing issues data for all projects.
         """
-        components = await self.get_components()
 
+        selector = cast(SonarQubeIssueResourceConfig, event.resource_config).selector
+        api_query_params = selector.generate_request_params()
+
+        project_api_query_params = (
+            selector.project_api_filters.generate_request_params()
+            if selector.project_api_filters
+            else None
+        )
+
+        components = await self.get_components(
+            api_query_params=project_api_query_params
+        )
         for component in components:
-            response = await self.get_issues_by_component(component=component)
+            response = await self.get_issues_by_component(
+                component=component, api_query_params=api_query_params
+            )
             yield response
 
     async def get_issues_by_component(
-        self, component: dict[str, Any]
+        self,
+        component: dict[str, Any],
+        api_query_params: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         """
         Retrieve issues data across a single component (in this case, project) from SonarQube API.
@@ -256,11 +293,15 @@ class SonarQubeClient:
         """
         component_issues = []
         component_key = component.get("key")
-        logger.info(f"Fetching all issues in component: {component_key}")
+        query_params = {"componentKeys": component_key}
+
+        if api_query_params:
+            query_params.update(api_query_params)
+
         response = await self.send_paginated_api_request(
             endpoint=Endpoints.ISSUES,
             data_key="issues",
-            query_params={"componentKeys": component_key},
+            query_params=query_params,
         )
 
         for issue in response:
@@ -417,8 +458,11 @@ class SonarQubeClient:
             response = httpx.get(f"{self.base_url}/api/system/status", timeout=5)
             response.raise_for_status()
             logger.info("Sonarqube sanity check passed")
-            logger.info(f"Sonarqube status: {response.json().get('status')}")
-            logger.info(f"Sonarqube version: {response.json().get('version')}")
+            if response.headers.get("content-type") == "application/json":
+                logger.info(f"Sonarqube status: {response.json().get('status')}")
+                logger.info(f"Sonarqube version: {response.json().get('version')}")
+            else:
+                logger.info(f"Sonarqube sanity check response: {response.text}")
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"Sonarqube failed connectivity check to the sonarqube instance because of HTTP error: {e.response.status_code} and response text: {e.response.text}"

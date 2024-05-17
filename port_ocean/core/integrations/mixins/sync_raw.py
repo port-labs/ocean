@@ -219,6 +219,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resource for resource in config.resources if resource.kind == kind
         ]
 
+        if not resource_mappings:
+            return []
+
         diffs: list[EntitySelectorDiff] = await asyncio.gather(
             *(
                 self._register_resource_raw(resource, results, user_agent_type, True)
@@ -359,7 +362,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             EventType.RESYNC,
             trigger_type=trigger_type,
         ):
-            app_config = await self.port_app_config_handler.get_port_app_config()
+            # If a resync is triggered due to a mappings change, we want to make sure that we have the updated version
+            # rather than the old cache
+            app_config = await self.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
