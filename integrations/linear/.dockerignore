@@ -1,0 +1,6 @@
+.vscode/
+assets/
+*.md
+.git
+.gitignore
+.env

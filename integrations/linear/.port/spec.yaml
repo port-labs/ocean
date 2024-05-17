@@ -1,0 +1,17 @@
+version: v0.1.0
+type: linear
+description: linear integration for Port Ocean
+icon: Cookiecutter
+features:
+  - type: exporter
+    section: Project management
+    resources:
+      - kind: team
+      - kind: issue
+      - kind: label
+configurations:
+  - name: linearApiKey
+    required: true
+    type: string
+    description: "Linear API key used to query the Linear GraphQL API"
+    sensitive: true
