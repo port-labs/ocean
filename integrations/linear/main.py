@@ -13,6 +13,23 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
 
 
+async def setup_application() -> None:
+    logic_settings = ocean.integration_config
+    app_host = logic_settings.get("app_host")
+    if not app_host:
+        logger.warning(
+            "No app host provided, skipping webhook creation. "
+            "Without setting up the webhook, the integration will not export live changes from Linear"
+        )
+        return
+
+    linear_client = LinearClient(logic_settings["linear_api_key"])
+
+    await linear_client.create_events_webhook(
+        logic_settings["app_host"],
+    )
+
+
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = LinearClient(ocean.integration_config["linear_api_key"])
@@ -40,6 +57,31 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
+@ocean.router.post("/webhook")
+async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    client = LinearClient(ocean.integration_config["linear_api_key"])
+    logger.info(
+        f'Received webhook event of type: {data.get("action")} {data.get("type")}'
+    )
+    if "type" in data:
+        if data["type"] == "Issue":
+            logger.info(
+                f'Received webhook event for issue: {data["data"]["identifier"]}'
+            )
+            issue = await client.get_single_issue(data["data"]["identifier"])
+            logger.debug(issue)
+            await ocean.register_raw(ObjectKind.ISSUE, [issue])
+        elif data["type"] == "IssueLabel":
+            logger.info(
+                f'Received webhook event for label with ID: {data["data"]["id"]} and name: {data["data"]["name"]}'
+            )
+            label = await client.get_single_label(data["data"]["id"])
+            logger.debug(label)
+            await ocean.register_raw(ObjectKind.LABEL, [label])
+    logger.info("Webhook event processed")
+    return {"ok": True}
+
+
 # Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
@@ -48,4 +90,4 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    # await setup_application()
+    await setup_application()

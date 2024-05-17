@@ -2,7 +2,7 @@
   {
     "identifier": "linearTeam",
     "title": "Linear Team",
-    "icon": "Service",
+    "icon": "Linear",
     "description": "A Linear team",
     "schema": {
       "properties": {
@@ -29,7 +29,7 @@
   {
     "identifier": "linearLabel",
     "title": "Linear Label",
-    "icon": "Service",
+    "icon": "Linear",
     "description": "A Linear label",
     "schema": {
       "properties": {
@@ -59,7 +59,7 @@
   {
     "identifier": "linearIssue",
     "title": "Linear Issue",
-    "icon": "Service",
+    "icon": "Linear",
     "schema": {
       "properties": {
         "url": {

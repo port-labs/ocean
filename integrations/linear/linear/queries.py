@@ -70,6 +70,16 @@ QUERIES = {
             description
             color
             isGroup
+            parent {
+                id
+            }
+            children{
+                edges {
+                    node {
+                        id
+                    }
+                }
+            }
         }
     }
     """,
@@ -329,6 +339,42 @@ QUERIES = {
                 hasNextPage
                 startCursor
                 endCursor
+            }
+        }
+    }
+    """,
+    "GET_LIVE_EVENTS_WEBHOOKS":
+    """
+    query {
+        webhooks {
+            nodes {
+                id
+                url
+                label
+                enabled
+                team {
+                    id
+                    name
+                }
+            }
+        }
+    }
+    """,
+    "CREATE_LIVE_EVENTS_WEBHOOK":
+    """
+    mutation {
+        webhookCreate (
+            input: {
+                label: "{{ webhook_label }}"
+                url: "{{ webhook_url }}"
+                allPublicTeams: true
+                resourceTypes: {{ resource_types|tojson() }}
+            }
+        ) {
+            success
+            webhook {
+                id
+                enabled
             }
         }
     }
