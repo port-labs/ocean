@@ -119,7 +119,6 @@ class SonarQubeClient:
                 )
                 response.raise_for_status()
                 response_json = response.json()
-
                 all_resources.extend(response_json.get(data_key, []))
 
                 # Check for paging information and decide whether to fetch more pages
@@ -157,13 +156,14 @@ class SonarQubeClient:
             logger.info(
                 f"Fetching all components in organization: {self.organization_id}"
             )
-        if api_query_params:
-            query_params.update(api_query_params)
-        else:
-            selector = cast(
-                SonarQubeProjectResourceConfig, event.resource_config
-            ).selector
-            query_params.update(selector.generate_request_params())
+        if self.is_onpremise:
+            if api_query_params:
+                query_params.update(api_query_params)
+            else:
+                selector = cast(
+                    SonarQubeProjectResourceConfig, event.resource_config
+                ).selector
+                query_params.update(selector.generate_request_params())
 
         try:
             response = await self.send_paginated_api_request(
