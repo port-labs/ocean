@@ -54,22 +54,23 @@ async def cloud_event_validation_middleware_handler(
     request: fastapi.Request,
     call_next: typing.Callable[[fastapi.Request], typing.Awaitable[responses.Response]],
 ) -> responses.Response:
-    if request.method == "OPTIONS" and request.url.path.startswith("/integration"):
-        logger.info("Detected cloud event validation request")
-        headers = {
-            "WebHook-Allowed-Rate": "100",
-            "WebHook-Allowed-Origin": "*",
-        }
-        response = fastapi.Response(status_code=200, headers=headers)
-        return response
+    if request.url.path.startswith("/integration"):
+        if request.method == "OPTIONS":
+            logger.info("Detected cloud event validation request")
+            headers = {
+                "WebHook-Allowed-Rate": "100",
+                "WebHook-Allowed-Origin": "*",
+            }
+            response = fastapi.Response(status_code=200, headers=headers)
+            return response
 
-    validation = validate_request(request)
-    validation_status = validation[0]
-    message = validation[1]
-    if validation_status is False:
-        return fastapi.Response(
-            status_code=status.HTTP_401_UNAUTHORIZED, content=message
-        )
+        validation = validate_request(request)
+        validation_status = validation[0]
+        message = validation[1]
+        if validation_status is False:
+            return fastapi.Response(
+                status_code=status.HTTP_401_UNAUTHORIZED, content=message
+            )
 
     return await call_next(request)
 
