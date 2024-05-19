@@ -163,7 +163,7 @@ jobs:
           echo "  version: $version" >> "$specific_integration_temp_file"
 
           yq -o=json . < "$specific_integration_temp_file" > "$integration_dest"
-          aws s3 cp "integration_dest" "s3://$aws_s3_bucket/$output_file"
+          aws s3 cp "$integration_dest" "s3://$aws_s3_bucket/$integration_dest"
 
           # Concatenate the YAML files into a temporary file
           echo "- " >> "$all_integrations_temp_file"
