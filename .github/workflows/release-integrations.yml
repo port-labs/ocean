@@ -158,7 +158,7 @@ jobs:
           version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
           # Store the integration's yaml file content into a temporary file
-          integration_dest="$(echo "$integration_dir" | awk -F'/' '{print $2}').json"
+         integration_dest="$(echo $integration_dir | awk -F'/' '{print $2}').json"
           sed 's/^/  /' "$file" > "$specific_integration_temp_file"
           echo "  version: $version" >> "$specific_integration_temp_file"
 
