@@ -92,7 +92,7 @@ class SystemEventHandler(BaseEventHandler):
     async def _notify(self, event_id: str, body: dict[str, Any]) -> None:
         # best effort to notify using all clients, as we don't know which one of the clients have the permission to
         # access the project
-        asyncio.gather(
+        await asyncio.gather(
             *(
                 hook_handler(client).on_hook(event_id, body)
                 for client in self._clients
