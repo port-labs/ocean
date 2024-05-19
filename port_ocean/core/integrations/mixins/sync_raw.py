@@ -124,10 +124,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         raw_diff: list[tuple[ResourceConfig, list[RAW_ITEM]]],
         parse_all: bool = False,
+        send_example_data: bool = False,
     ) -> list[EntitySelectorDiff]:
         return await asyncio.gather(
             *(
-                self.entity_processor.parse_items(mapping, results, parse_all)
+                self.entity_processor.parse_items(
+                    mapping, results, parse_all, send_example_data
+                )
                 for mapping, results in raw_diff
             )
         )
@@ -138,8 +141,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
         parse_all: bool = False,
+        send_example_data: bool = False,
     ) -> EntitySelectorDiff:
-        objects_diff = await self._calculate_raw([(resource, results)], parse_all)
+        objects_diff = await self._calculate_raw(
+            [(resource, results)], parse_all, send_example_data
+        )
         await self.entities_state_applier.upsert(
             objects_diff[0].passed, user_agent_type
         )
@@ -173,7 +179,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         entities = (
             await self._register_resource_raw(
-                resource_config, raw_results, user_agent_type
+                resource_config, raw_results, user_agent_type, send_example_data=True
             )
         ).passed
 
@@ -183,7 +189,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     entities.extend(
                         (
                             await self._register_resource_raw(
-                                resource_config, items, user_agent_type
+                                resource_config,
+                                items,
+                                user_agent_type,
+                                send_example_data=(not entities),
                             )
                         ).passed
                     )

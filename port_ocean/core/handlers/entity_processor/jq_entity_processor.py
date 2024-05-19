@@ -2,10 +2,11 @@ import asyncio
 import functools
 from functools import lru_cache
 from typing import Any
-from loguru import logger
 
 import pyjq as jq  # type: ignore
+from loguru import logger
 
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
@@ -78,13 +79,13 @@ class JQEntityProcessor(BaseEntityProcessor):
         raw_entity_mappings: dict[str, Any],
         selector_query: str,
         parse_all: bool = False,
-    ) -> tuple[dict[str, Any], bool]:
+    ) -> tuple[dict[str, Any], bool, dict[str, Any] | None]:
         should_run = await self._search_as_bool(data, selector_query)
         if parse_all or should_run:
             mapped_entity = await self._search_as_object(data, raw_entity_mappings)
-            return mapped_entity, should_run
+            return mapped_entity, should_run, data if should_run else None
 
-        return {}, False
+        return {}, False, None
 
     async def _calculate_entity(
         self,
@@ -93,7 +94,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         items_to_parse: str | None,
         selector_query: str,
         parse_all: bool = False,
-    ) -> list[tuple[dict[str, Any], bool]]:
+    ) -> list[tuple[dict[str, Any], bool, dict[str, Any] | None]]:
         if items_to_parse:
             items = await self._search(data, items_to_parse)
             if isinstance(items, list):
@@ -118,13 +119,14 @@ class JQEntityProcessor(BaseEntityProcessor):
                     data, raw_entity_mappings, selector_query, parse_all
                 )
             ]
-        return [({}, False)]
+        return [({}, False, None)]
 
     async def _parse_items(
         self,
         mapping: ResourceConfig,
         raw_results: list[RAW_ITEM],
         parse_all: bool = False,
+        send_example_data: bool = False,
     ) -> EntitySelectorDiff:
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
@@ -141,12 +143,22 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
+        is_example_collected = False
         for entities_results in calculated_entities_results:
-            for entity, did_entity_pass_selector in entities_results:
+            for entity, did_entity_pass_selector, raw_data in entities_results:
                 if entity.get("identifier") and entity.get("blueprint"):
                     parsed_entity = Entity.parse_obj(entity)
                     if did_entity_pass_selector:
                         passed_entities.append(parsed_entity)
+                        if (
+                            send_example_data
+                            and raw_data is not None
+                            and not is_example_collected
+                        ):
+                            await ocean.port_client.ingest_integration_kind_example(
+                                mapping.kind, raw_data
+                            )
+                            is_example_collected = True
                     else:
                         failed_entities.append(parsed_entity)
 
