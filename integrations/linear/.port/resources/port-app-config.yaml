@@ -7,45 +7,45 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .node.key
-          title: .node.name
+          identifier: .key
+          title: .name
           blueprint: '"linearTeam"'
           properties:
-            description: .node.description
-            workspaceName: .node.organization.name
-            url: "\"https://linear.app/\" + .node.organization.urlKey + \"/team/\" + .node.key"
+            description: .description
+            workspaceName: .organization.name
+            url: "\"https://linear.app/\" + .organization.urlKey + \"/team/\" + .key"
   - kind: label
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: .node.id
-          title: .node.name
+          identifier: .id
+          title: .name
           blueprint: '"linearLabel"'
           properties:
-            isGroup: .node.isGroup
+            isGroup: .isGroup
           relations:
-            parentLabel: .node.parent.id
-            childLabels: "[.node.children.edges[].node.id]"
+            parentLabel: .parent.id
+            childLabels: "[.children.edges[].node.id]"
   - kind: issue
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: .node.identifier
-          title: .node.title
+          identifier: .identifier
+          title: .title
           blueprint: '"linearIssue"'
           properties:
-            url: .node.url
-            status: .node.state.name
-            assignee: .node.assignee.email
-            creator: .node.creator.email
-            priority: .node.priorityLabel
-            created: .node.createdAt
-            updated: .node.updatedAt
+            url: .url
+            status: .state.name
+            assignee: .assignee.email
+            creator: .creator.email
+            priority: .priorityLabel
+            created: .createdAt
+            updated: .updatedAt
           relations:
-            team: .node.team.key
-            labels: .node.labelIds
-            parentIssue: .node.parent.identifier
+            team: .team.key
+            labels: .labelIds
+            parentIssue: .parent.identifier
