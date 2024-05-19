@@ -310,7 +310,7 @@
     "identifier": "image",
     "description": "This blueprint represents an image",
     "title": "Image",
-    "icon": "AWS",
+    "icon": "Docker",
     "schema": {
       "properties": {},
       "required": []
