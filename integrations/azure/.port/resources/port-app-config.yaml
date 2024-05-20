@@ -30,15 +30,90 @@ resources:
             subscription: >-
               .id | split("/") | .[1] |= ascii_downcase |.[2] |= ascii_downcase
               | .[:3] |join("/")
-  - kind: cloudResource
+  - kind: Microsoft.App/containerApps
     selector:
       query: 'true'
-      resourceKinds:
-        Microsoft.App/containerApps: '2022-03-01'
-        Microsoft.Storage/storageAccounts: '2023-01-01'
-        Microsoft.Compute/virtualMachines: '2023-03-01'
-        Microsoft.ContainerService/managedClusters: '2023-05-01'
-        Microsoft.Network/loadBalancers: '2023-02-01'
+      apiVersion: '2022-03-01'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase |
+            join("/")
+          title: .name
+          blueprint: '"azureCloudResource"'
+          properties:
+            location: .location
+            type: .type
+            tags: .tags
+          relations:
+            resource_group: >-
+              .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
+              | .[:5] |join("/")
+  - kind: Microsoft.Storage/storageAccounts
+    selector:
+      query: 'true'
+      apiVersion: '2023-01-01'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase |
+            join("/")
+          title: .name
+          blueprint: '"azureCloudResource"'
+          properties:
+            location: .location
+            type: .type
+            tags: .tags
+          relations:
+            resource_group: >-
+              .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
+              | .[:5] |join("/")
+  - kind: Microsoft.Compute/virtualMachines
+    selector:
+      query: 'true'
+      apiVersion: '2023-03-01'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase |
+            join("/")
+          title: .name
+          blueprint: '"azureCloudResource"'
+          properties:
+            location: .location
+            type: .type
+            tags: .tags
+          relations:
+            resource_group: >-
+              .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
+              | .[:5] |join("/")
+  - kind: Microsoft.ContainerService/managedClusters
+    selector:
+      query: 'true'
+      apiVersion: '2023-05-01'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase |
+            join("/")
+          title: .name
+          blueprint: '"azureCloudResource"'
+          properties:
+            location: .location
+            type: .type
+            tags: .tags
+          relations:
+            resource_group: >-
+              .id | split("/") | .[3] |= ascii_downcase |.[4] |= ascii_downcase
+              | .[:5] |join("/")
+  - kind: Microsoft.Network/loadBalancers
+    selector:
+      query: 'true'
+      apiVersion: '2023-02-01'
     port:
       entity:
         mappings:

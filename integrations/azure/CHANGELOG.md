@@ -1,3 +1,10 @@
+0.1.51 (2024-05-20)
+
+### Improvements
+
+- Change default mappings of resources to use actual resource kinds and map them to the new generic cloudResource kind (#1)
+
+
 0.1.50 (2024-05-16)
 
 ### Improvements
