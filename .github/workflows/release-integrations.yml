@@ -50,6 +50,8 @@ jobs:
   release-integration:
     runs-on: ubuntu-latest
     if: needs.prepare-matrix.outputs.matrix != '[]'
+    outputs:
+      is_dev_version: ${{ steps.prepare_tags.outputs.is_dev_version }}
     permissions:
       packages: write
       contents: read
