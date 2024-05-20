@@ -130,7 +130,7 @@ jobs:
       - name: test
         run: |
           echo "is_dev_version: ${{ needs.release-integration.outputs.is_dev_version }}"
-          echo "${{ join(needs.release-integration.outputs.*) }}"
+          echo "${{ needs.release-integration.outputs.* }}"
 
   upload-specs:
     runs-on: ubuntu-latest
