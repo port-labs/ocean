@@ -35,13 +35,13 @@ jobs:
 
             # Check if the version exists in the ghcr.io registry
             rc=0
-            docker manifest inspect ghcr.io/port-labs/port-ocean-$type:$version > /dev/null 2>&1 || rc=$?
+            # docker manifest inspect ghcr.io/port-labs/port-ocean-$type:$version > /dev/null 2>&1 || rc=$?
 
-            if [ $rc -eq 0 ]; then
-              echo "Image already exists in $repository: port-ocean-$type:$version"
-            else
-              integrations_to_release+=($file)
-            fi
+            # if [ $rc -eq 0 ]; then
+            #  echo "Image already exists in $repository: port-ocean-$type:$version"
+            #else
+            integrations_to_release+=($file)
+            #fi
           done
           echo $(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')
           echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
@@ -97,26 +97,26 @@ jobs:
             # If 'version' contains non-numeric and non-dot characters, skip building 'latest' tag
             tags="ghcr.io/port-labs/port-ocean-$type:$version"
             echo "tags=$tags" >> $GITHUB_OUTPUT
-            echo "is_dev_version=true" >> $GITHUB_OUTPUT
+            echo "is_dev_version='true'" >> $GITHUB_OUTPUT
             echo "Version contains non-numeric characters. Building without 'latest' tag."
           else
             # If 'version' contains only digits and dots, build with both 'latest' and version tags
             tags="ghcr.io/port-labs/port-ocean-$type:$version,ghcr.io/port-labs/port-ocean-$type:latest"
             echo "tags=$tags" >> $GITHUB_OUTPUT
-            echo "is_dev_version=false" >> $GITHUB_OUTPUT
+            echo "is_dev_version='false'" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ steps.prepare_tags.outputs.dockerfile_path }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.prepare_tags.outputs.tags }}
-          build-args: |
-            BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
-            INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
+#      - name: Build and push
+#        uses: docker/build-push-action@v5
+#        with:
+#          context: .
+#          file: ${{ steps.prepare_tags.outputs.dockerfile_path }}
+#          platforms: linux/amd64,linux/arm64
+#          push: true
+#          tags: ${{ steps.prepare_tags.outputs.tags }}
+#          build-args: |
+#            BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
+#            INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
 
   upload-specs:
     runs-on: ubuntu-latest
