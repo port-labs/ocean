@@ -10,13 +10,6 @@ from port_ocean.utils import http_async_client
 MAX_PAGE_SIZE = 100
 
 
-class CacheKeys:
-    HOSTS = "_cache_hosts"
-    MONITORS = "_cache_monitors"
-    SLOS = "_cache_slos"
-    SERVICES = "_cache_services"
-
-
 def embed_credentials_in_url(url: str, username: str, token: str) -> str:
     """
     Inserts username and token into a given URL for Datadog compatibility.
