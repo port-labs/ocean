@@ -50,6 +50,8 @@ jobs:
   release-integration:
     runs-on: ubuntu-latest
     if: needs.prepare-matrix.outputs.matrix != '[]'
+    outputs:
+      is_dev_version: ${{ steps.prepare_tags.outputs.is_dev_version }}
     permissions:
       packages: write
       contents: read
@@ -75,7 +77,6 @@ jobs:
       - name: Prepare Docker images tags
         id: prepare_tags
         run: |
-          GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
           current_integration_spec=${{ matrix.integration }}
 
           type=$(yq eval '.type' "$current_integration_spec")
