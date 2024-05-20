@@ -35,7 +35,7 @@ class SensitiveLogFilter:
             [re.compile(re.escape(token.strip())) for token in tokens if token.strip()]
         )
 
-    def mask_string(self, string: str, full_hide: bool = False):
+    def mask_string(self, string: str, full_hide: bool = False) -> str:
         masked_string = string
         for pattern in self.compiled_patterns:
             replace: Callable[[re.Match[str]], str] | str = (
@@ -46,7 +46,7 @@ class SensitiveLogFilter:
             masked_string = pattern.sub(replace, masked_string)
         return masked_string
 
-    def mask_object(self, obj: Any, full_hide: bool = False):
+    def mask_object(self, obj: Any, full_hide: bool = False) -> Any:
         if isinstance(obj, str):
             return self.mask_string(obj, full_hide)
         if isinstance(obj, list):
