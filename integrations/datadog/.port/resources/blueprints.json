@@ -64,10 +64,6 @@
     "icon": "Datadog",
     "schema": {
       "properties": {
-        "contacts": {
-          "type": "array",
-          "title": "Contacts"
-        },
         "application": {
           "title": "Application",
           "type": "string"
@@ -111,6 +107,20 @@
             "browser": "lightGray",
             "mobile": "lightGray"
           }
+        },
+        "email": {
+          "type": "string",
+          "title": "Email"
+        },
+        "slack": {
+          "type": "string",
+          "title": "Slack",
+          "format": "url"
+        },
+        "teams": {
+          "type": "string",
+          "title": "Microsoft Teams",
+          "format": "url"
         },
         "links": {
           "title": "Service Links",
