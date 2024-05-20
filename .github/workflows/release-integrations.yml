@@ -120,6 +120,18 @@ jobs:
 #            BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
 #            INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
 
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    needs: release-integration
+    steps:
+      - name: test
+        run: |
+          echo "is_dev_version: ${{ needs.release-integration.outputs.is_dev_version }}"
+          echo "${{ needs.release-integration.outputs }}"
+
   upload-specs:
     runs-on: ubuntu-latest
     permissions:
