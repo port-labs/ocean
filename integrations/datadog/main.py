@@ -62,7 +62,9 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 # https://docs.datadoghq.com/integrations/webhooks/
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    logger.info(f"Received event type {data['event_type']} - Alert ID: {data['alert_id']}")
+    logger.info(
+        f"Received event type {data['event_type']} - Alert ID: {data['alert_id']}"
+    )
 
     dd_client = init_client()
 
@@ -83,7 +85,7 @@ async def on_start() -> None:
     # Verify the presence of a webhook token or app_host, essential for creating subscriptions.
     # If not provided, skip webhook subscription creation.
     if ocean.integration_config.get("app_host") and ocean.integration_config.get(
-            "datadog_webhook_token"
+        "datadog_webhook_token"
     ):
         dd_client = init_client()
 

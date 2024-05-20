@@ -131,7 +131,12 @@ class DatadogClient:
         while True:
             url = f"{self.api_url}/api/v2/services/definitions"
             result = await self._send_api_request(
-                url, params={"page[number]": page, "page[size]": page_size, "schema_version": "v2.2"}
+                url,
+                params={
+                    "page[number]": page,
+                    "page[size]": page_size,
+                    "schema_version": "v2.2",
+                },
             )
 
             services = result.get("data")
