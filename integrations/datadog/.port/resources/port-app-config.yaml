@@ -30,6 +30,7 @@ resources:
           title: .attributes.schema."dd-service"
           properties:
             contacts: .attributes.schema.contacts
+            application: .attributes.schema.application
             languages: .attributes.schema.languages
             description: .attributes.schema.description
             tags: .attributes.schema.tags

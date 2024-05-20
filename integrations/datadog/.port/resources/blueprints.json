@@ -68,6 +68,10 @@
           "type": "array",
           "title": "Contacts"
         },
+        "application": {
+          "title": "Application",
+          "type": "string"
+        },
         "description": {
           "title": "Description",
           "type": "string"
