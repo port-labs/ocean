@@ -40,6 +40,7 @@ class PortAppConfig(BaseModel):
     create_missing_related_entities: bool = Field(
         alias="createMissingRelatedEntities", default=True
     )
+    send_example_data: bool = Field(alias="sendExampleData", default=True)
     resources: list[ResourceConfig] = Field(default_factory=list)
 
     def get_port_request_options(self) -> RequestOptions:
@@ -55,6 +56,7 @@ class PortAppConfig(BaseModel):
             "deleteDependentEntities": self.delete_dependent_entities,
             "createMissingRelatedEntities": self.create_missing_related_entities,
             "enableMergeEntity": self.enable_merge_entity,
+            "sendExampleData": self.send_example_data,
             "resources": [
                 resource.dict(by_alias=True, exclude_none=True, exclude_unset=True)
                 for resource in self.resources
