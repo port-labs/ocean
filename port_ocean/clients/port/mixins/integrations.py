@@ -139,7 +139,9 @@ class IntegrationClientMixin:
         handle_status_code(response)
         logger.debug("Logs successfully ingested")
 
-    async def ingest_integration_kind_example(self, kind: str, data: dict[str, Any]):
+    async def ingest_integration_kind_example(
+        self, kind: str, data: dict[str, Any], should_log: bool = True
+    ):
         logger.debug(f"Ingesting example for kind: {kind}")
         headers = await self.auth.headers()
         response = await self.client.post(
@@ -149,5 +151,5 @@ class IntegrationClientMixin:
                 "examples": [sensitive_log_filter.mask_object(data, full_hide=True)],
             },
         )
-        handle_status_code(response)
+        handle_status_code(response, should_log=should_log)
         logger.debug(f"Example for kind {kind} successfully ingested")
