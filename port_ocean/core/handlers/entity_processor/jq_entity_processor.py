@@ -173,7 +173,7 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
-        examples_to_send = []
+        examples_to_send: list[dict[str, Any]] = []
         for entities_results in calculated_entities_results:
             for result in entities_results:
                 if result.entity.get("identifier") and result.entity.get("blueprint"):
