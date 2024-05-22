@@ -19,9 +19,6 @@ from port_ocean.exceptions.core import EntityProcessorException
 from port_ocean.utils.queue_utils import process_in_queue
 
 
-MAX_EXAMPLES_TO_SEND = 5
-
-
 @dataclass
 class MappedEntity:
     """Represents the entity after applying the mapping
@@ -159,7 +156,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         mapping: ResourceConfig,
         raw_results: list[RAW_ITEM],
         parse_all: bool = False,
-        send_example_data: bool = False,
+        send_example_data_amount: int = 0,
     ) -> EntitySelectorDiff:
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
@@ -184,8 +181,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                     if result.did_entity_pass_selector:
                         passed_entities.append(parsed_entity)
                         if (
-                            send_example_data
-                            and len(examples_to_send) < MAX_EXAMPLES_TO_SEND
+                            len(examples_to_send) < send_example_data_amount
                             and result.raw_data is not None
                         ):
                             examples_to_send.append(result.raw_data)

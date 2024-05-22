@@ -30,6 +30,9 @@ from port_ocean.core.utils import zip_and_sum
 from port_ocean.exceptions.core import OceanAbortException
 
 
+SEND_EXAMPLE_DATA_AMOUNT = 5
+
+
 class SyncRawMixin(HandlerMixin, EventsMixin):
     """Mixin class for synchronization of raw constructed entities.
 
@@ -124,12 +127,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         self,
         raw_diff: list[tuple[ResourceConfig, list[RAW_ITEM]]],
         parse_all: bool = False,
-        send_example_data: bool = False,
+        send_example_data_amount: int = 0,
     ) -> list[EntitySelectorDiff]:
         return await asyncio.gather(
             *(
                 self.entity_processor.parse_items(
-                    mapping, results, parse_all, send_example_data
+                    mapping, results, parse_all, send_example_data_amount
                 )
                 for mapping, results in raw_diff
             )
@@ -141,10 +144,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
         parse_all: bool = False,
-        send_example_data: bool = False,
+        send_example_data_amount: int = 0,
     ) -> EntitySelectorDiff:
         objects_diff = await self._calculate_raw(
-            [(resource, results)], parse_all, send_example_data
+            [(resource, results)], parse_all, send_example_data_amount
         )
         await self.entities_state_applier.upsert(
             objects_diff[0].passed, user_agent_type
@@ -177,26 +180,32 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 async_generators.append(result)
 
-        send_example_data = ocean.config.send_example_data
+        send_example_data_amount = (
+            SEND_EXAMPLE_DATA_AMOUNT if ocean.config.send_example_data else 0
+        )
         entities = (
             await self._register_resource_raw(
                 resource_config,
                 raw_results,
                 user_agent_type,
-                send_example_data=send_example_data,
+                send_example_data_amount=send_example_data_amount,
             )
         ).passed
 
         for generator in async_generators:
             try:
                 async for items in generator:
+                    if send_example_data_amount > 0:
+                        send_example_data_amount = max(
+                            0, send_example_data_amount - len(entities)
+                        )
                     entities.extend(
                         (
                             await self._register_resource_raw(
                                 resource_config,
                                 items,
                                 user_agent_type,
-                                send_example_data=(send_example_data and not entities),
+                                send_example_data_amount=send_example_data_amount,
                             )
                         ).passed
                     )

@@ -40,7 +40,7 @@ class BaseEntityProcessor(BaseHandler):
         mapping: ResourceConfig,
         raw_data: list[RAW_ITEM],
         parse_all: bool = False,
-        send_example_data: bool = False,
+        send_example_data_amount: int = 0,
     ) -> EntitySelectorDiff:
         pass
 
@@ -49,7 +49,7 @@ class BaseEntityProcessor(BaseHandler):
         mapping: ResourceConfig,
         raw_data: list[RAW_ITEM],
         parse_all: bool = False,
-        send_example_data: bool = False,
+        send_example_data_amount: int = 0,
     ) -> EntitySelectorDiff:
         """Public method to parse raw entity data and map it to an EntityDiff.
 
@@ -64,5 +64,5 @@ class BaseEntityProcessor(BaseHandler):
         """
         with logger.contextualize(kind=mapping.kind):
             return await self._parse_items(
-                mapping, raw_data, parse_all, send_example_data
+                mapping, raw_data, parse_all, send_example_data_amount
             )
