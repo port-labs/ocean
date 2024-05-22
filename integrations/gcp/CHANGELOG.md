@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed single resource fetching for Topics, Projects, Folders and Organizations (#1)
+- Fixed single resource fetching for Topics, Projects, Folders and Organizations by fixing ids parsing (#1)
 
 
 # Port_Ocean 0.1.7 (2024-05-16)
