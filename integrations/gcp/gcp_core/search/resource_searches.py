@@ -204,14 +204,16 @@ async def feed_event_to_resource(
     resource = None
     match asset_type:
         case AssetTypesWithSpecialHandling.TOPIC:
-            topic_name = asset_name.replace('//pubsub.googleapis.com/', '')
+            topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
             resource = await get_single_topic(topic_name)
             resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id)
         case AssetTypesWithSpecialHandling.FOLDER:
-            folder_id = asset_name.replace('//cloudresourcemanager.googleapis.com/', '')
+            folder_id = asset_name.replace("//cloudresourcemanager.googleapis.com/", "")
             resource = await get_single_folder(folder_id)
         case AssetTypesWithSpecialHandling.ORGANIZATION:
-            organization_id = asset_name.replace('//cloudresourcemanager.googleapis.com/', '')
+            organization_id = asset_name.replace(
+                "//cloudresourcemanager.googleapis.com/", ""
+            )
             resource = await get_single_organization(organization_id)
         case AssetTypesWithSpecialHandling.PROJECT:
             resource = await get_single_project(project_id)
