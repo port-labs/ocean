@@ -177,7 +177,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             else:
                 async_generators.append(result)
 
-        send_example_data = event.port_app_config.send_example_data
+        send_example_data = ocean.config.send_example_data
         entities = (
             await self._register_resource_raw(
                 resource_config,

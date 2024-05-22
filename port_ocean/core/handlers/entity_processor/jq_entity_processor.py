@@ -19,6 +19,9 @@ from port_ocean.exceptions.core import EntityProcessorException
 from port_ocean.utils.queue_utils import process_in_queue
 
 
+MAX_EXAMPLES_TO_SEND = 5
+
+
 @dataclass
 class MappedEntity:
     """Represents the entity after applying the mapping
@@ -139,9 +142,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         return [MappedEntity()]
 
     @staticmethod
-    async def _send_example(data: Optional[dict[str, Any]], kind: str) -> None:
+    async def _send_examples(data: list[dict[str, Any]], kind: str) -> None:
         try:
-            if data is not None:
+            if data:
                 await ocean.port_client.ingest_integration_kind_example(
                     kind, data, should_log=False
                 )
@@ -173,17 +176,22 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
-        should_send_more_examples = True
+        examples_to_send = []
         for entities_results in calculated_entities_results:
             for result in entities_results:
                 if result.entity.get("identifier") and result.entity.get("blueprint"):
                     parsed_entity = Entity.parse_obj(result.entity)
                     if result.did_entity_pass_selector:
                         passed_entities.append(parsed_entity)
-                        if send_example_data and should_send_more_examples:
-                            await self._send_example(result.raw_data, mapping.kind)
-                            should_send_more_examples = False
+                        if (
+                            send_example_data
+                            and len(examples_to_send) < MAX_EXAMPLES_TO_SEND
+                            and result.raw_data is not None
+                        ):
+                            examples_to_send.append(result.raw_data)
                     else:
                         failed_entities.append(parsed_entity)
+
+        await self._send_examples(examples_to_send, mapping.kind)
 
         return EntitySelectorDiff(passed=passed_entities, failed=failed_entities)

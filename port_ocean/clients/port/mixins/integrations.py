@@ -140,7 +140,7 @@ class IntegrationClientMixin:
         logger.debug("Logs successfully ingested")
 
     async def ingest_integration_kind_example(
-        self, kind: str, data: dict[str, Any], should_log: bool = True
+        self, kind: str, data: list[dict[str, Any]], should_log: bool = True
     ):
         logger.debug(f"Ingesting example for kind: {kind}")
         headers = await self.auth.headers()
@@ -148,7 +148,7 @@ class IntegrationClientMixin:
             f"{self.auth.api_url}/integration/{self.integration_identifier}/kinds/{kind}/examples",
             headers=headers,
             json={
-                "examples": [sensitive_log_filter.mask_object(data, full_hide=True)],
+                "examples": sensitive_log_filter.mask_object(data, full_hide=True),
             },
         )
         handle_status_code(response, should_log=should_log)
