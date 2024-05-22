@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.41 (2024-05-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.19 (#1)
+
+
+# Port_Ocean 0.1.40 (2024-05-15)
+
+### Improvements
+
+- Added backwards compatibility to the integration to support clients using Kubecost v1
+
+
 # Port_Ocean 0.1.39 (2024-05-15)
 
 ### Bug Fixes

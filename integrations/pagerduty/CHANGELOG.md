@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.59 (2024-05-17)
+
+### Improvements
+
+- Added escalation levels to the service blueprint
+
+
+# Port_Ocean 0.1.58 (2024-05-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.19 (#1)
+
+
 # Port_Ocean 0.1.57 (2024-05-13)
 
 ### Improvements
