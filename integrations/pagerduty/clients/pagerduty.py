@@ -274,7 +274,9 @@ class PagerDutyClient:
             for user in schedule.get(USER_KEY, []):
                 cached_user = self.get_cached_user(user["id"])
                 if cached_user:
-                    logger.warning(f"User ID {user['id']} found in user cache with email: {cached_user}")
+                    logger.warning(
+                        f"User ID {user['id']} found in user cache with email: {cached_user}"
+                    )
                     user["__email"] = cached_user
                 else:
                     logger.debug(f"User ID {user['id']} not found in user cache")
