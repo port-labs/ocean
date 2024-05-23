@@ -142,7 +142,7 @@ class JQEntityProcessor(BaseEntityProcessor):
     async def _send_examples(data: list[dict[str, Any]], kind: str) -> None:
         try:
             if data:
-                await ocean.port_client.ingest_integration_kind_example(
+                await ocean.port_client.ingest_integration_kind_examples(
                     kind, data, should_log=False
                 )
         except Exception as ex:
