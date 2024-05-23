@@ -72,7 +72,7 @@ resources:
           title: '.name | split("/") | last'
           blueprint: '"gcpCloudResource"'
           properties:
-            type: ".asset_type"
+            type: '.name | split("/") | .[-2]'
             location: ".location"
           relations:
             project: ".project"
