@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.20 (2024-05-23)
+
+### Features
+
+- Added `send_raw_data_examples` integration config to allow sending raw data examples to port (on resync) for test a mapping
+
+
 ## 0.5.19 (2024-05-16)
 
 ### Improvements

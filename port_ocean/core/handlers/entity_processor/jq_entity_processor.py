@@ -156,7 +156,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         mapping: ResourceConfig,
         raw_results: list[RAW_ITEM],
         parse_all: bool = False,
-        send_example_data_amount: int = 0,
+        send_raw_data_examples_amount: int = 0,
     ) -> EntitySelectorDiff:
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
@@ -181,7 +181,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                     if result.did_entity_pass_selector:
                         passed_entities.append(parsed_entity)
                         if (
-                            len(examples_to_send) < send_example_data_amount
+                            len(examples_to_send) < send_raw_data_examples_amount
                             and result.raw_data is not None
                         ):
                             examples_to_send.append(result.raw_data)
