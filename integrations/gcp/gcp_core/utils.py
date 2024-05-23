@@ -11,6 +11,9 @@ from gcp_core.overrides import GCPCloudResourceConfig
 
 EXTRA_PROJECT_FIELD = "__project"
 
+def parse_latest_resource_from_asset(asset_data:dict[str, Any]) -> dict[str,Any]:
+    max_versioned_resource_data = max(asset_data["versioned_resources"], key=lambda x: x["version"])
+    return max_versioned_resource_data["resource"]
 
 def parse_protobuf_message(message: proto.Message) -> dict[str, Any]:
     return proto.Message.to_dict(message)

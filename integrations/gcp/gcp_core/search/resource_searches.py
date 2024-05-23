@@ -21,6 +21,7 @@ from gcp_core.utils import (
     AssetTypesWithSpecialHandling,
     parse_protobuf_message,
     parse_protobuf_messages,
+    parse_latest_resource_from_asset,
 )
 
 
@@ -38,14 +39,6 @@ async def search_all_resources_in_project(
     """
     List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
     Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
-    The format to get the most updated value of a resource's property in the port app config is:
-
-        .versioned_resources | max_by(.version).resource | <resource_property>
-
-    for example, to get the object retention load of a bucket the currect way of getting that is:
-
-        .versioned_resources | max_by(.version).resource | .objectRetention.mode
-
     """
     logger.info(f"Searching all {asset_type}'s in project {project_name}")
     async with AssetServiceAsyncClient() as async_assets_client:
@@ -63,9 +56,10 @@ async def search_all_resources_in_project(
                 )
             )
             async for paginated_response in paginated_responses.pages:
-                resources = parse_protobuf_messages(paginated_response.results)
-                if resources:
-                    logger.info(f"Found {len(resources)} {asset_type}'s")
+                assets = parse_protobuf_messages(paginated_response.results)
+                if assets:
+                    logger.info(f"Found {len(assets)} {asset_type}'s")
+                    resources = [parse_latest_resource_from_asset(asset) for asset in assets]
                     yield resources
         except PermissionDenied as e:
             logger.exception(
@@ -195,7 +189,7 @@ async def search_single_resource(
         raise ResourceNotFoundError(
             f"Found no asset named {asset_name} with type {asset_kind}"
         )
-    return resource
+    return parse_latest_resource_from_asset(resource)
 
 
 async def feed_event_to_resource(

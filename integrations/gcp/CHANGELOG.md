@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.10 (2024-05-23)
+
+### Improvements
+
+- Changed resource's property fetching to always be on the last version of the resource in the asset (#1)
+
 # Port_Ocean 0.1.9 (2024-05-22)
 
 ### Improvements

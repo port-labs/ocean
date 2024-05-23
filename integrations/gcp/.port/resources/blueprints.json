@@ -11,7 +11,7 @@
     "aggregationProperties": {}
   },
   {
-    "identifier": "containerCluster",
+    "identifier": "gcpContainerCluster",
     "title": "Container Cluster",
     "icon": "GoogleCloud",
     "schema": {
@@ -48,7 +48,7 @@
     }
   },
   {
-    "identifier": "functions",
+    "identifier": "gcpCloudFunctions",
     "title": "Cloud Functions",
     "icon": "GoogleCloud",
     "schema": {
@@ -87,7 +87,7 @@
     }
   },
   {
-    "identifier": "topics",
+    "identifier": "gcpTopics",
     "title": "PubSub Topics",
     "icon": "GoogleCloud",
     "schema": {
