@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.1.10 (2024-05-23)
 
-### Improvements
+### Breaking Changes
 
-- Changed resource's property fetching to always be on the last version of the resource in the asset (#1)
+- Updated the returned response from the GCP integration to reflect the latest known resource version as identified by the GCP Asset Inventory. Removed the need for `.versioned_resources | max_by(.version).resource | .<property_name>`, now only requiring `.<property_name>` (#1)
 
 # Port_Ocean 0.1.9 (2024-05-22)
 
