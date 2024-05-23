@@ -24,7 +24,7 @@ deploymentMethodOverride:
           - "pubsub.googleapis.com/Topic"
           - "container.googleapis.com/Cluster"
         type: array
-      - name: ocean_permissions
+      - name: gcp_ocean_integration_sa_permissions
         description: A list of permissions that will be assigned to the Google Cloud Service account to export Google Cloud Resources.
         required: true
         default:
