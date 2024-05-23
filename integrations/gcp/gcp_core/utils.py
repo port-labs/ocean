@@ -1,7 +1,7 @@
 import enum
 import typing
 from collections.abc import MutableSequence
-from typing import Any
+from typing import Any, TypedDict
 
 import proto  # type: ignore
 from port_ocean.context.event import event
@@ -11,8 +11,17 @@ from gcp_core.overrides import GCPCloudResourceConfig
 
 EXTRA_PROJECT_FIELD = "__project"
 
-def parse_latest_resource_from_asset(asset_data:dict[str, Any]) -> dict[str,Any]:
-    max_versioned_resource_data = max(asset_data["versioned_resources"], key=lambda x: x["version"])
+class VersionedResource(TypedDict):
+    version: int
+    resource: dict[str, Any]
+
+class AssetData(TypedDict):
+    versioned_resources: list[VersionedResource]
+
+def parse_latest_resource_from_asset(asset_data: AssetData) -> dict[str, Any]:
+    max_versioned_resource_data = max(
+        asset_data["versioned_resources"], key=lambda x: x["version"]
+    )
     return max_versioned_resource_data["resource"]
 
 def parse_protobuf_message(message: proto.Message) -> dict[str, Any]:
