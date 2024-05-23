@@ -31,7 +31,7 @@ resources:
             url: '.remoteUrl'
             readme: file://README.md
           relations:
-            project: .project.id
+            project: '.project.id | gsub(" "; "")'
 
   - kind: repository-policy
     selector:

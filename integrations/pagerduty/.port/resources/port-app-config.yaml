@@ -14,6 +14,7 @@ resources:
             status: .status
             url: .html_url
             oncall: .__oncall_user[] | select(.escalation_level == 1) | .user.email
+            escalationLevels: .__oncall_user | map(.escalation_level) | unique | length
             meanSecondsToResolve: .__analytics.mean_seconds_to_resolve
             meanSecondsToFirstAck: .__analytics.mean_seconds_to_first_ack
             meanSecondsToEngage: .__analytics.mean_seconds_to_engage
@@ -35,6 +36,8 @@ resources:
             escalation_policy: .escalation_policy.summary
             created_at: .created_at
             updated_at: .updated_at
+            priority: if .priority != null then .priority.summary else null end
+            description: .description
           relations:
             pagerdutyService: .service.id
   - kind: schedules

@@ -4,6 +4,7 @@ from gitlab.v4.objects import Project
 from loguru import logger
 from pydantic import Field, BaseModel
 
+from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,
     SEARCH_PROPERTY_PREFIX,
@@ -34,11 +35,8 @@ class FileEntityProcessor(JQEntityProcessor):
         logger.info(
             f"Searching for file {file_path} in Project {project_id}: {project.path_with_namespace}, ref {ref}"
         )
-        return (
-            project.files.get(file_path=file_path, ref=ref).decode().decode("utf-8")
-            if project
-            else None
-        )
+        res = await AsyncFetcher.fetch_single(project.files.get, file_path, ref)
+        return res.decode().decode("utf-8")
 
 
 class SearchEntityProcessor(JQEntityProcessor):
@@ -73,10 +71,10 @@ class SearchEntityProcessor(JQEntityProcessor):
                 # having the base path applies to the case where we export a folder as a monorepo
                 if base_path and "path:" not in query:
                     query = f"{query} path:{base_path}"
-                results = project.search(scope=scope, search=query)
+                results = await AsyncFetcher.fetch_single(project.search, scope, query)  # type: ignore
                 match = bool(results)
             else:
-                results = project.search(scope=scope, search=query)
+                results = await AsyncFetcher.fetch_single(project.search, scope, query)  # type: ignore
                 match = bool(results)
         return match
 
