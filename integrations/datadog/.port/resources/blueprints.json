@@ -108,9 +108,9 @@
             "mobile": "lightGray"
           }
         },
-        "email": {
+        "owners": {
           "type": "array",
-          "title": "Email",
+          "title": "Service Owners",
           "items": {
             "type": "string"
           }

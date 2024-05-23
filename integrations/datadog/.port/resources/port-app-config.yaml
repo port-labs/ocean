@@ -35,7 +35,7 @@ resources:
             tags: .attributes.schema.tags
             type: .attributes.schema.type
             links: .attributes.schema.links | map(.url)
-            email: '[.attributes.schema.contacts[] | select(.type == "email") | .contact]'
+            owners: '[.attributes.schema.contacts[] | select(.type == "email") | .contact]'
             slack: '[.attributes.schema.contacts[] | select(.type == "slack") | .contact]'
   - kind: slo
     selector:
