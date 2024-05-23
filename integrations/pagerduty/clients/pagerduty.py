@@ -260,10 +260,10 @@ class PagerDutyClient:
     async def fetch_and_cache_users(self) -> None:
         async for users in self.paginate_request_to_pager_duty(data_key=USER_KEY):
             for user in users:
-                event.attributes[user["id"]] = user
+                event.attributes[user["id"]] = user["email"]
 
     def get_cached_user(self, user_id: str) -> dict[str, Any] | None:
-        return event.attributes.get(user_id})
+        return event.attributes.get(user_id)
 
     async def transform_user_ids_to_emails(
         self, schedules: list[dict[str, Any]]
@@ -274,7 +274,8 @@ class PagerDutyClient:
             for user in schedule.get(USER_KEY, []):
                 cached_user = self.get_cached_user(user["id"])
                 if cached_user:
-                    user["__email"] = cached_user["email"]
+                    logger.warning(f"User ID {user['id']} found in user cache with email: {cached_user}")
+                    user["__email"] = cached_user
                 else:
                     logger.debug(f"User ID {user['id']} not found in user cache")
         return schedules
