@@ -10,7 +10,7 @@ deploymentMethodOverride:
     module: port-labs/integration-factory/ocean
     example: gcp_integration_with_real_time
     title: GCP's Cloud Run
-    version: ">=0.0.19"
+    version: ">=0.0.22"
     extraVars:
       - name: assets_types_for_monitoring
         description: A list of resources to filter events from Google Cloud.
