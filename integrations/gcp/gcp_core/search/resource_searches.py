@@ -1,4 +1,5 @@
 from typing import Any
+import typing
 
 from google.api_core.exceptions import NotFound, PermissionDenied
 from google.cloud.asset_v1 import (
@@ -18,6 +19,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from gcp_core.errors import ResourceNotFoundError
 from gcp_core.utils import (
     EXTRA_PROJECT_FIELD,
+    AssetData,
     AssetTypesWithSpecialHandling,
     parse_protobuf_message,
     parse_protobuf_messages,
@@ -56,7 +58,8 @@ async def search_all_resources_in_project(
                 )
             )
             async for paginated_response in paginated_responses.pages:
-                assets = parse_protobuf_messages(paginated_response.results)
+                raw_assets = parse_protobuf_messages(paginated_response.results)
+                assets = typing.cast(list[AssetData], raw_assets)
                 if assets:
                     logger.info(f"Found {len(assets)} {asset_type}'s")
                     resources = [parse_latest_resource_from_asset(asset) for asset in assets]
