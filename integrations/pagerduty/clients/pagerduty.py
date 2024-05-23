@@ -263,7 +263,7 @@ class PagerDutyClient:
                 event.attributes[user["id"]] = user
 
     def get_cached_user(self, user_id: str) -> dict[str, Any] | None:
-        return event.attributes.get(f"{user_id}")
+        return event.attributes.get(user_id})
 
     async def transform_user_ids_to_emails(
         self, schedules: list[dict[str, Any]]
