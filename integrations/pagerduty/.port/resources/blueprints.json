@@ -125,7 +125,7 @@
           "type": "string",
           "title": "Description"
         },
-        "responder": {
+        "assignees": {
           "title": "Assignees",
           "type": "array",
           "items": {

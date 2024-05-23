@@ -32,7 +32,7 @@ resources:
             status: .status
             url: .self
             urgency: .urgency
-            responder: .assignments | map(.assignee.email)
+            assignees: .assignments | map(.assignee.email)
             escalation_policy: .escalation_policy.summary
             created_at: .created_at
             updated_at: .updated_at
