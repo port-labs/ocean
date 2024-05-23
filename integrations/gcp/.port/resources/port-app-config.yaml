@@ -15,7 +15,7 @@ resources:
       entity:
         mappings:
           identifier: ".id"
-          blueprint: '"gcpontainerCluster"'
+          blueprint: '"gcpContainerCluster"'
           title: ".name"
           properties:
             description: ".description"
