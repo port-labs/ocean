@@ -1,0 +1,130 @@
+[
+  {
+    "identifier": "linearTeam",
+    "title": "Linear Team",
+    "icon": "Linear",
+    "description": "A Linear team",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "Team description"
+        },
+        "workspaceName": {
+          "type": "string",
+          "title": "Workspace Name",
+          "description": "The name of the workspace this team belongs to"
+        },
+        "url": {
+          "title": "Team URL",
+          "type": "string",
+          "format": "url",
+          "description": "URL to the team in Linear"
+        }
+      }
+    },
+    "calculationProperties": {}
+  },
+  {
+    "identifier": "linearLabel",
+    "title": "Linear Label",
+    "icon": "Linear",
+    "description": "A Linear label",
+    "schema": {
+      "properties": {
+        "isGroup": {
+          "type": "boolean",
+          "title": "Is group",
+          "description": "Whether this label is considered to be a group"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "parentLabel": {
+        "target": "linearLabel",
+        "title": "Parent Label",
+        "required": false,
+        "many": false
+      },
+      "childLabels": {
+        "target": "linearLabel",
+        "title": "Child Labels",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "linearIssue",
+    "title": "Linear Issue",
+    "icon": "Linear",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "Issue URL",
+          "type": "string",
+          "format": "url",
+          "description": "URL to the issue in Linear"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "description": "The status of the issue"
+        },
+        "assignee": {
+          "title": "Assignee",
+          "type": "string",
+          "format": "user",
+          "description": "The user assigned to the issue"
+        },
+        "creator": {
+          "title": "Creator",
+          "type": "string",
+          "description": "The user that created to the issue",
+          "format": "user"
+        },
+        "priority": {
+          "title": "Priority",
+          "type": "string",
+          "description": "The priority of the issue"
+        },
+        "created": {
+          "title": "Created At",
+          "type": "string",
+          "description": "The created datetime of the issue",
+          "format": "date-time"
+        },
+        "updated": {
+          "title": "Updated At",
+          "type": "string",
+          "description": "The updated datetime of the issue",
+          "format": "date-time"
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "team": {
+        "target": "linearTeam",
+        "title": "Team",
+        "description": "The Linear team that contains this issue",
+        "required": false,
+        "many": false
+      },
+      "parentIssue": {
+        "title": "Parent Issue",
+        "target": "linearIssue",
+        "required": false,
+        "many": false
+      },
+      "labels": {
+        "target": "linearLabel",
+        "title": "Labels",
+        "required": false,
+        "many": true
+      }
+    }
+  }
+]

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.9 (2024-05-22)
+
+### Improvements
+
+- Replaced GCP tf variable names to more readable ones (#1)
+
+
+# Port_Ocean 0.1.8 (2024-05-22)
+
+### Bug Fixes
+
+- Fixed single resource fetching for Topics, Projects, Folders and Organizations by fixing ids parsing (#1)
+
+
 # Port_Ocean 0.1.7 (2024-05-16)
 
 ### Improvements
