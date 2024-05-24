@@ -42,7 +42,7 @@ class OpenCostClient:
             )
             raise
 
-    async def get_cloudcost(self) -> list[dict[str, Any]]:
+    async def get_cloudcost(self) -> list[dict[str, dict[str, dict[str, Any]]]]:
         """
         Retrieves cloud cost data from cloud providers by reading cost
         and usage reports.
