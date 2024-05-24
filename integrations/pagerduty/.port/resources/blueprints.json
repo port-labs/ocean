@@ -125,10 +125,13 @@
           "type": "string",
           "title": "Description"
         },
-        "responder": {
-          "type": "string",
-          "title": "Assignee",
-          "format": "user"
+        "assignees": {
+          "title": "Assignees",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "user"
+          }
         },
         "escalation_policy": {
           "type": "string",
@@ -180,7 +183,11 @@
         },
         "users": {
           "title": "Users",
-          "type": "array"
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "user"
+          }
         }
       },
       "required": []
