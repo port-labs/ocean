@@ -61,16 +61,15 @@ class DynatraceClient:
             yield slos
 
     async def _get_entities_from_type(
-        self, type_: str
+        self, type_: str, entity_fields = ""
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        ENTITY_FIELDS = "firstSeenTms,lastSeenTms,tags"
         async for entities in self._get_paginated_resources(
             f"{self.host_url}/entities",
             "entities",
             params={
                 "entitySelector": f'type("{type_}")',
                 "pageSize": 100,
-                "fields": ENTITY_FIELDS,
+                "fields": entity_fields,
             },
         ):
             yield entities
@@ -79,7 +78,10 @@ class DynatraceClient:
         selector = typing.cast(DynatraceResourceConfig, event.resource_config).selector
 
         for entity_type in selector.entity_types:
-            async for entities in self._get_entities_from_type(entity_type):
+            async for entities in self._get_entities_from_type(
+                entity_type,
+                selector.entity_fields
+            ):
                 yield entities
 
     async def get_single_problem(self, problem_id: str) -> dict[str, Any]:
