@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed bug causing `OPENCOST_HOST` environment variable to be parsed incorrectly (0.1.35)
+- Fixed bug causing `OCEAN__INTEGRATION__OPENCOST_HOST` environment variable to be parsed incorrectly (0.1.35)
 
 
 # Port_Ocean 0.1.39 (2024-05-16)
