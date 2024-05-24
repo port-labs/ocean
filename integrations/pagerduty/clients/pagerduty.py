@@ -4,7 +4,10 @@ import httpx
 from loguru import logger
 
 from port_ocean.utils import http_async_client
+from port_ocean.context.event import event
 from .utils import get_date_range_for_last_n_months
+
+USER_KEY = "users"
 
 
 class PagerDutyClient:
@@ -253,3 +256,25 @@ class PagerDutyClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP occurred while fetching service analytics data: {e}")
             return {}
+
+    async def fetch_and_cache_users(self) -> None:
+        async for users in self.paginate_request_to_pager_duty(data_key=USER_KEY):
+            for user in users:
+                event.attributes[user["id"]] = user["email"]
+
+    def get_cached_user(self, user_id: str) -> dict[str, Any] | None:
+        return event.attributes.get(user_id)
+
+    async def transform_user_ids_to_emails(
+        self, schedules: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        await self.fetch_and_cache_users()
+
+        for schedule in schedules:
+            for user in schedule.get(USER_KEY, []):
+                cached_user = self.get_cached_user(user["id"])
+                if cached_user:
+                    user["__email"] = cached_user
+                else:
+                    logger.debug(f"User ID {user['id']} not found in user cache")
+        return schedules
