@@ -4,6 +4,7 @@ import typing
 from fastapi import Request, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gcp_core.errors import (
@@ -130,8 +131,17 @@ async def feed_events_callback(request: Request) -> Response:
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
         )
     except ResourceNotFoundError:
-        logger.exception(f"Didn't find any {asset_type} resource named: {asset_name}")
-        return Response(status_code=http.HTTPStatus.NOT_FOUND)
+        logger.warning(
+            f"Didn't find any {asset_type} resource named: {asset_name}. Deleting ocean entity."
+        )
+        await ocean.unregister(
+            [
+                Entity(
+                    blueprint=asset_type,
+                    identifier=asset_name,
+                )
+            ]
+        )
     except GotFeedCreatedSuccessfullyMessageError:
         logger.info("Assets Feed created successfully")
     except Exception:
