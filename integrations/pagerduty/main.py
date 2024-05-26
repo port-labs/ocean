@@ -123,7 +123,7 @@ async def on_schedules_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         data_key=ObjectKind.SCHEDULES,
         params=query_params.generate_request_params() if query_params else None,
     ):
-        yield schedules
+        yield await pager_duty_client.transform_user_ids_to_emails(schedules)
 
 
 @ocean.on_resync(ObjectKind.ONCALLS)
