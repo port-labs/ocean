@@ -48,12 +48,11 @@ resources:
       entity:
         mappings:
           identifier: ".name"
-          blueprint: '"gcpTopics"'
-          title: '.name | split("/") | .[-1]'
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
           properties:
-            state: ".state"
-            schemaSettings: ".schema_settings"
-            messageRetentionDuration: ".message_retention_duration"
+            type: '.name | split("/") | .[-2]'
+            location: ".location"
           relations:
             project: ".__project.name"
   - kind: compute.googleapis.com/Disk
