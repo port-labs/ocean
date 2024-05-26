@@ -26,9 +26,8 @@ jobs:
           # Get the list of integrations
           files=$(find integrations/*/.port -name "spec.yaml")
           for file in $files; do
-            # Get the type from ocean-spec.yaml
-            type=$(yq eval '.type' "$file")
             folder=$(dirname "$file")
+            type=$(grep -E '^name = ".*"' "folder/../pyproject.toml" | cut -d'"' -f2)
 
             # Get the version from pyproject.toml
             version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
