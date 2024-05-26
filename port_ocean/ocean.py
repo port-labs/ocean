@@ -2,7 +2,7 @@ import asyncio
 import sys
 import threading
 from contextlib import asynccontextmanager
-from typing import Callable, Any, Dict, AsyncIterator, Never
+from typing import Callable, Any, Dict, AsyncIterator
 
 from fastapi import FastAPI, APIRouter
 from loguru import logger
@@ -95,12 +95,12 @@ class Ocean:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         @asynccontextmanager
-        async def lifecycle(_: FastAPI) -> AsyncIterator[Never]:
+        async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 init_signal_handler()
                 await self.integration.start()
                 await self._setup_scheduled_resync()
-                yield
+                yield None
                 signal_handler.exit()
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
