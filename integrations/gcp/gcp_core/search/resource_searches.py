@@ -62,7 +62,11 @@ async def search_all_resources_in_project(
                 assets = typing.cast(list[AssetData], raw_assets)
                 if assets:
                     logger.info(f"Found {len(assets)} {asset_type}'s")
-                    resources = [parse_latest_resource_from_asset(asset) for asset in assets]
+                    resources = []
+                    for asset in assets:
+                        resource = parse_latest_resource_from_asset(asset)
+                        resource[EXTRA_PROJECT_FIELD] = project_name
+                        resources.append(resource)
                     yield resources
         except PermissionDenied as e:
             logger.exception(
@@ -95,7 +99,7 @@ async def list_all_topics_per_project(
                         f"Found {len(topics)} {AssetTypesWithSpecialHandling.TOPIC}'s"
                     )
                     for topic in topics:
-                        topic[EXTRA_PROJECT_FIELD] = project
+                        topic[EXTRA_PROJECT_FIELD] = project_name
                     yield topics
         except PermissionDenied as e:
             logger.exception(
@@ -192,7 +196,7 @@ async def search_single_resource(
         raise ResourceNotFoundError(
             f"Found no asset named {asset_name} with type {asset_kind}"
         )
-    return parse_latest_resource_from_asset(resource)
+    return resource
 
 
 async def feed_event_to_resource(
