@@ -10,6 +10,7 @@ from port_ocean.core.event_listener.base import (
     EventListenerSettings,
 )
 from port_ocean.utils.repeat import repeat_every
+from port_ocean.utils.signal import signal_handler
 
 
 class PollingEventListenerSettings(EventListenerSettings):
@@ -79,7 +80,7 @@ class PollingEventListener(BaseEventListener):
                 running_task: Task[Any] = get_event_loop().create_task(
                     self.events["on_resync"]({})  # type: ignore
                 )
-                self._tasks_to_close.append(running_task)
+                signal_handler.register(running_task.cancel)
 
                 await running_task
 
