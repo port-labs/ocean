@@ -1,4 +1,3 @@
-type: terraform-cloud
 description: terraform cloud integration for Port Ocean
 icon: Terraform
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/terraform-cloud
