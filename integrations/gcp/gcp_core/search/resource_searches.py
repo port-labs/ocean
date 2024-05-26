@@ -35,13 +35,13 @@ async def search_all_resources(
 
 
 async def search_all_resources_in_project(
-    project:dict[str,Any], asset_type: str, asset_name: str | None = None
+    project: dict[str, Any], asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
     Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
     """
-    project_name = project['name']
+    project_name = project["name"]
     logger.info(f"Searching all {asset_type}'s in project {project_name}")
     async with AssetServiceAsyncClient() as async_assets_client:
         search_all_resources_request = {
@@ -183,7 +183,7 @@ async def get_single_topic(topic_id: str) -> RAW_ITEM:
 
 
 async def search_single_resource(
-    project: dict[str,Any], asset_kind: str, asset_name: str
+    project: dict[str, Any], asset_kind: str, asset_name: str
 ) -> RAW_ITEM:
     try:
         resource = [
