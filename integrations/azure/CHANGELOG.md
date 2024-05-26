@@ -3,6 +3,7 @@
 ### Improvements
 
 - Bumped ocean version to ^0.5.20 (#1)
+- Removed the config.yaml file due to unused overrides
 
 
 0.1.51 (2024-05-20)

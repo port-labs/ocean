@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Bumped ocean version to ^0.5.20 (#1)
+- Removed the config.yaml file due to unused overrides
 
 
 # Port_Ocean 0.1.21 (2024-05-16)
