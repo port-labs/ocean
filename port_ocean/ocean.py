@@ -95,7 +95,7 @@ class Ocean:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         @asynccontextmanager
-        async def lifecycle(_: FastAPI):
+        async def lifecycle(_: FastAPI) -> None:
             try:
                 init_signal_handler()
                 await self.integration.start()
