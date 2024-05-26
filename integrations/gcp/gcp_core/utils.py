@@ -13,12 +13,12 @@ EXTRA_PROJECT_FIELD = "__project"
 
 class VersionedResource(TypedDict):
     version: int
-    resource: dict[str, Any]
+    resource: dict[Any, Any]
 
 class AssetData(TypedDict):
     versioned_resources: list[VersionedResource]
 
-def parse_latest_resource_from_asset(asset_data: AssetData) -> dict[str, Any]:
+def parse_latest_resource_from_asset(asset_data: AssetData) -> dict[Any, Any]:
     max_versioned_resource_data = max(
         asset_data["versioned_resources"], key=lambda x: x["version"]
     )
