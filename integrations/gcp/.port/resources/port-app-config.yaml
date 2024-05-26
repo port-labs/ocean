@@ -14,14 +14,11 @@ resources:
     port:
       entity:
         mappings:
-          identifier: ".id"
-          blueprint: '"gcpContainerCluster"'
-          title: ".name"
+          identifier: ".name"
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
           properties:
-            description: ".description"
-            currentNodeCount: ".currentNodeCount"
-            currentNodeVersion: ".currentNodeVersion"
-            initialNodeCount: ".initialNodeCount"
+            type: '.name | split("/") | .[-2]'
             location: ".location"
           relations:
             project: ".__project.name"
@@ -32,13 +29,11 @@ resources:
       entity:
         mappings:
           identifier: ".name"
-          blueprint: '"gcpCloudFunctions"'
-          title: ".name"
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
           properties:
-            url: ".url"
-            state: ".state"
-            environment: ".environment"
-            eventTrigger: ".eventTrigger"
+            type: '.name | split("/") | .[-2]'
+            location: ".location"
           relations:
             project: ".__project.name"
   - kind: pubsub.googleapis.com/Topic
