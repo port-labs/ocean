@@ -42,15 +42,15 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
-    identifier: str
-    type: str
+    identifier: str = Field(..., min_length=1)
+    type: str = Field(..., min_length=1)
     config: dict[str, Any] | BaseModel
 
     @root_validator(pre=True)
     def a(cls, values: dict[str, Any]) -> dict[str, Any]:
         integ_type = values.get("type")
 
-        if not integ_type and get_integration_name():
+        if not integ_type:
             integ_type = get_integration_name()
 
         values["type"] = integ_type.lower() if integ_type else None
