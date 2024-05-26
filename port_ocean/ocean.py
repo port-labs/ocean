@@ -2,7 +2,7 @@ import asyncio
 import sys
 import threading
 from contextlib import asynccontextmanager
-from typing import Callable, Any, Dict
+from typing import Callable, Any, Dict, AsyncIterator, Never
 
 from fastapi import FastAPI, APIRouter
 from loguru import logger
@@ -95,7 +95,7 @@ class Ocean:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         @asynccontextmanager
-        async def lifecycle(_: FastAPI) -> None:
+        async def lifecycle(_: FastAPI) -> AsyncIterator[Never]:
             try:
                 init_signal_handler()
                 await self.integration.start()
