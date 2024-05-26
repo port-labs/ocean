@@ -24,7 +24,7 @@ resources:
             initialNodeCount: ".initialNodeCount"
             location: ".location"
           relations:
-            project: ".__project"
+            project: ".__project.name"
   - kind: cloudfunctions.googleapis.com/CloudFunction
     selector:
       query: "true"
@@ -40,7 +40,7 @@ resources:
             environment: ".environment"
             eventTrigger: ".eventTrigger"
           relations:
-            project: ".__project"
+            project: ".__project.name"
   - kind: pubsub.googleapis.com/Topic
     selector:
       query: "true"
@@ -55,7 +55,7 @@ resources:
             schemaSettings: ".schema_settings"
             messageRetentionDuration: ".message_retention_duration"
           relations:
-            project: ".__project"
+            project: ".__project.name"
   - kind: compute.googleapis.com/Disk
     selector:
       query: "true"
@@ -69,7 +69,7 @@ resources:
             type: '.name | split("/") | .[-2]'
             location: ".location"
           relations:
-            project: ".__project"
+            project: ".__project.name"
   - kind: pubsub.googleapis.com/Subscription
     selector:
       query: "true"
@@ -83,7 +83,7 @@ resources:
             type: '.name | split("/") | .[-2]'
             location: ".location"
           relations:
-            project: ".__project"
+            project: ".__project.name"
   - kind: iam.googleapis.com/ServiceAccount
     selector:
       query: "true"
@@ -97,4 +97,4 @@ resources:
             type: '.name | split("/") | .[-2]'
             location: ".location"
           relations:
-            project: ".__project"
+            project: ".__project.name"
