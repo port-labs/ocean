@@ -7,6 +7,7 @@ from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
 from port_ocean.core.event_listener import EventListenerSettingsType
+from port_ocean.utils.misc import get_integration_name
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
@@ -40,8 +41,14 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
-    identifier: str
-    type: str
+    identifier: str = Field(
+        default_factory=lambda: (
+            f"my-{get_integration_name()}-integration"
+            if get_integration_name()
+            else None
+        )
+    )
+    type: str = Field(default_factory=lambda: get_integration_name())
     config: dict[str, Any] | BaseModel
 
     @validator("identifier", "type")

@@ -16,16 +16,15 @@ PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
 
 def read_yaml_config_settings_source(
     settings: "BaseOceanSettings", base_path: str
-) -> str:
+) -> dict[str, Any]:
     yaml_file = getattr(settings.__config__, "yaml_file", "")
 
     assert yaml_file, "Settings.yaml_file not properly configured"
     path = Path(base_path, yaml_file)
 
     if not path.exists():
-        raise FileNotFoundError(f"Could not open yaml settings file at: {path}")
-
-    return path.read_text("utf-8")
+        return {}
+    return yaml.safe_load(path.read_text("utf-8"))
 
 
 def parse_config_provider(value: str) -> tuple[str, str]:
@@ -122,8 +121,7 @@ def decamelize_config(
 def load_providers(
     settings: "BaseOceanSettings", existing_values: dict[str, Any], base_path: str
 ) -> dict[str, Any]:
-    yaml_content = read_yaml_config_settings_source(settings, base_path)
-    data = yaml.safe_load(yaml_content)
+    data = read_yaml_config_settings_source(settings, base_path)
     snake_case_config = decamelize_config(settings, data)
     return parse_providers(settings, snake_case_config, existing_values)
 

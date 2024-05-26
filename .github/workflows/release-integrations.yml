@@ -79,12 +79,12 @@ jobs:
         run: |
           current_integration_spec=${{ matrix.integration }}
 
-          type=$(yq eval '.type' "$current_integration_spec")
           folder=$(dirname "$current_integration_spec")
           context_dir=$(dirname "$folder")
           echo "context_dir=$context_dir" >> $GITHUB_OUTPUT
 
           version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
+          type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
           echo "version=$version" >> $GITHUB_OUTPUT
 
           dockerfile_path=integrations/_infra/Dockerfile
@@ -154,13 +154,17 @@ jobs:
           find integrations/*/.port -type f -name "spec.yaml" > file_list.txt
 
           while IFS= read -r file; do
-          # Extract the version from pyproject.toml
           integration_dir=$(dirname "$file")
+          # Extract the type for pyproject.toml
+          type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+          
+          # Extract the version from pyproject.toml
           version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
-
+          
           # Store the integration's yaml file content into a temporary file
           integration_dest="$(echo $integration_dir | awk -F'/' '{print $2}').json"
           sed 's/^/  /' "$file" > "$specific_integration_temp_file"
+          echo "  type: $type" >> "$specific_integration_temp_file"
           echo "  version: $version" >> "$specific_integration_temp_file"
 
           yq -o=json . < "$specific_integration_temp_file" > "$integration_dest"
