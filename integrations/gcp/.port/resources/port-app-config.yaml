@@ -24,7 +24,7 @@ resources:
             initialNodeCount: ".initialNodeCount"
             location: ".location"
           relations:
-            project: ".project"
+            project: ".__project"
   - kind: cloudfunctions.googleapis.com/CloudFunction
     selector:
       query: "true"
@@ -40,7 +40,7 @@ resources:
             environment: ".environment"
             eventTrigger: ".eventTrigger"
           relations:
-            project: ".project"
+            project: ".__project"
   - kind: pubsub.googleapis.com/Topic
     selector:
       query: "true"
@@ -55,16 +55,10 @@ resources:
             schemaSettings: ".schema_settings"
             messageRetentionDuration: ".message_retention_duration"
           relations:
-            project: ".__project.name"
-  - kind: cloudResource
+            project: ".__project"
+  - kind: compute.googleapis.com/Disk
     selector:
       query: "true"
-      resourceKinds:
-        [
-          "compute.googleapis.com/Disk",
-          "pubsub.googleapis.com/Subscription",
-          "iam.googleapis.com/ServiceAccount",
-        ]
     port:
       entity:
         mappings:
@@ -75,4 +69,32 @@ resources:
             type: '.name | split("/") | .[-2]'
             location: ".location"
           relations:
-            project: ".project"
+            project: ".__project"
+  - kind: pubsub.googleapis.com/Subscription
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
+          properties:
+            type: '.name | split("/") | .[-2]'
+            location: ".location"
+          relations:
+            project: ".__project"
+  - kind: iam.googleapis.com/ServiceAccount
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
+          properties:
+            type: '.name | split("/") | .[-2]'
+            location: ".location"
+          relations:
+            project: ".__project"
