@@ -142,6 +142,7 @@ async def feed_events_callback(request: Request) -> Response:
                 )
             ]
         )
+        return Response(status_code=http.HTTPStatus.NOT_FOUND)
     except GotFeedCreatedSuccessfullyMessageError:
         logger.info("Assets Feed created successfully")
     except Exception:
