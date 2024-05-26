@@ -1,17 +1,2 @@
-# This is an example configuration file for the integration service.
-# Please copy this file to config.yaml file in the integration folder and edit it to your needs.
-initializePortResources: true
+# defaults
 scheduledResyncInterval: 60
-port:
-  clientId: "{{ from env PORT_CLIENT_ID }}"   # Can be loaded via environment variable: PORT_CLIENT_ID
-  clientSecret: "{{ from env PORT_CLIENT_SECRET }}"   # Can be loaded via environment variable: PORT_CLIENT_SECRET
-# The event listener to use for the integration service.
-eventListener:
-  type: POLLING
-integration:
-  # The identifier of this integration instance.
-  identifier: "my-opencost-integration"
-  # The type of the integration.
-  type: "opencost"
-  config:
-    opencostHost: "{{ OPENCOST_HOST }}"
