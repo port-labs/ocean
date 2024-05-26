@@ -112,7 +112,9 @@ async def feed_events_callback(request: Request) -> Response:
         asset_data = await parse_asset_data(request_json["message"]["data"])
         asset_type = asset_data["asset"]["assetType"]
         asset_name = asset_data["asset"]["name"]
-        asset_project = get_project_name_from_ancestors(asset_data["asset"]["ancestors"])
+        asset_project = get_project_name_from_ancestors(
+            asset_data["asset"]["ancestors"]
+        )
         with logger.contextualize(
             asset_type=asset_type, asset_name=asset_name, asset_project=asset_project
         ):
