@@ -1,6 +1,7 @@
 from typing import Any, Literal
 
-from pydantic import Extra, AnyHttpUrl, parse_obj_as, validator
+from pydantic import Extra, AnyHttpUrl, parse_obj_as
+from pydantic.class_validators import root_validator
 from pydantic.env_settings import InitSettingsSource, EnvSettingsSource, BaseSettings
 from pydantic.fields import Field
 from pydantic.main import BaseModel
@@ -41,19 +42,23 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
-    identifier: str = Field(
-        default_factory=lambda: (
-            f"my-{get_integration_name()}-integration"
-            if get_integration_name()
-            else None
-        )
-    )
-    type: str = Field(default_factory=lambda: get_integration_name())
+    identifier: str
+    type: str
     config: dict[str, Any] | BaseModel
 
-    @validator("identifier", "type")
-    def validate_lower(cls, v: str) -> str:
-        return v.lower()
+    @root_validator(pre=True)
+    def a(cls, values: dict[str, Any]) -> dict[str, Any]:
+        integ_type = values.get("type")
+
+        if not integ_type and get_integration_name():
+            integ_type = get_integration_name()
+
+        values["type"] = integ_type.lower() if integ_type else None
+        values["identifier"] = values.get(
+            "identifier", f"my-{integ_type}-integration".lower()
+        )
+
+        return values
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
