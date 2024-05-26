@@ -9,7 +9,7 @@ from gcp_core.errors import (
 )
 
 
-def get_project_from_ancestors(ancestors: list[str]) -> str:
+def get_project_name_from_ancestors(ancestors: list[str]) -> str:
     for ancestor in ancestors:
         if ancestor.startswith("projects/"):
             return ancestor
