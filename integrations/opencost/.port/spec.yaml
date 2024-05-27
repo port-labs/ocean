@@ -6,6 +6,7 @@ features:
     section: Cloud Cost
     resources:
       - kind: cost
+      - kind: cloudcost
 configurations:
   - name: opencostHost
     type: string
