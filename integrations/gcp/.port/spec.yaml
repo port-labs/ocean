@@ -1,4 +1,3 @@
-type: gcp
 description: gcp integration for Port Ocean
 icon: GoogleCloud
 features:
@@ -10,7 +9,7 @@ deploymentMethodOverride:
     module: port-labs/integration-factory/ocean
     example: gcp_integration_with_real_time
     title: GCP's Cloud Run
-    version: ">=0.0.19"
+    version: ">=0.0.22"
     extraVars:
       - name: assets_types_for_monitoring
         description: A list of resources to filter events from Google Cloud.
@@ -24,7 +23,7 @@ deploymentMethodOverride:
           - "pubsub.googleapis.com/Topic"
           - "container.googleapis.com/Cluster"
         type: array
-      - name: ocean_permissions
+      - name: gcp_ocean_integration_sa_permissions
         description: A list of permissions that will be assigned to the Google Cloud Service account to export Google Cloud Resources.
         required: true
         default:
