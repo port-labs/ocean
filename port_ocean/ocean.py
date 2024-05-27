@@ -1,7 +1,8 @@
 import asyncio
 import sys
 import threading
-from typing import Callable, Any, Dict
+from contextlib import asynccontextmanager
+from typing import Callable, Any, Dict, AsyncIterator
 
 from fastapi import FastAPI, APIRouter
 from loguru import logger
@@ -21,7 +22,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
-from port_ocean.utils.signal import init_signal_handler
+from port_ocean.utils.signal import signal_handler, init_signal_handler
 from port_ocean.version import __integration_version__
 
 
@@ -93,14 +94,17 @@ class Ocean:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
-        @self.fast_api_app.on_event("startup")
-        async def startup() -> None:
-            init_signal_handler()
+        @asynccontextmanager
+        async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
+                init_signal_handler()
                 await self.integration.start()
                 await self._setup_scheduled_resync()
+                yield None
+                signal_handler.exit()
             except Exception:
-                logger.exception("Failed to start integration")
+                logger.exception("Integration had a fatal error. Shutting down.")
                 sys.exit("Server stopped")
 
+        self.fast_api_app.router.lifespan_context = lifecycle
         await self.fast_api_app(scope, receive, send)

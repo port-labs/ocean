@@ -1,4 +1,3 @@
-type: argocd
 description: Argocd integration for Port Ocean
 icon: Argo
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/argocd/
