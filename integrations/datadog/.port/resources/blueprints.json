@@ -115,14 +115,6 @@
             "type": "string"
           }
         },
-        "slack": {
-          "type": "array",
-          "title": "Slack",
-          "items": {
-            "type": "string",
-            "format": "url"
-          }
-        },
         "links": {
           "title": "Service Links",
           "type": "array",
