@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.16 (2024-05-28)
+
+### Features
+
+- Fields included in response for Entity Types can now be configured (#16)
+
+### Bug Fixes
+
+- Fixed bug causing missing fields in entities (#16)
+
+
 0.1.49 (2024-05-26)
 
 ### Improvements
