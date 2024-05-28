@@ -1,11 +1,13 @@
 import asyncio
 import functools
+from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any
-from loguru import logger
+from typing import Any, Optional
 
 import pyjq as jq  # type: ignore
+from loguru import logger
 
+from port_ocean.context.ocean import ocean
 from port_ocean.core.handlers.entity_processor.base import BaseEntityProcessor
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.models import Entity
@@ -15,6 +17,18 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.exceptions.core import EntityProcessorException
 from port_ocean.utils.queue_utils import process_in_queue
+
+
+@dataclass
+class MappedEntity:
+    """Represents the entity after applying the mapping
+
+    This class holds the mapping entity along with the selector boolean value and optionally the raw data.
+    """
+
+    entity: dict[str, Any] = field(default_factory=dict)
+    did_entity_pass_selector: bool = False
+    raw_data: Optional[dict[str, Any]] = None
 
 
 class JQEntityProcessor(BaseEntityProcessor):
@@ -78,13 +92,17 @@ class JQEntityProcessor(BaseEntityProcessor):
         raw_entity_mappings: dict[str, Any],
         selector_query: str,
         parse_all: bool = False,
-    ) -> tuple[dict[str, Any], bool]:
+    ) -> MappedEntity:
         should_run = await self._search_as_bool(data, selector_query)
         if parse_all or should_run:
             mapped_entity = await self._search_as_object(data, raw_entity_mappings)
-            return mapped_entity, should_run
+            return MappedEntity(
+                mapped_entity,
+                did_entity_pass_selector=should_run,
+                raw_data=data if should_run else None,
+            )
 
-        return {}, False
+        return MappedEntity()
 
     async def _calculate_entity(
         self,
@@ -93,7 +111,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         items_to_parse: str | None,
         selector_query: str,
         parse_all: bool = False,
-    ) -> list[tuple[dict[str, Any], bool]]:
+    ) -> list[MappedEntity]:
         if items_to_parse:
             items = await self._search(data, items_to_parse)
             if isinstance(items, list):
@@ -118,13 +136,27 @@ class JQEntityProcessor(BaseEntityProcessor):
                     data, raw_entity_mappings, selector_query, parse_all
                 )
             ]
-        return [({}, False)]
+        return [MappedEntity()]
+
+    @staticmethod
+    async def _send_examples(data: list[dict[str, Any]], kind: str) -> None:
+        try:
+            if data:
+                await ocean.port_client.ingest_integration_kind_examples(
+                    kind, data, should_log=False
+                )
+        except Exception as ex:
+            logger.warning(
+                f"Failed to send raw data example {ex}",
+                exc_info=True,
+            )
 
     async def _parse_items(
         self,
         mapping: ResourceConfig,
         raw_results: list[RAW_ITEM],
         parse_all: bool = False,
+        send_raw_data_examples_amount: int = 0,
     ) -> EntitySelectorDiff:
         raw_entity_mappings: dict[str, Any] = mapping.port.entity.mappings.dict(
             exclude_unset=True
@@ -141,13 +173,21 @@ class JQEntityProcessor(BaseEntityProcessor):
 
         passed_entities = []
         failed_entities = []
+        examples_to_send: list[dict[str, Any]] = []
         for entities_results in calculated_entities_results:
-            for entity, did_entity_pass_selector in entities_results:
-                if entity.get("identifier") and entity.get("blueprint"):
-                    parsed_entity = Entity.parse_obj(entity)
-                    if did_entity_pass_selector:
+            for result in entities_results:
+                if result.entity.get("identifier") and result.entity.get("blueprint"):
+                    parsed_entity = Entity.parse_obj(result.entity)
+                    if result.did_entity_pass_selector:
                         passed_entities.append(parsed_entity)
+                        if (
+                            len(examples_to_send) < send_raw_data_examples_amount
+                            and result.raw_data is not None
+                        ):
+                            examples_to_send.append(result.raw_data)
                     else:
                         failed_entities.append(parsed_entity)
+
+        await self._send_examples(examples_to_send, mapping.kind)
 
         return EntitySelectorDiff(passed=passed_entities, failed=failed_entities)

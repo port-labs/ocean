@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from asyncio import Task
 from typing import TypedDict, Callable, Any, Awaitable
 
 from pydantic import Extra
@@ -22,7 +21,6 @@ class BaseEventListener:
         events: EventListenerEvents,
     ):
         self.events = events
-        self._tasks_to_close: list[Task[Any]] = []
 
     async def start(self) -> None:
         signal_handler.register(self._stop)
@@ -31,11 +29,6 @@ class BaseEventListener:
     @abstractmethod
     async def _start(self) -> None:
         pass
-
-    def stop(self) -> None:
-        self._stop()
-        for task in self._tasks_to_close:
-            task.cancel()
 
     def _stop(self) -> None:
         """

@@ -6,6 +6,7 @@ from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.log.sensetive import sensitive_log_filter
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -137,3 +138,18 @@ class IntegrationClientMixin:
         )
         handle_status_code(response)
         logger.debug("Logs successfully ingested")
+
+    async def ingest_integration_kind_examples(
+        self, kind: str, data: list[dict[str, Any]], should_log: bool = True
+    ):
+        logger.debug(f"Ingesting examples for kind: {kind}")
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            f"{self.auth.api_url}/integration/{self.integration_identifier}/kinds/{kind}/examples",
+            headers=headers,
+            json={
+                "examples": sensitive_log_filter.mask_object(data, full_hide=True),
+            },
+        )
+        handle_status_code(response, should_log=should_log)
+        logger.debug(f"Examples for kind {kind} successfully ingested")

@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.14 (2024-05-24)
+# Port_Ocean 0.1.15 (2024-05-26)
 
-### Features
+### Improvements
 
-- Fields included in response for Entity Types can now be configured (0.1.14)
+- Bumped ocean version to ^0.5.21 (#1)
 
-### Bug Fixes
 
-- Fixed bug causing missing fields in entities (0.1.14)
+# Port_Ocean 0.1.14 (2024-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.20 (#1)
+- Removed the config.yaml file due to unused overrides
 
 
 # Port_Ocean 0.1.13 (2024-05-16)
