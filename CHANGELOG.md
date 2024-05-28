@@ -7,6 +7,28 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.21 (2024-05-26)
+
+### Features
+
+- Added `send_raw_data_examples` integration config to allow sending raw data examples from the third party API to port (on resync), for testing and managing the integration mapping
+
+
+## 0.5.20 (2024-05-26)
+
+
+### Improvements
+
+- Made config.yaml file optional in the integration setup process.
+- Integration type is now determined by the name specified in the pyproject.toml file.
+- Switched to using the FastAPI lifespan feature instead of the deprecated on_shutdown and on_start methods.
+
+### Bug Fixes
+
+- Fixed the FastAPI server staying stale after shutdown by using the FastAPI lifespan feature for handling shutdown signals, preventing override of the shutdown process.
+- Fixed issue with integration continuing to run after shutdown by canceling the resync async generator task.
+
+
 ## 0.5.19 (2024-05-16)
 
 ### Improvements

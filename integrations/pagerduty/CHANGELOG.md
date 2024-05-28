@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.62 (2024-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.21 (#1)
+
+
+# Port_Ocean 0.1.61 (2024-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.20 (#1)
+- Removed the config.yaml file due to unused overrides
+
+
+# Port_Ocean 0.1.60 (2024-05-23)
+
+### Improvements
+
+- Updated the assignees and user properties from type string to email
+
+
 # Port_Ocean 0.1.59 (2024-05-17)
 
 ### Improvements

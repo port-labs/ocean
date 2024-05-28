@@ -1,8 +1,6 @@
 import re
 from typing import Literal
 
-from pydantic.fields import Field
-
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -10,6 +8,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from pydantic.fields import Field
 
 
 class DatePairField(str):
@@ -67,39 +66,83 @@ class ResolutionField(str):
             )
 
 
-class OpencostSelector(Selector):
-    window: (
-        Literal[
-            "today",
-            "week",
-            "month",
-            "yesterday",
-            "lastweek",
-            "lastmonth",
-            "30m",
-            "12h",
-            "7d",
-        ]
-        | DatePairField
-        | UnixtimePairField
-    ) = Field(default="today")
-    aggregate: AggregationField | None = Field(
-        description="Field by which to aggregate the results.",
-    )
-    step: DurationField | None = Field(
-        description="Duration of a single allocation set (e.g., '30m', '2h', '1d'). Default is window.",
-    )
-    resolution: ResolutionField | None = Field(
-        description="Duration to use as resolution in Prometheus queries",
-    )
+class CloudCostAggregateField(str):
+    @classmethod
+    def validate(cls, value: str) -> None:
+        # Regular expression to validate the format of the aggregation value
+        regex = r"^((invoiceEntityID|accountID|provider|providerID|category|service)(,(invoiceEntityID|accountID|provider|providerID|category|service))*)*$"
+        if not re.match(regex, value):
+            raise ValueError(
+                "Invalid aggregation format. Use 'invoiceEntityID', 'accountID', 'provider', "
+                "'providerID', 'category', 'service' or comma-separated list of values."
+            )
 
 
 class OpencostResourceConfig(ResourceConfig):
+    class OpencostSelector(Selector):
+        window: (
+            Literal[
+                "today",
+                "week",
+                "month",
+                "yesterday",
+                "lastweek",
+                "lastmonth",
+                "30m",
+                "12h",
+                "7d",
+            ]
+            | DatePairField
+            | UnixtimePairField
+        ) = Field(default="today")
+        aggregate: AggregationField | None = Field(
+            description="Field by which to aggregate the results.",
+        )
+        step: DurationField | None = Field(
+            description="Duration of a single allocation set (e.g., '30m', '2h', '1d'). Default is window.",
+        )
+        resolution: ResolutionField | None = Field(
+            description="Duration to use as resolution in Prometheus queries",
+        )
+
+    kind: Literal["cost"]
     selector: OpencostSelector
 
 
+class CloudCostResourceConfig(ResourceConfig):
+    class CloudCostSelector(Selector):
+        window: (
+            Literal[
+                "today",
+                "week",
+                "month",
+                "yesterday",
+                "lastweek",
+                "lastmonth",
+                "30m",
+                "12h",
+                "7d",
+            ]
+            | DatePairField
+            | UnixtimePairField
+        ) = Field(default="today")
+        aggregate: CloudCostAggregateField | None = Field(
+            description="Field by which to aggregate the results of cloudcost",
+        )
+        accumulate: Literal["all", "hour", "day", "week", "month", "quarter"] | None = (
+            Field(
+                description="Step size of the accumulation.",
+            )
+        )
+
+    kind: Literal["cloudcost"]
+    selector: CloudCostSelector
+
+
 class OpencostPortAppConfig(PortAppConfig):
-    resources: list[OpencostResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[OpencostResourceConfig | CloudCostResourceConfig] = Field(
+        default_factory=list
+    )  # type: ignore
 
 
 class OpencostIntegration(BaseIntegration):
