@@ -12,12 +12,12 @@ configurations:
     required: false
     type: string
     sensitive: true
-    description: AWS User Access Key ID.
+    description: AWS User Access Key ID, for more information https://docs.aws.amazon.com/singlesignon/latest/userguide/howtogetcredentials.html.
   - name: awsSecretAccessKey
     required: false
     type: string
     sensitive: true
-    description: AWS User Secret Access Key.
+    description: AWS User Secret Access Key, for more information https://docs.aws.amazon.com/singlesignon/latest/userguide/howtogetcredentials.html.
   - name: organizationRoleArn
     required: false
     type: string
