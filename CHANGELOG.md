@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.22 (2024-05-29)
+
+### Bug Fixes
+
+- Fixed an issue in `send_raw_data_examples` when there are slashes in integration kind
+
+
 ## 0.5.21 (2024-05-26)
 
 ### Features
