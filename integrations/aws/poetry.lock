@@ -176,13 +176,13 @@ typing-extensions = "*"
 
 [[package]]
 name = "anyio"
-version = "4.3.0"
+version = "4.4.0"
 description = "High level compatibility layer for multiple asynchronous event loop implementations"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "anyio-4.3.0-py3-none-any.whl", hash = "sha256:048e05d0f6caeed70d731f3db756d35dcc1f35747c8c403364a8332c630441b8"},
-    {file = "anyio-4.3.0.tar.gz", hash = "sha256:f75253795a87df48568485fd18cdd2a3fa5c4f7c5be8e5e36637733fce06fed6"},
+    {file = "anyio-4.4.0-py3-none-any.whl", hash = "sha256:c1b2d8f46a8a812513012e1107cb0e68c17159a7a594208005a57dc776e1bdc7"},
+    {file = "anyio-4.4.0.tar.gz", hash = "sha256:5aadc6a1bbb7cdb0bede386cac5e2940f5e2ff3aa20277e991cf028e0585ce94"},
 ]
 
 [package.dependencies]
@@ -1675,13 +1675,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-cloudformation"
-version = "1.34.84"
-description = "Type annotations for boto3.CloudFormation 1.34.84 service generated with mypy-boto3-builder 7.23.2"
+version = "1.34.111"
+description = "Type annotations for boto3.CloudFormation 1.34.111 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_cloudformation-1.34.84-py3-none-any.whl", hash = "sha256:580954031cb3650588b91f592e8f51855b2ff435d763ac0d69cf271c8433315f"},
-    {file = "mypy_boto3_cloudformation-1.34.84.tar.gz", hash = "sha256:82d14df3757f30b5a1d34650839d415d265d4de41cf355d63e10221fcc67f177"},
+    {file = "mypy_boto3_cloudformation-1.34.111-py3-none-any.whl", hash = "sha256:526e928c504fa2880b1774aa10629a04fe0ec70ed2864ab3d3f7772386a1a925"},
+    {file = "mypy_boto3_cloudformation-1.34.111.tar.gz", hash = "sha256:a02e201d1a9d9a8fb4db5b942d5c537a4e8861c611f0d986126674ac557cb9e8"},
 ]
 
 [package.dependencies]
@@ -1703,13 +1703,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-dynamodb"
-version = "1.34.97"
-description = "Type annotations for boto3.DynamoDB 1.34.97 service generated with mypy-boto3-builder 7.24.0"
+version = "1.34.114"
+description = "Type annotations for boto3.DynamoDB 1.34.114 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_dynamodb-1.34.97-py3-none-any.whl", hash = "sha256:4bb02b01506ba27cd7b63f3d2013147824c7504fa8f4f03242e51f5b78c31edf"},
-    {file = "mypy_boto3_dynamodb-1.34.97.tar.gz", hash = "sha256:3f67a291157dd94bef376c5490d9d29bbacc9741dfef124f9724bc5d29b0458a"},
+    {file = "mypy_boto3_dynamodb-1.34.114-py3-none-any.whl", hash = "sha256:64be1fcd36db0daa354a78a2affdaef048653e4c5116da98f71446eee5db7638"},
+    {file = "mypy_boto3_dynamodb-1.34.114.tar.gz", hash = "sha256:2a1a131587dbf857e5bec56ae84d8f9fb9618966e7a6120fb6c7da12cb73a82c"},
 ]
 
 [package.dependencies]
@@ -1717,13 +1717,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-ec2"
-version = "1.34.101"
-description = "Type annotations for boto3.EC2 1.34.101 service generated with mypy-boto3-builder 7.24.0"
+version = "1.34.114"
+description = "Type annotations for boto3.EC2 1.34.114 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_ec2-1.34.101-py3-none-any.whl", hash = "sha256:17c368d5496663f05e42d314e89acd76c4c42c6722c015f54b7ce90e0377ad9f"},
-    {file = "mypy_boto3_ec2-1.34.101.tar.gz", hash = "sha256:5673e3cb6d287ca132282e8252712a721b2997d9e3fdae28e50d86ba1dc69a54"},
+    {file = "mypy_boto3_ec2-1.34.114-py3-none-any.whl", hash = "sha256:540cbf529502dce8c74c1ea4f094d33f40d8ff4db2e05305404cc13ca9da183a"},
+    {file = "mypy_boto3_ec2-1.34.114.tar.gz", hash = "sha256:402a574b8bd118e642db9fa452c172c8d0e89e40516a8a6d19df8395bf794b1f"},
 ]
 
 [package.dependencies]
@@ -1885,13 +1885,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-rds"
-version = "1.34.93"
-description = "Type annotations for boto3.RDS 1.34.93 service generated with mypy-boto3-builder 7.24.0"
+version = "1.34.110"
+description = "Type annotations for boto3.RDS 1.34.110 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_rds-1.34.93-py3-none-any.whl", hash = "sha256:4c4b96eebf653ec498e8b01d6a87dd4cf1901fc3647c2fcc825b51d061370f58"},
-    {file = "mypy_boto3_rds-1.34.93.tar.gz", hash = "sha256:3896edc3697e1e6e9482b312b8b982d087d68c6338ff469510b4ab49896a0b4f"},
+    {file = "mypy_boto3_rds-1.34.110-py3-none-any.whl", hash = "sha256:626e55e2e7a43e7cd08edde3faf9a5c50596fd4ad5f55e2b7547e7151ab8128a"},
+    {file = "mypy_boto3_rds-1.34.110.tar.gz", hash = "sha256:0bdfd4fe00fa0ff4d16fb1342b9594c37bb5cd3f67c14896112c78831f645143"},
 ]
 
 [package.dependencies]
@@ -1941,13 +1941,13 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.12\""}
 
 [[package]]
 name = "mypy-boto3-secretsmanager"
-version = "1.34.107"
-description = "Type annotations for boto3.SecretsManager 1.34.107 service generated with mypy-boto3-builder 7.24.0"
+version = "1.34.109"
+description = "Type annotations for boto3.SecretsManager 1.34.109 service generated with mypy-boto3-builder 7.24.0"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "mypy_boto3_secretsmanager-1.34.107-py3-none-any.whl", hash = "sha256:bca19ae496e9965266ef885578fdb2bc8ee3e84dea7eaaffe030a368f218d207"},
-    {file = "mypy_boto3_secretsmanager-1.34.107.tar.gz", hash = "sha256:cf1b3c66542efd260595baf7dcd69ffe4648e8e813de8ebba455d83fc70eccb4"},
+    {file = "mypy_boto3_secretsmanager-1.34.109-py3-none-any.whl", hash = "sha256:18c60597a72ef08bad722f1c2f4507a0cf853c1526b1cffb8c3d2a30f5649d1f"},
+    {file = "mypy_boto3_secretsmanager-1.34.109.tar.gz", hash = "sha256:29898fb1046fed5f83d05f08470d5cf07dfd1656b1da23f2bb875c9ff734ee65"},
 ]
 
 [package.dependencies]
@@ -2075,13 +2075,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.19"
+version = "0.5.22"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.19-py3-none-any.whl", hash = "sha256:d7e033d41167668139b0827c8b5ed119d15849adc0011b550530a63b386fed87"},
-    {file = "port_ocean-0.5.19.tar.gz", hash = "sha256:1908fded35f043caeb3cf55f837bbd1bbf12ab4ec3d6353254b6fc797922247d"},
+    {file = "port_ocean-0.5.22-py3-none-any.whl", hash = "sha256:ebaefa1acb584366bc81cbe620fa67b5d622a56e94282ce0eb09534837aa2a86"},
+    {file = "port_ocean-0.5.22.tar.gz", hash = "sha256:6b20ad350120c429daa8120e194ffa0f6a95f3ab0def189bce7e5d2afcc1093d"},
 ]
 
 [package.dependencies]
@@ -2361,13 +2361,13 @@ files = [
 
 [[package]]
 name = "requests"
-version = "2.31.0"
+version = "2.32.2"
 description = "Python HTTP for Humans."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "requests-2.31.0-py3-none-any.whl", hash = "sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f"},
-    {file = "requests-2.31.0.tar.gz", hash = "sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1"},
+    {file = "requests-2.32.2-py3-none-any.whl", hash = "sha256:fc06670dd0ed212426dfeb94fc1b983d917c4f9847c863f313c9dfaaffb7c23c"},
+    {file = "requests-2.32.2.tar.gz", hash = "sha256:dd951ff5ecf3e3b3aa26b40703ba77495dab41da839ae72ef3c8e5d8e2433289"},
 ]
 
 [package.dependencies]
@@ -3386,13 +3386,13 @@ files = [
 
 [[package]]
 name = "typing-extensions"
-version = "4.11.0"
+version = "4.12.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "typing_extensions-4.11.0-py3-none-any.whl", hash = "sha256:c1f94d72897edaf4ce775bb7558d5b79d8126906a14ea5ed1635921406c0387a"},
-    {file = "typing_extensions-4.11.0.tar.gz", hash = "sha256:83f085bd5ca59c80295fc2a82ab5dac679cbe02b9f33f7d83af68e241bea51b0"},
+    {file = "typing_extensions-4.12.0-py3-none-any.whl", hash = "sha256:b349c66bea9016ac22978d800cfff206d5f9816951f12a7d0ec5578b0a819594"},
+    {file = "typing_extensions-4.12.0.tar.gz", hash = "sha256:8cbcdc8606ebcb0d95453ad7dc5065e6237b6aa230a31e81d0f440c30fed5fd8"},
 ]
 
 [[package]]
@@ -3646,4 +3646,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "4ee628baa9e077345dbbe5679b5f1955858f4873ba27205bac2c504665d85f96"
+content-hash = "89c047005067897a1cd06e7f731ae695c7c97d0f88ca97975bc196d13911abd7"
