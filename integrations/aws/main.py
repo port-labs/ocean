@@ -6,7 +6,6 @@ import fastapi
 from starlette import responses
 from pydantic import BaseModel
 
-from aws.override import AWSResourceConfig
 from port_ocean.core.models import Entity
 from port_ocean.context.event import event
 
@@ -45,17 +44,6 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     for account in describe_accessible_accounts():
         yield [fix_unserializable_date_properties(account)]
-
-
-@ocean.on_resync(kind=ResourceKinds.CLOUD_CONTROL_RESOURCE)
-async def resync_generic_cloud_resource(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    await update_available_access_credentials()
-    resource_kinds = typing.cast(
-        AWSResourceConfig, event.resource_config
-    ).selector.resource_kinds
-    for kind in resource_kinds:
-        async for batch in resync_cloudcontrol(kind):
-            yield batch
 
 
 @ocean.app.fast_api_app.middleware("aws_cloud_event")

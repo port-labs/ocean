@@ -6,7 +6,10 @@ features:
     section: Cloud Providers
     resources:
       - kind: AWS::Organizations::Account
-      - kind: cloudResource
+      - kind: AWS::S3::Bucket
+      - kind: AWS::EC2::Instance
+      - kind: AWS::ECS::Cluster
+
 configurations:
   - name: awsAccessKeyId
     required: false
