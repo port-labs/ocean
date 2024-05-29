@@ -1,4 +1,5 @@
 from typing import Any, TYPE_CHECKING, Optional, TypedDict
+from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
@@ -145,7 +146,7 @@ class IntegrationClientMixin:
         logger.debug(f"Ingesting examples for kind: {kind}")
         headers = await self.auth.headers()
         response = await self.client.post(
-            f"{self.auth.api_url}/integration/{self.integration_identifier}/kinds/{kind}/examples",
+            f"{self.auth.api_url}/integration/{quote_plus(self.integration_identifier)}/kinds/{quote_plus(kind)}/examples",
             headers=headers,
             json={
                 "examples": sensitive_log_filter.mask_object(data, full_hide=True),
