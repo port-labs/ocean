@@ -15,22 +15,43 @@ resources:
             joined_method: .JoinedMethod
             joined_timestamp: .JoinedTimestamp
 
-  - kind: cloudResource
+  - kind: AWS::S3::Bucket
     selector:
       query: 'true'
-      resourceKinds:
-        - AWS::Lambda::Function
-        - AWS::RDS::DBInstance
-        - AWS::S3::Bucket
-        - AWS::IAM::User
-        - AWS::ECS::Cluster
-        - AWS::ECS::Service
-        - AWS::Logs::LogGroup
-        - AWS::DynamoDB::Table
-        - AWS::SQS::Queue
-        - AWS::SNS::Topic
-        - AWS::Cognito::IdentityPool
-        - AWS::CloudFormation::Stack
+    port:
+      entity:
+        mappings:
+          identifier: .Identifier
+          title: .Identifier
+          blueprint: '"cloudResource"'
+          properties:
+            kind: .__Kind
+            region: .__Region
+            tags: .Properties.Tags
+            arn: .Properties.Arn
+            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
+          relations:
+            account: .__AccountId
+  - kind: AWS::EC2::Instance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Identifier
+          title: .Identifier
+          blueprint: '"cloudResource"'
+          properties:
+            kind: .__Kind
+            region: .__Region
+            tags: .Properties.Tags
+            arn: .Properties.Arn
+            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
+          relations:
+            account: .__AccountId
+  - kind: AWS::ECS::Cluster
+    selector:
+      query: 'true'
     port:
       entity:
         mappings:

@@ -31,6 +31,15 @@ from utils.misc import (
 )
 
 
+@ocean.on_resync()
+async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind == ResourceKinds.ACCOUNT:
+        return
+    await update_available_access_credentials()
+    async for batch in resync_cloudcontrol(kind):
+        yield batch
+
+
 @ocean.on_resync(kind=ResourceKinds.ACCOUNT)
 async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()

@@ -20,8 +20,11 @@ def is_global_resource(kind: str) -> bool:
         "iam",
         "organizations",
     ]
-    service = kind.split("::")[1].lower()
-    return service in global_services
+    try:
+        service = kind.split("::")[1].lower()
+        return service in global_services
+    except IndexError:
+        return False
 
 
 def fix_unserializable_date_properties(obj: Any) -> Any:
