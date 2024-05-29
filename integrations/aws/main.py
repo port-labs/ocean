@@ -7,7 +7,6 @@ from starlette import responses
 from pydantic import BaseModel
 
 from port_ocean.core.models import Entity
-from port_ocean.context.event import event
 
 from utils.resources import (
     describe_single_resource,
