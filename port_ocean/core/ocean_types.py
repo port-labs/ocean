@@ -2,7 +2,6 @@ from typing import TypedDict, Any, AsyncIterator, Callable, Awaitable, NamedTupl
 
 from port_ocean.core.models import Entity
 
-
 RAW_ITEM = dict[Any, Any]
 RAW_RESULT = list[RAW_ITEM]
 ASYNC_GENERATOR_RESYNC_TYPE = AsyncIterator[RAW_RESULT]
@@ -26,6 +25,11 @@ class EntityDiff(TypedDict):
 class EntitySelectorDiff(NamedTuple):
     passed: list[Entity]
     failed: list[Entity]
+
+
+class CalculationResult(NamedTuple):
+    entity_selector_diff: EntitySelectorDiff
+    errors: list[Exception]
 
 
 class IntegrationEventsCallbacks(TypedDict):

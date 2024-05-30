@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import BaseModel
@@ -34,3 +35,16 @@ class Migration(BaseModel):
     sourceBlueprint: str
     mapping: dict[str, Any]
     status: str
+
+
+@dataclass
+class EntityPortDiff:
+    """Represents the differences between entities for porting.
+
+    This class holds the lists of deleted, modified, and created entities as part
+    of the porting process.
+    """
+
+    deleted: list[Entity] = field(default_factory=list)
+    modified: list[Entity] = field(default_factory=list)
+    created: list[Entity] = field(default_factory=list)
