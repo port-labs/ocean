@@ -13,6 +13,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Bumped ocean version to ^0.5.23 (#1)
+- Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
 
 
 0.1.78 (2024-05-29)
