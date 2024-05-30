@@ -1,3 +1,10 @@
+# Port_Ocean 0.1.1 (2024-05-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.23 (#1)
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
