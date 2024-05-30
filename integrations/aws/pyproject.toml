@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "AWS"
+name = "aws"
 version = "0.1.0"
 description = "This integration will map all your resources in all the available accounts to your Port entities"
 authors = ["Shalev Avhar <shalev@getport.io>"]
