@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.52 (2024-05-30)
+
+### Improvements
+
+- Updated the JQL filter used in the default configuration mapping to not ingest Jira issues of the `done` statusCategory
+- Updated the default mapping for the `issue` kind
+
 0.1.51 (2024-05-30)
 
 ### Improvements
