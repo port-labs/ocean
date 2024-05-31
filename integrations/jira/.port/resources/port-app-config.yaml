@@ -30,7 +30,7 @@ resources:
             assignee: .fields.assignee.displayName
             reporter: .fields.reporter.displayName
             creator: .fields.creator.displayName
-            priority: .fields.priority.id
+            priority: .fields.priority.name
             labels: .fields.labels
             created: .fields.created
             updated: .fields.updated
