@@ -1,4 +1,3 @@
-type: kubecost
 description: kubecost integration for Port Ocean
 icon: Kubecost
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/cloud-cost/kubecost
@@ -13,3 +12,8 @@ configurations:
     type: string
     required: true
     description: The URL of your Kubecost server, for example http://localhost:9090
+  - name: kubecostApiVersion
+    type: string
+    required: false
+    default: v2
+    description: The target API version of your Kubecost instance. Accepts values such as v1 and v2 only

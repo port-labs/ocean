@@ -24,7 +24,7 @@ class GroupHook(HookHandler):
 
         logger.info(f"Handling hook {event} for group {group_id}")
 
-        group = self.gitlab_service.get_group(group_id)
+        group = await self.gitlab_service.get_group(group_id)
 
         group_full_path = body.get("full_path")
         if group:

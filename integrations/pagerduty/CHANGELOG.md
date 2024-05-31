@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.64 (2024-05-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.23 (#1)
+- Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
+
+
+# Port_Ocean 0.1.63 (2024-05-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.22 (#1)
+
+
+# Port_Ocean 0.1.62 (2024-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.21 (#1)
+
+
+# Port_Ocean 0.1.61 (2024-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.20 (#1)
+- Removed the config.yaml file due to unused overrides
+
+
+# Port_Ocean 0.1.60 (2024-05-23)
+
+### Improvements
+
+- Updated the assignees and user properties from type string to email
+
+
+# Port_Ocean 0.1.59 (2024-05-17)
+
+### Improvements
+
+- Added escalation levels to the service blueprint
+
+
+# Port_Ocean 0.1.58 (2024-05-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.19 (#1)
+
+
+# Port_Ocean 0.1.57 (2024-05-13)
+
+### Improvements
+
+- Added priority and description properties to the incident blueprint
+- Updated incident status and urgency to have colored meaning
+
+
+# Port_Ocean 0.1.56 (2024-05-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.18 (#1)
+
+
 # Port_Ocean 0.1.55 (2024-05-01)
 
 ### Improvements

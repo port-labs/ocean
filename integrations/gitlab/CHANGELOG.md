@@ -7,6 +7,71 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.79 (2024-05-30)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.23 (#1)
+- Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
+
+
+0.1.78 (2024-05-29)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.22 (#1)
+
+
+0.1.77 (2024-05-26)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.21 (#1)
+
+
+0.1.76 (2024-05-26)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.20 (#1)
+- Removed the config.yaml file due to unused overrides
+
+
+0.1.75 (2024-05-19)
+===================
+
+### Bug Fixes
+
+- Fixed webhooks responses timeouts to gitlab using queue to return immediate response
+
+
+0.1.74 (2024-05-16)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.19 (#1)
+
+
+0.1.73 (2024-05-12)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.18 (#1)
+
+
+0.1.72 (2024-05-05)
+===================
+
+### Improvements
+
+- Added try-catch blocks to api endpoints
+
 0.1.71 (2024-05-01)
 ===================
 

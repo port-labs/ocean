@@ -1,0 +1,198 @@
+[
+  {
+    "identifier": "datadogMonitor",
+    "description": "This blueprint represents a datadog monitor",
+    "title": "Datadog Monitor",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "monitorType": {
+          "type": "string",
+          "title": "Monitor Type"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        },
+        "overallState": {
+          "type": "string",
+          "title": "Overall state",
+          "enum": ["Alert", "Ignored", "No Data", "OK", "Skipped", "Unknown", "Warn"],
+          "enumColors": {
+            "Alert": "red",
+            "Ignored": "darkGray",
+            "No Data": "lightGray",
+            "OK": "green",
+            "Skipped": "yellow",
+            "Unknown": "purple",
+            "Warn": "orange"
+          }
+        },
+        "priority": {
+          "type": "string",
+          "title": "Priority"
+        },
+        "thresholds": {
+          "type": "object",
+          "title": "Thresholds"
+        },
+        "createdBy": {
+          "type": "string",
+          "title": "Creator"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "datadogService",
+    "description": "This blueprint represents a Datadog service",
+    "title": "Datadog Service",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "application": {
+          "title": "Application",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags"
+        },
+        "languages": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Languages",
+          "type": "array"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "enum": [
+            "web",
+            "db",
+            "custom",
+            "cache",
+            "function",
+            "browser",
+            "mobile"
+          ],
+          "enumColors": {
+            "web": "lightGray",
+            "db": "lightGray",
+            "custom": "lightGray",
+            "cache": "lightGray",
+            "function": "lightGray",
+            "browser": "lightGray",
+            "mobile": "lightGray"
+          }
+        },
+        "owners": {
+          "type": "array",
+          "title": "Service Owners",
+          "items": {
+            "type": "string"
+          }
+        },
+        "links": {
+          "title": "Service Links",
+          "type": "array",
+          "description": "Links to external resources and repositories",
+          "items": {
+            "type": "string",
+            "format": "url"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "datadogSlo",
+    "description": "This blueprint represents a datadog SLO",
+    "title": "Datadog SLO",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        },
+        "sloType": {
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "warningThreshold": {
+          "title": "Warning Threshold",
+          "type": "string"
+        },
+        "targetThreshold": {
+          "title": "Target Threshold",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "title": "Creator",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "monitors": {
+        "target": "datadogMonitor",
+        "title": "SLO Monitors",
+        "description": "The monitors tracking this SLO",
+        "required": false,
+        "many": true
+      },
+      "services": {
+        "target": "datadogService",
+        "title": "Services",
+        "description": "The services tracked by this SLO",
+        "required": false,
+        "many": true
+      }
+    }
+  }
+]

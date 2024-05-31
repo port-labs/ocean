@@ -1,4 +1,3 @@
-import signal
 from typing import Callable, Any
 
 from werkzeug.local import LocalProxy, LocalStack
@@ -13,10 +12,8 @@ from port_ocean.utils.misc import generate_uuid
 class SignalHandler:
     def __init__(self) -> None:
         self._handlers: dict[str, Callable[[], Any]] = {}
-        signal.signal(signal.SIGINT, lambda _, __: self._exit())
-        signal.signal(signal.SIGTERM, lambda _, __: self._exit())
 
-    def _exit(self) -> None:
+    def exit(self) -> None:
         """
         Handles the exit signal.
         """

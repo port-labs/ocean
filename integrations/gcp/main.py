@@ -4,6 +4,7 @@ import typing
 from fastapi import Request, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gcp_core.errors import (
@@ -11,7 +12,7 @@ from gcp_core.errors import (
     GotFeedCreatedSuccessfullyMessageError,
     ResourceNotFoundError,
 )
-from gcp_core.feed_event import get_project_from_ancestors, parse_asset_data
+from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
 from gcp_core.overrides import GCPCloudResourceSelector
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
@@ -111,7 +112,9 @@ async def feed_events_callback(request: Request) -> Response:
         asset_data = await parse_asset_data(request_json["message"]["data"])
         asset_type = asset_data["asset"]["assetType"]
         asset_name = asset_data["asset"]["name"]
-        asset_project = get_project_from_ancestors(asset_data["asset"]["ancestors"])
+        asset_project = get_project_name_from_ancestors(
+            asset_data["asset"]["ancestors"]
+        )
         with logger.contextualize(
             asset_type=asset_type, asset_name=asset_name, asset_project=asset_project
         ):
@@ -130,7 +133,17 @@ async def feed_events_callback(request: Request) -> Response:
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
         )
     except ResourceNotFoundError:
-        logger.exception(f"Didn't find any {asset_type} resource named: {asset_name}")
+        logger.warning(
+            f"Didn't find any {asset_type} resource named: {asset_name}. Deleting ocean entity."
+        )
+        await ocean.unregister(
+            [
+                Entity(
+                    blueprint=asset_type,
+                    identifier=asset_name,
+                )
+            ]
+        )
         return Response(status_code=http.HTTPStatus.NOT_FOUND)
     except GotFeedCreatedSuccessfullyMessageError:
         logger.info("Assets Feed created successfully")

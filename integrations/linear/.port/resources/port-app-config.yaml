@@ -1,0 +1,51 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"linearTeam"'
+          properties:
+            description: .description
+            workspaceName: .organization.name
+            url: "\"https://linear.app/\" + .organization.urlKey + \"/team/\" + .key"
+  - kind: label
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"linearLabel"'
+          properties:
+            isGroup: .isGroup
+          relations:
+            parentLabel: .parent.id
+            childLabels: "[.children.edges[].node.id]"
+  - kind: issue
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .identifier
+          title: .title
+          blueprint: '"linearIssue"'
+          properties:
+            url: .url
+            status: .state.name
+            assignee: .assignee.email
+            creator: .creator.email
+            priority: .priorityLabel
+            created: .createdAt
+            updated: .updatedAt
+          relations:
+            team: .team.key
+            labels: .labelIds
+            parentIssue: .parent.identifier

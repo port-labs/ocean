@@ -34,6 +34,10 @@
           "type": "string",
           "format": "user"
         },
+        "escalationLevels": {
+          "title": "Escalation Levels",
+          "type": "number"
+        },
         "meanSecondsToResolve": {
           "title": "Mean Seconds to Resolve",
           "type": "number"
@@ -71,7 +75,16 @@
             "escalated",
             "reopened",
             "resolved"
-          ]
+          ],
+          "enumColors": {
+            "triggered": "red",
+            "annotated": "blue",
+            "acknowledged": "yellow",
+            "reassigned": "blue",
+            "escalated": "yellow",
+            "reopened": "red",
+            "resolved": "green"
+          }
         },
         "url": {
           "type": "string",
@@ -79,17 +92,46 @@
           "title": "Incident URL"
         },
         "urgency": {
-          "type": "string",
           "title": "Incident Urgency",
+          "type": "string",
           "enum": [
             "high",
             "low"
-          ]
+          ],
+          "enumColors": {
+            "high": "red",
+            "low": "green"
+          }
         },
-        "responder": {
+        "priority": {
           "type": "string",
-          "title": "Assignee",
-          "format": "user"
+          "title": "Priority",
+          "enum": [
+            "P1",
+            "P2",
+            "P3",
+            "P4",
+            "P5"
+          ],
+          "enumColors": {
+            "P1": "red",
+            "P2": "yellow",
+            "P3": "blue",
+            "P4": "lightGray",
+            "P5": "darkGray"
+          }
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "assignees": {
+          "title": "Assignees",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "user"
+          }
         },
         "escalation_policy": {
           "type": "string",
@@ -141,7 +183,11 @@
         },
         "users": {
           "title": "Users",
-          "type": "array"
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "user"
+          }
         }
       },
       "required": []

@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.52 (2024-05-30)
+
+### Improvements
+
+- Updated the JQL filter used in the default configuration mapping to not ingest Jira issues of the `done` statusCategory
+- Updated the default mapping for the `issue` kind
+
+0.1.51 (2024-05-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.23 (#1)
+- Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
+
+
+0.1.50 (2024-05-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.22 (#1)
+
+
+0.1.49 (2024-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.21 (#1)
+
+
+0.1.48 (2024-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.20 (#1)
+- Removed the config.yaml file due to unused overrides
+
+
+0.1.47 (2024-05-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.19 (#1)
+
+
+0.1.46 (2024-05-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.18 (#1)
+
+
 0.1.45 (2024-05-01)
 
 ### Improvements

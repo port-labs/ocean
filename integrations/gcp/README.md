@@ -8,11 +8,18 @@ An integration used to import gcp resources into Port.
 
 **IMPORTANT- These can be granted at a Project/Folder/Organization Level, and the integration will digest all resources of all projects with these permissions.**
 
-- cloudasset.assets.searchAllResources
 - cloudasset.assets.exportResource
-- pubsub.topics.get
+- cloudasset.assets.listCloudAssetFeeds
+- cloudasset.assets.listResource
+- cloudasset.assets.searchAllResources
+- cloudasset.feeds.create
+- cloudasset.feeds.list
 - pubsub.topics.list
+- pubsub.topics.get
 - resourcemanager.projects.get
+- resourcemanager.projects.list
+- resourcemanager.folders.get
+- resourcemanager.folders.list
 
 #### Suggested way of achieving this
 
@@ -25,7 +32,7 @@ An integration used to import gcp resources into Port.
 1. Create a pubsub topic in a **project**
 2. Create a subscription connected to this topic:
     1. Delivery type: PUSH
-        1. Insert the url to the ocean app on this format: `https://<your-url>/integration/events` 
+        1. Insert the url to the ocean app on this format: `https://<your-url>/integration/events`
         2. You can use ngrok as a local ingress
 3. Create Assets feed pointing to this topic:
     

@@ -8,10 +8,13 @@ from integration import KubecostResourceConfig, KubecostSelector
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
+KUBECOST_API_VERSION_1 = "v1"
+
 
 class KubeCostClient:
-    def __init__(self, kubecost_host: str):
+    def __init__(self, kubecost_host: str, kubecost_api_version: str):
         self.kubecost_host = kubecost_host
+        self.kubecost_api_version = kubecost_api_version
         self.http_client = http_async_client
 
     def generate_params(self, selector: KubecostSelector) -> dict[str, str]:
@@ -55,9 +58,14 @@ class KubeCostClient:
             **self.generate_params(selector),
         }
 
+        if self.kubecost_api_version == KUBECOST_API_VERSION_1:
+            url = f"{self.kubecost_host}/model/cloudCost/aggregate"
+        else:
+            url = f"{self.kubecost_host}/model/cloudCost"
+
         try:
             response = await self.http_client.get(
-                url=f"{self.kubecost_host}/model/cloudCost/aggregate",
+                url=url,
                 params=params,
             )
             response.raise_for_status()
