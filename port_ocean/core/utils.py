@@ -34,8 +34,8 @@ Q = TypeVar("Q")
 
 async def gather_and_split_errors_from_results(
     task: Iterable[Awaitable[Q]],
-    result_threshold_validation: Callable[[Q | Exception], bool] = None,
-) -> tuple[list[Q], list[Exception]]:
+    result_threshold_validation: Callable[[Q | BaseException], bool] | None = None,
+) -> tuple[list[Q], list[BaseException]]:
     valid_items = []
     errors = []
     results = await asyncio.gather(*task, return_exceptions=True)

@@ -99,7 +99,7 @@ async def _create_resources(
                 )
 
         raise AbortDefaultCreationError(created_blueprints_identifiers, errors)
-    created_pages = []
+    created_pages_identifiers = []
     try:
         for patch_stage in blueprint_patches:
             await asyncio.gather(
@@ -132,6 +132,9 @@ async def _create_resources(
         created_pages, pages_errors = await gather_and_split_errors_from_results(
             (port_client.create_page(page) for page in defaults.pages)
         )
+        created_pages_identifiers = [
+            page.get("identifier", "") for page in created_pages
+        ]
 
         if pages_errors:
             for error in pages_errors:
@@ -143,7 +146,7 @@ async def _create_resources(
             raise AbortDefaultCreationError(
                 created_blueprints_identifiers,
                 pages_errors,
-                [page.get("identifier", "") for page in created_pages],
+                created_pages_identifiers,
             )
 
         await port_client.create_integration(
