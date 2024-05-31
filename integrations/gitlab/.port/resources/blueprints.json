@@ -53,5 +53,129 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "group",
+    "title": "Group",
+    "icon": "GitLab",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "icon": "GitLab",
+          "description": "A brief description of the group"
+        },
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string",
+          "icon": "Link"
+        },
+        "shareWithGroupLock": {
+          "type": "boolean",
+          "title": "Language",
+          "icon": "GitLab",
+          "description": "Indicates whether sharing with other groups is locked"
+        },
+        "projectCreationLevel": {
+          "icon": "Slack",
+          "type": "string",
+          "title": "Project Creation Level",
+          "description": "Specifies the level of users who can create projects within the group",
+          "enum": [
+            "noone",
+            "developer",
+            "maintainer"
+          ]
+        },
+        "visibility": {
+          "title": "Visibility",
+          "type": "string",
+          "description": "The visibility level of the group, which can be private, internal, or public",
+          "enum": [
+            "private",
+            "internal",
+            "public"
+          ],
+          "icon": "GitLab"
+        },
+        "defaultBranch": {
+          "title": "Default Branch",
+          "type": "string",
+          "description": "The default branch for new projects within the group",
+          "icon": "GitLab"
+        },
+        "emailsEnabled": {
+          "title": "Emails Enabled",
+          "type": "boolean",
+          "description": "Indicates whether email notifications are enabled for the group",
+          "icon": "GitLab"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "service": {
+        "title": "Service",
+        "target": "service",
+        "required": false,
+        "many": false
+      }
+    }  
+  },
+  {
+    "identifier": "user",
+    "title": "User",
+    "icon": "GitLab",
+    "schema": {
+      "properties": {
+        "username": {
+          "title": "Username",
+          "type": "string",
+          "icon": "GitLab",
+          "description": "The username of the user"
+        },
+        "state": {
+          "title": "State",
+          "type": "string",
+          "icon": "GitLab",
+          "description": "The current state of the user account",
+          "enum": [
+            "active",
+            "blocked",
+            "deactivated"
+          ]
+        },
+        "locked": {
+          "title": "Locked",
+          "type": "boolean",
+          "icon": "GitLab",
+          "description": "Indicates whether the user account is locked"
+        },
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url",
+          "icon": "Link",
+          "description": "The URL to the user's profile page on GitLab"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "group": {
+        "title": "Group",
+        "target": "group",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

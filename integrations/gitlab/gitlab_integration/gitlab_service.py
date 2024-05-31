@@ -463,6 +463,25 @@ class GitlabService:
             )
             yield pipeline_jobs
 
+    async def get_all_users(self) -> typing.AsyncIterator[List[RESTObject]]:
+        """
+        Fetch all users from GitLab asynchronously.
+        """
+        logger.info("Fetching all users for the token")
+        async_fetcher = AsyncFetcher(self.gitlab_client)
+
+        async for users_batch in async_fetcher.fetch(
+            fetch_func=self.gitlab_client.users.list,
+            pagination="offset",
+            order_by="id",
+            sort="asc",
+        ):
+            users = typing.cast(List[RESTObject], users_batch)
+            logger.info(
+                f"Queried {len(users)} users {[user.username for user in users]}"
+            )
+            yield users
+
     async def get_all_pipelines(
         self, project: Project
     ) -> typing.AsyncIterator[List[ProjectPipeline]]:

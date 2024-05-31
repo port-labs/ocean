@@ -15,3 +15,38 @@ resources:
             readme: file://README.md
             description: .description
             language: .__languages | to_entries | max_by(.value) | .key
+  - kind: group
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"group"'
+          properties:
+            description: .description
+            url: .web_url
+            shareWithGroupLock: .share_with_group_lock
+            projectCreationLevel: .project_creation_level
+            visibility: .visibility
+            defaultBranch: .default_branch
+            emailsEnabled: .emails_enabled
+          relations:
+            service: project.id
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"user"'
+          properties:
+            username: .web_url
+            state: .state
+            locked: .locked
+            url: .web_url
+          relations:
+            group: .group.id

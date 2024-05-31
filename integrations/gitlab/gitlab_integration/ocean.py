@@ -191,3 +191,9 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         {**pipeline.asdict(), "__project": project.asdict()}
                         for pipeline in pipelines_batch
                     ]
+
+@ocean.on_resync(ObjectKind.USER)
+async def resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    for service in get_cached_all_services():
+        async for users_batch in service.get_all_users():
+            yield [user.asdict() for user in users_batch]
