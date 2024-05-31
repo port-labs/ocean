@@ -18,7 +18,7 @@ async def _start_processor_worker(
             raw_params = await queue.get()
             if raw_params is None:
                 return
-            logger.debug(f"Processing async task")
+            logger.debug("Processing async task")
             results.append(await func(*raw_params))
         except Exception as e:
             logger.error(f"Error processing task: {e}")
