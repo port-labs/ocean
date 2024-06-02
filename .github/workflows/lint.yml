@@ -19,13 +19,14 @@ jobs:
       - name: Set matrix
         id: set-matrix
         run: |
-          changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '^integrations/' | cut -d'/' -f2 | sort | uniq)
+          folders_to_ignore="integrations/*/LICENSE.md|integrations/*/README.md|integrations/*/CONTRIBUTING.md|integrations/*/CHANGELOG.md"
+          changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '^integrations/' | grep -v '^($folders_to_ignore)' | cut -d'/' -f2 | sort | uniq)
           if [ -z "$changed_folders" ]; then
             changed_folders=""
           fi
           
-          folders_to_ignore="integrations/|\.github/|scripts/|assets/|docs/|LICENSE.md|README.md|CONTRIBUTING.md|CHANGELOG.md"
-          other_changes=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v '^($folders_to_ignore)' | grep -v '^\.github/' | wc -l)
+          folders_to_ignore="integrations/|scripts/|assets/|docs/|LICENSE.md|README.md|CONTRIBUTING.md|CHANGELOG.md"
+          other_changes=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v '^($folders_to_ignore)' | wc -l)
           if [ "$other_changes" -ne 0 ]; then
             # Add the root directory to the matrix if there are changes outside the integrations folder
             changed_folders=$(echo -e "$changed_folders\n.")
@@ -35,7 +36,7 @@ jobs:
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   lint:
-    name: ${{ matrix.folder == '.' && '🌊Ocean Core' || '🚢$matrix.folder' }}
+    name: ${{ matrix.folder == '.' && '🌊Ocean Core' || '🚢' +$matrix.folder }}
     needs: detect-changes
     runs-on: ubuntu-latest
     strategy:
