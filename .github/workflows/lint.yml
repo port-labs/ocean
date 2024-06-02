@@ -25,7 +25,7 @@ jobs:
           if [ -z "$changed_folders" ]; then
             changed_folders=""
           fi
-          
+
           folders_to_ignore="integrations/|scripts/|assets/|docs/|LICENSE.md|README.md|CONTRIBUTING.md|CHANGELOG.md"
           other_changes=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v '^($folders_to_ignore)' | wc -l)
           if [ "$other_changes" -ne 0 ]; then
