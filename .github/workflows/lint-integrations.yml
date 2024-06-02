@@ -20,7 +20,8 @@ jobs:
         id: set-matrix
         run: |
           changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '^integrations/' | cut -d'/' -f1,2 | sort | uniq)
-          other_changes=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v '^integrations/' | wc -l)
+          folders_to_ignore="integrations/|\.github/|scripts/|assets/|docs/|LICENSE.md|README.md|CONTRIBUTING.md|CHANGELOG.md"
+          other_changes=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v '^($folders_to_ignore)' | grep -v '^\.github/' | wc -l)
           if [ "$other_changes" -ne 0 ]; then
             # Add the root directory to the matrix if there are changes outside the integrations folder
             changed_folders=$(echo -e "$changed_folders\n.")
