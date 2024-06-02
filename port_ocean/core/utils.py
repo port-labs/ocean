@@ -34,13 +34,19 @@ Q = TypeVar("Q")
 
 async def gather_and_split_errors_from_results(
     task: Iterable[Awaitable[Q]],
-    result_threshold_validation: Callable[[Q | BaseException], bool] | None = None,
-) -> tuple[list[Q], list[BaseException]]:
-    valid_items = []
-    errors = []
+    result_threshold_validation: Callable[[Q | Exception], bool] | None = None,
+) -> tuple[list[Q], list[Exception]]:
+    valid_items: list[Q] = []
+    errors: list[Exception] = []
     results = await asyncio.gather(*task, return_exceptions=True)
     for item in results:
-        if isinstance(item, Exception):
+        # return_exceptions will also catch Python BaseException which also includes KeyboardInterrupt, SystemExit, GeneratorExit
+        # https://docs.python.org/3/library/asyncio-task.html#asyncio.gather
+        # These exceptions should be raised and not caught for the application to exit properly.
+        # https://stackoverflow.com/a/17802352
+        if isinstance(item, BaseException):
+            raise item
+        elif isinstance(item, Exception):
             errors.append(item)
         elif not result_threshold_validation or result_threshold_validation(item):
             valid_items.append(item)

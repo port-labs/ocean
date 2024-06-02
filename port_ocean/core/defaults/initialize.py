@@ -159,7 +159,7 @@ async def _create_resources(
             f"Failed to create resources: {err.response.text}. Rolling back changes..."
         )
         raise AbortDefaultCreationError(
-            created_blueprints_identifiers, [err], created_pages
+            created_blueprints_identifiers, [err], created_pages_identifiers
         )
 
 
