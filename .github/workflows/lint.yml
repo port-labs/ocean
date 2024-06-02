@@ -20,6 +20,10 @@ jobs:
         id: set-matrix
         run: |
           changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '^integrations/' | cut -d'/' -f2 | sort | uniq)
+          if [ -z "$changed_folders" ]; then
+            changed_folders="[]"
+          fi
+          
           folders_to_ignore="integrations/|\.github/|scripts/|assets/|docs/|LICENSE.md|README.md|CONTRIBUTING.md|CHANGELOG.md"
           other_changes=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v '^($folders_to_ignore)' | grep -v '^\.github/' | wc -l)
           if [ "$other_changes" -ne 0 ]; then
