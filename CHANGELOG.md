@@ -7,6 +7,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.24 (2024-06-02)
+
+
+### Improvements
+
+- Improved exception propagation for the entity processing (#1)
+- QOL utility (`core.utils.gather_and_split_errors_from_results`) for when calling `asyncio.gather` with the `return_exceptions` parameter set to `True` and there is need for separating the errors from the data itself (#2)
+
+### Bug Fixes
+
+- Fixed unhandled exceptions caused by the entity parsing, resulting in the integration freezing (#1)
+
+
 ## 0.5.23 (2024-05-30)
 
 ### Improvements

@@ -1,9 +1,10 @@
-from typing import Iterable, Any, TypeVar
+import asyncio
+from typing import Iterable, Any, TypeVar, Callable, Awaitable
 
 from pydantic import parse_obj_as, ValidationError
 
-from port_ocean.core.handlers.entity_processor.base import EntityPortDiff
 from port_ocean.core.models import Entity
+from port_ocean.core.models import EntityPortDiff
 from port_ocean.core.ocean_types import RAW_RESULT
 from port_ocean.exceptions.core import RawObjectValidationException
 
@@ -26,6 +27,31 @@ def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
         first_entity.identifier == second_entity.identifier
         and first_entity.blueprint == second_entity.blueprint
     )
+
+
+Q = TypeVar("Q")
+
+
+async def gather_and_split_errors_from_results(
+    task: Iterable[Awaitable[Q]],
+    result_threshold_validation: Callable[[Q | Exception], bool] | None = None,
+) -> tuple[list[Q], list[Exception]]:
+    valid_items: list[Q] = []
+    errors: list[Exception] = []
+    results = await asyncio.gather(*task, return_exceptions=True)
+    for item in results:
+        # return_exceptions will also catch Python BaseException which also includes KeyboardInterrupt, SystemExit, GeneratorExit
+        # https://docs.python.org/3/library/asyncio-task.html#asyncio.gather
+        # These exceptions should be raised and not caught for the application to exit properly.
+        # https://stackoverflow.com/a/17802352
+        if isinstance(item, BaseException):
+            raise item
+        elif isinstance(item, Exception):
+            errors.append(item)
+        elif not result_threshold_validation or result_threshold_validation(item):
+            valid_items.append(item)
+
+    return valid_items, errors
 
 
 def get_port_diff(
