@@ -1,5 +1,4 @@
 <img src="./assets/Thumbnail.png" alt="Ocean">
-teate
 
 # Ocean <img src="./assets/OceanSymbol.svg" alt="Ocean" width="100" height="100" align="right">
 
