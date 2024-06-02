@@ -35,7 +35,7 @@ jobs:
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   lint:
-    name: ${{ matrix.folder == '.' && '🌊Ocean Core' || '🚢 ' + matrix.folder }}
+    name: ${{ matrix.folder == '.' && '🌊Ocean Core' || '🚢$matrix.folder' }}
     needs: detect-changes
     runs-on: ubuntu-latest
     strategy:
