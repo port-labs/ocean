@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import Literal, Any, Union
 
 from pydantic.fields import Field
@@ -58,7 +59,13 @@ class SonarQubeComponentSearchFilter(BaseModel):
         allow_population_by_field_name = True
 
 
-class SonarQubeProjectApiFilter(BaseModel):
+class BaseSonarQubeApiFilter(BaseModel):
+    @abstractmethod
+    def generate_request_params(self) -> dict[str, Any]:
+        pass
+
+
+class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
     filter: SonarQubeComponentSearchFilter | None
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -72,7 +79,7 @@ class SonarQubeProjectApiFilter(BaseModel):
         return value
 
 
-class SonarQubeIssueApiFilter(BaseModel):
+class SonarQubeIssueApiFilter(BaseSonarQubeApiFilter):
     assigned: Literal["yes", "no", "true", "false"] | None = Field(
         description="To retrieve assigned or unassigned issues"
     )
@@ -140,9 +147,16 @@ class SonarQubeIssueApiFilter(BaseModel):
 
 class CustomSelector(Selector):
     def generate_request_params(self) -> dict[str, Any]:
-        if hasattr(self, "api_filters") and self.api_filters:
-            return self.api_filters.generate_request_params()
         return {}
+
+
+class SelectorWithApiFilters(CustomSelector):
+    api_filters: BaseSonarQubeApiFilter | None = Field(alias="apiFilters")
+
+    def generate_request_params(self) -> dict[str, Any]:
+        if self.api_filters:
+            return self.api_filters.generate_request_params()
+        return super().generate_request_params()
 
 
 class CustomResourceConfig(ResourceConfig):
@@ -150,7 +164,7 @@ class CustomResourceConfig(ResourceConfig):
 
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
-    class SonarQubeProjectSelector(CustomSelector):
+    class SonarQubeProjectSelector(SelectorWithApiFilters):
         api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
 
     kind: Literal["projects"]
@@ -158,7 +172,7 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
 
 
 class SonarQubeIssueResourceConfig(CustomResourceConfig):
-    class SonarQubeIssueSelector(CustomSelector):
+    class SonarQubeIssueSelector(SelectorWithApiFilters):
         api_filters: SonarQubeIssueApiFilter | None = Field(alias="apiFilters")
         project_api_filters: SonarQubeProjectApiFilter | None = Field(
             alias="projectApiFilters",
