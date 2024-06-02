@@ -1,4 +1,4 @@
-# ArgoCDt
+# ArgoCD
 
 An integration used to import ArgoCD resources into Port.
 
