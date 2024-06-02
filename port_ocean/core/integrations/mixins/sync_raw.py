@@ -372,7 +372,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
 
             if after_errors:
-                message = f"Failed to calculate diff for entities with {len(after_errors)} errors. Skipping delete phase due to incomplete state"
+                message = (
+                    f"Failed to calculate diff for entities with {len(after_errors)} errors. "
+                    f"Skipping delete phase due to incomplete state"
+                )
                 logger.error(message, exc_info=after_errors)
                 entities_before_flatten = []
 
@@ -416,7 +419,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
             except httpx.HTTPError as e:
                 logger.warning(
-                    "Failed to fetch the current state of entities at Port. Skipping delete phase due to unknown initial state"
+                    "Failed to fetch the current state of entities at Port. "
+                    "Skipping delete phase due to unknown initial state. "
+                    f"Error: {e}\n"
+                    f"Response status code: {e.response.status_code if isinstance(e, httpx.HTTPStatusError) else None}\n"
+                    f"Response content: {e.response.text if isinstance(e, httpx.HTTPStatusError) else None}\n"
                 )
                 entities_at_port = []
 
