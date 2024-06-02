@@ -24,6 +24,12 @@ jobs:
         id: set-matrix
         run: |
           changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | grep '^integrations/' | cut -d'/' -f2 | sort | uniq)
+          changed_folders=$(echo "$changed_folders" | sed 's/^/.\//integrations\//')
+          if [ "$other_changes" -ne 0 ]; then
+            # Add the root directory to the matrix if there are changes outside the integrations folder
+            changed_folders=$(echo -e "$changed_folders\n.")
+          fi
+          
           matrix=$(echo "$changed_folders" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
@@ -42,6 +48,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Lint
         run: |
-          cd integrations/${{ matrix.folder }}
+          cd ${{ matrix.folder }}
           make install
           make lint
