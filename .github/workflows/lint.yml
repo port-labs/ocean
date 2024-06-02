@@ -21,7 +21,7 @@ jobs:
         run: |
           changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '^integrations/' | cut -d'/' -f2 | sort | uniq)
           if [ -z "$changed_folders" ]; then
-            changed_folders="[]"
+            changed_folders=""
           fi
           
           folders_to_ignore="integrations/|\.github/|scripts/|assets/|docs/|LICENSE.md|README.md|CONTRIBUTING.md|CHANGELOG.md"
