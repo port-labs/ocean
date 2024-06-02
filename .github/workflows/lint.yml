@@ -40,10 +40,8 @@ jobs:
           python-version: '3.11'
       - name: Checkout Repo
         uses: actions/checkout@v4
-      - name: Install Dependencies
-        run: |
-          cd integrations/${{ matrix.folder }}
-          make install/all
       - name: Lint
         run: |
-          make lint/all
+          cd integrations/${{ matrix.folder }}
+          make install
+          make lint
