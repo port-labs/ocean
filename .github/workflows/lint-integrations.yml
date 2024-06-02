@@ -16,15 +16,11 @@ jobs:
       - name: Get list of changed files
         id: changed-files
         uses: tj-actions/changed-files@v44.5.2
-        with:
-          files: |
-            integrations/**
-
       - name: Set matrix
         id: set-matrix
         run: |
-          changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | grep '^integrations/' | cut -d'/' -f2 | sort | uniq)
-          changed_folders=$(echo "$changed_folders" | sed 's/^/.\//integrations\//')
+          changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | grep '^integrations/' | cut -d'/' -f1,2 | sort | uniq)
+          other_changes=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | grep -v '^integrations/' | wc -l)
           if [ "$other_changes" -ne 0 ]; then
             # Add the root directory to the matrix if there are changes outside the integrations folder
             changed_folders=$(echo -e "$changed_folders\n.")
