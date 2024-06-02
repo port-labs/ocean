@@ -15,7 +15,7 @@ resources:
   - kind: issue
     selector:
       query: "true"
-      jql: "status != Done"
+      jql: "statusCategory != done"
     port:
       entity:
         mappings:
