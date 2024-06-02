@@ -26,7 +26,7 @@ jobs:
             # Add the root directory to the matrix if there are changes outside the integrations folder
             changed_folders=$(echo -e "$changed_folders\n.")
           fi
-          
+
           matrix=$(echo "$changed_folders" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
