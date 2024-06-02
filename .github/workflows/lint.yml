@@ -31,7 +31,7 @@ jobs:
             changed_folders=$(echo -e "$changed_folders\n.")
           fi
 
-          matrix=$(echo "$changed_folders" | jq -R -s -c 'split("\n")[:-1]')
+          matrix=$(echo "$changed_folders" | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   lint:
