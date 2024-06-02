@@ -43,5 +43,5 @@ jobs:
       - name: Lint
         run: |
           cd integrations/${{ matrix.folder }}
-          make install/all
-          make lint/all
+          make install
+          make lint

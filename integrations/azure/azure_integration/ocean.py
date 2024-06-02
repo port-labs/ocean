@@ -1,11 +1,10 @@
 import http
 import typing
 
-from cloudevents.pydantic import CloudEvent
 import fastapi
-from loguru import logger
-from starlette import responses
-
+from azure.core.exceptions import ResourceNotFoundError
+from azure.identity.aio import DefaultAzureCredential
+from azure.mgmt.subscription.aio import SubscriptionClient
 from azure_integration.iterators import (
     resource_group_iterator,
     resource_base_kind_iterator,
@@ -16,14 +15,6 @@ from azure_integration.overrides import (
     AzureSpecificKindSelector,
     AzureCloudResourceSelector,
 )
-from port_ocean.context.event import event
-from port_ocean.context.ocean import ocean
-from port_ocean.core.models import Entity
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from azure.identity.aio import DefaultAzureCredential
-from azure.core.exceptions import ResourceNotFoundError
-from azure.mgmt.subscription.aio import SubscriptionClient
-
 from azure_integration.utils import (
     ResourceKindsWithSpecialHandling,
     resource_client_context,
@@ -34,6 +25,16 @@ from azure_integration.utils import (
     stream_async_iterators_tasks,
     get_resource_configs_with_resource_kind,
 )
+
+# test
+from cloudevents.pydantic import CloudEvent
+from loguru import logger
+from starlette import responses
+
+from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.core.models import Entity
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 def _resolve_resync_method_for_resource(
