@@ -50,12 +50,11 @@ jobs:
           python-version: '3.11'
       - name: Checkout Repo
         uses: actions/checkout@v4
-      - name: Lint
+      - name: Install dependencies
+        working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
         run: |
-          if [ "${{ matrix.folder }}" == "." ]; then
-            cd .
-          else
-            cd integrations/${{ matrix.folder }}
-          fi
           make install
+      - name: Lint
+        working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
+        run: |
           make lint
