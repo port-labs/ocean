@@ -2,7 +2,7 @@
   {
     "identifier": "servicenowGroup",
     "title": "Servicenow Group",
-    "icon": "Service",
+    "icon": "Microservice",
     "schema": {
       "properties": {
         "description": {
@@ -33,7 +33,7 @@
   {
     "identifier": "servicenowCatalog",
     "title": "Servicenow Catalog",
-    "icon": "Service",
+    "icon": "Microservice",
     "schema": {
       "properties": {
         "description": {
@@ -64,7 +64,7 @@
   {
     "identifier": "servicenowIncident",
     "title": "Servicenow Incident",
-    "icon": "Service",
+    "icon": "Microservice",
     "schema": {
       "properties": {
         "category": {
