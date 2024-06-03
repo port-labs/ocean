@@ -51,6 +51,16 @@
       "envFile": "${workspaceFolder}/integrations/azure-devops/.env"
     },
     {
+      "name": "Run GCP integration",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/integrations/gcp",
+      "program": "${workspaceFolder}/integrations/gcp/debug.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/integrations/gcp/.env"
+    },
+    {
       "name": "Run AWS integration",
       "type": "debugpy",
       "request": "launch",
