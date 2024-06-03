@@ -15,7 +15,9 @@ jobs:
           python-version: '3.11'
       - name: Checkout Repo
         uses: actions/checkout@v4
-      - name: Lint
+      - name: Install Dependencies
         run: |
           make install/all
+      - name: Lint
+        run: |
           make lint/all
