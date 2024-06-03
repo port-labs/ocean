@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.16 (2024-06-03)
+
+### Bug Fixes
+
+- Bump terraform provider version to 0.0.25 (#1)
+- Change Service icon to Microservice (#2)
+
+
 # Port_Ocean 0.1.15 (2024-06-02)
 
 ### Improvements
