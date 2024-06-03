@@ -1,9 +1,16 @@
-0.1.57 (2024-06-02)
+0.1.58 (2024-06-03)
 
 ### Bug Fixes
 
 - Bump terraform provider version to 0.0.25 (#1)
 - Change Service icon to Microservice (#2)
+
+
+0.1.57 (2024-06-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.25 (#1)
 
 
 0.1.56 (2024-06-02)
