@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.25 (2024-06-03)
+
+
+### Bug Fixes
+
+- Fixed faulty error handling caused by gather_and_split_errors_from_results raising errors that are not directly under BaseException (#1)
+
+
 ## 0.5.24 (2024-06-02)
 
 
