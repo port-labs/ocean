@@ -44,7 +44,7 @@ async def gather_and_split_errors_from_results(
         # https://docs.python.org/3/library/asyncio-task.html#asyncio.gather
         # These exceptions should be raised and not caught for the application to exit properly.
         # https://stackoverflow.com/a/17802352
-        if isinstance(item, BaseException):
+        if isinstance(item, BaseException) and not isinstance(item, Exception):
             raise item
         elif isinstance(item, Exception):
             errors.append(item)
