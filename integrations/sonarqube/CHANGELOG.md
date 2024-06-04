@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.57 (2024-06-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.25 (#1)
+
+
+# Port_Ocean 0.1.56 (2024-06-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.24 (#1)
+
+
+# Port_Ocean 0.1.55 (2024-06-02)
+
+### Bug Fixes
+
+- Fixed an error in the sonarqube client that was causing the integration to fail when setting up the webhooks for live events
+
+### Improvements
+
+- Updated the inheritance of the resource configs for better validations
+
+
+# Port_Ocean 0.1.54 (2024-05-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.23 (#1)
+- Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
+
+
+# Port_Ocean 0.1.53 (2024-05-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.22 (#1)
+
+
 # Port_Ocean 0.1.52 (2024-05-26)
 
 ### Improvements

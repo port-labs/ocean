@@ -27,7 +27,7 @@ jobs:
           files=$(find integrations/*/.port -name "spec.yaml")
           for file in $files; do
             folder=$(dirname "$file")
-            type=$(grep -E '^name = ".*"' "folder/../pyproject.toml" | cut -d'"' -f2)
+            type=$(grep -E '^name = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
 
             # Get the version from pyproject.toml
             version=$(grep -E '^version = ".*"' "$folder/../pyproject.toml" | cut -d'"' -f2)
