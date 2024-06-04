@@ -44,10 +44,10 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     identifier: str
     type: str
-    config: dict[str, Any] | BaseModel
+    config: dict[str, Any] | BaseModel = Field(default_factory=dict)
 
     @root_validator(pre=True)
-    def a(cls, values: dict[str, Any]) -> dict[str, Any]:
+    def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
         integ_type = values.get("type")
 
         if not integ_type:
@@ -68,4 +68,5 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     send_raw_data_examples: bool = True
     port: PortSettings
     event_listener: EventListenerSettingsType
-    integration: IntegrationSettings
+    # If an identifier or type is not provided, it will be generated based on the integration name
+    integration: IntegrationSettings = IntegrationSettings(type="", identifier="")

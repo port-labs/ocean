@@ -1,0 +1,74 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run snyk integration",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/integrations/snyk",
+      "program": "${workspaceFolder}/integrations/snyk/debug.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/integrations/snyk/.env"
+    },
+    {
+      "name": "Run pagerduty integration",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/integrations/pagerduty",
+      "program": "${workspaceFolder}/integrations/pagerduty/debug.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/integrations/pagerduty/.env"
+    },
+    {
+      "name": "Run gitlab integration",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/integrations/gitlab",
+      "program": "${workspaceFolder}/integrations/gitlab/debug.py",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/integrations/gitlab/.env"
+    },
+    {
+      "name": "Run argocd integration",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/integrations/argocd",
+      "program": "${workspaceFolder}/integrations/argocd/debug.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/integrations/argocd/.env"
+    },
+    {
+      "name": "Run azure-devops integration",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/integrations/azure-devops",
+      "program": "${workspaceFolder}/integrations/azure-devops/debug.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/integrations/azure-devops/.env"
+    },
+    {
+      "name": "Run GCP integration",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/integrations/gcp",
+      "program": "${workspaceFolder}/integrations/gcp/debug.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/integrations/gcp/.env"
+    },
+    {
+      "name": "Run AWS integration",
+      "type": "debugpy",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/integrations/aws",
+      "program": "${workspaceFolder}/integrations/aws/debug.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/integrations/aws/.env"
+    }
+  ]
+}
