@@ -1,6 +1,25 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
 resources:
+  - kind: host
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogHost"'
+          identifier: .id | tostring
+          title: .name
+          properties:
+            up: .up
+            hostName: .host_name
+            platform: .meta.platform
+            is_muted: .is_muted
+            machine: .meta.machine
+            description: .description
+            sources: .sources
+            cpuCores: .meta.cpuCores
+            agent_version: .meta.agent_version
   - kind: monitor
     selector:
       query: 'true'

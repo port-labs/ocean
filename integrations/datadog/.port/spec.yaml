@@ -5,6 +5,7 @@ features:
   - type: exporter
     section: APM & Alerting
     resources:
+      - kind: datadogHost
       - kind: datadogMonitor
       - kind: datadogService
       - kind: datadogSlo
