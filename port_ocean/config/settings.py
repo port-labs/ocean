@@ -42,8 +42,8 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
-    identifier: str = Field(..., min_length=1)
-    type: str = Field(..., min_length=1)
+    identifier: str
+    type: str
     config: dict[str, Any] | BaseModel
 
     @root_validator(pre=True)
