@@ -74,7 +74,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         for key, value in obj.items():
 
             if isinstance(value,list):
-                search_tasks[key] = [self._search_as_object(data,obj) for obj in value]
+                search_tasks[key] = [asyncio.create_task(self._search_as_object(data,obj)) for obj in value]
 
             elif isinstance(value, dict):
                 search_tasks[key] = asyncio.create_task(
