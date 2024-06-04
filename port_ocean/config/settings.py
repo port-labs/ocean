@@ -68,4 +68,4 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     send_raw_data_examples: bool = True
     port: PortSettings
     event_listener: EventListenerSettingsType
-    integration: IntegrationSettings = IntegrationSettings()
+    integration: IntegrationSettings = IntegrationSettings(identifer=None, type=None)
