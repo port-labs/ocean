@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.27 (2024-06-05)
+
+
+### Bug Fixes
+
+- Fixed incorrect pydantic validation over the integration settings
+
+
 ## 0.5.26 (2024-06-04)
 
 
