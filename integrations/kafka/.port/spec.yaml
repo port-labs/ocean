@@ -8,6 +8,7 @@ features:
       - kind: cluster
       - kind: broker
       - kind: topic
+isSaasSupported: false
 configurations:
   - name: clusterConfMapping
     required: true
