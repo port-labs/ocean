@@ -2,9 +2,9 @@ from typing import Any, Literal
 
 from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
 from port_ocean.core.event_listener import EventListenerSettingsType
-from port_ocean.utils.misc import get_integration_name
-from pydantic import Extra, AnyHttpUrl, parse_obj_as
-from pydantic.class_validators import root_validator
+from port_ocean.utils.misc import get_integration_name, get_spec_file
+from pydantic import Extra, AnyHttpUrl, parse_obj_as, ValidationError
+from pydantic.class_validators import root_validator, validator
 from pydantic.env_settings import InitSettingsSource, EnvSettingsSource, BaseSettings
 from pydantic.fields import Field
 from pydantic.main import BaseModel
@@ -69,3 +69,13 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     event_listener: EventListenerSettingsType
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = IntegrationSettings(type="", identifier="")
+    is_saas: bool = False
+
+    @validator("is_saas")
+    def validate_can_run_as_saas(cls, is_saas: bool):
+        if not is_saas:
+            return is_saas
+
+        spec = get_spec_file()
+        if not spec.get("isSaasSupported", True):
+            raise ValueError(f"This integration can't be ran as saas")
