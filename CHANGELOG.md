@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.5.28 (2024-05-06)
+
+### Features
+
+- handle running integration as saas
+
+
 ## 0.5.27 (2024-06-05)
 
 
