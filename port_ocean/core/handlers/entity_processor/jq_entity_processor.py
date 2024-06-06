@@ -86,7 +86,10 @@ class JQEntityProcessor(BaseEntityProcessor):
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
             try:
-                result[key] = await task
+                if isinstance(task,list):
+                    result[key] = [await task for task in task]
+                else:
+                    result[key] = await task
             except Exception:
                 result[key] = None
 

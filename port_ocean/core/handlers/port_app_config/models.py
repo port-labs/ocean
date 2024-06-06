@@ -1,8 +1,21 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, Union
 
 from pydantic import BaseModel, Field
 
 from port_ocean.clients.port.types import RequestOptions
+
+
+class Rule(BaseModel):
+    property: str
+    operator: str
+    value: str
+
+
+class SearchRelation(BaseModel):
+    combinator: str
+    rules: list[Rule | SearchRelation]
 
 
 class EntityMapping(BaseModel):
@@ -11,13 +24,14 @@ class EntityMapping(BaseModel):
     blueprint: str
     team: str | None
     properties: dict[str, str] = Field(default_factory=dict)
-    relations: dict[str, str] = Field(default_factory=dict)
+    relations: dict[str, str | SearchRelation] = Field(default_factory=dict)
+
+
+class MappingsConfig(BaseModel):
+    mappings: EntityMapping
 
 
 class PortResourceConfig(BaseModel):
-    class MappingsConfig(BaseModel):
-        mappings: EntityMapping
-
     entity: MappingsConfig
     items_to_parse: str | None = Field(alias="itemsToParse")
 
