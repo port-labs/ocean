@@ -3,6 +3,7 @@ icon: GoogleCloud
 features:
   - type: exporter
     section: Cloud Providers
+isSaasSupported: false
 configurations: []
 deploymentMethodOverride:
   - type: terraform-gcp
