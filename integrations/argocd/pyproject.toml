@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "argocd"
-version = "0.1.55"
+version = "0.1.56"
 description = "Argo CD integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
