@@ -7,7 +7,9 @@ from pydantic import BaseModel
 from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.config.settings import ApplicationSettings, LogLevelType
+from port_ocean.context.ocean import ocean
 from port_ocean.core.defaults.initialize import initialize_defaults
+from port_ocean.core.models import Runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
@@ -26,10 +28,13 @@ def run(
     path: str = ".",
     log_level: LogLevelType = "INFO",
     port: int = 8000,
+    runtime: Runtime = "OnPrem",
     initialize_port_resources: bool | None = None,
     config_override: Dict[str, Any] | None = None,
 ) -> None:
-    application_settings = ApplicationSettings(log_level=log_level, port=port)
+    application_settings = ApplicationSettings(
+        log_level=log_level, port=port, runtime=runtime
+    )
 
     setup_logger(
         application_settings.log_level,
@@ -44,6 +49,8 @@ def run(
     app: Ocean = {name: item for name, item in getmembers(app_module)}.get(
         "app", default_app
     )
+
+    app.port_client.get_current_integration()
 
     # Override config with arguments
     if initialize_port_resources is not None:
