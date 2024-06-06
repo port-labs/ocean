@@ -58,7 +58,11 @@ async def _create_resources(
     response = await port_client._get_current_integration()
     if response.status_code == status.HTTP_404_NOT_FOUND:
         logger.info("Integration doesn't exist, creating new integration")
-    elif not integration_config.is_saas or response.json()["integration"]["config"]:
+    elif (
+        integration_config.run_as_saas and not response.json()["integration"]["config"]
+    ):
+        logger.info("Creating default resources for initialed saas integration")
+    else:
         logger.info("Integration already exists, skipping integration creation...")
         return
 
@@ -149,23 +153,18 @@ async def _create_resources(
                 created_pages_identifiers,
             )
 
-        await port_client.create_integration(
-            integration_config.integration.type,
-            integration_config.event_listener.to_request(),
-            port_app_config=defaults.port_app_config,
-        )
-        # if not integration_config.is_saas:
-        #     await port_client.create_integration(
-        #         integration_config.integration.type,
-        #         integration_config.event_listener.to_request(),
-        #         port_app_config=defaults.port_app_config,
-        #     )
-        # else:
-        #     await port_client.patch_integration(
-        #         integration_config.integration.type,
-        #         integration_config.event_listener.to_request(),
-        #         port_app_config=defaults.port_app_config,
-        #     )
+        if not integration_config.run_as_saas:
+            await port_client.create_integration(
+                integration_config.integration.type,
+                integration_config.event_listener.to_request(),
+                port_app_config=defaults.port_app_config,
+            )
+        else:
+            await port_client.patch_integration(
+                integration_config.integration.type,
+                integration_config.event_listener.to_request(),
+                port_app_config=defaults.port_app_config,
+            )
 
     except httpx.HTTPStatusError as err:
         logger.error(
