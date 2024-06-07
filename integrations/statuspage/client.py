@@ -45,7 +45,8 @@ class StatusPageClient:
             if self.statuspage_ids:
                 return [page for page in pages if page["id"] in self.statuspage_ids]
             return pages
-        
+        return []
+
     async def get_page_by_id(self, page_id: str) -> dict[str, Any]:
         response = await self.client.get(f"{self.statuspage_url}/{page_id}")
         response.raise_for_status()
@@ -83,7 +84,7 @@ class StatusPageClient:
             for incident in incidents:
                 updates.extend(incident["incident_updates"])
             yield updates
-    
+
     async def create_webhook_if_not_exists(self, page_id: str, app_host: str) -> None:
         app_host_webhook_url = f"{app_host}/integration/webhook"
         async for webhooks in self._get_paginated_resources(f"{page_id}/subscribers"):
@@ -104,10 +105,11 @@ class StatusPageClient:
             logger.error(
                 f"Result from creating webhook for page {page_id}: ({result.status_code}) {result.text}"
             )
+        return
 
     async def create_webhooks_for_all_pages(self, app_host: str) -> None:
         pages = self.statuspage_ids or [page["id"] for page in await self.get_pages()]
         logger.info(f"Creating webhooks for pages: {pages}")
         for page_id in pages:
             await self.create_webhook_if_not_exists(page_id, app_host)
-
+        return

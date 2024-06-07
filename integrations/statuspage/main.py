@@ -76,7 +76,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
     client = init_client()
 
-    async def register_raw(obj_kind: ObjectKind, data: list[dict[str, Any]]):
+    async def register_raw(obj_kind: ObjectKind, data: list[dict[str, Any]]) -> None:
         logger.debug(f"Registering {obj_kind} with data: {data}")
         await ocean.register_raw(obj_kind, data)
         logger.info(f"Registered {obj_kind}")
@@ -105,13 +105,15 @@ async def on_start() -> None:
 
     # Verify the presence of app_host, essential for creating subscriptions.
     # If not provided, skip webhook subscription creation.
-    if ocean.integration_config.get("app_host"):
-        client = init_client()
+    app_host = ocean.integration_config.get("app_host")
+    page_ids = ocean.integration_config.get("statuspage_ids")
 
-        app_host = ocean.integration_config.get("app_host")
-        page_ids = ocean.integration_config.get("statuspage_ids")
+    if not app_host:
+        logger.error("App host is not provided. Skipping webhook creation.")
+        return
+    client = init_client()
 
-        logger.info(f"App host: {app_host}")
-        logger.info(f"Page IDs: {page_ids}")
+    logger.info(f"App host: {app_host}")
+    logger.info(f"Page IDs: {page_ids}")
 
-        await client.create_webhooks_for_all_pages(app_host)
+    await client.create_webhooks_for_all_pages(app_host)
