@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.68 (2024-06-07)
+
+### Features
+
+- Added secondary on call user to PagerDuty Service (#68)
+
+### Improvements
+
+- Oncall user is calculated dynamically based on escalation levels (#68)
+
+
 # Port_Ocean 0.1.67 (2024-06-05)
 
 ### Improvements
