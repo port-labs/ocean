@@ -1,8 +1,9 @@
 description: statuspage integration for Port Ocean
-icon: Cookiecutter # Should be one of the available icons in Port
+icon: Cookiecutter
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/statuspage
 features:
   - type: exporter
-    section: Git Providers # Should be one of the available sections in Port
+    section: Incident Management
     resources:
       - kind: statuspage
       - kind: component_group
@@ -14,10 +15,6 @@ configurations:
     required: false
     type: url
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Linear"
-  - name: statuspageId
-    type: string
-    required: false
-    description: "The ID of the Statuspage.io page"
   - name: statuspageApiKey
     required: true
     type: string
@@ -26,4 +23,4 @@ configurations:
   - name: statuspageIds
     required: false
     type: array
-    description: "Comma-separated list of Statuspage.io page IDs to query"
+    description: "Comma-separated list of Statuspage.io page IDs to query. If not specified, all pages will be queried"

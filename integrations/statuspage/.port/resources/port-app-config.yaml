@@ -2,7 +2,7 @@ createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
   - kind: statuspage
-    selector: 
+    selector:
       query: "true"
     port:
       entity:
@@ -43,10 +43,10 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
           relations:
-            statuspage: .page_id 
+            statuspage: .page_id
   - kind: component
     selector:
-      query: '.group == false'
+      query: ".group == false"
     port:
       entity:
         mappings:
@@ -99,7 +99,7 @@ resources:
             postmortem_notified_twitter: .postmortem_notified_twitter
             pageId: .page_id
           relations:
-            components: '[.components[].id]'
+            components: "[.components[].id]"
             statuspage: .page_id
   - kind: incident_update
     selector:
@@ -108,7 +108,7 @@ resources:
       entity:
         mappings:
           identifier: .id
-          title: .body  
+          title: .body
           blueprint: '"statuspageIncidentUpdate"'
           properties:
             status: .status
@@ -118,9 +118,7 @@ resources:
             deliverNotifications: .deliver_notifications
             wantsTwitterUpdate: .wants_twitter_update
             tweet_id: .tweet_id
-            custom_tweet: .custom_tweet 
+            custom_tweet: .custom_tweet
           relations:
             incident: .incident_id
-            affectedComponents: '[.affected_components[].code]'
-
-
+            affectedComponents: "[.affected_components[].code]"
