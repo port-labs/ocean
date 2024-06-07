@@ -1,0 +1,29 @@
+description: statuspage integration for Port Ocean
+icon: Cookiecutter # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Git Providers # Should be one of the available sections in Port
+    resources:
+      - kind: statuspage
+      - kind: component_group
+      - kind: component
+      - kind: incident
+      - kind: incident_update
+configurations:
+  - name: appHost
+    required: false
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Linear"
+  - name: statuspageId
+    type: string
+    required: false
+    description: "The ID of the Statuspage.io page"
+  - name: statuspageApiKey
+    required: true
+    type: string
+    sensitive: true
+    description: "Statuspage.io API key used to query the Statuspage.io API"
+  - name: statuspageIds
+    required: false
+    type: array
+    description: "Comma-separated list of Statuspage.io page IDs to query"
