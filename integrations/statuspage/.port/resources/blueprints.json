@@ -128,7 +128,6 @@
   {
     "identifier": "statuspageComponentGroup",
     "title": "Statuspage Component Group",
-    "icon": "Catalog",
     "description": "A group of related components on a Statuspage.",
     "schema": {
       "properties": {
