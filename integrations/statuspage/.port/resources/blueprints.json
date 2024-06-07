@@ -248,7 +248,7 @@
   {
     "identifier": "statuspageIncident",
     "title": "Statuspage Incident",
-    "icon": "Health",
+    "icon": "Alert",
     "description": "An incident reported on a Statuspage.",
     "schema": {
       "properties": {
@@ -415,7 +415,7 @@
   {
     "identifier": "statuspageIncidentUpdate",
     "title": "Statuspage Incident Update",
-    "icon": "NewPage",
+    "icon": "Alert",
     "description": "An update to a Statuspage incident.",
     "schema": {
       "properties": {
