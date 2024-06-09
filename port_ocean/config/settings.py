@@ -73,11 +73,17 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     runtime: Runtime = "OnPrem"
 
     @validator("runtime")
-    def validate_runtime(cls, runtime: Literal["OnPrem", "Saas"]):
+    def validate_runtime(cls, runtime: Literal["OnPrem", "Saas"]) -> Runtime:
         if runtime == "Saas":
             spec = get_spec_file()
+            if spec is None:
+                raise ValueError(
+                    "Could not determine whether it's safe to run "
+                    "the integration due to not found spec.yaml."
+                )
+
             saas_config = spec.get("saas")
             if saas_config and not saas_config["enabled"]:
-                raise ValueError(f"This integration can't be ran as Saas")
+                raise ValueError("This integration can't be ran as Saas")
 
         return runtime
