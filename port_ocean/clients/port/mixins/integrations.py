@@ -40,10 +40,10 @@ class IntegrationClientMixin:
 
     async def get_current_integration(
         self, should_raise: bool = True, should_log: bool = True
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         response = await self._get_current_integration()
         handle_status_code(response, should_raise, should_log)
-        return response.json()["integration"]
+        return response.json().get("integration")
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
@@ -56,7 +56,7 @@ class IntegrationClientMixin:
         _type: str,
         changelog_destination: dict[str, Any],
         port_app_config: Optional["PortAppConfig"] = None,
-    ) -> None:
+    ) -> dict:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
         json = {
@@ -72,13 +72,14 @@ class IntegrationClientMixin:
             f"{self.auth.api_url}/integration", headers=headers, json=json
         )
         handle_status_code(response)
+        return response.json()["integration"]
 
     async def patch_integration(
         self,
         _type: str | None = None,
         changelog_destination: dict[str, Any] | None = None,
         port_app_config: Optional["PortAppConfig"] = None,
-    ) -> None:
+    ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
         json: dict[str, Any] = {}
@@ -96,6 +97,7 @@ class IntegrationClientMixin:
             json=json,
         )
         handle_status_code(response)
+        return response.json()["integration"]
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")

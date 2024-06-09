@@ -60,15 +60,17 @@ async def _initialize_required_integration_settings(
 ) -> None:
     try:
         logger.info("Initializing integration at port")
-        integration = await port_client.get_current_integration(should_log=False)
+        integration = await port_client.get_current_integration(
+            should_log=False, should_raise=False
+        )
         if not integration:
-            await port_client.create_integration(
+            integration = await port_client.create_integration(
                 integration_config.integration.type,
                 integration_config.event_listener.to_request(),
                 port_app_config=default_mapping,
             )
         elif not integration["config"]:
-            await port_client.patch_integration(
+            integration = await port_client.patch_integration(
                 integration_config.integration.type,
                 integration_config.event_listener.to_request(),
                 port_app_config=default_mapping,
@@ -97,13 +99,6 @@ async def _create_resources(
     port_client: PortClient,
     defaults: Defaults,
 ) -> None:
-    response = await port_client._get_current_integration()
-    if response.status_code == status.HTTP_404_NOT_FOUND:
-        logger.info("Integration doesn't exist, creating new integration")
-    else:
-        logger.info("Integration already exists, skipping integration creation...")
-        return
-
     creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
         defaults.blueprints
     )
