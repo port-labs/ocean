@@ -10,6 +10,8 @@ class CustomProperties(enum.StrEnum):
 
 class ResourceKinds(enum.StrEnum):
     ACCOUNT = "AWS::Organizations::Account"
+    AMI_IMAGE = "AWS::ImageBuilder::Image"
+    ACM_CERTIFICATE = "AWS::ACM::Certificate"
 
 
 def get_matching_kinds_and_blueprints_from_config(
