@@ -59,6 +59,7 @@ async def _initialize_required_integration_settings(
     integration_config: IntegrationConfiguration,
 ) -> None:
     try:
+        logger.info("Initializing integration at port")
         integration = await port_client.get_current_integration(should_log=False)
         if not integration:
             await port_client.create_integration(
@@ -248,7 +249,7 @@ async def _initialize_defaults(
         raise ExceptionGroup(str(e), e.errors)
 
 
-def initialize_integration(
+def initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     asyncio.new_event_loop().run_until_complete(
