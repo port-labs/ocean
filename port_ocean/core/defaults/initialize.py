@@ -9,7 +9,10 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import ocean
-from port_ocean.core.defaults.common import Defaults, get_port_integration_defaults
+from port_ocean.core.defaults.common import (
+    Defaults,
+    get_port_integration_defaults,
+)
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.models import Blueprint
 from port_ocean.core.utils import gather_and_split_errors_from_results
@@ -50,10 +53,46 @@ def deconstruct_blueprints_to_creation_steps(
     )
 
 
+async def _initialize_integration_with_mapping(
+    port_client: PortClient,
+    default_mapping: PortAppConfig,
+    integration_config: IntegrationConfiguration,
+) -> None:
+    try:
+        integration = await port_client.get_current_integration(should_log=False)
+        if not integration:
+            await port_client.create_integration(
+                integration_config.integration.type,
+                integration_config.event_listener.to_request(),
+                port_app_config=default_mapping,
+            )
+        elif not integration["config"]:
+            await port_client.patch_integration(
+                integration_config.integration.type,
+                integration_config.event_listener.to_request(),
+                port_app_config=default_mapping,
+            )
+    except httpx.HTTPStatusError as err:
+        raise Exception(f"Failed to apply default mapping: {err.response.text}.")
+
+    event_listener_attrs = integration_config.event_listener.to_request()
+    logger.info("Checking for diff in integration configuration")
+    if (
+        integration["changelogDestination"]
+        != event_listener_attrs.get("changelog_destination")
+        or integration["installationAppType"] != integration_config.integration.type
+        or integration.get("version") != port_client.integration_version
+    ):
+        await port_client.patch_integration(
+            integration_config.integration.type,
+            event_listener_attrs.get("changelog_destination"),
+            default_mapping,
+        )
+
+
 async def _create_resources(
     port_client: PortClient,
     defaults: Defaults,
-    integration_config: IntegrationConfiguration,
 ) -> None:
     response = await port_client._get_current_integration()
     if response.status_code == status.HTTP_404_NOT_FOUND:
@@ -148,12 +187,6 @@ async def _create_resources(
                 pages_errors,
                 created_pages_identifiers,
             )
-
-        await port_client.create_integration(
-            integration_config.integration.type,
-            integration_config.event_listener.to_request(),
-            port_app_config=defaults.port_app_config,
-        )
     except httpx.HTTPStatusError as err:
         logger.error(
             f"Failed to create resources: {err.response.text}. Rolling back changes..."
@@ -163,18 +196,21 @@ async def _create_resources(
         )
 
 
-async def _initialize_defaults(
+async def _initialize_integration(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     port_client = ocean.port_client
     defaults = get_port_integration_defaults(config_class)
     if not defaults:
-        logger.warning("No defaults found. Skipping...")
+        logger.warning("No defaults found. Skipping initialization...")
         return None
 
+    await _initialize_integration_with_mapping(
+        port_client, defaults.port_app_config, integration_config
+    )
     try:
         logger.info("Found default resources, starting creation process")
-        await _create_resources(port_client, defaults, integration_config)
+        await _create_resources(port_client, defaults)
     except AbortDefaultCreationError as e:
         logger.warning(
             f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"
@@ -205,12 +241,9 @@ async def _initialize_defaults(
         raise ExceptionGroup(str(e), e.errors)
 
 
-def initialize_defaults(
+def initialize_integration(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
-    try:
-        asyncio.new_event_loop().run_until_complete(
-            _initialize_defaults(config_class, integration_config)
-        )
-    except Exception as e:
-        logger.debug(f"Failed to initialize defaults, skipping... Error: {e}")
+    asyncio.new_event_loop().run_until_complete(
+        _initialize_integration(config_class, integration_config)
+    )

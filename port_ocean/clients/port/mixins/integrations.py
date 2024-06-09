@@ -98,34 +98,6 @@ class IntegrationClientMixin:
         )
         handle_status_code(response)
 
-    async def initialize_integration(
-        self,
-        _type: str,
-        changelog_destination: dict[str, Any],
-        port_app_config: Optional["PortAppConfig"] = None,
-    ) -> None:
-        logger.info(f"Initiating integration with id: {self.integration_identifier}")
-        response = await self._get_current_integration()
-        if response.status_code == status.HTTP_404_NOT_FOUND:
-            await self.create_integration(_type, changelog_destination, port_app_config)
-        else:
-            handle_status_code(response)
-
-            integration = response.json()["integration"]
-            logger.info("Checking for diff in integration configuration")
-            if (
-                integration["changelogDestination"] != changelog_destination
-                or integration["installationAppType"] != _type
-                or integration.get("version") != self.integration_version
-            ):
-                await self.patch_integration(
-                    _type, changelog_destination, port_app_config
-                )
-
-        logger.info(
-            f"Integration with id: {self.integration_identifier} successfully registered"
-        )
-
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
         log_attributes = await self.get_log_attributes()
