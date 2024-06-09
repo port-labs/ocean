@@ -207,9 +207,10 @@ async def _initialize_defaults(
         logger.warning("No defaults found. Skipping initialization...")
         return None
 
-    await _initialize_required_integration_settings(
-        port_client, defaults.port_app_config, integration_config
-    )
+    if defaults.port_app_config:
+        await _initialize_required_integration_settings(
+            port_client, defaults.port_app_config, integration_config
+        )
 
     if not integration_config.initialize_port_resources:
         return
