@@ -209,6 +209,10 @@ async def _initialize_integration(
     await _initialize_required_integration_settings(
         port_client, defaults.port_app_config, integration_config
     )
+
+    if not integration_config.initialize_port_resources:
+        return
+
     try:
         logger.info("Found default resources, starting creation process")
         await _create_resources(port_client, defaults)
