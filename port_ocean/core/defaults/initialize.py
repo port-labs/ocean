@@ -73,7 +73,8 @@ async def _initialize_required_integration_settings(
                 port_app_config=default_mapping,
             )
     except httpx.HTTPStatusError as err:
-        raise Exception(f"Failed to apply default mapping: {err.response.text}.")
+        logger.error("Failed to apply default mapping")
+        raise err
 
     logger.info("Checking for diff in integration configuration")
     changelog_destination = integration_config.event_listener.to_request().get(
@@ -197,7 +198,7 @@ async def _create_resources(
         )
 
 
-async def _initialize_integration(
+async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     port_client = ocean.port_client
@@ -250,5 +251,5 @@ def initialize_integration(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     asyncio.new_event_loop().run_until_complete(
-        _initialize_integration(config_class, integration_config)
+        _initialize_defaults(config_class, integration_config)
     )

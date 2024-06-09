@@ -3,7 +3,6 @@ from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
-from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_status_code
