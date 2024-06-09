@@ -53,7 +53,7 @@ def deconstruct_blueprints_to_creation_steps(
     )
 
 
-async def _initialize_integration_with_mapping(
+async def _initialize_required_integration_settings(
     port_client: PortClient,
     default_mapping: PortAppConfig,
     integration_config: IntegrationConfiguration,
@@ -75,17 +75,18 @@ async def _initialize_integration_with_mapping(
     except httpx.HTTPStatusError as err:
         raise Exception(f"Failed to apply default mapping: {err.response.text}.")
 
-    event_listener_attrs = integration_config.event_listener.to_request()
     logger.info("Checking for diff in integration configuration")
+    changelog_destination = integration_config.event_listener.to_request().get(
+        "changelog_destination"
+    )
     if (
-        integration["changelogDestination"]
-        != event_listener_attrs.get("changelog_destination")
+        integration["changelogDestination"] != changelog_destination
         or integration["installationAppType"] != integration_config.integration.type
         or integration.get("version") != port_client.integration_version
     ):
         await port_client.patch_integration(
             integration_config.integration.type,
-            event_listener_attrs.get("changelog_destination"),
+            changelog_destination,
             default_mapping,
         )
 
@@ -205,7 +206,7 @@ async def _initialize_integration(
         logger.warning("No defaults found. Skipping initialization...")
         return None
 
-    await _initialize_integration_with_mapping(
+    await _initialize_required_integration_settings(
         port_client, defaults.port_app_config, integration_config
     )
     try:
