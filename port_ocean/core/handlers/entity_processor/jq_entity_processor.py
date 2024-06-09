@@ -1,5 +1,6 @@
 import asyncio
 import functools
+from asyncio import Task
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Optional
@@ -70,7 +71,7 @@ class JQEntityProcessor(BaseEntityProcessor):
     async def _search_as_object(
         self, data: dict[str, Any], obj: dict[str, Any]
     ) -> dict[str, Any | None]:
-        search_tasks = {}
+        search_tasks: dict[str,Task[dict[str,Any | None]] | list[Task[dict[str,Any | None]]]] = {}
         for key, value in obj.items():
 
             if isinstance(value,list):
