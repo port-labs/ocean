@@ -27,27 +27,27 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
-    ResourceKinds,
+    ResourceKindsWithSpecialHandling,
 )
 
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in iter(ResourceKinds):
+    if kind in iter(ResourceKindsWithSpecialHandling):
         return
     await update_available_access_credentials()
     async for batch in resync_cloudcontrol(kind):
         yield batch
 
 
-@ocean.on_resync(kind=ResourceKinds.ACCOUNT)
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
 async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     for account in describe_accessible_accounts():
         yield [fix_unserializable_date_properties(account)]
 
 
-@ocean.on_resync(kind=ResourceKinds.ACM_CERTIFICATE)
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM_CERTIFICATE)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     async for session in get_sessions():
@@ -62,7 +62,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield batch
 
 
-@ocean.on_resync(kind=ResourceKinds.AMI_IMAGE)
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     async for session in get_sessions():

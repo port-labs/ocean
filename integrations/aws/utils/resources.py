@@ -5,6 +5,7 @@ import aioboto3
 from loguru import logger
 from utils.misc import (
     CustomProperties,
+    ResourceKindsWithSpecialHandling,
 )
 from utils.aws import get_sessions
 
@@ -37,18 +38,38 @@ async def describe_single_resource(
 ) -> dict[str, str]:
     async for session in get_sessions(account_id, region):
         region = session.region_name
-        async with session.client("cloudcontrol") as cloudcontrol:
-            response = await cloudcontrol.get_resource(
-                TypeName=kind, Identifier=identifier
-            )
-            resource_description = response.get("ResourceDescription")
-            serialized = resource_description.copy()
-            serialized.update(
-                {
-                    "Properties": json.loads(resource_description.get("Properties")),
-                }
-            )
-            return serialized
+        match kind:
+            case ResourceKindsWithSpecialHandling.ACM_CERTIFICATE:
+                async with session.client("acm") as acm:
+                    response = await acm.describe_certificate(CertificateArn=identifier)
+                    resource = response.get("ResourceDescription")
+                    return {
+                        "Properties": fix_unserializable_date_properties(resource),
+                    }
+            case ResourceKindsWithSpecialHandling.AMI_IMAGE:
+                async with session.client("imagebuilder") as imagebuilder:
+                    response = await imagebuilder.get_image(
+                        ImageBuildVersionArn=identifier
+                    )
+                    resource = response.get("Image")
+                    return {
+                        "Properties": fix_unserializable_date_properties(resource),
+                    }
+            case _:
+                async with session.client("cloudcontrol") as cloudcontrol:
+                    response = await cloudcontrol.get_resource(
+                        TypeName=kind, Identifier=identifier
+                    )
+                    resource_description = response.get("ResourceDescription")
+                    serialized = resource_description.copy()
+                    serialized.update(
+                        {
+                            "Properties": json.loads(
+                                resource_description.get("Properties")
+                            ),
+                        }
+                    )
+                    return serialized
     return {}
 
 
