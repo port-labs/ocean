@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.6.1 (2024-06-11)
+
+
+### Improvements
+
+- Add search relation (Allow to to run a search query to find the relation to the entity)
+
+
+
 ## 0.6.0 (2024-06-10)
 
 
