@@ -81,7 +81,7 @@ async def _initialize_required_integration_settings(
                 port_app_config=default_mapping,
             )
     except httpx.HTTPStatusError as err:
-        logger.error("Failed to apply default mapping")
+        logger.error(f"Failed to apply default mapping: {err.response.text}.")
         raise err
 
     logger.info("Checking for diff in integration configuration")
@@ -94,9 +94,7 @@ async def _initialize_required_integration_settings(
         or integration.get("version") != port_client.integration_version
     ):
         await port_client.patch_integration(
-            integration_config.integration.type,
-            changelog_destination,
-            default_mapping,
+            integration_config.integration.type, changelog_destination
         )
 
 
