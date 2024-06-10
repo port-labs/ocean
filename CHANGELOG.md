@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Add search relation (Allow to to run a search query to find the relation to the entity)
+- Add search relation support (Allow to to run a search query to find the relation to the entity as part of the mapping)
 
 
 
