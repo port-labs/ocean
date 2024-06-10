@@ -40,10 +40,10 @@ class IntegrationClientMixin:
 
     async def get_current_integration(
         self, should_raise: bool = True, should_log: bool = True
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any]:
         response = await self._get_current_integration()
         handle_status_code(response, should_raise, should_log)
-        return response.json().get("integration")
+        return response.json().get("integration", {})
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:

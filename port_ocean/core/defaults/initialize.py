@@ -3,7 +3,6 @@ from typing import Type, Any
 
 import httpx
 from loguru import logger
-from starlette import status
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
@@ -64,14 +63,18 @@ async def _initialize_required_integration_settings(
             should_log=False, should_raise=False
         )
         if not integration:
-            logger.info("Integration does not exist, Creating new integration with default default mapping")
+            logger.info(
+                "Integration does not exist, Creating new integration with default default mapping"
+            )
             integration = await port_client.create_integration(
                 integration_config.integration.type,
                 integration_config.event_listener.to_request(),
                 port_app_config=default_mapping,
             )
         elif not integration["config"]:
-            logger.info("Encountered that the integration's mapping is empty, Initializing to default mapping")
+            logger.info(
+                "Encountered that the integration's mapping is empty, Initializing to default mapping"
+            )
             integration = await port_client.patch_integration(
                 integration_config.integration.type,
                 integration_config.event_listener.to_request(),
