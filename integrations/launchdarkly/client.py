@@ -47,7 +47,7 @@ class LaunchDarklyClient:
                     endpoint=url, query_params=params
                 )
                 items = response.get("items", [])
-                logger.info(f"Received {kind} batch with {len(items)} items")
+                logger.info(f"Received batch with {len(items)} items")
                 yield items
 
                 if "_links" in response and "next" in response["_links"]:
