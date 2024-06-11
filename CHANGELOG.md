@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.6.0 (2024-06-10)
+
+
+### Improvements
+
+- Changed initialization to always apply default mapping if no other mapping is configured
+
+
+## 0.5.27 (2024-06-05)
+
+
+### Bug Fixes
+
+- Fixed incorrect pydantic validation over the integration settings
+
+
+## 0.5.26 (2024-06-04)
+
+
+### Bug Fixes
+
+- Fixed an issue causing integrations with no configuration to fail during the initialization process
+
+
 ## 0.5.25 (2024-06-03)
 
 

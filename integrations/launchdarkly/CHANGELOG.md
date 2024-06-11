@@ -7,11 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.19 (2024-06-04)
+# Port_Ocean 0.1.21 (2024-06-11)
 
 ### Features
 
 - Added a new blueprint (Feature Flags In Environment) and remodeled entity relationships (PORT-7787)
+
+
+# Port_Ocean 0.1.20 (2024-06-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.6.0 (#1)
+
+
+# Port_Ocean 0.1.19 (2024-06-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.27 (#1)
 
 
 # Port_Ocean 0.1.18 (2024-06-03)
