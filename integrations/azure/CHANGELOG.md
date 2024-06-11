@@ -1,8 +1,15 @@
-0.1.60 (2024-06-09)
+0.1.61 (2024-06-11)
 
 ### Improvements
 
 - Updated spec.yaml indication that saas installation is not supported
+
+
+0.1.60 (2024-06-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.6.0 (#1)
 
 
 0.1.59 (2024-06-05)
