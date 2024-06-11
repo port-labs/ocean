@@ -73,6 +73,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             "describe_images",
             "Images",
             "NextToken",
+            {"Owners": ["self"]},
         ):
             yield batch
 

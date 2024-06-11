@@ -80,13 +80,14 @@ async def batch_resources(
     describe_method: str,
     list_param: str,
     marker_param: str = "NextToken",
+    describe_method_params: dict[str, Any] = {},
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
     next_token = None
     while True:
         async with session.client(service_name) as client:
-            params: dict[str, Any] = {}
+            params: dict[str, Any] = describe_method_params
             if next_token:
                 pointer_param = (
                     marker_param if marker_param == "NextToken" else "Marker"
