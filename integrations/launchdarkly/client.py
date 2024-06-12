@@ -5,6 +5,7 @@ from loguru import logger
 from enum import StrEnum
 import asyncio
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 PAGE_SIZE = 100
 
@@ -154,15 +155,13 @@ class LaunchDarklyClient:
                 self.fetch_statuses_from_environment(environment)
                 for environment in environments
             ]
-            for completed_task in asyncio.as_completed(tasks):
-                batch_statuses = await completed_task
-                yield batch_statuses
+            async for resource_groups_batch in stream_async_iterators_tasks(*tasks):
+                yield resource_groups_batch
 
     async def fetch_statuses_from_environment(
         self, environment: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         resource = f"{environment['__projectKey']}/{environment['key']}"
-        all_statuses = []
         async for statuses in self.get_paginated_resource(
             kind=ObjectKind.FEATURE_FLAG_STATUS, resource_path=resource
         ):
@@ -173,8 +172,7 @@ class LaunchDarklyClient:
                 }
                 for status in statuses
             ]
-            all_statuses.extend(updated_batch)
-        return updated_batch
+            yield updated_batch
 
     async def get_paginated_feature_flags(
         self,
