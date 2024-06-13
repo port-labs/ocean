@@ -7,11 +7,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.7.1 (2024-06-13)
+## 0.7.2 (2024-06-13)
 
 ### Features
 
 - Added validation of whether the integration can run in the desired runtime
+
+
+## 0.7.1 (2024-06-13)
+
+
+### Bug Fixes
+
+- Fixed values unpack error in register_raw
 
 
 ## 0.7.0 (2024-06-13)

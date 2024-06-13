@@ -238,7 +238,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             return []
 
         diffs, errors = zip(
-            await asyncio.gather(
+            *await asyncio.gather(
                 *(
                     self._register_resource_raw(
                         resource, results, user_agent_type, True
@@ -247,6 +247,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
             )
         )
+
+        diffs = list(diffs)
+        errors = sum(errors, [])
 
         if errors:
             message = f"Failed to register {len(errors)} entities. Skipping delete phase due to incomplete state"
