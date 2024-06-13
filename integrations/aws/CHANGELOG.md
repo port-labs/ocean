@@ -13,11 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add support for syncing ACM certificates, AMI images and Cloudformation Stacks
 
-# Port_Ocean 0.1.4 (2024-06-10)
+# Port_Ocean 0.1.5 (2024-06-13)
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.0 (#1)
+
+# Port_Ocean 0.1.4 (2024-06-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.6.0 (#1)
 
 # Port_Ocean 0.1.3 (2024-06-05)
 
