@@ -818,13 +818,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.6.0"
+version = "0.7.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.6.0-py3-none-any.whl", hash = "sha256:7cd7ad0f7759d571b01d6c19db9cd1c13eb64a278cf026d200d12cf5695dd764"},
-    {file = "port_ocean-0.6.0.tar.gz", hash = "sha256:108d8caf2b5b7a519c4b2eda2efe38fc30abde062e48fb3a51d4802918f2c01a"},
+    {file = "port_ocean-0.7.0-py3-none-any.whl", hash = "sha256:3e122fc1e9f3686e9d85a3a0089d7598150212b7c82c742a8dd275cd1e7f03e8"},
+    {file = "port_ocean-0.7.0.tar.gz", hash = "sha256:be9f558fa4952039c2a8c55f0b7793619e968454b4f9035fa1d27026107c9762"},
 ]
 
 [package.dependencies]
@@ -836,7 +836,7 @@ fastapi = ">=0.100,<0.111"
 httpx = ">=0.24.1,<0.28.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
-pydantic = ">=1.10.8,<2.0.0"
+pydantic = {version = ">=1.10.8,<2.0.0", extras = ["dotenv"]}
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
 pyjq = ">=2.6.0,<3.0.0"
@@ -897,6 +897,7 @@ files = [
 ]
 
 [package.dependencies]
+python-dotenv = {version = ">=0.10.4", optional = true, markers = "extra == \"dotenv\""}
 typing-extensions = ">=4.2.0"
 
 [package.extras]
@@ -1427,4 +1428,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "69885eea46927310f2173b7a476a934929adbd273c9e5f3a4778433d7e1d3268"
+content-hash = "f9143a812e78e870afca70eb7dc34431e3ed6f2c5e7cb2d86f2b7a334c5ccfcd"

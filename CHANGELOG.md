@@ -7,11 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.6.1 (2024-05-06)
+## 0.7.1 (2024-06-13)
 
 ### Features
 
-- handle running integration as saas
+- Added validation of whether the integration can run in the desired runtime
+
+
+## 0.7.0 (2024-06-13)
+
+
+### Improvements
+
+- Added pydantic's dotenv extra to the core dependencies for reading .env files on the integration startup
+- Added .python-version to the repository for easier setup with pyenv install
 
 
 ## 0.6.0 (2024-06-10)
