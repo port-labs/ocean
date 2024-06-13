@@ -45,12 +45,6 @@ async def describe_single_resource(
                     resource = response.get("ResourceDescription")
                     return fix_unserializable_date_properties(resource)
             case ResourceKindsWithSpecialHandling.AMI_IMAGE:
-                # async with session.client("imagebuilder") as imagebuilder:
-                #     response = await imagebuilder.get_image(
-                #         ImageBuildVersionArn=f"arn:aws:ec2:{region}:{account_id}:image/{identifier}"
-                #     )
-                #     resource = response.get("Image")
-                #     return fix_unserializable_date_properties(resource)
                 logger.warning(
                     f"Skipping AMI image {identifier} because it's not supported yet"
                 )
@@ -89,6 +83,17 @@ async def batch_resources(
     marker_param: str = "NextToken",
     describe_method_params: dict[str, Any] = {},
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Batch resources from a service that supports pagination
+
+    kind - the kind of resource
+    session - the boto3 session to use
+    service_name - the name of the service
+    describe_method - the name of the method to describe the resource
+    list_param - the name of the parameter that contains the list of resources
+    marker_param - the name of the parameter that contains the next token
+    describe_method_params - additional parameters for the describe method
+    """
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
     next_token = None
