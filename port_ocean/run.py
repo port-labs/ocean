@@ -47,6 +47,11 @@ def run(
         "app", default_app
     )
 
+    current_integration = app.port_client.get_current_integration()
+    current_runtime = current_integration.get("installationType", "OnPrem")
+    if current_integration and current_runtime != runtime:
+        raise Exception(f"Can't run {current_runtime} integration in {runtime} runtime")
+
     # Override config with arguments
     if initialize_port_resources is not None:
         app.config.initialize_port_resources = initialize_port_resources
