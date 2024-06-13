@@ -1,3 +1,4 @@
+import asyncio
 from inspect import getmembers
 from typing import Dict, Any, Type
 
@@ -8,7 +9,7 @@ from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.config.settings import ApplicationSettings, LogLevelType
 from port_ocean.core.defaults.initialize import initialize_defaults
-from port_ocean.core.models import Runtime
+from port_ocean.core.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
@@ -27,7 +28,6 @@ def run(
     path: str = ".",
     log_level: LogLevelType = "INFO",
     port: int = 8000,
-    runtime: Runtime = "OnPrem",
     initialize_port_resources: bool | None = None,
     config_override: Dict[str, Any] | None = None,
 ) -> None:
@@ -47,10 +47,10 @@ def run(
         "app", default_app
     )
 
-    current_integration = app.port_client.get_current_integration()
-    current_runtime = current_integration.get("installationType", "OnPrem")
-    if current_integration and current_runtime != runtime:
-        raise Exception(f"Can't run {current_runtime} integration in {runtime} runtime")
+    # Validate that the current integration's runtime matches the execution parameters
+    asyncio.get_event_loop().run_until_complete(
+        validate_integration_runtime(app.port_client, app.config.runtime)
+    )
 
     # Override config with arguments
     if initialize_port_resources is not None:
