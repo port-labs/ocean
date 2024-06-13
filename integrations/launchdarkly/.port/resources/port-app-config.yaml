@@ -34,7 +34,7 @@ resources:
             customProperties: .customProperties
             archived: .archived
           relations:
-            environments: .environments | keys
+            project: .__projectKey
   - kind: environment
     selector:
       query: "true"
@@ -54,3 +54,17 @@ resources:
             critical: .critical
           relations:
             project: .__projectKey
+  - kind: flag-status
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: . as $root | ._links.self.href | split("/") | last as $last | "\($last)-\($root.__environmentKey)"
+          title: . as $root | ._links.self.href | split("/") | last as $last | "\($last)-\($root.__environmentKey)"
+          blueprint: '"launchDarklyFFInEnvironment"'
+          properties:
+            status: .name
+          relations:
+            environment: .__environmentKey
+            featureFlag: ._links.self.href | split("/") | last
