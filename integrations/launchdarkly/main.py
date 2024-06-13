@@ -17,7 +17,8 @@ async def enrich_resource_with_project(endpoint: str, kind: str) -> dict[str, An
 
     response = await launchdarkly_client.send_api_request(endpoint)
     project_key = endpoint.split(f"/api/v2/{kind}s/")[1].split("/")[0]
-    response.update({"__projectKey": project_key})
+    environment_keys = list(response["environments"].keys())
+    response.update({"__projectKey": project_key, "__environment": environment_keys})
     return response
 
 
@@ -54,16 +55,22 @@ async def on_resync_environments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield environments
 
 
+@ocean.on_resync(kind=ObjectKind.FEATURE_FLAG_STATUS)
+async def on_resync_feature_flag_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    launchdarkly_client = initialize_client()
+    async for (
+        feature_flag_status
+    ) in launchdarkly_client.get_paginated_feature_flag_statuses():
+        logger.info(f"Received {kind} batch with {len(feature_flag_status)} items")
+        yield feature_flag_status
+
+
 @ocean.router.post("/webhook")
 async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     launchdarkly_client = initialize_client()
 
     kind = data["kind"]
-    endpoint = (
-        data["_links"]["canonical"]
-        if kind not in [ObjectKind.AUDITLOG, ObjectKind.PROJECT]
-        else data["_links"]["canonical"]["href"]
-    )
+    endpoint = data["_links"]["canonical"]["href"]
 
     logger.info(f"Received webhook event for {kind}")
     if kind in [ObjectKind.AUDITLOG, ObjectKind.PROJECT]:
@@ -72,8 +79,18 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
 
     elif kind in [ObjectKind.FEATURE_FLAG, ObjectKind.ENVIRONMENT]:
         item = await enrich_resource_with_project(endpoint, kind)
-        await ocean.register_raw(kind, [item])
 
+        await ocean.register_raw(kind=kind, change=[item])
+
+        if kind == ObjectKind.FEATURE_FLAG:
+            await ocean.register_raw(
+                ObjectKind.FEATURE_FLAG_STATUS,
+                [
+                    await launchdarkly_client.get_feature_flag_status(
+                        item["__projectKey"], item["key"]
+                    )
+                ],
+            )
     logger.info("Launchdarkly webhook event processed")
     return {"ok": True}
 

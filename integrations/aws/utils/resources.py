@@ -1,9 +1,11 @@
 import json
-from typing import Any
+from typing import Any, Literal
 
+import aioboto3
 from loguru import logger
 from utils.misc import (
     CustomProperties,
+    ResourceKindsWithSpecialHandling,
 )
 from utils.aws import get_sessions
 
@@ -36,19 +38,87 @@ async def describe_single_resource(
 ) -> dict[str, str]:
     async for session in get_sessions(account_id, region):
         region = session.region_name
-        async with session.client("cloudcontrol") as cloudcontrol:
-            response = await cloudcontrol.get_resource(
-                TypeName=kind, Identifier=identifier
-            )
-            resource_description = response.get("ResourceDescription")
-            serialized = resource_description.copy()
-            serialized.update(
-                {
-                    "Properties": json.loads(resource_description.get("Properties")),
-                }
-            )
-            return serialized
+        match kind:
+            case ResourceKindsWithSpecialHandling.ACM_CERTIFICATE:
+                async with session.client("acm") as acm:
+                    response = await acm.describe_certificate(CertificateArn=identifier)
+                    resource = response.get("ResourceDescription")
+                    return fix_unserializable_date_properties(resource)
+            case ResourceKindsWithSpecialHandling.AMI_IMAGE:
+                logger.warning(
+                    f"Skipping AMI image {identifier} because it's not supported yet"
+                )
+                return {}
+            case ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK:
+                async with session.client("cloudformation") as cloudformation:
+                    response = await cloudformation.describe_stacks(
+                        StackName=identifier
+                    )
+                    stack = response.get("Stacks")[0]
+                    return fix_unserializable_date_properties(stack)
+            case _:
+                async with session.client("cloudcontrol") as cloudcontrol:
+                    response = await cloudcontrol.get_resource(
+                        TypeName=kind, Identifier=identifier
+                    )
+                    resource_description = response.get("ResourceDescription")
+                    serialized = resource_description.copy()
+                    serialized.update(
+                        {
+                            "Properties": json.loads(
+                                resource_description.get("Properties")
+                            ),
+                        }
+                    )
+                    return serialized
     return {}
+
+
+async def batch_resources(
+    kind: str,
+    session: aioboto3.Session,
+    service_name: Literal["acm", "elbv2", "cloudformation", "ec2"],
+    describe_method: str,
+    list_param: str,
+    marker_param: str = "NextToken",
+    describe_method_params: dict[str, Any] = {},
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    Batch resources from a service that supports pagination
+
+    kind - the kind of resource
+    session - the boto3 session to use
+    service_name - the name of the service
+    describe_method - the name of the method to describe the resource
+    list_param - the name of the parameter that contains the list of resources
+    marker_param - the name of the parameter that contains the next token
+    describe_method_params - additional parameters for the describe method
+    """
+    region = session.region_name
+    account_id = await _session_manager.find_account_id_by_session(session)
+    next_token = None
+    while True:
+        async with session.client(service_name) as client:
+            params: dict[str, Any] = describe_method_params
+            if next_token:
+                pointer_param = (
+                    marker_param if marker_param == "NextToken" else "Marker"
+                )
+                params[pointer_param] = next_token
+            response = await getattr(client, describe_method)(**params)
+            next_token = response.get(marker_param)
+            if results := response.get(list_param, []):
+                yield [
+                    {
+                        CustomProperties.KIND: kind,
+                        CustomProperties.ACCOUNT_ID: account_id,
+                        CustomProperties.REGION: region,
+                        **fix_unserializable_date_properties(resource),
+                    }
+                    for resource in results
+                ]
+        if not next_token:
+            break
 
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.6.1"
+version = "0.8.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -36,7 +36,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pydantic = "^1.10.8"
+pydantic = {version = "^1.10.8", extras = ["dotenv"]}
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=2.3.4,<4.0.0"
