@@ -78,6 +78,21 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield batch
 
 
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
+async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
+    async for session in get_sessions():
+        async for batch in batch_resources(
+            kind,
+            session,
+            "cloudformation",
+            "describe_stacks",
+            "Stacks",
+            "NextToken",
+        ):
+            yield batch
+
+
 @ocean.app.fast_api_app.middleware("aws_cloud_event")
 async def cloud_event_validation_middleware_handler(
     request: fastapi.Request,

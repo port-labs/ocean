@@ -55,6 +55,13 @@ async def describe_single_resource(
                     f"Skipping AMI image {identifier} because it's not supported yet"
                 )
                 return {}
+            case ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK:
+                async with session.client("cloudformation") as cloudformation:
+                    response = await cloudformation.describe_stacks(
+                        StackName=identifier
+                    )
+                    stack = response.get("Stacks")[0]
+                    return fix_unserializable_date_properties(stack)
             case _:
                 async with session.client("cloudcontrol") as cloudcontrol:
                     response = await cloudcontrol.get_resource(
