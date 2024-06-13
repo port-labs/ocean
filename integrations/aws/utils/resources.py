@@ -43,18 +43,18 @@ async def describe_single_resource(
                 async with session.client("acm") as acm:
                     response = await acm.describe_certificate(CertificateArn=identifier)
                     resource = response.get("ResourceDescription")
-                    return {
-                        "Properties": fix_unserializable_date_properties(resource),
-                    }
+                    return fix_unserializable_date_properties(resource)
             case ResourceKindsWithSpecialHandling.AMI_IMAGE:
-                async with session.client("imagebuilder") as imagebuilder:
-                    response = await imagebuilder.get_image(
-                        ImageBuildVersionArn=identifier
-                    )
-                    resource = response.get("Image")
-                    return {
-                        "Properties": fix_unserializable_date_properties(resource),
-                    }
+                # async with session.client("imagebuilder") as imagebuilder:
+                #     response = await imagebuilder.get_image(
+                #         ImageBuildVersionArn=f"arn:aws:ec2:{region}:{account_id}:image/{identifier}"
+                #     )
+                #     resource = response.get("Image")
+                #     return fix_unserializable_date_properties(resource)
+                logger.warning(
+                    f"Skipping AMI image {identifier} because it's not supported yet"
+                )
+                return {}
             case _:
                 async with session.client("cloudcontrol") as cloudcontrol:
                     response = await cloudcontrol.get_resource(
@@ -101,7 +101,7 @@ async def batch_resources(
                         CustomProperties.KIND: kind,
                         CustomProperties.ACCOUNT_ID: account_id,
                         CustomProperties.REGION: region,
-                        "Properties": fix_unserializable_date_properties(resource),
+                        **fix_unserializable_date_properties(resource),
                     }
                     for resource in results
                 ]
