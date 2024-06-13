@@ -7,7 +7,7 @@ from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import Entity, Runtime
 from port_ocean.core.models import EntityPortDiff
 from port_ocean.core.ocean_types import RAW_RESULT
-from port_ocean.exceptions.core import RawObjectValidationException
+from port_ocean.exceptions.core import RawObjectValidationException, OceanAbortException
 
 T = TypeVar("T", bound=tuple[list[Any], ...])
 
@@ -36,7 +36,7 @@ async def validate_integration_runtime(
     current_integration = await port_client.get_current_integration()
     current_runtime = current_integration.get("installationType", "OnPrem")
     if current_integration and current_runtime != requested_runtime:
-        raise Exception(
+        raise OceanAbortException(
             f"Can't run {current_runtime} integration in {requested_runtime} runtime"
         )
 
