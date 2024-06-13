@@ -793,13 +793,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.6.0"
+version = "0.7.1"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.6.0-py3-none-any.whl", hash = "sha256:7cd7ad0f7759d571b01d6c19db9cd1c13eb64a278cf026d200d12cf5695dd764"},
-    {file = "port_ocean-0.6.0.tar.gz", hash = "sha256:108d8caf2b5b7a519c4b2eda2efe38fc30abde062e48fb3a51d4802918f2c01a"},
+    {file = "port_ocean-0.7.1-py3-none-any.whl", hash = "sha256:f8b09d56dfa630ae92b72f4b2bc6c9ad03a235b91562a18c0a28c946b3ad17ba"},
+    {file = "port_ocean-0.7.1.tar.gz", hash = "sha256:0e60b00d57d8a5574fdf578fdc1c5f788a53fc3941309ad5d4368485e7046d3b"},
 ]
 
 [package.dependencies]
@@ -811,7 +811,7 @@ fastapi = ">=0.100,<0.111"
 httpx = ">=0.24.1,<0.28.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
-pydantic = ">=1.10.8,<2.0.0"
+pydantic = {version = ">=1.10.8,<2.0.0", extras = ["dotenv"]}
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
 pyjq = ">=2.6.0,<3.0.0"
@@ -872,6 +872,7 @@ files = [
 ]
 
 [package.dependencies]
+python-dotenv = {version = ">=0.10.4", optional = true, markers = "extra == \"dotenv\""}
 typing-extensions = ">=4.2.0"
 
 [package.extras]
@@ -985,6 +986,20 @@ files = [
 
 [package.dependencies]
 six = ">=1.5"
+
+[[package]]
+name = "python-dotenv"
+version = "1.0.1"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca"},
+    {file = "python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"},
+]
+
+[package.extras]
+cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-slugify"
@@ -1383,4 +1398,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "5bd79e22cf475c93acfb917158492314bd8fb1c186d1907392757d06eafe133d"
+content-hash = "09e745fcc597b755d050f0e454aba4d0bfe2877ef4882c8b0a802a80c5901b54"

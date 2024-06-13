@@ -7,6 +7,23 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.7.1 (2024-06-13)
+
+
+### Bug Fixes
+
+- Fixed values unpack error in register_raw
+
+
+## 0.7.0 (2024-06-13)
+
+
+### Improvements
+
+- Added pydantic's dotenv extra to the core dependencies for reading .env files on the integration startup
+- Added .python-version to the repository for easier setup with pyenv install
+
+
 ## 0.6.0 (2024-06-10)
 
 
