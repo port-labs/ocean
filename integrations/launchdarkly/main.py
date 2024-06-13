@@ -17,22 +17,9 @@ async def enrich_resource_with_project(endpoint: str, kind: str) -> dict[str, An
 
     response = await launchdarkly_client.send_api_request(endpoint)
     project_key = endpoint.split(f"/api/v2/{kind}s/")[1].split("/")[0]
-    response.update({"__projectKey": project_key})
+    environment_keys = list(response["environments"].keys())
+    response.update({"__projectKey": project_key, "__environment": environment_keys})
     return response
-
-
-async def enrich_feature_flag_with_status(
-    feature_flag: dict[str, Any]
-) -> dict[str, Any]:
-    projectKey = feature_flag["__projectKey"]
-    featureFlagKey = feature_flag["key"]
-
-    launchdarkly_client = initialize_client()
-    feature_flag_status = await launchdarkly_client.get_feature_flag_status(
-        projectKey, featureFlagKey
-    )
-    feature_flag.update({"__status": feature_flag_status})
-    return feature_flag
 
 
 @ocean.on_resync(kind=ObjectKind.AUDITLOG)
@@ -75,7 +62,6 @@ async def on_resync_feature_flag_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_T
         feature_flag_status
     ) in launchdarkly_client.get_paginated_feature_flag_statuses():
         logger.info(f"Received {kind} batch with {len(feature_flag_status)} items")
-        print(feature_flag_status)
         yield feature_flag_status
 
 
@@ -93,31 +79,19 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
 
     elif kind in [ObjectKind.FEATURE_FLAG, ObjectKind.ENVIRONMENT]:
         item = await enrich_resource_with_project(endpoint, kind)
-        item = (
-            await enrich_feature_flag_with_status(item)
-            if kind == ObjectKind.FEATURE_FLAG
-            else item
-        )
+        print(item)
 
-        await ocean.register_raw(kind, [item])
+        await ocean.register_raw(kind=kind, change=[item])
 
-    elif kind in [ObjectKind.FEATURE_FLAG, ObjectKind.ENVIRONMENT]:
-        item = await enrich_resource_with_project(endpoint, kind)
-        await ocean.register_raw(kind, [item])
-
-        (
+        if kind == ObjectKind.FEATURE_FLAG:
             await ocean.register_raw(
                 ObjectKind.FEATURE_FLAG_STATUS,
                 [
                     await launchdarkly_client.get_feature_flag_status(
-                        item["projectKey"], item["key"]
+                        item["__projectKey"], item["key"]
                     )
                 ],
             )
-            if kind == ObjectKind.FEATURE_FLAG
-            else None
-        )
-
     logger.info("Launchdarkly webhook event processed")
     return {"ok": True}
 
