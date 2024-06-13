@@ -79,7 +79,6 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
 
     elif kind in [ObjectKind.FEATURE_FLAG, ObjectKind.ENVIRONMENT]:
         item = await enrich_resource_with_project(endpoint, kind)
-        print(item)
 
         await ocean.register_raw(kind=kind, change=[item])
 
