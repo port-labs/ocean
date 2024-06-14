@@ -115,15 +115,13 @@ class LaunchDarklyClient:
     async def get_paginated_environments(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        batch_project = [project async for project in self.get_paginated_projects()]
-        tasks = [
-            self.fetch_environments_for_project(project)
-            for projects in batch_project
-            for project in projects
-        ]
-        environments = await asyncio.gather(*tasks)
-        for environment_batch in environments:
-            yield environment_batch
+        async for projects in self.get_paginated_projects():
+            tasks = [
+                self.fetch_environments_for_project(project) for project in projects
+            ]
+            environments = await asyncio.gather(*tasks)
+            for environment_batch in environments:
+                yield environment_batch
 
     async def fetch_environments_for_project(
         self, project: dict[str, Any]
@@ -169,6 +167,7 @@ class LaunchDarklyClient:
                 {
                     **status,
                     "__environmentKey": environment["key"],
+                    "__projectKey": environment["__projectKey"],
                 }
                 for status in statuses
             ]
@@ -177,16 +176,14 @@ class LaunchDarklyClient:
     async def get_paginated_feature_flags(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        batch_project = [project async for project in self.get_paginated_projects()]
-        tasks = [
-            self.fetch_feature_flags_for_project(project)
-            for projects in batch_project
-            for project in projects
-        ]
+        async for projects in self.get_paginated_projects():
+            tasks = [
+                self.fetch_feature_flags_for_project(project) for project in projects
+            ]
 
-        feature_flags_batches = await asyncio.gather(*tasks)
-        for feature_flags in feature_flags_batches:
-            yield feature_flags
+            feature_flags_batches = await asyncio.gather(*tasks)
+            for feature_flags in feature_flags_batches:
+                yield feature_flags
 
     async def fetch_feature_flags_for_project(
         self, project: dict[str, Any]
