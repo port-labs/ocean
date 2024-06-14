@@ -12,14 +12,36 @@ def initialize_client() -> LaunchDarklyClient:
     )
 
 
-async def enrich_resource_with_project(endpoint: str, kind: str) -> dict[str, Any]:
-    launchdarkly_client = initialize_client()
-
-    response = await launchdarkly_client.send_api_request(endpoint)
-    project_key = endpoint.split(f"/api/v2/{kind}s/")[1].split("/")[0]
-    environment_keys = list(response["environments"].keys())
-    response.update({"__projectKey": project_key, "__environment": environment_keys})
+async def enrich_resource_with_project(
+    endpoint: str, kind: str, client: LaunchDarklyClient
+) -> dict[str, Any]:
+    response = await client.send_api_request(endpoint)
+    project_key = (
+        endpoint.split(f"/api/v2/{kind}s/")[1].split("/")[0]
+        if kind == ObjectKind.FEATURE_FLAG
+        else endpoint.split("/api/v2/projects/")[1].split("/")[0]
+    )
+    response.update({"__projectKey": project_key})
     return response
+
+
+async def list_feature_flag_statuses(
+    feature_flag: dict[str, Any], client: LaunchDarklyClient
+) -> list[dict[str, Any]]:
+
+    project_key, feature_flag_key = feature_flag["__projectKey"], feature_flag["key"]
+    response = await client.get_feature_flag_status(project_key, feature_flag_key)
+    environments = response["environments"]
+    response["__projectKey"] = project_key
+
+    enriched_records = []
+    for env_key, env_data in environments.items():
+        record = response.copy()
+        record["__environmentKey"] = env_key
+        record.update(env_data)
+        enriched_records.append(record)
+
+    return enriched_records
 
 
 @ocean.on_resync(kind=ObjectKind.AUDITLOG)
@@ -68,7 +90,6 @@ async def on_resync_feature_flag_statuses(kind: str) -> ASYNC_GENERATOR_RESYNC_T
 @ocean.router.post("/webhook")
 async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     launchdarkly_client = initialize_client()
-
     kind = data["kind"]
     endpoint = data["_links"]["canonical"]["href"]
 
@@ -78,18 +99,15 @@ async def handle_launchdarkly_webhook_request(data: dict[str, Any]) -> dict[str,
         await ocean.register_raw(kind, [item])
 
     elif kind in [ObjectKind.FEATURE_FLAG, ObjectKind.ENVIRONMENT]:
-        item = await enrich_resource_with_project(endpoint, kind)
+        item = await enrich_resource_with_project(endpoint, kind, launchdarkly_client)
 
         await ocean.register_raw(kind=kind, change=[item])
 
         if kind == ObjectKind.FEATURE_FLAG:
+
             await ocean.register_raw(
                 ObjectKind.FEATURE_FLAG_STATUS,
-                [
-                    await launchdarkly_client.get_feature_flag_status(
-                        item["__projectKey"], item["key"]
-                    )
-                ],
+                await list_feature_flag_statuses(item, launchdarkly_client),
             )
     logger.info("Launchdarkly webhook event processed")
     return {"ok": True}
@@ -103,7 +121,7 @@ async def on_start() -> None:
 
     if not ocean.integration_config.get("app_host"):
         logger.warning(
-            "No app host provided, skipping webhook creation. "
+            "No app host provided, skipping webhook creation."
             "Without setting up the webhook, the integration will not export live changes from Launchdarkly"
         )
         return
