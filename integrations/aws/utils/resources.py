@@ -99,9 +99,6 @@ async def batch_resources(
     """
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
-    should_describe_each = typing.cast(
-        AWSResourceConfig, event.resource_config
-    ).selector.describe_resources
     next_token = None
     while True:
         async with session.client(service_name) as client:
@@ -113,27 +110,17 @@ async def batch_resources(
                 params[pointer_param] = next_token
             response = await getattr(client, describe_method)(**params)
             next_token = response.get(marker_param)
-            page = []
             if results := response.get(list_param, []):
-                for resource in results:
-                    serialized = resource.copy()
-                    # if should_describe_each:
-                    #     serialized = await describe_single_resource(
-                    #         kind=kind,
-                    #         identifier=resource.get("Identifier"),
-                    #         account_id=account_id,
-                    #         region=region,
-                    #     )
-                    serialized.update(
-                        {
-                            CustomProperties.KIND: kind,
-                            CustomProperties.ACCOUNT_ID: account_id,
-                            CustomProperties.REGION: region,
-                        }
-                    )
-                    page.append(fix_unserializable_date_properties(serialized))
+                yield [
+                    {
+                        CustomProperties.KIND: kind,
+                        CustomProperties.ACCOUNT_ID: account_id,
+                        CustomProperties.REGION: region,
+                        **fix_unserializable_date_properties(resource),
+                    }
+                    for resource in results
+                ]
 
-                yield page
         if not next_token:
             break
 
