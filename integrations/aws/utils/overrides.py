@@ -3,7 +3,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import Field, validator
+from pydantic import Field
 
 
 class AWSDescribeResourcesSelector(Selector):
