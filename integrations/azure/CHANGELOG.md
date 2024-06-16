@@ -1,3 +1,10 @@
+0.1.64 (2024-06-16)
+
+### Improvements
+
+- Updated spec.yaml indication that saas installation is not supported
+
+
 0.1.63 (2024-06-16)
 
 ### Improvements
