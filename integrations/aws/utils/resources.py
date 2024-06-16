@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any, Literal
 import typing
@@ -149,21 +150,29 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 if not resources:
                     break
                 page_resources = []
+                if use_get_resource_api:
+                    resources = await asyncio.gather(
+                        *(
+                            describe_single_resource(
+                                kind,
+                                instance.get("Identifier"),
+                                account_id=account_id,
+                                region=region,
+                            )
+                            for instance in resources
+                        )
+                    )
+                else:
+                    resources = [
+                        {
+                            "Identifier": instance.get("Identifier"),
+                            "Properties": json.loads(instance.get("Properties")),
+                        }
+                        for instance in resources
+                    ]
+
                 for instance in resources:
                     serialized = instance.copy()
-                    if use_get_resource_api:
-                        serialized = await describe_single_resource(
-                            kind,
-                            instance.get("Identifier"),
-                            account_id=account_id,
-                            region=region,
-                        )
-                    else:
-                        serialized.update(
-                            {
-                                "Properties": json.loads(instance.get("Properties")),
-                            }
-                        )
                     serialized.update(
                         {
                             CustomProperties.KIND: kind,
