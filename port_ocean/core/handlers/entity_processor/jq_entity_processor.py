@@ -71,11 +71,15 @@ class JQEntityProcessor(BaseEntityProcessor):
     async def _search_as_object(
         self, data: dict[str, Any], obj: dict[str, Any]
     ) -> dict[str, Any | None]:
-        search_tasks: dict[str,Task[dict[str,Any | None]] | list[Task[dict[str,Any | None]]]] = {}
+        search_tasks: dict[
+            str, Task[dict[str, Any | None]] | list[Task[dict[str, Any | None]]]
+        ] = {}
         for key, value in obj.items():
-
-            if isinstance(value,list):
-                search_tasks[key] = [asyncio.create_task(self._search_as_object(data,obj)) for obj in value]
+            if isinstance(value, list):
+                search_tasks[key] = [
+                    asyncio.create_task(self._search_as_object(data, obj))
+                    for obj in value
+                ]
 
             elif isinstance(value, dict):
                 search_tasks[key] = asyncio.create_task(
@@ -87,7 +91,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
             try:
-                if isinstance(task,list):
+                if isinstance(task, list):
                     result[key] = [await task for task in task]
                 else:
                     result[key] = await task
