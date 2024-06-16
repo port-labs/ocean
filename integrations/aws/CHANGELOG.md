@@ -7,19 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.8 (2024-06-16)
+# Port_Ocean 0.8.0 (2024-06-16)
 
 ### Improvements
 
 - Bumped ocean version to ^0.8.0 (#1)
-
+- Added support for "describeResource" mapping option (#2)
 
 # Port_Ocean 0.1.7 (2024-06-13)
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.1 (#1)
-
 
 # Port_Ocean 0.1.6 (2024-06-13)
 
