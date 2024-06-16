@@ -1,8 +1,10 @@
 import json
 from typing import Any, Literal
+import typing
 
 import aioboto3
 from loguru import logger
+from port_ocean.context.event import event
 from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
@@ -11,6 +13,7 @@ from utils.aws import get_sessions
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.aws import _session_manager
+from utils.overrides import AWSResourceConfig
 
 
 def is_global_resource(kind: str) -> bool:
@@ -123,6 +126,9 @@ async def batch_resources(
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     is_global = is_global_resource(kind)
+    should_describe_resources = typing.cast(
+        AWSResourceConfig, event.resource_config
+    ).selector.describe_resources
     async for session in get_sessions(None, None, is_global):
         region = session.region_name
         logger.info(f"Resyncing {kind} in region {region}")
