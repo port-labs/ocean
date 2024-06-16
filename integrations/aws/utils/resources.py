@@ -99,6 +99,9 @@ async def batch_resources(
     """
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
+    should_describe_each = typing.cast(
+        AWSResourceConfig, event.resource_config
+    ).selector.describe_resources
     next_token = None
     while True:
         async with session.client(service_name) as client:
@@ -110,23 +113,34 @@ async def batch_resources(
                 params[pointer_param] = next_token
             response = await getattr(client, describe_method)(**params)
             next_token = response.get(marker_param)
+            page = []
             if results := response.get(list_param, []):
-                yield [
-                    {
-                        CustomProperties.KIND: kind,
-                        CustomProperties.ACCOUNT_ID: account_id,
-                        CustomProperties.REGION: region,
-                        **fix_unserializable_date_properties(resource),
-                    }
-                    for resource in results
-                ]
+                for resource in results:
+                    serialized = resource.copy()
+                    # if should_describe_each:
+                    #     serialized = await describe_single_resource(
+                    #         kind=kind,
+                    #         identifier=resource.get("Identifier"),
+                    #         account_id=account_id,
+                    #         region=region,
+                    #     )
+                    serialized.update(
+                        {
+                            CustomProperties.KIND: kind,
+                            CustomProperties.ACCOUNT_ID: account_id,
+                            CustomProperties.REGION: region,
+                        }
+                    )
+                    page.append(fix_unserializable_date_properties(serialized))
+
+                yield page
         if not next_token:
             break
 
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     is_global = is_global_resource(kind)
-    should_describe_resources = typing.cast(
+    should_describe_each = typing.cast(
         AWSResourceConfig, event.resource_config
     ).selector.describe_resources
     async for session in get_sessions(None, None, is_global):
@@ -150,12 +164,24 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 page_resources = []
                 for instance in resources:
                     serialized = instance.copy()
+                    if should_describe_each:
+                        serialized = await describe_single_resource(
+                            kind,
+                            instance.get("Identifier"),
+                            account_id=account_id,
+                            region=region,
+                        )
+                    else:
+                        serialized.update(
+                            {
+                                "Properties": json.loads(instance.get("Properties")),
+                            }
+                        )
                     serialized.update(
                         {
                             CustomProperties.KIND: kind,
                             CustomProperties.ACCOUNT_ID: account_id,
                             CustomProperties.REGION: region,
-                            "Properties": json.loads(instance.get("Properties")),
                         }
                     )
                     page_resources.append(
