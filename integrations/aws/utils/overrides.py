@@ -7,7 +7,7 @@ from pydantic import Field, validator
 
 
 class AWSDescribeResourcesSelector(Selector):
-    describe_resources: bool = Field(alias="describeResources", default=False)
+    use_get_resource_api: bool = Field(alias="useGetResourceAPI", default=False)
 
 
 class AWSResourceConfig(ResourceConfig):

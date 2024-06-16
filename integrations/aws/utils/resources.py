@@ -127,9 +127,9 @@ async def batch_resources(
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     is_global = is_global_resource(kind)
-    should_describe_each = typing.cast(
+    use_get_resource_api = typing.cast(
         AWSResourceConfig, event.resource_config
-    ).selector.describe_resources
+    ).selector.use_get_resource_api
     async for session in get_sessions(None, None, is_global):
         region = session.region_name
         logger.info(f"Resyncing {kind} in region {region}")
@@ -151,7 +151,7 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 page_resources = []
                 for instance in resources:
                     serialized = instance.copy()
-                    if should_describe_each:
+                    if use_get_resource_api:
                         serialized = await describe_single_resource(
                             kind,
                             instance.get("Identifier"),
