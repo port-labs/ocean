@@ -15,6 +15,7 @@ from utils.aws import get_sessions
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.aws import _session_manager
 from utils.overrides import AWSResourceConfig
+from botocore.config import Config as Boto3Config
 
 
 def is_global_resource(kind: str) -> bool:
@@ -25,6 +26,7 @@ def is_global_resource(kind: str) -> bool:
         "waf-regional",
         "iam",
         "organizations",
+        "s3",
     ]
     try:
         service = kind.split("::")[1].lower()
@@ -43,6 +45,22 @@ async def describe_single_resource(
     async for session in get_sessions(account_id, region):
         region = session.region_name
         match kind:
+            case ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER:
+                async with session.client("elbv2") as elbv2:
+                    response = await elbv2.describe_load_balancers(
+                        LoadBalancerArns=[identifier]
+                    )
+                    return fix_unserializable_date_properties(
+                        response.get("LoadBalancers")[0]
+                    )
+            case ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER:
+                async with session.client("elasticache") as elasticache:
+                    response = await elasticache.describe_cache_clusters(
+                        CacheClusterId=identifier
+                    )
+                    return fix_unserializable_date_properties(
+                        response.get("CacheClusters")[0]
+                    )
             case ResourceKindsWithSpecialHandling.ACM_CERTIFICATE:
                 async with session.client("acm") as acm:
                     response = await acm.describe_certificate(CertificateArn=identifier)
@@ -61,7 +79,12 @@ async def describe_single_resource(
                     stack = response.get("Stacks")[0]
                     return fix_unserializable_date_properties(stack)
             case _:
-                async with session.client("cloudcontrol") as cloudcontrol:
+                async with session.client(
+                    "cloudcontrol",
+                    config=Boto3Config(
+                        retries={"max_attempts": 10, "mode": "standard"},
+                    ),
+                ) as cloudcontrol:
                     response = await cloudcontrol.get_resource(
                         TypeName=kind, Identifier=identifier
                     )
@@ -78,14 +101,14 @@ async def describe_single_resource(
     return {}
 
 
-async def batch_resources(
+async def resync_custom_kind(
     kind: str,
     session: aioboto3.Session,
-    service_name: Literal["acm", "elbv2", "cloudformation", "ec2"],
+    service_name: Literal["acm", "elbv2", "cloudformation", "ec2", "elasticache"],
     describe_method: str,
     list_param: str,
-    marker_param: str = "NextToken",
-    describe_method_params: dict[str, Any] = {},
+    marker_param: Literal["NextToken", "Marker"],
+    describe_method_params: dict[str, Any] | None = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Batch resources from a service that supports pagination
@@ -101,14 +124,13 @@ async def batch_resources(
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
     next_token = None
+    if not describe_method_params:
+        describe_method_params = {}
     while True:
         async with session.client(service_name) as client:
             params: dict[str, Any] = describe_method_params
             if next_token:
-                pointer_param = (
-                    marker_param if marker_param == "NextToken" else "Marker"
-                )
-                params[pointer_param] = next_token
+                params[marker_param] = next_token
             response = await getattr(client, describe_method)(**params)
             next_token = response.get(marker_param)
             if results := response.get(list_param, []):
