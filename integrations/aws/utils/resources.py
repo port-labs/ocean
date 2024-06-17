@@ -44,6 +44,22 @@ async def describe_single_resource(
     async for session in get_sessions(account_id, region):
         region = session.region_name
         match kind:
+            case ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER:
+                async with session.client("elbv2") as elbv2:
+                    response = await elbv2.describe_load_balancers(
+                        LoadBalancerArns=[identifier]
+                    )
+                    return fix_unserializable_date_properties(
+                        response.get("LoadBalancers")[0]
+                    )
+            case ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER:
+                async with session.client("elasticache") as elasticache:
+                    response = await elasticache.describe_cache_clusters(
+                        CacheClusterId=identifier
+                    )
+                    return fix_unserializable_date_properties(
+                        response.get("CacheClusters")[0]
+                    )
             case ResourceKindsWithSpecialHandling.ACM_CERTIFICATE:
                 async with session.client("acm") as acm:
                     response = await acm.describe_certificate(CertificateArn=identifier)
