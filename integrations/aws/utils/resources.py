@@ -95,7 +95,7 @@ async def describe_single_resource(
     return {}
 
 
-async def batch_resources(
+async def resync_custom_kind(
     kind: str,
     session: aioboto3.Session,
     service_name: Literal["acm", "elbv2", "cloudformation", "ec2", "elasticache"],

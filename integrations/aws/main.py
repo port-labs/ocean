@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from port_ocean.core.models import Entity
 
 from utils.resources import (
-    batch_resources,
+    resync_custom_kind,
     describe_single_resource,
     fix_unserializable_date_properties,
     resync_cloudcontrol,
@@ -51,7 +51,7 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     async for session in get_sessions():
-        async for batch in batch_resources(
+        async for batch in resync_custom_kind(
             kind,
             session,
             "elasticache",
@@ -66,7 +66,7 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     async for session in get_sessions():
-        async for batch in batch_resources(
+        async for batch in resync_custom_kind(
             kind,
             session,
             "elbv2",
@@ -81,7 +81,7 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     async for session in get_sessions():
-        async for batch in batch_resources(
+        async for batch in resync_custom_kind(
             kind,
             session,
             "acm",
@@ -96,7 +96,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     async for session in get_sessions():
-        async for batch in batch_resources(
+        async for batch in resync_custom_kind(
             kind,
             session,
             "ec2",
@@ -112,7 +112,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     async for session in get_sessions():
-        async for batch in batch_resources(
+        async for batch in resync_custom_kind(
             kind,
             session,
             "cloudformation",
