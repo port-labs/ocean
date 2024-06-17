@@ -101,8 +101,8 @@ async def batch_resources(
     service_name: Literal["acm", "elbv2", "cloudformation", "ec2", "elasticache"],
     describe_method: str,
     list_param: str,
-    marker_param: str = "NextToken",
-    describe_method_params: dict[str, Any] = {},
+    marker_param: Literal["NextToken", "Marker"],
+    describe_method_params: dict[str, Any] | None = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Batch resources from a service that supports pagination
@@ -118,14 +118,13 @@ async def batch_resources(
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
     next_token = None
+    if not describe_method_params:
+        describe_method_params = {}
     while True:
         async with session.client(service_name) as client:
             params: dict[str, Any] = describe_method_params
             if next_token:
-                pointer_param = (
-                    marker_param if marker_param == "NextToken" else "Marker"
-                )
-                params[pointer_param] = next_token
+                params[marker_param] = next_token
             response = await getattr(client, describe_method)(**params)
             next_token = response.get(marker_param)
             if results := response.get(list_param, []):
