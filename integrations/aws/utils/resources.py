@@ -15,6 +15,7 @@ from utils.aws import get_sessions
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.aws import _session_manager
 from utils.overrides import AWSResourceConfig
+from botocore.config import Config as Boto3Config
 
 
 def is_global_resource(kind: str) -> bool:
@@ -78,7 +79,12 @@ async def describe_single_resource(
                     stack = response.get("Stacks")[0]
                     return fix_unserializable_date_properties(stack)
             case _:
-                async with session.client("cloudcontrol") as cloudcontrol:
+                async with session.client(
+                    "cloudcontrol",
+                    config=Boto3Config(
+                        retries={"max_attempts": 10, "mode": "standard"},
+                    ),
+                ) as cloudcontrol:
                     response = await cloudcontrol.get_resource(
                         TypeName=kind, Identifier=identifier
                     )
