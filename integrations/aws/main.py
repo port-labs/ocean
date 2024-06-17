@@ -47,6 +47,36 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield [fix_unserializable_date_properties(account)]
 
 
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
+async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
+    async for session in get_sessions():
+        async for batch in batch_resources(
+            kind,
+            session,
+            "elasticache",
+            "describe_cache_clusters",
+            "CacheClusters",
+            "Marker",
+        ):
+            yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER)
+async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
+    async for session in get_sessions():
+        async for batch in batch_resources(
+            kind,
+            session,
+            "elbv2",
+            "describe_load_balancers",
+            "LoadBalancers",
+            "Marker",
+        ):
+            yield batch
+
+
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM_CERTIFICATE)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()

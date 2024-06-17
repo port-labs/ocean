@@ -25,6 +25,7 @@ def is_global_resource(kind: str) -> bool:
         "waf-regional",
         "iam",
         "organizations",
+        "s3",
     ]
     try:
         service = kind.split("::")[1].lower()
@@ -81,7 +82,7 @@ async def describe_single_resource(
 async def batch_resources(
     kind: str,
     session: aioboto3.Session,
-    service_name: Literal["acm", "elbv2", "cloudformation", "ec2"],
+    service_name: Literal["acm", "elbv2", "cloudformation", "ec2", "elasticache"],
     describe_method: str,
     list_param: str,
     marker_param: str = "NextToken",
