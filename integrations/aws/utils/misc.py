@@ -13,6 +13,8 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     AMI_IMAGE = "AWS::ImageBuilder::Image"
     ACM_CERTIFICATE = "AWS::ACM::Certificate"
     CLOUDFORMATION_STACK = "AWS::CloudFormation::Stack"
+    ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
+    ELBV2_LOAD_BALANCER = "AWS::ELBV2::LoadBalancer"
 
 
 def get_matching_kinds_and_blueprints_from_config(

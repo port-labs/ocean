@@ -8,7 +8,8 @@ features:
       - kind: AWS::S3::Bucket
       - kind: AWS::EC2::Instance
       - kind: AWS::ECS::Cluster
-
+saas:
+  enabled: false
 configurations:
   - name: awsAccessKeyId
     required: false
