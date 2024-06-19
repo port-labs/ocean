@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Change default mapping (#1)
+- Changed default mapping to include describeResources for resources which doesn't include tags by default from cloud control (#1)
 
 # Port_Ocean 0.2.4 (2024-06-17)
 
