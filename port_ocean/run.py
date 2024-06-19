@@ -1,3 +1,4 @@
+import asyncio
 from inspect import getmembers
 from typing import Dict, Any, Type
 
@@ -8,6 +9,7 @@ from port_ocean.bootstrap import create_default_app
 from port_ocean.config.dynamic import default_config_factory
 from port_ocean.config.settings import ApplicationSettings, LogLevelType
 from port_ocean.core.defaults.initialize import initialize_defaults
+from port_ocean.core.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
@@ -43,6 +45,11 @@ def run(
     app_module = load_module(main_path)
     app: Ocean = {name: item for name, item in getmembers(app_module)}.get(
         "app", default_app
+    )
+
+    # Validate that the current integration's runtime matches the execution parameters
+    asyncio.get_event_loop().run_until_complete(
+        validate_integration_runtime(app.port_client, app.config.runtime)
     )
 
     # Override config with arguments
