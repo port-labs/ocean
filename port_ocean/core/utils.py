@@ -1,13 +1,17 @@
 import asyncio
 from typing import Iterable, Any, TypeVar, Callable, Awaitable
 
+from loguru import logger
 from pydantic import parse_obj_as, ValidationError
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import Entity, Runtime
 from port_ocean.core.models import EntityPortDiff
 from port_ocean.core.ocean_types import RAW_RESULT
-from port_ocean.exceptions.core import RawObjectValidationException, OceanAbortException
+from port_ocean.exceptions.core import (
+    RawObjectValidationException,
+    IntegrationRuntimeException,
+)
 
 T = TypeVar("T", bound=tuple[list[Any], ...])
 
@@ -33,11 +37,12 @@ def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
 async def validate_integration_runtime(
     port_client: PortClient, requested_runtime: Runtime
 ) -> None:
+    logger.debug("Validating integration runtime")
     current_integration = await port_client.get_current_integration(should_raise=False)
     current_runtime = current_integration.get("installationType", "OnPrem")
     if current_integration and current_runtime != requested_runtime:
-        raise OceanAbortException(
-            f"Can't run {requested_runtime} integration in {current_runtime} runtime"
+        raise IntegrationRuntimeException(
+            f"Invalid Runtime! Requested to run existing {current_runtime} integration in {requested_runtime} runtime."
         )
 
 
