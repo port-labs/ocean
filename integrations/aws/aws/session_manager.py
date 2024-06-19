@@ -38,6 +38,8 @@ class SessionManager:
         it will assume the role specified in the configuration to read all the organization accounts,
         and then assume the role in each account to get the credentials required to interact with AWS services.
         """
+        self._aws_accessible_accounts = []
+        self._aws_credentials = []
         application_credentials = await self._get_application_credentials()
         await application_credentials.update_enabled_regions()
         self._application_account_id = application_credentials.account_id
