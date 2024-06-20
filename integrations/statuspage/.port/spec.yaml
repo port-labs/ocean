@@ -1,4 +1,4 @@
-description: statuspage integration for Port Ocean
+description: Statuspage integration for Port Ocean
 icon: Cookiecutter
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/statuspage
 features:
@@ -14,7 +14,7 @@ configurations:
   - name: appHost
     required: false
     type: url
-    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Linear"
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Statuspage"
   - name: statuspageApiKey
     required: true
     type: string

@@ -26,7 +26,7 @@ def init_client() -> StatusPageClient:
 async def resync_statuspage(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
     pages = await client.get_pages()
-    logger.info(f"Received pages batch with {len(pages)} pages")
+    logger.info(f"Found {len(pages)} status pages")
     yield pages
 
 

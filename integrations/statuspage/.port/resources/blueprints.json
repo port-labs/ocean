@@ -255,13 +255,27 @@
         "status": {
           "type": "string",
           "title": "Current Status",
-          "enum": ["investigating", "identified", "monitoring", "resolved", "postmortem"],
+          "enum": [
+            "investigating",
+            "identified",
+            "monitoring",
+            "resolved",
+            "postmortem",
+            "scheduled",
+            "in_progress",
+            "verifying",
+            "completed"
+          ],
           "enumColors": {
             "investigating": "blue",
             "identified": "orange",
             "monitoring": "yellow",
             "resolved": "green",
-            "postmortem": "purple"
+            "postmortem": "purple",
+            "scheduled": "lightGray",
+            "in_progress": "blue",
+            "verifying": "yellow",
+            "completed": "green"
           },
           "description": "Current status of the incident."
         },
@@ -396,7 +410,19 @@
         }
       }
     },
-    "calculationProperties": {},
+    "calculationProperties": {
+      "category": {
+        "title": "Category",
+        "description": "Category of Incident",
+        "calculation": ".properties | .status as $status | if ($status | IN(\"scheduled\", \"in_progress\", \"verifying\", \"completed\")) then \"maintainance\" else \"incident\" end",
+        "type": "string",
+        "colorized": true,
+        "colors": {
+          "maintainance": "bronze",
+          "incident": "red"
+        }
+      }
+    },
     "relations": {
       "components": {
         "target": "statuspageComponent",
@@ -422,13 +448,27 @@
         "status": {
           "type": "string",
           "title": "Update Status",
-          "enum": ["investigating", "identified", "monitoring", "resolved", "postmortem"],
+          "enum": [
+            "investigating",
+            "identified",
+            "monitoring",
+            "resolved",
+            "postmortem",
+            "scheduled",
+            "in_progress",
+            "verifying",
+            "completed"
+          ],
           "enumColors": {
             "investigating": "blue",
             "identified": "orange",
             "monitoring": "yellow",
             "resolved": "green",
-            "postmortem": "purple"
+            "postmortem": "purple",
+            "scheduled": "lightGray",
+            "in_progress": "blue",
+            "verifying": "yellow",
+            "completed": "green"
           },
           "description": "The status of the incident at the time of the update."
         },
@@ -472,6 +512,17 @@
       }
     },
     "calculationProperties": {
+      "category": {
+        "title": "Category",
+        "description": "Category of Incident",
+        "calculation": ".properties | .status as $status | if ($status | IN(\"scheduled\", \"in_progress\", \"verifying\", \"completed\")) then \"maintainance\" else \"incident\" end",
+        "type": "string",
+        "colorized": true,
+        "colors": {
+          "maintainance": "bronze",
+          "incident": "red"
+        }
+      }
     },
     "relations": {
       "incident": {
