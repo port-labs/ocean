@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.0 (2024-06-19)
+
+
+### Features
+
+- Added validation of whether the integration can run in the desired runtime
+
+
+## 0.8.0 (2024-06-16)
+
+
+### Improvements
+
+- Add search relation support (Allow to to run a search query to find the relation to the entity as part of the mapping)
+
+
 ## 0.7.1 (2024-06-13)
 
 

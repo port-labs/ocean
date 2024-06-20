@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.24 (2024-06-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.0 (#1)
+
+
+# Port_Ocean 0.1.23 (2024-06-16)
+
+### Improvements
+
+- Updated spec.yaml indication that saas installation is not supported
+
+
+# Port_Ocean 0.1.22 (2024-06-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.8.0 (#1)
+
+
 # Port_Ocean 0.1.21 (2024-06-13)
 
 ### Improvements
