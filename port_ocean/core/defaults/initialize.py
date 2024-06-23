@@ -89,8 +89,8 @@ async def _initialize_required_integration_settings(
         "changelog_destination"
     )
     if (
-        integration["changelogDestination"] != changelog_destination
-        or integration["installationAppType"] != integration_config.integration.type
+        integration.get("changelogDestination") != changelog_destination
+        or integration.get("installationAppType") != integration_config.integration.type
         or integration.get("version") != port_client.integration_version
     ):
         await port_client.patch_integration(
