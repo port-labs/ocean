@@ -5,8 +5,18 @@ features:
     section: Cloud Providers
 saas:
   enabled: false
-configurations: []
+configurations:
+  - name: encodedADCConfiguration
+    type: string
+    require: false
+    description: Base64 encoding of your Google Cloud's ADC Credentials configuration file
+deploymentMethodRequirements:
+  - type: default
+    configurations: ['encodedADCConfiguration']
 deploymentMethodOverride:
+  - type: helm
+  - type: docker
+  - type: githubWorkflow
   - type: terraform-gcp
     module: port-labs/integration-factory/ocean
     example: gcp_integration_with_real_time

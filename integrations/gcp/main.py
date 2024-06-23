@@ -1,4 +1,7 @@
+import base64
 import http
+import os
+import tempfile
 import typing
 
 from fastapi import Request, Response
@@ -43,6 +46,21 @@ def _resolve_resync_method_for_resource(
             return search_all_projects()
         case _:
             return iterate_per_available_project(search_all_resources, asset_type=kind)
+
+
+@ocean.on_start()
+async def setup_application_default_credentials() -> None:
+    if not ocean.integration_config["encoded_adc_configuration"]:
+        logger.info("Using integration's environment Application Default Credentials configuration")
+        return
+    b64_credentials = ocean.integration_config["encoded_adc_configuration"]
+    credentials_json = base64.b64decode(b64_credentials).decode("utf-8")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
+        temp_file.write(credentials_json.encode("utf-8"))
+        credentials_path = temp_file.name
+
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+    logger.info("Created Application Default Credentials configuration")
 
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.FOLDER)
