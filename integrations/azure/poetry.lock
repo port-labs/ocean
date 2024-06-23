@@ -1450,13 +1450,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.5.25"
+version = "0.9.1"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.5.25-py3-none-any.whl", hash = "sha256:fbd4959a685e734a51593296c7386d101df225a0e996f202c2f23fc4ec82973d"},
-    {file = "port_ocean-0.5.25.tar.gz", hash = "sha256:98f31fad277186a095438ca685c7ee0bd2437a76dcd5c1577f4c6b8e1655e020"},
+    {file = "port_ocean-0.9.1-py3-none-any.whl", hash = "sha256:ead27b47816355b52a2316d54ee190d2a4200a5c708befcd691ce69319268947"},
+    {file = "port_ocean-0.9.1.tar.gz", hash = "sha256:12636b6214d69182aff3d3e1a4db2ae889d13a40d099fea816a1249b8b8fbebf"},
 ]
 
 [package.dependencies]
@@ -1468,7 +1468,7 @@ fastapi = ">=0.100,<0.111"
 httpx = ">=0.24.1,<0.28.0"
 jinja2-time = {version = ">=0.2.0,<0.3.0", optional = true, markers = "extra == \"cli\""}
 loguru = ">=0.7.0,<0.8.0"
-pydantic = ">=1.10.8,<2.0.0"
+pydantic = {version = ">=1.10.8,<2.0.0", extras = ["dotenv"]}
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
 pyjq = ">=2.6.0,<3.0.0"
@@ -1559,6 +1559,7 @@ files = [
 ]
 
 [package.dependencies]
+python-dotenv = {version = ">=0.10.4", optional = true, markers = "extra == \"dotenv\""}
 typing-extensions = ">=4.2.0"
 
 [package.extras]
@@ -1693,6 +1694,20 @@ files = [
 
 [package.dependencies]
 six = ">=1.5"
+
+[[package]]
+name = "python-dotenv"
+version = "1.0.1"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "python-dotenv-1.0.1.tar.gz", hash = "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca"},
+    {file = "python_dotenv-1.0.1-py3-none-any.whl", hash = "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"},
+]
+
+[package.extras]
+cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-slugify"
@@ -2240,4 +2255,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "53fc1bc5576fd0a5c81f1c03ac5027a5eb1364896c2f5dce1b96e5c4746596d5"
+content-hash = "be7332a91ec4731be15f6dd4719d38e8d3ac03854d4f248ad992f1a7d75463f3"
