@@ -1,14 +1,13 @@
 from typing import Any, Literal
 
+from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
+from port_ocean.core.event_listener import EventListenerSettingsType
+from port_ocean.utils.misc import get_integration_name
 from pydantic import Extra, AnyHttpUrl, parse_obj_as
 from pydantic.class_validators import root_validator
 from pydantic.env_settings import InitSettingsSource, EnvSettingsSource, BaseSettings
 from pydantic.fields import Field
 from pydantic.main import BaseModel
-
-from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
-from port_ocean.core.event_listener import EventListenerSettingsType
-from port_ocean.utils.misc import get_integration_name
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
@@ -42,8 +41,8 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
-    identifier: str = Field(..., min_length=1)
-    type: str = Field(..., min_length=1)
+    identifier: str
+    type: str
     config: dict[str, Any] | BaseModel = Field(default_factory=dict)
 
     @root_validator(pre=True)
