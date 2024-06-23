@@ -19,7 +19,7 @@ def _get_default_config_factory() -> None | Type[BaseModel]:
     spec = get_spec_file()
     config_factory = None
     if spec is not None:
-        config_factory = default_config_factory(spec.get("configurations", []))
+        config_factory = default_config_factory(spec.get("configurations", []), spec.get("deploymentMethodRequirements", []))
 
     return config_factory
 
