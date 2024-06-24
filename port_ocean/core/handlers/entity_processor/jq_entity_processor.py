@@ -4,6 +4,7 @@ from asyncio import Task
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Optional
+from uuid import uuid4
 
 import pyjq as jq  # type: ignore
 from loguru import logger
@@ -47,19 +48,53 @@ class JQEntityProcessor(BaseEntityProcessor):
         return jq.compile(pattern)
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
+        identifier = str(uuid4())
         try:
             loop = asyncio.get_event_loop()
+            logger.info(
+                f"__COMPILING__ jq execution with pattern: {pattern}. trace-id: {identifier}"
+            )
             compiled_pattern = self._compile(pattern)
             first_value_callable = functools.partial(compiled_pattern.first, data)
-            return await loop.run_in_executor(None, first_value_callable)
-        except Exception:
+            logger.info(
+                f"__STARTING__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier}"
+            )
+            result = await loop.run_in_executor(None, first_value_callable)
+            logger.info(
+                f"__FINISHED__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier} \n"
+                f"Result {result}"
+            )
+            return result
+        except Exception as e:
+            logger.error(
+                f"__FAILED__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier} \n"
+                f"Error {e}"
+            )
             return None
 
     async def _search_as_bool(self, data: dict[str, Any], pattern: str) -> bool:
         loop = asyncio.get_event_loop()
-        compiled_pattern = self._compile(pattern)
-        first_value_callable = functools.partial(compiled_pattern.first, data)
-        value = await loop.run_in_executor(None, first_value_callable)
+        identifier = str(uuid4())
+        try:
+            logger.info(
+                f"__COMPILING_BOOL__ jq execution with pattern: {pattern}. trace-id: {identifier}"
+            )
+            compiled_pattern = self._compile(pattern)
+            first_value_callable = functools.partial(compiled_pattern.first, data)
+            logger.info(
+                f"__STARTING_BOOL__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier}"
+            )
+            value = await loop.run_in_executor(None, first_value_callable)
+            logger.info(
+                f"__FINISHED_BOOL__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier} \n"
+                f"Result {value}"
+            )
+        except Exception as e:
+            logger.error(
+                f"__FAILED_BOOL__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier} \n"
+                f"Error {e}"
+            )
+            raise
 
         if isinstance(value, bool):
             return value
