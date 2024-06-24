@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added new installation methods to the AWS integration (#1)
+- Added support for default installation methods ( Helm, docker, githubworkflow and gitlabCI ) to improve ease of use (#1)
 
 
 # Port_Ocean 0.2.7 (2024-06-23)
