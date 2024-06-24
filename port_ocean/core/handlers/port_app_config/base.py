@@ -32,7 +32,8 @@ class PortAppConfigCache:
     @property
     def is_cache_invalid(self) -> bool:
         return (
-            not self._port_app_config
+            not getattr(self, '_port_app_config')
+            or not self._port_app_config
             or self._retrieval_time + self._cache_ttl < get_time()
         )
 
