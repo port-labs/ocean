@@ -51,7 +51,9 @@ def _resolve_resync_method_for_resource(
 @ocean.on_start()
 async def setup_application_default_credentials() -> None:
     if not ocean.integration_config["encoded_adc_configuration"]:
-        logger.info("Using integration's environment Application Default Credentials configuration")
+        logger.info(
+            "Using integration's environment Application Default Credentials configuration"
+        )
         return
     b64_credentials = ocean.integration_config["encoded_adc_configuration"]
     credentials_json = base64.b64decode(b64_credentials).decode("utf-8")
