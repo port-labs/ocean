@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.8 (2024-06-23)
+
+### Improvements
+
+- Added new installation methods to the AWS integration (#1)
+
+
 # Port_Ocean 0.2.7 (2024-06-23)
 
 ### Improvements
