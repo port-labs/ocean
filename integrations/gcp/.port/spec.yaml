@@ -9,7 +9,7 @@ configurations:
   - name: encodedADCConfiguration
     type: string
     require: false
-    description: Base64 encoding of your Google Cloud's ADC Credentials configuration file
+    description: Base64 encoding of your Google Cloud's ADC Credentials configuration file. Follow https://cloud.google.com/docs/authentication/provide-credentials-adc to learn more.
 deploymentMethodRequirements:
   - type: default
     configurations: ['encodedADCConfiguration']
