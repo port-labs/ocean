@@ -5,10 +5,9 @@ from typing import Any, Optional, AsyncGenerator, cast
 import httpx
 from loguru import logger
 
-from integration import SonarQubeIssueResourceConfig, SonarQubeProjectResourceConfig
-
-from port_ocean.utils import http_async_client
+from integration import SonarQubeIssueResourceConfig, CustomSelector
 from port_ocean.context.event import event
+from port_ocean.utils import http_async_client
 
 
 class Endpoints:
@@ -159,10 +158,10 @@ class SonarQubeClient:
             )
         if api_query_params:
             query_params.update(api_query_params)
-        else:
-            selector = cast(
-                SonarQubeProjectResourceConfig, event.resource_config
-            ).selector
+        elif event.resource_config:
+            # This might be called from places where event.resource_config is not set
+            # like on_start() when creating webhooks
+            selector = cast(CustomSelector, event.resource_config.selector)
             query_params.update(selector.generate_request_params())
 
         try:

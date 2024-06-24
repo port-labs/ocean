@@ -39,7 +39,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all lint lint/integrations lint/all build run new test clean
+.SILENT: install install/all lint build run new test clean
 
 
 # Install dependencies
@@ -68,24 +68,6 @@ install/all: install
 lint:
 	$(ACTIVATE) && \
 	$(call run_checks,.)
-
-lint/integrations:
-	$(ACTIVATE) && \
-	exit_code=0; \
-	for dir in $(wildcard $(CURDIR)/integrations/*); do \
-		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
-		if [ $$count -ne 0 ]; then \
-			echo "Linting $$dir"; \
-		  	cd $$dir; \
-			$(MAKE) lint || exit_code=$$?; \
-			cd ../..; \
-		fi; \
-    done; \
-    if [ $$exit_code -ne 0 ]; then \
-        exit 1; \
-    fi
-
-lint/all: lint lint/integrations
 
 # Development commands
 build: 

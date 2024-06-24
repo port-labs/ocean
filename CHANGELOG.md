@@ -7,6 +7,92 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.1 (2024-06-23)
+
+
+### Bug Fixes
+
+- Safely get changelogDestination key instead of accessing it directly 
+
+
+## 0.9.0 (2024-06-19)
+
+
+### Features
+
+- Added validation of whether the integration can run in the desired runtime
+
+
+## 0.8.0 (2024-06-16)
+
+
+### Improvements
+
+- Add search relation support (Allow to to run a search query to find the relation to the entity as part of the mapping)
+
+
+## 0.7.1 (2024-06-13)
+
+
+### Bug Fixes
+
+- Fixed values unpack error in register_raw
+
+
+## 0.7.0 (2024-06-13)
+
+
+### Improvements
+
+- Added pydantic's dotenv extra to the core dependencies for reading .env files on the integration startup
+- Added .python-version to the repository for easier setup with pyenv install
+
+
+## 0.6.0 (2024-06-10)
+
+
+### Improvements
+
+- Changed initialization to always apply default mapping if no other mapping is configured
+
+
+## 0.5.27 (2024-06-05)
+
+
+### Bug Fixes
+
+- Fixed incorrect pydantic validation over the integration settings
+
+
+## 0.5.26 (2024-06-04)
+
+
+### Bug Fixes
+
+- Fixed an issue causing integrations with no configuration to fail during the initialization process
+
+
+## 0.5.25 (2024-06-03)
+
+
+### Bug Fixes
+
+- Fixed faulty error handling caused by gather_and_split_errors_from_results raising errors that are not directly under BaseException (#1)
+
+
+## 0.5.24 (2024-06-02)
+
+
+### Improvements
+
+- Improved exception propagation for the entity processing (#1)
+- QOL utility (`core.utils.gather_and_split_errors_from_results`) for when calling `asyncio.gather` with the `return_exceptions` parameter set to `True` and there is need for separating the errors from the data itself (#2)
+
+### Bug Fixes
+
+- Fixed unhandled exceptions caused by the entity parsing, resulting in the integration freezing (#1)
+
+
 ## 0.5.23 (2024-05-30)
 
 ### Improvements

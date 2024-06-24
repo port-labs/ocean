@@ -145,7 +145,7 @@ The following resources are supported:
   {
     "identifier": "myBlueprint",
     "title": "My Blueprint",
-    "icon": "Service",
+    "icon": "Microservice",
     "schema": {
       "properties": {
         "myProp": {

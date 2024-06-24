@@ -1,28 +1,14 @@
 from abc import abstractmethod
-from dataclasses import dataclass, field
 
 from loguru import logger
 
 from port_ocean.core.handlers.base import BaseHandler
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import (
     RAW_ITEM,
+    CalculationResult,
     EntitySelectorDiff,
 )
-
-
-@dataclass
-class EntityPortDiff:
-    """Represents the differences between entities for porting.
-
-    This class holds the lists of deleted, modified, and created entities as part
-    of the porting process.
-    """
-
-    deleted: list[Entity] = field(default_factory=list)
-    modified: list[Entity] = field(default_factory=list)
-    created: list[Entity] = field(default_factory=list)
 
 
 class BaseEntityProcessor(BaseHandler):
@@ -41,7 +27,7 @@ class BaseEntityProcessor(BaseHandler):
         raw_data: list[RAW_ITEM],
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
-    ) -> EntitySelectorDiff:
+    ) -> CalculationResult:
         pass
 
     async def parse_items(
@@ -50,7 +36,7 @@ class BaseEntityProcessor(BaseHandler):
         raw_data: list[RAW_ITEM],
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
-    ) -> EntitySelectorDiff:
+    ) -> CalculationResult:
         """Public method to parse raw entity data and map it to an EntityDiff.
 
         Args:
@@ -63,6 +49,9 @@ class BaseEntityProcessor(BaseHandler):
             EntityDiff: The parsed entity differences.
         """
         with logger.contextualize(kind=mapping.kind):
+            if not raw_data:
+                return CalculationResult(EntitySelectorDiff([], []), [])
+
             return await self._parse_items(
                 mapping, raw_data, parse_all, send_raw_data_examples_amount
             )

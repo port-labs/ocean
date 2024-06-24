@@ -11,13 +11,15 @@ features:
       - kind: storageAccount
       - kind: virtualMachine
       - kind: storageContainer
+saas:
+  enabled: false
 configurations: []
 deploymentMethodOverride:
   - type: terraform
     module: port-labs/integration-factory/ocean
     example: azure_container_app_azure_integration
     title: Azure Container App
-    version: ">=0.0.17"
+    version: ">=0.0.25"
     extraVars:
       - name: event_grid_system_topic_name
         description: The name of the event grid system topic of type Microsoft.Resources.Subscriptions to use to receive events from Azure. If not set, a new topic will be created. Note that Azure supports only one Microsoft.Resources.Subscriptions topic in account.

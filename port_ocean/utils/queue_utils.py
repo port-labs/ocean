@@ -11,14 +11,18 @@ async def _start_processor_worker(
     queue: Queue[Any | None],
     func: Callable[..., Coroutine[Any, Any, T]],
     results: list[T],
+    errors: list[Exception],
 ) -> None:
     while True:
-        raw_params = await queue.get()
         try:
+            raw_params = await queue.get()
             if raw_params is None:
                 return
-            logger.debug(f"Processing {raw_params[0]}")
+            logger.debug("Processing async task")
             results.append(await func(*raw_params))
+        except Exception as e:
+            logger.error(f"Error processing task: {e}")
+            errors.append(e)
         finally:
             queue.task_done()
 
@@ -59,11 +63,12 @@ async def process_in_queue(
     queue: Queue[Any | None] = Queue(maxsize=concurrency * 2)
     tasks: list[Task[Any]] = []
     processing_results: list[T] = []
+    errors: list[Exception] = []
 
     for i in range(concurrency):
         tasks.append(
             asyncio.create_task(
-                _start_processor_worker(queue, func, processing_results)
+                _start_processor_worker(queue, func, processing_results, errors)
             )
         )
 
@@ -77,5 +82,7 @@ async def process_in_queue(
 
     await queue.join()
     await asyncio.gather(*tasks)
+    if errors:
+        raise ExceptionGroup("Error processing tasks", errors)
 
     return processing_results
