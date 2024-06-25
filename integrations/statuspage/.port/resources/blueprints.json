@@ -402,11 +402,6 @@
           "type": "boolean",
           "title": "Postmortem Notified Twitter",
           "description": "Whether the postmortem was announced on Twitter."
-        },
-        "pageId": {
-          "type": "string",
-          "title": "Page ID",
-          "description": "The ID of the Statuspage where the incident occurred."
         }
       }
     },
