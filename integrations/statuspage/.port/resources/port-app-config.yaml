@@ -97,7 +97,6 @@ resources:
             postmortem_published_at: .postmortem_published_at
             postmortem_notified_subscribers: .postmortem_notified_subscribers
             postmortem_notified_twitter: .postmortem_notified_twitter
-  
           relations:
             components: "[.components[].id]"
             statuspage: .page_id
