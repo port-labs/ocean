@@ -8,8 +8,13 @@ class CustomProperties(enum.StrEnum):
     REGION = "__Region"
 
 
-class ResourceKinds(enum.StrEnum):
+class ResourceKindsWithSpecialHandling(enum.StrEnum):
     ACCOUNT = "AWS::Organizations::Account"
+    AMI_IMAGE = "AWS::ImageBuilder::Image"
+    ACM_CERTIFICATE = "AWS::ACM::Certificate"
+    CLOUDFORMATION_STACK = "AWS::CloudFormation::Stack"
+    ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
+    ELBV2_LOAD_BALANCER = "AWS::ELBV2::LoadBalancer"
 
 
 def get_matching_kinds_and_blueprints_from_config(

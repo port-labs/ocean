@@ -66,12 +66,6 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
 
         await self.initialize_handlers()
 
-        logger.info("Initializing integration at port")
-        await self.context.port_client.initialize_integration(
-            self.context.config.integration.type,
-            self.context.config.event_listener.to_request(),
-        )
-
         self.started = True
 
         async with event_context(

@@ -11,6 +11,8 @@ features:
       - kind: storageAccount
       - kind: virtualMachine
       - kind: storageContainer
+saas:
+  enabled: false
 configurations: []
 deploymentMethodOverride:
   - type: terraform
