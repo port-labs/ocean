@@ -3,7 +3,7 @@ deleteDependentEntities: true
 resources:
   - kind: project
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
@@ -14,11 +14,11 @@ resources:
             tags: .tags
   - kind: flag
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
-          identifier: .key
+          identifier: .key + "-" + .__projectKey
           title: .name
           blueprint: '"launchDarklyFeatureFlag"'
           properties:
@@ -34,14 +34,14 @@ resources:
             customProperties: .customProperties
             archived: .archived
           relations:
-            environments: .environments | keys
+            project: .__projectKey
   - kind: environment
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
-          identifier: .key
+          identifier: .key + "-" + .__projectKey
           title: .name
           blueprint: '"launchDarklyEnvironment"'
           properties:
@@ -54,3 +54,21 @@ resources:
             critical: .critical
           relations:
             project: .__projectKey
+  - kind: flag-status
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            . as $root | ._links.self.href | split("/") | last as $last |
+            "\($last)-\($root.__environmentKey)"
+          title: >-
+            . as $root | ._links.self.href | split("/") | last as $last |
+            "\($last)-\($root.__environmentKey)"
+          blueprint: '"launchDarklyFFInEnvironment"'
+          properties:
+            status: .name
+          relations:
+            environment: .__environmentKey + "-" + .__projectKey
+            featureFlag: . as $input | $input._links.self.href | split("/") | .[-1] + "-" + $input.__projectKey

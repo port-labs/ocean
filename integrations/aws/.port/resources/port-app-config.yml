@@ -18,6 +18,7 @@ resources:
   - kind: AWS::S3::Bucket
     selector:
       query: 'true'
+      useGetResource: 'true'
     port:
       entity:
         mappings:
@@ -52,10 +53,11 @@ resources:
   - kind: AWS::ECS::Cluster
     selector:
       query: 'true'
+      useGetResource: 'true'
     port:
       entity:
         mappings:
-          identifier: .Identifier
+          identifier: .Properties.Arn
           title: .Identifier
           blueprint: '"cloudResource"'
           properties:

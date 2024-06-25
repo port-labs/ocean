@@ -11,6 +11,8 @@ features:
       - kind: deployment-history
       - kind: kubernetes-resource
       - kind: managed-resource
+saas:
+  enabled: false
 configurations:
   - name: token
     required: true

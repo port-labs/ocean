@@ -33,3 +33,7 @@ class IntegrationAlreadyStartedException(BaseOceanException):
 
 class IntegrationNotStartedException(BaseOceanException):
     pass
+
+
+class IntegrationRuntimeException(BaseOceanException):
+    pass

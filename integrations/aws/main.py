@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from port_ocean.core.models import Entity
 
 from utils.resources import (
+    resync_custom_kind,
     describe_single_resource,
     fix_unserializable_date_properties,
     resync_cloudcontrol,
@@ -16,6 +17,7 @@ from utils.resources import (
 
 from utils.aws import (
     describe_accessible_accounts,
+    get_sessions,
     update_available_access_credentials,
     validate_request,
 )
@@ -25,24 +27,100 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
-    ResourceKinds,
+    ResourceKindsWithSpecialHandling,
 )
 
 
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind == ResourceKinds.ACCOUNT:
+    if kind in iter(ResourceKindsWithSpecialHandling):
         return
     await update_available_access_credentials()
     async for batch in resync_cloudcontrol(kind):
         yield batch
 
 
-@ocean.on_resync(kind=ResourceKinds.ACCOUNT)
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
 async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     for account in describe_accessible_accounts():
         yield [fix_unserializable_date_properties(account)]
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
+async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
+    async for session in get_sessions():
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "elasticache",
+            "describe_cache_clusters",
+            "CacheClusters",
+            "Marker",
+        ):
+            yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER)
+async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
+    async for session in get_sessions():
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "elbv2",
+            "describe_load_balancers",
+            "LoadBalancers",
+            "Marker",
+        ):
+            yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM_CERTIFICATE)
+async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
+    async for session in get_sessions():
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "acm",
+            "list_certificates",
+            "CertificateSummaryList",
+            "NextToken",
+        ):
+            yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
+async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
+    async for session in get_sessions():
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "ec2",
+            "describe_images",
+            "Images",
+            "NextToken",
+            {"Owners": ["self"]},
+        ):
+            yield batch
+
+
+@ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
+async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    await update_available_access_credentials()
+    async for session in get_sessions():
+        async for batch in resync_custom_kind(
+            kind,
+            session,
+            "cloudformation",
+            "describe_stacks",
+            "Stacks",
+            "NextToken",
+        ):
+            yield batch
 
 
 @ocean.app.fast_api_app.middleware("aws_cloud_event")
