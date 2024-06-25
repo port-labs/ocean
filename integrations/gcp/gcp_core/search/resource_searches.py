@@ -1,4 +1,5 @@
 from typing import Any
+import typing
 
 from google.api_core.exceptions import NotFound, PermissionDenied
 from google.cloud.asset_v1 import (
@@ -18,35 +19,29 @@ from port_ocean.utils.cache import cache_iterator_result
 from gcp_core.errors import ResourceNotFoundError
 from gcp_core.utils import (
     EXTRA_PROJECT_FIELD,
+    AssetData,
     AssetTypesWithSpecialHandling,
     parse_protobuf_message,
     parse_protobuf_messages,
+    parse_latest_resource_from_asset,
 )
 
 
 async def search_all_resources(
     project_data: dict[str, Any], asset_type: str
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    project_name = project_data["name"]
-    async for resources in search_all_resources_in_project(project_name, asset_type):
+    async for resources in search_all_resources_in_project(project_data, asset_type):
         yield resources
 
 
 async def search_all_resources_in_project(
-    project_name: str, asset_type: str, asset_name: str | None = None
+    project: dict[str, Any], asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
     Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
-    The format to get the most updated value of a resource's property in the port app config is:
-
-        .versioned_resources | max_by(.version).resource | <resource_property>
-
-    for example, to get the object retention load of a bucket the currect way of getting that is:
-
-        .versioned_resources | max_by(.version).resource | .objectRetention.mode
-
     """
+    project_name = project["name"]
     logger.info(f"Searching all {asset_type}'s in project {project_name}")
     async with AssetServiceAsyncClient() as async_assets_client:
         search_all_resources_request = {
@@ -63,10 +58,16 @@ async def search_all_resources_in_project(
                 )
             )
             async for paginated_response in paginated_responses.pages:
-                resources = parse_protobuf_messages(paginated_response.results)
-                if resources:
-                    logger.info(f"Found {len(resources)} {asset_type}'s")
-                    yield resources
+                raw_assets = parse_protobuf_messages(paginated_response.results)
+                assets = typing.cast(list[AssetData], raw_assets)
+                if assets:
+                    logger.info(f"Found {len(assets)} {asset_type}'s")
+                    latest_resources = []
+                    for asset in assets:
+                        latest_resource = parse_latest_resource_from_asset(asset)
+                        latest_resource[EXTRA_PROJECT_FIELD] = project
+                        latest_resources.append(latest_resource)
+                    yield latest_resources
         except PermissionDenied as e:
             logger.exception(
                 f"Couldn't access the API Cloud Assets to get kind {asset_type}. Please set cloudasset.assets.searchAllResources permissions for project {project_name}"
@@ -182,13 +183,13 @@ async def get_single_topic(topic_id: str) -> RAW_ITEM:
 
 
 async def search_single_resource(
-    project_id: str, asset_kind: str, asset_name: str
+    project: dict[str, Any], asset_kind: str, asset_name: str
 ) -> RAW_ITEM:
     try:
         resource = [
             resources
             async for resources in search_all_resources_in_project(
-                project_id, asset_kind, asset_name
+                project, asset_kind, asset_name
             )
         ][0][0]
     except IndexError:
@@ -204,14 +205,20 @@ async def feed_event_to_resource(
     resource = None
     match asset_type:
         case AssetTypesWithSpecialHandling.TOPIC:
-            resource = await get_single_topic(asset_name)
+            topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
+            resource = await get_single_topic(topic_name)
             resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id)
         case AssetTypesWithSpecialHandling.FOLDER:
-            resource = await get_single_folder(asset_name)
+            folder_id = asset_name.replace("//cloudresourcemanager.googleapis.com/", "")
+            resource = await get_single_folder(folder_id)
         case AssetTypesWithSpecialHandling.ORGANIZATION:
-            resource = await get_single_organization(asset_name)
+            organization_id = asset_name.replace(
+                "//cloudresourcemanager.googleapis.com/", ""
+            )
+            resource = await get_single_organization(organization_id)
         case AssetTypesWithSpecialHandling.PROJECT:
-            resource = await get_single_project(asset_name)
+            resource = await get_single_project(project_id)
         case _:
-            resource = await search_single_resource(project_id, asset_type, asset_name)
+            project = await get_single_project(project_id)
+            resource = await search_single_resource(project, asset_type, asset_name)
     return resource

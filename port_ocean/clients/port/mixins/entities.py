@@ -32,7 +32,7 @@ class EntityClientMixin:
     ) -> None:
         validation_only = request_options["validation_only"]
         async with self.semaphore:
-            logger.info(
+            logger.debug(
                 f"{'Validating' if validation_only else 'Upserting'} entity: {entity.identifier} of blueprint: {entity.blueprint}"
             )
             headers = await self.auth.headers(user_agent_type)

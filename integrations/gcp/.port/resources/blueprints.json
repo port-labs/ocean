@@ -11,122 +11,13 @@
     "aggregationProperties": {}
   },
   {
-    "identifier": "containerCluster",
-    "title": "Container Cluster",
-    "icon": "GoogleCloud",
-    "schema": {
-      "properties": {
-        "description": {
-          "title": "Description",
-          "type": "string"
-        },
-        "currentNodeCount": {
-          "title": "Current Node Count",
-          "type": "number"
-        },
-        "currentNodeVersion": {
-          "title": "Current Node Version",
-          "type": "string"
-        },
-        "initialNodeCount": {
-          "title": "Initial Node Count",
-          "type": "number"
-        },
-        "location": {
-          "title": "Location",
-          "type": "string"
-        }
-      }
-    },
-    "relations": {
-      "project": {
-        "target": "gcpProject",
-        "title": "Project",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "functions",
-    "title": "Cloud Functions",
-    "icon": "GoogleCloud",
-    "schema": {
-      "properties": {
-        "url": {
-          "title": "URL",
-          "format": "url",
-          "type": "string"
-        },
-        "name": {
-          "title": "Name",
-          "format": "url",
-          "type": "string"
-        },
-        "state": {
-          "title": "State",
-          "type": "string"
-        },
-        "environment": {
-          "title": "Environment",
-          "type": "string"
-        },
-        "eventTrigger": {
-          "title": "Event Trigger",
-          "type": "object"
-        }
-      }
-    },
-    "relations": {
-      "project": {
-        "target": "gcpProject",
-        "title": "Project",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
-    "identifier": "topics",
-    "title": "PubSub Topics",
-    "icon": "GoogleCloud",
-    "schema": {
-      "properties": {
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "state": {
-          "title": "State",
-          "type": "string"
-        },
-        "schemaSettings": {
-          "title": "Schema Settings",
-          "type": "object"
-        },
-        "messageRetentionDuration": {
-          "title": "Message Retention Duration",
-          "type": "string"
-        }
-      }
-    },
-    "relations": {
-      "project": {
-        "target": "gcpProject",
-        "title": "Project",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
     "identifier": "gcpCloudResource",
     "title": "Cloud Resource",
     "icon": "GoogleCloud",
     "schema": {
       "properties": {
         "type": {
-          "icon": "Service",
+          "icon": "Microservice",
           "title": "Type",
           "type": "string"
         },
@@ -145,7 +36,7 @@
       "project": {
         "target": "gcpProject",
         "title": "Project",
-        "required": false,
+        "required": true,
         "many": false
       }
     }

@@ -1,0 +1,81 @@
+description: AWS integration for Port Ocean
+icon: AWS
+features:
+  - type: exporter
+    section: Cloud Providers
+    resources:
+      - kind: AWS::Organizations::Account
+      - kind: AWS::S3::Bucket
+      - kind: AWS::EC2::Instance
+      - kind: AWS::ECS::Cluster
+saas:
+  enabled: false
+configurations:
+  - name: awsAccessKeyId
+    required: false
+    type: string
+    sensitive: true
+    description: AWS User Access Key ID, for more information https://docs.aws.amazon.com/singlesignon/latest/userguide/howtogetcredentials.html.
+  - name: awsSecretAccessKey
+    required: false
+    type: string
+    sensitive: true
+    description: AWS User Secret Access Key, for more information https://docs.aws.amazon.com/singlesignon/latest/userguide/howtogetcredentials.html.
+  - name: organizationRoleArn
+    required: false
+    type: string
+    sensitive: true
+    description: AWS Organization Role ARN, in case the account the integration is installed on is not the root account, used to read organization accounts for multi-account access.
+  - name: accountReadRoleName
+    required: false
+    type: string
+    sensitive: true
+    default: 'AwsPortOceanIntegrationReadOnlyRole'
+    description: AWS Account Read Role Name, the role name used to read the account in which the integration is not installed on, used for multi-account access.
+  - name: liveEventsApiKey
+    required: false
+    type: string
+    sensitive: true
+    description: AWS API Key for custom events, used to validate the event source for real-time event updates.
+deploymentMethodRequirements:
+  - type: default
+    configurations: ['awsAccessKeyId', 'awsSecretAccessKey']
+deploymentMethodOverride:
+  - type: helm
+  - type: docker
+  - type: githubWorkflow
+  - type: gitlabCI
+  - type: terraform-aws
+    module: port-labs/integration-factory/ocean
+    example: aws_container_app
+    title: AWS ECS Container App
+    version: '>=0.0.24'
+    extraVars:
+      - name: allow_incoming_requests
+        required: true
+        description: Whether to allow incoming requests
+        type: boolean
+        default: true
+      - name: create_default_sg
+        required: true
+        description: Whether to create the default security group
+        type: boolean
+        default: false
+      - name: subnets
+        required: true
+        description: The subnets to deploy the LB to
+        type: array
+        default:
+          - subnet-1
+          - subnet-2
+          - subnet-3
+      - name: vpc_id
+        required: true
+        description: The LB VPC ID
+        type: string
+        default: vpc-1
+      - name: cluster_name
+        required: false
+        description: The ECS cluster name
+        type: string
+        default: port-ocean-aws-exporter

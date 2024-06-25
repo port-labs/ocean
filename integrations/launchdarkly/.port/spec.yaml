@@ -1,4 +1,3 @@
-type: launchdarkly
 description: launchdarkly integration for Port Ocean
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/feature-management/launchdarkly
 icon: Launchdarkly
@@ -10,6 +9,7 @@ features:
       - kind: flag
       - kind: auditlog
       - kind: environment
+      - kind: flag-status
 configurations:
   - name: launchdarklyToken
     required: true

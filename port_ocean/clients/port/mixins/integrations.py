@@ -1,11 +1,12 @@
 from typing import Any, TYPE_CHECKING, Optional, TypedDict
+from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
-from starlette import status
 
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.log.sensetive import sensitive_log_filter
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
@@ -42,7 +43,7 @@ class IntegrationClientMixin:
     ) -> dict[str, Any]:
         response = await self._get_current_integration()
         handle_status_code(response, should_raise, should_log)
-        return response.json()["integration"]
+        return response.json().get("integration", {})
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
@@ -55,7 +56,7 @@ class IntegrationClientMixin:
         _type: str,
         changelog_destination: dict[str, Any],
         port_app_config: Optional["PortAppConfig"] = None,
-    ) -> None:
+    ) -> dict:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
         json = {
@@ -71,13 +72,14 @@ class IntegrationClientMixin:
             f"{self.auth.api_url}/integration", headers=headers, json=json
         )
         handle_status_code(response)
+        return response.json()["integration"]
 
     async def patch_integration(
         self,
         _type: str | None = None,
         changelog_destination: dict[str, Any] | None = None,
         port_app_config: Optional["PortAppConfig"] = None,
-    ) -> None:
+    ) -> dict:
         logger.info(f"Updating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
         json: dict[str, Any] = {}
@@ -95,34 +97,7 @@ class IntegrationClientMixin:
             json=json,
         )
         handle_status_code(response)
-
-    async def initialize_integration(
-        self,
-        _type: str,
-        changelog_destination: dict[str, Any],
-        port_app_config: Optional["PortAppConfig"] = None,
-    ) -> None:
-        logger.info(f"Initiating integration with id: {self.integration_identifier}")
-        response = await self._get_current_integration()
-        if response.status_code == status.HTTP_404_NOT_FOUND:
-            await self.create_integration(_type, changelog_destination, port_app_config)
-        else:
-            handle_status_code(response)
-
-            integration = response.json()["integration"]
-            logger.info("Checking for diff in integration configuration")
-            if (
-                integration["changelogDestination"] != changelog_destination
-                or integration["installationAppType"] != _type
-                or integration.get("version") != self.integration_version
-            ):
-                await self.patch_integration(
-                    _type, changelog_destination, port_app_config
-                )
-
-        logger.info(
-            f"Integration with id: {self.integration_identifier} successfully registered"
-        )
+        return response.json()["integration"]
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
@@ -137,3 +112,18 @@ class IntegrationClientMixin:
         )
         handle_status_code(response)
         logger.debug("Logs successfully ingested")
+
+    async def ingest_integration_kind_examples(
+        self, kind: str, data: list[dict[str, Any]], should_log: bool = True
+    ):
+        logger.debug(f"Ingesting examples for kind: {kind}")
+        headers = await self.auth.headers()
+        response = await self.client.post(
+            f"{self.auth.api_url}/integration/{quote_plus(self.integration_identifier)}/kinds/{quote_plus(kind)}/examples",
+            headers=headers,
+            json={
+                "examples": sensitive_log_filter.mask_object(data, full_hide=True),
+            },
+        )
+        handle_status_code(response, should_log=should_log)
+        logger.debug(f"Examples for kind {kind} successfully ingested")

@@ -52,7 +52,7 @@
     "schema": {
       "properties": {
         "type": {
-          "icon": "Service",
+          "icon": "Microservice",
           "title": "Type",
           "type": "string"
         },
@@ -65,6 +65,12 @@
           "title": "Tags",
           "type": "object",
           "icon": "BlankPage"
+        },
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string",
+          "icon": "Link"
         }
       },
       "required": []
