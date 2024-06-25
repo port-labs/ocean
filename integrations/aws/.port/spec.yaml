@@ -37,7 +37,14 @@ configurations:
     type: string
     sensitive: true
     description: AWS API Key for custom events, used to validate the event source for real-time event updates.
+deploymentMethodRequirements:
+  - type: default
+    configurations: ['awsAccessKeyId', 'awsSecretAccessKey']
 deploymentMethodOverride:
+  - type: helm
+  - type: docker
+  - type: githubWorkflow
+  - type: gitlabCI
   - type: terraform-aws
     module: port-labs/integration-factory/ocean
     example: aws_container_app
