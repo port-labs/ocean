@@ -1,8 +1,11 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 from pydantic.fields import Field
+
+
+Runtime = Literal["OnPrem", "Saas"]
 
 
 class Entity(BaseModel):
