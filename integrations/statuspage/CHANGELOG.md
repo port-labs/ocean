@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Statuspage 0.1.0 (2024-06-20)
+# Statuspage 0.1.0 (2024-06-25)
 
 ### Features
 
-- Atlassian Statuspage Integration (0.1.0)
+- Atlassian Statuspage Integration (0.1.0) to ingest pages, components, and incidents
