@@ -17,6 +17,8 @@ class PortAppConfigCache:
 
     def __init__(self, cache_ttl: int):
         self._cache_ttl = cache_ttl
+        self._port_app_config = None
+        self._retrieval_time = 0
 
     @property
     def port_app_config(self) -> PortAppConfig:
@@ -32,8 +34,7 @@ class PortAppConfigCache:
     @property
     def is_cache_invalid(self) -> bool:
         return (
-            not getattr(self, '_port_app_config')
-            or not self._port_app_config
+            not self._port_app_config
             or self._retrieval_time + self._cache_ttl < get_time()
         )
 
