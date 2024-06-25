@@ -7,7 +7,7 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
-from integration import DynatraceResourceConfig
+from integration import DynatraceResourceConfig, EntityFieldsType
 
 
 class ResourceKey(StrEnum):
