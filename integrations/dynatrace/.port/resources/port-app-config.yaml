@@ -5,6 +5,7 @@ resources:
     selector:
       query: "true"
       entityTypes: ["APPLICATION", "SERVICE"]
+      entityFields: "firstSeenTms,lastSeenTms,tags"
     port:
       entity:
         mappings:

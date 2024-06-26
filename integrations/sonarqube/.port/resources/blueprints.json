@@ -22,6 +22,20 @@
           "icon": "Clock",
           "title": "Last Analysis Date"
         },
+        "qualityGateStatus": {
+          "title": "Quality Gate Status",
+          "type": "string",
+          "enum": [
+            "OK",
+            "WARN",
+            "ERROR"
+          ],
+          "enumColors": {
+            "OK": "green",
+            "WARN": "yellow",
+            "ERROR": "red"
+          }
+        },
         "numberOfBugs": {
           "type": "number",
           "title": "Number Of Bugs"

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.61 (2024-06-25)
+
+### Improvements
+
+- Utilizing the latest Targets API (2024-05-23~beta): Updated the integration to leverage the latest version of Snyk's Targets API. This change is crucial because it introduces a relationships attribute, containing the essential organisation id needed to accurately link each target to its parent organization. (#1)
+- Updated the default blueprints to the following structure: Vuln -> Project -> Target -> Organization. 
+
+
 # Port_Ocean 0.1.60 (2024-06-23)
 
 ### Improvements
