@@ -34,6 +34,11 @@
           "type": "string",
           "format": "user"
         },
+        "secondaryOncall": {
+          "title": "Secondary On Call",
+          "type": "string",
+          "format": "user"
+        },
         "escalationLevels": {
           "title": "Escalation Levels",
           "type": "number"
