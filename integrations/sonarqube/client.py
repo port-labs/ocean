@@ -15,9 +15,11 @@ class Endpoints:
     WEBHOOKS = "webhooks"
     MEASURES = "measures/component"
     BRANCHES = "project_branches/list"
-    ISSUES = "issues/search"
+    ONPREM_ISSUES = "issues/list"
+    SAAS_ISSUES = "issues/search"
     ANALYSIS = "activity_feed/list"
 
+PAGE_SIZE = 100
 
 class SonarQubeClient:
     def __init__(
@@ -102,6 +104,10 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
+
+        query_params = query_params or {}
+        query_params["ps"] = PAGE_SIZE
+
         try:
             logger.debug(
                 f"Sending API request to {method} {endpoint} with query params: {query_params}"
@@ -118,18 +124,16 @@ class SonarQubeClient:
                 )
                 response.raise_for_status()
                 response_json = response.json()
-
-                all_resources.extend(response_json.get(data_key, []))
+                resource = response_json.get(data_key, [])
+                all_resources.extend(resource)
 
                 # Check for paging information and decide whether to fetch more pages
                 paging_info = response_json.get("paging")
-                if paging_info and paging_info.get("pageIndex", 0) * paging_info.get(
-                    "pageSize", 0
-                ) < paging_info.get("total", 0):
-                    query_params = query_params or {}
-                    query_params["p"] = paging_info["pageIndex"] + 1
-                else:
+                if len(resource) < PAGE_SIZE:
                     break
+
+                query_params["p"] = paging_info["pageIndex"] + 1
+
 
             return all_resources
 
@@ -292,13 +296,20 @@ class SonarQubeClient:
         """
         component_issues = []
         component_key = component.get("key")
-        query_params = {"componentKeys": component_key}
+        endpoint_path = ""
+
+        if self.is_onpremise:
+            query_params = {"project": component_key}
+            endpoint_path = Endpoints.ONPREM_ISSUES
+        else:
+            query_params = {"componentKeys": component_key}
+            endpoint_path = Endpoints.SAAS_ISSUES
 
         if api_query_params:
             query_params.update(api_query_params)
 
         response = await self.send_paginated_api_request(
-            endpoint=Endpoints.ISSUES,
+            endpoint=endpoint_path,
             data_key="issues",
             query_params=query_params,
         )
