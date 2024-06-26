@@ -134,6 +134,13 @@ class CloudCostResourceConfig(ResourceConfig):
                 description="Step size of the accumulation.",
             )
         )
+        filter: str | None = Field(
+            description=(
+                "Filter results by any category which that can be aggregated by,"
+                " can support multiple filterable items in the same category in"
+                " a comma-separated list."
+            ),
+        )
 
     kind: Literal["cloudcost"]
     selector: CloudCostSelector
