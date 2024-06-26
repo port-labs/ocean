@@ -58,12 +58,7 @@
           "icon": "Alert",
           "title": "Issue Severity",
           "type": "string",
-          "enum": [
-            "low",
-            "medium",
-            "high",
-            "critical"
-          ],
+          "enum": ["low", "medium", "high", "critical"],
           "enumColors": {
             "low": "green",
             "medium": "yellow",
@@ -98,7 +93,14 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "snykProject",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "snykProject",
@@ -111,12 +113,6 @@
           "title": "URL",
           "format": "url",
           "icon": "Snyk"
-        },
-        "owner": {
-          "type": "string",
-          "title": "Owner",
-          "format": "user",
-          "icon": "TwoUsers"
         },
         "businessCriticality": {
           "title": "Business Criticality",
@@ -179,33 +175,26 @@
           "type": "number",
           "title": "Open Low Vulnerabilities"
         },
-        "importedBy": {
-          "icon": "TwoUsers",
-          "type": "string",
-          "title": "Imported By",
-          "format": "user"
-        },
         "tags": {
           "type": "array",
           "title": "Tags",
           "icon": "DefaultProperty"
+        },
+        "targetOrigin": {
+          "type": "string",
+          "title": "Target Origin"
         }
       },
       "required": []
     },
     "mirrorProperties": {},
     "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {
-      "snykVulnerabilities": {
-        "title": "Snyk Vulnerabilities",
-        "target": "snykVulnerability",
+      "snyk_target": {
+        "title": "Snyk Target",
+        "target": "snykTarget",
         "required": false,
-        "many": true
-      },
-      "snykOrganization": {
-        "title": "Snyk Organization",
-        "target": "snykOrganization",
-        "required": true,
         "many": false
       }
     }
@@ -278,11 +267,11 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "snykProjects": {
-        "title": "Snyk Projects",
-        "target": "snykProject",
+      "synk_organization": {
+        "title": "Snyk Organization",
+        "target": "snykOrganization",
         "required": false,
-        "many": true
+        "many": false
       }
     }
   }
