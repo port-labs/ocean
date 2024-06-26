@@ -28,7 +28,8 @@
         },
         "machine": {
           "type": "string",
-          "title": "Machine"
+          "title": "Machine",
+          "description": "The CPU architecture of the host machine (e.g., amd64, x86, x64, arm, arm64)."
         },
         "cpuCores": {
           "type": "number",
@@ -47,7 +48,8 @@
         },
         "sources": {
           "title": "Sources",
-          "type": "array"
+          "type": "array",
+          "description": "Source or cloud provider associated with your host."
         }
       },
       "required": []
