@@ -88,7 +88,9 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         await ocean.register_raw(ObjectKind.INCIDENT, [data["incident"]])
 
         if "incident_updates" in data["incident"]:
-            await ocean.register_raw(ObjectKind.INCIDENT_UPDATE, data["incident"]["incident_updates"])
+            await ocean.register_raw(
+                ObjectKind.INCIDENT_UPDATE, data["incident"]["incident_updates"]
+            )
 
     return {"ok": True}
 

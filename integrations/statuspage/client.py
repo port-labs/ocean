@@ -20,7 +20,7 @@ class PerPageParam(StrEnum):
 class StatusPageClient:
     def __init__(
         self,
-        statuspage_host,
+        statuspage_host: str,
         statuspage_api_key: str,
         statuspage_ids: Optional[list[str]] = None,
     ) -> None:
