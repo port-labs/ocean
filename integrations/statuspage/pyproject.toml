@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "Statuspage"
 version = "0.1.0"
-description = "Statuspage brings companies and customers together during downtime with best-in-class incident communication."
+description = "Connect Statuspage to Ocean and automatically ingest incidents, updates, and impacted components for comprehensive monitoring"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
 [tool.poetry.dependencies]
