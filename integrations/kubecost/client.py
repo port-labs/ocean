@@ -3,10 +3,15 @@ from typing import Any
 
 import httpx
 from loguru import logger
-
-from integration import KubecostResourceConfig, KubecostSelector
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+
+from .integration import (
+    CloudCostV1ResourceConfig,
+    CloudCostV2ResourceConfig,
+    KubecostV1ResourceConfig,
+    KubecostV2ResourceConfig
+)
 
 KUBECOST_API_VERSION_1 = "v1"
 
@@ -17,7 +22,15 @@ class KubeCostClient:
         self.kubecost_api_version = kubecost_api_version
         self.http_client = http_async_client
 
-    def generate_params(self, selector: KubecostSelector) -> dict[str, str]:
+    def generate_params(
+        self,
+        selector: (
+            KubecostV1ResourceConfig.KubecostSelector
+            | KubecostV2ResourceConfig.KubecostSelector
+            | CloudCostV2ResourceConfig.CloudCostSelector
+            | CloudCostV1ResourceConfig.CloudCostSelector
+        ),
+    ) -> dict[str, str]:
         params = selector.dict(exclude_unset=True, by_alias=True)
         params.pop("query")
         return params
@@ -26,7 +39,11 @@ class KubeCostClient:
         """Calls the Kubecost allocation endpoint to return data for cost and usage
         https://docs.kubecost.com/apis/apis-overview/api-allocation
         """
-        selector = typing.cast(KubecostResourceConfig, event.resource_config).selector
+        if self.kubecost_api_version == KUBECOST_API_VERSION_1:
+            selector = typing.cast(KubecostV1ResourceConfig, event.resource_config).selector
+        else:
+            selector = typing.cast(KubecostV2ResourceConfig, event.resource_config).selector
+
         params: dict[str, str] = {
             "window": selector.window,
             **self.generate_params(selector),
@@ -52,16 +69,21 @@ class KubeCostClient:
         """Calls the Kubecost cloud  allocation API. It uses the Aggregate endpoint which returns detailed cloud cost data
         https://docs.kubecost.com/apis/apis-overview/cloud-cost-api
         """
-        selector = typing.cast(KubecostResourceConfig, event.resource_config).selector
+        if self.kubecost_api_version == KUBECOST_API_VERSION_1:
+            selector = typing.cast(
+                CloudCostV1ResourceConfig, event.resource_config
+            ).selector
+            url = f"{self.kubecost_host}/model/cloudCost/aggregate"
+        else:
+            selector = typing.cast(
+                CloudCostV2ResourceConfig, event.resource_config
+            ).selector
+            url = f"{self.kubecost_host}/model/cloudCost"
+
         params: dict[str, str] = {
             "window": selector.window,
             **self.generate_params(selector),
         }
-
-        if self.kubecost_api_version == KUBECOST_API_VERSION_1:
-            url = f"{self.kubecost_host}/model/cloudCost/aggregate"
-        else:
-            url = f"{self.kubecost_host}/model/cloudCost"
 
         try:
             response = await self.http_client.get(
