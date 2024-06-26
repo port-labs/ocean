@@ -294,6 +294,11 @@ class KubecostV2ResourceConfig(ResourceConfig):
         format: Literal["csv", "pdf"] | None = Field(
             description="Format of the output. Default is JSON.",
         )
+        cost_metric: Literal["cummulative", "hourly", "daily", "monthly"] = Field(
+            description="Cost metric format.",
+            default="cummulative",
+            alias="costMetric"
+        )
         share_idle: bool = Field(
             alias="shareIdle",
             default=False,
