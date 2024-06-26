@@ -13,7 +13,8 @@ resources:
           properties:
             status: .status
             url: .html_url
-            oncall: .__oncall_user[] | select(.escalation_level == 1) | .user.email
+            oncall: .__oncall_user | sort_by(.escalation_level) | .[0].user.email
+            secondaryOncall: .__oncall_user | sort_by(.escalation_level) | .[1].user.email
             escalationLevels: .__oncall_user | map(.escalation_level) | unique | length
             meanSecondsToResolve: .__analytics.mean_seconds_to_resolve
             meanSecondsToFirstAck: .__analytics.mean_seconds_to_first_ack

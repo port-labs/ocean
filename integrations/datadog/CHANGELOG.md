@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added the datadog host blueprint
+- Added the datadog host blueprint to the default blueprints
 
 # Port_Ocean 0.1.11 (2024-06-23)
 
