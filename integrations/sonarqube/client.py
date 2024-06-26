@@ -19,7 +19,9 @@ class Endpoints:
     SAAS_ISSUES = "issues/search"
     ANALYSIS = "activity_feed/list"
 
+
 PAGE_SIZE = 100
+
 
 class SonarQubeClient:
     def __init__(
@@ -133,7 +135,6 @@ class SonarQubeClient:
                     break
 
                 query_params["p"] = paging_info["pageIndex"] + 1
-
 
             return all_resources
 
