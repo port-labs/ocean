@@ -12,11 +12,19 @@ class ResourceKey(StrEnum):
     INCIDENTS = "incidents"
 
 
+class PerPageParam(StrEnum):
+    PER_PAGE = "per_page"
+    LIMIT = "limit"
+
+
 class StatusPageClient:
     def __init__(
-        self, statuspage_api_key: str, statuspage_ids: Optional[list[str]] = None
+        self,
+        statuspage_host,
+        statuspage_api_key: str,
+        statuspage_ids: Optional[list[str]] = None,
     ) -> None:
-        self.statuspage_url = "https://api.statuspage.io/v1/pages"
+        self.statuspage_url = f"{statuspage_host}/v1/pages"
         self.statuspage_api_key = statuspage_api_key
         self.statuspage_ids = statuspage_ids
 
@@ -53,7 +61,7 @@ class StatusPageClient:
         return response.json()
 
     async def _get_resources_by_page(
-        self, endpoint: str, per_page_param: str = "per_page"
+        self, endpoint: str, per_page_param: str = PerPageParam.PER_PAGE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         pages = self.statuspage_ids or [page["id"] for page in await self.get_pages()]
         for page in pages:
@@ -74,7 +82,7 @@ class StatusPageClient:
 
     async def get_incidents(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for incidents in self._get_resources_by_page(
-            ResourceKey.INCIDENTS, "limit"
+            ResourceKey.INCIDENTS, PerPageParam.LIMIT
         ):
             yield incidents
 
@@ -89,6 +97,7 @@ class StatusPageClient:
         app_host_webhook_url = f"{app_host}/integration/webhook"
         async for webhooks in self._get_paginated_resources(f"{page_id}/subscribers"):
             if any(webhook["endpoint"] == app_host_webhook_url for webhook in webhooks):
+                logger.info(f"Webhook already exists for page: {page_id}")
                 return
 
         logger.info(

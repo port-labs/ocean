@@ -15,6 +15,11 @@ configurations:
     required: false
     type: url
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Statuspage"
+  - name: statuspageHost
+    required: true
+    type: url
+    description: "The host of the Statuspage.io API"
+    default: "https://api.statuspage.io"
   - name: statuspageApiKey
     required: true
     type: string

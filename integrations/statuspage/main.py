@@ -17,6 +17,7 @@ class ObjectKind(StrEnum):
 
 def init_client() -> StatusPageClient:
     return StatusPageClient(
+        statuspage_host=ocean.integration_config["statuspage_host"],
         statuspage_api_key=ocean.integration_config["statuspage_api_key"],
         statuspage_ids=ocean.integration_config.get("statuspage_ids"),
     )
@@ -72,27 +73,22 @@ async def resync_incident_updates(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    """Handles incoming Statuspage webhook events, registers relevant data with ocean."""
+
     logger.info(f"Received Statuspage webhook event: {data}")
-
     client = init_client()
-
-    async def register_raw(obj_kind: ObjectKind, data: list[dict[str, Any]]) -> None:
-        logger.debug(f"Registering {obj_kind} with data: {data}")
-        await ocean.register_raw(obj_kind, data)
-        logger.info(f"Registered {obj_kind}")
 
     if "page" in data:
         page_id = data["page"]["id"]
         page = await client.get_page_by_id(page_id)
         logger.debug(f"Received page: {page}")
-        await register_raw(ObjectKind.PAGE, [{**data["page"], **page}])
+        await ocean.register_raw(ObjectKind.PAGE, [{**data["page"], **page}])
 
     if "incident" in data:
-        await register_raw(ObjectKind.INCIDENT, [data["incident"]])
+        await ocean.register_raw(ObjectKind.INCIDENT, [data["incident"]])
+
         if "incident_updates" in data["incident"]:
-            await register_raw(
-                ObjectKind.INCIDENT_UPDATE, data["incident"]["incident_updates"]
-            )
+            await ocean.register_raw(ObjectKind.INCIDENT_UPDATE, data["incident"]["incident_updates"])
 
     return {"ok": True}
 
