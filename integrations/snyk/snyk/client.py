@@ -196,7 +196,8 @@ class SnykClient:
             logger.info(f"Fetching paginated targets for organization: {org['id']}")
 
             url = f"/orgs/{org['id']}/targets"
-            query_params = {"version": f"{self.snyk_api_version}~beta"}
+            target_api_version = "2024-05-23"
+            query_params = {"version": f"{target_api_version}~beta"}
             async for targets in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
