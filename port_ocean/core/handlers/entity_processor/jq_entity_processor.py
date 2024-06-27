@@ -61,13 +61,13 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
             result = await loop.run_in_executor(None, first_value_callable)
             logger.info(
-                f"__FINISHED__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier} \n"
+                f"__FINISHED__ jq execution with pattern: {pattern}. trace-id: {identifier} \n"
                 f"Result {result}"
             )
             return result
         except Exception as e:
             logger.error(
-                f"__FAILED__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier} \n"
+                f"__FAILED__ jq execution with pattern: {pattern}. trace-id: {identifier} \n"
                 f"Error {e}"
             )
             return None
@@ -86,19 +86,21 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
             value = await loop.run_in_executor(None, first_value_callable)
             logger.info(
-                f"__FINISHED_BOOL__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier} \n"
+                f"__FINISHED_BOOL__ jq execution with pattern: {pattern}. trace-id: {identifier} \n"
                 f"Result {value}"
             )
         except Exception as e:
             logger.error(
-                f"__FAILED_BOOL__ jq execution with pattern: {pattern} and data: {data}. trace-id: {identifier} \n"
+                f"__FAILED_BOOL__ jq execution with pattern: {pattern}. trace-id: {identifier} \n"
                 f"Error {e}"
             )
             raise
 
         if isinstance(value, bool):
             return value
-
+        logger.error(
+            f"__FAILED_BOOL__ jq execution with pattern: {pattern}. Invalid type got {type(value)} instead. trace-id: {identifier}"
+        )
         raise EntityProcessorException(
             f"Expected boolean value, got {type(value)} instead"
         )
