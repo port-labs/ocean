@@ -295,9 +295,7 @@ class KubecostV2ResourceConfig(ResourceConfig):
             description="Format of the output. Default is JSON.",
         )
         cost_metric: Literal["cummulative", "hourly", "daily", "monthly"] = Field(
-            description="Cost metric format.",
-            default="cummulative",
-            alias="costMetric"
+            description="Cost metric format.", default="cummulative", alias="costMetric"
         )
         share_idle: bool = Field(
             alias="shareIdle",
@@ -314,7 +312,7 @@ class KubecostV2ResourceConfig(ResourceConfig):
             default=False,
             description="f true, idle allocations are created on a per node basis. Which will result in different values when shared and more idle allocations when split. Default is false.",
         )
-        include_shared_cost_breakdown : bool = Field(
+        include_shared_cost_breakdown: bool = Field(
             alias="includeSharedCostBreakdown",
             default=True,
             description="If true, the cost breakdown for shared costs is included in the response. Default is false.",
@@ -346,7 +344,6 @@ class KubecostV2ResourceConfig(ResourceConfig):
             default="weighted",
             description="Determines how to split shared costs among non-idle, unshared allocations.",
         )
-        
 
     selector: KubecostSelector
     kind: Literal["kubesystem"]
@@ -354,7 +351,10 @@ class KubecostV2ResourceConfig(ResourceConfig):
 
 class KubecostPortAppConfig(PortAppConfig):
     resources: list[
-        KubecostV1ResourceConfig, KubecostV2ResourceConfig, CloudCostV1ResourceConfig, CloudCostV2ResourceConfig
+        KubecostV1ResourceConfig,
+        KubecostV2ResourceConfig,
+        CloudCostV1ResourceConfig,
+        CloudCostV2ResourceConfig,
     ] = Field(
         default_factory=list
     )  # type: ignore

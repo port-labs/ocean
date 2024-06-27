@@ -10,7 +10,7 @@ from .integration import (
     CloudCostV1ResourceConfig,
     CloudCostV2ResourceConfig,
     KubecostV1ResourceConfig,
-    KubecostV2ResourceConfig
+    KubecostV2ResourceConfig,
 )
 
 KUBECOST_API_VERSION_1 = "v1"
@@ -40,9 +40,13 @@ class KubeCostClient:
         https://docs.kubecost.com/apis/apis-overview/api-allocation
         """
         if self.kubecost_api_version == KUBECOST_API_VERSION_1:
-            selector = typing.cast(KubecostV1ResourceConfig, event.resource_config).selector
+            selector = typing.cast(
+                KubecostV1ResourceConfig, event.resource_config
+            ).selector
         else:
-            selector = typing.cast(KubecostV2ResourceConfig, event.resource_config).selector
+            selector = typing.cast(
+                KubecostV2ResourceConfig, event.resource_config
+            ).selector
 
         params: dict[str, str] = {
             "window": selector.window,
