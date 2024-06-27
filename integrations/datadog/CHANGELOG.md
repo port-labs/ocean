@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.12 (2024-06-25)
+
+### Features
+
+- Added the datadog host blueprint to the default blueprints
+
 # Port_Ocean 0.1.11 (2024-06-23)
 
 ### Improvements
