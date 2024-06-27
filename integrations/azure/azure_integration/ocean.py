@@ -1,4 +1,5 @@
 import http
+import os
 import typing
 
 from cloudevents.pydantic import CloudEvent
@@ -279,3 +280,41 @@ async def cloud_event_validation_middleware_handler(
         return response
 
     return await call_next(request)
+
+
+@ocean.on_start()
+async def on_start() -> None:
+
+    logger.info("Setting up credentials for Azure client")
+    azure_client_id = ocean.integration_config.get("azure_client_id")
+    azure_client_secret = ocean.integration_config.get("azure_client_secret")
+    azure_tenant_id = ocean.integration_config.get("azure_tenant_id")
+    azure_subscription_id = ocean.integration_config.get("azure_subscription_id")
+    if not azure_client_id and not azure_client_secret and not azure_tenant_id:
+        logger.info(
+            "Integration wasn't provided with override configuration for initializing client, proceeding with default"
+        )
+        return
+
+    if azure_client_id:
+        logger.info(
+            "Detected Azure client id, setting up environment variable for client id"
+        )
+        os.environ["AZURE_CLIENT_ID"] = azure_client_id
+    if azure_client_secret:
+        logger.info(
+            "Detected Azure client secret, setting up environment variable for client secret"
+        )
+        os.environ["AZURE_CLIENT_SECRET"] = azure_client_secret
+    if azure_tenant_id:
+        logger.info(
+            "Detected Azure tenant id, setting up environment variable for tenant id"
+        )
+        os.environ["AZURE_TENANT_ID"] = azure_tenant_id
+    if azure_subscription_id:
+        logger.info(
+            "Detected Azure subscription id, setting up environment variable for subscription id"
+        )
+        os.environ["AZURE_SUBSCRIPTION_ID"] = azure_subscription_id
+
+    logger.info("Azure client credentials set up")
