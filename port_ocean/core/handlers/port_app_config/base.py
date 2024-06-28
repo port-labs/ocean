@@ -17,6 +17,8 @@ class PortAppConfigCache:
 
     def __init__(self, cache_ttl: int):
         self._cache_ttl = cache_ttl
+        self._port_app_config = None
+        self._retrieval_time = 0
 
     @property
     def port_app_config(self) -> PortAppConfig:
