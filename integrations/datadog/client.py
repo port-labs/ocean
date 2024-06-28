@@ -172,6 +172,25 @@ class DatadogClient:
             yield slos
             offset += limit
 
+    async def get_slo_histories(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        histories = []
+        async for slos in self.get_slos():
+            for slo in slos:
+                url = f"{self.api_url}/api/v1/slo/{slo['id']}/history"
+                result = await self._send_api_request(
+                    url, params={"from_ts": 1711497600, "to_ts": 1711898238}
+                )
+
+                history = result.get("data")
+                if not history:
+                    break
+
+                histories.append(history)
+            
+            yield histories
+
+
+
     async def get_single_monitor(self, monitor_id: str) -> dict[str, Any] | None:
         if not monitor_id:
             return None

@@ -57,3 +57,21 @@ resources:
           relations:
             monitors: .monitor_ids | map(tostring)
             services: '.monitor_tags + .tags | map(select(startswith("service:"))) | unique | map(split(":")[1])'
+  - kind: sloHistory
+    selector:
+      query: 'true'
+      fromTimestamp: 1711411200 # The from timestamp for the query window in epoch seconds.
+      toTimestamp: 1711898238
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogSloHistory"'
+          identifier: .id | tostring
+          title: .slo.name
+          properties:
+            timeframe: .type
+            thresholds: .thresholds
+            sliValue: .overall.sli_value
+          relations:
+            slo: .slo.id
+

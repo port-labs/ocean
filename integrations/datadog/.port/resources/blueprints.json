@@ -17,7 +17,15 @@
         "overallState": {
           "type": "string",
           "title": "Overall state",
-          "enum": ["Alert", "Ignored", "No Data", "OK", "Skipped", "Unknown", "Warn"],
+          "enum": [
+            "Alert",
+            "Ignored",
+            "No Data",
+            "OK",
+            "Skipped",
+            "Unknown",
+            "Warn"
+          ],
           "enumColors": {
             "Alert": "red",
             "Ignored": "darkGray",
@@ -190,6 +198,40 @@
         "target": "datadogService",
         "title": "Services",
         "description": "The services tracked by this SLO",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
+    "identifier": "datadogSloHistory",
+    "description": "This blueprint represents a datadog SLO history",
+    "title": "Datadog SLO History",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "timeframe": {
+          "title": "Timeframe",
+          "type": "string"
+        },
+        "thresholds": {
+          "title": "Thresholds",
+          "type": "object"
+        },
+        "sliValue": {
+          "title": "SLI Value",
+          "type": "string"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "monitors": {
+        "target": "datadogSlo",
+        "title": "SLO",
+        "description": "The SLO to which this history belongs to",
         "required": false,
         "many": true
       }

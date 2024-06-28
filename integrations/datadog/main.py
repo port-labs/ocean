@@ -13,6 +13,7 @@ class ObjectKind(StrEnum):
     MONITOR = "monitor"
     SLO = "slo"
     SERVICE = "service"
+    SLO_HISTORY = "sloHistory"
 
 
 def init_client() -> DatadogClient:
@@ -49,6 +50,14 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(slos)} slos")
         yield slos
 
+
+@ocean.on_resync(ObjectKind.SLO_HISTORY)
+async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    async for histories in dd_client.get_slo_histories():
+        logger.info(f"Received batch with {len(histories)} slo histories")
+        yield histories
 
 @ocean.on_resync(ObjectKind.SERVICE)
 async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
