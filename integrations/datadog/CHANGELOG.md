@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.12 (2024-06-30)
+
+### Improvements
+
+- Added support for SLO history (#1)
+
+
+### Bug Fixes
+
+- Changed Target and Warning threshold to number instead of string in SLO blueprint (#2)
+
+
 # Port_Ocean 0.1.11 (2024-06-23)
 
 ### Improvements
