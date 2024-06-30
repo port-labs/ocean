@@ -247,10 +247,6 @@
           "type": "string",
           "title": "Sampling End Date",
           "format": "date-time"
-        },
-        "week_number": {
-          "type": "number",
-          "title": "Week Number"
         }
       },
       "required": []
@@ -269,7 +265,7 @@
     "aggregationProperties": {},
     "relations": {
       "slo": {
-        "title": "slo",
+        "title": "SLO",
         "description": "The SLO to which this history belongs to",
         "target": "datadogSlo",
         "required": false,

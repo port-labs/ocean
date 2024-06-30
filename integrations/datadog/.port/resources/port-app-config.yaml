@@ -68,19 +68,13 @@ resources:
     port:
       entity:
         mappings:
-          identifier: >-
-            (.slo.id | tostring) + "-" + (.to_ts | todateiso8601 |
-            strptime("%Y-%m-%dT%H:%M:%SZ") | strftime("%U") | tostring)
+          identifier: .slo.id | tostring
           title: .slo.name
           blueprint: '"datadogSloHistory"'
           properties:
             monitory_type: .type
             sampling_start_date: .from_ts | todate
             sampling_end_date: .to_ts | todate
-            thresholds: .thresholds
             sliValue: .overall.sli_value
-            week_number: >-
-              .to_ts | todateiso8601 | strptime("%Y-%m-%dT%H:%M:%SZ") |
-              strftime("%U")
           relations:
             slo: .slo.id
