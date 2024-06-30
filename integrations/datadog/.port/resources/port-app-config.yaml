@@ -1,5 +1,5 @@
-createMissingRelatedEntities: true
 deleteDependentEntities: true
+createMissingRelatedEntities: true
 resources:
   - kind: monitor
     selector:
@@ -7,9 +7,9 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"datadogMonitor"'
           identifier: .id | tostring
           title: .name
+          blueprint: '"datadogMonitor"'
           properties:
             tags: .tags
             monitorType: .type
@@ -25,9 +25,9 @@ resources:
     port:
       entity:
         mappings:
-          blueprint: '"datadogService"'
           identifier: .attributes.schema."dd-service"
           title: .attributes.schema."dd-service"
+          blueprint: '"datadogService"'
           properties:
             application: .attributes.schema.application
             languages: .attributes.schema.languages
@@ -35,16 +35,18 @@ resources:
             tags: .attributes.schema.tags
             type: .attributes.schema.type
             links: .attributes.schema.links | map(.url)
-            owners: '[.attributes.schema.contacts[] | select(.type == "email") | .contact]'
+            owners: >-
+              [.attributes.schema.contacts[] | select(.type == "email") |
+              .contact]
   - kind: slo
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"datadogSlo"'
           identifier: .id | tostring
           title: .name
+          blueprint: '"datadogSlo"'
           properties:
             tags: .tags
             sloType: .type
@@ -56,22 +58,29 @@ resources:
             updatedAt: .modified_at | todate
           relations:
             monitors: .monitor_ids | map(tostring)
-            services: '.monitor_tags + .tags | map(select(startswith("service:"))) | unique | map(split(":")[1])'
+            services: >-
+              .monitor_tags + .tags | map(select(startswith("service:"))) |
+              unique | map(split(":")[1])
   - kind: sloHistory
     selector:
       query: 'true'
-      fromTimestamp: 1711411200 # The from timestamp for the query window in epoch seconds.
-      toTimestamp: 1711898238
+      sampleIntervalPeriodInDays: 7
     port:
       entity:
         mappings:
-          blueprint: '"datadogSloHistory"'
-          identifier: .id | tostring
+          identifier: >-
+            (.slo.id | tostring) + "-" + (.to_ts | todateiso8601 |
+            strptime("%Y-%m-%dT%H:%M:%SZ") | strftime("%U") | tostring)
           title: .slo.name
+          blueprint: '"datadogSloHistory"'
           properties:
-            timeframe: .type
+            monitory_type: .type
+            sampling_start_date: .from_ts | todate
+            sampling_end_date: .to_ts | todate
             thresholds: .thresholds
             sliValue: .overall.sli_value
+            week_number: >-
+              .to_ts | todateiso8601 | strptime("%Y-%m-%dT%H:%M:%SZ") |
+              strftime("%U")
           relations:
             slo: .slo.id
-

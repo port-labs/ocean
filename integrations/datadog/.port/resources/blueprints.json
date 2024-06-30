@@ -160,12 +160,14 @@
           "type": "string"
         },
         "warningThreshold": {
+          "icon": "DefaultProperty",
           "title": "Warning Threshold",
-          "type": "string"
+          "type": "number"
         },
         "targetThreshold": {
+          "icon": "DefaultProperty",
           "title": "Target Threshold",
-          "type": "string"
+          "type": "number"
         },
         "createdAt": {
           "title": "Created At",
@@ -186,18 +188,32 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
+    "aggregationProperties": {
+      "sli_average": {
+        "title": "SLI Average",
+        "type": "number",
+        "target": "datadogSloHistory",
+        "calculationSpec": {
+          "func": "average",
+          "averageOf": "total",
+          "property": "sliValue",
+          "measureTimeBy": "$createdAt",
+          "calculationBy": "property"
+        }
+      }
+    },
     "relations": {
       "monitors": {
-        "target": "datadogMonitor",
         "title": "SLO Monitors",
         "description": "The monitors tracking this SLO",
+        "target": "datadogMonitor",
         "required": false,
         "many": true
       },
       "services": {
-        "target": "datadogService",
         "title": "Services",
         "description": "The services tracked by this SLO",
+        "target": "datadogService",
         "required": false,
         "many": true
       }
@@ -210,30 +226,54 @@
     "icon": "Datadog",
     "schema": {
       "properties": {
-        "timeframe": {
-          "title": "Timeframe",
+        "monitor_type": {
+          "icon": "DefaultProperty",
+          "title": "Type",
           "type": "string"
-        },
-        "thresholds": {
-          "title": "Thresholds",
-          "type": "object"
         },
         "sliValue": {
+          "icon": "DefaultProperty",
           "title": "SLI Value",
-          "type": "string"
+          "type": "number"
+        },
+        "sampling_start_date": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Sampling Start Date",
+          "format": "date-time"
+        },
+        "sampling_end_date": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Sampling End Date",
+          "format": "date-time"
+        },
+        "week_number": {
+          "type": "number",
+          "title": "Week Number"
         }
       },
       "required": []
     },
-    "mirrorProperties": {},
+    "mirrorProperties": {
+      "slo_target": {
+        "title": "SLO Target",
+        "path": "slo.targetThreshold"
+      },
+      "slo_warning_threshold": {
+        "title": "SLO Warning Threshold",
+        "path": "slo.warningThreshold"
+      }
+    },
     "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {
-      "monitors": {
-        "target": "datadogSlo",
-        "title": "SLO",
+      "slo": {
+        "title": "slo",
         "description": "The SLO to which this history belongs to",
+        "target": "datadogSlo",
         "required": false,
-        "many": true
+        "many": false
       }
     }
   }
