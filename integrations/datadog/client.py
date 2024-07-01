@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
@@ -171,6 +172,25 @@ class DatadogClient:
 
             yield slos
             offset += limit
+
+    async def list_slo_histories(
+        self, from_ts: int, to_ts: int
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        histories = []
+        async for slos in self.get_slos():
+            histories = await asyncio.gather(
+                *(self.get_slo_history(slo["id"], from_ts, to_ts) for slo in slos)
+            )
+            yield histories
+
+    async def get_slo_history(
+        self, slo_id: str, from_ts: int, to_ts: int
+    ) -> dict[str, Any]:
+        url = f"{self.api_url}/api/v1/slo/{slo_id}/history"
+        result = await self._send_api_request(
+            url, params={"from_ts": from_ts, "to_ts": to_ts}
+        )
+        return result.get("data")
 
     async def get_single_monitor(self, monitor_id: str) -> dict[str, Any] | None:
         if not monitor_id:
