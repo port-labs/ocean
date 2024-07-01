@@ -1,6 +1,5 @@
 from enum import StrEnum
 from typing import Any
-import asyncio
 
 from port_ocean.context.ocean import ocean
 from clients.sentry import SentryClient
