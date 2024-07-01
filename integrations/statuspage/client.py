@@ -18,29 +18,33 @@ class PerPageParam(StrEnum):
 
 
 class StatusPageClient:
+    BASE_ENDPOINT = "v1/pages"
+
     def __init__(
         self,
         statuspage_host: str,
         statuspage_api_key: str,
         statuspage_ids: Optional[list[str]] = None,
     ) -> None:
-        self.statuspage_url = f"{statuspage_host}/v1/pages"
+        logger.info(f"Initializing StatusPageClient with host: {statuspage_host}")
+        self.statuspage_host = statuspage_host
         self.statuspage_api_key = statuspage_api_key
-        self.statuspage_ids = statuspage_ids
-
+        self.statuspage_ids = statuspage_ids or []
         self.client = http_async_client
         self.api_auth_header = {"Authorization": self.statuspage_api_key}
         self.client.headers.update(self.api_auth_header)
 
+    @property
+    def pages_base_endpoint(self) -> str:
+        return f"{self.statuspage_host}/{self.BASE_ENDPOINT}"
+
     async def _get_paginated_resources(
-        self, endpoint: str, params: dict[str, Any] = {}
+        self, url: str, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         page = 1
         while True:
             params["page"] = page
-            response = await self.client.get(
-                f"{self.statuspage_url}/{endpoint}", params=params
-            )
+            response = await self.client.get(url, params=params)
             response.raise_for_status()
             data = response.json()
             if not data:
@@ -49,14 +53,14 @@ class StatusPageClient:
             page += 1
 
     async def get_pages(self) -> list[dict[str, Any]]:
-        async for pages in self._get_paginated_resources(""):
+        async for pages in self._get_paginated_resources(self.pages_base_endpoint):
             if self.statuspage_ids:
                 return [page for page in pages if page["id"] in self.statuspage_ids]
             return pages
         return []
 
     async def get_page_by_id(self, page_id: str) -> dict[str, Any]:
-        response = await self.client.get(f"{self.statuspage_url}/{page_id}")
+        response = await self.client.get(f"{self.pages_base_endpoint}/{page_id}")
         response.raise_for_status()
         return response.json()
 
@@ -66,7 +70,8 @@ class StatusPageClient:
         pages = self.statuspage_ids or [page["id"] for page in await self.get_pages()]
         for page in pages:
             async for resources in self._get_paginated_resources(
-                f"{page}/{endpoint}", {per_page_param: PAGE_SIZE}
+                f"{self.pages_base_endpoint}/{page}/{endpoint}",
+                {per_page_param: PAGE_SIZE},
             ):
                 yield resources
 
@@ -88,14 +93,18 @@ class StatusPageClient:
 
     async def get_incident_updates(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for incidents in self.get_incidents():
-            updates = []
-            for incident in incidents:
-                updates.extend(incident["incident_updates"])
+            updates = [
+                update
+                for incident in incidents
+                for update in incident.get("incident_updates", [])
+            ]
             yield updates
 
     async def create_webhook_if_not_exists(self, page_id: str, app_host: str) -> None:
         app_host_webhook_url = f"{app_host}/integration/webhook"
-        async for webhooks in self._get_paginated_resources(f"{page_id}/subscribers"):
+        async for webhooks in self._get_paginated_resources(
+            f"{self.pages_base_endpoint}/{page_id}/subscribers"
+        ):
             if any(webhook["endpoint"] == app_host_webhook_url for webhook in webhooks):
                 logger.info(f"Webhook already exists for page: {page_id}")
                 return
@@ -104,7 +113,7 @@ class StatusPageClient:
             f"Creating webhook subscription for page: {page_id} with endpoint: {app_host_webhook_url}"
         )
         result = await self.client.post(
-            f"{self.statuspage_url}/{page_id}/subscribers",
+            f"{self.pages_base_endpoint}/{page_id}/subscribers",
             json={"subscriber": {"endpoint": app_host_webhook_url}},
         )
 
