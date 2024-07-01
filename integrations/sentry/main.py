@@ -1,10 +1,12 @@
 from enum import StrEnum
 from typing import Any
-import asyncio
 
 from port_ocean.context.ocean import ocean
 from clients.sentry import SentryClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.queue_utils import process_in_queue
+
+from loguru import logger
 
 
 class ObjectKind(StrEnum):
@@ -24,7 +26,7 @@ def init_client() -> SentryClient:
 
 
 async def add_tags_to_issue(
-    sentry_client: SentryClient, issue: dict[str, Any]
+    issue: dict[str, Any], sentry_client: SentryClient
 ) -> dict[str, Any]:
     tags = await sentry_client.get_issue_tags(issue["id"])
     return {**issue, "__tags": tags}
@@ -65,7 +67,9 @@ async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for projects in sentry_client.get_paginated_projects():
         for project in projects:
+            logger.info(f"Getting issues for project: {project['slug']}")
             async for issues in sentry_client.get_paginated_issues(project["slug"]):
-                tasks = [add_tags_to_issue(sentry_client, issue) for issue in issues]
-                issue_tags = await asyncio.gather(*tasks)
+                issue_tags = await process_in_queue(
+                    issues, add_tags_to_issue, sentry_client, concurrency=20
+                )
                 yield issue_tags
