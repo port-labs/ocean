@@ -190,8 +190,7 @@ class DatadogClient:
         result = await self._send_api_request(
             url, params={"from_ts": from_ts, "to_ts": to_ts}
         )
-        history = result.get("data")
-        return history
+        return result.get("data")
 
     async def get_single_monitor(self, monitor_id: str) -> dict[str, Any] | None:
         if not monitor_id:
