@@ -1,1 +1,0 @@
-Changed the way we handle concurrency from asyncio gather to use a queuing mechanism to reduce the chance of rate limit
