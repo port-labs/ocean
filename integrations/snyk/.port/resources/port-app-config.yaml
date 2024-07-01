@@ -17,7 +17,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .issueData.id
+          identifier: .issueData.id + "-" + (.links.paths | split("/") | .[8])
           title: .issueData.title
           blueprint: '"snykVulnerability"'
           properties:
