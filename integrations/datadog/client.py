@@ -7,6 +7,7 @@ import httpx
 from loguru import logger
 
 from port_ocean.utils import http_async_client
+from port_ocean.utils.queue_utils import process_in_queue
 
 MAX_PAGE_SIZE = 100
 
@@ -176,10 +177,13 @@ class DatadogClient:
     async def list_slo_histories(
         self, from_ts: int, to_ts: int
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        histories = []
         async for slos in self.get_slos():
-            histories = await asyncio.gather(
-                *(self.get_slo_history(slo["id"], from_ts, to_ts) for slo in slos)
+            histories = await process_in_queue(
+                [slo["id"] for slo in slos],
+                self.get_slo_history,
+                from_ts,
+                to_ts,
+                concurrency=5,
             )
             yield histories
 
