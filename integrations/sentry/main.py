@@ -35,9 +35,10 @@ async def add_tags_to_issue(
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = init_client()
-
     async for projects in sentry_client.get_paginated_projects():
-        yield projects
+        if projects:
+            logger.info(f"Received {len(projects)} projects")
+            yield projects
 
 
 @ocean.on_resync(ObjectKind.PROJECT_TAG)
@@ -48,17 +49,19 @@ async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         for project in projects:
             tags = await sentry_client.get_project_tags(project["slug"])
             project_tags = [{**project, "__tags": tag} for tag in tags]
-            yield project_tags
-
+            if project_tags:
+                logger.info(f"Received {len(tags)} project tags")
+                yield project_tags
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = init_client()
-
     async for projects in sentry_client.get_paginated_projects():
         for project in projects:
             async for issues in sentry_client.get_paginated_issues(project["slug"]):
-                yield issues
+                if issues:
+                    logger.info(f"Received {len(issues)} issues")
+                    yield issues
 
 
 @ocean.on_resync(ObjectKind.ISSUE_TAG)
@@ -67,9 +70,10 @@ async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for projects in sentry_client.get_paginated_projects():
         for project in projects:
-            logger.info(f"Getting issues for project: {project['slug']}")
             async for issues in sentry_client.get_paginated_issues(project["slug"]):
                 issue_tags = await process_in_queue(
                     issues, add_tags_to_issue, sentry_client, concurrency=20
                 )
-                yield issue_tags
+                if issue_tags:
+                    logger.info(f"Received {len(issue_tags)} issue tags")
+                    yield issue_tags
