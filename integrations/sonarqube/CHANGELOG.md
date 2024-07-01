@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.66 (2024-06-26)
+
+### Improvements
+
+- Updated the onpremise issue kind API endpoint from /search to /list to overcome the 10k limit imposed by SonarQube
+
+
 # Port_Ocean 0.1.65 (2024-06-25)
 
 ### Improvements
