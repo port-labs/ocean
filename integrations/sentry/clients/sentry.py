@@ -72,7 +72,7 @@ class SentryClient:
                 raise
 
     async def get_single_resource(self, url: str) -> list[dict[str, Any]]:
-        logger.info(f"Getting single resource from Sentry for URL: {url}")
+        logger.debug(f"Getting single resource from Sentry for URL: {url}")
         try:
             response = await self.client.get(url=url)
             response.raise_for_status()

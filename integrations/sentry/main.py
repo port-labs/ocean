@@ -6,6 +6,8 @@ from clients.sentry import SentryClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.queue_utils import process_in_queue
 
+from loguru import logger
+
 
 class ObjectKind(StrEnum):
     PROJECT = "project"
@@ -65,8 +67,9 @@ async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for projects in sentry_client.get_paginated_projects():
         for project in projects:
+            logger.info(f"Getting issues for project: {project['slug']}")
             async for issues in sentry_client.get_paginated_issues(project["slug"]):
                 issue_tags = await process_in_queue(
-                    issues, add_tags_to_issue, sentry_client, concurrency=5
+                    issues, add_tags_to_issue, sentry_client, concurrency=20
                 )
                 yield issue_tags
