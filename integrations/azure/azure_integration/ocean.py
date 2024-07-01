@@ -290,7 +290,7 @@ async def on_start() -> None:
     azure_client_secret = ocean.integration_config.get("azure_client_secret")
     azure_tenant_id = ocean.integration_config.get("azure_tenant_id")
     azure_subscription_id = ocean.integration_config.get("azure_subscription_id")
-    if not azure_client_id and not azure_client_secret and not azure_tenant_id:
+    if not azure_client_id or not azure_client_secret or not azure_tenant_id:
         logger.info(
             "Integration wasn't provided with override configuration for initializing client, proceeding with default"
         )
