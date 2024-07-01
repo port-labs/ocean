@@ -351,13 +351,13 @@ class KubecostV2ResourceConfig(ResourceConfig):
 
 class KubecostPortAppConfig(PortAppConfig):
     resources: list[
-        KubecostV1ResourceConfig,
-        KubecostV2ResourceConfig,
-        CloudCostV1ResourceConfig,
-        CloudCostV2ResourceConfig,
+        KubecostV1ResourceConfig |
+        KubecostV2ResourceConfig |
+        CloudCostV1ResourceConfig |
+        CloudCostV2ResourceConfig
     ] = Field(
         default_factory=list
-    )  # type: ignore
+    )
 
 
 class KubecostIntegration(BaseIntegration):
