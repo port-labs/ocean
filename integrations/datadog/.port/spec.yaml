@@ -8,6 +8,7 @@ features:
       - kind: datadogMonitor
       - kind: datadogService
       - kind: datadogSlo
+      - kind: datadogSloHistory
 configurations:
   - name: datadogBaseUrl
     description: Datadog Base URL. For Datadog EU, set to https://api.datadoghq.eu (overrides default US site).
