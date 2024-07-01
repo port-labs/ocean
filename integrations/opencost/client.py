@@ -56,6 +56,8 @@ class OpenCostClient:
             params["aggregate"] = selector.aggregate
         if selector.accumulate:
             params["accumulate"] = selector.accumulate
+        if selector.filter:
+            params["filter"] = selector.filter
 
         try:
             response = await self.http_client.get(

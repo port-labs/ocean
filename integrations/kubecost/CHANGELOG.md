@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.55 (2024-06-26)
+
+### Features
+
+- Added support for filter in 'cloud' and 'kubesystem' kind (#55)
+- Added separate resource config for 'allocation' v1 and v2 (#55)
+
+### Improvements
+
+- Added separate resource config for 'cloudCost' v1 and v2 (#55)
+- Separated 'kubesystem' resource config from 'cloud' (#55)
+
+
 # Port_Ocean 0.1.54 (2024-06-23)
 
 ### Improvements

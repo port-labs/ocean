@@ -1,7 +1,8 @@
 from typing import Any
 
-from client import KubeCostClient
 from port_ocean.context.ocean import ocean
+
+from client import KubeCostClient
 
 
 def init_client() -> KubeCostClient:
