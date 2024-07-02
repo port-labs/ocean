@@ -10,9 +10,10 @@ from port_ocean.context.event import event
 
 import httpx
 
-MAXIMUM_CONCURRENT_REQUESTS = 22
+MAXIMUM_CONCURRENT_REQUESTS = 12
 MINIMUM_CONCURRENT_REQUESTS_REMAINING = 1
-MINIMUM_LIMIT_REMAINING = 5
+MINIMUM_LIMIT_REMAINING = 3
+DEFAULT_SLEEP_TIME = 0.1
 PAGE_SIZE = 100
 
 
@@ -35,11 +36,18 @@ class SentryClient:
         self.rate_limit_remaining = MINIMUM_LIMIT_REMAINING + 1
         self.rate_limit_concurrent_remaining = MINIMUM_CONCURRENT_REQUESTS_REMAINING + 1
 
-    async def fetch(
+    async def fetch_with_rate_limit_handling(
         self,
         url: str,
         params: dict[str, Any] | None = None,
     ) -> httpx.Response:
+        """Rate limit handler
+        This method makes sure requests aren't abusing Sentry's rate-limits.
+        It references both:
+        1. Concurrent restrictions (By making sure no request is made past a threshold)
+        2. Requests per "window" - By adding a sleep after each request that had a RATE_LIMIT_REMAINING below a threshold
+        for more information about Sentry's rate limits, please check out https://docs.sentry.io/api/ratelimits/
+        """
         while True:
             if (
                 self.rate_limit_concurrent_remaining
@@ -59,10 +67,12 @@ class SentryClient:
                 wait_time = (
                     rate_limit_reset - current_time
                     if rate_limit_reset > current_time
-                    else 0.1
+                    else DEFAULT_SLEEP_TIME
                 )
                 logger.info(
-                    f"Approached close to rate limit, Waiting for {wait_time} seconds"
+                    f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
+                    f"URL: {url}, Remaining: {self.rate_limit_remaining}, "
+                    f"Concurrent Remaining: {self.rate_limit_concurrent_remaining}"
                 )
                 await asyncio.sleep(wait_time)
             return response
@@ -92,7 +102,7 @@ class SentryClient:
 
         while url:
             try:
-                response = await self.fetch(
+                response = await self.fetch_with_rate_limit_handling(
                     url=url,
                     params=params,
                 )
@@ -117,7 +127,7 @@ class SentryClient:
     async def get_single_resource(self, url: str) -> list[dict[str, Any]]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
         try:
-            response = await self.fetch(url=url)
+            response = await self.fetch_with_rate_limit_handling(url=url)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
