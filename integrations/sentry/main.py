@@ -1,7 +1,7 @@
 from enum import StrEnum
+from itertools import chain
 from typing import Any
 
-from utils import flatten_list
 from iterators import iterate_per_page
 from port_ocean.context.ocean import ocean
 from clients.sentry import MAXIMUM_CONCURRENT_REQUESTS, SentryClient
@@ -17,6 +17,10 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     PROJECT_TAG = "project-tag"
     ISSUE_TAG = "issue-tag"
+
+
+def flatten_list(lst: list[Any]) -> list[Any]:
+    return list(chain.from_iterable(lst))
 
 
 def init_client() -> SentryClient:
