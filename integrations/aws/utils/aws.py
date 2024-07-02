@@ -1,11 +1,13 @@
-from typing import Any, AsyncIterator, Optional
+from typing import Any, AsyncIterator, Optional, Union
+
 import aioboto3
 from loguru import logger
-from aws.session_manager import SessionManager
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from starlette.requests import Request
-from port_ocean.context.event import event
 
+from aws.session_manager import SessionManager
+from aws.aws_credentials import AwsCredentials
 
 _session_manager: SessionManager = SessionManager()
 
@@ -32,6 +34,12 @@ def describe_accessible_accounts() -> list[dict[str, Any]]:
     return _session_manager._aws_accessible_accounts
 
 
+def get_default_region_from_credentials(
+    credentials: AwsCredentials,
+) -> Union[str, None]:
+    return credentials.default_regions[0] if credentials.default_regions else None
+
+
 async def get_sessions(
     custom_account_id: Optional[str] = None,
     custom_region: Optional[str] = None,
@@ -45,7 +53,8 @@ async def get_sessions(
     if custom_account_id:
         credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
         if use_default_region:
-            yield await credentials.create_session()
+            default_region = get_default_region_from_credentials(credentials)
+            yield await credentials.create_session(default_region)
         elif custom_region:
             yield await credentials.create_session(custom_region)
         else:
@@ -55,7 +64,8 @@ async def get_sessions(
 
     for credentials in _session_manager._aws_credentials:
         if use_default_region:
-            yield await credentials.create_session()
+            default_region = get_default_region_from_credentials(credentials)
+            yield await credentials.create_session(default_region)
         elif custom_region:
             yield await credentials.create_session(custom_region)
         else:
