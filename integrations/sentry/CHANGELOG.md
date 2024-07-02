@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.54 (2024-07-02)
+
+### Improvements
+
+- Handle rate limit headers to ensure maximum concurrent requests without being rate limited (#1)
+- Made projects + issue batches instead of going one by one in tag-fetching to ensure maximum parallelism (#1)
+
+
 # Port_Ocean 0.1.53 (2024-06-30)
 
 ### Improvements
