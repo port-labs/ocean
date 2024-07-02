@@ -1,3 +1,5 @@
+import asyncio
+import time
 from typing import Any, AsyncGenerator, cast
 from loguru import logger
 
@@ -8,7 +10,14 @@ from port_ocean.context.event import event
 
 import httpx
 
+MAXIMUM_CONCURRENT_REQUESTS = 22
+MINIMUM_CONCURRENT_REQUESTS_REMAINING = 1
+MINIMUM_LIMIT_REMAINING = 5
 PAGE_SIZE = 100
+
+
+class ResourceNotFoundError(Exception):
+    pass
 
 
 class SentryClient:
@@ -23,6 +32,40 @@ class SentryClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
+        self.rate_limit_remaining = MINIMUM_LIMIT_REMAINING + 1
+        self.rate_limit_concurrent_remaining = MINIMUM_CONCURRENT_REQUESTS_REMAINING + 1
+
+    async def fetch(
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        while True:
+            if (
+                self.rate_limit_concurrent_remaining
+                <= MINIMUM_CONCURRENT_REQUESTS_REMAINING
+            ):
+                continue
+            response = await self.client.get(url, params=params)
+            self.rate_limit_remaining = int(
+                response.headers["X-Sentry-Rate-Limit-Remaining"]
+            )
+            self.rate_limit_concurrent_remaining = int(
+                response.headers["X-Sentry-Rate-Limit-ConcurrentRemaining"]
+            )
+            if self.rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
+                rate_limit_reset = int(response.headers["X-Sentry-Rate-Limit-Reset"])
+                current_time = int(time.time())
+                wait_time = (
+                    rate_limit_reset - current_time
+                    if rate_limit_reset > current_time
+                    else 0.1
+                )
+                logger.info(
+                    f"Approached close to rate limit, Waiting for {wait_time} seconds"
+                )
+                await asyncio.sleep(wait_time)
+            return response
 
     def get_next_link(self, link_header: str) -> str:
         """Information about the next page of results is provided in the link header. The pagination cursors are returned for both the previous and the next page.
@@ -45,17 +88,17 @@ class SentryClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params: dict[str, Any] = {"per_page": PAGE_SIZE}
 
-        logger.info(f"Getting paginated resource from Sentry for URL: {url}")
+        logger.debug(f"Getting paginated resource from Sentry for URL: {url}")
 
         while url:
             try:
-                response = await self.client.get(
+                response = await self.fetch(
                     url=url,
                     params=params,
                 )
                 response.raise_for_status()
                 records = response.json()
-                logger.info(
+                logger.debug(
                     f"Received {len(records)} records from Sentry for URL: {url}"
                 )
                 yield records
@@ -74,10 +117,12 @@ class SentryClient:
     async def get_single_resource(self, url: str) -> list[dict[str, Any]]:
         logger.debug(f"Getting single resource from Sentry for URL: {url}")
         try:
-            response = await self.client.get(url=url)
+            response = await self.fetch(url=url)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
+            if e.response.status_code:
+                raise ResourceNotFoundError()
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
@@ -102,9 +147,17 @@ class SentryClient:
             yield issues
 
     async def get_project_tags(self, project_slug: str) -> list[dict[str, Any]]:
-        url = f"{self.api_url}/projects/{self.organization}/{project_slug}/tags/{self.selector.tag}/values/"
-        return await self.get_single_resource(url)
+        try:
+            url = f"{self.api_url}/projects/{self.organization}/{project_slug}/tags/{self.selector.tag}/values/"
+            return await self.get_single_resource(url)
+        except ResourceNotFoundError:
+            logger.debug(f"Found no {project_slug} in {self.organization}")
+            return []
 
     async def get_issue_tags(self, issue_id: str) -> list[dict[str, Any]]:
-        url = f"{self.api_url}/organizations/{self.organization}/issues/{issue_id}/tags/{self.selector.tag}/values/"
-        return await self.get_single_resource(url)
+        try:
+            url = f"{self.api_url}/organizations/{self.organization}/issues/{issue_id}/tags/{self.selector.tag}/values/"
+            return await self.get_single_resource(url)
+        except ResourceNotFoundError:
+            logger.debug(f"Found no issues in {self.organization}")
+            return []
