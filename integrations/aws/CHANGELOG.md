@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.9 (2024-07-02)
+
+### Bugfix
+
+- Ensure default region for global resources (#1)
+
+
 # Port_Ocean 0.2.8 (2024-06-23)
 
 ### Improvements
