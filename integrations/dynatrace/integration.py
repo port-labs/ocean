@@ -48,7 +48,9 @@ class DynatraceResourceConfig(ResourceConfig):
 
 
 class DynatracePortAppConfig(PortAppConfig):
-    resources: list[DynatraceResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[DynatraceResourceConfig | ResourceConfig] = Field(
+        default_factory=list
+    )
 
 
 class DynatraceIntegration(BaseIntegration):
