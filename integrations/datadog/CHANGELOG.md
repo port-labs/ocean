@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.1.13 (2024-07-01)
 
-### Bug Fixes
+### Improvements
 
 - Changed the way we handle concurrency from asyncio gather to use a queuing mechanism to reduce the chance of rate limit
 

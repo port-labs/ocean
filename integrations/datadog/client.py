@@ -9,6 +9,7 @@ from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
 
 MAX_PAGE_SIZE = 100
+MAX_CONCURRENT_REQUESTS = 5
 
 
 def embed_credentials_in_url(url: str, username: str, token: str) -> str:
@@ -182,7 +183,7 @@ class DatadogClient:
                 self.get_slo_history,
                 from_ts,
                 to_ts,
-                concurrency=5,
+                concurrency=MAX_CONCURRENT_REQUESTS,
             )
             yield histories
 
