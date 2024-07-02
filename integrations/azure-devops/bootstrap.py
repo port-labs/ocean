@@ -1,4 +1,5 @@
 import asyncio
+from typing import List
 from loguru import logger
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from azure_devops.webhooks.listeners.listener import HookListener
@@ -6,12 +7,15 @@ from azure_devops.webhooks.listeners.pull_request import PullRequestHookListener
 from azure_devops.webhooks.listeners.push import PushHookListener
 from azure_devops.webhooks.webhook_event import WebhookEvent
 from azure_devops.webhooks.webhook_event_observer import WebhookEventObserver
+from port_ocean import ocean
+from port_ocean.context import event
+from port_ocean.exceptions.context import EventContextNotFoundError
 
 webhook_event_handler = WebhookEventObserver()
 
 
 async def setup_listeners(
-    app_host: str, azure_devops_client: AzureDevopsClient
+    app_host: str, azure_devops_client: AzureDevopsClient, project_id: str = None
 ) -> None:
     listeners: list[HookListener] = [
         PullRequestHookListener(azure_devops_client),
@@ -20,7 +24,7 @@ async def setup_listeners(
     webhook_events: list[WebhookEvent] = list()
     for listener in listeners:
         for event in listener.webhook_events:
-            event.set_consumer_url(f"{app_host}/integration/webhook")
+            event.set_webhook_details(f"{app_host}/integration/webhook", project_id)
         webhook_event_handler.on(listener.webhook_events, listener.on_hook)
         webhook_events.extend(listener.webhook_events)
     await _upsert_webhooks(azure_devops_client, webhook_events)
@@ -76,3 +80,32 @@ async def _upsert_webhooks(
 
     else:
         logger.info("All relevant subscriptions already exist")
+
+
+def get_all_services() -> List[AzureDevopsClient]:
+    all_tokens_services = []
+
+    logger.info(
+        f"Creating azure devops clients for {len(ocean.integration_config['tokens'])} tokens"
+    )
+    for token in ocean.integration_config["tokens"].items():
+        azure_devops_client = AzureDevopsClient(
+            ocean.integration_config["organization_url"],
+            token,
+        )
+
+        all_tokens_services.append(azure_devops_client)
+
+    return all_tokens_services
+
+
+def get_cached_all_services() -> List[AzureDevopsClient]:
+    try:
+        all_services = event.attributes.get("all_tokens_services")
+        if not all_services:
+            logger.info("Azure Devops clients are not cached, creating them")
+            all_services = get_all_services()
+            event.attributes["all_tokens_services"] = all_services
+        return all_services
+    except EventContextNotFoundError:
+        return get_all_services()
