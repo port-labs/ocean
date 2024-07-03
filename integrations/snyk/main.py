@@ -1,13 +1,16 @@
 import asyncio
 import hashlib
 import hmac
-from typing import Any
+from typing import Any, cast
 from enum import StrEnum
 from fastapi import Request
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
+
 from snyk.client import SnykClient
+from snyk.overrides import ProjectResourceConfig
 
 CONCURRENT_REQUESTS = 20
 
@@ -72,13 +75,18 @@ async def on_projects_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
     async for projects in snyk_client.get_paginated_projects():
         logger.debug(
-            f"Received batch with {len(projects)} projects, getting their issues"
+            f"Received batch with {len(projects)} projects"
         )
-        tasks = [process_project_issues(semaphore, project) for project in projects]
-        issues = await asyncio.gather(*tasks)
-        yield [
-            {**project, "__issues": issues} for project, issues in zip(projects, issues)
-        ]
+
+        if cast(ProjectResourceConfig, event.resource_config).selector.attach_issues_to_project:
+            logger.debug("Getting issues for projects in batch")
+            tasks = [process_project_issues(semaphore, project) for project in projects]
+            issues = await asyncio.gather(*tasks)
+            yield [
+                {**project, "__issues": issues} for project, issues in zip(projects, issues)
+            ]
+        else:
+            yield projects
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
