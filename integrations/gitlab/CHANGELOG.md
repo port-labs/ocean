@@ -10,9 +10,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 0.1.89 (2024-07-03)
 ===================
 
-### Improvements
+### Features
 
-- Added support for gitlab user ingestion (0.1.89)
+- Added support for gitlab user ingestion (PORT-7708)
 
 
 0.1.88 (2024-06-23)
