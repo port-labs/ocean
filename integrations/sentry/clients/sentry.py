@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Any, AsyncGenerator, cast
+from typing import Any, AsyncGenerator, AsyncIterator, cast
 from loguru import logger
 
 from port_ocean.utils import http_async_client
@@ -11,7 +11,9 @@ from port_ocean.context.event import event
 import httpx
 
 MAXIMUM_CONCURRENT_REQUESTS = 20
-MINIMUM_LIMIT_REMAINING = 5
+MAXIMUM_CONCURRENT_REQUESTS_ISSUES = 3
+MINIMUM_LIMIT_REMAINING = 10
+MINIMUM_ISSUES_LIMIT_REMAINING = 3
 DEFAULT_SLEEP_TIME = 0.1
 PAGE_SIZE = 100
 
@@ -22,7 +24,12 @@ class ResourceNotFoundError(Exception):
 
 class SentryClient:
     def __init__(
-        self, sentry_base_url: str, auth_token: str, sentry_organization: str
+        self,
+        sentry_base_url: str,
+        auth_token: str,
+        sentry_organization: str,
+        default_sem: asyncio.Semaphore,
+        issues_sem: asyncio.Semaphore | None,
     ) -> None:
         self.sentry_base_url = sentry_base_url
         self.auth_token = auth_token
@@ -32,11 +39,14 @@ class SentryClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
+        self.default_semaphore = default_sem
+        self.issues_semaphore = issues_sem
 
     async def fetch_with_rate_limit_handling(
         self,
         url: str,
         params: dict[str, Any] | None = None,
+        sem: asyncio.Semaphore | None = None,
     ) -> httpx.Response:
         """Rate limit handler
         This method makes sure requests aren't abusing Sentry's rate-limits.
@@ -44,10 +54,15 @@ class SentryClient:
         Requests per "window" - By adding a sleep after each request that had a RATE_LIMIT_REMAINING below a threshold
         for more information about Sentry's rate limits, please check out https://docs.sentry.io/api/ratelimits/
         """
+        if not sem:
+            sem = self.default_semaphore
         while True:
-            response = await self.client.get(url, params=params)
-            rate_limit_remaining = int(response.headers["X-Sentry-Rate-Limit-Remaining"])
-            if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
+            async with sem:
+                response = await self.client.get(url, params=params)
+            rate_limit_remaining = int(
+                response.headers["X-Sentry-Rate-Limit-Remaining"]
+            )
+            if rate_limit_remaining <= MINIMUM_ISSUES_LIMIT_REMAINING:
                 rate_limit_reset = int(response.headers["X-Sentry-Rate-Limit-Reset"])
                 current_time = int(time.time())
                 wait_time = (
@@ -79,7 +94,7 @@ class SentryClient:
         return ""
 
     async def get_paginated_resource(
-        self, url: str
+        self, url: str, custom_sem: asyncio.Semaphore | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params: dict[str, Any] = {"per_page": PAGE_SIZE}
 
@@ -88,8 +103,7 @@ class SentryClient:
         while url:
             try:
                 response = await self.fetch_with_rate_limit_handling(
-                    url=url,
-                    params=params,
+                    url=url, params=params, sem=custom_sem
                 )
                 response.raise_for_status()
                 records = response.json()
@@ -143,7 +157,8 @@ class SentryClient:
         self, project_slug: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for issues in self.get_paginated_resource(
-            f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/"
+            f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/",
+            custom_sem=self.issues_semaphore,
         ):
             yield issues
 
@@ -164,15 +179,13 @@ class SentryClient:
             return []
 
     async def add_tags_to_issue(
-        self, issue: dict[str, Any], sem: asyncio.Semaphore
-    ) -> dict[str, Any]:
-        async with sem:
-            tags = await self.get_issue_tags(issue["id"])
-            return {**issue, "__tags": tags}
+        self, issue: dict[str, Any]
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        tags = await self.get_issue_tags(issue["id"])
+        yield [{**issue, "__tags": tags}]
 
     async def add_tags_to_project(
-        self, project: dict[str, Any], sem: asyncio.Semaphore
-    ) -> list[dict[str, Any]]:
-        async with sem:
-            tags = await self.get_project_tags(project["slug"])
-            return [{**project, "__tags": tag} for tag in tags]
+        self, project: dict[str, Any]
+    ) -> AsyncIterator[list[dict[str, Any]]]:
+        tags = await self.get_project_tags(project["slug"])
+        yield [{**project, "__tags": tag} for tag in tags]
