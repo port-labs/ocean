@@ -28,12 +28,12 @@ async def setup_webhooks() -> None:
         async for projects in azure_devops_client.generate_projects():
             for project in projects:
                 await setup_listeners(
-                    ocean.integration_config["app_host"], azure_devops_client, project["id"]
+                    ocean.integration_config["app_host"],
+                    azure_devops_client,
+                    project["id"],
                 )
     else:
-        await setup_listeners(
-            ocean.integration_config["app_host"], azure_devops_client
-        )
+        await setup_listeners(ocean.integration_config["app_host"], azure_devops_client)
 
 
 @ocean.on_resync(Kind.PROJECT)
