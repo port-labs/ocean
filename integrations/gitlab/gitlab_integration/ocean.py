@@ -207,3 +207,16 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         {**pipeline.asdict(), "__project": project.asdict()}
                         for pipeline in pipelines_batch
                     ]
+
+
+@ocean.on_resync(ObjectKind.MEMBER)
+async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    for service in get_cached_all_services():
+        for group in service.get_root_groups():
+            async for members_batch in service.get_all_group_members(group):
+                tasks = [
+                    service.enrich_member_with_groups_and_public_email(member)
+                    for member in members_batch
+                ]
+                members = await asyncio.gather(*tasks)
+                yield members

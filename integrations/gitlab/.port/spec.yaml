@@ -8,6 +8,7 @@ features:
     section: Git Providers
     resources:
       - kind: projects
+      - kind: members
 configurations:
   - name: tokenMapping
     required: true

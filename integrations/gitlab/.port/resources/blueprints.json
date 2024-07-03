@@ -53,5 +53,65 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "member",
+    "title": "Member",
+    "icon": "GitLab",
+    "schema": {
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string",
+          "icon": "GitLab",
+          "description": "The current state of the GitLab item (e.g., open, closed)."
+        },
+        "locked": {
+          "type": "string",
+          "title": "Locked",
+          "icon": "GitLab",
+          "description": "Indicates if the GitLab item is locked."
+        },
+        "link": {
+          "icon": "Link",
+          "type": "string",
+          "title": "Link",
+          "format": "url",
+          "description": "URL link to the GitLab item."
+        },
+        "createdBy": {
+          "type": "string",
+          "title": "Created By",
+          "icon": "GitLab",
+          "description": "The GitLab username of the item's creator."
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "description": "GitLab primary email address.",
+          "icon": "User",
+          "format": "user"
+        },
+        "publicEmail": {
+          "type": "string",
+          "title": "Public Email",
+          "description": "User's GitLab public email.",
+          "icon": "User",
+          "format": "user"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "gitlabGroup": {
+        "title": "Group",
+        "target": "gitlabGroup",
+        "required": false,
+        "many": true
+      }
+    }
   }
 ]

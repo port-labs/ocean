@@ -15,3 +15,21 @@ resources:
             readme: file://README.md
             description: .description
             language: .__languages | to_entries | max_by(.value) | .key
+  - kind: member
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .username
+          title: .name
+          blueprint: '"member"'
+          properties:
+            state: .state
+            locked: .locked
+            link: .web_url
+            email: .email
+            publicEmail: .__public_email
+          relations:
+            gitlabGroup: '[.__groups[].full_path]'
+            createdBy: .created_by.username
