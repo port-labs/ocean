@@ -44,7 +44,15 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     clickup_client = await init_client()
-    async for projects in clickup_client.get_projects():
+    async for projects in clickup_client.get_folderless_projects():
+        logger.info(f"Received project batch with {len(projects)} projects")
+        yield projects
+
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_resync_folder_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    clickup_client = await init_client()
+    async for projects in clickup_client.get_folder_projects():
         logger.info(f"Received project batch with {len(projects)} projects")
         yield projects
 

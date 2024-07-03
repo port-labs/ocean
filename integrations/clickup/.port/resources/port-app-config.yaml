@@ -23,10 +23,12 @@ resources:
           identifier: .id
           title: .name
           properties:
-            url: "\"https://app.clickup.com/\" + .id + \"/list\""
+            url: "\"https://app.clickup.com/\" + .__team_id + \"/v/b/li/\" + .id "
             startDate: .start_date
-            endDate: .end_date
+            endDate: .due_date
             totalIssues: .task_count
+          relations:
+            team: .__team_id
   - kind: issue
     selector:
       query: 'true'
@@ -34,17 +36,16 @@ resources:
       entity:
         mappings:
           blueprint: '"clickupIssue"'
-          identifier: .id | tostring
+          identifier: .id
           title: .name
           properties:
-            tags: .tags
-            sloType: .type
             description: .description
-            warningThreshold: .warning_threshold
-            targetThreshold: .target_threshold
-            createdBy: .creator.email
-            createdAt: .created_at | todate
-            updatedAt: .modified_at | todate
+            url: .url
+            status: .status.status
+            assignee: .assignees | map(.username)
+            creator: .creator.username
+            priority: .priority
+            created: .date_created | todate
+            updated: .date_updated | todate
           relations:
-            monitors: .monitor_ids | map(tostring)
-            services: '.monitor_tags + .tags | map(select(startswith("service:"))) | unique | map(split(":")[1])'
+            project: .list.id

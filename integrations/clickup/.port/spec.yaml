@@ -23,7 +23,3 @@ configurations:
     required: false
     type: url
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Jira"
-  - name: WorkspaceKey
-    description: "The ID of the workspace to integrate. Guide here - https://dev-doc.clickup.com/333/d/h/ad-455845/c464293970a6906"
-    required: true
-    type: string

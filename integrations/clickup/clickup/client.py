@@ -1,6 +1,8 @@
 from typing import Any, AsyncGenerator, Optional, List
 from httpx import Timeout
 from loguru import logger
+
+from integrations.clickup.clickup.utils import CustomProperties
 from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 50
@@ -63,25 +65,43 @@ class ClickupClient:
         teams = response.get("teams", [])
         yield teams
 
-    async def _get_spaces_in_team(self, team_id: str) -> List[dict[str, Any]]:
+    async def _get_spaces_in_team(self, team_id: str) -> AsyncGenerator[str, None]:
         url = f"{self.api_url}/team/{team_id}/space"
         params = {"archived": "false"}
         response = await self._send_api_request(url, params)
         spaces = response.get("spaces")
-        return spaces
+        for space in spaces:
+            yield space.get("id")
 
-    async def get_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
-        if self.team_key is None:
-            await self.initialize_team_key()
+    async def _get_folders_in_space(self, team_id: str) -> AsyncGenerator[str, None]:
+        async for space in self._get_spaces_in_team(team_id):
+            url = f"{self.api_url}/space/{space}/folders"
+            params = {"archived": "false"}
+            response = await self._send_api_request(url, params)
+            folders = response.get("folders")
+            for folder in folders:
+                yield folder.get("id")
+
+    async def get_folder_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         for team_id in self.team_key:
-            spaces = await self._get_spaces_in_team(team_id)
-            for space in spaces:
-                space_id = space.get("id")
-                url = f"{self.api_url}/space/{space_id}/folder"
+            async for folder_id in self._get_folders_in_space(team_id):
+                url = f"{self.api_url}/folder/{folder_id}/list"
                 params = {"archived": "false"}
                 response = await self._send_api_request(url, params)
-                projects = response.get("folders")
+                projects = response.get("lists")
                 yield projects
+
+    async def get_folderless_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
+        for team_id in self.team_key:
+            async for space_id in self._get_spaces_in_team(team_id):
+                url = f"{self.api_url}/space/{space_id}/list"
+                params = {"archived": "false"}
+                response = await self._send_api_request(url, params)
+                projects = response.get("lists")
+                yield [
+                    {**project, CustomProperties.TEAM_ID: team_id}
+                    for project in projects
+                ]
 
     async def get_single_project(self, folder_id: str) -> dict[str, Any]:
         url = f"{self.api_url}/folder/{folder_id}"
