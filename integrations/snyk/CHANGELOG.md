@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.62 (2024-07-03)
+
+### Improvements
+
+- Added a filter to make it optional to fetch issues for projects sinces the default mapping does not require fetching issues for a project for new customers
+
+
 # Port_Ocean 0.1.61 (2024-06-25)
 
 ### Improvements
