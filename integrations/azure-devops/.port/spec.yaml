@@ -15,6 +15,10 @@ configurations:
     required: true
     type: string
     sensitive: true
+  - name: isProjectAdmin
+    required: false
+    type: boolean
+    description: If the user is a project admin.
   - name: appHost
     required: false
     type: url
