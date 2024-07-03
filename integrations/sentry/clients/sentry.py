@@ -10,9 +10,8 @@ from port_ocean.context.event import event
 
 import httpx
 
-MAXIMUM_CONCURRENT_REQUESTS = 12
-MINIMUM_CONCURRENT_REQUESTS_REMAINING = 1
-MINIMUM_LIMIT_REMAINING = 3
+MAXIMUM_CONCURRENT_REQUESTS = 20
+MINIMUM_LIMIT_REMAINING = 5
 DEFAULT_SLEEP_TIME = 0.1
 PAGE_SIZE = 100
 
@@ -33,8 +32,6 @@ class SentryClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
-        self.rate_limit_remaining = MINIMUM_LIMIT_REMAINING + 1
-        self.rate_limit_concurrent_remaining = MINIMUM_CONCURRENT_REQUESTS_REMAINING + 1
 
     async def fetch_with_rate_limit_handling(
         self,
@@ -43,25 +40,14 @@ class SentryClient:
     ) -> httpx.Response:
         """Rate limit handler
         This method makes sure requests aren't abusing Sentry's rate-limits.
-        It references both:
-        1. Concurrent restrictions (By making sure no request is made past a threshold)
-        2. Requests per "window" - By adding a sleep after each request that had a RATE_LIMIT_REMAINING below a threshold
+        It references:
+        Requests per "window" - By adding a sleep after each request that had a RATE_LIMIT_REMAINING below a threshold
         for more information about Sentry's rate limits, please check out https://docs.sentry.io/api/ratelimits/
         """
         while True:
-            if (
-                self.rate_limit_concurrent_remaining
-                <= MINIMUM_CONCURRENT_REQUESTS_REMAINING
-            ):
-                continue
             response = await self.client.get(url, params=params)
-            self.rate_limit_remaining = int(
-                response.headers["X-Sentry-Rate-Limit-Remaining"]
-            )
-            self.rate_limit_concurrent_remaining = int(
-                response.headers["X-Sentry-Rate-Limit-ConcurrentRemaining"]
-            )
-            if self.rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
+            rate_limit_remaining = int(response.headers["X-Sentry-Rate-Limit-Remaining"])
+            if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
                 rate_limit_reset = int(response.headers["X-Sentry-Rate-Limit-Reset"])
                 current_time = int(time.time())
                 wait_time = (
@@ -69,10 +55,9 @@ class SentryClient:
                     if rate_limit_reset > current_time
                     else DEFAULT_SLEEP_TIME
                 )
-                logger.info(
+                logger.debug(
                     f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
-                    f"URL: {url}, Remaining: {self.rate_limit_remaining}, "
-                    f"Concurrent Remaining: {self.rate_limit_concurrent_remaining}"
+                    f"URL: {url}, Remaining: {rate_limit_remaining} "
                 )
                 await asyncio.sleep(wait_time)
             return response
@@ -148,6 +133,12 @@ class SentryClient:
         async for project in self.get_paginated_resource(f"{self.api_url}/projects/"):
             yield project
 
+    @cache_iterator_result()
+    async def get_paginated_project_slugs(self) -> AsyncGenerator[list[str], None]:
+        async for projects in self.get_paginated_projects():
+            project_slugs = [project["slug"] for project in projects]
+            yield project_slugs
+
     async def get_paginated_issues(
         self, project_slug: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -171,3 +162,17 @@ class SentryClient:
         except ResourceNotFoundError:
             logger.debug(f"Found no issues in {self.organization}")
             return []
+
+    async def add_tags_to_issue(
+        self, issue: dict[str, Any], sem: asyncio.Semaphore
+    ) -> dict[str, Any]:
+        async with sem:
+            tags = await self.get_issue_tags(issue["id"])
+            return {**issue, "__tags": tags}
+
+    async def add_tags_to_project(
+        self, project: dict[str, Any], sem: asyncio.Semaphore
+    ) -> list[dict[str, Any]]:
+        async with sem:
+            tags = await self.get_project_tags(project["slug"])
+            return [{**project, "__tags": tag} for tag in tags]
