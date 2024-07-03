@@ -1,0 +1,29 @@
+description: ClickUp integration for Port Ocean
+icon: Clickup
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/clickup
+features:
+  - type: exporter
+    section: Project management
+    resources:
+      - kind: team
+      - kind: project
+      - kind: issue
+configurations:
+  - name: appHost
+    required: false
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in ClickUp."
+  - name: clickupHost
+    required: true
+    type: string
+    description: "The URL of your ClickUp, for example: https://app.clickup.com"
+  - name: clickupApiKey
+    required: true
+    type: string
+    description: "API key used to access ClickUp data. It should be generated from ClickUp and have appropriate permissions."
+    sensitive: true
+  - name: clickupUserEmail
+    required: false
+    type: string
+    description: "The email of the user whose API key is used for ClickUp integration."
+    sensitive: true
