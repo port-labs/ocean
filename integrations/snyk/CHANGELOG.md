@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added a filter to make it optional to fetch issues for projects sinces the default mapping does not require fetching issues for a project for new customers
+- Added a filter to enable users to decide whether or not they want to fetch issues for every project
 
 
 # Port_Ocean 0.1.61 (2024-06-25)
