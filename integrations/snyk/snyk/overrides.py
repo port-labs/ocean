@@ -12,13 +12,13 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 
 class ProjectSelector(Selector):
-    attach_issues_to_project: bool = Field(
-        alias="attachIssuesToProject", default=False
-    )
+    attach_issues_to_project: bool = Field(alias="attachIssuesToProject", default=False)
+
 
 class ProjectResourceConfig(ResourceConfig):
     kind: typing.Literal["project"]
     selector: ProjectSelector
+
 
 class SnykPortAppConfig(PortAppConfig):
     resources: list[ProjectResourceConfig | ResourceConfig] = Field(
