@@ -35,6 +35,7 @@ resources:
   - kind: project
     selector:
       query: 'true'
+      attachIssuesToProject: 'false'
     port:
       entity:
         mappings:
