@@ -12,7 +12,7 @@ resources:
           title: .name
           properties:
             url: "\"https://app.clickup.com/\" + .id + \"/home\""
-            members: '[.members[] | .user.email]'
+            members: '[.members[].user.email]'
   - kind: project
     selector:
       query: 'true'
@@ -23,7 +23,7 @@ resources:
           identifier: .id | tostring
           title: .name
           properties:
-            url: "\"https://app.clickup.com/\" + .team_id + \"/v/l/li\" + .id"
+            url: "\"https://app.clickup.com/\" + .team_id + \"/v/l/li/\" + .id"
             startDate: .start_date
             endDate: .due_date
             totalIssues: .task_count
