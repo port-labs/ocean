@@ -1,15 +1,29 @@
+type: clickup
 description: ClickUp integration for Port Ocean
-icon: Cookiecutter # Should be one of the available icons in Port
+icon: Clickup
 features:
   - type: exporter
-    section: Git Providers # Should be one of the available sections in Port
+    section: Project Management
     resources:
-      - kind: <ResourceName1>
-      - kind: <ResourceName2>
+      - kind: issue
+      - kind: project
+      - kind: team
 configurations:
-  - name: myGitToken
+  - name: clickupPersonalToken
+    description: "Clickup personal token for authentication. Guide here - https://clickup.com/api/developer-portal/authentication#personal-token"
     required: true
     type: string
     sensitive: true
-  - name: someApplicationUrl
+  - name: clickupBaseUrl
+    description: "Clickup Base URL."
     type: url
+    required: true
+    default: "https://api.clickup.com"
+  - name: appHost
+    required: false
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Jira"
+  - name: WorkspaceKey
+    description: "The ID of the workspace to integrate. Guide here - https://dev-doc.clickup.com/333/d/h/ad-455845/c464293970a6906"
+    required: true
+    type: string

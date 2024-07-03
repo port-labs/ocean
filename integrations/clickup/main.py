@@ -1,41 +1,83 @@
+from enum import StrEnum
 from typing import Any
-
+from clickup.client import ClickupClient
+from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
-@ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
-    return []
+class ObjectKind(StrEnum):
+    TEAM = "team"
+    PROJECT = "project"
+    ISSUE = "issue"
 
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
+async def init_client() -> ClickupClient:
+    client = ClickupClient(
+        ocean.integration_config["clickup_base_url"],
+        ocean.integration_config["clickup_personal_token"],
+    )
+    await client.initialize_team_key()  # Make sure team_key is initialized
+    return client
 
 
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
+async def setup_application() -> None:
+    app_host = ocean.integration_config.get("app_host")
+    if not app_host:
+        logger.warning(
+            "App host was not provided, skipping webhook creation. "
+            "Without setting up the webhook, you will have to manually initiate resync to get updates from ClickUp."
+        )
+        return
+    clickup_client = await init_client()  # Await the initialization of the client
+    await clickup_client.create_events_webhook(app_host)
+
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    clickup_client = await init_client()
+    async for team in clickup_client.get_clickup_teams():
+        logger.info(f"Received team: {team}")
+        yield team
+
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    clickup_client = await init_client()
+    async for projects in clickup_client.get_projects():
+        logger.info(f"Received project batch with {len(projects)} projects")
+        yield projects
+
+
+@ocean.on_resync(ObjectKind.ISSUE)
+async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    clickup_client = await init_client()
+    async for issues in clickup_client.get_paginated_issues():
+        logger.info(f"Received issue batch with {len(issues)} issues")
+        yield issues
+
+
+@ocean.router.post("/webhook")
+async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    clickup_client = await init_client()
+    logger.info(f'Received webhook event of type: {data.get("event")}')
+    if "folderCreated" == data.get("event"):
+        logger.info(f'Received webhook event for project: {data["folder_id"]}')
+        project = await clickup_client.get_single_project(data["folder_id"])
+        await ocean.register_raw(ObjectKind.PROJECT, [project])
+    elif "taskCreated" == data.get("event"):
+        for task in data["history_items"]:
+            logger.info(f'Received webhook event for issue: {task["id"]}')
+            issue = await clickup_client.get_single_issue(task["id"])
+            await ocean.register_raw(ObjectKind.ISSUE, [issue])
+    logger.info("Webhook event processed")
+    return {"ok": True}
+
+
 @ocean.on_start()
 async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting integration")
+    logger.info("Starting Port Ocean ClickUp integration")
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+    await setup_application()
