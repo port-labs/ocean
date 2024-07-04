@@ -1,0 +1,15 @@
+description: philip-click-up integration for Port Ocean
+icon: clickup # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Project management # Should be one of the available sections in Port
+    resources:
+      - kind: team
+      - kind: project
+      - kind: issue
+configurations:
+  - name: clickupApiKey
+    required: true
+    type: string
+    description: "Click-Up API Key generated in the settings of click-up"
+    sensitive: true

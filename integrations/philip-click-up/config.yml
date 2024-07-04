@@ -1,0 +1,21 @@
+# This is an example configuration file for the integration service.
+# Please copy this file to config.yaml file in the integration folder and edit it to your needs.
+initializePortResources: true
+scheduledResyncInterval: 1440 # 60 minutes X 24 hours = 1 day
+port:
+  clientId: "{{ PORT_CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID
+  clientSecret: "{{ PORT_CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET
+# The event listener to use for the integration service.
+eventListener:
+  type: POLLING
+  # Optional parameters
+  resyncOnStart: True
+  interval: 60
+
+integration:
+  # The identifier of this integration instance.
+  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
+  # The type of the integration.
+  type: "clickup"
+  config:
+    clickupApiKey: "{{ clickUpApiKey}}"
