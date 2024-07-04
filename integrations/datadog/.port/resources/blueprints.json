@@ -259,6 +259,28 @@
             "7": "purple",
             "30": "pink"
           }
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "Alert",
+            "Ignored",
+            "No Data",
+            "OK",
+            "Skipped",
+            "Unknown",
+            "Warn"
+          ],
+          "enumColors": {
+            "Alert": "red",
+            "Ignored": "darkGray",
+            "No Data": "lightGray",
+            "OK": "green",
+            "Skipped": "yellow",
+            "Unknown": "purple",
+            "Warn": "orange"
+          }
         }
       },
       "required": []
