@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, list, dict
+from typing import Any, AsyncGenerator
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
