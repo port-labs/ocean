@@ -19,7 +19,7 @@ class ClickUpClient:
 
     @staticmethod
     def _generate_base_req_params(
-            max_results: int = PAGE_SIZE, start_at: int = 0
+        max_results: int = PAGE_SIZE, start_at: int = 0
     ) -> Dict[str, Any]:
         return {
             "page": start_at // max_results,
@@ -34,7 +34,7 @@ class ClickUpClient:
         return response.json()
 
     async def _get_paginated_spaces(
-            self, team_id: str, params: Dict[str, Any]
+        self, team_id: str, params: Dict[str, Any]
     ) -> Dict[str, Any]:
         response = await self.client.get(
             f"{self.clickup_host}/api/v2/team/{team_id}/space", params=params
@@ -43,7 +43,7 @@ class ClickUpClient:
         return response.json()
 
     async def _get_paginated_projects(
-            self, space_id: str, params: Dict[str, Any]
+        self, space_id: str, params: Dict[str, Any]
     ) -> Dict[str, Any]:
         response = await self.client.get(
             f"{self.clickup_host}/api/v2/space/{space_id}/list", params=params
@@ -52,7 +52,7 @@ class ClickUpClient:
         return response.json()
 
     async def _get_paginated_tasks(
-            self, list_id: str, params: Dict[str, Any]
+        self, list_id: str, params: Dict[str, Any]
     ) -> Dict[str, Any]:
         response = await self.client.get(
             f"{self.clickup_host}/api/v2/list/{list_id}/task", params=params
@@ -61,7 +61,7 @@ class ClickUpClient:
         return response.json()
 
     async def get_paginated_teams(
-            self,
+        self,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting teams from ClickUp")
 
@@ -87,7 +87,7 @@ class ClickUpClient:
             params["page"] += 1
 
     async def get_paginated_projects(
-            self, team_id: str
+        self, team_id: str
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info(f"Getting projects from ClickUp for team {team_id}")
 
@@ -119,7 +119,7 @@ class ClickUpClient:
                 params["page"] += 1
 
     async def get_paginated_tasks(
-            self, list_id: str
+        self, list_id: str
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info(f"Getting tasks from ClickUp for list {list_id}")
 
