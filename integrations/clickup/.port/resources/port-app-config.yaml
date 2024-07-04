@@ -12,7 +12,7 @@ resources:
           title: .name
           properties:
             url: "\"https://app.clickup.com/\" + .id + \"/home\""
-            member: .members | map(.user.username)
+            member: (.members | map(.user.username | tostring))
   - kind: project
     selector:
       query: 'true'
@@ -42,8 +42,8 @@ resources:
             description: .description
             url: .url
             status: .status.status
-            assignee: .assignees | map(.username)
-            creator: .creator.username
+            assignee: (.assignees | map(.username | tostring))
+            creator: .creator.username | to
             priority: .priority
             created: .date_created | todate
             updated: .date_updated | todate

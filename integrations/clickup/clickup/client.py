@@ -74,7 +74,7 @@ class ClickupClient:
 
     async def _get_folders_in_space(self, team_id: str) -> AsyncGenerator[str, None]:
         async for space in self._get_spaces_in_team(team_id):
-            url = f"{self.api_url}/space/{space}/folders"
+            url = f"{self.api_url}/space/{space}/folder"
             params = {"archived": "false"}
             response = await self._send_api_request(url, params)
             folders = response.get("folders")
