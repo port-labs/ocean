@@ -22,8 +22,3 @@ configurations:
     type: string
     description: "API key used to access ClickUp data. It should be generated from ClickUp and have appropriate permissions."
     sensitive: true
-  - name: clickupUserEmail
-    required: false
-    type: string
-    description: "The email of the user whose API key is used for ClickUp integration."
-    sensitive: true
