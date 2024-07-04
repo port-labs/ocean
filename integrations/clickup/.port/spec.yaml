@@ -7,7 +7,7 @@ features:
     resources:
       - kind: team
       - kind: project
-      - kind: issues
+      - kind: issue
 configurations:
   - name: clickupUrl
     required: true

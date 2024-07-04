@@ -1,1 +1,0 @@
-edited client.py to put team id in project list

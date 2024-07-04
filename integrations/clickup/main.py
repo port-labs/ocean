@@ -10,14 +10,17 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
 
-
-@ocean.on_resync(ObjectKind.TEAM)
-async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+def get_client():
     logic_settings = ocean.integration_config
     client = ClickupClient(
         logic_settings["clickup_url"],
         logic_settings["clickup_apikey"]
     )
+    return client
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = get_client()
     async for teams in client.get_teams():
         logger.info(f"Received team batch with {len(teams)} teams")
         yield teams
@@ -25,11 +28,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logic_settings = ocean.integration_config
-    client = ClickupClient(
-        logic_settings["clickup_url"],
-        logic_settings["clickup_apikey"]
-    )
+    client = get_client()
     async for projects in client.get_projects():
         logger.info(f"Received project batch with {len(projects)} projects")
         yield projects
@@ -37,11 +36,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logic_settings = ocean.integration_config
-    client = ClickupClient(
-        logic_settings["clickup_url"],
-        logic_settings["clickup_apikey"]
-    )
+    client = get_client()
     async for issues in client.get_paginated_issues():
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
