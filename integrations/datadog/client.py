@@ -211,7 +211,7 @@ class DatadogClient:
             result = await self._send_api_request(
                 url, params={"from_ts": from_ts, "to_ts": to_ts}
             )
-            return result.get("data")
+            return {**result.get("data"), "__timeframe": timeframe}
         except httpx.HTTPStatusError as err:
             if err.response.status_code == http.HTTPStatus.BAD_REQUEST:
                 if (

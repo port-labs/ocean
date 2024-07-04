@@ -64,11 +64,13 @@ resources:
   - kind: sloHistory
     selector:
       query: 'true'
-      sampleIntervalPeriodInDays: 7
+      timeframe: 30
     port:
       entity:
         mappings:
-          identifier: .slo.id | tostring
+          identifier: >-
+            (.slo.id | tostring) + '-' + (.from_ts | tostring) + '-' + (.to_ts |
+            tostring)
           title: .slo.name
           blueprint: '"datadogSloHistory"'
           properties:
@@ -76,5 +78,6 @@ resources:
             sampling_start_date: .from_ts | todate
             sampling_end_date: .to_ts | todate
             sliValue: .overall.sli_value
+            timeframe: .__timeframe
           relations:
             slo: .slo.id
