@@ -19,7 +19,7 @@ class ClickUpPortHandler:
 
     async def fetch_teams(self):
         try:
-            async for teams in self.client.get_paginated_teams():
+            async for teams in self.client.get_teams():
                 yield teams
         except Exception as e:
             logger.error(f"Failed to fetch teams: {e}")
@@ -27,7 +27,7 @@ class ClickUpPortHandler:
 
     async def fetch_spaces(self, team_id: str):
         try:
-            async for spaces in self.client.get_paginated_spaces(team_id):
+            async for spaces in self.client.get_spaces(team_id):
                 yield spaces
         except Exception as e:
             logger.error(f"Failed to fetch spaces for team {team_id}: {e}")
@@ -35,7 +35,7 @@ class ClickUpPortHandler:
 
     async def fetch_projects(self, space_id: str, team_id: str):
         try:
-            async for projects in self.client.get_paginated_projects(space_id):
+            async for projects in self.client.get_projects(space_id):
                 yield [{**project, "__team_id": team_id} for project in projects]
         except Exception as e:
             logger.error(f"Failed to fetch projects for space {space_id}: {e}")

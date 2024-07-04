@@ -6,6 +6,7 @@ from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 50
 
+
 class ClickUpClient:
     def __init__(self, clickup_url: str, clickup_api_key: str) -> None:
         self.clickup_url = clickup_url
@@ -36,47 +37,35 @@ class ClickUpClient:
     async def _get_teams(self) -> dict[str, Any]:
         return await self._get("/team")
 
-    async def _get_spaces(self, team_id: str, params: dict[str, Any]) -> dict[str, Any]:
-        return await self._get(f"/team/{team_id}/space", params)
+    async def _get_spaces(self, team_id: str) -> dict[str, Any]:
+        return await self._get(f"/team/{team_id}/space")
 
     async def _get_tasks(self, list_id: str, params: dict[str, Any]) -> dict[str, Any]:
         return await self._get(f"/list/{list_id}/task", params)
 
-    async def _get_folderless_projects(self, space_id: str, params: dict[str, Any]) -> dict[str, Any]:
-        return await self._get(f"/space/{space_id}/list", params)
+    async def _get_folderless_projects(self, space_id: str) -> dict[str, Any]:
+        return await self._get(f"/space/{space_id}/list")
 
-    async def _get_folders(self, space_id: str, params: dict[str, Any]) -> dict[str, Any]:
-        return await self._get(f"/space/{space_id}/folder", params)
+    async def _get_folders(self, space_id: str) -> dict[str, Any]:
+        return await self._get(f"/space/{space_id}/folder")
 
-    async def get_paginated_projects(
+    async def get_projects(
         self, space_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from ClickUp")
 
-        params = self._generate_base_req_params()
-        foldered_projects = ClickUpClient.parse_projects_from_folders(
-            (await self._get_folders(space_id, params))["folders"]
+        foldered_projects = self.parse_projects_from_folders(
+            (await self._get_folders(space_id))["folders"]
         )
-        folderless_projects = (await self._get_folderless_projects(space_id, params))["lists"]
-        total_projects = folderless_projects + foldered_projects
+        folderless_projects = (await self._get_folderless_projects(space_id))["lists"]
+        projects = folderless_projects + foldered_projects
 
-        if not total_projects:
+        if not projects:
             logger.warning("Space query returned 0 projects")
 
-        params["page_size"] = PAGE_SIZE
-        page = 0
-        while page * PAGE_SIZE < len(total_projects):
-            logger.info(f"Current query position: page {page}")
+        yield projects
 
-            folder_response_list = (await self._get_folders(space_id, params))["folders"]
-            folderless_projects = (await self._get_folderless_projects(space_id, params))["lists"]
-            foldered_projects = ClickUpClient.parse_projects_from_folders(folder_response_list)
-
-            projects = folderless_projects + foldered_projects
-            yield projects
-            page += 1
-
-    async def get_paginated_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting teams from ClickUp")
         total_teams = (await self._get_teams())["teams"]
 
@@ -87,26 +76,20 @@ class ClickUpClient:
 
         yield total_teams
 
-    async def get_paginated_spaces(
+    async def get_spaces(
         self, team_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting spaces from ClickUp")
 
-        params = self._generate_base_req_params()
-        total_spaces = (await self._get_spaces(team_id, params))["spaces"]
+        total_spaces = (await self._get_spaces(team_id))["spaces"]
 
         if not total_spaces:
             logger.warning(
                 "Space query returned 0 spaces, did you provide the correct ClickUp API credentials?"
             )
 
-        params["page_size"] = PAGE_SIZE
-        page = 0
-        while page * PAGE_SIZE < len(total_spaces):
-            logger.info(f"Current query position: page {page}")
-            space_response_list = (await self._get_spaces(team_id, params))["spaces"]
-            yield space_response_list
-            page += 1
+        space_response_list = (await self._get_spaces(team_id))["spaces"]
+        yield space_response_list
 
     async def get_paginated_tasks(
         self, list_id: str
