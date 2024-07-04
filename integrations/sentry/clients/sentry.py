@@ -10,7 +10,7 @@ from port_ocean.context.event import event
 
 import httpx
 
-MAXIMUM_CONCURRENT_REQUESTS = 20
+MAXIMUM_CONCURRENT_REQUESTS = 24
 MAXIMUM_CONCURRENT_REQUESTS_ISSUES = 3
 MINIMUM_LIMIT_REMAINING = 10
 MINIMUM_ISSUES_LIMIT_REMAINING = 3
@@ -70,7 +70,7 @@ class SentryClient:
                     if rate_limit_reset > current_time
                     else DEFAULT_SLEEP_TIME
                 )
-                logger.info(
+                logger.debug(
                     f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
                     f"URL: {url}, Remaining: {rate_limit_remaining} "
                 )
