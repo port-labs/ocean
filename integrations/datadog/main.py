@@ -6,7 +6,6 @@ from loguru import logger
 
 from client import DatadogClient
 from overrides import SLOHistoryResourceConfig
-from utils import transform_period_of_time_in_days_to_timestamps
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
