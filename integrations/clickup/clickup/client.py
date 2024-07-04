@@ -1,7 +1,7 @@
 from typing import Any, AsyncGenerator, Optional, List
 from httpx import Timeout
 from loguru import logger
-from utils import CustomProperties
+from .utils import CustomProperties
 from port_ocean.utils import http_async_client
 
 PAGE_SIZE = 50
