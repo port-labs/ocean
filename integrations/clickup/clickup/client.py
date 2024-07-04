@@ -1,7 +1,6 @@
 from typing import Any, AsyncGenerator
 import httpx
 from loguru import logger
-from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
 
@@ -51,43 +50,43 @@ class ClickUpClient:
         self, space_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from ClickUp")
+        
+        try:
+            foldered_projects = self.parse_projects_from_folders(
+                (await self._get_folders(space_id))["folders"]
+            )
+            folderless_projects = (await self._get_folderless_projects(space_id))["lists"]
+            projects = folderless_projects + foldered_projects
 
-        foldered_projects = self.parse_projects_from_folders(
-            (await self._get_folders(space_id))["folders"]
-        )
-        folderless_projects = (await self._get_folderless_projects(space_id))["lists"]
-        projects = folderless_projects + foldered_projects
+            if not projects:
+                logger.warning("Space query returned 0 projects")
 
-        if not projects:
-            logger.warning("Space query returned 0 projects")
-
-        yield projects
+            yield projects
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to fetch projects for space_id {space_id} : {e}")
+            yield []
 
     async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting teams from ClickUp")
-        total_teams = (await self._get_teams())["teams"]
-
-        if not total_teams:
-            logger.warning(
-                "Team query returned 0 teams, did you provide the correct ClickUp API credentials?"
-            )
-
-        yield total_teams
+        try:
+            total_teams = (await self._get_teams())["teams"]
+            yield total_teams
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to fetch teams : {e}")
+            yield []
 
     async def get_spaces(
         self, team_id: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting spaces from ClickUp")
 
-        total_spaces = (await self._get_spaces(team_id))["spaces"]
+        try:
+            space_response_list = (await self._get_spaces(team_id))["spaces"]
+            yield space_response_list
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to fetch spaces for team_id: {team_id}: {e}")
+            yield []
 
-        if not total_spaces:
-            logger.warning(
-                "Space query returned 0 spaces, did you provide the correct ClickUp API credentials?"
-            )
-
-        space_response_list = (await self._get_spaces(team_id))["spaces"]
-        yield space_response_list
 
     async def get_paginated_tasks(
         self, list_id: str

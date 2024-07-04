@@ -1,8 +1,11 @@
 from enum import StrEnum
+
+from clickup.handler import ClickUpPortHandler
 from loguru import logger
+
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from clickup.handler import ClickUpPortHandler
+
 
 class ObjectKind(StrEnum):
     TEAM = "team"
