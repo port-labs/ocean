@@ -1,0 +1,25 @@
+type: my-clickup-integration
+description: ClickUp integration for Port Ocean
+icon: ClickUp
+features:
+  - type: exporter
+    section: Project management
+    resources:
+      - kind: team
+      - kind: project
+      - kind: issue
+configurations:
+  - name: appHost
+    required: false
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in ClickUp"
+  - name: clickupToken
+    required: true
+    type: string
+    description: "API token to authenticate with ClickUp"
+    sensitive: true
+  - name: clickupHost
+    required: false
+    type: url
+    default: "https://api.clickup.com"
+    description: "The base URL for the ClickUp API"
