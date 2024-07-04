@@ -34,7 +34,8 @@
                 },
                 "url": {
                     "type": "string",
-                    "title": "Project URL"
+                    "title": "Project URL",
+                    "format": "url"
                 },
                 "parentJob": {
                     "type": "object",
@@ -60,18 +61,21 @@
                     "enum": [
                         "SUCCESS",
                         "FAILURE",
-                        "UNSTABLE"
+                        "UNSTABLE",
+                        "ABORTED"
                     ],
                     "enumColors": {
                         "SUCCESS": "green",
                         "FAILURE": "red",
-                        "UNSTABLE": "yellow"
+                        "UNSTABLE": "yellow",
+                        "ABORTED": "gray"
                     }
                 },
                 "buildUrl": {
                     "type": "string",
                     "title": "Build URL",
-                    "description": "URL to the build"
+                    "description": "URL to the build",
+                    "format": "url"
                 },
                 "timestamp": {
                     "type": "string",
