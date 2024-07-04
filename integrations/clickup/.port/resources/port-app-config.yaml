@@ -28,7 +28,7 @@ resources:
             endDate: .end_date | tonumber | todate
             totalIssues: .issue_count
           relations:
-            team: .team_id
+            team: __team_id
   - kind: issue
     selector:
       query: "true"

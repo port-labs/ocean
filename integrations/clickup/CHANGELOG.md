@@ -12,4 +12,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Implemented Clickup integration (0.1.0)
-- Changed Port App Config (0.1.0)
+
