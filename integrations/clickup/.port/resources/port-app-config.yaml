@@ -24,8 +24,8 @@ resources:
           title: .name
           properties:
             url: "\"https://app.clickup.com/\" + .__team_id + \"/v/b/li/\" + .id "
-            startDate: if .start_date != null then (.start_date | todate) else end
-            endDate: if .due_date != null then (.due_date | todate) else end
+            startDate: if .start_date != null then (.start_date | todate) end
+            endDate: if .due_date != null then (.due_date | todate) end
             totalIssues: .task_count
           relations:
             team: .__team_id
