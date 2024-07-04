@@ -24,8 +24,8 @@ resources:
           title: .name
           properties:
             url: "\"https://app.clickup.com/\" + .__team_id + \"/v/b/li/\" + .id "
-            startDate: if .start_date != null then (.start_date | todate) else " "  end
-            endDate: if .due_date != null then (.due_date | todate) else " " end
+            startDate: if .start_date==null then .start_date else .start_date | tonumber / 1000 | todate end
+            endDate: if .due_date==null then .due_date else .due_date | tonumber / 1000 | todate end
             totalIssues: .task_count
           relations:
             team: .__team_id
@@ -45,7 +45,7 @@ resources:
             assignee: if (.assignees | length) > 0 then .assignees[0].email else "" end
             creator: .creator.email | tostring
             priority: if .priority != null then .priority.priority else " " end
-            created: if .date_created != null then (.date_created | todate) else " " end
-            updated: if .date_updated != null then (.date_updated | todate) else " " end
+            created: if .date_created==null then .date_created else .date_created | tonumber / 1000 | todate end
+            updated: if .date_updated==null then .date_updated else .date_updated | tonumber / 1000 | todate end
           relations:
             project: .list.id
