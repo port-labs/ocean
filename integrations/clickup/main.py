@@ -16,23 +16,6 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
 
 
-async def setup_application() -> None:
-    logic_settings = ocean.integration_config
-    app_host = logic_settings.get("app_host")
-    if not app_host:
-        logger.warning(
-            "No app host provided, skipping webhook creation. "
-            "Without setting up the webhook, the integration will not export live changes from ClickUp"
-        )
-        return
-
-    clikup_client = ClickUpClient(logic_settings["click_up_token"])
-
-    await clikup_client.create_events_webhook(
-        logic_settings["app_host"],
-    )
-
-
 # Required
 # Listen to the resync event of all the kinds specified in the mapping inside port.
 # Called each time with a different kind that should be returned from the source system.
@@ -72,20 +55,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
-
-
 # Optional
 # Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
@@ -96,4 +65,4 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    await setup_application()
+    # await setup_application()
