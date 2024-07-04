@@ -42,10 +42,10 @@ resources:
             description: .description
             url: .url
             status: .status.status
-            assignee: (.assignees | map(.username | tostring) | first)
+            assignee: if (.assignees | length) > 0 then .assignees[0].username else "" end
             creator: .creator.username | to
             priority: .priority
-            created: if .date_created == null then null else .date_created | todate end
-            updated: if .date_updated == null then null else .date_updated | todate end
+            created: if .date_created == null then "" else .date_created | todate end
+            updated: if .date_created == null then "" else .date_updated | todate end
           relations:
             project: .list.id
