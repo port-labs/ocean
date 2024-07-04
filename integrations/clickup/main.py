@@ -69,9 +69,9 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     clickup_client = await init_client()
     logger.info(f'Received webhook event of type: {data.get("event")}')
-    if "folderCreated" == data.get("event"):
-        logger.info(f'Received webhook event for project: {data["folder_id"]}')
-        project = await clickup_client.get_single_project(data["folder_id"])
+    if "listCreated" == data.get("event"):
+        logger.info(f'Received webhook event for project: {data["list_id"]}')
+        project = await clickup_client.get_single_project(data["list_id"])
         await ocean.register_raw(ObjectKind.PROJECT, [project])
     elif "taskCreated" == data.get("event"):
         for task in data["history_items"]:

@@ -1,8 +1,8 @@
 from typing import Any, AsyncGenerator, Optional, List
 from httpx import Timeout
 from loguru import logger
-from .utils import CustomProperties
 from port_ocean.utils import http_async_client
+from .utils import CustomProperties
 
 PAGE_SIZE = 50
 
@@ -10,13 +10,15 @@ WEBHOOK_EVENTS = [
     "taskCreated",
     "taskUpdated",
     "taskDeleted",
-    "folderCreated",
-    "folderUpdated",
-    "folderDeleted",
+    "listCreated",
+    "listUpdated",
+    "listDeleted",
 ]
 
 
 class ClickupClient:
+    """Clickup client to interact with Clickup API."""
+
     def __init__(self, clickup_url: str, clickup_token: str):
         self.clickup_url = clickup_url
         self.clickup_token = clickup_token
@@ -36,6 +38,7 @@ class ClickupClient:
         }
 
     async def get_team_key(self) -> List[str]:
+        """Get the team key for the Clickup account."""
         url = f"{self.api_url}/team"
         response = await self._send_api_request(url)
         teams = response.get("teams", [])
@@ -44,27 +47,41 @@ class ClickupClient:
             team_ids.append(team.get("id"))
         return team_ids
 
-    async def _send_api_request(self, url: str, params: Optional[dict[str, Any]] = None,
-                                json_data: Optional[dict[str, Any]] = None, method: str = "GET") -> Any:
+    async def _send_api_request(
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+        method: str = "GET",
+    ) -> Any:
+        """Send a request to the Clickup API."""
         logger.debug(f"Sending request {method} to endpoint {url}")
-        response = await self.client.request(url=url, method=method, headers=await self.api_headers, params=params,
-                                             json=json_data)
+        response = await self.client.request(
+            url=url,
+            method=method,
+            headers=await self.api_headers,
+            params=params,
+            json=json_data,
+        )
         response.raise_for_status()
         return response.json()
 
     async def get_single_clickup_team(self, team_id: str) -> dict[str, Any]:
+        """Get a single Clickup team by team_id."""
         url = f"{self.api_url}/team/{team_id}"
         response = await self._send_api_request(url)
-        team = response.get('team')
+        team = response.get("team")
         return team
 
     async def get_clickup_teams(self) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """Get all Clickup teams."""
         url = f"{self.api_url}/team"
         response = await self._send_api_request(url)
         teams = response.get("teams", [])
         yield teams
 
     async def _get_spaces_in_team(self, team_id: str) -> AsyncGenerator[str, None]:
+        """Get all spaces in a workspace."""
         url = f"{self.api_url}/team/{team_id}/space"
         params = {"archived": "false"}
         response = await self._send_api_request(url, params)
@@ -73,6 +90,7 @@ class ClickupClient:
             yield space.get("id")
 
     async def _get_folders_in_space(self, team_id: str) -> AsyncGenerator[str, None]:
+        """Get all folders in a space."""
         async for space in self._get_spaces_in_team(team_id):
             url = f"{self.api_url}/space/{space}/folder"
             params = {"archived": "false"}
@@ -82,6 +100,7 @@ class ClickupClient:
                 yield folder.get("id")
 
     async def get_folder_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """Get all projects with a folder parent."""
         for team_id in self.team_key:
             async for folder_id in self._get_folders_in_space(team_id):
                 url = f"{self.api_url}/folder/{folder_id}/list"
@@ -93,7 +112,10 @@ class ClickupClient:
                     for project in projects
                 ]
 
-    async def get_folderless_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
+    async def get_folderless_projects(
+        self,
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """Get all projects without a folder parent."""
         for team_id in self.team_key:
             async for space_id in self._get_spaces_in_team(team_id):
                 url = f"{self.api_url}/space/{space_id}/list"
@@ -105,12 +127,14 @@ class ClickupClient:
                     for project in projects
                 ]
 
-    async def get_single_project(self, folder_id: str) -> dict[str, Any]:
-        url = f"{self.api_url}/folder/{folder_id}"
+    async def get_single_project(self, list_id: str) -> dict[str, Any]:
+        """Get a single project by folder_id."""
+        url = f"{self.api_url}/list/{list_id}"
         response = await self._send_api_request(url)
         return response
 
     async def get_paginated_issues(self) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """Get all issues in a project."""
         if self.team_key is None:
             await self.initialize_team_key()
         for team_id in self.team_key:
@@ -125,22 +149,28 @@ class ClickupClient:
                 page += 1
 
     async def get_single_issue(self, task_id: str) -> dict[str, Any]:
+        """Get a single issue by task_id."""
         url = f"{self.api_url}/task/{task_id}"
         issue_response = await self._send_api_request(url)
         return issue_response
 
     async def create_events_webhook(self, app_host: str) -> None:
+        """Create a webhook for ClickUp events."""
         if self.team_key is None:
             await self.initialize_team_key()
         for team_id in self.team_key:
             webhook_target_app_host = f"{app_host}/integration/webhook"
             clickup_get_webhook_url = f"{self.api_url}/team/{team_id}/webhook"
-            webhook_check_response = await self._send_api_request(clickup_get_webhook_url)
+            webhook_check_response = await self._send_api_request(
+                clickup_get_webhook_url
+            )
             webhook_check = webhook_check_response.get("webhooks")
 
             for webhook in webhook_check:
                 if webhook["endpoint"] == webhook_target_app_host:
-                    logger.info("Ocean real-time reporting webhook already exists on ClickUp")
+                    logger.info(
+                        "Ocean real-time reporting webhook already exists on ClickUp"
+                    )
                     return
 
             body = {
@@ -148,6 +178,9 @@ class ClickupClient:
                 "events": WEBHOOK_EVENTS,
             }
             logger.info("Subscribing to ClickUp webhooks...")
-            webhook_create_response = await self._send_api_request(clickup_get_webhook_url, json_data=body,
-                                                                   method="POST")
-            logger.info(f"Ocean real-time reporting webhook created on ClickUp - {webhook_create_response}")
+            webhook_create_response = await self._send_api_request(
+                clickup_get_webhook_url, json_data=body, method="POST"
+            )
+            logger.info(
+                f"Ocean real-time reporting webhook created on ClickUp - {webhook_create_response}"
+            )
