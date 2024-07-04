@@ -32,6 +32,3 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean ClickUp integration")
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return
