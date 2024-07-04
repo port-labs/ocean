@@ -2,7 +2,15 @@ from typing import Any, AsyncGenerator
 from httpx import Timeout
 from loguru import logger
 from port_ocean.utils import http_async_client
+from enum import StrEnum
+from port_ocean.context.event import event
 
+class CacheKeys(StrEnum):
+    TEAM = "team"
+    LIST = "list" # project
+    TASK = "task" # issue
+    SPACE = "space"
+    FOLDER = "folder"
 
 class ClickupClient:
     def __init__(self, clickup_url, clickup_apikey)-> None:
@@ -40,6 +48,8 @@ class ClickupClient:
                 space_response = await self.client.get(url)
                 space_response.raise_for_status()
                 space_list = space_response.json()["spaces"]
+                # record the present team id to be useful for relation in get_projects() function
+                event.attributes[CacheKeys.TEAM]=team_id
                 yield space_list
 
 
@@ -64,7 +74,9 @@ class ClickupClient:
                 project_response = await self.client.get(url)
                 project_response.raise_for_status()
                 project_list = project_response.json()["lists"]
-                yield project_list
+                team_id = str(event.attributes.get(CacheKeys.TEAM))
+                project_list_with_team = [{**project, "__team": team_id} for project in project_list]
+                yield project_list_with_team
             
             async for space_list in self.get_spaces():
                 for space_dict in space_list:
@@ -73,7 +85,9 @@ class ClickupClient:
                     project_response = await self.client.get(url)
                     project_response.raise_for_status()
                     project_list = project_response.json()["lists"]
-                    yield project_list
+                    team_id = str(event.attributes.get(CacheKeys.TEAM))
+                    project_list_with_team = [{**project, "__team": team_id} for project in project_list]
+                    yield project_list_with_team
 
     async def get_paginated_issues(self)->AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Clickup")

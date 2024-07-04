@@ -23,12 +23,12 @@ resources:
           title: .name
           blueprint: '"clickupProject"'
           properties:
-            url: "\"https://app.clickup.com/\""
+            url: "\"https://app.clickup.com/\" + .__team + \"/v/li/\" + .id"
             startDate: if .start_date==null then .start_date else .start_date | tonumber / 1000 | todate end
             endDate: if .due_date==null then .due_date else .due_date | tonumber / 1000 | todate end
             totalIssues: .task_count
           relations:
-            team: .space.id
+            team: .__team
   - kind: issue
     selector:
       query: "true"
