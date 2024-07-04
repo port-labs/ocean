@@ -17,13 +17,15 @@
                         "created",
                         "unknown",
                         "passing",
-                        "failing"
+                        "failing",
+                        "aborted"
                     ],
                     "enumColors": {
                         "passing": "green",
                         "created": "darkGray",
                         "failing": "red",
-                        "unknown": "orange"
+                        "unknown": "orange",
+                        "aborted": "gray"
                     }
                 },
                 "timestamp": {
