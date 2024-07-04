@@ -24,8 +24,8 @@ resources:
           title: .name
           properties:
             url: "\"https://app.clickup.com/\" + .__team_id + \"/v/b/li/\" + .id "
-            startDate: if .start_date != null then (.start_date | todate) end
-            endDate: if .due_date != null then (.due_date | todate) end
+            startDate: if .start_date != null then (.start_date | todate) else "946684800" | todate  end  # Unix epoch for 01/01/2000
+            endDate: if .due_date != null then (.due_date | todate) else "946684800" | todate end  # Unix epoch for 01/01/2000
             totalIssues: .task_count
           relations:
             team: .__team_id
@@ -44,8 +44,8 @@ resources:
             status: .status.status
             assignee: if (.assignees | length) > 0 then .assignees[0].username else "" end
             creator: .creator.username | tostring
-            priority: if .priority != null and .priority is not None then .priority else end
-            created: if .date_created != null then (.date_created | todate) else end
-            updated: if .date_updated != null then (.date_updated | todate) else end
+            priority: if .priority != null then .priority | tostring else " " end
+            created: if .date_created != null then (.date_created | todate) else "946684800" | todate end  # Unix epoch for 01/01/2000
+            updated: if .date_updated != null then (.date_updated | todate) else "946684800" | todate  end  # Unix epoch for 01/01/2000
           relations:
             project: .list.id
