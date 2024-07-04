@@ -88,7 +88,10 @@ class ClickupClient:
                 params = {"archived": "false"}
                 response = await self._send_api_request(url, params)
                 projects = response.get("lists")
-                yield projects
+                yield [
+                    {**project, CustomProperties.TEAM_ID: team_id}
+                    for project in projects
+                ]
 
     async def get_folderless_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         for team_id in self.team_key:
