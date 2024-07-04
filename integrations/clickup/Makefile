@@ -61,9 +61,6 @@ lint:
 run:
 	$(ACTIVATE) && $(call load_env) && ocean sail
 
-destroy-mappings:
-	$(ACTIVATE) && $(call load_env) && ocean defaults clean --force --wait
-
 test: lint
 	$(ACTIVATE) && poetry run pytest
 

@@ -2,8 +2,7 @@ from loguru import logger
 from typing import Any, AsyncGenerator
 
 from port_ocean.utils import http_async_client
-
-from .utils import timestamp_to_datetime
+from port_ocean.utils.cache import cache_iterator_result
 
 
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
@@ -22,19 +21,16 @@ WEBHOOK_EVENTS = [
 class ClickupClient:
     def __init__(self, clickup_personal_token: str) -> None:
         self.clickup_url = "https://api.clickup.com/api/v2"
-        self.clickup_personal_token = clickup_personal_token
-
-        self.api_auth_header = {"Authorization": self.clickup_personal_token}
+        self.api_auth_header = {"Authorization": clickup_personal_token}
         self.client = http_async_client
         self.client.headers.update(self.api_auth_header)
 
-    async def create_events_webhook(self, app_host: str) -> None:
-        teams = self.get_paginated_teams()
-        async for team_batch in teams:
+    async def create_webhook_events(self, app_host: str) -> None:
+        async for team_batch in self.get_paginated_teams():
             for team in team_batch:
-                await self._create_team_events_webhook(app_host, team["id"])
+                await self._create_team_webhook_events(app_host, team["id"])
 
-    async def _create_team_events_webhook(self, app_host: str, team_id: int) -> None:
+    async def _create_team_webhook_events(self, app_host: str, team_id: int) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         webhooks_response = await self.client.get(
             f"{self.clickup_url}/team/{team_id}/webhook"
@@ -90,13 +86,13 @@ class ClickupClient:
         spaces_response.raise_for_status()
         return spaces_response.json()["spaces"]
 
+    @cache_iterator_result()
     async def get_paginated_projects(
         self, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         # getting all teams so as to retrieve the spaces within each team, then using their
         # ids to get the projects (lists) within each space
-        teams = self.get_paginated_teams(params)
-        async for team_batch in teams:
+        async for team_batch in self.get_paginated_teams(params):
             for team in team_batch:
                 spaces = await self._get_paginated_spaces(team["id"], params)
                 projects: list[dict[str, Any]] = []
@@ -114,11 +110,7 @@ class ClickupClient:
                         map(
                             lambda project: {
                                 **project,
-                                "team_id": team["id"],
-                                "start_date": timestamp_to_datetime(
-                                    project["start_date"]
-                                ),
-                                "due_date": timestamp_to_datetime(project["due_date"]),
+                                "__team_id": team["id"],
                             },
                             projects_response.json()["lists"],
                         )
@@ -140,33 +132,26 @@ class ClickupClient:
         return {}
 
     async def get_paginated_issues(
-        self, params: dict[str, Any] = {}
+        self, params: dict[str, Any] = {"page": 0}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         projects = self.get_paginated_projects(params)
         async for project_batch in projects:
             for project in project_batch:
-                issues_response = await self.client.get(
-                    f"{self.clickup_url}/list/{project['id']}/task", params=params
-                )
-                issues_response.raise_for_status()
-                issues = issues_response.json()["tasks"]
-                # converting the datetime timstamps to a datetime object
-                yield [
-                    {
-                        **issue,
-                        "date_created": timestamp_to_datetime(issue["date_created"]),
-                        "date_updated": timestamp_to_datetime(issue["date_updated"]),
-                    }
-                    for issue in issues
-                ]
+                while True:
+                    issues_response = await self.client.get(
+                        f"{self.clickup_url}/list/{project['id']}/task", params=params
+                    )
+                    issues_response.raise_for_status()
+                    issues = issues_response.json()
+                    yield issues["tasks"]
+
+                    if issues.get("last_page", False):
+                        break
+
+                    params["page"] += 1
 
     async def get_single_issue(self, issue_id: str) -> dict[str, Any]:
         issue_response = await self.client.get(f"{self.clickup_url}/task/{issue_id}")
         issue_response.raise_for_status()
         issue = issue_response.json()
-        # converting the datetime timstamps to a datetime object
-        return {
-            **issue,
-            "date_created": timestamp_to_datetime(issue["date_created"]),
-            "date_updated": timestamp_to_datetime(issue["date_updated"]),
-        }
+        return issue
