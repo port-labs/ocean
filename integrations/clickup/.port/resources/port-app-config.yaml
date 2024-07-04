@@ -44,7 +44,7 @@ resources:
             status: .status.status
             assignee: if (.assignees | length) > 0 then .assignees[0].username else "" end
             creator: .creator.username | tostring
-            priority: if .priority == null then "" else .priority
+            priority: if .priority == null then "" else .priority end
             created: if .date_created == null then "0000-00-00" else (.date_created | todate | tostring) end
             updated: if .date_updated == null then "0000-00-00" else (.date_updated | todate | tostring) end
           relations:
