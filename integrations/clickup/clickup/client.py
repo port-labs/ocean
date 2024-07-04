@@ -95,16 +95,9 @@ class ClickUpClient:
         logger.info("Getting tasks (issues) from ClickUp")
 
         params = self._generate_base_req_params()
-        total_tasks = (await self._get_tasks(list_id, params))["tasks"]
 
-        if not total_tasks:
-            logger.warning(
-                "Task query returned 0 tasks, did you provide the correct ClickUp API credentials and query parameters?"
-            )
-
-        page = 0
+        page = params.get("page",0)
         while True:
-            params["page"] = page
             logger.info(f"Current query position: page {page}")
             try:
                 task_response = await self._get_tasks(list_id, params)
@@ -116,3 +109,4 @@ class ClickUpClient:
                 logger.error(f"Failed to fetch tasks for page {page}: {e}")
                 break
             page += 1
+            params["page"] = page
