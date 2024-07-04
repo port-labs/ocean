@@ -57,7 +57,9 @@ async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for projects in sentry_client.get_paginated_projects():
         logger.info(f"Collecting tags from {len(projects)} projects")
         project_tags_batch = []
-        tasks = [sentry_client.get_project_tags_iterator(project) for project in projects]
+        tasks = [
+            sentry_client.get_project_tags_iterator(project) for project in projects
+        ]
         async for project_tags in stream_async_iterators_tasks(*tasks):
             if project_tags:
                 project_tags_batch.append(project_tags)
@@ -98,7 +100,8 @@ async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for issue_batch in stream_async_iterators_tasks(*issue_tasks):
                 if issue_batch:
                     add_tags_to_issues_tasks = [
-                        sentry_client.get_issue_tags_iterator(issue) for issue in issue_batch
+                        sentry_client.get_issue_tags_iterator(issue)
+                        for issue in issue_batch
                     ]
                     issues_with_tags = []
                     async for issues_with_tags_batch in stream_async_iterators_tasks(
