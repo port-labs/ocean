@@ -70,7 +70,7 @@ resources:
       entity:
         mappings:
           identifier: >-
-            (.slo.id | tostring) + '-' + (.from_ts | tostring) + '-' + (.to_ts |
+            (.slo.id | tostring) + "-" + (.from_ts | tostring) + "-" + (.to_ts |
             tostring)
           title: .slo.name
           blueprint: '"datadogSloHistory"'

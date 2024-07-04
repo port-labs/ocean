@@ -193,8 +193,7 @@ class DatadogClient:
                     to_ts,
                     concurrency=MAX_CONCURRENT_REQUESTS,
                 )
-                histories = [history for history in histories if history]
-                yield histories
+                yield [history for history in histories if history]
 
     async def get_slo_history(
         self, slo_id: str, timeframe: int, from_ts: int, to_ts: int
@@ -209,6 +208,7 @@ class DatadogClient:
             result = await self._send_api_request(
                 url, params={"from_ts": from_ts, "to_ts": to_ts}
             )
+            # res = result.get("data")
             return {**result.get("data"), "__timeframe": timeframe}
         except httpx.HTTPStatusError as err:
             if err.response.status_code == http.HTTPStatus.BAD_REQUEST:
