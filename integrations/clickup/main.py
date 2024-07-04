@@ -10,7 +10,7 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
 
-def get_client():
+def get_client()-> ClickupClient:
     logic_settings = ocean.integration_config
     client = ClickupClient(
         logic_settings["clickup_url"],
