@@ -1,0 +1,46 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"clickupTeam"'
+          properties:
+            url: (.self | split("/") | .[:3] | join("/")) + "/team/"
+            members: .fields.members
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"clickupProject"'
+          properties:
+            url: (.self | split("/") | .[:3] | join("/")) + "/folder/" + (/ \d+ /) +"/list/"
+            startDate: .fields.start_date
+            endDate: .fields.due_date
+            totalIssues: fields.task_count
+  - kind: issue
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .key
+          title: .name
+          blueprint: '"clickupIssue"'
+          properties:
+            url: (.self | split("/") | .[:3] | join("/")) + "/list/" + (/ \d+ /) +"/task/"
+            status: fields.status
+            assignee: fields.assignees
+            creator: fields.creator
+            priority: .fields.priority
+            created: .fields.date_created
+            updated: .fields.date_updated

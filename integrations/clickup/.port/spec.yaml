@@ -1,15 +1,15 @@
 description: clickup integration for Port Ocean
-icon: Cookiecutter # Should be one of the available icons in Port
+icon: Clickup
 features:
   - type: exporter
-    section: Git Providers # Should be one of the available sections in Port
+    section: Project management
     resources:
-      - kind: <ResourceName1>
-      - kind: <ResourceName2>
+      - kind: team
+      - kind: project
+      - kind: issue
 configurations:
-  - name: myGitToken
+  - name: clickupApiToken
     required: true
     type: string
+    description: "Clickup API key used for authentication and it serves as the authorization header"
     sensitive: true
-  - name: someApplicationUrl
-    type: url
