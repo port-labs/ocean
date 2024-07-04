@@ -1,6 +1,4 @@
 from enum import StrEnum
-from typing import Any
-
 from clickup.client import ClickupClient
 from loguru import logger
 from port_ocean.context.ocean import ocean

@@ -13,7 +13,7 @@ class CacheKeys(StrEnum):
     FOLDER = "folder"
 
 class ClickupClient:
-    def __init__(self, clickup_url, clickup_apikey)-> None:
+    def __init__(self, clickup_url: str, clickup_apikey: str)-> None:
         self.clickup_url = clickup_url
         self.clickup_apikey = clickup_apikey
         self.api_auth_header = {"Authorization": self.clickup_apikey}
