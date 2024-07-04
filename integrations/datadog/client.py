@@ -1,15 +1,13 @@
-import asyncio
 import datetime
 import http
 import json
-import time
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
 
 import httpx
 from loguru import logger
 
-from integrations.datadog.utils import transform_period_of_time_in_days_to_timestamps
+from utils import transform_period_of_time_in_days_to_timestamps
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
 
@@ -195,12 +193,12 @@ class DatadogClient:
                     to_ts,
                     concurrency=MAX_CONCURRENT_REQUESTS,
                 )
-                if histories:
-                    yield histories
+                histories = [history for history in histories if history]
+                yield histories  # type: ignore
 
     async def get_slo_history(
         self, slo_id: str, timeframe: int, from_ts: int, to_ts: int
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any]:
         url = f"{self.api_url}/api/v1/slo/{slo_id}/history"
         readable_from_ts = datetime.datetime.fromtimestamp(from_ts)
         readable_to_ts = datetime.datetime.fromtimestamp(to_ts)
@@ -221,7 +219,7 @@ class DatadogClient:
                     logger.info(
                         f"Slo {slo_id} has no history for the given timeframe {readable_from_ts}, {readable_to_ts} in time range of {timeframe} days"
                     )
-                    return
+                    return {}
                 if (
                     "Queries ending outside the retention date are invalid"
                     in err.response.text
@@ -229,11 +227,11 @@ class DatadogClient:
                     logger.info(
                         f"Slo {slo_id} has no history for the given timeframe {readable_from_ts}, {readable_to_ts} in time range of {timeframe} days"
                     )
-                    return
+                    return {}
             logger.info(
                 f"Failed to fetch SLO history for {slo_id}: {err}, {err.response.text}, for the given timeframe {readable_from_ts}, {readable_to_ts} in time range of {timeframe} days"
             )
-            return
+            return {}
 
     async def get_single_monitor(self, monitor_id: str) -> dict[str, Any] | None:
         if not monitor_id:
