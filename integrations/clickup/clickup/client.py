@@ -4,7 +4,6 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
-PAGE_SIZE = 50
 
 
 class ClickUpClient:
@@ -103,10 +102,17 @@ class ClickUpClient:
                 "Task query returned 0 tasks, did you provide the correct ClickUp API credentials and query parameters?"
             )
 
-        params["page_size"] = PAGE_SIZE
         page = 0
-        while page * PAGE_SIZE < len(total_tasks):
+        while True:
+            params["page"] = page
             logger.info(f"Current query position: page {page}")
-            task_response_list = (await self._get_tasks(list_id, params))["tasks"]
-            yield task_response_list
+            try:
+                task_response = await self._get_tasks(list_id, params)
+                task_response_list = task_response.get("tasks", [])
+                yield task_response_list
+                if not task_response_list:
+                    break
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Failed to fetch tasks for page {page}: {e}")
+                break
             page += 1
