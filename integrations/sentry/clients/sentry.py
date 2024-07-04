@@ -28,8 +28,8 @@ class SentryClient:
         sentry_base_url: str,
         auth_token: str,
         sentry_organization: str,
-        default_sem: asyncio.Semaphore,
-        issues_sem: asyncio.Semaphore | None,
+        default_semaphore: asyncio.Semaphore,
+        issues_semaphore: asyncio.Semaphore | None,
     ) -> None:
         self.sentry_base_url = sentry_base_url
         self.auth_token = auth_token
@@ -39,14 +39,14 @@ class SentryClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
-        self.default_semaphore = default_sem
-        self.issues_semaphore = issues_sem
+        self.default_semaphore = default_semaphore
+        self.issues_semaphore = issues_semaphore
 
     async def fetch_with_rate_limit_handling(
         self,
         url: str,
         params: dict[str, Any] | None = None,
-        sem: asyncio.Semaphore | None = None,
+        semaphore: asyncio.Semaphore | None = None,
     ) -> httpx.Response:
         """Rate limit handler
         This method makes sure requests aren't abusing Sentry's rate-limits.
@@ -54,10 +54,10 @@ class SentryClient:
         Requests per "window" - By adding a sleep after each request that had a RATE_LIMIT_REMAINING below a threshold
         for more information about Sentry's rate limits, please check out https://docs.sentry.io/api/ratelimits/
         """
-        if not sem:
-            sem = self.default_semaphore
+        if not semaphore:
+            semaphore = self.default_semaphore
         while True:
-            async with sem:
+            async with semaphore:
                 response = await self.client.get(url, params=params)
             rate_limit_remaining = int(
                 response.headers["X-Sentry-Rate-Limit-Remaining"]
@@ -70,7 +70,7 @@ class SentryClient:
                     if rate_limit_reset > current_time
                     else DEFAULT_SLEEP_TIME
                 )
-                logger.debug(
+                logger.info(
                     f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
                     f"URL: {url}, Remaining: {rate_limit_remaining} "
                 )
@@ -94,7 +94,7 @@ class SentryClient:
         return ""
 
     async def get_paginated_resource(
-        self, url: str, custom_sem: asyncio.Semaphore | None = None
+        self, url: str, custom_semaphore: asyncio.Semaphore | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params: dict[str, Any] = {"per_page": PAGE_SIZE}
 
@@ -103,7 +103,7 @@ class SentryClient:
         while url:
             try:
                 response = await self.fetch_with_rate_limit_handling(
-                    url=url, params=params, sem=custom_sem
+                    url=url, params=params, semaphore=custom_semaphore
                 )
                 response.raise_for_status()
                 records = response.json()
@@ -158,7 +158,7 @@ class SentryClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for issues in self.get_paginated_resource(
             f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/",
-            custom_sem=self.issues_semaphore,
+            custom_semaphore=self.issues_semaphore,
         ):
             yield issues
 
