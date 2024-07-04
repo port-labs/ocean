@@ -11,7 +11,7 @@ resources:
           title: .name
           blueprint: '"clickupTeam"'
           properties:
-            url: .id | "https://app.clickup.com/t/" + .
+            url: .id | "https://app.clickup.com/" + . + "/v/o/s/default_space"
             members: .members[].email
   - kind: project
     selector:
@@ -24,15 +24,14 @@ resources:
           blueprint: '"clickupProject"'
           properties:
             url: .id | "https://app.clickup.com/t/" + .
-            startDate: .start_date
-            endDate: .end_date
+            startDate: .start_date | tonumber | todate
+            endDate: .end_date | tonumber | todate
             totalIssues: .issue_count
           relations:
             team: .team_id
   - kind: issue
     selector:
       query: "true"
-      jql: "statusCategory != done"
     port:
       entity:
         mappings:
@@ -40,13 +39,13 @@ resources:
           title: .name
           blueprint: '"clickupIssue"'
           properties:
-            url: .id | "https://app.clickup.com/t/" + .
+            url: .url
             description: .description
-            status: .status.name
-            assignee: .assignee.email
+            status: .status.status
+            assignee: .assignees[0].email
             creator: .creator.email
-            priority: .priority | tostring
-            created: .date_created
-            updated: .date_updated
+            priority: .priority.priority | tostring
+            created: .date_created | todate
+            updated: .date_updated | todate
           relations:
-            project: .project_id
+            project: .project.id
