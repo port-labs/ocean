@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.2 (2024-07-05)
+
+### Improvements
+
+- Added log of the used integration mapping for each resync event
+- Added log when failed on processing jq mapping for raw result
+
+### Bug Fixes
+
+- Fixed an issue where raw results were not being sent if raw data didn't map to any entity
+
+
 ## 0.9.1 (2024-06-23)
 
 
