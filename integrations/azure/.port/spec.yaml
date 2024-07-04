@@ -13,8 +13,30 @@ features:
       - kind: storageContainer
 saas:
   enabled: false
-configurations: []
+configurations:
+  - name: azureClientId
+    required: false
+    type: string
+    sensitive: true
+    description: Azure Client ID, for more information on how to create and manage the Credentials see here https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal.
+  - name: azureClientSecret
+    required: false
+    type: string
+    sensitive: true
+    description: Azure Client Secret, for more information on how to create and manage the Credentials see here information https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal.
+  - name: azureTenantId
+    required: false
+    type: string
+    sensitive: true
+    description: Azure Tenant ID, for more information on how to create and manage the Credentials see here https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal.
+deploymentMethodRequirements:
+  - type: default
+    configurations: ['azureClientId', 'azureClientSecret', 'azureTenantId']
 deploymentMethodOverride:
+  - type: helm
+  - type: docker
+  - type: githubWorkflow
+  - type: gitlabCI
   - type: terraform
     module: port-labs/integration-factory/ocean
     example: azure_container_app_azure_integration
@@ -42,11 +64,8 @@ deploymentMethodOverride:
         description: A list of permissions that will be assigned to the Azure Integration User to export Azure Resources.
         required: true
         default:
+          - "Microsoft.Resources/subscriptions/read"
           - "Microsoft.Resources/subscriptions/resourceGroups/read"
           - "Microsoft.Resources/subscriptions/resources/read"
-          - "Microsoft.app/containerapps/read"
-          - "Microsoft.Storage/storageAccounts/*/read"
-          - "Microsoft.ContainerService/managedClusters/read"
-          - "Microsoft.Network/loadBalancers/read"
-          - "Microsoft.Compute/virtualMachines/read"
+          - "*/read"
         type: array
