@@ -61,12 +61,12 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         SLOHistoryResourceConfig, event.resource_config
     ).selector.timeframe
 
-    period_of_time_in_years = typing.cast(
+    period_of_time_in_months = typing.cast(
         SLOHistoryResourceConfig, event.resource_config
-    ).selector.period_of_time_in_years
+    ).selector.period_of_time_in_months
 
     async for histories in dd_client.list_slo_histories(
-        timeframe, period_of_time_in_years
+        timeframe, period_of_time_in_months
     ):
         yield histories
 

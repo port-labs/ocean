@@ -52,7 +52,8 @@ class JQEntityProcessor(BaseEntityProcessor):
             compiled_pattern = self._compile(pattern)
             first_value_callable = functools.partial(compiled_pattern.first, data)
             return await loop.run_in_executor(None, first_value_callable)
-        except Exception:
+        except Exception as err:
+            logger.exception(f"Failed to search for pattern {pattern}. Error: {err}")
             return None
 
     async def _search_as_bool(self, data: dict[str, Any], pattern: str) -> bool:

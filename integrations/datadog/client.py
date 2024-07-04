@@ -178,10 +178,10 @@ class DatadogClient:
             offset += limit
 
     async def list_slo_histories(
-        self, timeframe: int, period_of_time_in_years: int
+        self, timeframe: int, period_of_time_in_months: int
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         timestamps = transform_period_of_time_in_days_to_timestamps(
-            timeframe, period_of_time_in_years
+            timeframe, period_of_time_in_months
         )
         async for slos in self.get_slos():
             for from_ts, to_ts in timestamps:
