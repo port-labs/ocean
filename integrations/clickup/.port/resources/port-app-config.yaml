@@ -45,7 +45,7 @@ resources:
             assignee: .assignees[0].email
             creator: .creator.email
             priority: .priority.priority | tostring
-            created: .date_created | todate
-            updated: .date_updated | todate
+            created: .date_created | tonumber | (. /1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            updated: .date_updated | tonumber | (. /1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))
           relations:
             project: .project.id
