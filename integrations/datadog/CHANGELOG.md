@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.14 (2024-07-04)
+
+### Improvements
+
+- Added support to fetch SLOs history back to 1 year ago (#1)
+
 # Port_Ocean 0.1.13 (2024-07-01)
 
 ### Improvements

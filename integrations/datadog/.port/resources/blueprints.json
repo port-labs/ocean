@@ -247,6 +247,18 @@
           "type": "string",
           "title": "Sampling End Date",
           "format": "date-time"
+        },
+        "timeframe": {
+          "type": "number",
+          "title": "Timeframe",
+          "enum": [
+            7,
+            30
+          ],
+          "enumColors": {
+            "7": "purple",
+            "30": "pink"
+          }
         }
       },
       "required": []

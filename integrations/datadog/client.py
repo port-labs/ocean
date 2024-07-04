@@ -1,3 +1,5 @@
+import datetime
+import http
 import json
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
@@ -5,11 +7,12 @@ from urllib.parse import urlparse, urlunparse
 import httpx
 from loguru import logger
 
+from utils import transform_period_of_time_in_days_to_timestamps
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
 
 MAX_PAGE_SIZE = 100
-MAX_CONCURRENT_REQUESTS = 5
+MAX_CONCURRENT_REQUESTS = 2
 
 
 def embed_credentials_in_url(url: str, username: str, token: str) -> str:
@@ -175,26 +178,60 @@ class DatadogClient:
             offset += limit
 
     async def list_slo_histories(
-        self, from_ts: int, to_ts: int
+        self, timeframe: int, period_of_time_in_months: int
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        timestamps = transform_period_of_time_in_days_to_timestamps(
+            timeframe, period_of_time_in_months
+        )
         async for slos in self.get_slos():
-            histories = await process_in_queue(
-                [slo["id"] for slo in slos],
-                self.get_slo_history,
-                from_ts,
-                to_ts,
-                concurrency=MAX_CONCURRENT_REQUESTS,
-            )
-            yield histories
+            for from_ts, to_ts in timestamps:
+                histories = await process_in_queue(
+                    [slo["id"] for slo in slos],
+                    self.get_slo_history,
+                    timeframe,
+                    from_ts,
+                    to_ts,
+                    concurrency=MAX_CONCURRENT_REQUESTS,
+                )
+                yield [history for history in histories if history]
 
     async def get_slo_history(
-        self, slo_id: str, from_ts: int, to_ts: int
+        self, slo_id: str, timeframe: int, from_ts: int, to_ts: int
     ) -> dict[str, Any]:
         url = f"{self.api_url}/api/v1/slo/{slo_id}/history"
-        result = await self._send_api_request(
-            url, params={"from_ts": from_ts, "to_ts": to_ts}
-        )
-        return result.get("data")
+        readable_from_ts = datetime.datetime.fromtimestamp(from_ts)
+        readable_to_ts = datetime.datetime.fromtimestamp(to_ts)
+        try:
+            logger.info(
+                f"Fetching SLO history for {slo_id} from {readable_from_ts} to {readable_to_ts} in time range of {timeframe} days"
+            )
+            result = await self._send_api_request(
+                url, params={"from_ts": from_ts, "to_ts": to_ts}
+            )
+            # res = result.get("data")
+            return {**result.get("data"), "__timeframe": timeframe}
+        except httpx.HTTPStatusError as err:
+            if err.response.status_code == http.HTTPStatus.BAD_REQUEST:
+                if (
+                    "The timeframe is incorrect: slo from_ts must be"
+                    in err.response.text
+                ):
+                    logger.info(
+                        f"Slo {slo_id} has no history for the given timeframe {readable_from_ts}, {readable_to_ts} in time range of {timeframe} days"
+                    )
+                    return {}
+                if (
+                    "Queries ending outside the retention date are invalid"
+                    in err.response.text
+                ):
+                    logger.info(
+                        f"Slo {slo_id} has no history for the given timeframe {readable_from_ts}, {readable_to_ts} in time range of {timeframe} days"
+                    )
+                    return {}
+            logger.info(
+                f"Failed to fetch SLO history for {slo_id}: {err}, {err.response.text}, for the given timeframe {readable_from_ts}, {readable_to_ts} in time range of {timeframe} days"
+            )
+            return {}
 
     async def get_single_monitor(self, monitor_id: str) -> dict[str, Any] | None:
         if not monitor_id:

@@ -1,4 +1,5 @@
 import http
+import os
 import typing
 
 from cloudevents.pydantic import CloudEvent
@@ -20,6 +21,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from azure.identity.aio import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
 from azure.mgmt.subscription.aio import SubscriptionClient
@@ -31,7 +33,6 @@ from azure_integration.utils import (
     batch_resources_iterator,
     is_sub_resource,
     get_current_resource_config,
-    stream_async_iterators_tasks,
     get_resource_configs_with_resource_kind,
 )
 
@@ -72,16 +73,19 @@ async def resync_resource_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for subscriptions_batch in batch_resources_iterator(
                 subscription_client.subscriptions.list,
             ):
-                tasks = [
-                    resource_group_iterator(
-                        credential=credential,
-                        subscription_id=subscription["subscription_id"],
-                        api_version=resource_selector.api_version,
-                    )
-                    for subscription in subscriptions_batch
-                ]
-                async for resource_groups_batch in stream_async_iterators_tasks(tasks):
-                    yield resource_groups_batch
+                if subscriptions_batch:
+                    tasks = [
+                        resource_group_iterator(
+                            credential=credential,
+                            subscription_id=subscription["subscription_id"],
+                            api_version=resource_selector.api_version,
+                        )
+                        for subscription in subscriptions_batch
+                    ]
+                    async for resource_groups_batch in stream_async_iterators_tasks(
+                        *tasks
+                    ):
+                        yield resource_groups_batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.SUBSCRIPTION)
@@ -90,9 +94,9 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     Re-syncs subscriptions, this is done separately because the subscriptions api is different from the other apis
     """
     async with DefaultAzureCredential() as credential:
-        async with SubscriptionClient(credential=credential) as client:
+        async with SubscriptionClient(credential=credential) as subscription_client:
             async for subscriptions_batch in batch_resources_iterator(
-                client.subscriptions.list,
+                subscription_client.subscriptions.list,
             ):
                 yield subscriptions_batch
 
@@ -127,7 +131,7 @@ async def resync_base_resources(
                     )
                     for subscription in subscriptions_batch
                 ]
-                async for resources_batch in stream_async_iterators_tasks(tasks):
+                async for resources_batch in stream_async_iterators_tasks(*tasks):
                     yield resources_batch
 
 
@@ -176,7 +180,7 @@ async def resync_extension_resources(
                         )
                         for subscription in subscriptions_batch
                     ]
-                    async for resources_batch in stream_async_iterators_tasks(tasks):
+                    async for resources_batch in stream_async_iterators_tasks(*tasks):
                         yield resources_batch
 
 
@@ -279,3 +283,33 @@ async def cloud_event_validation_middleware_handler(
         return response
 
     return await call_next(request)
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    logger.info("Setting up credentials for Azure client")
+    azure_client_id = ocean.integration_config.get("azure_client_id")
+    azure_client_secret = ocean.integration_config.get("azure_client_secret")
+    azure_tenant_id = ocean.integration_config.get("azure_tenant_id")
+    if not azure_client_id or not azure_client_secret or not azure_tenant_id:
+        logger.info(
+            "Integration wasn't provided with override configuration for initializing client, proceeding with default"
+        )
+        return
+
+    if azure_client_id:
+        logger.info(
+            "Detected Azure client id, setting up environment variable for client id"
+        )
+        os.environ["AZURE_CLIENT_ID"] = azure_client_id
+    if azure_client_secret:
+        logger.info(
+            "Detected Azure client secret, setting up environment variable for client secret"
+        )
+        os.environ["AZURE_CLIENT_SECRET"] = azure_client_secret
+    if azure_tenant_id:
+        logger.info(
+            "Detected Azure tenant id, setting up environment variable for tenant id"
+        )
+        os.environ["AZURE_TENANT_ID"] = azure_tenant_id
+    logger.info("Azure client credentials set up")
