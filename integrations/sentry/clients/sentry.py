@@ -178,13 +178,13 @@ class SentryClient:
             logger.debug(f"Found no issues in {self.organization}")
             return []
 
-    async def add_tags_to_issue(
+    async def get_issue_tags_iterator(
         self, issue: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
         tags = await self.get_issue_tags(issue["id"])
         yield [{**issue, "__tags": tags}]
 
-    async def add_tags_to_project(
+    async def get_project_tags_iterator(
         self, project: dict[str, Any]
     ) -> AsyncIterator[list[dict[str, Any]]]:
         tags = await self.get_project_tags(project["slug"])
