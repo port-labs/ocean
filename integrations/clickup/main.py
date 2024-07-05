@@ -73,10 +73,9 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         project = await clickup_client.get_single_project(data["list_id"])
         await ocean.register_raw(ObjectKind.PROJECT, [project])
     elif "taskCreated" == data.get("event"):
-        for task in data["history_items"]:
-            logger.info(f'Received webhook event for issue: {task["id"]}')
-            issue = await clickup_client.get_single_issue(task["id"])
-            await ocean.register_raw(ObjectKind.ISSUE, [issue])
+        logger.info(f'Received webhook event for issue: {data["task_id"]}')
+        issue = await clickup_client.get_single_issue(data["task_id"])
+        await ocean.register_raw(ObjectKind.ISSUE, [issue])
     logger.info("Webhook event processed")
     return {"ok": True}
 
