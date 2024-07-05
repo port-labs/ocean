@@ -6,7 +6,6 @@ from loguru import logger
 
 from client import DatadogClient
 from overrides import SLOHistoryResourceConfig
-from utils import transform_period_of_time_in_days_to_timestamps
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -58,15 +57,17 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SLO_HISTORY)
 async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
-    sample_interval_period_in_days = typing.cast(
+    timeframe = typing.cast(
         SLOHistoryResourceConfig, event.resource_config
-    ).selector.sample_interval_period_in_days
+    ).selector.timeframe
 
-    from_ts, to_ts = transform_period_of_time_in_days_to_timestamps(
-        sample_interval_period_in_days
-    )
-    async for histories in dd_client.list_slo_histories(from_ts, to_ts):
-        logger.info(f"Received batch with {len(histories)} slo histories")
+    period_of_time_in_months = typing.cast(
+        SLOHistoryResourceConfig, event.resource_config
+    ).selector.period_of_time_in_months
+
+    async for histories in dd_client.list_slo_histories(
+        timeframe, period_of_time_in_months
+    ):
         yield histories
 
 
