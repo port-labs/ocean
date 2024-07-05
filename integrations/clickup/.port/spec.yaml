@@ -9,10 +9,6 @@ features:
       - kind: project
       - kind: issue
 configurations:
-  - name: clickupUrl
-    required: true
-    type: url
-    description: "The URL of your Clickup"
   - name: clickupApikey
     required: true
     type: string

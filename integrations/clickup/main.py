@@ -1,8 +1,10 @@
 from enum import StrEnum
-from clickup.client import ClickupClient
+
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from client import ClickupClient
 
 
 class ObjectKind(StrEnum):
@@ -10,13 +12,10 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
 
-def get_client()-> ClickupClient:
-    logic_settings = ocean.integration_config
-    client = ClickupClient(
-        logic_settings["clickup_url"],
-        logic_settings["clickup_apikey"]
-    )
-    return client
+
+def get_client() -> ClickupClient:
+    return ClickupClient(ocean.integration_config["clickup_apikey"])
+
 
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -42,7 +41,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-# Listen to the start event of the integration. Called once when the integration starts.
+# Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
     print("Starting integration")
