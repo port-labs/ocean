@@ -68,26 +68,31 @@ class ClickupClient:
         response = await self._send_api_request(url, params)
         yield response.get("spaces")
 
-    async def _get_folders_in_space(self, team_id: str) -> List[dict[str, Any]]:
+    async def _get_folders_in_space(
+        self, team_id: str
+    ) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all folders in a space."""
         async for spaces in self._get_spaces_in_team(team_id):
             for space in spaces:
                 url = f"{self.api_url}/space/{space.get('id')}/folder"
                 params = {"archived": "false"}
                 response = await self._send_api_request(url, params)
-                return response.get("folders")
+                yield response.get("folders")
 
     async def get_folder_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all projects with a folder parent."""
         async for teams in self.get_clickup_teams():
             for team in teams:
                 team_id = team.get("id")
-                for folder in await self._get_folders_in_space(team_id):
-                    url = f"{self.api_url}/folder/{folder.get('id')}/list"
-                    params = {"archived": "false"}
-                    response = await self._send_api_request(url, params)
-                    projects = response.get("lists")
-                    yield [{**project, "__team_id": team_id} for project in projects]
+                async for folders in self._get_folders_in_space(team_id):
+                    for folder in folders:
+                        url = f"{self.api_url}/folder/{folder.get('id')}/list"
+                        params = {"archived": "false"}
+                        response = await self._send_api_request(url, params)
+                        projects = response.get("lists")
+                        yield [
+                            {**project, "__team_id": team_id} for project in projects
+                        ]
 
     async def get_folderless_projects(
         self,
