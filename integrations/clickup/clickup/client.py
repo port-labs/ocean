@@ -57,7 +57,7 @@ class ClickUpClient:
             logger.error(f"Failed to fetch projects for space_id {space_id}: {e}")
             return []
 
-    async def fetch_all_projects(self):
+    async def get_all_projects(self):
         teams = await self.get_teams()
         for team in teams:
             team_id = team["id"]
@@ -87,35 +87,25 @@ class ClickUpClient:
             logger.error(f"Failed to fetch spaces for team_id: {team_id}: {e}")
             return []
 
-    async def get_paginated_tasks(
-        self, list_id: str
+    async def get_paginated_issues(
+        self
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting tasks (issues) from ClickUp")
-
-        params = self._generate_base_req_params()
-        page = params.get("page", 0)
-        while True:
-            logger.info(f"Current query position: page {page}")
-            try:
-                task_response = await self._get_tasks(list_id, params)
-                task_response_list = task_response.get("tasks", [])
-                yield task_response_list
-                if not task_response_list:
-                    break
-            except httpx.HTTPStatusError as e:
-                logger.error(f"Failed to fetch tasks for page {page}: {e}")
-                break
-            page += 1
-            params["page"] = page
-
-    async def fetch_issues(self):
-        projects, _ = await self.fetch_all_projects()
+        projects, _ = await self.get_all_projects()
         for project in projects:
             project_id = project["id"]
-            try:
-                async for tasks in self.get_paginated_tasks(project_id):
-                    logger.info(f"Received task batch with {len(tasks)} tasks for project {project_id}")
-                    yield tasks
-            except Exception as e:
-                logger.error(f"Failed to fetch tasks for project {project_id}: {e}")
-                raise
+            params = self._generate_base_req_params()
+            page = params.get("page", 0)
+            while True:
+                logger.info(f"Current query position: page {page}")
+                try:
+                    task_response = await self._get_tasks(project_id, params)
+                    task_response_list = task_response.get("tasks", [])
+                    yield task_response_list
+                    if not task_response_list:
+                        break
+                except httpx.HTTPStatusError as e:
+                    logger.error(f"Failed to fetch tasks for page {page}: {e}")
+                    break
+                page += 1
+                params["page"] = page

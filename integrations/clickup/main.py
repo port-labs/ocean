@@ -29,7 +29,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_clickup_client()
-    projects, team_id = await client.fetch_all_projects()
+    projects, team_id = await client.get_all_projects()
     logger.info(f"Received projects batch with {len(projects)} projects for team {team_id}")
     yield projects
 
@@ -37,7 +37,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_clickup_client()
-    async for tasks in client.fetch_issues():
+    async for tasks in client.get_paginated_issues():
         yield tasks
 
 
