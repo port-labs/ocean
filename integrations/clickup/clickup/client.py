@@ -31,7 +31,7 @@ class ClickupClient:
         self.team_key = await self.get_team_key()
 
     @property
-    async def api_headers(self) -> dict[str, Any]:
+    def api_headers(self) -> dict[str, Any]:
         return {
             "Authorization": self.clickup_token,
             "Content-Type": "application/json",
@@ -59,7 +59,7 @@ class ClickupClient:
         response = await self.client.request(
             url=url,
             method=method,
-            headers=await self.api_headers,
+            headers=self.api_headers,
             params=params,
             json=json_data,
         )
