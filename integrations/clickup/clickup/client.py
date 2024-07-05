@@ -4,6 +4,7 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 
+TEAM_ID = "__team_id"
 WEBHOOK_EVENTS = [
     "taskCreated",
     "taskUpdated",
@@ -86,9 +87,7 @@ class ClickupClient:
                         params = {"archived": "false"}
                         response = await self._send_api_request(url, params)
                         projects = response.get("lists")
-                        yield [
-                            {**project, "__team_id": team_id} for project in projects
-                        ]
+                        yield [{**project, TEAM_ID: team_id} for project in projects]
 
     async def get_folderless_projects(
         self,
@@ -103,9 +102,7 @@ class ClickupClient:
                         params = {"archived": "false"}
                         response = await self._send_api_request(url, params)
                         projects = response.get("lists")
-                        yield [
-                            {**project, "__team_id": team_id} for project in projects
-                        ]
+                        yield [{**project, TEAM_ID: team_id} for project in projects]
 
     async def get_single_project(self, list_id: str) -> dict[str, Any]:
         """Get a single project by folder_id."""
