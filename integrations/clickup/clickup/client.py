@@ -2,7 +2,6 @@ from typing import Any, AsyncGenerator
 import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
-from port_ocean.context.ocean import ocean
 
 
 class ClickUpClient:
@@ -14,21 +13,11 @@ class ClickUpClient:
         self.client.timeout = httpx.Timeout(30)  # 30 seconds timeout for requests
 
     @staticmethod
-    def get_clickup_client():
-        try:
-            host = ocean.integration_config.get("clickup_host")
-            api_key = ocean.integration_config.get("clickup_api_key")
-            if not host or not api_key:
-                raise ValueError("ClickUp host or API key is not configured properly.")
-            return ClickUpClient(host, api_key)
-        except KeyError as e:
-            logger.error(f"Configuration key missing: {e}")
-            raise
-
-    @staticmethod
     def parse_projects_from_folders(folders: list[dict[str, Any]]) -> list[dict[str, Any]]:
         folder_with_projects = [folder["lists"] for folder in folders]
-        flattened_projects = [project for sublist in folder_with_projects for project in sublist]
+        flattened_projects = [
+            project for sublist in folder_with_projects for project in sublist
+        ]
         return flattened_projects
 
     @staticmethod
@@ -40,12 +29,6 @@ class ClickUpClient:
         response = await self.client.get(url, params=params)
         response.raise_for_status()
         return response.json()
-
-    async def _get_teams(self) -> dict[str, Any]:
-        return await self._get("/team")
-
-    async def _get_spaces(self, team_id: str) -> dict[str, Any]:
-        return await self._get(f"/team/{team_id}/space")
 
     async def _get_tasks(self, list_id: str, params: dict[str, Any]) -> dict[str, Any]:
         return await self._get(f"/list/{list_id}/task", params)
@@ -88,7 +71,7 @@ class ClickUpClient:
     async def get_teams(self) -> list[dict[str, Any]]:
         logger.info("Getting teams from ClickUp")
         try:
-            total_teams = (await self._get_teams())["teams"]
+            total_teams = (await self._get("/team"))["teams"]
             return total_teams
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to fetch teams: {e}")
@@ -98,7 +81,7 @@ class ClickUpClient:
         logger.info("Getting spaces from ClickUp")
 
         try:
-            space_response_list = (await self._get_spaces(team_id))["spaces"]
+            space_response_list = (await self._get(f"/team/{team_id}/space"))["spaces"]
             return space_response_list
         except httpx.HTTPStatusError as e:
             logger.error(f"Failed to fetch spaces for team_id: {team_id}: {e}")
@@ -110,7 +93,6 @@ class ClickUpClient:
         logger.info("Getting tasks (issues) from ClickUp")
 
         params = self._generate_base_req_params()
-
         page = params.get("page", 0)
         while True:
             logger.info(f"Current query position: page {page}")
