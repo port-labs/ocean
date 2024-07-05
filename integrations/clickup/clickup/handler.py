@@ -8,7 +8,7 @@ class ClickUpPortHandler:
 
     def get_clickup_client(self):
         try:
-            host = ocean.integration_config["clickup_host"]
+            host = ocean.integration_config.get("clickup_host")
             api_key = ocean.integration_config["clickup_api_key"]
             if not host or not api_key:
                 raise ValueError("ClickUp host or API key is not configured properly.")
