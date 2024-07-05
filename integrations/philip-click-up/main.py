@@ -13,28 +13,25 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
 @ocean.on_resync(ObjectKind.TEAM)
-async def on_resync_team(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_resync_team(kind: str) -> list[dict[str, Any]]:
 
     client = ClickUpClient(click_up_token=ocean.integration_config("clickup_api_key"))
 
-    async for teams in client.get_teams():
-        logger.info(f"Received {len(teams)} teams")
+    teams = await client.get_teams()
+    logger.info(f"Received {len(teams)} teams")
 
-        yield teams
+    return teams
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
-async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_resync_project(kind: str) -> list[dict[str, Any]]:
 
     client = ClickUpClient(click_up_token=ocean.integration_config("clickup_api_key"))
-    async for projects in client.get_projects():
-        logger.info(f"Received {len(projects)} projects")
+    projects = await client.get_projects()
+    logger.info(f"Received {len(projects)} projects")
 
-        yield projects
+    return projects
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -47,8 +44,6 @@ async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean Click-Up integration")

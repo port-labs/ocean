@@ -1,7 +1,6 @@
 from port_ocean.utils import http_async_client
 from httpx import Timeout
 from typing import AsyncGenerator, Any
-from datetime import datetime
 
 
 class ClickUpClient:
@@ -16,20 +15,6 @@ class ClickUpClient:
             **self.client.headers,
         }
         self.client.timeout = Timeout(30)
-
-    def milesecond_time_to_date_str(self, data: dict):
-
-        if data.get("date_created"):
-            date_created_ms = int(data["date_created"]) / 1000
-
-            data["date_created"] = datetime.fromtimestamp(timestamp=date_created_ms)
-
-        if data.get("date_updated"):
-            date_updated_ms = int(data["date_updated"]) / 1000
-
-            data["date_updated"] = datetime.fromtimestamp(timestamp=date_updated_ms)
-
-        return data
 
     async def __generate_teams(self):
 
@@ -66,9 +51,12 @@ class ClickUpClient:
 
         return response.json()
 
-    async def __get_issues(self, list_id: int):
+    async def __get_issues(self, list_id: int, page_count: int = 0):
 
-        response = await self.client.get(url=f"{self.click_up_api_url}/{list_id}/space")
+        response = await self.client.get(
+            url=f"{self.click_up_api_url}/list/{list_id}/task",
+            params={"page": page_count},
+        )
 
         response.raise_for_status()
 
@@ -91,11 +79,9 @@ class ClickUpClient:
 
         return response.json()
 
-    async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_teams(self) -> list[dict[str, Any]]:
 
-        teams = await self.__generate_teams()["teams"]
-
-        yield teams
+        return await self.__generate_teams()["teams"]
 
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for team in await self.get_teams():
@@ -109,8 +95,17 @@ class ClickUpClient:
     async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for project in self.get_projects():
 
-            tasks = await self.__get_issues(list_id=project["id"])["tasks"]
-            tasks = list(
-                map(lambda data: self.milesecond_time_to_date_str(data=data), tasks)
-            )
-            yield tasks
+            page_count = 0
+            paginated_data = True
+            while paginated_data:
+
+                tasks = await self.__get_issues(
+                    list_id=project["id"], page_count=page_count
+                )["tasks"]
+
+                yield tasks
+
+                if tasks["last_page"] is False:
+                    paginated_data = False
+
+                page_count += 1

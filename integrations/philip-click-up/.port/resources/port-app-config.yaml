@@ -12,20 +12,20 @@ resources:
           blueprint: '"clickupTeam"'
           properties:
             url:  \"https://app.clickup.com/\" + .id+ \"/home\"
-            members: "[.members[].user]"
+            members: "[.members[].user.email]"
   - kind : project
     selector:
       query: "true" 
     port:
       entity:
         mappings:
-          identifier: .key
+          identifier: .id
           title: .name
           blueprint: '"clickupProject"'
           properties:
             url: \"https://app.clickup.com/\"+ .folder.id + /"/v/l/\"+ ,id
             startDate: .start_date
-            endDate: .end_date
+            endDate: .due_date
             totalIssues: .task_count
   - kind : issue
     selector:
@@ -33,7 +33,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .key
+          identifier: .id
           title: .name
           blueprint: '"clickupIssue"'
           properties:
@@ -42,7 +42,7 @@ resources:
             assignee: .assignees
             priority: .priority
             creator: .creator.email
-            created: .date_created
-            updated: .date_updated  
+            created: (.date_created / 1000 | todate) 
+            updated: (.date_updated / 1000 | todate)  
 
 
