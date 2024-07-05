@@ -54,9 +54,7 @@ class ClickupClient:
     async def get_clickup_teams(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all Clickup teams."""
         url = f"{self.api_url}/team"
-        response = await self._send_api_request(url)
-        teams = response.get("teams", [])
-        yield teams
+        yield (await self._send_api_request(url)).get("teams", [])
 
     @cache_iterator_result()
     async def _get_spaces_in_team(
@@ -65,8 +63,7 @@ class ClickupClient:
         """Get all spaces in a workspace."""
         url = f"{self.api_url}/team/{team_id}/space"
         params = {"archived": "false"}
-        response = await self._send_api_request(url, params)
-        yield response.get("spaces")
+        yield (await self._send_api_request(url, params)).get("spaces", [])
 
     async def _get_folders_in_space(
         self, team_id: str
@@ -76,8 +73,7 @@ class ClickupClient:
             for space in spaces:
                 url = f"{self.api_url}/space/{space.get('id')}/folder"
                 params = {"archived": "false"}
-                response = await self._send_api_request(url, params)
-                yield response.get("folders")
+                yield (await self._send_api_request(url, params)).get("folders")
 
     async def get_folder_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all projects with a folder parent."""
