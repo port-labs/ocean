@@ -12,7 +12,7 @@ resources:
           title: .name
           properties:
             url: "\"https://app.clickup.com/\" + .id + \"/home\""
-            member: [.members[].user.email]
+            member: .members[].user.email
   - kind: project
     selector:
       query: 'true'
