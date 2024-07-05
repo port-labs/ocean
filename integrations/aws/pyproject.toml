@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "aws"
-version = "0.2.8"
+version = "0.2.9"
 description = "This integration will map all your resources in all the available accounts to your Port entities"
-authors = ["Shalev Avhar <shalev@getport.io>"]
+authors = ["Shalev Avhar <shalev@getport.io>", "Erik Zaadi <erik@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
