@@ -16,9 +16,6 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
@@ -55,14 +52,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting Port Ocean ClickUp integration")
-
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return
-
-    # await setup_application()

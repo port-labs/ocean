@@ -18,7 +18,7 @@ class ClickUpClient:
 
         self.client = http_async_client
 
-        self.page_size = 50
+        self.page_size = 100
 
         self.client.headers.update(self.headers)
         self.client.timeout = Timeout(30)
@@ -34,62 +34,54 @@ class ClickUpClient:
         project["__team_id"] = team_id
         return project
 
-    # Teams
     async def _get_teams(self) -> dict[str, Any]:
-        team_response = await self.client.get(f"{self.clickup_api_url}/team")
-        team_response.raise_for_status()
-
-        return team_response.json()
+        try:
+            team_response = await self.client.get(f"{self.clickup_api_url}/team")
+            team_response.raise_for_status()
+            return team_response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Encountered an HTTP error {e} trying to fetch team")
+            raise
 
     async def get_teams(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         logger.info("Getting teams from Clickup")
 
         team_list = (await self._get_teams())["teams"]
-        if not team_list:
-            logger.warning(
-                "Team query returned 0 teams, did you provide the correct ClickUp credentials?"
-            )
 
         yield team_list
 
-    # Spaces
-    async def _get_spaces(self, team_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        team_response = await self.client.get(
-            f"{self.clickup_api_url}/team/{team_id}/space", params=params
-        )
-        team_response.raise_for_status()
+    async def _get_spaces(self, team_id: str) -> Dict[str, Any]:
+        try:
+            team_response = await self.client.get(
+                f"{self.clickup_api_url}/team/{team_id}/space",
+            )
+            team_response.raise_for_status()
 
-        return team_response.json()
+            return team_response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Encountered an HTTP error {e} trying to fetch spaces")
+            raise
 
     async def get_paginated_spaces(
         self, team_id: str
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting spaces from Clickup")
+        all_spaces = (await self._get_spaces(team_id))["spaces"]
+        yield all_spaces
 
-        params = self._generate_base_req_params()
-
-        all_spaces = (await self._get_spaces(team_id, params))["spaces"]
-
-        params["page_size"] = self.page_size
-        page = 0
-
-        while page * self.page_size < len(all_spaces):
-            space_list = (await self._get_spaces(team_id, params))["spaces"]
-            yield space_list
-            page += 1
-
-    # Folders
     async def _get_folders(
         self, space_id: str, params: Dict[str, Any]
     ) -> Dict[str, Any]:
-        folder_response = await self.client.get(
-            f"{self.clickup_api_url}/space/{space_id}/folder", params=params
-        )
-        folder_response.raise_for_status()
 
-        return folder_response.json()
-
-    # Projects
+        try:
+            folder_response = await self.client.get(
+                f"{self.clickup_api_url}/space/{space_id}/folder", params=params
+            )
+            folder_response.raise_for_status()
+            return folder_response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Encountered an HTTP error {e} trying to fetch folders")
+            raise
 
     async def _get_projects(
         self, folder_id: str
@@ -101,15 +93,19 @@ class ClickUpClient:
 
         yield team_response.json()
 
-    async def _get_projects_with_no_folders(
-        self, space_id: str, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _get_projects_with_no_folders(self, space_id: str) -> Dict[str, Any]:
+        try:
 
-        response = await self.client.get(
-            f"{self.clickup_api_url}/space/{space_id}/list", params=params
-        )
-
-        return response.json()
+            response = await self.client.get(
+                f"{self.clickup_api_url}/space/{space_id}/list",
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(
+                f"Encountered an HTTP error {e} trying to fetch projects with no folder"
+            )
+            raise
 
     async def get_paginated_projects(
         self, space_id: str
@@ -123,31 +119,16 @@ class ClickUpClient:
         the_projects = [
             project for sublist in projects_in_folders for project in sublist
         ]
+        yield the_projects
 
         projects_with_no_folder = (
             await self._get_projects_with_no_folders(space_id, params)
         )["lists"]
+
+        yield projects_with_no_folder
         all_projects = projects_with_no_folder + the_projects
 
-        if not all_projects:
-            logger.warning("Space query returned 0 projects")
-
-        params["page_size"] = self.page_size
-        page = 0
-        while page * self.page_size < len(all_projects):
-            all_folders_resp = (await self._get_folders(space_id, params))["folders"]
-            projects_in_folders = [folder["lists"] for folder in all_folders_resp]
-            the_projects = [
-                project for sublist in projects_in_folders for project in sublist
-            ]
-
-            projects_with_no_folder = (
-                await self._get_projects_with_no_folders(space_id, params)
-            )["lists"]
-
-            projects = projects_with_no_folder + the_projects
-            yield projects
-            page += 1
+        yield all_projects
 
     async def get_projects(
         self,
@@ -171,39 +152,26 @@ class ClickUpClient:
                             )
                             yield project_list
 
-    # Issues This is same thing as tasks on clickup
-    async def _get_issues(self, list_id: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        issue_response = await self.client.get(
-            f"{self.clickup_api_url}/list/{list_id}/task", params=params
-        )
-        issue_response.raise_for_status()
+    async def _get_issues(self, list_id: str) -> Dict[str, Any]:
+        try:
+            issue_response = await self.client.get(
+                f"{self.clickup_api_url}/list/{list_id}/task",
+            )
+            issue_response.raise_for_status()
 
-        return issue_response.json()
-
-    async def create_events_webhook(self, app_host: str) -> None:
-        pass
+            return issue_response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Encountered an HTTP error {e} trying to fetch issues")
+            raise
 
     async def get_paginated_issues(
         self,
         list_id: str,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
 
-        params = self._generate_base_req_params()
-        all_issues = (await self._get_issues(list_id, params))["tasks"]
+        all_issues = (await self._get_issues(list_id))["tasks"]
 
-        if not all_issues:
-            logger.warning(
-                "Issues query returned 0 issues, did you provide the correct ClickUp  credentials"
-            )
-
-        params["page_size"] = self.page_size
-        page = 0
-
-        while page * self.page_size < len(all_issues):
-
-            all_issues = (await self._get_issues(list_id, params))["tasks"]
-            yield all_issues
-            page += 1
+        yield all_issues
 
     async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
 
