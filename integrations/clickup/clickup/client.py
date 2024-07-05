@@ -30,23 +30,15 @@ class ClickUpClient:
         response.raise_for_status()
         return response.json()
 
-    async def _get_tasks(self, list_id: str, params: dict[str, Any]) -> dict[str, Any]:
-        return await self._get(f"/list/{list_id}/task", params)
-
-    async def _get_folderless_projects(self, space_id: str) -> dict[str, Any]:
-        return await self._get(f"/space/{space_id}/list")
-
-    async def _get_folders(self, space_id: str) -> dict[str, Any]:
-        return await self._get(f"/space/{space_id}/folder")
 
     async def get_projects(self, space_id: str, team_id: str) -> list[dict[str, Any]]:
         logger.info("Getting projects from ClickUp")
 
         try:
             foldered_projects = self.parse_projects_from_folders(
-                (await self._get_folders(space_id))["folders"]
+                (await self._get(f"/space/{space_id}/folder"))["folders"]
             )
-            folderless_projects = (await self._get_folderless_projects(space_id))["lists"]
+            folderless_projects = (await self._get(f"/space/{space_id}/list"))["lists"]
             projects = folderless_projects + foldered_projects
 
             if not projects:
@@ -99,7 +91,7 @@ class ClickUpClient:
             while True:
                 logger.info(f"Current query position: page {page}")
                 try:
-                    task_response = await self._get_tasks(project_id, params)
+                    task_response = await self._get(f"/list/{project_id}/task", params)
                     task_response_list = task_response.get("tasks", [])
                     yield task_response_list
                     if not task_response_list:
