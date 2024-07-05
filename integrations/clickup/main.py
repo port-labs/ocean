@@ -71,21 +71,17 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     if data.get("event").startswith("list"):
         logger.info(f'Received webhook event for project: {data["list_id"]}')
         project = await clickup_client.get_single_project(data["list_id"])
-        if data.get("event") == "listCreated":
+        if data.get("event") in ["listCreated", "listUpdated"]:
             await ocean.register_raw(ObjectKind.PROJECT, [project])
         elif data.get("event") == "listDeleted":
             await ocean.unregister_raw(ObjectKind.PROJECT, [project])
-        elif data.get("event") == "listUpdated":
-            await ocean.update_raw_diff(ObjectKind.PROJECT, project)
     elif data.get("event").startswith("task"):
         logger.info(f'Received webhook event for project: {data["list_id"]}')
         project = await clickup_client.get_single_project(data["list_id"])
-        if data.get("event") == "taskCreated":
+        if data.get("event") in ["taskCreated", "taskUpdated"]:
             await ocean.register_raw(ObjectKind.PROJECT, [project])
         elif data.get("event") == "taskDeleted":
             await ocean.unregister_raw(ObjectKind.PROJECT, [project])
-        elif data.get("event") == "taskUpdated":
-            await ocean.update_raw_diff(ObjectKind.PROJECT, project)
     logger.info("Webhook event processed")
     return {"ok": True}
 
