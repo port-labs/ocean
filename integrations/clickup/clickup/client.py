@@ -7,7 +7,7 @@ from port_ocean.context.ocean import ocean
 
 class ClickUpClient:
     def __init__(self, clickup_url: str, clickup_api_key: str) -> None:
-        self.api_url = f"{self.clickup_url}/api/v2"
+        self.api_url = f"{clickup_url}/api/v2"
         self.api_auth_header = {"Authorization": clickup_api_key}
         self.client = http_async_client
         self.client.headers.update(self.api_auth_header)
