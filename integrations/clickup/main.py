@@ -23,7 +23,7 @@ async def setup_application() -> None:
     if not app_host:
         logger.warning(
             "No app host provided, skipping webhook creation. "
-            "Without setting up the webhook, the integration will not export live changes from Linear"
+            "Without setting up the webhook, the integration will not export live changes from Clickup"
         )
         return
 
