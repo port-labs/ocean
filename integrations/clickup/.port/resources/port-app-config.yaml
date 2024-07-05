@@ -12,7 +12,7 @@ resources:
           blueprint: '"clickupTeam"'
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/team/"
-            members: .fields.members
+            members: .fields.members.user.email
   - kind: project
     selector:
       query: "true"

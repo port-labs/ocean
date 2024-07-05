@@ -2,7 +2,7 @@ from enum import StrEnum
 from typing import Any
 
 from loguru import logger
-from clickup.client import ClickupClient
+from client import ClickupClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -15,23 +15,10 @@ class ObjectKind(StrEnum):
 
 async def setup_application() -> None:
     logic_settings = ocean.integration_config
-    app_host = logic_settings.get("app_host")
-    if not app_host:
-        logger.warning(
-            "No app host provided, skipping webhook creation. "
-            "Without setting up the webhook, the integration will not export live changes from Clickup"
-        )
-        return
+    clickup_client = ClickupClient(logic_settings["clickup_api_token"])
+    return clickup_client
 
-    clickup_lient = ClickupClient(logic_settings["clickup_api_token"])
 
-    # await clickup_lient.create_events_webhook(
-    #     logic_settings["app_host"],
-    # )
-
-# Required
-# Listen to the resync event of all the teams specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = ClickupClient(
@@ -40,9 +27,6 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     yield await client.get_teams()
 
 
-# Required
-# Listen to the resync event of all the projects specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = ClickupClient(
@@ -52,9 +36,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received project batch with {len(projects)} projects")
         yield projects
 
-# Required
-# Listen to the resync event of all the issue specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
+
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = ClickupClient(
@@ -65,10 +47,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting integration")
+    logger.info("Starting integration")
