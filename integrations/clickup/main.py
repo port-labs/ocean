@@ -68,14 +68,24 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     clickup_client = await init_client()
     logger.info(f'Received webhook event of type: {data.get("event")}')
-    if "listCreated" == data.get("event"):
+    if data.get("event").startswith("list"):
         logger.info(f'Received webhook event for project: {data["list_id"]}')
         project = await clickup_client.get_single_project(data["list_id"])
-        await ocean.register_raw(ObjectKind.PROJECT, [project])
-    elif "taskCreated" == data.get("event"):
-        logger.info(f'Received webhook event for issue: {data["task_id"]}')
-        issue = await clickup_client.get_single_issue(data["task_id"])
-        await ocean.register_raw(ObjectKind.ISSUE, [issue])
+        if data.get("event") == "listCreated":
+            await ocean.register_raw(ObjectKind.PROJECT, [project])
+        elif data.get("event") == "listDeleted":
+            await ocean.unregister_raw(ObjectKind.PROJECT, [project])
+        elif data.get("event") == "listUpdated":
+            await ocean.update_raw_diff(ObjectKind.PROJECT, project)
+    elif data.get("event").startswith("task"):
+        logger.info(f'Received webhook event for project: {data["list_id"]}')
+        project = await clickup_client.get_single_project(data["list_id"])
+        if data.get("event") == "taskCreated":
+            await ocean.register_raw(ObjectKind.PROJECT, [project])
+        elif data.get("event") == "taskDeleted":
+            await ocean.unregister_raw(ObjectKind.PROJECT, [project])
+        elif data.get("event") == "taskUpdated":
+            await ocean.update_raw_diff(ObjectKind.PROJECT, project)
     logger.info("Webhook event processed")
     return {"ok": True}
 

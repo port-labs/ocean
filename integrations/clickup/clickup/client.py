@@ -80,14 +80,15 @@ class ClickupClient:
         """Get all projects with a folder parent."""
         async for teams in self.get_clickup_teams():
             for team in teams:
-                team_id = team.get("id")
-                async for folders in self._get_folders_in_space(team_id):
+                async for folders in self._get_folders_in_space(team.get("id")):
                     for folder in folders:
                         url = f"{self.api_url}/folder/{folder.get('id')}/list"
                         params = {"archived": "false"}
                         response = await self._send_api_request(url, params)
                         projects = response.get("lists")
-                        yield [{**project, TEAM_ID: team_id} for project in projects]
+                        yield [
+                            {**project, TEAM_ID: team.get("id")} for project in projects
+                        ]
 
     async def get_folderless_projects(
         self,
@@ -95,14 +96,15 @@ class ClickupClient:
         """Get all projects without a folder parent."""
         async for teams in self.get_clickup_teams():
             for team in teams:
-                team_id = team.get("id")
-                async for spaces in self._get_spaces_in_team(team_id):
+                async for spaces in self._get_spaces_in_team(team.get("id")):
                     for space in spaces:
                         url = f"{self.api_url}/space/{space.get('id')}/list"
                         params = {"archived": "false"}
                         response = await self._send_api_request(url, params)
                         projects = response.get("lists")
-                        yield [{**project, TEAM_ID: team_id} for project in projects]
+                        yield [
+                            {**project, TEAM_ID: team.get("id")} for project in projects
+                        ]
 
     async def get_single_project(self, list_id: str) -> dict[str, Any]:
         """Get a single project by folder_id."""
@@ -134,9 +136,10 @@ class ClickupClient:
         """Create a webhook for ClickUp events."""
         async for teams in self.get_clickup_teams():
             for team in teams:
-                team_id = team.get("id")
                 webhook_target_app_host = f"{app_host}/integration/webhook"
-                clickup_get_webhook_url = f"{self.api_url}/team/{team_id}/webhook"
+                clickup_get_webhook_url = (
+                    f"{self.api_url}/team/{team.get('id')}/webhook"
+                )
                 webhook_check_response = await self._send_api_request(
                     clickup_get_webhook_url
                 )
