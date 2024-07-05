@@ -16,6 +16,7 @@ configurations:
   - name: clickupHost
     required: true
     type: string
+    default: https://api.clickup.com
     description: "The URL of your ClickUp, for example: https://app.clickup.com"
   - name: clickupApiKey
     required: true
