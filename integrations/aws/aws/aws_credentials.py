@@ -15,6 +15,7 @@ class AwsCredentials:
         self.secret_access_key = secret_access_key
         self.session_token = session_token
         self.enabled_regions: list[str] = []
+        self.default_regions: list[str] = []
 
     async def update_enabled_regions(self) -> None:
         session = aioboto3.Session(
@@ -26,6 +27,11 @@ class AwsCredentials:
             )
             regions = response.get("Regions", [])
             self.enabled_regions = [region["RegionName"] for region in regions]
+            self.default_regions = [
+                region["RegionName"]
+                for region in regions
+                if region["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
+            ]
 
     def is_role(self) -> bool:
         return self.session_token is not None
