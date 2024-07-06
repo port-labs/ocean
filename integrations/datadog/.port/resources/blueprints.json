@@ -264,22 +264,22 @@
           "type": "string",
           "title": "State",
           "enum": [
-            "Alert",
-            "Ignored",
+            "breached",
+            "Breached",
+            "warning",
+            "Warning",
+            "no data",
             "No Data",
-            "OK",
-            "Skipped",
-            "Unknown",
-            "Warn"
+            "OK"
           ],
           "enumColors": {
-            "Alert": "red",
-            "Ignored": "darkGray",
+            "breached": "red",
+            "Breached": "red",
             "No Data": "lightGray",
-            "OK": "green",
-            "Skipped": "yellow",
-            "Unknown": "purple",
-            "Warn": "orange"
+            "no data": "lightGray",
+            "warning": "orange",
+            "Warning": "orange",
+            "OK": "green"
           }
         }
       },
