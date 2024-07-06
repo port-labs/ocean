@@ -12,14 +12,19 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 
 class SLOHistorySelector(Selector):
-    sample_interval_period_in_days: int = Field(
-        alias="sampleIntervalPeriodInDays", default=7
-    )
+    timeframe: int = Field(alias="timeframe", default=7)
+    period_of_time_in_months: int = Field(alias="periodOfTimeInMonths", default=12)
 
-    @validator("sample_interval_period_in_days")
-    def validate_resource_kinds_min_size(cls, v: int) -> int:
+    @validator("timeframe")
+    def validate_timeframe_field(cls, v: int) -> int:
         if v < 1:
-            raise ValueError("sampleIntervalPeriodInDays must be greater than 0")
+            raise ValueError("timeframe must be greater than 0")
+        return v
+
+    @validator("period_of_time_in_months")
+    def validate_period_of_time_in_years(cls, v: int) -> int:
+        if v > 1:
+            raise ValueError("period_of_time_in_months must be less or equal to 12")
         return v
 
 
