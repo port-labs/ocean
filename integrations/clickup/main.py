@@ -4,7 +4,7 @@ from typing import Any
 
 from clickup.client import ClickupClient
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 
 
 class ObjectKind(StrEnum):
@@ -32,21 +32,21 @@ async def setup_application() -> None:
 
 
 @ocean.on_resync(ObjectKind.TEAM)
-async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_resync_teams(kind: str) -> RAW_RESULT:
     client = create_client()
 
-    async for teams in client.get_paginated_teams():
-        logger.info(f"Received team batch with {len(teams)} teams")
-        yield teams
+    teams = await client.get_teams()
+    logger.info(f"Received team batch with {len(teams)} teams")
+    return teams
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
-async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_resync_projects(kind: str) -> RAW_RESULT:
     client = create_client()
 
-    async for projects in client.get_paginated_projects():
-        logger.info(f"Received project batch with {len(projects)} projects")
-        yield projects
+    projects = await client.get_projects()
+    logger.info(f"Received project batch with {len(projects)} projects")
+    return projects
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -68,11 +68,19 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     if event.startswith("list"):
         logger.info(f"Received webhook project event: {data['list_id']}")
         project = await client.get_single_project(data["list_id"])
-        await ocean.register_raw(ObjectKind.PROJECT, [project])
+
+        if event.endswith("Deleted"):
+            await ocean.unregister_raw(ObjectKind.PROJECT, [project])
+        else:
+            await ocean.register_raw(ObjectKind.PROJECT, [project])
     elif event.startswith("task"):
         logger.info(f"Received webhook task event: {data['task_id']}")
         issue = await client.get_single_issue(data["task_id"])
-        await ocean.register_raw(ObjectKind.ISSUE, [issue])
+
+        if event.endswith("Deleted"):
+            await ocean.unregister_raw(ObjectKind.ISSUE, [issue])
+        else:
+            await ocean.register_raw(ObjectKind.ISSUE, [issue])
 
     logger.info("Webhook event processed")
     return {"status": "ok"}
