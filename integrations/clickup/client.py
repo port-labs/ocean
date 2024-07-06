@@ -1,112 +1,192 @@
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
+from enum import StrEnum
+import httpx
 from httpx import Timeout
 from loguru import logger
 from port_ocean.utils import http_async_client
+from port_ocean.context.event import event
 
-PAGE_SIZE = 50
+
+class CacheKeys(StrEnum):
+    TEAMS = "TEAMS"
+    SPACES = "SPACES"
+    TASKS = "TASKS"
+
+
+class ObjectKind(StrEnum):
+    TEAM = "team"
+    PROJECT = "project"
+    ISSUE = "issue"
+
+
+CLICK_UP_WEBHOOK_EVENT = [
+    "taskCreated",
+    "taskUpdated",
+    "taskPriorityUpdated",
+    "taskStatusUpdated",
+    "taskAssigneeUpdated",
+    "taskDueDateUpdated",
+    "taskTagUpdated",
+    "taskMoved",
+    "taskCommentPosted",
+    "taskCommentUpdated",
+    "taskTimeEstimateUpdated",
+    "taskTimeTrackedUpdated",
+    "listCreated",
+    "listUpdated",
+    "spaceCreated",
+    "spaceUpdated",
+]
 
 
 class ClickUpClient:
-    def __init__(self, clickup_token: str) -> None:
+    def __init__(self, clickup_token: str, host: str) -> None:
+        self.api_url = f"{host}/api/v2"
         self.headers = {"Authorization": clickup_token}
-
         self.client = http_async_client
         self.client.headers.update(self.headers)
         self.client.timeout = Timeout(30)
 
-    @staticmethod
-    def _generate_base_req_params(
-        max_results: int = PAGE_SIZE, start_at: int = 0
+    async def send_api_request(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        query_params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        return {
-            "page": start_at // max_results,
-            "limit": max_results,
-        }
+        logger.info(f"Requesting ClickUp data for endpoint: {endpoint}")
+        try:
+            url = f"{self.api_url}/{endpoint}"
+            logger.info(
+                f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
+            )
+            response = await self.client.request(
+                method=method,
+                url=url,
+                params=query_params,
+                json=json_data,
+            )
+            response.raise_for_status()
+            logger.info(f"Successfully retrieved data for endpoint: {endpoint}")
+            return response.json()
 
-    async def _get_paginated_teams(
-        self, host: str, params: dict[str, Any]
-    ) -> dict[str, Any]:
-        response = await self.client.get(f"{host}/api/v2/team", params=params)
-        response.raise_for_status()
-        return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(
+                f"HTTP error on {endpoint}: {e.response.status_code} - {e.response.text}"
+            )
+            raise
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error on {endpoint}: {str(e)}")
+            raise
 
-    async def _get_paginated_spaces(
-        self, host: str, team_id: str, params: dict[str, Any]
-    ) -> dict[str, Any]:
-        response = await self.client.get(
-            f"{host}/api/v2/team/{team_id}/space", params=params
+    async def get_teams(self) -> list[dict[str, Any]]:
+        """
+        Retrieve all teams from ClickUp.
+        """
+        return (await self.send_api_request("team"))["teams"]
+
+    async def get_team_spaces(self, team_id: str) -> list[dict[str, Any]]:
+        """
+        Retrieve spaces for a given team.
+        """
+        return (await self.send_api_request(f"team/{team_id}/space"))["spaces"]
+
+    async def get_space_lists(self, space_id: str) -> list[dict[str, Any]]:
+        """
+        Retrieve lists for a given space.
+        """
+        return (await self.send_api_request(f"space/{space_id}/list"))["lists"]
+
+    async def get_spaces(self) -> list[dict[str, Any]]:
+        """
+        Retrieve all spaces across all teams, including lists within each space.
+        """
+        if cache := event.attributes.get(CacheKeys.SPACES):
+            logger.info("Retrieving spaces data from cache")
+            return cache
+
+        teams = await self.get_teams()
+        all_spaces = []
+        for team in teams:
+            team_spaces = await self.get_team_spaces(team["id"])
+            for space in team_spaces:
+                space_lists = await self.get_space_lists(space["id"])
+                space["lists"] = space_lists
+            all_spaces.extend(team_spaces)
+
+        event.attributes[CacheKeys.SPACES] = all_spaces
+        logger.info("Caching spaces data")
+
+        return all_spaces
+
+    async def _get_tasks(
+        self, list_id: str, params: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """
+        Retrieve tasks for a given list with pagination support.
+        """
+        endpoint = f"list/{list_id}/task"
+        response = await self.send_api_request(endpoint, query_params=params)
+        return response.get("tasks", [])
+
+    async def get_paginated_tasks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Retrieve paginated tasks for all lists.
+        """
+
+        all_tasks = []
+        spaces = await self.get_spaces()
+        for space in spaces:
+            for list_ in space.get("lists", []):
+                params = {"page": 0}
+                while True:
+                    tasks = await self._get_tasks(list_["id"], params)
+                    if not tasks:
+                        break
+                    all_tasks.extend(tasks)
+                    yield tasks
+                    params["page"] += 1
+
+    async def get_task(self, task_id: str) -> dict[str, Any]:
+        """
+        Retrieve a specific task by ID.
+        """
+        return await self.send_api_request(f"task/{task_id}")
+
+    async def get_list(self, list_id: str) -> dict[str, Any]:
+        """
+        Retrieve a specific list by ID.
+        """
+        return await self.send_api_request(f"list/{list_id}")
+
+    async def get_space(self, space_id: str) -> dict[str, Any]:
+        """
+        Retrieve a specific space by ID.
+        """
+        return await self.send_api_request(f"space/{space_id}")
+
+    async def get_team(self, team_id: str) -> dict[str, Any]:
+        """
+        Retrieve a specific team by ID.
+        """
+        return await self.send_api_request(f"team/{team_id}")
+
+    async def create_events_webhook(self, app_host: str, team_id: str) -> None:
+        webhook_target_url = f"{app_host}/integration/webhook"
+        webhook_response = await self.send_api_request(f"team/{team_id}/webhook")
+        existing_configs = webhook_response.get("webhooks", [])
+        webhook_exists = any(
+            config["endpoint"] == webhook_target_url for config in existing_configs
         )
-        response.raise_for_status()
-        return response.json()
-
-    async def _get_paginated_projects(
-        self, host: str, space_id: str, params: dict[str, Any]
-    ) -> dict[str, Any]:
-        response = await self.client.get(
-            f"{host}/api/v2/space/{space_id}/list", params=params
-        )
-        response.raise_for_status()
-        return response.json()
-
-    async def _get_paginated_tasks(
-        self, host: str, list_id: str, params: dict[str, Any]
-    ) -> dict[str, Any]:
-        response = await self.client.get(
-            f"{host}/api/v2/list/{list_id}/task", params=params
-        )
-        response.raise_for_status()
-        return response.json()
-
-    async def get_paginated_teams(
-        self, host: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info("Getting teams from ClickUp")
-
-        response = await self._get_paginated_teams(host, {})
-        yield response["teams"]
-
-    async def get_paginated_projects(
-        self, host: str, team_id: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info(f"Getting projects from ClickUp for team {team_id}")
-
-        response = await self._get_paginated_spaces(host, team_id, {})
-        for space in response["spaces"]:
-            projects = (await self._get_paginated_projects(host, space["id"], {}))[
-                "lists"
-            ]
-            yield projects
-
-    async def get_paginated_tasks(
-        self, host: str, list_id: str
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info(f"Getting tasks from ClickUp for list {list_id}")
-
-        params = self._generate_base_req_params()
-        params["page"] = 0
-        while True:
-            tasks_response = (await self._get_paginated_tasks(host, list_id, params))[
-                "tasks"
-            ]
-            if not tasks_response:
-                break
-            yield tasks_response
-            params["page"] += 1
-
-    async def create_events_webhook(
-        self, host: str, app_host: str, team_id: str
-    ) -> None:
-        response = await self.client.post(
-            f"{host}/api/v2/team/{team_id}/webhook",
-            json={
-                "endpoint": f"{app_host}/webhook",
-                "events": ["taskCreated", "taskUpdated", "taskDeleted"],
-            },
-        )
-        response.raise_for_status()
-        logger.info("Webhook created successfully")
-
-    async def get_single_task(self, host: str, task_id: str) -> dict[str, Any]:
-        response = await self.client.get(f"{host}/api/v2/task/{task_id}")
-        response.raise_for_status()
-        return response.json()
+        if webhook_exists:
+            logger.info("Webhook already exists")
+        else:
+            await self.send_api_request(
+                f"team/{team_id}/webhook",
+                method="POST",
+                json_data={
+                    "endpoint": f"{app_host}/integration/webhook",
+                    "events": CLICK_UP_WEBHOOK_EVENT,
+                },
+            )
+            logger.info("Webhook created successfully")
