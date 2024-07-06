@@ -1,9 +1,9 @@
 from enum import StrEnum
 from typing import Any
-from clickup.client import ClickupClient
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from clickup.client import ClickupClient
 
 
 class ObjectKind(StrEnum):
