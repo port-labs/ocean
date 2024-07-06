@@ -1,8 +1,11 @@
 from typing import Any, AsyncGenerator
 
 from httpx import Timeout
+from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
+
+TEAMS_CACHE = "teams"
 
 
 class ClickupClient:
@@ -12,19 +15,23 @@ class ClickupClient:
         self.client.headers.update({"Authorization": clickup_apikey})
         self.client.timeout = Timeout(30)
 
-    @cache_iterator_result()
-    async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_teams(self) -> list[dict[str, Any]]:
+        if cache := event.attributes.get(TEAMS_CACHE, []):
+            return cache
+        return await self._get_teams()
+
+    async def _get_teams(self) -> list[dict[str, Any]]:
         url = f"{self.clickup_url}/team"
-        team_response = await self.client.get(url)
-        team_response.raise_for_status()
-        team_list = team_response.json()["teams"]
-        yield team_list
+        response = await self.client.get(url)
+        response.raise_for_status()
+        teams = response.json()["teams"]
+        event.attributes[TEAMS_CACHE] = teams
+        return teams
 
     @cache_iterator_result()
     async def get_spaces(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for teams in self.get_teams():
-            for team in teams:
-                yield await self._get_spaces(team["id"])
+        for team in await self.get_teams():
+            yield await self._get_spaces(team["id"])
 
     async def _get_spaces(self, team_id: str) -> list[dict[str, Any]]:
         url = f"{self.clickup_url}/team/{team_id}/space"

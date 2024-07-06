@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 
 from client import ClickupClient
 
@@ -18,11 +18,9 @@ def get_client() -> ClickupClient:
 
 
 @ocean.on_resync(ObjectKind.TEAM)
-async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_resync_teams(kind: str) -> RAW_RESULT:
     client = get_client()
-    async for teams in client.get_teams():
-        logger.info(f"Received team batch with {len(teams)} teams")
-        yield teams
+    return await client.get_teams()
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -39,9 +37,3 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for issues in client.get_paginated_issues():
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
-
-
-# Called once when the integration starts.
-@ocean.on_start()
-async def on_start() -> None:
-    print("Starting integration")
