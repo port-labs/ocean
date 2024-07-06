@@ -9,6 +9,7 @@ features:
       - kind: services
       - kind: schedules
       - kind: oncalls
+      - kind: escalation_policies
 configurations:
   - name: token
     required: true
