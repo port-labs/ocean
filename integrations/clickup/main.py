@@ -11,7 +11,7 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
 
 
-def get_clickup_client():
+def get_clickup_client() -> ClickUpClient:
     return ClickUpClient(
         ocean.integration_config.get("clickup_host"),
         ocean.integration_config.get("clickup_api_key")

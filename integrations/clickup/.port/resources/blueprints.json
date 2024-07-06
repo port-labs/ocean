@@ -1,137 +1,137 @@
 [
-	{
-    "identifier": "clickupTeam",
-    "description": "This blueprint represents a Clickup team",
-    "title": "Clickup Team",
-    "icon": "Clickup",
-    "schema": {
+    {
+      "identifier": "clickupTeam",
+      "description": "This blueprint represents a ClickUp team",
+      "title": "ClickUp Team",
+      "icon": "Clickup",
+      "schema": {
         "properties": {
-        "url": {
+          "url": {
             "type": "string",
             "title": "URL",
             "format": "url"
-        },
-        "members": {
+          },
+          "members": {
             "type": "array",
             "title": "Members",
             "items": {
-            "type": "string",
-            "format": "user"
+              "type": "string",
+              "format": "user"
             }
-        }
+          }
         },
         "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "aggregationProperties": {},
+      "relations": {}
     },
     {
-    "identifier": "clickupProject",
-    "description": "This blueprint represents a ClickUp project",
-    "title": "ClickUp Project",
-    "icon": "Clickup",
-    "schema": {
+      "identifier": "clickupProject",
+      "description": "This blueprint represents a ClickUp project",
+      "title": "ClickUp Project",
+      "icon": "Clickup",
+      "schema": {
         "properties": {
-        "url": {
+          "url": {
             "title": "Project URL",
             "type": "string",
             "format": "url",
-            "description": "URL to the project in Clickup"
-        },
-        "startDate": {
+            "description": "URL to the project in ClickUp"
+          },
+          "startDate": {
             "title": "Project start date",
             "type": "string",
             "format": "date-time",
             "description": "The start date of this project"
-        },
-        "endDate": {
+          },
+          "endDate": {
             "title": "Project end date",
             "type": "string",
             "format": "date-time",
             "description": "The end date of this project"
-        },
-        "totalIssues": {
+          },
+          "totalIssues": {
             "title": "Total Issues",
             "type": "number",
             "description": "The total number of issues in the project"
-        }
+          }
         },
         "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "aggregationProperties": {},
+      "relations": {
         "team": {
-        "title": "Team",
-        "target": "clickupTeam",
-        "required": false,
-        "many": false
+          "title": "Team",
+          "target": "clickupTeam",
+          "required": false,
+          "many": false
         }
-    }
+      }
     },
     {
-    "identifier": "clickupIssue",
-    "title": "ClickUp Issue",
-    "icon": "Clickup",
-    "schema": {
+      "identifier": "clickupIssue",
+      "title": "ClickUp Issue",
+      "icon": "Clickup",
+      "schema": {
         "properties": {
-        "url": {
+          "url": {
             "title": "Issue URL",
             "type": "string",
             "format": "url",
-            "description": "URL to the issue in Clickup"
-        },
-        "status": {
+            "description": "URL to the issue in ClickUp"
+          },
+          "status": {
             "title": "Status",
             "type": "string",
             "description": "The status of the issue"
-        },
-        "assignee": {
+          },
+          "assignee": {
             "title": "Assignee",
             "type": "string",
             "format": "user",
             "description": "The user assigned to the issue"
-        },
-        "creator": {
+          },
+          "creator": {
             "title": "Creator",
             "type": "string",
-            "description": "The user that created to the issue",
+            "description": "The user that created the issue",
             "format": "user"
-        },
-        "priority": {
+          },
+          "priority": {
             "title": "Priority",
             "type": "string",
             "description": "The priority of the issue"
-        },
-        "created": {
+          },
+          "created": {
             "title": "Created At",
             "type": "string",
             "description": "The created datetime of the issue",
             "format": "date-time"
-        },
-        "updated": {
+          },
+          "updated": {
             "title": "Updated At",
             "type": "string",
             "description": "The updated datetime of the issue",
             "format": "date-time"
-        }
+          }
         },
         "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "aggregationProperties": {},
+      "relations": {
         "project": {
-        "title": "Project",
-        "description": "The Clickup project that manages this issue",
-        "target": "clickupProject",
-        "required": false,
-        "many": false
+          "title": "Project",
+          "description": "The ClickUp project that manages this issue",
+          "target": "clickupProject",
+          "required": false,
+          "many": false
         }
+      }
     }
-}
-]
+  ]

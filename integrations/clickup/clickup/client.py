@@ -30,7 +30,6 @@ class ClickUpClient:
         response.raise_for_status()
         return response.json()
 
-
     async def get_projects(self, space_id: str, team_id: str) -> list[dict[str, Any]]:
         logger.info("Getting projects from ClickUp")
 
@@ -79,9 +78,7 @@ class ClickUpClient:
             logger.error(f"Failed to fetch spaces for team_id: {team_id}: {e}")
             return []
 
-    async def get_paginated_issues(
-        self
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting tasks (issues) from ClickUp")
         projects, _ = await self.get_all_projects()
         for project in projects:
