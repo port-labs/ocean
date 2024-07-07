@@ -10,6 +10,7 @@ from integration import (
     PagerdutyIncidentResourceConfig,
     PagerdutyScheduleResourceConfig,
     PagerdutyOncallResourceConfig,
+    PagerdutyEscalationPolicyResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -140,6 +141,21 @@ async def on_oncalls_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=query_params.generate_request_params() if query_params else None,
     ):
         yield oncalls
+
+
+@ocean.on_resync(ObjectKind.ESCALATION_POLICIES)
+async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    pager_duty_client = initialize_client()
+
+    query_params = typing.cast(
+        PagerdutyEscalationPolicyResourceConfig, event.resource_config
+    ).selector.api_query_params
+
+    async for escalation_policies in pager_duty_client.paginate_request_to_pager_duty(
+        data_key=ObjectKind.ESCALATION_POLICIES,
+        params=query_params.generate_request_params() if query_params else None,
+    ):
+        yield escalation_policies
 
 
 @ocean.router.post("/webhook")
