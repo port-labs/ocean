@@ -1,4 +1,5 @@
 from typing import Any, AsyncGenerator
+
 import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
