@@ -52,7 +52,10 @@ class JQEntityProcessor(BaseEntityProcessor):
             compiled_pattern = self._compile(pattern)
             first_value_callable = functools.partial(compiled_pattern.first, data)
             return await loop.run_in_executor(None, first_value_callable)
-        except Exception:
+        except Exception as exc:
+            logger.debug(
+                f"Failed to search for pattern {pattern} in data {data}, {exc}"
+            )
             return None
 
     async def _search_as_bool(self, data: dict[str, Any], pattern: str) -> bool:
@@ -207,6 +210,15 @@ class JQEntityProcessor(BaseEntityProcessor):
                         examples_to_send.append(result.raw_data)
                 else:
                     failed_entities.append(parsed_entity)
+        if (
+            not calculated_entities_results
+            and raw_results
+            and send_raw_data_examples_amount > 0
+        ):
+            logger.warning(
+                f"No entities were parsed from {len(raw_results)} raw results, sending raw data examples"
+            )
+            examples_to_send = raw_results[:send_raw_data_examples_amount]
 
         await self._send_examples(examples_to_send, mapping.kind)
 
