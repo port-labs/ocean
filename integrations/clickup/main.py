@@ -14,7 +14,7 @@ class ObjectKind(StrEnum):
 def get_clickup_client() -> ClickUpClient:
     return ClickUpClient(
         ocean.integration_config.get("clickup_host"),
-        ocean.integration_config.get("clickup_api_key")
+        ocean.integration_config.get("clickup_api_key"),
     )
 
 
@@ -30,7 +30,9 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = get_clickup_client()
     projects, team_id = await client.get_all_projects()
-    logger.info(f"Received projects batch with {len(projects)} projects for team {team_id}")
+    logger.info(
+        f"Received projects batch with {len(projects)} projects for team {team_id}"
+    )
     yield projects
 
 

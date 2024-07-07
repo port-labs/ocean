@@ -13,7 +13,9 @@ class ClickUpClient:
         self.client.timeout = httpx.Timeout(30)  # 30 seconds timeout for requests
 
     @staticmethod
-    def parse_projects_from_folders(folders: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def parse_projects_from_folders(
+        folders: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         folder_with_projects = [folder["lists"] for folder in folders]
         flattened_projects = [
             project for sublist in folder_with_projects for project in sublist
@@ -24,7 +26,9 @@ class ClickUpClient:
     def _generate_base_req_params(page: int = 0) -> dict[str, Any]:
         return {"page": page}
 
-    async def _get(self, endpoint: str, params: dict[str, Any] = None) -> dict[str, Any]:
+    async def _get(
+        self, endpoint: str, params: dict[str, Any] = None
+    ) -> dict[str, Any]:
         url = f"{self.api_url}{endpoint}"
         response = await self.client.get(url, params=params)
         response.raise_for_status()
@@ -53,7 +57,9 @@ class ClickUpClient:
         for team in teams:
             team_id = team["id"]
             spaces = await self.get_spaces(team_id)
-            logger.info(f"Received spaces batch with {len(spaces)} spaces for team {team_id}")
+            logger.info(
+                f"Received spaces batch with {len(spaces)} spaces for team {team_id}"
+            )
             for space in spaces:
                 space_id = space["id"]
                 projects = await self.get_projects(space_id, team_id)
