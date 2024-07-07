@@ -1,14 +1,9 @@
-import asyncio
 from enum import StrEnum
 from itertools import chain
 from typing import Any
 
 from port_ocean.context.ocean import ocean
-from clients.sentry import (
-    MAXIMUM_CONCURRENT_REQUESTS,
-    MAXIMUM_CONCURRENT_REQUESTS_ISSUES,
-    SentryClient,
-)
+from clients.sentry import SentryClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from loguru import logger
@@ -27,23 +22,9 @@ def flatten_list(lst: list[Any]) -> list[Any]:
     return list(chain.from_iterable(lst))
 
 
-def init_client(
-    default_sem: asyncio.Semaphore, issues_sem: asyncio.Semaphore | None = None
-) -> SentryClient:
-    sentry_client = SentryClient(
-        ocean.integration_config["sentry_host"],
-        ocean.integration_config["sentry_token"],
-        ocean.integration_config["sentry_organization"],
-        default_sem,
-        issues_sem,
-    )
-    return sentry_client
-
-
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS)
-    sentry_client = init_client(sem)
+    sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
     async for projects in sentry_client.get_paginated_projects():
         if projects:
             logger.info(f"Received {len(projects)} projects")
@@ -52,8 +33,7 @@ async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECT_TAG)
 async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS)
-    sentry_client = init_client(sem)
+    sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
     async for projects in sentry_client.get_paginated_projects():
         logger.info(f"Collecting tags from {len(projects)} projects")
         project_tags_batch = []
@@ -71,13 +51,13 @@ async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS)
-    issues_sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_ISSUES)
-    sentry_client = init_client(sem, issues_sem)
-    async for project_slugs in sentry_client.get_paginated_project_slugs():
+    limited_sentry_client = SentryClient.create_limited_client_from_config(
+        ocean.integration_config
+    )
+    async for project_slugs in limited_sentry_client.get_paginated_project_slugs():
         if project_slugs:
             issue_tasks = [
-                sentry_client.get_paginated_issues(project_slug)
+                limited_sentry_client.get_paginated_issues(project_slug)
                 for project_slug in project_slugs
             ]
             async for issue_batch in stream_async_iterators_tasks(*issue_tasks):
@@ -88,13 +68,14 @@ async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE_TAG)
 async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS)
-    issues_sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_ISSUES)
-    sentry_client = init_client(sem, issues_sem)
-    async for project_slugs in sentry_client.get_paginated_project_slugs():
+    limited_sentry_client = SentryClient.create_limited_client_from_config(
+        ocean.integration_config
+    )
+    sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
+    async for project_slugs in limited_sentry_client.get_paginated_project_slugs():
         if project_slugs:
             issue_tasks = [
-                sentry_client.get_paginated_issues(project_slug)
+                limited_sentry_client.get_paginated_issues(project_slug)
                 for project_slug in project_slugs
             ]
             async for issue_batch in stream_async_iterators_tasks(*issue_tasks):

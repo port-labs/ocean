@@ -10,8 +10,8 @@ from port_ocean.context.event import event
 
 import httpx
 
-MAXIMUM_CONCURRENT_REQUESTS = 24
-MAXIMUM_CONCURRENT_REQUESTS_ISSUES = 3
+MAXIMUM_CONCURRENT_REQUESTS = 22
+MAXIMUM_LIMITED_CONCURRENT_REQUESTS = 3
 MINIMUM_LIMIT_REMAINING = 10
 MINIMUM_ISSUES_LIMIT_REMAINING = 3
 DEFAULT_SLEEP_TIME = 0.1
@@ -28,8 +28,7 @@ class SentryClient:
         sentry_base_url: str,
         auth_token: str,
         sentry_organization: str,
-        default_semaphore: asyncio.Semaphore,
-        issues_semaphore: asyncio.Semaphore | None,
+        semaphore: asyncio.Semaphore,
     ) -> None:
         self.sentry_base_url = sentry_base_url
         self.auth_token = auth_token
@@ -39,14 +38,39 @@ class SentryClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
         self.selector = cast(SentryResourceConfig, event.resource_config).selector
-        self.default_semaphore = default_semaphore
-        self.issues_semaphore = issues_semaphore
+        self.semaphore = semaphore
+
+    @classmethod
+    def create_client_from_config(
+        cls, ocean_integration_config: dict[str, Any]
+    ) -> "SentryClient":
+        semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS)
+        return cls(
+            ocean_integration_config["sentry_host"],
+            ocean_integration_config["sentry_token"],
+            ocean_integration_config["sentry_organization"],
+            semaphore,
+        )
+
+    @classmethod
+    def create_limited_client_from_config(
+        cls, ocean_integration_config: dict[str, Any]
+    ) -> "SentryClient":
+        """
+        This client is for routes with lower rate limit boundaries, such as Issues and Projects.
+        """
+        limited_semaphore = asyncio.Semaphore(MAXIMUM_LIMITED_CONCURRENT_REQUESTS)
+        return cls(
+            ocean_integration_config["sentry_host"],
+            ocean_integration_config["sentry_token"],
+            ocean_integration_config["sentry_organization"],
+            limited_semaphore,
+        )
 
     async def fetch_with_rate_limit_handling(
         self,
         url: str,
         params: dict[str, Any] | None = None,
-        semaphore: asyncio.Semaphore | None = None,
     ) -> httpx.Response:
         """Rate limit handler
         This method makes sure requests aren't abusing Sentry's rate-limits.
@@ -54,10 +78,8 @@ class SentryClient:
         Requests per "window" - By adding a sleep after each request that had a RATE_LIMIT_REMAINING below a threshold
         for more information about Sentry's rate limits, please check out https://docs.sentry.io/api/ratelimits/
         """
-        if not semaphore:
-            semaphore = self.default_semaphore
         while True:
-            async with semaphore:
+            async with self.semaphore:
                 response = await self.client.get(url, params=params)
             rate_limit_remaining = int(
                 response.headers["X-Sentry-Rate-Limit-Remaining"]
@@ -94,7 +116,8 @@ class SentryClient:
         return ""
 
     async def get_paginated_resource(
-        self, url: str, custom_semaphore: asyncio.Semaphore | None = None
+        self,
+        url: str,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params: dict[str, Any] = {"per_page": PAGE_SIZE}
 
@@ -103,7 +126,7 @@ class SentryClient:
         while url:
             try:
                 response = await self.fetch_with_rate_limit_handling(
-                    url=url, params=params, semaphore=custom_semaphore
+                    url=url, params=params
                 )
                 response.raise_for_status()
                 records = response.json()
@@ -158,7 +181,6 @@ class SentryClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for issues in self.get_paginated_resource(
             f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/",
-            custom_semaphore=self.issues_semaphore,
         ):
             yield issues
 
@@ -167,7 +189,9 @@ class SentryClient:
             url = f"{self.api_url}/projects/{self.organization}/{project_slug}/tags/{self.selector.tag}/values/"
             return await self.get_single_resource(url)
         except ResourceNotFoundError:
-            logger.debug(f"Found no {project_slug} in {self.organization}")
+            logger.debug(
+                f"No values found for project {project_slug} and tag {self.selector.tag} in {self.organization}"
+            )
             return []
 
     async def get_issue_tags(self, issue_id: str) -> list[dict[str, Any]]:
@@ -175,7 +199,9 @@ class SentryClient:
             url = f"{self.api_url}/organizations/{self.organization}/issues/{issue_id}/tags/{self.selector.tag}/values/"
             return await self.get_single_resource(url)
         except ResourceNotFoundError:
-            logger.debug(f"Found no issues in {self.organization}")
+            logger.debug(
+                f"No values found for issue {issue_id} and tag {self.selector.tag} in {self.organization}"
+            )
             return []
 
     async def get_issue_tags_iterator(
