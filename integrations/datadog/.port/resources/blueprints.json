@@ -259,6 +259,28 @@
             "7": "purple",
             "30": "pink"
           }
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "enum": [
+            "breached",
+            "Breached",
+            "warning",
+            "Warning",
+            "no data",
+            "No Data",
+            "OK"
+          ],
+          "enumColors": {
+            "breached": "red",
+            "Breached": "red",
+            "No Data": "lightGray",
+            "no data": "lightGray",
+            "warning": "orange",
+            "Warning": "orange",
+            "OK": "green"
+          }
         }
       },
       "required": []
