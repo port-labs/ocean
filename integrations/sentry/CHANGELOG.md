@@ -6,12 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
- Port_Ocean 0.1.55 (2024-07-08)
+
+
+# Port_Ocean 0.1.55 (2024-07-08)
 
 ### Improvements
 
 - Handle rate limit headers to ensure maximum concurrent requests without being rate limited (#1)
 - Made projects + issue batches instead of going one by one in tag-fetching to ensure maximum parallelism (#1)
+
 
 # Port_Ocean 0.1.54 (2024-07-07)
 
