@@ -36,13 +36,7 @@ async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
     async for projects in sentry_client.get_paginated_projects():
         logger.info(f"Collecting tags from {len(projects)} projects")
-        project_tags_batch = []
-        tasks = [
-            sentry_client.get_project_tags_iterator(project) for project in projects
-        ]
-        async for project_tags in stream_async_iterators_tasks(*tasks):
-            if project_tags:
-                project_tags_batch.append(project_tags)
+        project_tags_batch = await sentry_client.get_projects_tags(projects)
         logger.info(
             f"Collected {len(project_tags_batch)} project tags from {len(projects)} projects"
         )
@@ -51,13 +45,11 @@ async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    limited_sentry_client = SentryClient.create_limited_client_from_config(
-        ocean.integration_config
-    )
-    async for project_slugs in limited_sentry_client.get_paginated_project_slugs():
+    sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
+    async for project_slugs in sentry_client.get_paginated_project_slugs():
         if project_slugs:
             issue_tasks = [
-                limited_sentry_client.get_paginated_issues(project_slug)
+                sentry_client.get_paginated_issues(project_slug)
                 for project_slug in project_slugs
             ]
             async for issue_batch in stream_async_iterators_tasks(*issue_tasks):
@@ -68,26 +60,15 @@ async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE_TAG)
 async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    limited_sentry_client = SentryClient.create_limited_client_from_config(
-        ocean.integration_config
-    )
     sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
-    async for project_slugs in limited_sentry_client.get_paginated_project_slugs():
+    async for project_slugs in sentry_client.get_paginated_project_slugs():
         if project_slugs:
             issue_tasks = [
-                limited_sentry_client.get_paginated_issues(project_slug)
+                sentry_client.get_paginated_issues(project_slug)
                 for project_slug in project_slugs
             ]
             async for issue_batch in stream_async_iterators_tasks(*issue_tasks):
                 if issue_batch:
-                    add_tags_to_issues_tasks = [
-                        sentry_client.get_issue_tags_iterator(issue)
-                        for issue in issue_batch
-                    ]
-                    issues_with_tags = []
-                    async for issues_with_tags_batch in stream_async_iterators_tasks(
-                        *add_tags_to_issues_tasks
-                    ):
-                        issues_with_tags.append(issues_with_tags_batch)
+                    issues_with_tags = await sentry_client.get_issues_tags_from_issues(issue_batch)
                     logger.info(f"Collected {len(issues_with_tags)} issues with tags")
-                    yield flatten_list(issues_with_tags)
+                    yield issues_with_tags
