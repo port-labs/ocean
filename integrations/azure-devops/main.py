@@ -24,7 +24,7 @@ async def setup_webhooks() -> None:
         return
 
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    if ocean.integration_config.get("is_project_admin", True):
+    if ocean.integration_config.get("is_projects_limited", True):
         async for projects in azure_devops_client.generate_projects():
             for project in projects:
                 await setup_listeners(
