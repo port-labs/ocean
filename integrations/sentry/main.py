@@ -1,6 +1,4 @@
 from enum import StrEnum
-from itertools import chain
-from typing import Any
 
 from port_ocean.context.ocean import ocean
 from clients.sentry import SentryClient
@@ -18,10 +16,6 @@ class ObjectKind(StrEnum):
     ISSUE_TAG = "issue-tag"
 
 
-def flatten_list(lst: list[Any]) -> list[Any]:
-    return list(chain.from_iterable(lst))
-
-
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
@@ -36,11 +30,13 @@ async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
     async for projects in sentry_client.get_paginated_projects():
         logger.info(f"Collecting tags from {len(projects)} projects")
-        project_tags_batch = await sentry_client.get_projects_tags(projects)
+        project_tags_batch = await sentry_client.get_projects_tags_from_projects(
+            projects
+        )
         logger.info(
             f"Collected {len(project_tags_batch)} project tags from {len(projects)} projects"
         )
-        yield flatten_list(project_tags_batch)
+        yield project_tags_batch
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -55,7 +51,7 @@ async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for issue_batch in stream_async_iterators_tasks(*issue_tasks):
                 if issue_batch:
                     logger.info(f"Collected {len(issue_batch)} issues")
-                    yield flatten_list(issue_batch)
+                    yield issue_batch
 
 
 @ocean.on_resync(ObjectKind.ISSUE_TAG)
@@ -69,6 +65,8 @@ async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ]
             async for issue_batch in stream_async_iterators_tasks(*issue_tasks):
                 if issue_batch:
-                    issues_with_tags = await sentry_client.get_issues_tags_from_issues(issue_batch)
+                    issues_with_tags = await sentry_client.get_issues_tags_from_issues(
+                        issue_batch
+                    )
                     logger.info(f"Collected {len(issues_with_tags)} issues with tags")
                     yield issues_with_tags
