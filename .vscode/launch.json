@@ -64,6 +64,7 @@
       "name": "Run AWS integration",
       "type": "debugpy",
       "request": "launch",
+      "python": "${workspaceFolder}/integrations/aws/.venv/bin/python",
       "cwd": "${workspaceFolder}/integrations/aws",
       "program": "${workspaceFolder}/integrations/aws/debug.py",
       "console": "integratedTerminal",
