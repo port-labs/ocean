@@ -16,9 +16,18 @@ class ObjectKind(StrEnum):
     ISSUE_TAG = "issue-tag"
 
 
+def init_client() -> SentryClient:
+    sentry_client = SentryClient(
+        ocean.integration_config["sentry_host"],
+        ocean.integration_config["sentry_token"],
+        ocean.integration_config["sentry_organization"],
+    )
+    return sentry_client
+
+
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
+    sentry_client = init_client()
     async for projects in sentry_client.get_paginated_projects():
         if projects:
             logger.info(f"Received {len(projects)} projects")
@@ -27,7 +36,7 @@ async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECT_TAG)
 async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
+    sentry_client = init_client()
     async for projects in sentry_client.get_paginated_projects():
         logger.info(f"Collecting tags from {len(projects)} projects")
         project_tags_batch = await sentry_client.get_projects_tags_from_projects(
@@ -41,7 +50,7 @@ async def on_resync_project_tag(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
+    sentry_client = init_client()
     async for project_slugs in sentry_client.get_paginated_project_slugs():
         if project_slugs:
             issue_tasks = [
@@ -56,7 +65,7 @@ async def on_resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE_TAG)
 async def on_resync_issue_tags(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sentry_client = SentryClient.create_client_from_config(ocean.integration_config)
+    sentry_client = init_client()
     async for project_slugs in sentry_client.get_paginated_project_slugs():
         if project_slugs:
             issue_tasks = [

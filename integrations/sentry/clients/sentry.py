@@ -14,7 +14,9 @@ from port_ocean.context.event import event
 import httpx
 
 MAXIMUM_CONCURRENT_REQUESTS_SINGLE_RESOURCE = 22
-MAXIMUM_CONCURRENT_REQUESTS_ISSUES_AND_PROJECTS = 3
+MAXIMUM_CONCURRENT_REQUESTS_ISSUES = 3
+MAXIMUM_CONCURRENT_REQUESTS_PROJECTS = 3
+MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
 MINIMUM_LIMIT_REMAINING = 10
 MINIMUM_ISSUES_LIMIT_REMAINING = 3
 DEFAULT_SLEEP_TIME = 0.1
@@ -45,21 +47,13 @@ class SentryClient:
         # These are created to limit the concurrent requests we are making to specific routes.
         # The limits provided to each semaphore were pre-determined by the headers sent for each one of the routes.
         # For more information about Sentry's rate limits, please read this: https://docs.sentry.io/api/ratelimits/
+        self._default_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_DEFAULT)
         self._single_resource_semaphore = asyncio.Semaphore(
             MAXIMUM_CONCURRENT_REQUESTS_SINGLE_RESOURCE
         )
-        self._issues_and_projects_semaphore = asyncio.Semaphore(
-            MAXIMUM_CONCURRENT_REQUESTS_ISSUES_AND_PROJECTS
-        )
-
-    @classmethod
-    def create_client_from_config(
-        cls, ocean_integration_config: dict[str, Any]
-    ) -> "SentryClient":
-        return cls(
-            ocean_integration_config["sentry_host"],
-            ocean_integration_config["sentry_token"],
-            ocean_integration_config["sentry_organization"],
+        self._issues_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_ISSUES)
+        self._projects_semaphore = asyncio.Semaphore(
+            MAXIMUM_CONCURRENT_REQUESTS_PROJECTS
         )
 
     async def _fetch_with_rate_limit_handling(
@@ -122,7 +116,7 @@ class SentryClient:
                 response = await self._fetch_with_rate_limit_handling(
                     url=url,
                     params=params,
-                    semaphore=semaphore or self._issues_and_projects_semaphore,
+                    semaphore=semaphore or self._default_semaphore,
                 )
                 response.raise_for_status()
                 records = response.json()
@@ -194,7 +188,7 @@ class SentryClient:
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for project in self._get_paginated_resource(
-            f"{self.api_url}/projects/", semaphore=self._issues_and_projects_semaphore
+            f"{self.api_url}/projects/", semaphore=self._projects_semaphore
         ):
             yield project
 
@@ -209,7 +203,7 @@ class SentryClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for issues in self._get_paginated_resource(
             f"{self.api_url}/projects/{self.organization}/{project_slug}/issues/",
-            semaphore=self._issues_and_projects_semaphore,
+            semaphore=self._issues_semaphore,
         ):
             yield issues
 
