@@ -6,12 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-# Port_Ocean 0.1.62 (2024-07-03)
+# Port_Ocean 0.1.64 (2024-07-08)
 
 ### Improvements
 
 - Added a filter to enable users to decide whether or not they want to fetch issues for every project
+
+
+# Port_Ocean 0.1.63 (2024-07-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.2 (#1)
+
+
+# Port_Ocean 0.1.62 (2024-06-27)
+
+### Bug Fixes
+
+- Updated the jq mapping to make the vulnerabilities unique per project
 
 
 # Port_Ocean 0.1.61 (2024-06-25)
