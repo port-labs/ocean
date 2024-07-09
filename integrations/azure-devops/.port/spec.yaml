@@ -18,12 +18,12 @@ configurations:
     type: string
     sensitive: true
   - name: isProjectsLimited
-    description: Set to true if the personal access token's scope is limited to specific projects within your organization. 
+    description: Set to true if the personal access token's scope is limited to specific projects within your organization.
     required: false
     type: boolean
   - name: appHost
     required: false
     type: url
-    description: The URL of the Port Ocean app. This is required for real-time event processing, ensuring Port always reflects the latest state of your Azure DevOps resources. 
+    description: The URL of the Port Ocean app. This is required for real-time event processing, ensuring Port always reflects the latest state of your Azure DevOps resources.
 deploymentMethodOverride:
   - type: helm

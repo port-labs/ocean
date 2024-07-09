@@ -25,7 +25,7 @@ configurations:
     type: string
     required: true
   - name: wizTokenUrl
-    description: 'The URL used to obtain an access token for the Wiz API. This is usually specific to your Wiz region (e.g., "https://auth.us.wiz.io/oauth/token"). Find it in your Wiz account: User Profile -> User Settings -> Tenant' 
+    description: 'The URL used to obtain an access token for the Wiz API. This is usually specific to your Wiz region (e.g., "https://auth.us.wiz.io/oauth/token"). Find it in your Wiz account: User Profile -> User Settings -> Tenant'
     type: string
     required: true
   - name: wizWebhookVerificationToken
