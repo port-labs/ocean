@@ -13,7 +13,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The API token for OpsGenie. For more information on how to generate an API key, see [here](https://support.atlassian.com/opsgenie/docs/api-key-management/)
+    description: The API token for used to authenticate requests to Opsgenie REST API. For more information on how to generate an API token, see [here](https://support.atlassian.com/opsgenie/docs/api-key-management/)
   - name: apiUrl
     type: string
     required: true
