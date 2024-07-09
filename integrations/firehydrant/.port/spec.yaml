@@ -14,10 +14,13 @@ configurations:
     required: true
     type: string
     sensitive: true
+    description: "API token for your FireHydrant account, can be found at: https://app.firehydrant.io/organizations/bots"
   - name: apiUrl
     type: string
     required: true
     default: https://api.firehydrant.io
+    description: "FireHydrant API URL, default is `https://api.firehydrant.io`"
   - name: appHost
     type: string
     required: false
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in FireHydrant"
