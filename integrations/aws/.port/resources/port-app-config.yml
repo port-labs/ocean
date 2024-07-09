@@ -27,7 +27,9 @@ resources:
           blueprint: '"cloudResource"'
           properties:
             kind: .__Kind
-            region: .__Region
+            region: >-
+              .Properties.RegionalDomainName |
+              capture(".*\\.(?<region>[^\\.]+)\\.amazonaws\\.com") | .region
             tags: .Properties.Tags
             arn: .Properties.Arn
             link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
