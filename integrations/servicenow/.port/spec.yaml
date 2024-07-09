@@ -17,9 +17,9 @@ configurations:
     required: true
     type: string
     sensitive: false
-    description: The username of the ServiceNow account. You can find more information on how to create user credentials in ServiceNow [here](https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials)
+    description: The username of the ServiceNow account. You can find more information on how to create user credentials in ServiceNow using this link https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials
   - name: servicenowPassword
     required: true
     type: string
     sensitive: true
-    description: The password of the ServiceNow account. You can find more information on how to create user credentials in ServiceNow [here](https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials)
+    description: The password of the ServiceNow account. You can find more information on how to create user credentials in ServiceNow using this link https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials
