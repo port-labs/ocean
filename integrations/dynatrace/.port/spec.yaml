@@ -13,6 +13,8 @@ configurations:
     required: true
     type: string
     sensitive: true
+    description: "Dynatrace API Key with at least the following permissions: `DataExport`, `Read entities`, `Read problems` and `Read SLO`. Head over to `<instanceURL>/ui/apps/dynatrace.classic.tokens/ui/access-tokens` to create one."
   - name: dynatraceHostUrl
     type: url
     required: true
+    description: "Dynatrace environment URL in the format `https://<environment-id>.live.dynatrace.com` e.g `https://abc123.live.dynatrace.com`"
