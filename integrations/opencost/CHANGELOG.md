@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.55 (2024-06-26)
+# Port_Ocean 0.1.55 (2024-07-07)
 
-### Features
+### Improvements
 
-- Added v2 filter params to cloudcost kind (#55)
+- Bumped ocean version to ^0.9.2 (#1)
 
 
 # Port_Ocean 0.1.54 (2024-06-23)
