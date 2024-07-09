@@ -13,9 +13,9 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The API token used to authenticate requests to Opsgenie REST API. For more information on how to generate an API token, see [here](https://support.atlassian.com/opsgenie/docs/api-key-management/)
+    description: The API token used to authenticate requests to Opsgenie REST API. You can generate a token by going to Settings > API key management. For more information on how to generate an API token, see [here](https://support.atlassian.com/opsgenie/docs/api-key-management/)
   - name: apiUrl
     type: string
     required: true
     default: https://api.opsgenie.com
-    description: The OpsGenie API URL. If not provided, the default value is https://api.opsgenie.com
+    description: Opsgenie can have two different API URLs, and the one you need depends on where your Opgenie instance is located. Customers in the EU region should use https://api.eu.opsgenie.com whereas customers in the US region should use https://api.opsgenie.com. If the OpsGenie API URL is not provided, the default value is https://api.opsgenie.com
