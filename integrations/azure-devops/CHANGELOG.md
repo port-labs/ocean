@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.39 (2024-07-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.3 (#1)
+
+
+# Port_Ocean 0.1.38 (2024-07-08)
+
+### Features
+
+- Make webhook creation project-scoped by default
+
+# Port_Ocean 0.1.37 (2024-07-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.2 (#1)
+
+
 # Port_Ocean 0.1.36 (2024-06-23)
 
 ### Improvements

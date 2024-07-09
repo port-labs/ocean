@@ -7,13 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.35 (2024-07-04)
+# Port_Ocean 0.1.37 (2024-07-09)
 
 ### Improvements
 
 - Add `aborted` to Jenkins job status enum.
 - Add `ABORTED` to Jenkins build status enum.
 - Update URLs in Jenkins job and build blueprints to have url format
+
+
+# Port_Ocean 0.1.36 (2024-07-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.3 (#1)
+
+
+# Port_Ocean 0.1.35 (2024-07-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.2 (#1)
 
 
 # Port_Ocean 0.1.34 (2024-06-23)
