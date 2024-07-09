@@ -1,19 +1,13 @@
-import typing
 from typing import Any
 
 import httpx
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
 from integration import (
-    CloudCostV1ResourceConfig,
     CloudCostV1Selector,
-    CloudCostV2ResourceConfig,
     CloudCostV2Selector,
-    KubecostV1ResourceConfig,
     KubecostV1Selector,
-    KubecostV2ResourceConfig,
     KubecostV2Selector,
 )
 
@@ -39,13 +33,12 @@ class KubeCostClient:
         params.pop("query")
         return params
 
-    async def get_kubesystem_cost_allocation(self) -> list[dict[str, Any]]:
+    async def get_kubesystem_cost_allocation(
+        self, selector: KubecostV1Selector | KubecostV2Selector
+    ) -> list[dict[str, Any]]:
         """Calls the Kubecost allocation endpoint to return data for cost and usage
         https://docs.kubecost.com/apis/apis-overview/api-allocation
         """
-        selector = typing.cast(
-            KubecostV1ResourceConfig | KubecostV2ResourceConfig, event.resource_config
-        ).selector
 
         params: dict[str, str] = {
             "window": selector.window,
@@ -68,7 +61,9 @@ class KubeCostClient:
             logger.error(f"HTTP occurred while fetching kubecost data: {e}")
             raise
 
-    async def get_cloud_cost_allocation(self) -> list[dict[str, Any]]:
+    async def get_cloud_cost_allocation(
+        self, selector: CloudCostV1Selector | CloudCostV2Selector
+    ) -> list[dict[str, Any]]:
         """Calls the Kubecost cloud  allocation API. It uses the Aggregate endpoint which returns detailed cloud cost data
         https://docs.kubecost.com/apis/apis-overview/cloud-cost-api
         """
@@ -76,10 +71,6 @@ class KubeCostClient:
 
         if self.kubecost_api_version == KUBECOST_API_VERSION_1:
             url = f"{self.kubecost_host}/model/cloudCost/aggregate"
-
-        selector = typing.cast(
-            CloudCostV1ResourceConfig | CloudCostV2ResourceConfig, event.resource_config
-        ).selector
 
         params: dict[str, str] = {
             "window": selector.window,
