@@ -8,7 +8,7 @@ features:
     section: Git Providers
 configurations:
   - name: organizationUrl
-    description: The URL of your Azure DevOps organization (e.g., "https://dev.azure.com/{your-organization}")
+    description: The URL of your Azure DevOps organization. (e.g., "https://dev.azure.com/{your-organization}"). For more information, refer to the Azure Devops [documentation](https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http)
     required: true
     type: url
     sensitive: true
