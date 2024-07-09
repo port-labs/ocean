@@ -18,7 +18,7 @@ resources:
   - kind: AWS::S3::Bucket
     selector:
       query: 'true'
-      useGetResource: 'true'
+      useGetResourceAPI: 'true'
     port:
       entity:
         mappings:
@@ -53,7 +53,7 @@ resources:
   - kind: AWS::ECS::Cluster
     selector:
       query: 'true'
-      useGetResource: 'true'
+      useGetResourceAPI: 'true'
     port:
       entity:
         mappings:
