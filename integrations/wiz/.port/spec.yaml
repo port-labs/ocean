@@ -12,19 +12,24 @@ features:
 configurations:
   - name: wizClientId
     required: true
+    description: The Client ID provided by Wiz for authentication. This is found in your Wiz API integration settings. Go to https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials for more information.
     type: string
     sensitive: true
   - name: wizClientSecret
+    description: The Client Secret provided by Wiz for authentication. This is found in your Wiz API integration settings.
     required: true
     type: string
     sensitive: true
   - name: wizApiUrl
+    description: The base URL for accessing the Wiz API. This is usually specific to your Wiz region (e.g., "https://api.us.wiz.io"). 
     type: string
     required: true
   - name: wizTokenUrl
+    description: 'The URL used to obtain an access token for the Wiz API. This is usually specific to your Wiz region (e.g., "https://auth.us.wiz.io/oauth/token"). Find it in your Wiz account: User Profile -> User Settings -> Tenant' 
     type: string
     required: true
   - name: wizWebhookVerificationToken
+    description: (Optional) A secret token used to verify the authenticity of incoming webhooks from Wiz. This is useful if you want to trigger actions in Port based on Wiz events.
     required: false
     type: string
     sensitive: true
