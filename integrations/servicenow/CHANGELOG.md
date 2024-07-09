@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added description to the integration configuration variables (0.1.44)
+- Added description to the integration configuration variables
 
 
 # Port_Ocean 0.1.43 (2024-07-09)
