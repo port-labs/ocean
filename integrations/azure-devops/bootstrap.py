@@ -11,7 +11,7 @@ webhook_event_handler = WebhookEventObserver()
 
 
 async def setup_listeners(
-    app_host: str, azure_devops_client: AzureDevopsClient
+    app_host: str, azure_devops_client: AzureDevopsClient, project_id: str | None = None
 ) -> None:
     listeners: list[HookListener] = [
         PullRequestHookListener(azure_devops_client),
@@ -20,7 +20,7 @@ async def setup_listeners(
     webhook_events: list[WebhookEvent] = list()
     for listener in listeners:
         for event in listener.webhook_events:
-            event.set_consumer_url(f"{app_host}/integration/webhook")
+            event.set_webhook_details(f"{app_host}/integration/webhook", project_id)
         webhook_event_handler.on(listener.webhook_events, listener.on_hook)
         webhook_events.extend(listener.webhook_events)
     await _upsert_webhooks(azure_devops_client, webhook_events)
