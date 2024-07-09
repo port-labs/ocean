@@ -12,7 +12,7 @@ configurations:
   - name: servicenowUrl
     required: true
     type: url
-    description: The URL of your ServiceNow instance. For example, `https://dev12345.service-now.com`
+    description: The URL of your ServiceNow instance. This should be the address you use to access the ServiceNow UI in your browser. For example, `https://dev12345.service-now.com`
   - name: servicenowUsername
     required: true
     type: string
