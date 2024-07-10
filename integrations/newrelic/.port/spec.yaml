@@ -12,11 +12,14 @@ configurations:
     required: true
     type: string
     sensitive: true
+    description: The New Relic API key. You can create a User API key in the New Relic UI by following this guide https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys/
   - name: newRelicAccountID
     required: true
     type: string
     sensitive: true
+    description: The New Relic account ID. To retrieve the account ID, click the user menu on the lower-left corner of your New Relic dashboard, then go to Administration > Access management > Accounts to see account IDs. You can find more information on how to find the account ID using this link https://docs.newrelic.com/docs/accounts/accounts-billing/account-structure/account-id/
   - name: newRelicGraphqlURL
     required: false
     type: string
     default: https://api.newrelic.com/graphql
+    description: URL for New Relic GraphQL API. If not provided, the default value will be https://api.newrelic.com/graphql. Users in the EU region should use https://api.eu.newrelic.com/graphql. More information on GraphQL URL can be found at this link https://docs.newrelic.com/docs/apis/nerdgraph/get-started/introduction-new-relic-nerdgraph/
