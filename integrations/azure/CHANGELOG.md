@@ -1,3 +1,24 @@
+0.1.69 (2024-07-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.3 (#1)
+
+
+0.1.68 (2024-07-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.2 (#1)
+
+
+0.1.67 (2024-06-27)
+
+### Improvements
+
+- Added support for default installation methods ( Helm, docker, githubworkflow and gitlabCI ) to improve ease of use (#1)
+
+
 0.1.66 (2024-06-23)
 
 ### Improvements
