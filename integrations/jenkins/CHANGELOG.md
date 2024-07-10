@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added description to the integration configuration variables
 
+# Port_Ocean 0.1.37 (2024-07-09)
+
+### Improvements
+
+- Add `aborted` to Jenkins job status enum.
+- Add `ABORTED` to Jenkins build status enum.
+- Update URLs in Jenkins job and build blueprints to have url format
+
+
 # Port_Ocean 0.1.36 (2024-07-09)
 
 ### Improvements
