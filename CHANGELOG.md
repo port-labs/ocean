@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.4 (2024-07-09)
+
+### Bug Fixes
+
+- Handle non existing config mapping for cases where the integration was created by SAAS and the config mapping was not set
+
+
 ## 0.9.3 (2024-07-08)
 
 ### Improvements
