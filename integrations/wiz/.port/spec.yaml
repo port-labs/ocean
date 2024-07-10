@@ -12,20 +12,20 @@ features:
 configurations:
   - name: wizClientId
     required: true
-    description: The Client ID provided by Wiz for authentication. This is found in your Wiz API integration settings. Go to https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials for more information.
+    description: Wiz Client ID. To find your client ID, refer to the <a href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">Wiz credentials</a> section in our documentation. 
     type: string
     sensitive: true
   - name: wizClientSecret
-    description: The Client Secret provided by Wiz for authentication. This is found in your Wiz API integration settings.
+    description: Wiz Client Secret. To find your client secret, refer to the <a href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">Wiz credentials</a> section in our documentation.
     required: true
     type: string
     sensitive: true
   - name: wizApiUrl
-    description: The base URL for accessing the Wiz API. This is usually specific to your Wiz region (e.g., "https://api.us.wiz.io"). For more details, refer to the Wiz [documentation](https://docs.wiz.io/wiz-docs/docs/using-the-wiz-api#the-graphql-endpoint).
+    description: The base URL for accessing the Wiz API (e.g., "https://api.us.wiz.io"). This is specific to your Wiz region. For more details, refer to the <a href="https://docs.wiz.io/wiz-docs/docs/using-the-wiz-api#the-graphql-endpoint">Wiz documentation</a>.
     type: string
     required: true
   - name: wizTokenUrl
-    description: 'The URL used to obtain an access token for the Wiz API. This is usually specific to your Wiz region (e.g., "https://auth.us.wiz.io/oauth/token"). Find it in your Wiz account: User Profile -> User Settings -> Tenant'
+    description: 'The URL used to obtain an access token for the Wiz API. To find it, refer to the <a href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">Wiz credentials</a> section in our documentation'
     type: string
     required: true
   - name: wizWebhookVerificationToken
