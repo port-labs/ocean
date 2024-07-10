@@ -8,12 +8,12 @@ features:
     section: Git Providers
 configurations:
   - name: organizationUrl
-    description: The URL of your Azure DevOps organization. (e.g., "https://dev.azure.com/{your-organization}"). For more information, refer to the Azure Devops [documentation](https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http)
+    description: The URL of your Azure DevOps organization (e.g., "https://dev.azure.com/{your-organization}"). To find your organization URL, refer to the <a href="https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http">Azure DevOps documentation</a>.
     required: true
     type: url
     sensitive: true
   - name: personalAccessToken
-    description: A personal access token (PAT) with read permissions for the resources you want to sync. Visit https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops for more information.
+    description: A personal access token (PAT) with read permissions for the resources you want to sync. To create a PAT, see the <a href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops">Azure DevOps documentation</a>.
     required: true
     type: string
     sensitive: true
@@ -21,6 +21,7 @@ configurations:
     description: Set to true if the personal access token's scope is limited to specific projects within your organization.
     required: false
     type: boolean
+    default: true
   - name: appHost
     required: false
     type: url
