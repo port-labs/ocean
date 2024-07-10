@@ -27,7 +27,9 @@ async def setup_webhooks() -> None:
     if ocean.integration_config.get("is_projects_limited"):
         async for projects in azure_devops_client.generate_projects():
             for project in projects:
-                logger.info(f"Setting up webhook listeners for project {project['name']}")
+                logger.info(
+                    f"Setting up webhook listeners for project {project['name']}"
+                )
                 await setup_listeners(
                     ocean.integration_config["app_host"],
                     azure_devops_client,
