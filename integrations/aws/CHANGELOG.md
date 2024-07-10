@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.13 (2024-07-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.4 (#1)
+
+
+# Port_Ocean 0.2.12 (2024-07-09)
+
+### Improvements
+
+- Fix default useGetResourceAPI property name (#1)
+- Use by default the actual S3 Bucket region instead of default region used to fetch it (#2)
+
 # Port_Ocean 0.2.11 (2024-07-09)
 
 ### Improvements
