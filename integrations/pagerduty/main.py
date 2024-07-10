@@ -147,15 +147,33 @@ async def on_oncalls_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     pager_duty_client = initialize_client()
 
-    query_params = typing.cast(
+    selector = typing.cast(
         PagerdutyEscalationPolicyResourceConfig, event.resource_config
-    ).selector.api_query_params
+    ).selector
 
     async for escalation_policies in pager_duty_client.paginate_request_to_pager_duty(
         data_key=ObjectKind.ESCALATION_POLICIES,
-        params=query_params.generate_request_params() if query_params else None,
+        params=(
+            selector.api_query_params.generate_request_params()
+            if selector.api_query_params
+            else None
+        ),
     ):
-        yield escalation_policies
+        if selector.attach_oncall_users:
+            logger.info("Fetching oncall users for escalation policies")
+            oncall_users = await pager_duty_client.get_oncall_user(
+                *[policy["id"] for policy in escalation_policies]
+            )
+
+            for policy in escalation_policies:
+                policy["__oncall_user"] = [
+                    user
+                    for user in oncall_users
+                    if user["escalation_policy"]["id"] == policy["id"]
+                ]
+            yield escalation_policies
+        else:
+            yield escalation_policies
 
 
 @ocean.router.post("/webhook")
