@@ -14,7 +14,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: "API token for your FireHydrant account, for example: \"jakdlfja933948anz.cnapaira\".It can be found on your <a href=\"https://app.firehydrant.io/organizations/bots/">Firehydrant dashboard</a>
+    description: API token for your FireHydrant account, for example: "jakdlfja933948anz.cnapaira". It can be found on your <a href="https://app.firehydrant.io/organizations/bots">Firehydrant dashboard</a>
   - name: apiUrl
     type: string
     required: true
