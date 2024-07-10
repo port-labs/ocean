@@ -64,7 +64,7 @@ resources:
             assignee: .fields.assignee.emailAddress
             reporter: .fields.reporter.emailAddress
             creator: .fields.creator.emailAddress
-            priority: .fields.priority.id
+            priority: .fields.priority.name
             labels: .fields.labels
             created: .fields.created
             updated: .fields.updated
