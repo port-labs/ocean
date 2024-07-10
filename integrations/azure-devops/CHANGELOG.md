@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Bumped ocean version to ^0.9.4 (#1)
 - Set the `isProjectsLimited` paramater to True by default
 - Revise the configuration parameters' descriptions.
 
