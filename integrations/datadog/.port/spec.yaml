@@ -12,17 +12,17 @@ features:
       - kind: datadogSloHistory
 configurations:
   - name: datadogBaseUrl
-    description: Datadog Base URL. For Datadog EU, set to https://api.datadoghq.eu (overrides default US site).
+    description: Datadog Base URL (e.g., "https://api.datadoghq.com" or "https://api.datadoghq.eu"). To identify your base URL, see the <a href="https://docs.datadoghq.com/getting_started/site/#:~:text=within%20their%20environments.-,Access%20the%20Datadog%20site,-You%20can%20identify">Datadog documentation</a>.
     type: url
     required: true
     default: "https://api.datadoghq.com"
   - name: datadogApiKey
-    description: Datadog API key, docs can be found here - https://docs.datadoghq.com/account_management/api-app-keys/#add-an-api-key-or-client-token
+    description: Datadog API key. To create an API key, see the <a href="https://docs.datadoghq.com/account_management/api-app-keys/#add-an-api-key-or-client-token">Datadog documentation</a>.
     required: true
     type: string
     sensitive: true
   - name: datadogApplicationKey
-    description: Datadog application key, docs can be found here - https://docs.datadoghq.com/account_management/api-app-keys/#add-application-keys
+    description: Datadog application key. To create an application key, see the <a href="https://docs.datadoghq.com/account_management/api-app-keys/#add-application-keys">Datadog documentation</a>.
     required: true
     type: string
     sensitive: true
@@ -31,7 +31,7 @@ configurations:
     required: false
     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
   - name: datadogWebhookToken
-    description: Datadog webhook token. Learn more at https://docs.datadoghq.com/integrations/webhooks/#setup
+    description: Datadog webhook token (optional). This is used to secure webhook communication between Datadog and Port. To learn more, see the <a href="https://docs.datadoghq.com/integrations/webhooks/#setup">Datadog documentation</a>.
     type: string
     required: false
     sensitive: true
