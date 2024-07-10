@@ -12,7 +12,7 @@ features:
 configurations:
   - name: wizClientId
     required: true
-    description: Wiz Client ID. To find your client ID, refer to the <a href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">Wiz credentials</a> section in our documentation. 
+    description: Wiz Client ID. To find your client ID, refer to the <a href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/wiz#wiz-credentials">Wiz credentials</a> section in our documentation.
     type: string
     sensitive: true
   - name: wizClientSecret
