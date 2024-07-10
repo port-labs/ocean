@@ -18,7 +18,7 @@ configurations:
   - name: statuspageHost
     required: true
     type: url
-    description: "The host of the Statuspage.io API"
+    description: "The host of the Statuspage.io API. The default host is https://api.statuspage.io"
     default: "https://api.statuspage.io"
   - name: statuspageApiKey
     required: true
