@@ -266,6 +266,11 @@
           "title": "Summary",
           "type": "string"
         },
+        "primaryOncall": {
+          "title": "Primary Oncall",
+          "type": "string",
+          "format": "user"
+        },
         "escalationRules": {
           "title": "Escalation Rules",
           "type": "array",
