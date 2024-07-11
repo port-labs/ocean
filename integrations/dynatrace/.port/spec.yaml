@@ -13,7 +13,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: "Dynatrace API Key with at least the following permissions: `DataExport`, `Read entities`, `Read problems` and `Read SLO`. Example: 'dt7c05.KA8AFCZXD299AJHEU134.MASEFA9ABDI9HAJI9HA83H8377AAJISURHHSHAUHFKSE83Z7' Head over to <instanceURL>/ui/apps/dynatrace.classic.tokens/ui/access-tokens to create one."
+    description: Dynatrace API Key with at least the following permissions `DataExport`, `Read entities`, `Read problems` and `Read SLO`. For example 'dt7c05.KA8AFCZXD299AJHEU134.MASEFA9ABDI9HAJI9HA83H8377AAJISURHHSHAUHFKSE83Z7'. Read <a href="https://docs.dynatrace.com/docs/dynatrace-api/basics/dynatrace-api-authentication#create-token">Dynatrace authentication documentation</a> on how to create one.
   - name: dynatraceHostUrl
     type: url
     required: true
