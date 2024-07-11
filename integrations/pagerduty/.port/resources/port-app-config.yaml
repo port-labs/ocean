@@ -87,5 +87,5 @@ resources:
           properties:
             url: .html_url
             description: .summary
-            primaryOncall: .__oncall_user | sort_by(.escalation_level) | .[0].user.email
+            primaryOncall: .__oncall_users | sort_by(.escalation_level) | .[0].user.email
             escalationRules: .escalation_rules
