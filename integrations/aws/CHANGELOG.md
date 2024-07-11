@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.14 (2024-07-11)
+
+### Improvements
+
+- Add access denied exception support (#1)
+
 # Port_Ocean 0.2.13 (2024-07-10)
 
 ### Improvements
