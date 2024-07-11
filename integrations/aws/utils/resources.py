@@ -121,31 +121,36 @@ async def resync_custom_kind(
     marker_param - the name of the parameter that contains the next token
     describe_method_params - additional parameters for the describe method
     """
-    region = session.region_name
-    account_id = await _session_manager.find_account_id_by_session(session)
-    next_token = None
-    if not describe_method_params:
-        describe_method_params = {}
-    while True:
-        async with session.client(service_name) as client:
-            params: dict[str, Any] = describe_method_params
-            if next_token:
-                params[marker_param] = next_token
-            response = await getattr(client, describe_method)(**params)
-            next_token = response.get(marker_param)
-            if results := response.get(list_param, []):
-                yield [
-                    {
-                        CustomProperties.KIND: kind,
-                        CustomProperties.ACCOUNT_ID: account_id,
-                        CustomProperties.REGION: region,
-                        **fix_unserializable_date_properties(resource),
-                    }
-                    for resource in results
-                ]
+    try:
+        region = session.region_name
+        account_id = await _session_manager.find_account_id_by_session(session)
+        next_token = None
+        if not describe_method_params:
+            describe_method_params = {}
+        while True:
+            async with session.client(service_name) as client:
+                params: dict[str, Any] = describe_method_params
+                if next_token:
+                    params[marker_param] = next_token
+                response = await getattr(client, describe_method)(**params)
+                next_token = response.get(marker_param)
+                if results := response.get(list_param, []):
+                    yield [
+                        {
+                            CustomProperties.KIND: kind,
+                            CustomProperties.ACCOUNT_ID: account_id,
+                            CustomProperties.REGION: region,
+                            **fix_unserializable_date_properties(resource),
+                        }
+                        for resource in results
+                    ]
 
-        if not next_token:
-            break
+            if not next_token:
+                break
+    except session.client(service_name).exceptions.AccessDeniedException:
+        logger.warning(
+            f"Access denied for resyncing {kind} in region {region}. Skipping..."
+        )
 
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -154,58 +159,64 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         AWSResourceConfig, event.resource_config
     ).selector.use_get_resource_api
     async for session in get_sessions(None, None, is_global):
-        region = session.region_name
-        logger.info(f"Resyncing {kind} in region {region}")
-        account_id = await _session_manager.find_account_id_by_session(session)
-        next_token = None
-        while True:
-            async with session.client("cloudcontrol") as cloudcontrol:
-                params = {
-                    "TypeName": kind,
-                }
-                if next_token:
-                    params["NextToken"] = next_token
+        try:
+            region = session.region_name
+            logger.info(f"Resyncing {kind} in region {region}")
+            account_id = await _session_manager.find_account_id_by_session(session)
+            next_token = None
+            while True:
+                async with session.client("cloudcontrol") as cloudcontrol:
+                    params = {
+                        "TypeName": kind,
+                    }
+                    if next_token:
+                        params["NextToken"] = next_token
 
-                response = await cloudcontrol.list_resources(**params)
-                next_token = response.get("NextToken")
-                resources = response.get("ResourceDescriptions", [])
-                if not resources:
-                    break
-                page_resources = []
-                if use_get_resource_api:
-                    resources = await asyncio.gather(
-                        *(
-                            describe_single_resource(
-                                kind,
-                                instance.get("Identifier"),
-                                account_id=account_id,
-                                region=region,
+                    response = await cloudcontrol.list_resources(**params)
+                    next_token = response.get("NextToken")
+                    resources = response.get("ResourceDescriptions", [])
+                    if not resources:
+                        break
+                    page_resources = []
+                    if use_get_resource_api:
+                        resources = await asyncio.gather(
+                            *(
+                                describe_single_resource(
+                                    kind,
+                                    instance.get("Identifier"),
+                                    account_id=account_id,
+                                    region=region,
+                                )
+                                for instance in resources
                             )
-                            for instance in resources
                         )
-                    )
-                else:
-                    resources = [
-                        {
-                            "Identifier": instance.get("Identifier"),
-                            "Properties": json.loads(instance.get("Properties")),
-                        }
-                        for instance in resources
-                    ]
+                    else:
+                        resources = [
+                            {
+                                "Identifier": instance.get("Identifier"),
+                                "Properties": json.loads(instance.get("Properties")),
+                            }
+                            for instance in resources
+                        ]
 
-                for instance in resources:
-                    serialized = instance.copy()
-                    serialized.update(
-                        {
-                            CustomProperties.KIND: kind,
-                            CustomProperties.ACCOUNT_ID: account_id,
-                            CustomProperties.REGION: region,
-                        }
-                    )
-                    page_resources.append(
-                        fix_unserializable_date_properties(serialized)
-                    )
-                yield page_resources
+                    for instance in resources:
+                        serialized = instance.copy()
+                        serialized.update(
+                            {
+                                CustomProperties.KIND: kind,
+                                CustomProperties.ACCOUNT_ID: account_id,
+                                CustomProperties.REGION: region,
+                            }
+                        )
+                        page_resources.append(
+                            fix_unserializable_date_properties(serialized)
+                        )
+                    yield page_resources
 
-                if not next_token:
-                    break
+                    if not next_token:
+                        break
+        except session.client("cloudcontrol").exceptions.AccessDeniedException:
+            logger.warning(
+                f"Access denied for resyncing {kind} in region {region}. Skipping..."
+            )
+            continue
