@@ -211,8 +211,13 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     if not next_token:
                         break
                 except cloudcontrol.exceptions.ClientError as e:
-                    if e.response["Error"]["Code"] == "AccessDeniedException":
-                        logger.error(f"Error resyncing {kind} in region {region}: {e}")
+                    if (
+                        e.response.get("Error", {}).get("Code")
+                        == "AccessDeniedException"
+                    ):
+                        logger.warning(
+                            f"Skipping resyncing {kind} in region {region} due to missing access permissions"
+                        )
                         break
                     else:
                         raise e
