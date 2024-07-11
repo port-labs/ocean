@@ -166,7 +166,7 @@ async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             )
 
             for policy in escalation_policies:
-                policy["__oncall_user"] = [
+                policy["__oncall_users"] = [
                     user
                     for user in oncall_users
                     if user["escalation_policy"]["id"] == policy["id"]
