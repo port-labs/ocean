@@ -159,7 +159,7 @@ async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             else None
         ),
     ):
-        if selector.attach_oncall_user:
+        if selector.attach_oncall_users:
             logger.info("Fetching oncall users for escalation policies")
             oncall_users = await pager_duty_client.get_oncall_user(
                 *[policy["id"] for policy in escalation_policies]

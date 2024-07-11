@@ -77,7 +77,7 @@ resources:
   - kind: escalation_policies
     selector:
       query: 'true'
-      attachOncallUser: 'true'
+      attachOncallUsers: 'true'
     port:
       entity:
         mappings:

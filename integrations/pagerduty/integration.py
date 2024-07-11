@@ -188,7 +188,7 @@ class PagerdutyEscalationPolicyResourceConfig(ResourceConfig):
             alias="apiQueryParams"
         )
         attach_oncall_users: bool = Field(
-            alias="attachOncallUser",
+            alias="attachOncallUsers",
             description=" When set to true, it fetches the oncall data per escalation policy",
             default=True,
         )
