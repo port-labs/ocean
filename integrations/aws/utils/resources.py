@@ -144,8 +144,8 @@ async def resync_custom_kind(
                     for resource in results
                 ]
 
-            if not next_token:
-                break
+        if not next_token:
+            break
 
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
