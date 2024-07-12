@@ -551,32 +551,38 @@ class GitlabService:
         self, group: Group
     ) -> typing.AsyncIterator[List[GroupMember]]:
 
-        port_app_config: GitlabPortAppConfig = typing.cast(
-            "GitlabPortAppConfig", event.port_app_config
-        )
-        filter_bots = port_app_config.filter_bots
-
-        def skip_validation(_: User):
-            return True
-
-        def should_run_for_member(member: User):
-            return not member.username.__contains__("bot")
-
-        validation_func = should_run_for_member if filter_bots else skip_validation
-
-        logger.info(f"Fetching all members of group {group.name}")
-        async for users_batch in AsyncFetcher.fetch_batch(
-            fetch_func=group.members.list,
-            validation_func=validation_func,
-            pagination="offset",
-            order_by="id",
-            sort="asc",
-        ):
-            members: List[GroupMember] = typing.cast(List[GroupMember], users_batch)
-            logger.info(
-                f"Queried {len(members)} members {[user.username for user in members]} from {group.name}"
+        try:
+            port_app_config: GitlabPortAppConfig = typing.cast(
+                "GitlabPortAppConfig", event.port_app_config
             )
-            yield members
+            filter_bots = port_app_config.filter_bots
+
+            def skip_validation(_: User):
+                return True
+
+            def should_run_for_member(member: User):
+                return not member.username.__contains__("bot")
+
+            validation_func = should_run_for_member if filter_bots else skip_validation
+
+            logger.info(f"Fetching all members of group {group.name}")
+            async for users_batch in AsyncFetcher.fetch_batch(
+                fetch_func=group.members.list,
+                validation_func=validation_func,
+                pagination="offset",
+                order_by="id",
+                sort="asc",
+            ):
+                members: List[GroupMember] = typing.cast(List[GroupMember], users_batch)
+                logger.info(
+                    f"Queried {len(members)} members {[user.username for user in members]} from {group.name}"
+                )
+                yield members
+        except Exception as e:
+            logger.error(
+                f"Failed to get members for group={group.name}. error={e}"
+            )
+            return
 
     async def enrich_group_with_members(self, group: Group) -> dict[str, Any]:
 
