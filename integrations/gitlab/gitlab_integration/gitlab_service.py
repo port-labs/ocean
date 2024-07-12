@@ -579,9 +579,7 @@ class GitlabService:
                 )
                 yield members
         except Exception as e:
-            logger.error(
-                f"Failed to get members for group={group.name}. error={e}"
-            )
+            logger.error(f"Failed to get members for group={group.name}. error={e}")
             return
 
     async def enrich_group_with_members(self, group: Group) -> dict[str, Any]:
