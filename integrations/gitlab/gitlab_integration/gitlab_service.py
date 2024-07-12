@@ -182,9 +182,6 @@ class GitlabService:
         )
         return self.should_run_for_path(project_path)
 
-    def should_run_for_member(self, member: User):
-        return not member.username.startswith("group_")
-
     def get_root_groups(self) -> List[Group]:
         groups = self.gitlab_client.groups.list(iterator=True)
         return typing.cast(
@@ -559,10 +556,18 @@ class GitlabService:
         )
         filter_bots = port_app_config.filter_bots
 
+        def skip_validation(_: User):
+            return True
+
+        def should_run_for_member(member: User):
+            return not member.username.__contains__("bot")
+
+        validation_func = should_run_for_member if filter_bots else skip_validation
+
         logger.info(f"Fetching all members of group {group.name}")
         async for users_batch in AsyncFetcher.fetch_batch(
             fetch_func=group.members.list,
-            validation_func=self.should_run_for_member if filter_bots else None,
+            validation_func=validation_func,
             pagination="offset",
             order_by="id",
             sort="asc",
@@ -573,7 +578,7 @@ class GitlabService:
             )
             yield members
 
-    async def enrich_group_with_members(self, group: Group) -> List[dict[str, Any]]:
+    async def enrich_group_with_members(self, group: Group) -> dict[str, Any]:
 
         group_members = [
             member

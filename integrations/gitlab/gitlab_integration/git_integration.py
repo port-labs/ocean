@@ -9,7 +9,6 @@ from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,
     SEARCH_PROPERTY_PREFIX,
 )
-from port_ocean.core.integrations.base import BaseIntegration
 from gitlab_integration.gitlab_service import PROJECTS_CACHE_KEY
 from gitlab_integration.utils import get_cached_all_services
 from port_ocean.context.event import event
