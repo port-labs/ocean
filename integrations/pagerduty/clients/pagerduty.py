@@ -170,7 +170,6 @@ class PagerDutyClient:
             data_key="oncalls", params=params
         ):
             logger.info(f"Received oncalls with batch size {len(oncall_batch)}")
-            logger.info(f"Listing received oncalls data: {oncall_batch}")
             oncalls.extend(oncall_batch)
 
         return oncalls
