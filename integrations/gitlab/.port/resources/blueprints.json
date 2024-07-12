@@ -79,12 +79,6 @@
           "format": "url",
           "description": "URL link to the GitLab item."
         },
-        "createdBy": {
-          "type": "string",
-          "title": "Created By",
-          "icon": "GitLab",
-          "description": "The GitLab username of the item's creator."
-        },
         "email": {
           "type": "string",
           "title": "Email",
@@ -105,10 +99,50 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "gitlabGroup",
+    "title": "Group",
+    "icon": "GitLab",
+    "schema": {
+      "properties": {
+        "visibility": {
+          "icon": "Lock",
+          "title": "Visibility",
+          "type": "string",
+          "enum": [
+            "public",
+            "internal",
+            "private"
+          ],
+          "enumColors": {
+            "public": "red",
+            "internal": "yellow",
+            "private": "green"
+          }
+        },
+        "url": {
+          "title": "URL",
+          "format": "url",
+          "type": "string",
+          "icon": "Link"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "icon": "BlankPage"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {
-      "gitlabGroup": {
-        "title": "Group",
-        "target": "gitlabGroup",
+      "members": {
+        "title": "Members",
+        "target": "member",
         "required": false,
         "many": true
       }

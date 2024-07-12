@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple, List, Type
+from typing import Dict, Any, Tuple, List, Type, Literal
 
 from gitlab.v4.objects import Project
 from loguru import logger
@@ -9,6 +9,7 @@ from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,
     SEARCH_PROPERTY_PREFIX,
 )
+from port_ocean.core.integrations.base import BaseIntegration
 from gitlab_integration.gitlab_service import PROJECTS_CACHE_KEY
 from gitlab_integration.utils import get_cached_all_services
 from port_ocean.context.event import event
@@ -122,6 +123,18 @@ class GitlabResourceConfig(ResourceConfig):
     selector: GitlabSelector
 
 
+class GitlabMembersResourceConfig(ResourceConfig):
+    class MembersSelector(Selector):
+        public_email_visibility: bool | None = Field(
+            alias="publicEmailVisibility",
+            default=False,
+            description="If set to true, the integration will enrich members with public email field. Default value is false",
+        )
+
+    kind: Literal["member"]
+    selector: MembersSelector
+
+
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str | None
@@ -131,7 +144,12 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-    resources: list[GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    filter_bots: bool | None = Field(
+        alias="filterBots",
+        default=True,
+        description="If set to true, bots will be filtered out from the members list. Default value is true",
+    )
+    resources: list[GitlabMembersResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

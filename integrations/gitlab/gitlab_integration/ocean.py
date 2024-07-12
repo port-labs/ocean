@@ -12,7 +12,10 @@ from gitlab_integration.models.webhook_groups_override_config import (
     WebhookMappingConfig,
 )
 from gitlab_integration.events.setup import setup_application
-from gitlab_integration.git_integration import GitlabResourceConfig
+from gitlab_integration.git_integration import (
+    GitlabResourceConfig,
+    GitlabMembersResourceConfig,
+)
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -108,7 +111,9 @@ async def on_start() -> None:
 async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
         async for groups_batch in service.get_all_groups():
-            yield [group.asdict() for group in groups_batch]
+            tasks = [service.enrich_group_with_members(group) for group in groups_batch]
+            enriched_groups = await asyncio.gather(*tasks)
+            yield enriched_groups
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -211,12 +216,17 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.MEMBER)
 async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    gitlab_resource_config: GitlabMembersResourceConfig = typing.cast(
+        GitlabMembersResourceConfig, event.resource_config
+    )
+    selector = gitlab_resource_config.selector
     for service in get_cached_all_services():
         for group in service.get_root_groups():
-            async for members_batch in service.get_all_group_members(group):
-                tasks = [
-                    service.enrich_member_with_groups_and_public_email(member)
-                    for member in members_batch
-                ]
-                members = await asyncio.gather(*tasks)
-                yield members
+            async for members in service.get_all_group_members(group):
+                if selector.public_email_visibility:
+                    yield [
+                        await service.enrich_member_with_public_email(member)
+                        for member in members
+                    ]
+                else:
+                    yield [member.asdict() for member in members]

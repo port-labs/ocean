@@ -9,6 +9,7 @@ features:
     resources:
       - kind: projects
       - kind: members
+      - kind: groups
 configurations:
   - name: tokenMapping
     required: true

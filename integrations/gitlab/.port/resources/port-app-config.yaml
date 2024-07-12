@@ -18,6 +18,8 @@ resources:
   - kind: member
     selector:
       query: 'true'
+      publicEmailVisibility: 'false'
+      filterBots: 'false'
     port:
       entity:
         mappings:
