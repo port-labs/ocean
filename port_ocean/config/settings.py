@@ -62,6 +62,7 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
+    allow_environment_variables_jq_access: bool = True
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
     client_timeout: int = 30

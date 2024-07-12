@@ -71,7 +71,7 @@ async def _initialize_required_integration_settings(
                 integration_config.event_listener.to_request(),
                 port_app_config=default_mapping,
             )
-        elif not integration["config"]:
+        elif not integration.get("config"):
             logger.info(
                 "Encountered that the integration's mapping is empty, Initializing to default mapping"
             )
