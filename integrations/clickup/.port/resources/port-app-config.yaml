@@ -28,7 +28,7 @@ resources:
             endDate: if .due_date!=null then .due_date | tonumber / 1000 | todate else "" | todate end
             totalIssues: .task_count
           relations:
-            team: .__team_id
+            team: .__team.id
   - kind: issue
     selector:
       query: 'true'

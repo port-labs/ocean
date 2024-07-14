@@ -4,7 +4,7 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 
-TEAM_ID = "__team_id"
+TEAM_OBJ = "__team"
 WEBHOOK_EVENTS = [
     "taskCreated",
     "taskUpdated",
@@ -18,12 +18,13 @@ WEBHOOK_EVENTS = [
 class ClickupClient:
     """Clickup client to interact with Clickup API."""
 
-    def __init__(self, clickup_url: str, clickup_token: str):
+    def __init__(self, clickup_url: str, clickup_token: str, archived: bool):
         self.clickup_url = clickup_url
         self.clickup_token = clickup_token
         self.api_url = f"{self.clickup_url}/api/v2"
         self.client = http_async_client
         self.client.timeout = Timeout(30)
+        self.archived = archived
 
     @property
     def api_headers(self) -> dict[str, Any]:
@@ -63,9 +64,11 @@ class ClickupClient:
     ) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all spaces in a workspace."""
         url = f"{self.api_url}/team/{team_id}/space"
-        params = {"archived": "false"}
-        yield (await self._send_api_request(url, params)).get("spaces", [])
+        yield (await self._send_api_request(url, {"archived": self.archived})).get(
+            "spaces", []
+        )
 
+    @cache_iterator_result()
     async def _get_folders_in_space(
         self, team_id: str
     ) -> AsyncGenerator[List[dict[str, Any]], None]:
@@ -73,8 +76,9 @@ class ClickupClient:
         async for spaces in self._get_spaces_in_team(team_id):
             for space in spaces:
                 url = f"{self.api_url}/space/{space.get('id')}/folder"
-                params = {"archived": "false"}
-                yield (await self._send_api_request(url, params)).get("folders")
+                yield (
+                    await self._send_api_request(url, {"archived": self.archived})
+                ).get("folders")
 
     async def get_folder_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all projects with a folder parent."""
@@ -82,13 +86,8 @@ class ClickupClient:
             for team in teams:
                 async for folders in self._get_folders_in_space(team.get("id")):
                     for folder in folders:
-                        url = f"{self.api_url}/folder/{folder.get('id')}/list"
-                        params = {"archived": "false"}
-                        response = await self._send_api_request(url, params)
-                        projects = response.get("lists")
-                        yield [
-                            {**project, TEAM_ID: team.get("id")} for project in projects
-                        ]
+                        projects = folder.get("lists")
+                        yield [{**project, TEAM_OBJ: team} for project in projects]
 
     async def get_folderless_projects(
         self,
@@ -99,18 +98,24 @@ class ClickupClient:
                 async for spaces in self._get_spaces_in_team(team.get("id")):
                     for space in spaces:
                         url = f"{self.api_url}/space/{space.get('id')}/list"
-                        params = {"archived": "false"}
-                        response = await self._send_api_request(url, params)
+                        response = await self._send_api_request(
+                            url, {"archived": self.archived}
+                        )
                         projects = response.get("lists")
-                        yield [
-                            {**project, TEAM_ID: team.get("id")} for project in projects
-                        ]
+                        yield [{**project, TEAM_OBJ: team} for project in projects]
 
-    async def get_single_project(self, list_id: str) -> dict[str, Any]:
-        """Get a single project by folder_id."""
+    async def get_single_project(self, list_id: str) -> Optional[dict[str, Any]]:
+        """Get a single project by list_id."""
         url = f"{self.api_url}/list/{list_id}"
         response = await self._send_api_request(url)
-        return response
+        space_id = response.get("space").get("id")
+        async for teams in self.get_clickup_teams():
+            for team in teams:
+                async for spaces in self._get_spaces_in_team(team.get("id")):
+                    for space in spaces:
+                        if space.get("id") == space_id:
+                            response[TEAM_OBJ] = team
+                            return response
 
     async def get_paginated_issues(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all issues in a project."""
@@ -119,8 +124,7 @@ class ClickupClient:
                 url = f"{self.api_url}/team/{team.get('id')}/task"
                 page = 0
                 while True:
-                    params = {"page": page}
-                    response = await self._send_api_request(url, params)
+                    response = await self._send_api_request(url, {"page": page})
                     yield response.get("tasks")
                     if response.get("last_page"):
                         break
