@@ -41,7 +41,7 @@ resources:
           properties:
             url: "\"https://app.clickup.com/t/\" + .id"
             status: .status.status
-            assignee: .assignees[0].email
+            assignees: '[.assignees[] | .email]'
             creator: .creator.email
             priority: .priority
             created: if .date_created==null then .date_created else .date_created | tonumber / 1000 | todate end

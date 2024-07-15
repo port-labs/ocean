@@ -9,6 +9,10 @@ features:
       - kind: project
       - kind: issue
 configurations:
+  - name: appHost
+    required: false
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Clickup"
   - name: clickupApikey
     required: true
     type: string
