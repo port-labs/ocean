@@ -187,6 +187,11 @@ class PagerdutyEscalationPolicyResourceConfig(ResourceConfig):
         api_query_params: PagerdutyEscalationPolicyAPIQueryParams | None = Field(
             alias="apiQueryParams"
         )
+        attach_oncall_users: bool = Field(
+            alias="attachOncallUsers",
+            description=" When set to true, it fetches the oncall data per escalation policy",
+            default=True,
+        )
 
     kind: Literal["escalation_policies"]
     selector: PagerdutySelector
