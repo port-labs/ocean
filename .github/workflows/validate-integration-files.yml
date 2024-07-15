@@ -78,8 +78,8 @@ jobs:
           echo "Required Icons: ${MERGED_SET[@]}"
 
           for ICON in "${MERGED_SET[@]}"; do
-          if [ $(echo "${RESULTS[@]}" | grep -c "$ICON") -eq 0 ]; then
-              echo "ERROR: $ICON icon is missing in icons pool"
-              exit 1
-          fi
+            if [ $(echo "${RESULTS[@]}" | grep -c "$ICON") -eq 0 ]; then
+                echo "ERROR: $ICON icon is missing in icons pool"
+                exit 1
+            fi
           done
