@@ -71,22 +71,35 @@ class SentryClient:
         while True:
             async with semaphore:
                 response = await self.client.get(url, params=params)
-            rate_limit_remaining = int(
-                response.headers["X-Sentry-Rate-Limit-Remaining"]
-            )
-            if rate_limit_remaining <= MINIMUM_ISSUES_LIMIT_REMAINING:
-                rate_limit_reset = int(response.headers["X-Sentry-Rate-Limit-Reset"])
-                current_time = int(time.time())
-                wait_time = (
-                    rate_limit_reset - current_time
-                    if rate_limit_reset > current_time
-                    else DEFAULT_SLEEP_TIME
+            try:
+                response.raise_for_status()
+                rate_limit_remaining = int(
+                    response.headers["X-Sentry-Rate-Limit-Remaining"]
                 )
-                logger.debug(
-                    f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
-                    f"URL: {url}, Remaining: {rate_limit_remaining} "
+                if rate_limit_remaining <= MINIMUM_ISSUES_LIMIT_REMAINING:
+                    current_time = int(time.time())
+                    rate_limit_reset = int(
+                        response.headers["X-Sentry-Rate-Limit-Reset"]
+                    )
+                    wait_time = (
+                        rate_limit_reset - current_time
+                        if rate_limit_reset > current_time
+                        else DEFAULT_SLEEP_TIME
+                    )
+                    logger.debug(
+                        f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
+                        f"URL: {url}, Remaining: {rate_limit_remaining} "
+                    )
+                    await asyncio.sleep(wait_time)
+            except KeyError as e:
+                logger.warning(
+                    f"Rate limit headers not found in response: {str(e)} for url {url}"
                 )
-                await asyncio.sleep(wait_time)
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Got HTTP error to url: {url} with status code: {e.response.status_code} and response text: {e.response.text}"
+                )
+                raise
             return response
 
     def get_next_link(self, link_header: str) -> str:
