@@ -78,7 +78,9 @@ class SentryClient:
                 )
                 if rate_limit_remaining <= MINIMUM_ISSUES_LIMIT_REMAINING:
                     current_time = int(time.time())
-                    rate_limit_reset = int(response.headers["X-Sentry-Rate-Limit-Reset"])
+                    rate_limit_reset = int(
+                        response.headers["X-Sentry-Rate-Limit-Reset"]
+                    )
                     wait_time = (
                         rate_limit_reset - current_time
                         if rate_limit_reset > current_time
@@ -90,7 +92,9 @@ class SentryClient:
                     )
                     await asyncio.sleep(wait_time)
             except KeyError as e:
-                logger.warning(f"Rate limit headers not found in response: {str(e)} for url {url}")
+                logger.warning(
+                    f"Rate limit headers not found in response: {str(e)} for url {url}"
+                )
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"Got HTTP error to url: {url} with status code: {e.response.status_code} and response text: {e.response.text}"
