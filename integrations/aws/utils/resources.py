@@ -133,10 +133,11 @@ async def resync_custom_kind(
                 params[marker_param] = next_token
             response = await getattr(client, describe_method)(**params)
             next_token = response.get(marker_param)
-            if results := response.get(list_param, []):
-                logger.info(
-                    f"Fetched batch of {len(results)} from {kind} in region {region}"
-                )
+            results = response.get(list_param, [])
+            logger.info(
+                f"Fetched batch of {len(results)} from {kind} in region {region}"
+            )
+            if results:
                 yield [
                     {
                         CustomProperties.KIND: kind,
