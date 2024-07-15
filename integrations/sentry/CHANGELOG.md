@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added try and catch to missing ratelimiting headers in response to the Sentry API (#1)
 - Added proper logging of missng ratelimiting headers (#1)
+- Added raise for http status errors from the request (#1)
 
 # Port_Ocean 0.1.57 (2024-07-10)
 
