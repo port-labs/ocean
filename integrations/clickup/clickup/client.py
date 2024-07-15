@@ -2,6 +2,7 @@ from loguru import logger
 from typing import Any, AsyncGenerator
 
 from port_ocean.utils import http_async_client
+from port_ocean.utils.cache import cache_iterator_result
 
 
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
@@ -93,14 +94,12 @@ class ClickupClient:
                 )
                 projects_response.raise_for_status()
                 # because the port-app-config uses the team ID to relate the projects to the teams
-                # we add the team ID to each project
-                # also, the clickup returns the datetime as a timestamp, so we convert it to a
-                # datetime object
+                # we add the team object to each project
                 projects.extend(
                     map(
                         lambda project: {
                             **project,
-                            "__team_id": team["id"],
+                            "__team": team,
                         },
                         projects_response.json()["lists"],
                     )
@@ -108,20 +107,41 @@ class ClickupClient:
         return projects
 
     async def get_single_project(self, project_id: str) -> dict[str, Any]:
-        # Clickup does not provide a direct way to get the team ID from a project (list), so instead
-        # of directly getting the project, we get all the projects and filter by the project ID
-        # using the result of the get_projects method which includes the team ID
-        project = next(
-            (
-                project
-                for project in await self.get_projects()
-                if project["id"] == project_id
-            ),
-            None,
+        # we need to find the most efficient way to get the team object for the project
+        # since the project object does not contain the team object
+        project_response = await self.client.get(
+            f"{self.clickup_url}/list/{project_id}"
         )
-        if project:
-            return project
-        return {}
+        project_response.raise_for_status()
+        project = project_response.json()
+        project["__team"] = {}
+
+        # we need to find the team object for the project
+        team = await self._find_team_for_project(project_id).__anext__()
+        if team:
+            project["__team"] = team[0]
+        return project
+
+    @cache_iterator_result()
+    async def _find_team_for_project(
+        self, project_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        # to cache the result of this function, we need to return an AsyncGenerator
+        # hence the need to yield a list of the team object
+        # when the team object is found, a list containing a single team object is yielded
+        for team in await self.get_teams():
+            spaces = await self._get_spaces(team["id"])
+
+            for space in spaces:
+                projects_response = await self.client.get(
+                    f"{self.clickup_url}/space/{space['id']}/list"
+                )
+                projects_response.raise_for_status()
+                projects = projects_response.json()["lists"]
+
+                if any(project["id"] == project_id for project in projects):
+                    yield [team]
+                    return
 
     async def get_paginated_issues(
         self, params: dict[str, Any] = {"page": 0}

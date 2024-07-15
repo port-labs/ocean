@@ -23,12 +23,12 @@ resources:
           identifier: .id | tostring
           title: .name
           properties:
-            url: "\"https://app.clickup.com/\" + .team_id + \"/v/l/li/\" + .id"
+            url: "\"https://app.clickup.com/\" + .__team.id + \"/v/l/li/\" + .id"
             startDate: .start_date | tonumber / 1000 | todate
             endDate: .due_date | tonumber / 1000 | todate
             totalIssues: .task_count
           relations:
-            team: .__team_id
+            team: .__team.id
   - kind: issue
     selector:
       query: 'true'
@@ -41,7 +41,7 @@ resources:
           properties:
             url: .url
             status: .status.status
-            assignee: .assignees | map(.email) | first
+            assignees: '[.assignees[].email]'
             creator: .creator.email
             priority: .priority.priority
             created: .date_created | tonumber / 1000 | todate

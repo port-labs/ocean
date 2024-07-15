@@ -89,11 +89,14 @@
           "type": "string",
           "description": "The status of the issue"
         },
-        "assignee": {
-          "title": "Assignee",
-          "type": "string",
-          "format": "user",
-          "description": "The user assigned to the issue"
+        "assignees": {
+          "title": "Assignees",
+          "type": "array",
+          "description": "The user assigned to the issue",
+          "items": {
+            "type": "string",
+            "format": "user"
+          }
         },
         "creator": {
           "title": "Creator",

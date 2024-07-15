@@ -65,21 +65,19 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     event: str = data.get("event", "")
     logger.info(f"Received clickup webhook event: {event}")
 
+    # event name is in the format of "list{event}" or "task{event}"
+    # where {event} can be "Created", "Updated", "Deleted"
     if event.startswith("list"):
         logger.info(f"Received webhook project event: {data['list_id']}")
         project = await client.get_single_project(data["list_id"])
 
-        if event.endswith("Deleted"):
-            await ocean.unregister_raw(ObjectKind.PROJECT, [project])
-        else:
+        if event.endswith("Created"):
             await ocean.register_raw(ObjectKind.PROJECT, [project])
     elif event.startswith("task"):
         logger.info(f"Received webhook task event: {data['task_id']}")
         issue = await client.get_single_issue(data["task_id"])
 
-        if event.endswith("Deleted"):
-            await ocean.unregister_raw(ObjectKind.ISSUE, [issue])
-        else:
+        if event.endswith("Created"):
             await ocean.register_raw(ObjectKind.ISSUE, [issue])
 
     logger.info("Webhook event processed")
