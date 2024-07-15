@@ -72,6 +72,7 @@ class SentryClient:
             async with semaphore:
                 response = await self.client.get(url, params=params)
             try:
+                response.raise_for_status()
                 rate_limit_remaining = int(
                     response.headers["X-Sentry-Rate-Limit-Remaining"]
                 )
@@ -90,6 +91,11 @@ class SentryClient:
                     await asyncio.sleep(wait_time)
             except KeyError as e:
                 logger.warning(f"Rate limit headers not found in response: {str(e)} for url {url}")
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Got HTTP error to url: {url} with status code: {e.response.status_code} and response text: {e.response.text}"
+                )
+                raise
             return response
 
     def get_next_link(self, link_header: str) -> str:
