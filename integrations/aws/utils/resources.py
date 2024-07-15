@@ -134,6 +134,9 @@ async def resync_custom_kind(
             response = await getattr(client, describe_method)(**params)
             next_token = response.get(marker_param)
             if results := response.get(list_param, []):
+                logger.info(
+                    f"Fetched batch of {len(results)} from {kind} in region {region}"
+                )
                 yield [
                     {
                         CustomProperties.KIND: kind,
@@ -206,6 +209,9 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         page_resources.append(
                             fix_unserializable_date_properties(serialized)
                         )
+                    logger.info(
+                        f"Fetched batch of {len(page_resources)} from {kind} in region {region}"
+                    )
                     yield page_resources
 
                     if not next_token:
