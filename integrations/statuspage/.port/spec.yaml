@@ -1,5 +1,5 @@
 description: Statuspage integration for Port Ocean
-icon: Cookiecutter
+icon: StatusPage
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/statuspage
 features:
   - type: exporter
