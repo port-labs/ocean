@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added v2 filter params to cloudcost kind (#55)
+- Added v2 filter params to cloudcost kind (#749)
 
 
 # Port_Ocean 0.1.57 (2024-07-10)
