@@ -131,11 +131,11 @@ class ClickUpClient:
                 params = {"page": 0}
                 while True:
                     response = await self._get_tasks(list_["id"], params)
-                    tasks = response.get("tasks", [])
+                    tasks = response["tasks"]
                     if not tasks:
                         break
                     yield tasks
-                    if response.get("last_page", True):
+                    if response["last_page"]:
                         break
                     params["page"] += 1
 
