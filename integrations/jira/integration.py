@@ -9,6 +9,8 @@ from port_ocean.core.handlers.port_app_config.models import (
 from port_ocean.core.integrations.base import BaseIntegration
 from pydantic.fields import Field
 
+SprintState = Literal["active", "closed", "future"]
+
 
 class JiraIssueSelector(Selector):
     jql: str | None = Field(
@@ -18,10 +20,18 @@ class JiraIssueSelector(Selector):
         default="sprint",
         description="Where issues are sourced from",
     )
+    # when resyncing issues, there is no way to retrieve the config
+    # set for the `sprint` kind, so we need to duplicate the state
+    # field. This is redundant, but necessary.
+    state: SprintState = Field(
+        alias="sprintState",
+        default="active",
+        description="State of the sprint",
+    )
 
 
 class JiraSprintSelector(Selector):
-    state: Literal["active", "closed", "future"] = Field(
+    state: SprintState = Field(
         default="active",
         description="State of the sprint",
     )
