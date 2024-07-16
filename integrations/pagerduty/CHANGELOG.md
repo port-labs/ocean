@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.79 (2024-07-10)
+
+### Improvements
+
+- Added the primary oncall user to the escalation policy blueprint
+
+
+# Port_Ocean 0.1.78 (2024-07-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.4 (#1)
+
+
 # Port_Ocean 0.1.77 (2024-07-09)
 
 ### Improvements

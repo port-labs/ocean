@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# port_ocean 0.1.58 (2024-07-15)
+
+### Bug Fixes
+
+- Ensured integration keeps on working if a cloud cost is missing
+
+
+# port_ocean 0.1.57 (2024-07-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.4 (#1)
+
+
 # Port_Ocean 0.1.56 (2024-07-09)
 
 ### Improvements

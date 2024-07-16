@@ -22,7 +22,7 @@ async def on_kubesystem_cost_resync(kind: str) -> list[dict[Any, Any]]:
 async def on_cloud_cost_resync(kind: str) -> list[dict[Any, Any]]:
     client = init_client()
     data = await client.get_cloud_cost_allocation()
-    return [value for item in data for value in item["cloudCosts"].values()]
+    return [value for item in data for value in item.get("cloudCosts", {}).values()]
 
 
 @ocean.on_start()
