@@ -128,28 +128,37 @@ async def resync_custom_kind(
         describe_method_params = {}
     while True:
         async with session.client(service_name) as client:
-            params: dict[str, Any] = describe_method_params
-            if next_token:
-                params[marker_param] = next_token
-            response = await getattr(client, describe_method)(**params)
-            next_token = response.get(marker_param)
-            results = response.get(list_param, [])
-            logger.info(
-                f"Fetched batch of {len(results)} from {kind} in region {region}"
-            )
-            if results:
-                yield [
-                    {
-                        CustomProperties.KIND: kind,
-                        CustomProperties.ACCOUNT_ID: account_id,
-                        CustomProperties.REGION: region,
-                        **fix_unserializable_date_properties(resource),
-                    }
-                    for resource in results
-                ]
+            try:
+                params: dict[str, Any] = describe_method_params
+                if next_token:
+                    params[marker_param] = next_token
+                response = await getattr(client, describe_method)(**params)
+                next_token = response.get(marker_param)
+                results = response.get(list_param, [])
+                logger.info(
+                    f"Fetched batch of {len(results)} from {kind} in region {region}"
+                )
+                if results:
+                    yield [
+                        {
+                            CustomProperties.KIND: kind,
+                            CustomProperties.ACCOUNT_ID: account_id,
+                            CustomProperties.REGION: region,
+                            **fix_unserializable_date_properties(resource),
+                        }
+                        for resource in results
+                    ]
 
-        if not next_token:
-            break
+                if not next_token:
+                    break
+            except client.exceptions.ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "UnauthorizedOperation":
+                    logger.warning(
+                        f"Skipping resyncing {kind} in region {region} due to missing access permissions"
+                    )
+                    break
+                else:
+                    raise e
 
 
 async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
