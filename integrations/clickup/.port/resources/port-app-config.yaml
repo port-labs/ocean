@@ -42,7 +42,7 @@ resources:
             url: .url
             description: .description
             status: .status.status
-            assignee: .assignees[0].email
+            assignees: .assignees[].email
             creator: .creator.email
             priority: .priority.priority | tostring
             created: .date_created | tonumber | (. /1000 | strftime("%Y-%m-%dT%H:%M:%SZ"))

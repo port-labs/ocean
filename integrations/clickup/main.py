@@ -1,8 +1,15 @@
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import RAW_RESULT, ASYNC_GENERATOR_RESYNC_TYPE
-from client import ClickUpClient, ObjectKind
+from client import ClickUpClient
 from typing import Any
+from enum import StrEnum
+
+
+class ObjectKind(StrEnum):
+    TEAM = "team"
+    PROJECT = "project"
+    ISSUE = "issue"
 
 
 def init_client() -> ClickUpClient:
@@ -47,9 +54,9 @@ async def handle_webhook(data: dict[str, Any]) -> dict[str, Any]:
         "space": (ObjectKind.PROJECT, client.get_space),
     }
     for key, (kind, handler) in event_handlers.items():
-        if data["event"].__contains__(key):
+        if key in data["event"]:
             logger.warning(f"Received {key} webhook")
-            entity = await handler(data[f"{key}_id"])
+            entity = await handler(data["task_id"])
             await ocean.register_raw(kind, [entity])
             logger.info(f"Webhook event processed for {kind.value}")
     return {"ok": True}
@@ -70,4 +77,12 @@ async def on_start() -> None:
 
     client = init_client()
     team_id = (await client.get_teams())[0]["id"]
-    await client.create_events_webhook(ocean.integration_config["app_host"], team_id)
+
+    # Resolution logic moved here
+    webhooks = await client.get_webhooks(team_id)
+    webhook_target_url = f"{ocean.integration_config['app_host']}/integration/webhook"
+    webhook_exists = any(config["endpoint"] == webhook_target_url for config in webhooks)
+    if webhook_exists:
+        logger.info("Webhook already exists")
+    else:
+        await client.create_webhook(team_id, ocean.integration_config["app_host"])

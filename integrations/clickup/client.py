@@ -1,5 +1,5 @@
-from typing import Any, AsyncGenerator, Optional
 from enum import StrEnum
+from typing import Any, AsyncGenerator, Optional
 import httpx
 from httpx import Timeout
 from loguru import logger
@@ -11,12 +11,6 @@ class CacheKeys(StrEnum):
     TEAMS = "TEAMS"
     SPACES = "SPACES"
     TASKS = "TASKS"
-
-
-class ObjectKind(StrEnum):
-    TEAM = "team"
-    PROJECT = "project"
-    ISSUE = "issue"
 
 
 CLICK_UP_WEBHOOK_EVENT = [
@@ -48,11 +42,11 @@ class ClickUpClient:
         self.client.timeout = Timeout(30)
 
     async def send_api_request(
-        self,
-        endpoint: str,
-        method: str = "GET",
-        query_params: Optional[dict[str, Any]] = None,
-        json_data: Optional[dict[str, Any]] = None,
+            self,
+            endpoint: str,
+            method: str = "GET",
+            query_params: Optional[dict[str, Any]] = None,
+            json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         logger.info(f"Requesting ClickUp data for endpoint: {endpoint}")
         try:
@@ -120,31 +114,31 @@ class ClickUpClient:
         return all_spaces
 
     async def _get_tasks(
-        self, list_id: str, params: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+            self, list_id: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Retrieve tasks for a given list with pagination support.
         """
         endpoint = f"list/{list_id}/task"
         response = await self.send_api_request(endpoint, query_params=params)
-        return response.get("tasks", [])
+        return response
 
     async def get_paginated_tasks(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve paginated tasks for all lists.
         """
-
-        all_tasks = []
         spaces = await self.get_spaces()
         for space in spaces:
             for list_ in space.get("lists", []):
                 params = {"page": 0}
                 while True:
-                    tasks = await self._get_tasks(list_["id"], params)
+                    response = await self._get_tasks(list_["id"], params)
+                    tasks = response.get("tasks", [])
                     if not tasks:
                         break
-                    all_tasks.extend(tasks)
                     yield tasks
+                    if response.get("last_page", True):
+                        break
                     params["page"] += 1
 
     async def get_task(self, task_id: str) -> dict[str, Any]:
@@ -171,22 +165,22 @@ class ClickUpClient:
         """
         return await self.send_api_request(f"team/{team_id}")
 
-    async def create_events_webhook(self, app_host: str, team_id: str) -> None:
-        webhook_target_url = f"{app_host}/integration/webhook"
-        webhook_response = await self.send_api_request(f"team/{team_id}/webhook")
-        existing_configs = webhook_response.get("webhooks", [])
-        webhook_exists = any(
-            config["endpoint"] == webhook_target_url for config in existing_configs
+    async def get_webhooks(self, team_id: str) -> list[dict[str, Any]]:
+        """
+        Retrieve existing webhooks for a given team.
+        """
+        return (await self.send_api_request(f"team/{team_id}/webhook"))["webhooks"]
+
+    async def create_webhook(self, team_id: str, app_host: str) -> None:
+        """
+        Create a new webhook for a given team.
+        """
+        await self.send_api_request(
+            f"team/{team_id}/webhook",
+            method="POST",
+            json_data={
+                "endpoint": f"{app_host}/integration/webhook",
+                "events": CLICK_UP_WEBHOOK_EVENT,
+            },
         )
-        if webhook_exists:
-            logger.info("Webhook already exists")
-        else:
-            await self.send_api_request(
-                f"team/{team_id}/webhook",
-                method="POST",
-                json_data={
-                    "endpoint": f"{app_host}/integration/webhook",
-                    "events": CLICK_UP_WEBHOOK_EVENT,
-                },
-            )
-            logger.info("Webhook created successfully")
+        logger.info("Webhook created successfully")
