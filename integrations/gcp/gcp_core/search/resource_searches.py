@@ -10,6 +10,10 @@ from google.cloud.resourcemanager_v3 import (
     FoldersAsyncClient,
     OrganizationsAsyncClient,
     ProjectsAsyncClient,
+    TagBindingsAsyncClient,
+    TagKeysAsyncClient,
+    TagValuesAsyncClient,
+    ListTagBindingsRequest
 )
 from google.pubsub_v1.services.publisher import PublisherAsyncClient
 from loguru import logger
@@ -222,3 +226,84 @@ async def feed_event_to_resource(
             project = await get_single_project(project_id)
             resource = await search_single_resource(project, asset_type, asset_name)
     return resource
+
+from google.cloud.resourcemanager_v3 import TagBindingsClient
+
+async def get_resource_tags(resource_name: str, asset_type: str) -> dict[str, Any]:
+    location = "europe-west1"
+    tag_bindings_clien = TagBindingsAsyncClient()
+    tag_keys_client = TagKeysAsyncClient()
+    tag_values_client = TagValuesAsyncClient()
+    
+    #api_endpoint, _ = TagBindingsAsyncClient.get_mtls_endpoint_and_cert_source()
+    #logger.warning(f"API endpoint: {api_endpoint}")
+    #tag_bindings_client = TagBindingsAsyncClient(client_options={"api_endpoint": location + "-" + api_endpoint})
+
+    tags = {}
+    r_name = f"//europe-west1-b-{asset_type}/{resource_name}"
+    
+    request = ListTagBindingsRequest(parent= r_name )
+
+    regional_endpoint = "europe-west1-cloudresourcemanager.googleapis.com"
+    #client_options = ClientOptions(api_endpoint=regional_endpoint)
+    tag_bindings_client = TagBindingsAsyncClient(client_options={"api_endpoint": regional_endpoint})
+
+    try:
+        response = await tag_bindings_client.list_tag_bindings(request=request)
+        logger.warning(f"Got response: {response}")
+        
+        async for tag_binding in response:
+            tag_value_name = tag_binding.tag_value
+            tag_value = await tag_values_client.get_tag_value(name=tag_value_name)
+            tag_key = await tag_keys_client.get_tag_key(name=tag_value.name.split('/tagValues/')[0])
+            
+            tags[tag_key.short_name] = tag_value.short_name
+        logger.warning(f"Found tags: {tags}")
+    except Exception as e:
+        logger.error(f"Failed to get tags for resource {r_name}")
+        logger.exception(e)
+    return tags
+
+
+from google.cloud import resourcemanager_v3
+from google.api_core.client_options import ClientOptions
+
+def sample_list_tag_bindings():
+    # Create a client
+    regional_endpoint = "europe-west1-b-cloudresourcemanager.googleapis.com"
+    client_options = ClientOptions(api_endpoint=regional_endpoint)
+
+
+    # list tag bindings on the instance
+    tag_binding_client  = resourcemanager_v3.TagBindingsClient(client_options=client_options)
+    list_tag_binding_request = resourcemanager_v3.ListTagBindingsRequest(
+        parent  = "//europe-west1-b-cloudresourcemanager.googleapis.com/projects/98560065206"
+    )
+    list_tag_binding_result  = tag_binding_client.list_tag_bindings(request = list_tag_binding_request)        
+    
+
+    # iterate through tag bindings to look for a match
+    for tag_bindings in list_tag_binding_result:            
+        # obtain corresp namespaced value
+        tag_value_client = resourcemanager_v3.TagValuesClient()
+        tag_value_request = resourcemanager_v3.GetTagValueRequest(
+            name=tag_bindings.tag_value,
+        )
+        tag_value_response = tag_value_client.get_tag_value(request=tag_value_request)
+        print(f"Found tag value on instance: {tag_bindings.tag_value}, {tag_value_response.namespaced_name}")
+            
+
+    # client = resourcemanager_v3.TagBindingsAsyncClient()
+
+    # # Initialize request argument(s)
+    # request = resourcemanager_v3.ListTagBindingsRequest(
+    #     parent="//Repository/projects/asaak-1529340431319/locations/europe-west1/repositories/asaak-default-rate",
+    # )
+
+    # # Make the request
+    # page_result = await client.list_tag_bindings(request=request)
+
+    # # Handle the response
+    # async for response in page_result:
+    #     logger.warning(response)
+    return {}
