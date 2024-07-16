@@ -161,8 +161,9 @@ async def resync_custom_kind(
                     raise e
 
 
-async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    is_global = is_global_resource(kind)
+async def resync_cloudcontrol(
+    kind: str, is_global: bool = False
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     use_get_resource_api = typing.cast(
         AWSResourceConfig, event.resource_config
     ).selector.use_get_resource_api
@@ -231,9 +232,18 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         e.response.get("Error", {}).get("Code")
                         == "AccessDeniedException"
                     ):
+                        if is_global:
+                            logger.warning(
+                                f"Access denied in global resource {kind} in region {region}. Querying again in all regions"
+                            )
+                            async for batch in resync_cloudcontrol(
+                                kind, is_global=False
+                            ):
+                                yield batch
+                                return  # stop once we have some resources
                         logger.warning(
                             f"Skipping resyncing {kind} in region {region} due to missing access permissions"
                         )
-                        break
+                        break  # stop pagination if access is denied in this region
                     else:
                         raise e

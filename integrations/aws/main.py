@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from port_ocean.core.models import Entity
 
 from utils.resources import (
+    is_global_resource,
     resync_custom_kind,
     describe_single_resource,
     fix_unserializable_date_properties,
@@ -36,7 +37,8 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
         return
     await update_available_access_credentials()
-    async for batch in resync_cloudcontrol(kind):
+    is_global = is_global_resource(kind)
+    async for batch in resync_cloudcontrol(kind, is_global):
         yield batch
 
 
