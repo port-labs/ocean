@@ -94,8 +94,8 @@
           "type": "string",
           "description": "The status of the issue"
         },
-        "assignee": {
-          "title": "Assignee",
+        "assignees": {
+          "title": "Assignees",
           "type": "string",
           "format": "user",
           "description": "The user assigned to the issue"
