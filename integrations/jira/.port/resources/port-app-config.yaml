@@ -28,7 +28,7 @@ resources:
             type: .type
           relations:
             project: .location.projectId | tostring
-  
+
   - kind: sprint
     selector:
       query: "true"
