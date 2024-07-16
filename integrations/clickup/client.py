@@ -42,11 +42,11 @@ class ClickUpClient:
         self.client.timeout = Timeout(30)
 
     async def send_api_request(
-            self,
-            endpoint: str,
-            method: str = "GET",
-            query_params: Optional[dict[str, Any]] = None,
-            json_data: Optional[dict[str, Any]] = None,
+        self,
+        endpoint: str,
+        method: str = "GET",
+        query_params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         logger.info(f"Requesting ClickUp data for endpoint: {endpoint}")
         try:
@@ -113,9 +113,7 @@ class ClickUpClient:
 
         return all_spaces
 
-    async def _get_tasks(
-            self, list_id: str, params: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def _get_tasks(self, list_id: str, params: dict[str, Any]) -> dict[str, Any]:
         """
         Retrieve tasks for a given list with pagination support.
         """

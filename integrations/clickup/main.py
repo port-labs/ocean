@@ -81,7 +81,9 @@ async def on_start() -> None:
     # Resolution logic moved here
     webhooks = await client.get_webhooks(team_id)
     webhook_target_url = f"{ocean.integration_config['app_host']}/integration/webhook"
-    webhook_exists = any(config["endpoint"] == webhook_target_url for config in webhooks)
+    webhook_exists = any(
+        config["endpoint"] == webhook_target_url for config in webhooks
+    )
     if webhook_exists:
         logger.info("Webhook already exists")
     else:
