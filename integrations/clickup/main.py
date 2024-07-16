@@ -78,7 +78,6 @@ async def on_start() -> None:
     client = init_client()
     team_id = (await client.get_teams())[0]["id"]
 
-    # Resolution logic moved here
     webhooks = await client.get_webhooks(team_id)
     webhook_target_url = f"{ocean.integration_config['app_host']}/integration/webhook"
     webhook_exists = any(
