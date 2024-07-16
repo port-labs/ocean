@@ -2,6 +2,7 @@
   {
     "identifier": "statuspage",
     "title": "Status Page",
+    "icon": "StatusPage",
     "description": "A Statuspage for communicating service status and incidents.",
     "schema": {
       "properties": {
@@ -128,6 +129,7 @@
   {
     "identifier": "statuspageComponentGroup",
     "title": "Statuspage Component Group",
+    "icon": "StatusPage",
     "description": "A group of related components on a Statuspage.",
     "schema": {
       "properties": {
@@ -168,7 +170,7 @@
   {
     "identifier": "statuspageComponent",
     "title": "Statuspage Component",
-    "icon": "Box",
+    "icon": "StatusPage",
     "description": "A component representing a specific part of a system or service on a Statuspage.",
     "schema": {
       "properties": {
@@ -248,7 +250,7 @@
   {
     "identifier": "statuspageIncident",
     "title": "Statuspage Incident",
-    "icon": "Alert",
+    "icon": "StatusPage",
     "description": "An incident reported on a Statuspage.",
     "schema": {
       "properties": {
@@ -436,7 +438,7 @@
   {
     "identifier": "statuspageIncidentUpdate",
     "title": "Statuspage Incident Update",
-    "icon": "Alert",
+    "icon": "StatusPage",
     "description": "An update to a Statuspage incident.",
     "schema": {
       "properties": {

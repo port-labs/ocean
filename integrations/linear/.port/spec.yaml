@@ -16,5 +16,5 @@ configurations:
   - name: linearApiKey
     required: true
     type: string
-    description: "Linear API key used to query the Linear GraphQL API"
+    description: Linear personal API key. To create an API key, see the <a href="https://developers.linear.app/docs/graphql/working-with-the-graphql-api#personal-api-keys">Linear API documentation</a>.
     sensitive: true

@@ -44,6 +44,8 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     @lru_cache
     def _compile(self, pattern: str) -> Any:
+        if not ocean.config.allow_environment_variables_jq_access:
+            pattern = "def env: {}; {} as $ENV | " + pattern
         return jq.compile(pattern)
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:

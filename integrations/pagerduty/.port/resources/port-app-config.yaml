@@ -77,6 +77,7 @@ resources:
   - kind: escalation_policies
     selector:
       query: 'true'
+      attachOncallUsers: 'true'
     port:
       entity:
         mappings:
@@ -84,6 +85,7 @@ resources:
           title: .name
           blueprint: '"pagerdutyEscalationPolicy"'
           properties:
-            description: .summary
-            escalationRules: .escalation_rules
             url: .html_url
+            description: .summary
+            primaryOncall: .__oncall_users | sort_by(.escalation_level) | .[0].user.email
+            escalationRules: .escalation_rules
