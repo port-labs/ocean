@@ -1,6 +1,6 @@
 from typing import Any, AsyncGenerator
 
-from httpx import Timeout
+import httpx
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
@@ -23,55 +23,64 @@ class ClickupClient:
         self.clickup_url = "https://api.clickup.com/api/v2"
         self.client = http_async_client
         self.client.headers.update({"Authorization": clickup_apikey})
-        self.client.timeout = Timeout(30)
+        self.client.timeout = httpx.Timeout(30)
 
     async def get_teams(self) -> list[dict[str, Any]]:
         if cache := event.attributes.get(TEAMS_CACHE, []):
             return cache
-        return await self._get_teams()
+        teams = await self._get_teams()
+        event.attributes[TEAMS_CACHE] = teams
+        return teams
 
     async def _get_teams(self) -> list[dict[str, Any]]:
         url = f"{self.clickup_url}/team"
         response = await self.client.get(url)
         response.raise_for_status()
         teams = response.json()["teams"]
-        event.attributes[TEAMS_CACHE] = teams
         return teams
 
     async def create_webhook_events(self, app_host: str) -> None:
         for team in await self.get_teams():
-            if not await self._team_webhook_events_exist(app_host, team["id"]):
-                await self._create_team_webhook_events(app_host, team["id"])
-
-    async def _team_webhook_events_exist(self, app_host: str, team_id: str) -> bool:
-        webhook_target_app_host = f"{app_host}/integration/webhook"
-        response = await self.client.get(f"{self.clickup_url}/team/{team_id}/webhook")
-        response.raise_for_status()
-        webhooks = response.json()
-        for webhook in webhooks:
-            if webhook["endpoint"] == webhook_target_app_host:
-                logger.info(
-                    "Ocean real-time reporting webhook already exist"
-                    f"[ID: {webhook['id']}, Team ID: {team_id}]"
-                )
-                return True
-        return False
+            await self._create_team_webhook_events(app_host, team["id"])
 
     async def _create_team_webhook_events(self, app_host: str, team_id: int) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
-        response = await self.client.post(
-            f"{self.clickup_url}/team/{team_id}/webhook",
-            json={
-                "endpoint": webhook_target_app_host,
-                "events": WEBHOOK_EVENTS,
-            },
-        )
-        response.raise_for_status()
-        webhook = response.json()
-        logger.info(
-            "Ocean real time reporting clickup webhook created "
-            f"[ID: {webhook['id']}, Team ID: {team_id}]"
-        )
+        try:
+            response = await self.client.post(
+                f"{self.clickup_url}/team/{team_id}/webhook",
+                json={
+                    "endpoint": webhook_target_app_host,
+                    "events": WEBHOOK_EVENTS,
+                },
+            )
+            response.raise_for_status()
+            webhook = response.json()
+            logger.info(
+                "Ocean real time reporting clickup webhook created "
+                f"[ID: {webhook['id']}, Team ID: {team_id}]"
+            )
+        except httpx.HTTPStatusError as e:
+            # if you try to create webhook that already exist, you get status_code 400
+            # and also the message "Webhook configuration already exists"
+            if e.response.status_code == 400 and (
+                "already exists" in e.response.json()["err"]
+            ):
+                logger.info(
+                    "Ocean real-time reporting webhook already exist for "
+                    f"Team ID: {team_id}"
+                )
+                return
+            logger.error(
+                f"HTTPStatusError {e} while creating webhook events for"
+                f"Team ID: {team_id}"
+            )
+            return
+
+        except httpx.HTTPError as e:
+            logger.error(
+                f"HTTPError {e} while creating webhook events for" f"Team ID: {team_id}"
+            )
+            return
 
     @cache_iterator_result()
     async def get_spaces(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -114,8 +123,7 @@ class ClickupClient:
     async def get_single_project(self, project_id: str) -> dict[str, Any]:
         response = await self.client.get(f"{self.clickup_url}/list/{project_id}")
         response.raise_for_status()
-        project = response.json()
-        return project
+        return response.json()
 
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.get_projects():
@@ -140,5 +148,4 @@ class ClickupClient:
     async def get_single_issue(self, issue_id: str) -> dict[str, Any]:
         response = await self.client.get(f"{self.clickup_url}/task/{issue_id}")
         response.raise_for_status()
-        issue = response.json()
-        return issue
+        return response.json()

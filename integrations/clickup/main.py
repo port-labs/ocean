@@ -73,8 +73,8 @@ async def handle_task_deleted(data: dict[str, Any]) -> None:
 
 
 @ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    event_handlers: dict[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]]] = {
+async def handle_webhook_request(data: dict[str, Any]) -> dict[str, bool]:
+    EVENT_HANDLERS: dict[str, Callable[[dict[str, Any]], Coroutine[Any, Any, None]]] = {
         "listCreated": handle_list_created_or_updated,
         "listUpdated": handle_list_created_or_updated,
         "listDeleted": handle_list_deleted,
@@ -84,7 +84,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     }
     event: str = data.get("event", "")
     logger.info(f"Received webhook event of type: {event}")
-    handler = event_handlers.get(event, None)
+    handler = EVENT_HANDLERS.get(event, None)
     if not handler:
         logger.error(f"Unhandled event type: {event}")
         return {"ok": False}
