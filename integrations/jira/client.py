@@ -4,12 +4,12 @@ from typing import Any, AsyncGenerator
 import httpx
 from httpx import BasicAuth, Timeout
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
+from port_ocean.utils.cache import cache_iterator_result
 
-from jira.overrides import JiraResourceConfig
+from integration import JiraIssueResourceConfig, JiraSprintResourceConfig
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
@@ -64,11 +64,10 @@ class JiraClient:
         self,
         url: str,
         params: dict[str, Any] = {},
-        data_key: str = "values",
         is_last_function: typing.Callable[
             [dict[str, Any]], bool
         ] = lambda response: response["isLast"],
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    ) -> AsyncGenerator[dict[str, list[dict[str, Any]]], None]:
         params = {**self._generate_base_req_params(), **params}
         is_last = False
         logger.info(f"Making paginated request to {url} with params: {params}")
@@ -77,8 +76,7 @@ class JiraClient:
                 response = await self.client.get(url, params=params)
                 response.raise_for_status()
                 response_data = response.json()
-                values = response_data[data_key]
-                yield values
+                yield response_data
                 is_last = is_last_function(response_data)
                 start = response_data["startAt"] + response_data["maxResults"]
                 params = {**params, "startAt": start}
@@ -98,39 +96,87 @@ class JiraClient:
         async for projects in self._make_paginated_request(
             f"{self.detail_base_url}/project/search"
         ):
-            yield projects
+            yield projects["values"]
 
-    async def get_issues(
-        self, board_id: int
+    async def _get_issues_from_board(
+        self, params: dict[str, str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = {}
-        config = typing.cast(JiraResourceConfig, event.resource_config)
-        if config.selector.jql:
-            params["jql"] = config.selector.jql
-            logger.info(f"Found JQL filter: {config.selector.jql}")
+        async for boards in self.get_all_boards():
+            for board in boards:
+                async for issues in self._make_paginated_request(
+                    f"{self.base_url}/board/{board['id']}/issue",
+                    params=params,
+                    is_last_function=lambda response: response["startAt"]
+                    + response["maxResults"]
+                    >= response["total"],
+                ):
+                    yield issues["issues"]
 
+    async def _get_issues_from_sprint(
+        self, params: dict[str, str]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for sprints in self.get_all_sprints():
+            for sprint in sprints:
+                async for issues in self._make_paginated_request(
+                    f"{self.base_url}/sprint/{sprint['id']}/issue",
+                    params=params,
+                    is_last_function=lambda response: response["startAt"]
+                    + response["maxResults"]
+                    >= response["total"],
+                ):
+                    yield issues["issues"]
+
+    async def _get_issues_from_org(
+        self, params: dict[str, str]
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for issues in self._make_paginated_request(
-            f"{self.base_url}/board/{board_id}/issue",
+            f"{self.detail_base_url}/search",
             params=params,
-            data_key="issues",
             is_last_function=lambda response: response["startAt"]
             + response["maxResults"]
             >= response["total"],
         ):
+            yield issues["issues"]
+
+    async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        config = typing.cast(JiraIssueResourceConfig, event.resource_config)
+        params = {}
+        if config.selector.jql:
+            params["jql"] = config.selector.jql
+            logger.info(f"Found JQL filter: {config.selector.jql}")
+
+        ISSUES_MAP = {
+            "board": self._get_issues_from_board,
+            "sprint": self._get_issues_from_sprint,
+            "all": self._get_issues_from_org,
+        }
+
+        async for issues in ISSUES_MAP[config.selector.source](params):
             yield issues
 
-    async def get_sprints(
-        self, board_id: int
+    @cache_iterator_result()
+    async def _get_sprints_from_board(
+        self, board_id: int, params: dict[str, str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for sprints in self._make_paginated_request(
-            f"{self.base_url}/board/{board_id}/sprint"
+            f"{self.base_url}/board/{board_id}/sprint", params=params
         ):
-            yield sprints
+            yield sprints["values"]
 
-    async def get_boards(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    @cache_iterator_result()
+    async def get_all_sprints(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        config = typing.cast(JiraSprintResourceConfig, event.resource_config)
+        params = {"state": config.selector.state}
+        async for boards in self.get_all_boards():
+            for board in boards:
+                async for sprints in self._get_sprints_from_board(board["id"], params):
+                    yield sprints
+
+    @cache_iterator_result()
+    async def get_all_boards(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self._make_paginated_request(f"{self.base_url}/board/"):
-            yield boards
-    
+            yield boards["values"]
+
     async def _get_single_item(self, url: str) -> dict[str, Any]:
         try:
             response = await self.client.get(url)
@@ -144,27 +190,18 @@ class JiraClient:
         except httpx.HTTPError as e:
             logger.error(f"HTTP occurred while fetching Jira data {e}")
             raise
-    
+
     async def get_single_project(self, project: str) -> dict[str, Any]:
-        return await self._get_single_item(
-            f"{self.detail_base_url}/project/{project}"
-        )
-    
+        return await self._get_single_item(f"{self.detail_base_url}/project/{project}")
+
     async def get_single_issue(self, issue: str) -> dict[str, Any]:
-        return await self._get_single_item(
-            f"{self.base_url}/issue/{issue}"
-        )
-    
+        return await self._get_single_item(f"{self.base_url}/issue/{issue}")
+
     async def get_single_sprint(self, sprint_id: int) -> dict[str, Any]:
-        return await self._get_single_item(
-            f"{self.base_url}/sprint/{sprint_id}"
-        )
+        return await self._get_single_item(f"{self.base_url}/sprint/{sprint_id}")
 
     async def get_single_board(self, board_id: int) -> dict[str, Any]:
-        return await self._get_single_item(
-            f"{self.base_url}/board/{board_id}"
-        )
-
+        return await self._get_single_item(f"{self.base_url}/board/{board_id}")
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
@@ -188,5 +225,3 @@ class JiraClient:
         )
         webhook_create_response.raise_for_status()
         logger.info("Ocean real time reporting webhook created")
-
-    
