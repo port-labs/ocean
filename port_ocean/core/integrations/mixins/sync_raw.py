@@ -90,7 +90,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     ) -> tuple[RESYNC_RESULT, list[RAW_RESULT | Exception]]:
         tasks = []
         results = []
-
         for task in fns:
             if inspect.isasyncgenfunction(task):
                 results.append(resync_generator_wrapper(task, resource_config.kind))
@@ -415,7 +414,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             app_config = await self.port_app_config_handler.get_port_app_config(
                 use_cache=False
             )
-
+            logger.info(f"Resync will use the following mappings: {app_config.dict()}")
             try:
                 entities_at_port = await ocean.port_client.search_entities(
                     user_agent_type
