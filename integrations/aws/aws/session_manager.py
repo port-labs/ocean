@@ -90,16 +90,25 @@ class SessionManager:
         application_session = typing.cast(aioboto3.Session, self._application_session)
 
         async with application_session.client("sts") as sts_client:
-            organizations_client = await sts_client.assume_role(
-                RoleArn=organization_role_arn, RoleSessionName="AssumeRoleSession"
-            )
+            try:
+                organizations_client = await sts_client.assume_role(
+                    RoleArn=organization_role_arn, RoleSessionName="AssumeRoleSession"
+                )
 
-            credentials = organizations_client["Credentials"]
-            organization_role_session = aioboto3.Session(
-                aws_access_key_id=credentials["AccessKeyId"],
-                aws_secret_access_key=credentials["SecretAccessKey"],
-                aws_session_token=credentials["SessionToken"],
-            )
+                credentials = organizations_client["Credentials"]
+                organization_role_session = aioboto3.Session(
+                    aws_access_key_id=credentials["AccessKeyId"],
+                    aws_secret_access_key=credentials["SecretAccessKey"],
+                    aws_session_token=credentials["SessionToken"],
+                )
+            except sts_client.exceptions.ClientError as e:
+                if e.response.get("Error", {}).get("Code") == "AccessDenied":
+                    logger.warning(
+                        "Caller does not have permission to assume the organization role. Assuming application role has access to organization accounts."
+                    )
+                    return self._application_session
+                else:
+                    raise
 
             return organization_role_session
 
