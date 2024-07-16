@@ -82,8 +82,21 @@ class JiraClient:
                 params = {**params, "startAt": start}
                 logger.info(f"Next page startAt: {start}")
             except httpx.HTTPStatusError as e:
+                # some Jira boards may not support sprints
+                # we check for these and skip throwing an error for them
+
+                if e.response.status_code == 400 and (
+                    "support sprints" in e.response.json()["errorMessages"][0]
+                ):
+                    logger.warning(
+                        f"Jira board with url {url} does not support sprints"
+                    )
+                    is_last = True
+                    continue
+
                 logger.error(
-                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+                    f"HTTP error with status code: {e.response.status_code}"
+                    f" and response text: {e.response.text}"
                 )
                 raise
             except httpx.HTTPError as e:
@@ -165,7 +178,9 @@ class JiraClient:
 
     @cache_iterator_result()
     async def get_all_sprints(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        config = typing.cast(JiraSprintResourceConfig, event.resource_config)
+        config = typing.cast(
+            JiraSprintResourceConfig | JiraIssueResourceConfig, event.resource_config
+        )
         params = {"state": config.selector.state}
         async for boards in self.get_all_boards():
             for board in boards:
