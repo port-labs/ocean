@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+0.1.65 (2024-07-16)
+
+### Improvements
+
+- Changed description of atlassianUserToken configuration
+
+
 0.1.64 (2024-07-10)
 
 ### Improvements

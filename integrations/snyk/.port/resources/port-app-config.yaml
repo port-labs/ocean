@@ -35,6 +35,7 @@ resources:
   - kind: project
     selector:
       query: 'true'
+      attachIssuesToProject: 'false'
     port:
       entity:
         mappings:
@@ -51,7 +52,7 @@ resources:
             lowOpenVulnerabilities: .meta.latest_issue_counts.low
             criticalOpenVulnerabilities: .meta.latest_issue_counts.critical
             tags: .attributes.tags
-            targetOrigin: .origin
+            targetOrigin: .attributes.origin
           relations:
             snyk_target: '.relationships.target.data.id'
   - kind: target
