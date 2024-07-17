@@ -1,6 +1,5 @@
 import enum
 
-import aioboto3
 from port_ocean.context.event import event
 
 
