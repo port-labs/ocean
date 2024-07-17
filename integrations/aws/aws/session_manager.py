@@ -2,6 +2,7 @@ from typing import Any
 import typing
 import aioboto3
 from aws.aws_credentials import AwsCredentials
+from utils.misc import is_access_denied_exception
 from port_ocean.context.ocean import ocean
 from loguru import logger
 
@@ -102,7 +103,7 @@ class SessionManager:
                     aws_session_token=credentials["SessionToken"],
                 )
             except sts_client.exceptions.ClientError as e:
-                if e.response.get("Error", {}).get("Code") == "AccessDenied":
+                if is_access_denied_exception(e):
                     logger.warning("Cannot assume role to the organization account.")
                     return self._application_session
                 else:
@@ -160,7 +161,7 @@ class SessionManager:
             self._aws_credentials.append(credentials)
             self._aws_accessible_accounts.append(account)
         except sts_client.exceptions.ClientError as e:
-            if e.response["Error"]["Code"] == "AccessDenied":
+            if is_access_denied_exception(e):
                 logger.info(f"Cannot assume role in account {account['Id']}. Skipping.")
                 pass  # Skip the account if assume_role fails due to permission issues or non-existent role
             else:
