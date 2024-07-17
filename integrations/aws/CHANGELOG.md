@@ -9,9 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Port_Ocean 0.2.16 (2024-07-16)
 
-### Improvements
+### Bug Fixes
 
-- Add auto-discover for available regions in case global resources do not have permissions in default region  (#1)
+- Add auto-discover for available regions in case global resources do not have permissions in default region
 - Add access denied handler to STS:AssumeRole 
 - Add access denied handler to custom kind resync
 
