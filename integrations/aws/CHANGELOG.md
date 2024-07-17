@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Brute force global resource if does not have permissions in default region (#1)
+- Add auto-discover for available regions in case global resources do not have permissions in default region  (#1)
+- Add access denied handler to STS:AssumeRole 
+- Add access denied handler to custom kind resync
 
 
 # Port_Ocean 0.2.15 (2024-07-12)

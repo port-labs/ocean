@@ -240,10 +240,10 @@ async def resync_cloudcontrol(
                                 kind, is_global=False
                             ):
                                 yield batch
-                                return  # stop once we have some resources
+                                return  # no need to continue querying once we got some data since it's global
                         logger.warning(
                             f"Skipping resyncing {kind} in region {region} due to missing access permissions"
                         )
-                        break  # stop pagination if access is denied in this region
+                        break  # no need to continue querying on the same region since we don't have access
                     else:
                         raise e
