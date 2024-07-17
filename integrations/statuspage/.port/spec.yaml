@@ -1,0 +1,31 @@
+description: Statuspage integration for Port Ocean
+icon: StatusPage
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/statuspage
+features:
+  - type: exporter
+    section: Incident Management
+    resources:
+      - kind: statuspage
+      - kind: component_group
+      - kind: component
+      - kind: incident
+      - kind: incident_update
+configurations:
+  - name: appHost
+    required: false
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Statuspage"
+  - name: statuspageHost
+    required: true
+    type: url
+    description: "The host of the Statuspage.io API. The default host is https://api.statuspage.io"
+    default: "https://api.statuspage.io"
+  - name: statuspageApiKey
+    required: true
+    type: string
+    sensitive: true
+    description: Statuspage API key. To find your API key, see the <a href="https://support.atlassian.com/statuspage/docs/create-and-manage-api-keys/">Statuspage documentation</a>.
+  - name: statuspageIds
+    required: false
+    type: array
+    description: "Comma-separated list of Statuspage.io page IDs to query e.g ['pageID-1','pageID-2']. If not specified, all pages will be queried"

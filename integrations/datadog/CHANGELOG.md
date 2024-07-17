@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.17 (2024-07-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.4 (#1)
+
+
+# Port_Ocean 0.1.16 (2024-07-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.3 (#1)
+
+
+# Port_Ocean 0.1.15 (2024-07-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.2 (#1)
+
+
+# Port_Ocean 0.1.14 (2024-07-04)
+
+### Improvements
+
+- Added support to fetch SLOs history back to 1 year ago (#1)
+
+# Port_Ocean 0.1.13 (2024-07-01)
+
+### Improvements
+
+- Changed the way we handle concurrency from asyncio gather to use a queuing mechanism to reduce the chance of rate limit
+
+
+# Port_Ocean 0.1.12 (2024-07-01)
+
+### Improvements
+
+- Added support for SLO history (#1)
+
+
+### Bug Fixes
+
+- Changed Target and Warning threshold to number instead of string in SLO blueprint (#2)
+
+
 # Port_Ocean 0.1.11 (2024-06-23)
 
 ### Improvements

@@ -76,6 +76,7 @@ class BasePortAppConfig(BaseHandler):
                 logger.error(
                     "Invalid port app config found. Please check that the integration has been configured correctly."
                 )
+                logger.warning(f"Invalid port app config: {raw_config}")
                 raise
 
         event.port_app_config = self._app_config_cache.port_app_config

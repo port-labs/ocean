@@ -17,7 +17,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .issueData.id
+          identifier: .issueData.id + "-" + (.links.paths | split("/") | .[8])
           title: .issueData.title
           blueprint: '"snykVulnerability"'
           properties:
@@ -30,6 +30,8 @@ resources:
             language: .issueData.language // .issueType
             publicationTime: .issueData.publicationTime
             isPatched: .isPatched
+          relations:
+            project: '.links.paths | split("/") | .[8]'
   - kind: project
     selector:
       query: 'true'
@@ -41,7 +43,6 @@ resources:
           blueprint: '"snykProject"'
           properties:
             url: ("https://app.snyk.io/org/" + .relationships.organization.data.id + "/project/" + .id | tostring)
-            owner: .__owner.email
             businessCriticality: .attributes.business_criticality
             environment: .attributes.environment
             lifeCycle: .attributes.lifecycle
@@ -49,25 +50,24 @@ resources:
             mediumOpenVulnerabilities: .meta.latest_issue_counts.medium
             lowOpenVulnerabilities: .meta.latest_issue_counts.low
             criticalOpenVulnerabilities: .meta.latest_issue_counts.critical
-            importedBy: .__importer.email
             tags: .attributes.tags
+            targetOrigin: .origin
           relations:
-            snykVulnerabilities: '[.__issues[] | select(.issueType == "vuln").issueData.id]'
-            snykOrganization: .relationships.organization.data.id
+            snyk_target: '.relationships.target.data.id'
   - kind: target
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .attributes.displayName
-          title: .attributes.displayName
+          identifier: .id
+          title: .attributes.display_name
           blueprint: '"snykTarget"'
           properties:
-            origin: .attributes.origin
+            origin: .relationships.integration.data.attributes.integration_type
             highOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.high] | add'
             mediumOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.medium] | add'
             lowOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.low] | add'
             criticalOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.critical] | add'
           relations:
-            snykProjects: '[.__projects[].id]'
+            synk_organization: '.relationships.organization.data.id'

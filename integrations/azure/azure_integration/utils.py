@@ -2,8 +2,6 @@ import contextlib
 import enum
 import typing
 
-import aiostream
-
 from port_ocean.context.event import event
 from azure.identity.aio import DefaultAzureCredential
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
@@ -174,18 +172,3 @@ async def resource_client_context(
             subscription_id=subscription_id,
         ) as client:
             yield client
-
-
-async def stream_async_iterators_tasks(
-    tasks: typing.List[typing.AsyncIterable[typing.Any]],
-) -> typing.AsyncIterable[typing.Any]:
-    """
-    Streams the results of multiple async iterators
-
-    :param tasks: A list of async iterators
-    :return: A stream of results
-    """
-    combine = aiostream.stream.merge(tasks[0], *tasks[1:])
-    async with combine.stream() as streamer:
-        async for batch_items in streamer:
-            yield batch_items

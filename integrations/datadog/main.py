@@ -1,9 +1,12 @@
+import typing
 from enum import StrEnum
 from typing import Any
 
 from loguru import logger
 
 from client import DatadogClient
+from overrides import SLOHistoryResourceConfig
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -13,6 +16,7 @@ class ObjectKind(StrEnum):
     MONITOR = "monitor"
     SLO = "slo"
     SERVICE = "service"
+    SLO_HISTORY = "sloHistory"
 
 
 def init_client() -> DatadogClient:
@@ -48,6 +52,23 @@ async def on_resync_slos(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for slos in dd_client.get_slos():
         logger.info(f"Received batch with {len(slos)} slos")
         yield slos
+
+
+@ocean.on_resync(ObjectKind.SLO_HISTORY)
+async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+    timeframe = typing.cast(
+        SLOHistoryResourceConfig, event.resource_config
+    ).selector.timeframe
+
+    period_of_time_in_months = typing.cast(
+        SLOHistoryResourceConfig, event.resource_config
+    ).selector.period_of_time_in_months
+
+    async for histories in dd_client.list_slo_histories(
+        timeframe, period_of_time_in_months
+    ):
+        yield histories
 
 
 @ocean.on_resync(ObjectKind.SERVICE)
