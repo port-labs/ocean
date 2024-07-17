@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.15 (2024-07-12)
+
+### Improvements
+
+- Add logs to indicate the size of batches being fetched in each resync
+
+
+# Port_Ocean 0.2.14 (2024-07-11)
+
+### Improvements
+
+- Add access denied exception support (#1)
+
+# Port_Ocean 0.2.13 (2024-07-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.4 (#1)
+
+
+# Port_Ocean 0.2.12 (2024-07-09)
+
+### Improvements
+
+- Fix default useGetResourceAPI property name (#1)
+- Use by default the actual S3 Bucket region instead of default region used to fetch it (#2)
+
+# Port_Ocean 0.2.11 (2024-07-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.3 (#1)
+
+
+# Port_Ocean 0.2.10 (2024-07-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.2 (#1)
+
+
 # Port_Ocean 0.2.9 (2024-07-02)
 
 ### Bugfix

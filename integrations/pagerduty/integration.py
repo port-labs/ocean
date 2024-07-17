@@ -22,6 +22,7 @@ class ObjectKind:
     INCIDENTS = "incidents"
     SCHEDULES = "schedules"
     ONCALLS = "oncalls"
+    ESCALATION_POLICIES = "escalation_policies"
 
 
 class PagerdutyServiceAPIQueryParams(BaseModel):
@@ -73,6 +74,23 @@ class PagerdutyOncallAPIQueryParams(BaseModel):
             value["until"] = get_date_range_for_upcoming_n_months(until)[1]
         if since := value.pop("since", None):
             value["since"] = get_date_range_for_last_n_months(since)[0]
+
+        return value
+
+
+class PagerdutyEscalationPolicyAPIQueryParams(BaseModel):
+    include: list[Literal["services", "teams", "targets"]] | None
+    team_ids: list[str] | None
+    user_ids: list[str] | None
+
+    def generate_request_params(self) -> dict[str, Any]:
+        value = self.dict(exclude_none=True)
+        if include := value.pop("include", None):
+            value["include[]"] = include
+        if team_ids := value.pop("team_ids", None):
+            value["team_ids[]"] = team_ids
+        if user_ids := value.pop("user_ids", None):
+            value["user_ids[]"] = user_ids
 
         return value
 
@@ -164,12 +182,28 @@ class PagerdutyOncallResourceConfig(ResourceConfig):
     selector: PagerdutySelector
 
 
+class PagerdutyEscalationPolicyResourceConfig(ResourceConfig):
+    class PagerdutySelector(Selector):
+        api_query_params: PagerdutyEscalationPolicyAPIQueryParams | None = Field(
+            alias="apiQueryParams"
+        )
+        attach_oncall_users: bool = Field(
+            alias="attachOncallUsers",
+            description=" When set to true, it fetches the oncall data per escalation policy",
+            default=True,
+        )
+
+    kind: Literal["escalation_policies"]
+    selector: PagerdutySelector
+
+
 class PagerdutyPortAppConfig(PortAppConfig):
     resources: list[
         PagerdutyIncidentResourceConfig
         | PagerdutyServiceResourceConfig
         | PagerdutyScheduleResourceConfig
         | PagerdutyOncallResourceConfig
+        | PagerdutyEscalationPolicyResourceConfig
     ] = Field(
         default_factory=list
     )  # type: ignore

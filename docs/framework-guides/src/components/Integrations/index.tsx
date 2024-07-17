@@ -12,24 +12,19 @@ function Index(props): JSX.Element {
 
     const loadIntegrations = async () => {
         try {
-            const colorParams = new URLSearchParams({
+            const appsParams = new URLSearchParams({
                 "list-type": '2',
-                prefix: `icons/blueprintsColor`
-            })
-            const colorlessParams = new URLSearchParams({
-                "list-type": '2',
-                prefix: `icons/blueprints`
+                prefix: `icons/apps`
             })
 
-            const [colorResponse, colorlessResponse, integrationsResponse] = await Promise.all([
-                fetch(`${BUCKET_URL}?` + colorParams),
-                fetch(`${BUCKET_URL}?` + colorlessParams),
+            const [appsResponse, integrationsResponse] = await Promise.all([
+                fetch(`${BUCKET_URL}?` + appsParams),
                 fetch('https://ocean-registry.s3.eu-west-1.amazonaws.com/index.json')
             ])
             const integrations = await integrationsResponse.json();
-            const [colorResult, colorlessResult] = await Promise.all([parseStringPromise(await colorResponse.text()), parseStringPromise(await colorlessResponse.text())])
+            const appsResult = await parseStringPromise(await appsResponse.text())
 
-            const iconInS3 = [colorResult, colorlessResult].flatMap(item => item.ListBucketResult.Contents.map((content) => {
+            const iconInS3 = [appsResult].flatMap(item => item.ListBucketResult.Contents.map((content) => {
                 const key = content.Key[0]
                 const name = key.split("/").pop().split(".")[0];
                 return [name, key]

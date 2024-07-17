@@ -1,5 +1,5 @@
 description: Statuspage integration for Port Ocean
-icon: Cookiecutter
+icon: StatusPage
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/statuspage
 features:
   - type: exporter
@@ -18,14 +18,14 @@ configurations:
   - name: statuspageHost
     required: true
     type: url
-    description: "The host of the Statuspage.io API"
+    description: "The host of the Statuspage.io API. The default host is https://api.statuspage.io"
     default: "https://api.statuspage.io"
   - name: statuspageApiKey
     required: true
     type: string
     sensitive: true
-    description: "Statuspage.io API key used to query the Statuspage.io API"
+    description: Statuspage API key. To find your API key, see the <a href="https://support.atlassian.com/statuspage/docs/create-and-manage-api-keys/">Statuspage documentation</a>.
   - name: statuspageIds
     required: false
     type: array
-    description: "Comma-separated list of Statuspage.io page IDs to query. If not specified, all pages will be queried"
+    description: "Comma-separated list of Statuspage.io page IDs to query e.g ['pageID-1','pageID-2']. If not specified, all pages will be queried"
