@@ -9,6 +9,7 @@ from port_ocean.context.event import event
 from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
+    is_access_denied_exception,
 )
 from utils.aws import get_sessions
 
@@ -152,7 +153,7 @@ async def resync_custom_kind(
                 if not next_token:
                     break
             except client.exceptions.ClientError as e:
-                if e.response.get("Error", {}).get("Code") == "UnauthorizedOperation":
+                if is_access_denied_exception(e):
                     logger.warning(
                         f"Skipping resyncing {kind} in region {region} due to missing access permissions"
                     )
@@ -162,11 +163,12 @@ async def resync_custom_kind(
 
 
 async def resync_cloudcontrol(
-    kind: str, is_global: bool = False
+    kind: str, is_global: bool = False, stop_on_first_data: bool = False
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     use_get_resource_api = typing.cast(
         AWSResourceConfig, event.resource_config
     ).selector.use_get_resource_api
+    found_data = False
     async for session in get_sessions(None, None, is_global):
         region = session.region_name
         logger.info(f"Resyncing {kind} in region {region}")
@@ -186,6 +188,7 @@ async def resync_cloudcontrol(
                     resources = response.get("ResourceDescriptions", [])
                     if not resources:
                         break
+                    found_data = True
                     page_resources = []
                     if use_get_resource_api:
                         resources = await asyncio.gather(
@@ -228,22 +231,12 @@ async def resync_cloudcontrol(
                     if not next_token:
                         break
                 except cloudcontrol.exceptions.ClientError as e:
-                    if (
-                        e.response.get("Error", {}).get("Code")
-                        == "AccessDeniedException"
-                    ):
-                        if is_global:
+                    if is_access_denied_exception(e):
+                        if not is_global:
                             logger.warning(
-                                f"Access denied in global resource {kind} in region {region}. Querying again in all regions"
+                                f"Skipping resyncing {kind} in region {region} due to missing access permissions"
                             )
-                            async for batch in resync_cloudcontrol(
-                                kind, is_global=False
-                            ):
-                                yield batch
-                                return  # no need to continue querying once we got some data since it's global
-                        logger.warning(
-                            f"Skipping resyncing {kind} in region {region} due to missing access permissions"
-                        )
-                        break  # no need to continue querying on the same region since we don't have access
-                    else:
-                        raise e
+                            break  # no need to continue querying on the same region since we don't have access
+                    raise e
+        if found_data and stop_on_first_data:
+            return

@@ -29,6 +29,7 @@ from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
     ResourceKindsWithSpecialHandling,
+    is_access_denied_exception,
 )
 
 
@@ -38,8 +39,15 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
     await update_available_access_credentials()
     is_global = is_global_resource(kind)
-    async for batch in resync_cloudcontrol(kind, is_global):
-        yield batch
+    try:
+        async for batch in resync_cloudcontrol(kind, is_global):
+            yield batch
+    except Exception as e:
+        if is_access_denied_exception(e):
+            async for batch in resync_cloudcontrol(
+                kind, is_global=False, stop_on_first_data=True
+            ):
+                yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
