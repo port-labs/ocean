@@ -9,7 +9,7 @@ from google.cloud.asset_v1.services.asset_service import pagers
 from google.cloud.resourcemanager_v3 import (
     FoldersAsyncClient,
     OrganizationsAsyncClient,
-    ProjectsAsyncClient
+    ProjectsAsyncClient,
 )
 from google.pubsub_v1.services.publisher import PublisherAsyncClient
 from loguru import logger
