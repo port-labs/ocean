@@ -14,7 +14,7 @@ resources:
           properties:
             state: '.state'
             revision: '.revision'
-            visibility": '.visibility'
+            visibility: '.visibility'
             defaultTeam: '.defaultTeam.name'
             link: '.url | gsub("_apis/projects/"; "")'
 

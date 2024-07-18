@@ -111,7 +111,7 @@
       "project": {
         "title": "Project",
         "target": "project",
-        "required": true,
+        "required": false,
         "many": false
       }
     }
