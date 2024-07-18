@@ -163,7 +163,7 @@ async def resync_custom_kind(
 
 
 async def resync_cloudcontrol(
-    kind: str, is_global: bool = False, stop_on_first_data: bool = False
+    kind: str, is_global: bool = False, stop_on_first_region: bool = False
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     use_get_resource_api = typing.cast(
         AWSResourceConfig, event.resource_config
@@ -238,5 +238,5 @@ async def resync_cloudcontrol(
                             )
                             break  # no need to continue querying on the same region since we don't have access
                     raise e
-        if found_data and stop_on_first_data:
+        if found_data and stop_on_first_region:
             return

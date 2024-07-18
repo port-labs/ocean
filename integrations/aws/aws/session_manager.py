@@ -104,7 +104,9 @@ class SessionManager:
                 )
             except sts_client.exceptions.ClientError as e:
                 if is_access_denied_exception(e):
-                    logger.warning("Cannot assume role to the organization account.")
+                    logger.warning(
+                        "Cannot assume role to the organization account, using the application role."
+                    )
                     return self._application_session
                 else:
                     raise

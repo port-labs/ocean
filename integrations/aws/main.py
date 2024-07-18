@@ -45,7 +45,7 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     except Exception as e:
         if is_access_denied_exception(e):
             async for batch in resync_cloudcontrol(
-                kind, is_global=False, stop_on_first_data=True
+                kind, is_global=False, stop_on_first_region=True
             ):
                 yield batch
 
