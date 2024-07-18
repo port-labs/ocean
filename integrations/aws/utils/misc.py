@@ -1,4 +1,5 @@
 import enum
+
 from port_ocean.context.event import event
 
 
@@ -15,6 +16,20 @@ class ResourceKindsWithSpecialHandling(enum.StrEnum):
     CLOUDFORMATION_STACK = "AWS::CloudFormation::Stack"
     ELASTICACHE_CLUSTER = "AWS::ElastiCache::Cluster"
     ELBV2_LOAD_BALANCER = "AWS::ELBV2::LoadBalancer"
+
+
+def is_access_denied_exception(e: Exception) -> bool:
+    access_denied_error_codes = [
+        "AccessDenied",
+        "AccessDeniedException",
+        "UnauthorizedOperation",
+    ]
+
+    if hasattr(e, "response"):
+        error_code = e.response.get("Error", {}).get("Code")
+        return error_code in access_denied_error_codes
+
+    return False
 
 
 def get_matching_kinds_and_blueprints_from_config(
