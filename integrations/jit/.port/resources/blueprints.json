@@ -1,0 +1,85 @@
+[
+    {
+        "identifier": "jitFinding",
+        "title": "Jit Finding",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL",
+                    "format": "url",
+                    "icon": "Blueprint"
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status"
+                },
+                "severity": {
+                    "type": "string",
+                    "title": "Severity"
+                },
+                "vendor": {
+                    "type": "string",
+                    "title": "Vendor"
+                },
+                "confidence": {
+                    "type": "string",
+                    "title": "Confidence"
+                },
+                "plan": {
+                    "type": "string",
+                    "title": "Plan"
+                },
+                "tags": {
+                    "items": {
+                        "type": "object"
+                    },
+                    "title": "Tags",
+                    "icon": "DefaultProperty",
+                    "type": "array"
+                },
+                "references": {
+                    "items": {
+                        "type": "object"
+                    },
+                    "type": "array",
+                    "icon": "DefaultProperty",
+                    "title": "References"
+                },
+                "score": {
+                    "type": "number",
+                    "title": "Priority Score"
+                },
+                "asset_score": {
+                    "type": "number",
+                    "title": "Asset Score"
+                },
+                "cwes": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array",
+                    "title": "CWES"
+                },
+                "vulnerability": {
+                    "type": "string",
+                    "title": "Vulnerability Type"
+                },
+                "event": {
+                    "type": "string",
+                    "title": "Jit Event"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "aggregationProperties": {},
+        "relations": {}
+    }
+]

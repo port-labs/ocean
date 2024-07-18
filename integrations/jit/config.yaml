@@ -1,0 +1,16 @@
+initializePortResources: true
+scheduledResyncInterval: 1440 # 60 minutes X 24 hours = 1 day
+port:
+  clientId: "{{ from env PORT_CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID
+  clientSecret: "{{ from env PORT_CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET
+# The event listener to use for the integration service.
+eventListener:
+  type: POLLING
+integration:
+  # The identifier of this integration instance.
+  identifier: "{{ from env INTEGRATION_IDENTIFIER }}"
+  # The type of the integration.
+  type: "Jit Security Integration"
+  config:
+    jitClientId: "{{ from env JIT_CLIENT_ID }}"
+    jitSecret: "{{ form eanv JIT_SECRET }}"

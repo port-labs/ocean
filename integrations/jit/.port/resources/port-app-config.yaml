@@ -1,0 +1,29 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+enableMergeEntity: true
+resources:
+  - kind: finding
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          blueprint: '"jitFinding"'
+          title: '(.vulnerability_type + " @ " + .location_text)'
+          properties:
+            description: .issue_text
+            event: .jit_event_name
+            status: .status
+            vendor: .vendor
+            severity: .issue_severity
+            confidence: .issue_confidence
+            plan: .plan_layer
+            vulnerability: .vulnerability_type
+            cwes: .cwes
+            references: .references
+            url: .location
+            tags: .tags
+            score: .priority_score
+            asset_score: .asset_priority_score
+            file: .filename
