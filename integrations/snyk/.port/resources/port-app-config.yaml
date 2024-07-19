@@ -55,7 +55,7 @@ resources:
         mappings:
           identifier: .id
           title: .attributes.title
-          blueprint: '"snykVulnerabilityNew"'
+          blueprint: '"snykVulnerability"'
           properties:
             score: .attributes.risk.score.value
             packageNames: '[.attributes.coordinates[].representations[].dependency.package_name]'
