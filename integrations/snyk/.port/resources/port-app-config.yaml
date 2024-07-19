@@ -6,32 +6,11 @@ resources:
       entity:
         mappings:
           identifier: .id
-          title: .name
+          title: .attributes.name
           blueprint: '"snykOrganization"'
           properties:
-            slug: .slug
-            url: ("https://app.snyk.io/org/" + .slug | tostring)
-  - kind: issue
-    selector:
-      query: '.issueType == "vuln"'
-    port:
-      entity:
-        mappings:
-          identifier: .issueData.id + "-" + (.links.paths | split("/") | .[8])
-          title: .issueData.title
-          blueprint: '"snykVulnerability"'
-          properties:
-            score: .priorityScore
-            packageName: .pkgName
-            packageVersions: .pkgVersions
-            type: .issueType
-            severity: .issueData.severity
-            url: .issueData.url
-            language: .issueData.language // .issueType
-            publicationTime: .issueData.publicationTime
-            isPatched: .isPatched
-          relations:
-            project: '.links.paths | split("/") | .[8]'
+            slug: .attributes.slug
+            url: ("https://app.snyk.io/org/" + .attributes.slug | tostring)
   - kind: project
     selector:
       query: 'true'
@@ -66,9 +45,25 @@ resources:
           blueprint: '"snykTarget"'
           properties:
             origin: .relationships.integration.data.attributes.integration_type
-            highOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.high] | add'
-            mediumOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.medium] | add'
-            lowOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.low] | add'
-            criticalOpenVulnerabilities: '[.__projects[].meta.latest_issue_counts.critical] | add'
           relations:
             synk_organization: '.relationships.organization.data.id'
+  - kind: vulnerability
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .attributes.title
+          blueprint: '"snykVulnerabilityNew"'
+          properties:
+            score: .attributes.risk.score.value
+            packageNames: '[.attributes.coordinates[].representations[].dependency.package_name]'
+            packageVersions: '[.attributes.coordinates[].representations[].dependency.package_version]'
+            severity: .attributes.effective_severity_level
+            url: ("https://app.snyk.io/org/" + .attributes.key | tostring)
+            publicationTime: .attributes.created_at
+            status: .attributes.status
+            type: .attributes.type
+          relations:
+            project: .relationships.scan_item.data.id
