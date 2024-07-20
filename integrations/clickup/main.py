@@ -40,7 +40,7 @@ async def setup_application() -> None:
         )
         return
     clickup_client = await init_client()  # Await the initialization of the client
-    await clickup_client.create_events_webhook(app_host)
+    await clickup_client.create_clickup_events_webhook(app_host)
 
 
 @ocean.on_resync(ObjectKind.TEAM)

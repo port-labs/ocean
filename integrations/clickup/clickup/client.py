@@ -136,33 +136,42 @@ class ClickupClient:
         issue_response = await self._send_api_request(url)
         return issue_response
 
-    async def create_events_webhook(self, app_host: str) -> None:
-        """Create a webhook for ClickUp events."""
+    async def create_clickup_webhook(self, team_id: str, app_host: str) -> None:
+        """
+        Create a new webhook for a given team.
+        """
+        await self._send_api_request(
+            f"{self.api_url}/team/{team_id}/webhook",
+            method="POST",
+            json_data={
+                "endpoint": f"{app_host}/integration/webhook",
+                "events": WEBHOOK_EVENTS,
+            },
+        )
+        logger.info("Webhook created successfully")
+
+    async def get_clickup_webhooks(self, team_id: str) -> list[dict[str, Any]]:
+        """
+        Retrieve existing webhooks for a given team.
+        """
+        return (await self._send_api_request(f"{self.api_url}/team/{team_id}/webhook"))["webhooks"]
+
+    async def create_clickup_events_webhook(self, app_host: str) -> None:
+
         async for teams in self.get_clickup_teams():
             for team in teams:
-                webhook_target_app_host = f"{app_host}/integration/webhook"
-                clickup_get_webhook_url = (
-                    f"{self.api_url}/team/{team.get('id')}/webhook"
-                )
-                webhook_check_response = await self._send_api_request(
-                    clickup_get_webhook_url
-                )
-                webhook_check = webhook_check_response.get("webhooks")
-                for webhook in webhook_check:
-                    if webhook["endpoint"] == webhook_target_app_host:
-                        logger.info(
-                            "Ocean real-time reporting webhook already exists on ClickUp"
-                        )
-                        return
+                team_id = team["id"]
 
-                body = {
-                    "endpoint": webhook_target_app_host,
-                    "events": WEBHOOK_EVENTS,
-                }
-                logger.info("Subscribing to ClickUp webhooks...")
-                webhook_create_response = await self._send_api_request(
-                    clickup_get_webhook_url, json_data=body, method="POST"
+                webhook_target_url = f"{app_host}/integration/webhook"
+
+                webhooks = await self.get_clickup_webhooks(team_id)
+
+                webhook_exits = any(
+                    config["endpoint"] == webhook_target_url for config in webhooks
                 )
-                logger.info(
-                    f"Ocean real-time reporting webhook created on ClickUp - {webhook_create_response}"
-                )
+
+                if webhook_exits:
+                    logger.info(f"Webhook already exists for team {team_id}")
+                else:
+                    logger.info(f"Creating webhook for team {team_id}")
+                    await self.create_clickup_webhook(team_id, app_host)
