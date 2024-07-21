@@ -1,0 +1,15 @@
+description: jit integration for Port Ocean
+icon: Cookiecutter # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Jit Finding # Should be one of the available sections in Port
+    resources:
+      - kind: finding
+configurations:
+  - name: jitClientId
+    type: string
+    required: true
+  - name: jitSecret
+    required: true
+    sensitive: true
+    type: string
