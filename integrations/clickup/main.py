@@ -79,7 +79,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     """
     Handle the webhook request from ClickUp.
-    Events are mapped to the appropriate actions in EVENT_ACTIONS.
+    Events are mapped to the appropriate actions in event_handlers.
     """
     clickup_client = await init_client()
     logger.info(f"Received webhook event of type: {data.get('event')}")
