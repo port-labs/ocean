@@ -95,10 +95,13 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
             if action == "register":
                 entity = await handler(entity_id)
                 await ocean.register_raw(kind, [entity])
-                logger.info(f"Registered {kind.value} for event {event_type}")
+                logger.info(f"Registered {kind} for event {event_type}")
             else:
-                await ocean.unregister_raw(kind, [{"id": entity_id}])
-                logger.info(f"Unregistered {kind.value} for event {event_type}")
+                try:
+                    await ocean.unregister_raw(kind, [{"id": entity_id}])
+                    logger.info(f"Unregistered {kind} for event {event_type}")
+                except Exception as e:
+                    logger.error(f"Exception {e} occurred while attempting to unregister raw")
             break
     logger.info("Webhook event processed")
     return {"ok": True}
