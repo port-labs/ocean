@@ -13,6 +13,7 @@ from port_ocean.clients.port.utils import (
     get_internal_http_client,
 )
 from port_ocean.exceptions.clients import KafkaCredentialsNotFound
+from typing import Any
 
 
 class PortClient(
@@ -75,3 +76,17 @@ class PortClient(
         handle_status_code(response)
 
         return response.json()["organization"]["id"]
+
+    async def update_resync_state(self, state: dict[str, Any]) -> None:
+        logger.info("Updating resync state")
+        try:
+            response = await self.client.patch(
+                f"{self.api_url}/integration/{self.integration_identifier}",
+                headers=await self.auth.headers(),
+                json={"state": state},
+            )
+            if response.is_error:
+                logger.error(f"Error updating resync state, error: {response.text}")
+            handle_status_code(response)
+        except Exception as e:
+            logger.error(f"Error updating resync state, error: {e}")
