@@ -134,7 +134,10 @@ class SonarQubeClient:
                 if len(resource) < PAGE_SIZE:
                     break
 
-                query_params["p"] = paging_info["pageIndex"] + 1 if paging_info else 1
+                if not paging_info:
+                    break
+
+                query_params["p"] = paging_info["pageIndex"] + 1
 
             return all_resources
 
