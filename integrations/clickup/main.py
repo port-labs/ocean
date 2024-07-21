@@ -82,19 +82,24 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     Events are mapped to the appropriate actions in EVENT_ACTIONS.
     """
     clickup_client = await init_client()
-    logger.info(f'Received webhook event of type: {data.get("event")}')
-    if data.get("event").startswith("list"):
-        if EVENT_ACTIONS.get(data.get("event")) == "register":
-            project = await clickup_client.get_single_project(data["list_id"])
-            await ocean.register_raw(ObjectKind.PROJECT, [project])
-        else:
-            await ocean.unregister_raw(ObjectKind.PROJECT, [{"id": data["list_id"]}])
-    elif data.get("event").startswith("task"):
-        if EVENT_ACTIONS.get(data.get("event")) == "register":
-            single_issue = await clickup_client.get_single_project(data["task_id"])
-            await ocean.register_raw(ObjectKind.ISSUE, [single_issue])
-        else:
-            await ocean.unregister_raw(ObjectKind.ISSUE, [{"id": data["task_id"]}])
+    logger.info(f"Received webhook event of type: {data.get('event')}")
+    event_handlers = {
+        "task": (ObjectKind.ISSUE, clickup_client.get_single_issue),
+        "list": (ObjectKind.PROJECT, clickup_client.get_single_project),
+    }
+    event_type = data["event"]
+    action = "unregister" if "Deleted" in event_type else "register"
+    for key, (kind, handler) in event_handlers.items():
+        if key in event_type:
+            entity_id = data.get(f"{key}_id")
+            if action == "register":
+                entity = await handler(entity_id)
+                await ocean.register_raw(kind, [entity])
+                logger.info(f"Registered {kind.value} for event {event_type}")
+            else:
+                await ocean.unregister_raw(kind, [{"id": entity_id}])
+                logger.info(f"Unregistered {kind.value} for event {event_type}")
+            break
     logger.info("Webhook event processed")
     return {"ok": True}
 

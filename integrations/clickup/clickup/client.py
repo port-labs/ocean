@@ -1,8 +1,11 @@
+import asyncio
+import time
 from typing import Any, AsyncGenerator, Optional, List
-from httpx import Timeout
+from httpx import Timeout, HTTPStatusError
 from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
+
 
 TEAM_OBJ = "__team"
 WEBHOOK_EVENTS = [
@@ -13,6 +16,8 @@ WEBHOOK_EVENTS = [
     "listUpdated",
     "listDeleted",
 ]
+MINIMUM_LIMIT_REMAINING = 90
+DEFAULT_SLEEP_TIME = 60
 
 
 class ClickupClient:
@@ -33,6 +38,51 @@ class ClickupClient:
             "Content-Type": "application/json",
         }
 
+    async def _fetch_with_rate_limit_handling(
+        self,
+        url: str,
+        method: str,
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+    ) -> Any:
+        """Rate limit handler."""
+        while True:
+            response = await self.client.request(
+                url=url,
+                method=method,
+                headers=self.api_headers,
+                params=params,
+                json=json_data,
+            )
+            try:
+                response.raise_for_status()
+                rate_limit_remaining = int(
+                    response.headers.get("X-RateLimit-Remaining", 1)
+                )
+                if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
+                    current_time = int(time.time())
+                    rate_limit_reset = int(
+                        response.headers.get(
+                            "X-RateLimit-Reset", current_time + DEFAULT_SLEEP_TIME
+                        )
+                    )
+                    wait_time = max(rate_limit_reset - current_time, DEFAULT_SLEEP_TIME)
+                    logger.debug(
+                        f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
+                        f"URL: {url}, Remaining: {rate_limit_remaining} "
+                    )
+                    await asyncio.sleep(wait_time)
+            except KeyError as e:
+                logger.warning(
+                    f"Rate limit headers not found in response: {str(e)} for url {url}"
+                )
+            except HTTPStatusError as e:
+                logger.error(
+                    f"Got HTTP error to url: {url} with status code: {e.response.status_code} and response text: {e.response.text}"
+                )
+                raise
+            return response
+
     async def _send_api_request(
         self,
         url: str,
@@ -40,16 +90,10 @@ class ClickupClient:
         json_data: Optional[dict[str, Any]] = None,
         method: str = "GET",
     ) -> Any:
-        """Send a request to the Clickup API."""
-        logger.debug(f"Sending request {method} to endpoint {url}")
-        response = await self.client.request(
-            url=url,
-            method=method,
-            headers=self.api_headers,
-            params=params,
-            json=json_data,
+        """Send a request to the Clickup API with rate limiting."""
+        response = await self._fetch_with_rate_limit_handling(
+            url, method, params, json_data
         )
-        response.raise_for_status()
         return response.json()
 
     @cache_iterator_result()
@@ -114,8 +158,7 @@ class ClickupClient:
                 async for spaces in self._get_spaces_in_team(team.get("id")):
                     for space in spaces:
                         if space.get("id") == space_id:
-                            response[TEAM_OBJ] = team
-                            return response
+                            return {**response, TEAM_OBJ: team}
 
     async def get_paginated_issues(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all issues in a project."""
@@ -132,9 +175,7 @@ class ClickupClient:
 
     async def get_single_issue(self, task_id: str) -> dict[str, Any]:
         """Get a single issue by task_id."""
-        url = f"{self.api_url}/task/{task_id}"
-        issue_response = await self._send_api_request(url)
-        return issue_response
+        return await self._send_api_request(f"{self.api_url}/task/{task_id}")
 
     async def create_clickup_webhook(self, team_id: str, app_host: str) -> None:
         """
