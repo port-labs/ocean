@@ -1,4 +1,6 @@
 import asyncio
+import datetime
+import json
 import sys
 import threading
 from contextlib import asynccontextmanager
@@ -66,13 +68,21 @@ class Ocean:
     async def _setup_scheduled_resync(
         self,
     ) -> None:
-        def execute_resync_all() -> None:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        async def execute_resync_all() -> None:
+            # loop = asyncio.new_event_loop()
+            # asyncio.set_event_loop(loop)
 
             logger.info("Starting a new scheduled resync")
-            loop.run_until_complete(self.integration.sync_raw_all())
-            loop.close()
+            # loop.run_until_complete(self.integration.sync_raw_all())
+            # loop.close()
+            await self.integration.sync_raw_all()
+
+            now = datetime.datetime.now()
+            next_resync = now + datetime.timedelta(minutes=float(interval or 0))
+            utc_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
+            logger.info(f"Last scheduled resync was at {now}")
+            logger.info(f"Next scheduled resync will be at {next_resync}")
+            await self.port_client.update_resync_state({"next_resync_ts": utc_ts})
 
         interval = self.config.scheduled_resync_interval
         if interval is not None:
@@ -83,7 +93,11 @@ class Ocean:
                 seconds=interval * 60,
                 # Not running the resync immediately because the event listener should run resync on startup
                 wait_first=True,
-            )(lambda: threading.Thread(target=execute_resync_all).start())
+            )(
+                lambda: threading.Thread(
+                    target=asyncio.run(execute_resync_all())
+                ).start()
+            )
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
