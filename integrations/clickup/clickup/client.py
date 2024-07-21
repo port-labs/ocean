@@ -19,7 +19,7 @@ MINIMUM_LIMIT_REMAINING = 20
 DEFAULT_SLEEP_TIME = 30
 
 # Adjust the concurrency level as needed
-SEMAPHORE = asyncio.Semaphore(10)
+SEMAPHORE = asyncio.BoundedSemaphore(10)
 
 
 class ClickupClient:
