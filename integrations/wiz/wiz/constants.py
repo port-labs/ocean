@@ -1,4 +1,4 @@
-PAGE_SIZE = 50
+PAGE_SIZE = 100
 MAX_PAGES = 5
 AUTH0_URLS = ["https://auth.wiz.io/oauth/token", "https://auth0.gov.wiz.io/oauth/token"]
 COGNITO_URLS = [

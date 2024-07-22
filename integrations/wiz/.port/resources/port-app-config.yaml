@@ -17,6 +17,7 @@ resources:
   - kind: issue
     selector:
       query: 'true'
+      limit: 500
     port:
       entity:
         mappings:

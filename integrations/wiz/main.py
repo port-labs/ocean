@@ -1,14 +1,16 @@
 from enum import StrEnum
 from typing import Any
+import typing
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from wiz.client import WizClient
-
+from overrides import IssueResourceConfig
 
 class ObjectKind(StrEnum):
     PROJECT = "project"
