@@ -24,12 +24,12 @@ SEMAPHORE = asyncio.BoundedSemaphore(10)
 class ClickupClient:
     """Clickup client to interact with Clickup API."""
 
-    def __init__(self, clickup_url: str, clickup_token: str, archived: bool):
+    def __init__(self, clickup_url: str, clickup_token: str, is_archived: bool):
         self.clickup_token = clickup_token
         self.api_url = f"{clickup_url}/api/v2"
         self.client = http_async_client
         self.client.timeout = Timeout(60)
-        self.is_archived = archived
+        self.is_archived = is_archived
 
     @property
     def api_headers(self) -> dict[str, Any]:
