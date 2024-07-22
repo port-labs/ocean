@@ -10,20 +10,20 @@ features:
       - kind: team
 configurations:
   - name: clickupPersonalToken
-The ClickUp personal token used for authentication. To create a personal token, see the <a href="https://clickup.com/api/developer-portal/authentication#personal-token">ClickUp documentation</a>
+    description: The ClickUp personal token used for authentication. To create a personal token, see the <a href="https://clickup.com/api/developer-portal/authentication#personal-token">ClickUp documentation</a>
     required: true
     type: string
     sensitive: true
   - name: clickupBaseUrl
-    description: "Clickup Base URL."
+    description: The Clickup Base URL. Defaults to https://api.clickup.com when not specified
     type: url
     required: true
-    default: "https://api.clickup.com"
-  - name: clickupArchivedParameter
-    description: "This is to filter archived projects. If set to true, archived projects will be included in the export. If set to false, archived projects will be excluded from the export. Default is false."
+    default: https://api.clickup.com
+  - name: includeArchivedProjects
+    description: This is to filter archived projects. If set to true, archived projects will be included in the export. If set to false, archived projects will be excluded from the export. Default is false.
     type: boolean
     required: false
-    default: false
+    default: "false"
   - name: appHost
     required: false
     type: url

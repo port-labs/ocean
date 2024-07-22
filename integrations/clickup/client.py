@@ -6,7 +6,7 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 
-TEAM_OBJ = "__team"
+TEAM_OBJECT = "__team"
 WEBHOOK_EVENTS = [
     "taskCreated",
     "taskUpdated",
@@ -137,7 +137,7 @@ class ClickupClient:
                 async for folders in self._get_folders_in_space(team.get("id")):
                     for folder in folders:
                         projects = folder.get("lists")
-                        yield [{**project, TEAM_OBJ: team} for project in projects]
+                        yield [{**project, TEAM_OBJECT: team} for project in projects]
 
     async def get_folderless_projects(
         self,
@@ -152,7 +152,7 @@ class ClickupClient:
                             {"archived": self.archived},
                         )
                         projects = response.get("lists")
-                        yield [{**project, TEAM_OBJ: team} for project in projects]
+                        yield [{**project, TEAM_OBJECT: team} for project in projects]
 
     async def get_single_project(self, list_id: str) -> Optional[Dict[str, Any]]:
         """Get a single project by list_id."""
@@ -166,7 +166,7 @@ class ClickupClient:
                     for space in spaces:
                         logger.info(space.get("id"))
                         if space.get("id") == space_id:
-                            return {**response, TEAM_OBJ: team}
+                            return {**response, TEAM_OBJECT: team}
 
         logger.warning("No matching space found.")
         return None

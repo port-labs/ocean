@@ -25,7 +25,7 @@ async def init_client() -> ClickupClient:
     client = ClickupClient(
         ocean.integration_config["clickup_base_url"],
         ocean.integration_config["clickup_personal_token"],
-        ocean.integration_config["clickup_archived_parameter"],
+        ocean.integration_config["include_archived_projects"],
     )
     return client
 
