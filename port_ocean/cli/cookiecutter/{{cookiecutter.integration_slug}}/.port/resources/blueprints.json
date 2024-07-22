@@ -1,0 +1,41 @@
+[
+    {
+        "identifier": "{{ cookiecutter.integration_slug }}ExampleBlueprint",
+        "title": "{{ cookiecutter.integration_name }} Example",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "VALID",
+                        "FAILED"
+                    ],
+                    "enumColors": {
+                        "VALID": "green",
+                        "FAILED": "red"
+                    },
+                    "title": "Status"
+                },
+                "text": {
+                    "type": "string",
+                    "title": "Text"
+                },
+                "component": {
+                    "type": "string",
+                    "title": "Component"
+                },
+                "service": {
+                    "type": "string",
+                    "title": "Service"
+                },
+                "score": {
+                    "type": "number",
+                    "title": "Score"
+                }
+            },
+            "required": []
+        },
+        "relations": {}
+    }
+]
