@@ -261,7 +261,6 @@ class SonarQubeClient:
         :return (list[Any]): A list containing projects data for your organization.
         """
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
-
         components = await self.get_components()
         for component in components:
             project_data = await self.get_single_project(project=component)

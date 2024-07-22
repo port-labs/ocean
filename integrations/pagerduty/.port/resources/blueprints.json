@@ -34,14 +34,11 @@
           "type": "string",
           "format": "user"
         },
-<<<<<<< HEAD
-=======
         "secondaryOncall": {
           "title": "Secondary On Call",
           "type": "string",
           "format": "user"
         },
->>>>>>> 52d84eae57930a48341d95ae8ca9c785ea142a63
         "escalationLevels": {
           "title": "Escalation Levels",
           "type": "number"
