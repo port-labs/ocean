@@ -16,9 +16,9 @@ WEBHOOK_EVENTS = [
     "listDeleted",
 ]
 
-MINIMUM_LIMIT_REMAINING = 20
-DEFAULT_SLEEP_TIME = 30
-SEMAPHORE = asyncio.BoundedSemaphore(10)
+MINIMUM_LIMIT_REMAINING = 20  # This limit minus the Semaphore count will be the lower treshold for rate limit in the header
+DEFAULT_SLEEP_TIME = 30  # The Default wait time when limit is hit
+SEMAPHORE = asyncio.BoundedSemaphore(10)  # The number of concurrent request allowed
 
 
 class ClickupClient:
