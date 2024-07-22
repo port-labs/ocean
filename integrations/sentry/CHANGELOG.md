@@ -7,6 +7,143 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.58 (2024-07-10)
+
+### Bugfix
+
+- Added try and catch to missing ratelimiting headers in response to the Sentry API (#1)
+- Added proper logging of missng ratelimiting headers (#1)
+- Added raise for http status errors from the request (#1)
+
+# Port_Ocean 0.1.57 (2024-07-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.4 (#1)
+
+
+# Port_Ocean 0.1.56 (2024-07-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.3 (#1)
+
+
+# Port_Ocean 0.1.55 (2024-07-08)
+
+### Improvements
+
+- Handle rate limit headers to ensure maximum concurrent requests without being rate limited (#1)
+- Made projects + issue batches instead of going one by one in tag-fetching to ensure maximum parallelism (#1)
+
+
+# Port_Ocean 0.1.54 (2024-07-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.2 (#1)
+
+
+# Port_Ocean 0.1.53 (2024-06-30)
+
+### Improvements
+
+- Reduce the number of concurrent requests when fetching issue tags to avoid rate limiting (#1)
+
+
+# Port_Ocean 0.1.52 (2024-06-23)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.1 (#1)
+
+
+# Port_Ocean 0.1.51 (2024-06-19)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.0 (#1)
+
+
+# Port_Ocean 0.1.50 (2024-06-16)
+
+### Improvements
+
+- Bumped ocean version to ^0.8.0 (#1)
+
+
+# Port_Ocean 0.1.49 (2024-06-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.7.1 (#1)
+
+
+# Port_Ocean 0.1.48 (2024-06-13)
+
+### Improvements
+
+- Bumped ocean version to ^0.7.0 (#1)
+
+
+# Port_Ocean 0.1.47 (2024-06-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.6.0 (#1)
+
+
+# Port_Ocean 0.1.46 (2024-06-05)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.27 (#1)
+
+
+# Port_Ocean 0.1.45 (2024-06-03)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.25 (#1)
+
+
+# Port_Ocean 0.1.44 (2024-06-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.24 (#1)
+
+
+# Port_Ocean 0.1.43 (2024-05-30)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.23 (#1)
+- Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
+
+
+# Port_Ocean 0.1.42 (2024-05-29)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.22 (#1)
+
+
+# Port_Ocean 0.1.41 (2024-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.21 (#1)
+
+
+# Port_Ocean 0.1.40 (2024-05-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.5.20 (#1)
+- Update the config.yaml file to have only the overridden configuration
+
+
 # Port_Ocean 0.1.39 (2024-05-16)
 
 ### Improvements

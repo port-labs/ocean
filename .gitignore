@@ -157,4 +157,5 @@ cython_debug/
 !.idea/watcherTasks.xml
 
 # VSCode
-.vscode/
+.vscode/*
+!.vscode/launch.json

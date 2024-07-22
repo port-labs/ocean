@@ -13,7 +13,12 @@ resources:
           properties:
             status: .status
             url: .html_url
+<<<<<<< HEAD
             oncall: .__oncall_user[] | select(.escalation_level == 1) | .user.email
+=======
+            oncall: .__oncall_user | sort_by(.escalation_level) | .[0].user.email
+            secondaryOncall: .__oncall_user | sort_by(.escalation_level) | .[1].user.email
+>>>>>>> 52d84eae57930a48341d95ae8ca9c785ea142a63
             escalationLevels: .__oncall_user | map(.escalation_level) | unique | length
             meanSecondsToResolve: .__analytics.mean_seconds_to_resolve
             meanSecondsToFirstAck: .__analytics.mean_seconds_to_first_ack
@@ -32,7 +37,7 @@ resources:
             status: .status
             url: .self
             urgency: .urgency
-            responder: .assignments[0].assignee.email
+            assignees: .assignments | map(.assignee.email)
             escalation_policy: .escalation_policy.summary
             created_at: .created_at
             updated_at: .updated_at
@@ -53,7 +58,7 @@ resources:
             url: .html_url
             timezone: .time_zone
             description: .description
-            users: '[.users[].summary]'
+            users: '[.users[] | select(has("__email")) | .__email]'
   - kind: oncalls
     selector:
       query: 'true'
@@ -72,3 +77,19 @@ resources:
             url: .schedule.html_url
           relations:
             pagerdutySchedule: .schedule.id
+            pagerdutyEscalationPolicy: .escalation_policy.id
+  - kind: escalation_policies
+    selector:
+      query: 'true'
+      attachOncallUsers: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"pagerdutyEscalationPolicy"'
+          properties:
+            url: .html_url
+            description: .summary
+            primaryOncall: .__oncall_users | sort_by(.escalation_level) | .[0].user.email
+            escalationRules: .escalation_rules

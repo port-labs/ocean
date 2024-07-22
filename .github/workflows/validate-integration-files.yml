@@ -3,7 +3,7 @@ name: Validate integration files
 on:
   pull_request:
     paths:
-      - 'integrations/**'
+      - "integrations/**"
 
 jobs:
   validate-files:
@@ -13,7 +13,7 @@ jobs:
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,8 +47,8 @@ jobs:
 
       - name: Validate integration not duplicated
         run: |
-          for integration in $(find integrations -name 'spec.yaml' -not -path "**/.venv/*"); do
-            integration_type=$(yq -r '.type' $integration)
+          for integration in $(find integrations -name 'pyproject.yaml' -not -path "**/.venv/*"); do
+            type=$(grep -E '^name = ".*"' "$integration" | cut -d'"' -f2)
 
             if [ $(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.type' {} | grep -c ^$integration_type$) -gt 1 ]; then
               echo "ERROR: $integration_type integration type is duplicated please check your spec.yaml file"
@@ -59,20 +59,27 @@ jobs:
       - name: Validate icons
         run: |
           S3_BUCKET="port-graphical-assets"
-          S3_ICONS_COLOR_URL="https://$S3_BUCKET.s3.amazonaws.com?prefix=icons/blueprintsColor/"
-          color_results=$(curl -s "$S3_ICONS_COLOR_URL" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
 
-          S3_ICONS_URL="https://$S3_BUCKET.s3.amazonaws.com?prefix=icons/blueprints/"
-          colorless_results=$(curl -s "$S3_ICONS_URL" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
+          S3_APP_ICONS_URL="https://${S3_BUCKET}.s3.amazonaws.com?prefix=icons/apps/"
+          APP_RESULTS=($(curl -s "${S3_APP_ICONS_URL}" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]'))
+          S3_GENERAL_ICONS_URL="https://${S3_BUCKET}.s3.amazonaws.com?prefix=icons/general/"
+          GENERAL_RESULTS=$(curl -s "${S3_GENERAL_ICONS_URL}" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
+          S3_SYSTEM_ICONS_URL="https://${S3_BUCKET}.s3.amazonaws.com?prefix=icons/system/"
+          SYSTEM_RESULTS=$(curl -s "${S3_SYSTEM_ICONS_URL}" | grep -o '<Key>[^<]*</Key>' | sed 's/<Key>\([^<]*\)<\/Key>/\1/' | tr '[:upper:]' '[:lower:]')
+
+          APP_AND_SYSTEM_RESULTS=($(printf "%s\n" "${APP_RESULTS[@]}" "${SYSTEM_RESULTS[@]}" | sort -u))
+          RESULTS=($(printf "%s\n" "${APP_AND_SYSTEM_RESULTS[@]}" "${GENERAL_RESULTS[@]}" | sort -u))
+          echo "Got Port Icons ${RESULTS[@]}"
 
           # All integration icons
-          icons=($(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.icon' {} | tr '[:upper:]' '[:lower:]'))
-          bp_icons=($(find integrations/** -name 'blueprints.json' -not -path "**/.venv/*" | xargs -I {} jq -r '.[] | .. | .icon?' {} | grep -v '^null$' | sort -u | tr '[:upper:]' '[:lower:]'))
-          merged_set=($(printf "%s\n" "${icons[@]}" "${bp_icons[@]}" | sort -u))
+          ICONS=($(find integrations -name 'spec.yaml' -not -path "**/.venv/*" | xargs -I {} yq -r '.icon' {} | tr '[:upper:]' '[:lower:]'))
+          BP_ICONS=($(find integrations/** -name 'blueprints.json' -not -path "**/.venv/*" | xargs -I {} jq -r '.[] | .. | .icon?' {} | grep -v '^null$' | sort -u | tr '[:upper:]' '[:lower:]'))
+          MERGED_SET=($(printf "%s\n" "${ICONS[@]}" "${BP_ICONS[@]}" | sort -u))
+          echo "Required Icons: ${MERGED_SET[@]}"
 
-          for icon in "${merged_set[@]}"; do
-            if [ $(echo "$color_results" | grep -c "$icon") -eq 0 ] && [ $(echo "$colorless_results" | grep -c "$icon") -eq 0 ]; then
-                echo "ERROR: $icon icon is missing in icons pool"
+          for ICON in "${MERGED_SET[@]}"; do
+            if [ $(echo "${RESULTS[@]}" | grep -c "$ICON") -eq 0 ]; then
+                echo "ERROR: $ICON icon is missing in icons pool"
                 exit 1
             fi
           done

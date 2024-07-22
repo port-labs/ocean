@@ -1,0 +1,539 @@
+[
+  {
+    "identifier": "statuspage",
+    "title": "Status Page",
+    "icon": "StatusPage",
+    "description": "A Statuspage for communicating service status and incidents.",
+    "schema": {
+      "properties": {
+        "page_description": {
+          "type": "string",
+          "title": "Page Description",
+          "description": "Description of the page (optional)."
+        },
+        "headline": {
+          "type": "string",
+          "title": "Headline",
+          "description": "A short headline for the Statuspage (optional)."
+        },
+        "branding": {
+          "type": "string",
+          "title": "Branding",
+          "description": "Branding level of the Statuspage (e.g., 'basic')."
+        },
+        "status_indicator": {
+          "type": "string",
+          "title": "Status Indicator",
+          "enum": ["none", "minor", "major", "critical"],
+          "enumColors": {
+            "none": "green",
+            "minor": "yellow",
+            "major": "orange",
+            "critical": "red"
+          },
+          "description": "The current status of the page."
+        },
+        "status_description": {
+          "type": "string",
+          "title": "Status Description",
+          "description": "Description of the current status (optional)."
+        },
+        "subdomain": {
+          "type": "string",
+          "title": "Subdomain",
+          "description": "The subdomain used for the Statuspage URL (e.g., 'appcellon')."
+        },
+        "domain": {
+          "type": "string",
+          "title": "Custom Domain",
+          "description": "Custom domain name for the Statuspage (optional)."
+        },
+        "url": {
+          "type": "string",
+          "format": "url",
+          "title": "Statuspage URL",
+          "description": "Full URL of the Statuspage (optional)."
+        },
+        "allow_page_subscribers": {
+          "type": "boolean",
+          "title": "Allow Page Subscribers",
+          "description": "Whether to allow users to subscribe to page updates."
+        },
+        "allow_incident_subscribers": {
+          "type": "boolean",
+          "title": "Allow Incident Subscribers",
+          "description": "Whether to allow users to subscribe to specific incidents."
+        },
+        "allow_email_subscribers": {
+          "type": "boolean",
+          "title": "Allow Email Subscribers",
+          "description": "Whether to allow email subscriptions."
+        },
+        "allow_sms_subscribers": {
+          "type": "boolean",
+          "title": "Allow SMS Subscribers",
+          "description": "Whether to allow SMS subscriptions."
+        },
+        "allow_rss_atom_feeds": {
+          "type": "boolean",
+          "title": "Allow RSS/Atom Feeds",
+          "description": "Whether to allow RSS or Atom feeds."
+        },
+        "allow_webhook_subscribers": {
+          "type": "boolean",
+          "title": "Allow Webhook Subscribers",
+          "description": "Whether to allow webhook subscriptions."
+        },
+        "time_zone": {
+          "type": "string",
+          "title": "Time Zone",
+          "description": "The time zone used for the Statuspage."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "When the Statuspage was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Updated At",
+          "description": "When the Statuspage was last updated."
+        }
+      }
+    },
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "criticalOpenIssues": {
+        "title": "Services with Degraded Performance",
+        "type": "number",
+        "target": "statuspageComponent",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "=",
+              "value": "degraded_performance"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      }
+    }
+  },
+  {
+    "identifier": "statuspageComponentGroup",
+    "title": "Statuspage Component Group",
+    "icon": "StatusPage",
+    "description": "A group of related components on a Statuspage.",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "Description of the group (optional)."
+        },
+        "position": {
+          "type": "number",
+          "title": "Position",
+          "description": "Order of the group on the Statuspage."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "When the group was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Updated At",
+          "description": "When the group was last updated."
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "statuspage": {
+        "target": "statuspage",
+        "required": false,
+        "title": "Status Page",
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "statuspageComponent",
+    "title": "Statuspage Component",
+    "icon": "StatusPage",
+    "description": "A component representing a specific part of a system or service on a Statuspage.",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "Description of the component (optional)."
+        },
+        "status": {
+          "type": "string",
+          "title": "Current Status",
+          "enum": [
+            "operational",
+            "degraded_performance",
+            "partial_outage",
+            "major_outage"
+          ],
+          "enumColors": {
+            "operational": "green",
+            "degraded_performance": "yellow",
+            "partial_outage": "orange",
+            "major_outage": "red"
+          },
+          "description": "The operational status of the component."
+        },
+        "position": {
+          "type": "number",
+          "title": "Position",
+          "description": "Order of the component within its group."
+        },
+        "showcase": {
+          "type": "boolean",
+          "title": "Showcase",
+          "description": "Whether to display the component prominently."
+        },
+        "only_show_if_degraded": {
+          "type": "boolean",
+          "title": "Only Show If Degraded",
+          "description": "Whether to display the component only when degraded."
+        },
+        "startDate": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Start Date",
+          "description": "The date when the component tracking started."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "When the component was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Updated At",
+          "description": "When the component was last updated."
+        }
+      }
+    },
+    "calculationProperties": {},
+    "relations": {
+      "componentGroup": {
+        "target": "statuspageComponentGroup",
+        "required": false,
+        "title": "Component Group",
+        "many": false
+      },
+      "statuspage": {
+        "target": "statuspage",
+        "required": false,
+        "title": "Status Page",
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "statuspageIncident",
+    "title": "Statuspage Incident",
+    "icon": "StatusPage",
+    "description": "An incident reported on a Statuspage.",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Current Status",
+          "enum": [
+            "investigating",
+            "identified",
+            "monitoring",
+            "resolved",
+            "postmortem",
+            "scheduled",
+            "in_progress",
+            "verifying",
+            "completed"
+          ],
+          "enumColors": {
+            "investigating": "blue",
+            "identified": "orange",
+            "monitoring": "yellow",
+            "resolved": "green",
+            "postmortem": "purple",
+            "scheduled": "lightGray",
+            "in_progress": "blue",
+            "verifying": "yellow",
+            "completed": "green"
+          },
+          "description": "Current status of the incident."
+        },
+        "impact": {
+          "type": "string",
+          "title": "Impact",
+          "enum": ["none", "minor", "major", "critical"],
+          "enumColors": {
+            "none": "green",
+            "minor": "yellow",
+            "major": "orange",
+            "critical": "red"
+          },
+          "description": "The impact level of the incident."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "When the incident was first reported."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Updated At",
+          "description": "When the incident was last updated."
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Started At",
+          "description": "When the incident actually began."
+        },
+        "resolvedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Resolved At",
+          "description": "When the incident was resolved (null if ongoing)."
+        },
+        "shortlink": {
+          "type": "string",
+          "format": "url",
+          "title": "Short Link",
+          "description": "A shortened URL for sharing the incident status page."
+        },
+        "postmortemPublishedAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Postmortem Published At",
+          "description": "When the postmortem analysis was published (null if not yet published)."
+        },
+        "scheduled_for": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Scheduled For",
+          "description": "Start time for a scheduled incident (null if not scheduled)."
+        },
+        "scheduled_until": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Scheduled Until",
+          "description": "End time for a scheduled incident (null if not scheduled)."
+        },
+        "scheduled_remind_prior": {
+          "type": "boolean",
+          "title": "Scheduled Remind Prior",
+          "description": "Whether to send a reminder before a scheduled incident."
+        },
+        "scheduled_reminded_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Scheduled Reminded At",
+          "description": "When the reminder for a scheduled incident was sent (null if not applicable)."
+        },
+        "scheduled_auto_in_progress": {
+          "type": "boolean",
+          "title": "Scheduled Auto In Progress",
+          "description": "Whether to automatically transition the incident to 'in progress'."
+        },
+        "scheduled_auto_completed": {
+          "type": "boolean",
+          "title": "Scheduled Auto Completed",
+          "description": "Whether to automatically mark the incident as completed."
+        },
+        "metadata": {
+          "type": "object",
+          "title": "Metadata",
+          "description": "Custom metadata associated with the incident."
+        },
+        "reminder_intervals": {
+          "type": "string",
+          "title": "Reminder Intervals",
+          "description": "Intervals for sending reminders for a scheduled incident (null if not applicable)."
+        },
+        "postmortem_body": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Postmortem",
+          "description": "The content of the postmortem analysis."
+        },
+        "postmortem_body_last_updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Postmortem Last Updated At",
+          "description": "When the postmortem body was last updated (null if not applicable)."
+        },
+        "postmortem_ignored": {
+          "type": "boolean",
+          "title": "Postmortem Ignored",
+          "description": "Whether the postmortem has been ignored."
+        },
+        "postmortem_published_at": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Postmortem Published At",
+          "description": "When the postmortem was published (null if not yet published)."
+        },
+        "postmortem_notified_subscribers": {
+          "type": "boolean",
+          "title": "Postmortem Notified Subscribers",
+          "description": "Whether subscribers were notified about the postmortem."
+        },
+        "postmortem_notified_twitter": {
+          "type": "boolean",
+          "title": "Postmortem Notified Twitter",
+          "description": "Whether the postmortem was announced on Twitter."
+        }
+      }
+    },
+    "calculationProperties": {
+      "category": {
+        "title": "Category",
+        "description": "Category of Incident",
+        "calculation": ".properties | .status as $status | if ($status | IN(\"scheduled\", \"in_progress\", \"verifying\", \"completed\")) then \"maintainance\" else \"incident\" end",
+        "type": "string",
+        "colorized": true,
+        "colors": {
+          "maintainance": "bronze",
+          "incident": "red"
+        }
+      }
+    },
+    "relations": {
+      "components": {
+        "target": "statuspageComponent",
+        "required": false,
+        "title": "Affected Components",
+        "many": true
+      },
+      "statuspage": {
+        "target": "statuspage",
+        "required": false,
+        "title": "Status Page",
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "statuspageIncidentUpdate",
+    "title": "Statuspage Incident Update",
+    "icon": "StatusPage",
+    "description": "An update to a Statuspage incident.",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Update Status",
+          "enum": [
+            "investigating",
+            "identified",
+            "monitoring",
+            "resolved",
+            "postmortem",
+            "scheduled",
+            "in_progress",
+            "verifying",
+            "completed"
+          ],
+          "enumColors": {
+            "investigating": "blue",
+            "identified": "orange",
+            "monitoring": "yellow",
+            "resolved": "green",
+            "postmortem": "purple",
+            "scheduled": "lightGray",
+            "in_progress": "blue",
+            "verifying": "yellow",
+            "completed": "green"
+          },
+          "description": "The status of the incident at the time of the update."
+        },
+        "body": {
+          "type": "string",
+          "title": "Update",
+          "description": "The message content of the update."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At",
+          "description": "When the update was created."
+        },
+        "displayAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Display At",
+          "description": "When the update was displayed on the Statuspage."
+        },
+        "deliverNotifications": {
+          "type": "boolean",
+          "title": "Deliver Notifications",
+          "description": "Whether notifications were sent for this update."
+        },
+        "wantsTwitterUpdate": {
+          "type": "boolean",
+          "title": "Wants Twitter Update",
+          "description": "Whether a Twitter update was requested."
+        },
+        "tweet_id": {
+          "type": "string",
+          "title": "Tweet ID",
+          "description": "The ID of the tweet associated with this update (if any)."
+        },
+        "custom_tweet": {
+          "type": "string",
+          "title": "Custom Tweet",
+          "description": "The custom text used for the tweet (if applicable)."
+        }
+      }
+    },
+    "calculationProperties": {
+      "category": {
+        "title": "Category",
+        "description": "Category of Incident",
+        "calculation": ".properties | .status as $status | if ($status | IN(\"scheduled\", \"in_progress\", \"verifying\", \"completed\")) then \"maintainance\" else \"incident\" end",
+        "type": "string",
+        "colorized": true,
+        "colors": {
+          "maintainance": "bronze",
+          "incident": "red"
+        }
+      }
+    },
+    "relations": {
+      "incident": {
+        "target": "statuspageIncident",
+        "required": true,
+        "title": "Incident",
+        "many": false
+      },
+      "affectedComponents": {
+        "target": "statuspageComponent",
+        "required": false,
+        "title": "Affected Components",
+        "many": true
+      }
+    }
+  }
+]

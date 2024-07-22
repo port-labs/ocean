@@ -1,16 +1,28 @@
-type: gcp
 description: gcp integration for Port Ocean
 icon: GoogleCloud
 features:
   - type: exporter
     section: Cloud Providers
-configurations: []
+saas:
+  enabled: false
+configurations:
+  - name: encodedADCConfiguration
+    type: string
+    require: false
+    description: Base64 encoding of your Google Cloud's ADC Credentials configuration file. Go to https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/gcp/installation for more information
+deploymentMethodRequirements:
+  - type: default
+    configurations: ['encodedADCConfiguration']
 deploymentMethodOverride:
+  - type: helm
+  - type: docker
+  - type: githubWorkflow
+  - type: gitlabCI
   - type: terraform-gcp
     module: port-labs/integration-factory/ocean
     example: gcp_integration_with_real_time
     title: GCP's Cloud Run
-    version: ">=0.0.19"
+    version: ">=0.0.25"
     extraVars:
       - name: assets_types_for_monitoring
         description: A list of resources to filter events from Google Cloud.
@@ -24,7 +36,7 @@ deploymentMethodOverride:
           - "pubsub.googleapis.com/Topic"
           - "container.googleapis.com/Cluster"
         type: array
-      - name: ocean_permissions
+      - name: gcp_ocean_integration_sa_permissions
         description: A list of permissions that will be assigned to the Google Cloud Service account to export Google Cloud Resources.
         required: true
         default:

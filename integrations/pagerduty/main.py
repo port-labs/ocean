@@ -10,6 +10,7 @@ from integration import (
     PagerdutyIncidentResourceConfig,
     PagerdutyScheduleResourceConfig,
     PagerdutyOncallResourceConfig,
+    PagerdutyEscalationPolicyResourceConfig,
 )
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -123,7 +124,7 @@ async def on_schedules_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         data_key=ObjectKind.SCHEDULES,
         params=query_params.generate_request_params() if query_params else None,
     ):
-        yield schedules
+        yield await pager_duty_client.transform_user_ids_to_emails(schedules)
 
 
 @ocean.on_resync(ObjectKind.ONCALLS)
@@ -140,6 +141,39 @@ async def on_oncalls_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         params=query_params.generate_request_params() if query_params else None,
     ):
         yield oncalls
+
+
+@ocean.on_resync(ObjectKind.ESCALATION_POLICIES)
+async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    pager_duty_client = initialize_client()
+
+    selector = typing.cast(
+        PagerdutyEscalationPolicyResourceConfig, event.resource_config
+    ).selector
+
+    async for escalation_policies in pager_duty_client.paginate_request_to_pager_duty(
+        data_key=ObjectKind.ESCALATION_POLICIES,
+        params=(
+            selector.api_query_params.generate_request_params()
+            if selector.api_query_params
+            else None
+        ),
+    ):
+        if selector.attach_oncall_users:
+            logger.info("Fetching oncall users for escalation policies")
+            oncall_users = await pager_duty_client.get_oncall_user(
+                *[policy["id"] for policy in escalation_policies]
+            )
+
+            for policy in escalation_policies:
+                policy["__oncall_users"] = [
+                    user
+                    for user in oncall_users
+                    if user["escalation_policy"]["id"] == policy["id"]
+                ]
+            yield escalation_policies
+        else:
+            yield escalation_policies
 
 
 @ocean.router.post("/webhook")

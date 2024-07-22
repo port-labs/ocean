@@ -8,6 +8,8 @@ resources:
           identifier: ".name"
           blueprint: '"gcpProject"'
           title: ".display_name"
+          properties:
+            labels: ".labels"
   - kind: container.googleapis.com/Cluster
     selector:
       query: "true"
@@ -15,16 +17,14 @@ resources:
       entity:
         mappings:
           identifier: ".name"
-          blueprint: '"containerCluster"'
-          title: ".versioned_resources | max_by(.version).resource | .name"
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
           properties:
-            description: ".versioned_resources | max_by(.version).resource | .description"
-            currentNodeCount: ".versioned_resources | max_by(.version).resource | .currentNodeCount"
-            currentNodeVersion: ".versioned_resources | max_by(.version).resource | .currentNodeVersion"
-            initialNodeCount: ".versioned_resources | max_by(.version).resource | .initialNodeCount"
-            location: ".versioned_resources | max_by(.version).resource | .location"
+            type: '.name | split("/") | .[-2]'
+            location: ".location"
+            labels: ".labels"
           relations:
-            project: ".project"
+            project: ".__project.name"
   - kind: cloudfunctions.googleapis.com/CloudFunction
     selector:
       query: "true"
@@ -32,15 +32,14 @@ resources:
       entity:
         mappings:
           identifier: ".name"
-          blueprint: '"functions"'
-          title: ".versioned_resources | max_by(.version).resource | .name"
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
           properties:
-            url: ".versioned_resources | max_by(.version).resource | .url"
-            state: ".versioned_resources | max_by(.version).resource | .state"
-            environment: ".versioned_resources | max_by(.version).resource | .environment"
-            eventTrigger: ".versioned_resources | max_by(.version).resource | .eventTrigger"
+            type: '.name | split("/") | .[-2]'
+            location: ".location"
+            labels: ".labels"
           relations:
-            project: ".project"
+            project: ".__project.name"
   - kind: pubsub.googleapis.com/Topic
     selector:
       query: "true"
@@ -48,31 +47,56 @@ resources:
       entity:
         mappings:
           identifier: ".name"
-          blueprint: '"topics"'
-          title: '.name | split("/") | .[-1]'
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
           properties:
-            state: ".state"
-            schemaSettings: ".schema_settings"
-            messageRetentionDuration: ".message_retention_duration"
+            type: '.name | split("/") | .[-2]'
+            location: ".location"
+            labels: ".labels"
           relations:
             project: ".__project.name"
-  - kind: cloudResource
+  - kind: compute.googleapis.com/Disk
     selector:
       query: "true"
-      resourceKinds:
-        [
-          "compute.googleapis.com/Disk",
-          "pubsub.googleapis.com/Subscription",
-          "iam.googleapis.com/ServiceAccount",
-        ]
     port:
       entity:
         mappings:
           identifier: ".name"
-          title: ".display_name"
+          title: '.name | split("/") | last'
           blueprint: '"gcpCloudResource"'
           properties:
-            type: ".asset_type"
+            type: '.name | split("/") | .[-2]'
             location: ".location"
+            labels: ".labels"
           relations:
-            project: ".project"
+            project: ".__project.name"
+  - kind: pubsub.googleapis.com/Subscription
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
+          properties:
+            type: '.name | split("/") | .[-2]'
+            location: ".location"
+            labels: ".labels"
+          relations:
+            project: ".__project.name"
+  - kind: iam.googleapis.com/ServiceAccount
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: ".name"
+          title: '.name | split("/") | last'
+          blueprint: '"gcpCloudResource"'
+          properties:
+            type: '.name | split("/") | .[-2]'
+            location: ".location"
+            labels: ".labels"
+          relations:
+            project: ".__project.name"

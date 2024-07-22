@@ -1,4 +1,3 @@
-type: opencost
 description: OpenCost integration for Port Ocean
 icon: Opencost
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/cloud-cost/opencost
@@ -7,6 +6,9 @@ features:
     section: Cloud Cost
     resources:
       - kind: cost
+      - kind: cloudcost
+saas:
+  enabled: false
 configurations:
   - name: opencostHost
     type: string

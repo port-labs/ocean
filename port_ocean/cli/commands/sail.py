@@ -71,4 +71,10 @@ def sail(
         console.print("Setting event listener to Once")
         override["event_listener"] = {"type": "ONCE"}
 
-    run(path, log_level, port, initialize_port_resources, override)
+    run(
+        path,
+        log_level,
+        port,
+        initialize_port_resources=initialize_port_resources,
+        config_override=override,
+    )

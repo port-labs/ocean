@@ -1,0 +1,103 @@
+[tool.poetry]
+name = "datadog"
+version = "0.1.17"
+description = "Datadog Ocean Integration"
+authors = ["Albert Luganga <albertluganga@getport.io>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+port_ocean = {version = "^0.9.4", extras = ["cli"]}
+loguru = "^0.7.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2"
+black = "^23.3.0"
+mypy = "^1.3.0"
+ruff = "^0.0.278"
+pylint = "^2.17.4"
+towncrier = "^23.6.0"
+
+[tool.towncrier]
+directory = "changelog"
+filename = "CHANGELOG.md"
+package = "port_ocean"
+
+  [[tool.towncrier.type]]
+  directory = "breaking"
+  name = "Breaking Changes"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "deprecation"
+  name = "Deprecations"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "feature"
+  name = "Features"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "improvement"
+  name = "Improvements"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "bugfix"
+  name = "Bug Fixes"
+  showcontent = true
+
+  [[tool.towncrier.type]]
+  directory = "doc"
+  name = "Improved Documentation"
+  showcontent = true
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
+[tool.mypy]
+exclude = [
+    'venv',
+    '.venv',
+]
+plugins = [
+    "pydantic.mypy"
+]
+
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_reexport = true
+
+# for strict mypy: (this is the tricky one :-))
+disallow_untyped_defs = true
+
+
+[tool.ruff]
+# Never enforce `E501` (line length violations).
+ignore = ["E501"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+  \scripts
+  \.toml
+  |\.sh
+  |\.git
+  |\.ini
+  |Dockerfile
+  |\.venv
+)/
+'''

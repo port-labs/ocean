@@ -7,6 +7,153 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.4 (2024-07-09)
+
+### Bug Fixes
+
+- Handle non existing config mapping for cases where the integration was created by SAAS and the config mapping was not set
+
+
+## 0.9.3 (2024-07-08)
+
+### Improvements
+
+- Added Ocean integration config to remove all environment variables from jq access
+- Added log for when receiving invalid port app config mapping
+
+## 0.9.2 (2024-07-05)
+
+### Improvements
+
+- Added log of the used integration mapping for each resync event
+- Added log when failed on processing jq mapping for raw result
+
+### Bug Fixes
+
+- Fixed an issue where raw results were not being sent if raw data didn't map to any entity
+
+
+## 0.9.1 (2024-06-23)
+
+
+### Bug Fixes
+
+- Safely get changelogDestination key instead of accessing it directly 
+
+
+## 0.9.0 (2024-06-19)
+
+
+### Features
+
+- Added validation of whether the integration can run in the desired runtime
+
+
+## 0.8.0 (2024-06-16)
+
+
+### Improvements
+
+- Add search relation support (Allow to to run a search query to find the relation to the entity as part of the mapping)
+
+
+## 0.7.1 (2024-06-13)
+
+
+### Bug Fixes
+
+- Fixed values unpack error in register_raw
+
+
+## 0.7.0 (2024-06-13)
+
+
+### Improvements
+
+- Added pydantic's dotenv extra to the core dependencies for reading .env files on the integration startup
+- Added .python-version to the repository for easier setup with pyenv install
+
+
+## 0.6.0 (2024-06-10)
+
+
+### Improvements
+
+- Changed initialization to always apply default mapping if no other mapping is configured
+
+
+## 0.5.27 (2024-06-05)
+
+
+### Bug Fixes
+
+- Fixed incorrect pydantic validation over the integration settings
+
+
+## 0.5.26 (2024-06-04)
+
+
+### Bug Fixes
+
+- Fixed an issue causing integrations with no configuration to fail during the initialization process
+
+
+## 0.5.25 (2024-06-03)
+
+
+### Bug Fixes
+
+- Fixed faulty error handling caused by gather_and_split_errors_from_results raising errors that are not directly under BaseException (#1)
+
+
+## 0.5.24 (2024-06-02)
+
+
+### Improvements
+
+- Improved exception propagation for the entity processing (#1)
+- QOL utility (`core.utils.gather_and_split_errors_from_results`) for when calling `asyncio.gather` with the `return_exceptions` parameter set to `True` and there is need for separating the errors from the data itself (#2)
+
+### Bug Fixes
+
+- Fixed unhandled exceptions caused by the entity parsing, resulting in the integration freezing (#1)
+
+
+## 0.5.23 (2024-05-30)
+
+### Improvements
+
+- Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
+
+## 0.5.22 (2024-05-29)
+
+### Bug Fixes
+
+- Fixed an issue in `send_raw_data_examples` when there are slashes in integration kind
+
+
+## 0.5.21 (2024-05-26)
+
+### Features
+
+- Added `send_raw_data_examples` integration config to allow sending raw data examples from the third party API to port (on resync), for testing and managing the integration mapping
+
+
+## 0.5.20 (2024-05-26)
+
+
+### Improvements
+
+- Made config.yaml file optional in the integration setup process.
+- Integration type is now determined by the name specified in the pyproject.toml file.
+- Switched to using the FastAPI lifespan feature instead of the deprecated on_shutdown and on_start methods.
+
+### Bug Fixes
+
+- Fixed the FastAPI server staying stale after shutdown by using the FastAPI lifespan feature for handling shutdown signals, preventing override of the shutdown process.
+- Fixed issue with integration continuing to run after shutdown by canceling the resync async generator task.
+
+
 ## 0.5.19 (2024-05-16)
 
 ### Improvements

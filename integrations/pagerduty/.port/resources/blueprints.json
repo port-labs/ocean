@@ -34,6 +34,14 @@
           "type": "string",
           "format": "user"
         },
+<<<<<<< HEAD
+=======
+        "secondaryOncall": {
+          "title": "Secondary On Call",
+          "type": "string",
+          "format": "user"
+        },
+>>>>>>> 52d84eae57930a48341d95ae8ca9c785ea142a63
         "escalationLevels": {
           "title": "Escalation Levels",
           "type": "number"
@@ -125,10 +133,13 @@
           "type": "string",
           "title": "Description"
         },
-        "responder": {
-          "type": "string",
-          "title": "Assignee",
-          "format": "user"
+        "assignees": {
+          "title": "Assignees",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "user"
+          }
         },
         "escalation_policy": {
           "type": "string",
@@ -180,7 +191,11 @@
         },
         "users": {
           "title": "Users",
-          "type": "array"
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "user"
+          }
         }
       },
       "required": []
@@ -229,7 +244,49 @@
         "target": "pagerdutySchedule",
         "required": false,
         "many": true
+      },
+      "pagerdutyEscalationPolicy": {
+        "title": "Escalation Policy",
+        "target": "pagerdutyEscalationPolicy",
+        "required": false,
+        "many": false
       }
     }
+  },
+  {
+    "identifier": "pagerdutyEscalationPolicy",
+    "description": "This blueprint represents a PagerDuty escalation policy in our software catalog",
+    "title": "PagerDuty Escalation Policy",
+    "icon": "pagerduty",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "primaryOncall": {
+          "title": "Primary Oncall",
+          "type": "string",
+          "format": "user"
+        },
+        "escalationRules": {
+          "title": "Escalation Rules",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]

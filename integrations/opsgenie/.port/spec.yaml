@@ -1,4 +1,3 @@
-type: opsgenie
 description: OpsGenie integration for Port Ocean
 icon: OpsGenie
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/opsgenie
@@ -14,7 +13,9 @@ configurations:
     required: true
     type: string
     sensitive: true
+    description: The API token used to authenticate requests to Opsgenie REST API. To generate an API token, see the <a href="https://support.atlassian.com/opsgenie/docs/api-key-management">Opsgenie documentation</a>.
   - name: apiUrl
     type: string
     required: true
     default: https://api.opsgenie.com
+    description: Opsgenie can have two different API URLs, and the one you need depends on where your Opgenie instance is located. Customers in the EU region should use https://api.eu.opsgenie.com whereas customers in the US region should use https://api.opsgenie.com. If the OpsGenie API URL is not provided, the default value is https://api.opsgenie.com

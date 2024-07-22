@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.5.19"
+version = "0.9.4"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -36,12 +36,12 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pydantic = "^1.10.8"
+pydantic = {version = "^1.10.8", extras = ["dotenv"]}
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=2.3.4,<4.0.0"
-fastapi = ">=0.100,<0.111"
-uvicorn = ">=0.22,<0.30"
+fastapi = ">=0.100,<0.112"
+uvicorn = ">=0.22,<0.31"
 confluent-kafka = "^2.1.1"
 httpx = ">=0.24.1,<0.28.0"
 pyjq = "^2.6.0"
@@ -50,7 +50,7 @@ six = "^1.16.0"
 pyhumps = "^3.8.0"
 pydispatcher = "^2.0.7"
 tomli = "^2.0.1"
-aiostream = "^0.5.2"
+aiostream = ">=0.5.2,<0.7.0"
 
 # CLI
 click = { version = "^8.1.3", optional = true }
@@ -68,7 +68,7 @@ black = ">=23.3,<25.0"
 mypy = "^1.3.0"
 pylint = ">=2.17.4,<4.0.0"
 types-pyyaml = "^6.0.12.10"
-ruff = ">=0.0.278,<0.4.4"
+ruff = ">=0.0.278,<0.4.11"
 types-toml = "^0.10.8.6"
 towncrier = "^23.6.0"
 yamllint = "^1.32.0"

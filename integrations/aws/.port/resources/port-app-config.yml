@@ -1,0 +1,72 @@
+resources:
+  - kind: AWS::Organizations::Account
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: .Name
+          blueprint: '"awsAccount"'
+          properties:
+            arn: .Arn
+            email: .Email
+            status: .Status
+            joined_method: .JoinedMethod
+            joined_timestamp: .JoinedTimestamp
+
+  - kind: AWS::S3::Bucket
+    selector:
+      query: 'true'
+      useGetResourceAPI: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Identifier
+          title: .Identifier
+          blueprint: '"cloudResource"'
+          properties:
+            kind: .__Kind
+            region: >-
+              .Properties.RegionalDomainName |
+              capture(".*\\.(?<region>[^\\.]+)\\.amazonaws\\.com") | .region
+            tags: .Properties.Tags
+            arn: .Properties.Arn
+            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
+          relations:
+            account: .__AccountId
+  - kind: AWS::EC2::Instance
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Identifier
+          title: .Identifier
+          blueprint: '"cloudResource"'
+          properties:
+            kind: .__Kind
+            region: .__Region
+            tags: .Properties.Tags
+            arn: .Properties.Arn
+            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
+          relations:
+            account: .__AccountId
+  - kind: AWS::ECS::Cluster
+    selector:
+      query: 'true'
+      useGetResourceAPI: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Properties.Arn
+          title: .Identifier
+          blueprint: '"cloudResource"'
+          properties:
+            kind: .__Kind
+            region: .__Region
+            tags: .Properties.Tags
+            arn: .Properties.Arn
+            link: '.Properties | select(.Arn != null) | "https://console.aws.amazon.com/go/view?arn=" + .Arn'
+          relations:
+            account: .__AccountId

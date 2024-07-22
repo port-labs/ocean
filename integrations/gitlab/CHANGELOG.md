@@ -7,6 +7,144 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.91 (2024-07-10)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.4 (#1)
+
+
+0.1.90 (2024-07-09)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.3 (#1)
+
+
+0.1.89 (2024-07-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.2 (#1)
+
+
+0.1.88 (2024-06-23)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.1 (#1)
+
+
+0.1.87 (2024-06-19)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.0 (#1)
+
+
+0.1.86 (2024-06-16)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.8.0 (#1)
+
+
+0.1.85 (2024-06-13)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.7.1 (#1)
+
+
+0.1.84 (2024-06-13)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.7.0 (#1)
+
+
+0.1.83 (2024-06-10)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.6.0 (#1)
+
+
+0.1.82 (2024-06-05)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.27 (#1)
+
+
+0.1.81 (2024-06-03)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.25 (#1)
+
+
+0.1.80 (2024-06-02)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.24 (#1)
+
+
+0.1.79 (2024-05-30)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.23 (#1)
+- Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
+
+
+0.1.78 (2024-05-29)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.22 (#1)
+
+
+0.1.77 (2024-05-26)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.21 (#1)
+
+
+0.1.76 (2024-05-26)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.5.20 (#1)
+- Removed the config.yaml file due to unused overrides
+
+
+0.1.75 (2024-05-19)
+===================
+
+### Bug Fixes
+
+- Fixed webhooks responses timeouts to gitlab using queue to return immediate response
+
+
 0.1.74 (2024-05-16)
 ===================
 

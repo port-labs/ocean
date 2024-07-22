@@ -1,0 +1,84 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: monitor
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"datadogMonitor"'
+          properties:
+            tags: .tags
+            monitorType: .type
+            overallState: .overall_state
+            thresholds: .thresholds
+            priority: .priority
+            createdBy: .creator.email
+            createdAt: .created
+            updatedAt: .modified
+  - kind: service
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .attributes.schema."dd-service"
+          title: .attributes.schema."dd-service"
+          blueprint: '"datadogService"'
+          properties:
+            application: .attributes.schema.application
+            languages: .attributes.schema.languages
+            description: .attributes.schema.description
+            tags: .attributes.schema.tags
+            type: .attributes.schema.type
+            links: .attributes.schema.links | map(.url)
+            owners: >-
+              [.attributes.schema.contacts[] | select(.type == "email") |
+              .contact]
+  - kind: slo
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"datadogSlo"'
+          properties:
+            tags: .tags
+            sloType: .type
+            description: .description
+            warningThreshold: .warning_threshold
+            targetThreshold: .target_threshold
+            createdBy: .creator.email
+            createdAt: .created_at | todate
+            updatedAt: .modified_at | todate
+          relations:
+            monitors: .monitor_ids | map(tostring)
+            services: >-
+              .monitor_tags + .tags | map(select(startswith("service:"))) |
+              unique | map(split(":")[1])
+  - kind: sloHistory
+    selector:
+      query: 'true'
+      timeframe: 30
+      period_of_time_in_years: 12
+    port:
+      entity:
+        mappings:
+          identifier: >-
+            (.slo.id | tostring) + "-" + (.from_ts | tostring) + "-" + (.to_ts |
+            tostring)
+          title: .slo.name
+          blueprint: '"datadogSloHistory"'
+          properties:
+            monitory_type: .type
+            sampling_start_date: .from_ts | todate
+            sampling_end_date: .to_ts | todate
+            sliValue: .overall.sli_value
+            timeframe: .__timeframe
+          relations:
+            slo: .slo.id

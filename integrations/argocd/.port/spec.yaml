@@ -1,4 +1,3 @@
-type: argocd
 description: Argocd integration for Port Ocean
 icon: Argo
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/argocd/
@@ -12,11 +11,15 @@ features:
       - kind: deployment-history
       - kind: kubernetes-resource
       - kind: managed-resource
+saas:
+  enabled: false
 configurations:
   - name: token
     required: true
+    description: ArgoCD API token. To create an API token, see the <a href="https://argoproj.github.io/argo-cd/getting_started/#4-create-an-api-access-token">ArgoCD documentation</a>.
     type: string
     sensitive: true
   - name: serverUrl
     type: string
     required: true
+    description: The URL of the ArgoCD server. For example, https://argocd.example.com. Found in the URL field of your browser when you launch your ArgoCD instance

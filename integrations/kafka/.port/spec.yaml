@@ -1,4 +1,3 @@
-type: kafka
 description: Kafka integration for Port Ocean
 icon: Kafka
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/event-processing/kafka
@@ -9,6 +8,8 @@ features:
       - kind: cluster
       - kind: broker
       - kind: topic
+saas:
+  enabled: false
 configurations:
   - name: clusterConfMapping
     required: true

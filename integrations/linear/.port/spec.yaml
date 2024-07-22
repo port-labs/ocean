@@ -1,0 +1,20 @@
+description: linear integration for Port Ocean
+icon: Linear
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/linear
+features:
+  - type: exporter
+    section: Project management
+    resources:
+      - kind: team
+      - kind: issue
+      - kind: label
+configurations:
+  - name: appHost
+    required: false
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Linear"
+  - name: linearApiKey
+    required: true
+    type: string
+    description: Linear personal API key. To create an API key, see the <a href="https://developers.linear.app/docs/graphql/working-with-the-graphql-api#personal-api-keys">Linear API documentation</a>.
+    sensitive: true

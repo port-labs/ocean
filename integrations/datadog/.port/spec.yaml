@@ -1,0 +1,36 @@
+type: datadog
+description: Datadog integration for Port Ocean
+icon: Datadog
+features:
+  - type: exporter
+    section: APM & Alerting
+    resources:
+      - kind: datadogMonitor
+      - kind: datadogService
+      - kind: datadogSlo
+      - kind: datadogSloHistory
+configurations:
+  - name: datadogBaseUrl
+    description: Datadog Base URL. For Datadog EU, set to https://api.datadoghq.eu (overrides default US site).
+    type: url
+    required: true
+    default: "https://api.datadoghq.com"
+  - name: datadogApiKey
+    description: Datadog API key, docs can be found here - https://docs.datadoghq.com/account_management/api-app-keys/#add-an-api-key-or-client-token
+    required: true
+    type: string
+    sensitive: true
+  - name: datadogApplicationKey
+    description: Datadog application key, docs can be found here - https://docs.datadoghq.com/account_management/api-app-keys/#add-application-keys
+    required: true
+    type: string
+    sensitive: true
+  - name: appHost
+    type: url
+    required: false
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
+  - name: datadogWebhookToken
+    description: Datadog webhook token. Learn more at https://docs.datadoghq.com/integrations/webhooks/#setup
+    type: string
+    required: false
+    sensitive: true

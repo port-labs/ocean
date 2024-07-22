@@ -90,5 +90,49 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "openCostCloudcost",
+    "description": "This blueprint represents cloud cost allocations from your OpenCost instance",
+    "icon": "Opencost",
+    "title": "OpenCost CloudCost",
+    "schema": {
+      "properties": {
+        "startDate": {
+          "title": "Start Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "title": "End Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "listCost": {
+          "title": "List Cost",
+          "type": "number"
+        },
+        "netCost": {
+          "title": "Net Cost",
+          "type": "number"
+        },
+        "amortizedNetCost": {
+          "title": "Amortized Net Cost",
+          "type": "number"
+        },
+        "invoicedCost": {
+          "title": "Invoiced Cost",
+          "type": "number"
+        },
+        "amortizedCost": {
+          "title": "Amortized Cost",
+          "type": "number"
+        }
+      },
+      "required": []
+    },
+    "calculationProperties": {},
+    "mirrorProperties": {},
+    "relations": {}
   }
 ]

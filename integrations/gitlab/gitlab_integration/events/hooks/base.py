@@ -28,7 +28,7 @@ class ProjectHandler(HookHandler):
         project_id = (
             body["project_id"] if "project_id" in body else body["project"]["id"]
         )
-        project = self.gitlab_service.get_project(project_id)
+        project = await self.gitlab_service.get_project(project_id)
 
         if project:
             logger.info(

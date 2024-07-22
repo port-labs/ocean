@@ -89,11 +89,11 @@
     "calculationProperties": {},
     "aggregationProperties": {},
     "relations": {
-      "environments": {
-        "title": "Environments",
-        "target": "launchDarklyEnvironment",
-        "required": false,
-        "many": true
+      "project": {
+        "title": "Project",
+        "target": "launchDarklyProject",
+        "required": true,
+        "many": false
       }
     }
   },
@@ -150,6 +150,52 @@
         "title": "Project",
         "target": "launchDarklyProject",
         "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "launchDarklyFFInEnvironment",
+    "description": "This blueprint represents a feature flag in LaunchDarkly Environment.",
+    "title": "Feature Flag In Environment",
+    "icon": "Launchdarkly",
+    "schema": {
+      "properties": {
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "description": "Status of the feature flag"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {
+      "kind": {
+        "title": "Kind",
+        "path": "featureFlag.kind"
+      },
+      "description": {
+        "title": "Description",
+        "path": "featureFlag.description"
+      },
+      "deprecated": {
+        "title": "Deprecated",
+        "path": "featureFlag.deprecated"
+      }
+    },
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "environment": {
+        "title": "Environment",
+        "target": "launchDarklyEnvironment",
+        "required": false,
+        "many": false
+      },
+      "featureFlag": {
+        "title": "Feature Flag",
+        "target": "launchDarklyFeatureFlag",
+        "required": false,
         "many": false
       }
     }
