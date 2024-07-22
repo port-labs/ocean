@@ -131,7 +131,7 @@ class SonarQubeClient:
 
                 # Check for paging information and decide whether to fetch more pages
                 paging_info = response_json.get("paging")
-                if len(resource) < PAGE_SIZE:
+                if paging_info is None or len(resource) < PAGE_SIZE:
                     break
 
                 query_params["p"] = paging_info["pageIndex"] + 1
