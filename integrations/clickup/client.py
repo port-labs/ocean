@@ -15,10 +15,9 @@ WEBHOOK_EVENTS = [
     "listUpdated",
     "listDeleted",
 ]
+
 MINIMUM_LIMIT_REMAINING = 20
 DEFAULT_SLEEP_TIME = 30
-
-# Adjust the concurrency level as needed
 SEMAPHORE = asyncio.BoundedSemaphore(10)
 
 
@@ -26,12 +25,11 @@ class ClickupClient:
     """Clickup client to interact with Clickup API."""
 
     def __init__(self, clickup_url: str, clickup_token: str, archived: bool):
-        self.clickup_url = clickup_url
         self.clickup_token = clickup_token
-        self.api_url = f"{self.clickup_url}/api/v2"
+        self.api_url = f"{clickup_url}/api/v2"
         self.client = http_async_client
         self.client.timeout = Timeout(60)
-        self.archived = archived
+        self.is_archived = archived
 
     @property
     def api_headers(self) -> dict[str, Any]:
@@ -49,6 +47,8 @@ class ClickupClient:
     ) -> Any:
         """
         Sends an HTTP request to the ClickUp API with rate limit handling.
+        The acceptable rate is described in the documentation provided by Clickup at
+        https://clickup.com/api/developer-portal/rate-limits/
         """
         while True:
             async with SEMAPHORE:
@@ -112,7 +112,8 @@ class ClickupClient:
         """Get all spaces in a workspace."""
         yield (
             await self._send_api_request(
-                f"{self.api_url}/team/{team_id}/space", {"archived": self.archived}
+                f"{self.api_url}/team/{team_id}/space",
+                {"is_archived": self.is_archived},
             )
         ).get("spaces", [])
 
@@ -126,7 +127,7 @@ class ClickupClient:
                 yield (
                     await self._send_api_request(
                         f"{self.api_url}/space/{space.get('id')}/folder",
-                        {"archived": self.archived},
+                        {"is_archived": self.is_archived},
                     )
                 ).get("folders")
 
@@ -149,7 +150,7 @@ class ClickupClient:
                     for space in spaces:
                         response = await self._send_api_request(
                             f"{self.api_url}/space/{space.get('id')}/list",
-                            {"archived": self.archived},
+                            {"is_archived": self.is_archived},
                         )
                         projects = response.get("lists")
                         yield [{**project, TEAM_OBJECT: team} for project in projects]
