@@ -161,13 +161,21 @@ class SonarQubeClient:
             logger.info(
                 f"Fetching all components in organization: {self.organization_id}"
             )
-        if api_query_params:
-            query_params.update(api_query_params)
-        elif event.resource_config:
-            # This might be called from places where event.resource_config is not set
-            # like on_start() when creating webhooks
-            selector = cast(CustomSelector, event.resource_config.selector)
-            query_params.update(selector.generate_request_params())
+
+        ## Handle api_query_params based on environment
+        if not self.is_onpremise:
+            logger.warning(
+                f"Received request to fetch SonarQube components with api_query_params {api_query_params}. Skipping because api_query_params is only supported on on-premise environments"
+            )
+        else:
+            if api_query_params:
+                query_params.update(api_query_params)
+            elif event.resource_config:
+                # This might be called from places where event.resource_config is not set
+                # like on_start() when creating webhooks
+
+                selector = cast(CustomSelector, event.resource_config.selector)
+                query_params.update(selector.generate_request_params())
 
         try:
             response = await self.send_paginated_api_request(
@@ -253,6 +261,7 @@ class SonarQubeClient:
         :return (list[Any]): A list containing projects data for your organization.
         """
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
+
         components = await self.get_components()
         for component in components:
             project_data = await self.get_single_project(project=component)
