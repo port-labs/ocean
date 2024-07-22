@@ -16,6 +16,8 @@ azure-mgmt-subscription = "^3.1.1"
 aiostream = "^0.5.2"
 
 [tool.poetry.group.dev.dependencies]
+# Uncomment this if you want to debug the ocean core together with your integration
+# port_ocean = { path = '../../', develop = true, extras = ['all'] }
 pytest = "^7.2"
 black = "^24.4.2"
 mypy = "^1.3.0"
@@ -59,8 +61,8 @@ filename = "CHANGELOG.md"
   showcontent = true
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 exclude = [
