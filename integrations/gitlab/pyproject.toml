@@ -13,6 +13,8 @@ jsonschema = "^4.17.3"
 port_ocean = {version = "^0.9.14", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
+# uncomment this if you want to debug the ocean core together with your integration
+# port_ocean = { path = '../../', develop = true, extras = ['all'] }
 pytest = "^7.2"
 black = "^24.4.2"
 mypy = "^1.3.0"
@@ -62,8 +64,8 @@ title_format = "{version} ({project_date})"
   showcontent = true
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 exclude = [
