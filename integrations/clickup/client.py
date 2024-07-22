@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Any, AsyncGenerator, Optional, List
+from typing import Any, AsyncGenerator, Optional, List, Dict
 from httpx import HTTPStatusError, Timeout
 from loguru import logger
 from port_ocean.utils import http_async_client
@@ -41,46 +41,14 @@ class ClickupClient:
         }
 
     async def _fetch_with_rate_limit_handling(
-            self,
-            url: str,
-            method: str,
-            params: Optional[dict[str, Any]] = None,
-            json_data: Optional[dict[str, Any]] = None,
+        self,
+        url: str,
+        method: str,
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
     ) -> Any:
         """
         Sends an HTTP request to the ClickUp API with rate limit handling.
-
-        This method ensures that requests to the ClickUp API do not exceed the
-        rate limits imposed by the API. If the rate limit is approached or exceeded,
-        the method will wait until the rate limit is reset before retrying the request.
-
-        Parameters:
-        -----------
-        url : str
-            The endpoint URL for the ClickUp API request.
-        method : str
-            The HTTP method to use for the request (e.g., 'GET', 'POST').
-        params : Optional[dict[str, Any]], optional
-            Query parameters to include in the request, by default None.
-        json_data : Optional[dict[str, Any]], optional
-            JSON data to include in the body of the request, by default None.
-
-        Returns:
-        --------
-        Any
-            The JSON response from the ClickUp API.
-
-        Raises:
-        -------
-        httpx.HTTPStatusError
-            If the HTTP request returns an error status code.
-
-        Notes:
-        ------
-        - The method uses an asyncio semaphore to limit the number of concurrent
-          requests to the ClickUp API.
-        - The method logs detailed information about rate limits and waits if the
-          rate limit is approached.
         """
         while True:
             async with SEMAPHORE:
@@ -93,11 +61,15 @@ class ClickupClient:
                 )
                 try:
                     response.raise_for_status()
-                    rate_limit_remaining = int(response.headers.get("X-RateLimit-Remaining", 1))
+                    rate_limit_remaining = int(
+                        response.headers.get("X-RateLimit-Remaining", 1)
+                    )
                     rate_limit_reset = int(response.headers.get("X-RateLimit-Reset"))
                     if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
                         current_time = int(time.time())
-                        wait_time = max(rate_limit_reset - current_time, DEFAULT_SLEEP_TIME)
+                        wait_time = max(
+                            rate_limit_reset - current_time, DEFAULT_SLEEP_TIME
+                        )
                         logger.info(
                             f"Approaching rate limit. Waiting for {wait_time} seconds to continue export. "
                             f"URL: {url}, Remaining: {rate_limit_remaining} "
@@ -116,11 +88,11 @@ class ClickupClient:
             return response
 
     async def _send_api_request(
-            self,
-            url: str,
-            params: Optional[dict[str, Any]] = None,
-            json_data: Optional[dict[str, Any]] = None,
-            method: str = "GET",
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+        method: str = "GET",
     ) -> Any:
         """Send a request to the Clickup API with rate limiting."""
         response = await self._fetch_with_rate_limit_handling(
@@ -135,22 +107,28 @@ class ClickupClient:
 
     @cache_iterator_result()
     async def _get_spaces_in_team(
-            self, team_id: str
+        self, team_id: str
     ) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all spaces in a workspace."""
-        yield (await self._send_api_request(f"{self.api_url}/team/{team_id}/space",
-                                            {"archived": self.archived})).get("spaces", [])
+        yield (
+            await self._send_api_request(
+                f"{self.api_url}/team/{team_id}/space", {"archived": self.archived}
+            )
+        ).get("spaces", [])
 
     @cache_iterator_result()
     async def _get_folders_in_space(
-            self, team_id: str
+        self, team_id: str
     ) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all folders in a space."""
         async for spaces in self._get_spaces_in_team(team_id):
             for space in spaces:
                 yield (
-                    await self._send_api_request(f"{self.api_url}/space/{space.get('id')}/folder",
-                                                 {"archived": self.archived})).get("folders")
+                    await self._send_api_request(
+                        f"{self.api_url}/space/{space.get('id')}/folder",
+                        {"archived": self.archived},
+                    )
+                ).get("folders")
 
     async def get_folder_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all projects with a folder parent."""
@@ -162,7 +140,7 @@ class ClickupClient:
                         yield [{**project, TEAM_OBJ: team} for project in projects]
 
     async def get_folderless_projects(
-            self,
+        self,
     ) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all projects without a folder parent."""
         async for teams in self.get_clickup_teams():
@@ -170,17 +148,18 @@ class ClickupClient:
                 async for spaces in self._get_spaces_in_team(team.get("id")):
                     for space in spaces:
                         response = await self._send_api_request(
-                            f"{self.api_url}/space/{space.get('id')}/list", {"archived": self.archived}
+                            f"{self.api_url}/space/{space.get('id')}/list",
+                            {"archived": self.archived},
                         )
                         projects = response.get("lists")
                         yield [{**project, TEAM_OBJ: team} for project in projects]
 
-    async def get_single_project(self, list_id: str) -> Optional[dict[str, Any]]:
+    async def get_single_project(self, list_id: str) -> Optional[Dict[str, Any]]:
         """Get a single project by list_id."""
         url = f"{self.api_url}/list/{list_id}"
         response = await self._send_api_request(url)
         space_id = response.get("space").get("id")
-        logger.info(space_id)
+
         async for teams in self.get_clickup_teams():
             for team in teams:
                 async for spaces in self._get_spaces_in_team(team.get("id")):
@@ -188,6 +167,9 @@ class ClickupClient:
                         logger.info(space.get("id"))
                         if space.get("id") == space_id:
                             return {**response, TEAM_OBJ: team}
+
+        logger.warning("No matching space found.")
+        return None
 
     async def get_paginated_issues(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all issues in a project."""
@@ -224,10 +206,11 @@ class ClickupClient:
         """
         Retrieve existing webhooks for a given team.
         """
-        return (await self._send_api_request(f"{self.api_url}/team/{team_id}/webhook"))["webhooks"]
+        return (await self._send_api_request(f"{self.api_url}/team/{team_id}/webhook"))[
+            "webhooks"
+        ]
 
     async def create_clickup_events_webhook(self, app_host: str) -> None:
-
         async for teams in self.get_clickup_teams():
             for team in teams:
                 team_id = team["id"]

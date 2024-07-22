@@ -1,10 +1,9 @@
 from enum import StrEnum
-from typing import Any
+from typing import Any, Dict
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from clickup.client import ClickupClient
-
+from client import ClickupClient
 
 EVENT_ACTIONS = {
     "listCreated": "register",
@@ -75,34 +74,59 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
+async def _handle_register(
+    clickup_client: Any, entity_id: str, kind: ObjectKind, event_type: str
+) -> None:
+    if kind == ObjectKind.ISSUE:
+        entity = await clickup_client.get_single_issue(entity_id)
+    else:
+        entity = await clickup_client.get_single_project(entity_id)
+
+    if entity:
+        await ocean.register_raw(kind, [entity])
+        logger.info(f"Registered {kind} for event {event_type}")
+    else:
+        logger.error(f"Handler returned None for entity_id {entity_id}")
+
+
+async def _handle_unregister(entity_id: str, kind: ObjectKind, event_type: str) -> None:
+    try:
+        await ocean.unregister_raw(kind, [{"id": entity_id}])
+        logger.info(f"Unregistered {kind} for event {event_type}")
+    except Exception as e:
+        logger.error(f"Exception {e} occurred while attempting to unregister raw")
+
+
 @ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle the webhook request from ClickUp.
     Events are mapped to the appropriate actions in event_handlers.
     """
     clickup_client = await init_client()
     logger.info(f"Received webhook event of type: {data.get('event')}")
+
     event_handlers = {
-        "task": (ObjectKind.ISSUE, clickup_client.get_single_issue),
-        "list": (ObjectKind.PROJECT, clickup_client.get_single_project),
+        "task": ObjectKind.ISSUE,
+        "list": ObjectKind.PROJECT,
     }
+
     event_type = data["event"]
     action = "unregister" if "Deleted" in event_type else "register"
-    for key, (kind, handler) in event_handlers.items():
+
+    for key, kind in event_handlers.items():
         if key in event_type:
             entity_id = data.get(f"{key}_id")
+            if not entity_id:
+                logger.error(f"No {key}_id found in data for event {event_type}")
+                continue
+
             if action == "register":
-                entity = await handler(entity_id)
-                await ocean.register_raw(kind, [entity])
-                logger.info(f"Registered {kind} for event {event_type}")
+                await _handle_register(clickup_client, entity_id, kind, event_type)
             else:
-                try:
-                    await ocean.unregister_raw(kind, [{"id": entity_id}])
-                    logger.info(f"Unregistered {kind} for event {event_type}")
-                except Exception as e:
-                    logger.error(f"Exception {e} occurred while attempting to unregister raw")
+                await _handle_unregister(entity_id, kind, event_type)
             break
+
     logger.info("Webhook event processed")
     return {"ok": True}
 
