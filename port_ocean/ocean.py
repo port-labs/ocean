@@ -24,8 +24,19 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
-from port_ocean.utils.signal import signal_handler
+from port_ocean.utils.signal import init_signal_handler, signal_handler
 from port_ocean.version import __integration_version__
+
+
+def convert_time_to_minutes(time_str: str) -> int:
+    if time_str.endswith("h"):
+        hours = int(time_str[:-1])
+        return hours * 60
+    elif time_str.endswith("m"):
+        minutes = int(time_str[:-1])
+        return minutes
+    else:
+        raise ValueError("Invalid format. Expected a string ending with 'h' or 'm'.")
 
 
 class Ocean:
@@ -65,24 +76,36 @@ class Ocean:
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
 
+    async def calculate_next_resync(self, now: datetime.datetime) -> float | None:
+        if self.config.runtime != "Saas" and not self.config.scheduled_resync_interval:
+            # There is no scheduled resync outside of Saas runtime or if not configured
+            return None
+
+        interval = self.config.scheduled_resync_interval
+        next_resync = None
+        if self.config.runtime == "Saas":
+            integration = await self.port_client.get_current_integration()
+            interval_str = (
+                integration.get("spec", {})
+                .get("appSpec", {})
+                .get("scheduledResyncInterval")
+            )
+            interval = convert_time_to_minutes(interval_str)
+
+        next_resync_date = now + datetime.timedelta(minutes=float(interval or 0))
+        next_resync = next_resync_date.now(datetime.timezone.utc).timestamp()
+        return next_resync
+
     async def _setup_scheduled_resync(
         self,
     ) -> None:
-        async def execute_resync_all() -> None:
-            # loop = asyncio.new_event_loop()
-            # asyncio.set_event_loop(loop)
+        def execute_resync_all() -> None:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
             logger.info("Starting a new scheduled resync")
-            # loop.run_until_complete(self.integration.sync_raw_all())
-            # loop.close()
-            await self.integration.sync_raw_all()
-
-            now = datetime.datetime.now()
-            next_resync = now + datetime.timedelta(minutes=float(interval or 0))
-            utc_ts = datetime.datetime.now(datetime.timezone.utc).timestamp()
-            logger.info(f"Last scheduled resync was at {now}")
-            logger.info(f"Next scheduled resync will be at {next_resync}")
-            await self.port_client.update_resync_state({"next_resync_ts": utc_ts})
+            loop.run_until_complete(self.integration.sync_raw_all())
+            loop.close()
 
         interval = self.config.scheduled_resync_interval
         if interval is not None:
@@ -93,11 +116,7 @@ class Ocean:
                 seconds=interval * 60,
                 # Not running the resync immediately because the event listener should run resync on startup
                 wait_first=True,
-            )(
-                lambda: threading.Thread(
-                    target=asyncio.run(execute_resync_all())
-                ).start()
-            )
+            )(lambda: threading.Thread(target=execute_resync_all).start())
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -106,8 +125,17 @@ class Ocean:
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
+                init_signal_handler()
+                now = datetime.datetime.now()
+                calculation = asyncio.create_task(self.calculate_next_resync(now))
                 await self.integration.start()
                 await self._setup_scheduled_resync()
+                next_resync = await calculation
+                await self.port_client.update_resync_state(
+                    {
+                        "next_resync": next_resync,
+                    }
+                )
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
