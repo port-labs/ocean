@@ -131,7 +131,7 @@ class SonarQubeClient:
 
                 # Check for paging information and decide whether to fetch more pages
                 paging_info = response_json.get("paging")
-                if len(resource) < PAGE_SIZE:
+                if paging_info is None or len(resource) < PAGE_SIZE:
                     break
 
                 query_params["p"] = paging_info["pageIndex"] + 1
@@ -161,13 +161,21 @@ class SonarQubeClient:
             logger.info(
                 f"Fetching all components in organization: {self.organization_id}"
             )
-        if api_query_params:
-            query_params.update(api_query_params)
-        elif event.resource_config:
-            # This might be called from places where event.resource_config is not set
-            # like on_start() when creating webhooks
-            selector = cast(CustomSelector, event.resource_config.selector)
-            query_params.update(selector.generate_request_params())
+
+        ## Handle api_query_params based on environment
+        if not self.is_onpremise:
+            logger.warning(
+                f"Received request to fetch SonarQube components with api_query_params {api_query_params}. Skipping because api_query_params is only supported on on-premise environments"
+            )
+        else:
+            if api_query_params:
+                query_params.update(api_query_params)
+            elif event.resource_config:
+                # This might be called from places where event.resource_config is not set
+                # like on_start() when creating webhooks
+
+                selector = cast(CustomSelector, event.resource_config.selector)
+                query_params.update(selector.generate_request_params())
 
         try:
             response = await self.send_paginated_api_request(
