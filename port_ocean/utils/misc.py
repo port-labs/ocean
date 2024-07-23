@@ -66,3 +66,18 @@ def load_module(file_path: str) -> ModuleType:
     spec.loader.exec_module(module)
 
     return module
+
+
+def convert_time_to_minutes(time_str: str) -> int:
+    """
+    Convert a string representing time to minutes.
+    :param time_str: a string representing time in the format "1h" or "1m"
+    """
+    if time_str.endswith("h"):
+        hours = int(time_str[:-1])
+        return hours * 60
+    elif time_str.endswith("m"):
+        minutes = int(time_str[:-1])
+        return minutes
+    else:
+        raise ValueError("Invalid format. Expected a string ending with 'h' or 'm'.")
