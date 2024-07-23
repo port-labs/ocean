@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.92 (2024-07-23)
+===================
+
+### Bug Fixes
+
+- Search gitops file paths recursively
+
+
 0.1.91 (2024-07-10)
 ===================
 
