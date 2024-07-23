@@ -96,7 +96,9 @@ class GitlabService:
         if not isinstance(path, list):
             path = [path]
         try:
-            files = project.repository_tree(ref=commit_sha, all=True)
+            files = project.repository_tree(
+                ref=commit_sha, recursive=True, get_all=True
+            )
         except GitlabError as err:
             if err.response_code != 404:
                 raise err
