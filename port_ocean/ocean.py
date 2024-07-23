@@ -23,20 +23,10 @@ from port_ocean.context.ocean import (
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
+from port_ocean.utils.misc import convert_time_to_minutes
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import init_signal_handler, signal_handler
 from port_ocean.version import __integration_version__
-
-
-def convert_time_to_minutes(time_str: str) -> int:
-    if time_str.endswith("h"):
-        hours = int(time_str[:-1])
-        return hours * 60
-    elif time_str.endswith("m"):
-        minutes = int(time_str[:-1])
-        return minutes
-    else:
-        raise ValueError("Invalid format. Expected a string ending with 'h' or 'm'.")
 
 
 class Ocean:
