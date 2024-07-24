@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "jira"
-version = "0.1.65"
+version = "0.1.66"
 description = "Integration to bring information from Jira into Port"
 authors = ["Mor Paz <mor@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.9.4", extras = ["cli"]}
+port_ocean = {version = "^0.9.5", extras = ["cli"]}
 httpx = "^0.24.1"
 
 [tool.poetry.group.dev.dependencies]
