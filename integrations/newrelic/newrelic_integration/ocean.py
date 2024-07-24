@@ -64,6 +64,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async with httpx.AsyncClient() as http_client:
             yield await IssuesHandler(http_client).list_issues()
 
+
 @ocean.on_resync(kind="newRelicServiceLevel")
 async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
@@ -71,6 +72,7 @@ async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             handler = ServiceLevelsHandler(http_client)
             async for service_levels in handler.list_service_levels():
                 yield [service_levels]
+
 
 @ocean.router.post("/events")
 async def handle_issues_events(issue: IssueEvent) -> dict[str, bool]:
