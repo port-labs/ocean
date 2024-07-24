@@ -5,6 +5,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.issues import IssuesHandler, IssueState, IssueEvent
+from newrelic_integration.core.service_levels import ServiceLevelsHandler
+
 from newrelic_integration.utils import (
     get_port_resource_configuration_by_newrelic_entity_type,
     get_port_resource_configuration_by_port_kind,
@@ -62,6 +64,13 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async with httpx.AsyncClient() as http_client:
             yield await IssuesHandler(http_client).list_issues()
 
+@ocean.on_resync(kind="newRelicServiceLevel")
+async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    with logger.contextualize(resource_kind=kind):
+        async with httpx.AsyncClient() as http_client:
+            handler = ServiceLevelsHandler(http_client)
+            async for service_levels in handler.list_service_levels():
+                yield [service_levels]
 
 @ocean.router.post("/events")
 async def handle_issues_events(issue: IssueEvent) -> dict[str, bool]:
