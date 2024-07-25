@@ -38,14 +38,13 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Resyncing {kind} kind")
     wiz_client = init_client()
 
-    max_pages = cast(IssueResourceConfig, event.resource_config).selector.max_pages
-    status_list = cast(IssueResourceConfig, event.resource_config).selector.status_list
+    selector = cast(IssueResourceConfig, event.resource_config).selector
 
     async for _issues in wiz_client.get_issues(
-        max_pages=max_pages, status_list=status_list
+        max_pages=selector.max_pages, 
+        status_list=selector.status_list
     ):
         logger.info(f"Received {len(_issues)} issues")
         yield _issues
@@ -53,7 +52,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ObjectKind.CONTROL)
 async def on_resync_controls(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Resyncing {kind} kind")
     wiz_client = init_client()
 
     async for _issues in wiz_client.get_issues():
@@ -66,7 +64,6 @@ async def on_resync_controls(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=ObjectKind.SERVICE_TICKET)
 async def on_resync_tickets(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    logger.info(f"Resyncing {kind} kind")
     wiz_client = init_client()
 
     async for _issues in wiz_client.get_issues():
