@@ -129,13 +129,13 @@ class WizClient:
             raise
 
     async def _get_paginated_resources(
-        self, resource: str, variables: dict[str, Any]
+        self, resource: str, variables: dict[str, Any], max_pages: int = MAX_PAGES
     ) -> AsyncGenerator[list[Any], None]:
         logger.info(f"Fetching {resource} data from Wiz API")
         page_num = 1
 
-        while page_num <= MAX_PAGES:
-            logger.info(f"Fetching page {page_num} of {MAX_PAGES}")
+        while page_num <= max_pages:
+            logger.info(f"Fetching page {page_num} of {max_pages}")
             gql = GRAPH_QUERIES[resource]
             data = await self.make_graphql_query(gql, variables)
 
@@ -150,7 +150,10 @@ class WizClient:
             page_num += 1
 
     async def get_issues(
-        self, page_size: int = PAGE_SIZE
+        self,
+        page_size: int = PAGE_SIZE,
+        max_pages: int = MAX_PAGES,
+        status_list: list[str] = ["OPEN", "IN_PROGRESS"],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.ISSUES):
             logger.info("Picking Wiz issues from cache")
@@ -159,11 +162,12 @@ class WizClient:
 
         variables: dict[str, Any] = {
             "first": page_size,
+            "filterBy": {"status": status_list},
             "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
         }
 
         async for issues in self._get_paginated_resources(
-            resource="issues", variables=variables
+            resource="issues", variables=variables, max_pages=max_pages
         ):
             event.attributes.setdefault(CacheKeys.ISSUES, []).extend(issues)
             yield issues
