@@ -560,22 +560,22 @@ class GitlabService:
             def skip_validation(_: User):
                 return True
 
-            def should_run_for_member(member: User):
+            def should_run_for_member(member: GroupMember):
                 return not member.username.__contains__("bot")
 
             validation_func = should_run_for_member if filter_bots else skip_validation
 
             logger.info(f"Fetching all members of group {group.name}")
-            async for users_batch in AsyncFetcher.fetch_batch(
+            async for members_batch in AsyncFetcher.fetch_batch(
                 fetch_func=group.members.list,
                 validation_func=validation_func,
                 pagination="offset",
                 order_by="id",
                 sort="asc",
             ):
-                members: List[GroupMember] = typing.cast(List[GroupMember], users_batch)
+                members: List[GroupMember] = typing.cast(List[GroupMember], members_batch)
                 logger.info(
-                    f"Queried {len(members)} members {[user.username for user in members]} from {group.name}"
+                    f"Queried {len(members)} members {[member.username for member in members]} from {group.name}"
                 )
                 yield members
         except Exception as e:

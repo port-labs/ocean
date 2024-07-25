@@ -64,32 +64,25 @@
           "title": "State",
           "type": "string",
           "icon": "GitLab",
-          "description": "The current state of the GitLab item (e.g., open, closed)."
+          "description": "The current state of the GitLab member (e.g., active)."
         },
         "locked": {
           "type": "string",
           "title": "Locked",
           "icon": "GitLab",
-          "description": "Indicates if the GitLab item is locked."
+          "description": "Indicates if the GitLab member is locked."
         },
         "link": {
           "icon": "Link",
           "type": "string",
           "title": "Link",
           "format": "url",
-          "description": "URL link to the GitLab item."
+          "description": "URL link to the GitLab member."
         },
         "email": {
           "type": "string",
           "title": "Email",
           "description": "GitLab primary email address.",
-          "icon": "User",
-          "format": "user"
-        },
-        "publicEmail": {
-          "type": "string",
-          "title": "Public Email",
-          "description": "User's GitLab public email.",
           "icon": "User",
           "format": "user"
         }
@@ -111,6 +104,7 @@
           "icon": "Lock",
           "title": "Visibility",
           "type": "string",
+          "description": "Visibility status of the group. (e.g public, internal etc. )",
           "enum": [
             "public",
             "internal",
@@ -126,12 +120,14 @@
           "title": "URL",
           "format": "url",
           "type": "string",
-          "icon": "Link"
+          "icon": "Link",
+          "description": "Link to the gitlab group"
         },
         "description": {
           "title": "Description",
           "type": "string",
-          "icon": "BlankPage"
+          "icon": "BlankPage",
+          "description": "A short description of the gitlab group"
         }
       },
       "required": []
