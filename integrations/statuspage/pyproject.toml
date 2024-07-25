@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "statuspage"
-version = "0.1.6"
+version = "0.1.7"
 description = "Connect Statuspage to Ocean and automatically ingest incidents, updates, and impacted components for comprehensive monitoring"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.9.4", extras = ["cli"]}
+port_ocean = {version = "^0.9.5", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
