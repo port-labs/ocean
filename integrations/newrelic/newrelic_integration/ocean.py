@@ -69,8 +69,7 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
         async with httpx.AsyncClient() as http_client:
-            handler = ServiceLevelsHandler(http_client)
-            async for service_levels in handler.list_service_levels():
+            async for service_levels in ServiceLevelsHandler(http_client).list_service_levels():
                 yield [service_levels]
 
 
