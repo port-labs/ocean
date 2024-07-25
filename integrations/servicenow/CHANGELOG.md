@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.48 (2024-07-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.5
+
+
+# Port_Ocean 0.1.47 (2024-07-17)
+
+### Improvements
+
+- Updated the connectivity check to use an existing table such as incident instead of the instance table
+
+
 # Port_Ocean 0.1.46 (2024-07-10)
 
 ### Improvements

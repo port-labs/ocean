@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.31 (2024-07-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.5
+
+
+# Port_Ocean 0.1.30 (2024-07-17)
+
+### Improvements
+
+- Added labels property to the default blueprint and mapping
+
+
 # Port_Ocean 0.1.29 (2024-07-10)
 
 ### Improvements

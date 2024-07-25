@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.5 (2024-07-23)
+
+### Bug Fixes
+
+- Initialize missing _port_app_config
+
+
 ## 0.9.4 (2024-07-09)
 
 ### Bug Fixes
