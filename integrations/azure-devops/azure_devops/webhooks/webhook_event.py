@@ -25,9 +25,17 @@ class WebhookEvent(BaseModel):
                 subscribed_event.publisherId == self.publisherId
                 and subscribed_event.eventType == self.eventType
                 and subscribed_event.consumerInputs == self.consumerInputs
-                and subscribed_event.publisherInputs == self.publisherInputs
             ):
-                return subscribed_event
+                if not self.publisherInputs and not subscribed_event.publisherInputs:
+                    return subscribed_event
+
+                # Azure Devops sends more than just the projectId in the publisherInputs,
+                # And we only need to verify the projectId
+                if self.publisherInputs and subscribed_event.publisherInputs:
+                    if subscribed_event.publisherInputs.get(
+                        "projectId", None
+                    ) == self.publisherInputs.get("projectId", None):
+                        return subscribed_event
 
         return None
 
