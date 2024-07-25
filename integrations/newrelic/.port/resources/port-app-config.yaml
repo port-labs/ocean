@@ -86,7 +86,7 @@ resources:
             createdAt: if .serviceLevel.indicators[0].createdAt != null then (.serviceLevel.indicators[0].createdAt | tonumber / 1000 | todate) else null end
             updatedAt: .serviceLevel.indicators[0].updatedAt
             createdBy: .serviceLevel.indicators[0].createdBy.email
-            serviceLevelIndicator: .__SLI.SLI
+            sli: .__SLI.SLI
             tags: .tags
           relations:
             newRelicService: .serviceLevel.indicators[0].guid

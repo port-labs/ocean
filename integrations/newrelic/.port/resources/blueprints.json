@@ -165,9 +165,9 @@
           "type": "string",
           "format": "user"
         },
-        "serviceLevelIndicator": {
+        "sli": {
           "type": "number",
-          "title": "Service Level Indicator"
+          "title": "SLI"
         },
         "tags": {
           "type": "object",
