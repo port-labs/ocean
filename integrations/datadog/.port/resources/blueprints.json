@@ -50,6 +50,11 @@
           "title": "Sources",
           "type": "array",
           "description": "Source or cloud provider associated with your host."
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object",
+          "description": "Tags associated with the host."
         }
       },
       "required": []
