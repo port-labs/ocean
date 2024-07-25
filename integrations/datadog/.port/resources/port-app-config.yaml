@@ -9,7 +9,7 @@ resources:
         mappings:
           blueprint: '"datadogHost"'
           identifier: .id | tostring
-          title: .name
+          title: .aws_name // .host_name
           properties:
             up: .up
             hostName: .host_name
