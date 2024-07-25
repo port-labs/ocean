@@ -1,3 +1,4 @@
+import datetime
 import signal
 from typing import Literal, Any
 
@@ -9,6 +10,8 @@ from port_ocean.core.event_listener.base import (
     EventListenerSettings,
 )
 from port_ocean.utils.repeat import repeat_every
+from port_ocean.context.ocean import ocean
+from port_ocean.utils.misc import convert_time_to_minutes
 
 
 class OnceEventListenerSettings(EventListenerSettings):
@@ -41,6 +44,37 @@ class OnceEventListener(BaseEventListener):
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
+        self.resync_state: dict[str, Any] = {}
+
+    def should_update_resync_state(self) -> bool:
+        return ocean.config.runtime == "Saas"
+
+    async def before_resync(self) -> None:
+        if not self.should_update_resync_state():
+            return None
+
+        now = datetime.datetime.now()
+        interval = ocean.config.scheduled_resync_interval
+        next_resync = None
+        if ocean.config.runtime == "Saas":
+            integration = await ocean.port_client.get_current_integration()
+            interval_str = (
+                integration.get("spec", {})
+                .get("appSpec", {})
+                .get("scheduledResyncInterval")
+            )
+            interval = convert_time_to_minutes(interval_str)
+
+        next_resync_date = now + datetime.timedelta(minutes=float(interval or 0))
+        next_resync = next_resync_date.now(datetime.timezone.utc).timestamp()
+
+        self.resync_state["next_resync"] = next_resync
+
+    async def after_resync(self) -> None:
+        if not self.should_update_resync_state():
+            return None
+
+        await ocean.port_client.update_resync_state(self.resync_state)
 
     async def _start(self) -> None:
         """
@@ -53,7 +87,9 @@ class OnceEventListener(BaseEventListener):
         async def resync_and_exit() -> None:
             logger.info("Once event listener started")
             try:
+                await self.before_resync()
                 await self.events["on_resync"]({})
+                await self.after_resync()
             except Exception:
                 # we catch all exceptions here to make sure the application will exit gracefully
                 logger.exception("Error occurred while resyncing")
