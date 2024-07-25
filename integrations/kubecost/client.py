@@ -1,12 +1,15 @@
-import typing
 from typing import Any
 
 import httpx
 from loguru import logger
-
-from integration import KubecostResourceConfig, KubecostSelector
-from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+
+from integration import (
+    CloudCostV1Selector,
+    CloudCostV2Selector,
+    KubecostV1Selector,
+    KubecostV2Selector,
+)
 
 KUBECOST_API_VERSION_1 = "v1"
 
@@ -17,16 +20,26 @@ class KubeCostClient:
         self.kubecost_api_version = kubecost_api_version
         self.http_client = http_async_client
 
-    def generate_params(self, selector: KubecostSelector) -> dict[str, str]:
+    def generate_params(
+        self,
+        selector: (
+            CloudCostV1Selector
+            | CloudCostV2Selector
+            | KubecostV1Selector
+            | KubecostV2Selector
+        ),
+    ) -> dict[str, str]:
         params = selector.dict(exclude_unset=True, by_alias=True)
         params.pop("query")
         return params
 
-    async def get_kubesystem_cost_allocation(self) -> list[dict[str, Any]]:
+    async def get_kubesystem_cost_allocation(
+        self, selector: KubecostV1Selector | KubecostV2Selector
+    ) -> list[dict[str, Any]]:
         """Calls the Kubecost allocation endpoint to return data for cost and usage
         https://docs.kubecost.com/apis/apis-overview/api-allocation
         """
-        selector = typing.cast(KubecostResourceConfig, event.resource_config).selector
+
         params: dict[str, str] = {
             "window": selector.window,
             **self.generate_params(selector),
@@ -48,20 +61,21 @@ class KubeCostClient:
             logger.error(f"HTTP occurred while fetching kubecost data: {e}")
             raise
 
-    async def get_cloud_cost_allocation(self) -> list[dict[str, Any]]:
+    async def get_cloud_cost_allocation(
+        self, selector: CloudCostV1Selector | CloudCostV2Selector
+    ) -> list[dict[str, Any]]:
         """Calls the Kubecost cloud  allocation API. It uses the Aggregate endpoint which returns detailed cloud cost data
         https://docs.kubecost.com/apis/apis-overview/cloud-cost-api
         """
-        selector = typing.cast(KubecostResourceConfig, event.resource_config).selector
+        url = f"{self.kubecost_host}/model/cloudCost"
+
+        if self.kubecost_api_version == KUBECOST_API_VERSION_1:
+            url = f"{self.kubecost_host}/model/cloudCost/aggregate"
+
         params: dict[str, str] = {
             "window": selector.window,
             **self.generate_params(selector),
         }
-
-        if self.kubecost_api_version == KUBECOST_API_VERSION_1:
-            url = f"{self.kubecost_host}/model/cloudCost/aggregate"
-        else:
-            url = f"{self.kubecost_host}/model/cloudCost"
 
         try:
             response = await self.http_client.get(

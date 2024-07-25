@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.72 (2024-07-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.5
+
+
+# Port_Ocean 0.1.71 (2024-07-22)
+
+### Bug Fixes
+
+- Added checks to ensure that api filters for projects are applied to only on-premise instance
+
+
+# Port_Ocean 0.1.70 (2024-07-22)
+
+### Bug Fixes
+
+- Added conditions to handle instances when the API response does not have pagination object
+
+
 # Port_Ocean 0.1.69 (2024-07-10)
 
 ### Improvements

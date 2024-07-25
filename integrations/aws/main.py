@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from port_ocean.core.models import Entity
 
 from utils.resources import (
+    is_global_resource,
     resync_custom_kind,
     describe_single_resource,
     fix_unserializable_date_properties,
@@ -28,6 +29,7 @@ from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
     ResourceKindsWithSpecialHandling,
+    is_access_denied_exception,
 )
 
 
@@ -36,8 +38,16 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
         return
     await update_available_access_credentials()
-    async for batch in resync_cloudcontrol(kind):
-        yield batch
+    is_global = is_global_resource(kind)
+    try:
+        async for batch in resync_cloudcontrol(kind, is_global):
+            yield batch
+    except Exception as e:
+        if is_access_denied_exception(e):
+            async for batch in resync_cloudcontrol(
+                kind, is_global=False, stop_on_first_region=True
+            ):
+                yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)

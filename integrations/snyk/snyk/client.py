@@ -19,6 +19,9 @@ class CacheKeys(StrEnum):
     ORGANIZATION = "organization"
 
 
+PAGE_SIZE = 100
+
+
 class SnykClient:
     def __init__(
         self,
@@ -39,7 +42,7 @@ class SnykClient:
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
-        self.snyk_api_version = "2023-08-21"
+        self.snyk_api_version = "2024-06-21"
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -83,13 +86,13 @@ class SnykClient:
                 data = await self._send_api_request(
                     url=f"{self.rest_api_url}{url_path}",
                     method=method,
-                    query_params={**(query_params or {}), "limit": 50},
+                    query_params={**(query_params or {}), "limit": PAGE_SIZE},
                 )
 
                 yield data.get("data", [])
 
                 # Check if there is a "next" URL in the links object
-                url_path = data.get("links", {}).get("next")
+                url_path = data.get("links", {}).get("next", "").replace("/rest", "")
                 query_params = {}  # Reset query params for the next iteration
             except httpx.HTTPStatusError as e:
                 logger.error(
@@ -114,6 +117,19 @@ class SnykClient:
 
         event.attributes[cache_key] = issues
         return issues
+
+    async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+
+        all_organizations = await self.get_organizations_in_groups()
+        for org in all_organizations:
+            logger.info(f"Fetching paginated issues for organization: {org['id']}")
+            url = f"/orgs/{org['id']}/issues"
+            query_params = {"version": self.snyk_api_version}
+
+            async for issues in self._get_paginated_resources(
+                url_path=url, query_params=query_params
+            ):
+                yield issues
 
     def _get_projects_by_target(
         self,
@@ -177,7 +193,7 @@ class SnykClient:
         url = f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}"
 
         response = await self._send_api_request(
-            url=url, method="GET", version=f"{self.snyk_api_version}~beta"
+            url=url, method="GET", version=f"{self.snyk_api_version}"
         )
 
         if not response:
@@ -196,8 +212,7 @@ class SnykClient:
             logger.info(f"Fetching paginated targets for organization: {org['id']}")
 
             url = f"/orgs/{org['id']}/targets"
-            target_api_version = "2024-05-23"
-            query_params = {"version": f"{target_api_version}~beta"}
+            query_params = {"version": self.snyk_api_version}
             async for targets in self._get_paginated_resources(
                 url_path=url, query_params=query_params
             ):
@@ -244,7 +259,7 @@ class SnykClient:
 
         return project
 
-    async def _get_user_details(self, user_id: str | None) -> dict[str, Any]:
+    async def _get_user_details_old(self, user_id: str | None) -> dict[str, Any]:
         if (
             not user_id
         ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
@@ -270,27 +285,61 @@ class SnykClient:
             else:
                 raise
 
+    async def _get_user_details(self, user_reference: str | None) -> dict[str, Any]:
+        if (
+            not user_reference
+        ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
+            return {}
+        user_id = user_reference.split("/")[-1]
+        user_cache_key = f"{CacheKeys.USER}-{user_id}"
+        user_reference = user_reference.replace("/rest", "")
+        cached_details = event.attributes.get(user_cache_key)
+        if cached_details:
+            return cached_details
+
+        try:
+            user_details = await self._send_api_request(
+                url=f"{self.rest_api_url}{user_reference}",
+                query_params={"version": f"{self.snyk_api_version}~beta"},
+            )
+
+            if not user_details:
+                return {}
+
+            event.attributes[user_cache_key] = user_details
+            return user_details["data"]
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.debug(f"user {user_id} not was not found, skipping...")
+                return {}
+            else:
+                raise
+
     async def _get_target_details(self, org_id: str, target_id: str) -> dict[str, Any]:
-        cached_details = event.attributes.get(f"{CacheKeys.TARGET}-{target_id}")
+        target_cache_key = f"{CacheKeys.TARGET}-{target_id}"
+        cached_details = event.attributes.get(target_cache_key)
         if cached_details:
             return cached_details
 
         target_details = await self._send_api_request(
             url=f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}",
-            version=f"{self.snyk_api_version}~beta",
+            version=f"{self.snyk_api_version}",
         )
-        event.attributes[f"{CacheKeys.TARGET}-{target_id}"] = target_details
+        event.attributes[target_cache_key] = target_details
         return target_details
 
     async def enrich_project(self, project: dict[str, Any]) -> dict[str, Any]:
-        owner_id = (
-            project.get("relationships", {}).get("owner", {}).get("data", {}).get("id")
+        owner_reference = (
+            project.get("relationships", {})
+            .get("owner", {})
+            .get("links", {})
+            .get("related")
         )
-        importer_id = (
+        importer_reference = (
             project.get("relationships", {})
             .get("importer", {})
-            .get("data", {})
-            .get("id")
+            .get("links", {})
+            .get("related")
         )
         target_id = (
             project.get("relationships", {}).get("target", {}).get("data", {}).get("id")
@@ -298,8 +347,8 @@ class SnykClient:
         organization_id = project["relationships"]["organization"]["data"]["id"]
 
         tasks = [
-            self._get_user_details(owner_id),
-            self._get_user_details(importer_id),
+            self._get_user_details(owner_reference),
+            self._get_user_details(importer_reference),
             self._get_target_details(organization_id, target_id),
         ]
 
@@ -334,12 +383,21 @@ class SnykClient:
             )
 
     async def get_all_organizations(self) -> list[dict[str, Any]]:
-        url = f"{self.api_url}/orgs"
-        response = await self._send_api_request(url=url)
-        organizations = response.get("orgs", [])
+        query_params = {"version": self.snyk_api_version}
+        all_organizations = []
+        async for organizations in self._get_paginated_resources(
+            url_path="/orgs", query_params=query_params
+        ):
+            all_organizations.extend(organizations)
 
-        logger.info(f"Fetched {len(organizations)} organizations for the given token.")
-        return organizations
+        logger.info(
+            f"Fetched {len(all_organizations)} organizations for the given token."
+        )
+        ## the previous installations of the integration may not have the attributes key in the organization object so we destruct the attributes key to the root level
+        all_organizations = [
+            {**org, **org.get("attributes", {})} for org in all_organizations
+        ]
+        return all_organizations
 
     async def get_organizations_in_groups(self) -> list[Any]:
         # Check if the result is already cached
@@ -374,7 +432,7 @@ class SnykClient:
             matching_organizations_in_groups = [
                 org
                 for org in all_organizations
-                if org.get("group") and org["group"].get("id") in groups
+                if org.get("attributes") and org["attributes"].get("group_id") in groups
             ]
 
             logger.info(

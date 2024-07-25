@@ -7,12 +7,36 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.1.92 (2024-07-12)
+0.1.95 (2024-07-25)
 ===================
 
 ### Features
 
 - Added support for gitlab member ingestion (PORT-7708)
+
+
+0.1.94 (2024-07-24)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.5
+
+
+0.1.93 (2024-07-23)
+===================
+
+### Bug Fixes
+
+- Search gitops file paths in all repo tree (added missing parameter)
+
+
+0.1.92 (2024-07-23)
+===================
+
+### Bug Fixes
+
+- Search gitops file paths recursively
 
 
 0.1.91 (2024-07-10)
