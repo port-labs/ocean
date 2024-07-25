@@ -393,7 +393,7 @@ class SnykClient:
         logger.info(
             f"Fetched {len(all_organizations)} organizations for the given token."
         )
-        ## destructure the attributes prop from the response and add it to the object
+        ## the previous installations of the integration may not have the attributes key in the organization object so we destruct the attributes key to the root level
         all_organizations = [
             {**org, **org.get("attributes", {})} for org in all_organizations
         ]
