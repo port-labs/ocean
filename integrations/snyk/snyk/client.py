@@ -291,8 +291,9 @@ class SnykClient:
         ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
             return {}
         user_id = user_reference.split("/")[-1]
+        user_cache_key = f"{CacheKeys.USER}-{user_id}"
         user_reference = user_reference.replace("/rest", "")
-        cached_details = event.attributes.get(f"{CacheKeys.USER}-{user_id}")
+        cached_details = event.attributes.get(user_cache_key)
         if cached_details:
             return cached_details
 
@@ -305,7 +306,7 @@ class SnykClient:
             if not user_details:
                 return {}
 
-            event.attributes[f"{CacheKeys.USER}-{user_id}"] = user_details
+            event.attributes[user_cache_key] = user_details
             return user_details["data"]
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
@@ -315,7 +316,8 @@ class SnykClient:
                 raise
 
     async def _get_target_details(self, org_id: str, target_id: str) -> dict[str, Any]:
-        cached_details = event.attributes.get(f"{CacheKeys.TARGET}-{target_id}")
+        target_cache_key = f"{CacheKeys.TARGET}-{target_id}"
+        cached_details = event.attributes.get(target_cache_key)
         if cached_details:
             return cached_details
 
@@ -323,7 +325,7 @@ class SnykClient:
             url=f"{self.rest_api_url}/orgs/{org_id}/targets/{target_id}",
             version=f"{self.snyk_api_version}",
         )
-        event.attributes[f"{CacheKeys.TARGET}-{target_id}"] = target_details
+        event.attributes[target_cache_key] = target_details
         return target_details
 
     async def enrich_project(self, project: dict[str, Any]) -> dict[str, Any]:
@@ -391,6 +393,10 @@ class SnykClient:
         logger.info(
             f"Fetched {len(all_organizations)} organizations for the given token."
         )
+        ## destructure the attributes prop from the response and add it to the object
+        all_organizations = [
+            {**org, **org.get("attributes", {})} for org in all_organizations
+        ]
         return all_organizations
 
     async def get_organizations_in_groups(self) -> list[Any]:
