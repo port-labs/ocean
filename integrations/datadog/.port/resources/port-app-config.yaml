@@ -12,13 +12,13 @@ resources:
           title: .aws_name // .host_name
           properties:
             up: .up
-            hostName: .host_name
+            host_name: .host_name
             platform: .meta.platform
             is_muted: .is_muted
             machine: .meta.machine
             description: .description
             sources: .sources
-            cpuCores: .meta.cpuCores
+            cpu_cores: .meta.cpuCores
             agent_version: .meta.agent_version
             tags: .tags_by_source
   - kind: monitor

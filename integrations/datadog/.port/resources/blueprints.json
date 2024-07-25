@@ -11,7 +11,7 @@
           "title": "Is Running?",
           "description": "Is the host up?"
         },
-        "hostName": {
+        "host_name": {
           "type": "string",
           "title": "Host Name",
           "description": "the name of the host"
@@ -31,7 +31,7 @@
           "title": "Machine",
           "description": "The CPU architecture of the host machine (e.g., amd64, x86, x64, arm, arm64)."
         },
-        "cpuCores": {
+        "cpu_cores": {
           "type": "number",
           "title": "CPU Cores",
           "description": "the host CPU cores"
