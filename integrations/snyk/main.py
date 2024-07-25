@@ -20,6 +20,7 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
     TARGET = "target"
+    VULNERABILITY = "vulnerability"
 
 
 async def verify_signature(request: Request, secret: str) -> bool:
@@ -97,6 +98,10 @@ async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
     snyk_client = init_client()
     all_issues: list[dict[str, Any]] = []
 
+    logger.warning(
+        "This kind will be deprecated at the end of Q3, in favour of our new data model for Snyk resources. This change is necessary because Snyk has announced a migration and end of life of their v1 API to focus on their REST API. Refer to our documentation for more information: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/snyk/#issue"
+    )
+
     semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
 
     async for projects in snyk_client.get_paginated_projects():
@@ -109,6 +114,15 @@ async def on_issues_resync(kind: str) -> list[dict[str, Any]]:
         all_issues.extend(sum(project_issues_list, []))
 
     return list({issue["id"]: issue for issue in all_issues}.values())
+
+
+@ocean.on_resync(ObjectKind.VULNERABILITY)
+async def on_vulnerability_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    snyk_client = init_client()
+
+    async for issues_batch in snyk_client.get_paginated_issues():
+        logger.debug(f"Received batch with {len(issues_batch)} issues")
+        yield issues_batch
 
 
 @ocean.router.post("/webhook")
