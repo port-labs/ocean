@@ -20,6 +20,7 @@ resources:
             sources: .sources
             cpuCores: .meta.cpuCores
             agent_version: .meta.agent_version
+            tags: .tags_by_source
   - kind: monitor
     selector:
       query: 'true'
