@@ -575,7 +575,9 @@ class GitlabService:
                 order_by="id",
                 sort="asc",
             ):
-                members: List[GroupMember] = typing.cast(List[GroupMember], members_batch)
+                members: List[GroupMember] = typing.cast(
+                    List[GroupMember], members_batch
+                )
                 logger.info(
                     f"Queried {len(members)} members {[member.username for member in members]} from {group.name}"
                 )
