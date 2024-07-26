@@ -7,9 +7,9 @@ features:
   - type: exporter
     section: Git Providers
     resources:
-      - kind: projects
       - kind: members
       - kind: groups
+      - kind: projects
 configurations:
   - name: tokenMapping
     required: true

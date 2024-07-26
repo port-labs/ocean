@@ -1,20 +1,21 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
-  - kind: project
+  - kind: member
     selector:
-      query: "true"
+      query: 'true'
+      publicEmailVisibility: 'false'
     port:
       entity:
         mappings:
-          identifier: .path_with_namespace | gsub(" "; "")
+          identifier: .username
           title: .name
-          blueprint: '"service"'
+          blueprint: '"gitlabGroupMember"'
           properties:
-            url: .web_url
-            readme: file://README.md
-            description: .description
-            language: .__languages | to_entries | max_by(.value) | .key
+            state: .state
+            locked: .locked
+            link: .web_url
+            email: .email
   - kind: group
     selector:
       query: 'true'
@@ -30,18 +31,21 @@ resources:
             description: .description
           relations:
             members: '[.__members[].username]'
-  - kind: member
+  - kind: project
     selector:
-      query: 'true'
-      publicEmailVisibility: 'false'
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: .username
+          identifier: .path_with_namespace | gsub(" "; "")
           title: .name
-          blueprint: '"member"'
+          blueprint: '"service"'
           properties:
-            state: .state
-            locked: .locked
-            link: .web_url
-            email: .email
+            url: .web_url
+            readme: file://README.md
+            description: .description
+            language: .__languages | to_entries | max_by(.value) | .key
+          relations:
+            group: >-
+              .path_with_namespace | gsub(" "; "") | split("/") | .[:-1] |
+              join("/")
