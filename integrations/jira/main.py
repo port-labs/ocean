@@ -1,11 +1,14 @@
+import typing
 from enum import StrEnum
 from typing import Any
 
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import JiraClient
+from integration import JiraIssueResourceConfig, JiraSprintResourceConfig
 
 
 class ObjectKind(StrEnum):
@@ -61,8 +64,9 @@ async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SPRINT)
 async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
-
-    async for sprints in client.get_all_sprints():
+    config = typing.cast(JiraSprintResourceConfig, event.resource_config)
+    params = {"state": config.selector.state}
+    async for sprints in client.get_all_sprints(params):
         logger.info(f"Received sprint batch with {len(sprints)} sprints")
         yield sprints
 
@@ -70,8 +74,13 @@ async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
+    config = typing.cast(JiraIssueResourceConfig, event.resource_config)
+    params = {}
+    if config.selector.jql:
+        params["jql"] = config.selector.jql
+        logger.info(f"Found JQL filter: {config.selector.jql}")
 
-    async for issues in client.get_all_issues():
+    async for issues in client.get_all_issues(config.selector.source, params):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 
