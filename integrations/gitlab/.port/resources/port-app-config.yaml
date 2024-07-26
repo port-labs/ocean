@@ -1,11 +1,9 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
-filterBots: false
 resources:
   - kind: member
     selector:
       query: 'true'
-      publicEmailVisibility: 'false'
     port:
       entity:
         mappings:
