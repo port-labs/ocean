@@ -1,7 +1,7 @@
 import asyncio
 import typing
 from datetime import datetime, timedelta
-from typing import List, Tuple, Any, Union, TYPE_CHECKING
+from typing import List, Tuple, Any, Union, TYPE_CHECKING, Callable
 
 import anyio.to_thread
 import yaml
@@ -559,13 +559,15 @@ class GitlabService:
             )
             filter_bots = port_app_config.filter_bots
 
-            def skip_validation(_: User):
+            def skip_validation(_: User) -> bool:
                 return True
 
-            def should_run_for_member(member: GroupMember):
+            def should_run_for_member(member: GroupMember) -> bool:
                 return not member.username.__contains__("bot")
 
-            validation_func = should_run_for_member if filter_bots else skip_validation
+            validation_func: Union[
+                Callable[[User], bool], Callable[[GroupMember], bool]
+            ] = (should_run_for_member if filter_bots else skip_validation)
 
             logger.info(f"Fetching all members of group {group.name}")
             async for members_batch in AsyncFetcher.fetch_batch(
