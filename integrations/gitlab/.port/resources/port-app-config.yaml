@@ -1,5 +1,6 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
+filterBots: false
 resources:
   - kind: member
     selector:

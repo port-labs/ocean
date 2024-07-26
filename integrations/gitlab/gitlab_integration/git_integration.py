@@ -145,8 +145,8 @@ class GitlabPortAppConfig(PortAppConfig):
     )
     filter_bots: bool | None = Field(
         alias="filterBots",
-        default=True,
-        description="If set to true, bots will be filtered out from the members list. Default value is true",
+        default=False,
+        description="If set to true, bots will be filtered out from the members list. Default value is false",
     )
     resources: list[GitlabMembersResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
