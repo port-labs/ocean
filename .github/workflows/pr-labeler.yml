@@ -41,7 +41,6 @@ jobs:
 
           echo "Output file"
           cat ${{ env.yamlfile }}
-        shell: bash
 
       - name: Apply labels
         uses: actions/labeler@v5
