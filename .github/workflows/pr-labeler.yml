@@ -1,13 +1,15 @@
 name: Pull Request Labeling
 
 on:
-  - pull_request
   - pull_request_target
 
 jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
       - name: Create dynamic labeler configuration
         env:
           yamlfile: .github/labeler.yml
