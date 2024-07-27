@@ -168,7 +168,6 @@ class ResourceUpdate(BaseModel):
 
 @ocean.router.post("/webhook")
 async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Response:
-
     await update_available_access_credentials()
     try:
         logger.info(f"Received AWS Webhook request body: {update}")
