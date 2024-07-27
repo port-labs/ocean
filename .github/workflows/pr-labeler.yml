@@ -2,6 +2,7 @@ name: Pull Request Labeling
 
 on:
   - pull_request_target
+  - workflow_dispatch
 
 jobs:
   labeler:
