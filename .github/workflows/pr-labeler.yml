@@ -7,8 +7,39 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/labeler@v5
+      - name: Create dynamic labeler configuration
+        env:
+          yamlfile: .github/labeler.yml
+        run: |
+          find integrations -mindepth 1 -maxdepth 1 -type d | grep -v '/\.' | awk -F'/' '{print $NF}' | jq -R -s -c 'split("\n")[:-1]' > folders.json
+
+          echo "Add dynamic folder labels to ${{ env.yamlfile }}"
+          jq -r '.[]' folders.json | while read folder; do
+            label="${folder//\//-}"
+            if [ "${#label}" -gt 63 ]; then
+                echo "Label is longer than 63 characters: $label"
+                label="${label:0:63}"
+                echo "Trimmed label to 63 characters: $label"
+            fi
+
+            echo "- $folder -> $label"
+
+            cat >> ${{ env.yamlfile }} << EOF
+          $label:
+            - changed-files:
+              - any-glob-to-any-file: 'integrations/$folder/**'
+          EOF
+          done
+
+          echo "Output file"
+          cat ${{ env.yamlfile }}
+        shell: bash
+
+      - name: Apply labels
+        uses: actions/labeler@v5
         with:
+          sync-labels: true
+          config-path: .github/labeler.yml
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
 
   size-label:
