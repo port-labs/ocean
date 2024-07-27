@@ -14,25 +14,25 @@ jobs:
         env:
           yamlfile: .github/labeler.yml
         run: |
-          find integrations -mindepth 1 -maxdepth 1 -type d | grep -v '/\.' | awk -F'/' '{print $NF}' | jq -R -s -c 'split("\n")[:-1]' > folders.json
-          echo "Folders:"
-          cat folders.json
+          find integrations -mindepth 1 -maxdepth 1 -type d | grep -v '/\.' | awk -F'/' '{print $NF}' | jq -R -s -c 'split("\n")[:-1]' > integrations.json
+          echo "Integrations:"
+          cat integrations.json
           touch ${{ env.yamlfile }}
-          echo "Add dynamic folder labels to ${{ env.yamlfile }}"
-          jq -r '.[]' folders.json | while read folder; do
-            label="${folder//\//-}"
+          echo "Add dynamic integration labels to ${{ env.yamlfile }}"
+          jq -r '.[]' integrations.json | while read integration; do
+            label="${integration//\//-}"
             if [ "${#label}" -gt 63 ]; then
                 echo "Label is longer than 63 characters: $label"
                 label="${label:0:63}"
                 echo "Trimmed label to 63 characters: $label"
             fi
 
-            echo "- $folder -> $label"
+            echo "- $integration -> $label"
 
             cat >> ${{ env.yamlfile }} << EOF
           $label:
             - changed-files:
-              - any-glob-to-any-file: 'integrations/$folder/**'
+              - any-glob-to-any-file: 'integrations/$integration/**'
           EOF
           done
 
