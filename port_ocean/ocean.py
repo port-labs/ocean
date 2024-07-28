@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import json
 import sys
 import threading
 from contextlib import asynccontextmanager
@@ -11,7 +10,6 @@ from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Scope, Receive, Send
 
-from port_ocean.core.models import RuntimeType
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
