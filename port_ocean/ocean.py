@@ -72,12 +72,11 @@ class Ocean:
     ) -> None:
         async def execute_resync_all() -> None:
             now = datetime.datetime.now()
-            calculation = asyncio.create_task(
-                calculate_next_resync(now, self.config.scheduled_resync_interval)
+            next_resync = calculate_next_resync(
+                now, self.config.scheduled_resync_interval
             )
             logger.info("Starting a new scheduled resync")
             await self.integration.sync_raw_all()
-            next_resync = await calculation
 
             if next_resync:
                 await self.port_client.update_resync_state(
