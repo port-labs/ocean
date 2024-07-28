@@ -1,4 +1,5 @@
 from asyncio import Task, get_event_loop
+import datetime
 from typing import Literal, Any
 
 from loguru import logger
@@ -11,6 +12,7 @@ from port_ocean.core.event_listener.base import (
 )
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
+from port_ocean.utils.misc import calculate_next_resync
 
 
 class PollingEventListenerSettings(EventListenerSettings):
@@ -50,6 +52,26 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._last_updated_at = None
+        self.is_first_resync = True
+        self.resync_state: dict[str, Any] = {}
+
+    def should_update_resync_state(self) -> bool:
+        return self.is_first_resync
+
+    async def before_resync(self) -> None:
+        if not self.should_update_resync_state():
+            return None
+
+        now = datetime.datetime.now()
+        self.resync_state["next_resync"] = calculate_next_resync(
+            now, ocean.config.scheduled_resync_interval
+        )
+
+    async def after_resync(self) -> None:
+        if not self.should_update_resync_state():
+            return None
+
+        await ocean.port_client.update_resync_state(self.resync_state)
 
     async def _start(self) -> None:
         """
@@ -75,6 +97,7 @@ class PollingEventListener(BaseEventListener):
             ) and self._last_updated_at != last_updated_at
 
             if should_resync:
+                await self.before_resync()
                 logger.info("Detected change in integration, resyncing")
                 self._last_updated_at = last_updated_at
                 running_task: Task[Any] = get_event_loop().create_task(
@@ -83,6 +106,8 @@ class PollingEventListener(BaseEventListener):
                 signal_handler.register(running_task.cancel)
 
                 await running_task
+                await self.after_resync()
+                self.is_first_resync = False
 
         # Execute resync repeatedly task
         await resync()
