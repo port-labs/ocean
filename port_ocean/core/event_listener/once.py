@@ -55,7 +55,6 @@ class OnceEventListener(BaseEventListener):
             return None
 
         now = datetime.datetime.now()
-        interval = ocean.config.scheduled_resync_interval
         integration = await ocean.port_client.get_current_integration()
         interval_str = (
             integration.get("spec", {})
