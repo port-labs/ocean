@@ -24,10 +24,10 @@ from port_ocean.context.ocean import (
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
-from port_ocean.utils.misc import convert_time_to_minutes
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import init_signal_handler, signal_handler
 from port_ocean.version import __integration_version__
+from port_ocean.utils.misc import calculate_next_resync
 
 
 class Ocean:
@@ -67,43 +67,24 @@ class Ocean:
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
 
-    async def calculate_next_resync(self, now: datetime.datetime) -> float | None:
-        if (
-            self.config.runtime != RuntimeType.Saas.value
-            and not self.config.scheduled_resync_interval
-        ):
-            # There is no scheduled resync outside of Saas runtime or if not configured
-            return None
-
-        interval = self.config.scheduled_resync_interval
-        next_resync = None
-        if self.config.runtime == RuntimeType.Saas.value:
-            integration = await self.port_client.get_current_integration()
-            interval_str = (
-                integration.get("spec", {})
-                .get("appSpec", {})
-                .get("scheduledResyncInterval")
-            )
-            interval = convert_time_to_minutes(interval_str)
-
-        next_resync_date = now + datetime.timedelta(minutes=float(interval or 0))
-        next_resync = next_resync_date.now(datetime.timezone.utc).timestamp()
-        return next_resync
-
     async def _setup_scheduled_resync(
         self,
     ) -> None:
         async def execute_resync_all() -> None:
             now = datetime.datetime.now()
-            calculation = asyncio.create_task(self.calculate_next_resync(now))
+            calculation = asyncio.create_task(
+                calculate_next_resync(now, self.config.scheduled_resync_interval)
+            )
             logger.info("Starting a new scheduled resync")
             await self.integration.sync_raw_all()
             next_resync = await calculation
-            await self.port_client.update_resync_state(
-                {
-                    "next_resync": next_resync,
-                }
-            )
+
+            if next_resync:
+                await self.port_client.update_resync_state(
+                    {
+                        "next_resync": next_resync,
+                    }
+                )
 
         interval = self.config.scheduled_resync_interval
         if interval is not None:
@@ -128,16 +109,8 @@ class Ocean:
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
                 init_signal_handler()
-                # now = datetime.datetime.now()
-                # calculation = asyncio.create_task(self.calculate_next_resync(now))
                 await self.integration.start()
                 await self._setup_scheduled_resync()
-                # next_resync = await calculation
-                # await self.port_client.update_resync_state(
-                #     {
-                #         "next_resync": next_resync,
-                #     }
-                # )
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")

@@ -12,7 +12,7 @@ from port_ocean.core.event_listener.base import (
 )
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.context.ocean import ocean
-from port_ocean.utils.misc import convert_time_to_minutes
+from port_ocean.utils.misc import calculate_next_resync, convert_time_to_minutes
 
 
 class OnceEventListenerSettings(EventListenerSettings):
@@ -56,20 +56,14 @@ class OnceEventListener(BaseEventListener):
 
         now = datetime.datetime.now()
         interval = ocean.config.scheduled_resync_interval
-        next_resync = None
-        if ocean.config.runtime == RuntimeType.Saas.value:
-            integration = await ocean.port_client.get_current_integration()
-            interval_str = (
-                integration.get("spec", {})
-                .get("appSpec", {})
-                .get("scheduledResyncInterval")
-            )
-            interval = convert_time_to_minutes(interval_str)
-
-        next_resync_date = now + datetime.timedelta(minutes=float(interval or 0))
-        next_resync = next_resync_date.now(datetime.timezone.utc).timestamp()
-
-        self.resync_state["next_resync"] = next_resync
+        integration = await ocean.port_client.get_current_integration()
+        interval_str = (
+            integration.get("spec", {})
+            .get("appSpec", {})
+            .get("scheduledResyncInterval")
+        )
+        interval = convert_time_to_minutes(interval_str)
+        self.resync_state["next_resync"] = calculate_next_resync(now, interval)
 
     async def after_resync(self) -> None:
         if not self.should_update_resync_state():

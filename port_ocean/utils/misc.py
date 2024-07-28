@@ -1,3 +1,4 @@
+import datetime
 import inspect
 from importlib.util import spec_from_file_location, module_from_spec
 from pathlib import Path
@@ -81,3 +82,14 @@ def convert_time_to_minutes(time_str: str) -> int:
         return minutes
     else:
         raise ValueError("Invalid format. Expected a string ending with 'h' or 'm'.")
+
+
+def calculate_next_resync(
+    now: datetime.datetime, interval: int | None = None
+) -> float | None:
+    if not interval:
+        return None
+
+    next_resync_date = now + datetime.timedelta(minutes=float(interval or 0))
+    next_resync = next_resync_date.now(datetime.timezone.utc).timestamp()
+    return next_resync
