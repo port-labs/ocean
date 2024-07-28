@@ -87,6 +87,5 @@ class PortClient(
             )
             if response.is_error:
                 logger.error(f"Error updating resync state, error: {response.text}")
-            handle_status_code(response)
         except Exception as e:
             logger.error(f"Error updating resync state, error: {e}")
