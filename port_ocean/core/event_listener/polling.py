@@ -52,7 +52,7 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._last_updated_at = None
-        self.is_first_resync = True
+        self.is_first_resync = True  # This is used for the resync state update, since polling listener is running a resync automatically on installation and the rest is on manual trigger.
         self.resync_state: dict[str, Any] = {}
 
     def should_update_resync_state(self) -> bool:
