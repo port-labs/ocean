@@ -55,14 +55,18 @@ class OnceEventListener(BaseEventListener):
             return None
 
         now = datetime.datetime.now()
-        integration = await ocean.port_client.get_current_integration()
-        interval_str = (
-            integration.get("spec", {})
-            .get("appSpec", {})
-            .get("scheduledResyncInterval")
-        )
-        interval = convert_time_to_minutes(interval_str)
-        self.resync_state["next_resync"] = calculate_next_resync(now, interval)
+        try:
+            integration = await ocean.port_client.get_current_integration()
+            interval_str = (
+                integration.get("spec", {})
+                .get("appSpec", {})
+                .get("scheduledResyncInterval")
+            )
+            interval = convert_time_to_minutes(interval_str)
+            self.resync_state["next_resync"] = calculate_next_resync(now, interval)
+        except Exception:
+            logger.exception("Error occurred while calculating next resync")
+            return None
 
     async def after_resync(self) -> None:
         if not self.should_update_resync_state():
