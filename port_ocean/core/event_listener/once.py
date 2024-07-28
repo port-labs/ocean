@@ -4,6 +4,7 @@ from typing import Literal, Any
 
 from loguru import logger
 
+from port_ocean.core.models import RuntimeEnum
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
     EventListenerEvents,
@@ -47,7 +48,7 @@ class OnceEventListener(BaseEventListener):
         self.resync_state: dict[str, Any] = {}
 
     def should_update_resync_state(self) -> bool:
-        return ocean.config.runtime == "Saas"
+        return ocean.config.runtime == RuntimeEnum.Saas
 
     async def before_resync(self) -> None:
         if not self.should_update_resync_state():
@@ -56,7 +57,7 @@ class OnceEventListener(BaseEventListener):
         now = datetime.datetime.now()
         interval = ocean.config.scheduled_resync_interval
         next_resync = None
-        if ocean.config.runtime == "Saas":
+        if ocean.config.runtime == RuntimeEnum.Saas:
             integration = await ocean.port_client.get_current_integration()
             interval_str = (
                 integration.get("spec", {})

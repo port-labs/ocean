@@ -1,8 +1,14 @@
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Literal
 
 from pydantic import BaseModel
 from pydantic.fields import Field
+
+
+class RuntimeEnum(Enum):
+    Saas = "Saas"
+    OnPrem = "OnPrem"
 
 
 Runtime = Literal["OnPrem", "Saas"]
