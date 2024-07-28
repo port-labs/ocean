@@ -8,7 +8,7 @@ from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
 from port_ocean.core.event_listener import EventListenerSettingsType
-from port_ocean.core.models import Runtime
+from port_ocean.core.models import Runtime, RuntimeType
 from port_ocean.utils.misc import get_integration_name, get_spec_file
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
@@ -98,8 +98,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         return values
 
     @validator("runtime")
-    def validate_runtime(cls, runtime: Literal["OnPrem", "Saas"]) -> Runtime:
-        if runtime == "Saas":
+    def validate_runtime(cls, runtime: Runtime) -> Runtime:
+        if runtime == RuntimeType.Saas.value:
             spec = get_spec_file()
             if spec is None:
                 raise ValueError(

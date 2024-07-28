@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from pydantic.fields import Field
 
 
-class RuntimeEnum(Enum):
+class RuntimeType(Enum):
     Saas = "Saas"
     OnPrem = "OnPrem"
 
