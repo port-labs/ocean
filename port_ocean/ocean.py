@@ -11,6 +11,7 @@ from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Scope, Receive, Send
 
+from port_ocean.core.models import RuntimeEnum
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
@@ -67,13 +68,16 @@ class Ocean:
         )
 
     async def calculate_next_resync(self, now: datetime.datetime) -> float | None:
-        if self.config.runtime != "Saas" and not self.config.scheduled_resync_interval:
+        if (
+            self.config.runtime != RuntimeEnum.Saas
+            and not self.config.scheduled_resync_interval
+        ):
             # There is no scheduled resync outside of Saas runtime or if not configured
             return None
 
         interval = self.config.scheduled_resync_interval
         next_resync = None
-        if self.config.runtime == "Saas":
+        if self.config.runtime == RuntimeEnum.Saas:
             integration = await self.port_client.get_current_integration()
             interval_str = (
                 integration.get("spec", {})
