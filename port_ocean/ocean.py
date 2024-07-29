@@ -25,7 +25,7 @@ from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import init_signal_handler, signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.utils.misc import calculate_next_resync, to_utc_timestamp
+from port_ocean.utils.misc import calculate_next_resync
 
 
 class Ocean:
