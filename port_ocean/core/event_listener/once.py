@@ -4,7 +4,7 @@ from typing import Literal, Any
 
 from loguru import logger
 
-from port_ocean.core.models import RuntimeType
+from port_ocean.core.models import Runtime
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
     EventListenerEvents,
@@ -69,7 +69,7 @@ class OnceEventListener(BaseEventListener):
             return None
 
     def is_saas(self) -> bool:
-        return ocean.config.runtime == RuntimeType.Saas.value
+        return ocean.config.runtime == Runtime.Saas.value
 
     async def before_resync(self) -> None:
         if self.is_saas():
