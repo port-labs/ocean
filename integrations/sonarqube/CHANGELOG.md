@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.73 (2024-07-29)
+
+### Improvements
+
+- Allow users to define their own Sonar project metric keys
+
+
 # Port_Ocean 0.1.72 (2024-07-24)
 
 ### Improvements
