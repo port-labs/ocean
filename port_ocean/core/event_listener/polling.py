@@ -12,7 +12,6 @@ from port_ocean.core.event_listener.base import (
 )
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
-from port_ocean.utils.misc import calculate_next_resync
 
 
 class PollingEventListenerSettings(EventListenerSettings):

@@ -12,7 +12,7 @@ from port_ocean.core.event_listener.base import (
 )
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.context.ocean import ocean
-from port_ocean.utils.misc import calculate_next_resync, convert_time_to_minutes
+from port_ocean.utils.misc import convert_time_to_minutes
 
 
 class OnceEventListenerSettings(EventListenerSettings):
