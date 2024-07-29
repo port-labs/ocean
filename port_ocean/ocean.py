@@ -65,23 +65,48 @@ class Ocean:
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
 
+    async def update_state_before_scheduled_sync(
+        self, interval: int | None = None
+    ) -> datetime.datetime:
+        if interval is None:
+            interval = self.config.scheduled_resync_interval
+
+        start = datetime.datetime.now(datetime.timezone.utc)
+        await self.port_client.update_resync_state(
+            {
+                "status": "running",
+                "last_resync_start": start,
+                "last_resync_end": None,
+                "interval": interval,
+                "next_resync": calculate_next_resync(start, interval),
+            }
+        )
+        return start
+
+    async def update_state_after_scheduled_sync(
+        self, start: datetime.datetime, interval: int | None = None
+    ) -> None:
+        if interval is None:
+            interval = self.config.scheduled_resync_interval
+
+        await self.port_client.update_resync_state(
+            {
+                "status": "completed",
+                "last_resync_start": start,
+                "last_resync_end": datetime.datetime.now(datetime.timezone.utc),
+                "interval": interval,
+                "next_resync": calculate_next_resync(start, interval),
+            }
+        )
+
     async def _setup_scheduled_resync(
         self,
     ) -> None:
         async def execute_resync_all() -> None:
-            now = datetime.datetime.now()
-            next_resync = calculate_next_resync(
-                now, self.config.scheduled_resync_interval
-            )
+            start = await self.update_state_before_scheduled_sync()
             logger.info("Starting a new scheduled resync")
             await self.integration.sync_raw_all()
-
-            if next_resync:
-                await self.port_client.update_resync_state(
-                    {
-                        "next_resync": next_resync,
-                    }
-                )
+            await self.update_state_after_scheduled_sync(start)
 
         interval = self.config.scheduled_resync_interval
         if interval is not None:
