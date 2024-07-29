@@ -45,16 +45,16 @@ class OnceEventListener(BaseEventListener):
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
-        self.resync_state: dict[str, Any] = {}
+        self.resync_start_time: datetime.datetime | None = None
+        self.resync_interval: int | None = None
 
-    def should_update_resync_state(self) -> bool:
-        return ocean.config.runtime == RuntimeType.Saas.value
-
-    async def before_resync(self) -> None:
-        if not self.should_update_resync_state():
+    async def get_scheduled_resync_interval(self) -> int | None:
+        if not self.is_saas():
             return None
 
-        now = datetime.datetime.now()
+        if self.resync_interval:
+            return self.resync_interval
+
         try:
             integration = await ocean.port_client.get_current_integration()
             interval_str = (
@@ -62,17 +62,28 @@ class OnceEventListener(BaseEventListener):
                 .get("appSpec", {})
                 .get("scheduledResyncInterval")
             )
-            interval = convert_time_to_minutes(interval_str)
-            self.resync_state["next_resync"] = calculate_next_resync(now, interval)
+            self.resync_interval = convert_time_to_minutes(interval_str)
+            return self.resync_interval
         except Exception:
             logger.exception("Error occurred while calculating next resync")
             return None
 
-    async def after_resync(self) -> None:
-        if not self.should_update_resync_state():
-            return None
+    def is_saas(self) -> bool:
+        return ocean.config.runtime == RuntimeType.Saas.value
 
-        await ocean.port_client.update_resync_state(self.resync_state)
+    async def before_resync(self) -> None:
+        if self.is_saas():
+            interval = await self.get_scheduled_resync_interval()
+            self.resync_start_time = await ocean.app.update_state_before_scheduled_sync(
+                interval
+            )
+
+    async def after_resync(self) -> None:
+        if self.is_saas() and self.resync_start_time:
+            interval = await self.get_scheduled_resync_interval()
+            await ocean.app.update_state_after_scheduled_sync(
+                self.resync_start_time, interval
+            )
 
     async def _start(self) -> None:
         """

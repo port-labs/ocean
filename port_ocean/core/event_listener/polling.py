@@ -52,26 +52,23 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self._last_updated_at = None
-        self.is_first_resync = True  # This is used for the resync state update, since polling listener is running a resync automatically on installation and the rest is on manual trigger.
-        self.resync_state: dict[str, Any] = {}
+
+        # This is only used for the resync state update
+        # since polling listener is running a resync automatically only on installation after that all triggers are manual.
+        self.is_first_resync = True
+        self.first_resync_start: datetime.datetime | None = None
 
     def should_update_resync_state(self) -> bool:
         return self.is_first_resync
 
     async def before_resync(self) -> None:
-        if not self.should_update_resync_state():
-            return None
-
-        now = datetime.datetime.now()
-        self.resync_state["next_resync"] = calculate_next_resync(
-            now, ocean.config.scheduled_resync_interval
-        )
+        if self.should_update_resync_state():
+            start = await ocean.app.update_state_before_scheduled_sync()
+            self.first_resync_start = start
 
     async def after_resync(self) -> None:
-        if not self.should_update_resync_state():
-            return None
-
-        await ocean.port_client.update_resync_state(self.resync_state)
+        if self.should_update_resync_state() and self.first_resync_start:
+            await ocean.app.update_state_after_scheduled_sync(self.first_resync_start)
 
     async def _start(self) -> None:
         """
