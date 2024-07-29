@@ -50,10 +50,10 @@ async def _handle_global_resource_resync(
         if is_access_denied_exception(e):
             if handle_exceptions:
                 logger.info(f"Trying to resync {kind} in all regions until success")
-                async for session in credentials.create_session_for_each_region():
-                    s = await session
+                async for async_session in credentials.create_session_for_each_region():
+                    session = await async_session
                     try:
-                        async for batch in resync_cloudcontrol(kind, s):
+                        async for batch in resync_cloudcontrol(kind, session):
                             yield batch
                         break
                     except Exception as e:
@@ -69,14 +69,16 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for credentials in get_accounts():
         if is_global:
             default_region = get_default_region_from_credentials(credentials)
-            s = await credentials.create_session(default_region)
-            async for batch in _handle_global_resource_resync(kind, credentials, s):
+            default_session = await credentials.create_session(default_region)
+            async for batch in _handle_global_resource_resync(
+                kind, credentials, default_session
+            ):
                 yield batch
         else:
-            async for session in credentials.create_session_for_each_region():
-                s = await session
+            async for async_session in credentials.create_session_for_each_region():
+                session = await async_session
                 try:
-                    async for batch in resync_cloudcontrol(kind, s):
+                    async for batch in resync_cloudcontrol(kind, session):
                         yield batch
                 except Exception:
                     continue
