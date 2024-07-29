@@ -49,14 +49,15 @@ async def _handle_global_resource_resync(
     except Exception as e:
         if is_access_denied_exception(e):
             if handle_exceptions:
-                logger.warning(f"Trying to resync {kind} in all regions until success")
+                logger.info(f"Trying to resync {kind} in all regions until success")
                 async for session in credentials.create_session_for_each_region():
                     s = await session
-                    async for batch in _handle_global_resource_resync(
-                        kind, credentials, s, False
-                    ):
-                        yield batch
-                    break
+                    try:
+                        async for batch in resync_cloudcontrol(kind, s):
+                            yield batch
+                        break
+                    except Exception as e:
+                        continue
 
 
 @ocean.on_resync()
@@ -77,7 +78,7 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 try:
                     async for batch in resync_cloudcontrol(kind, s):
                         yield batch
-                except Exception as e:
+                except Exception:
                     continue
 
 

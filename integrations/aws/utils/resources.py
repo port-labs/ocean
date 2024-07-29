@@ -186,7 +186,6 @@ async def resync_cloudcontrol(
                 resources = response.get("ResourceDescriptions", [])
                 if not resources:
                     break
-                found_data = True
                 page_resources = []
                 if use_get_resource_api:
                     resources = await asyncio.gather(
@@ -228,12 +227,11 @@ async def resync_cloudcontrol(
 
                 if not next_token:
                     break
-            except cloudcontrol.exceptions.ClientError as e:
+            except Exception as e:
                 if is_access_denied_exception(e):
                     logger.warning(
                         f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
                     )
-                    break
                 else:
                     logger.warning(f"Error resyncing {kind} in region {region}, {e}")
                 raise e
