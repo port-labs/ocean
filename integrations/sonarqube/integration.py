@@ -12,6 +12,7 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 
+
 class ObjectKind:
     PROJECTS = "projects"
     ISSUES = "issues"
@@ -164,7 +165,7 @@ class CustomResourceConfig(ResourceConfig):
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
     class SonarQubeProjectSelector(SelectorWithApiFilters):
-        
+
         @staticmethod
         def default_metrics() -> list[str]:
             return [
@@ -180,7 +181,9 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
             ]
 
         api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
-        metrics: list[str] | None = Field(description="List of metric keys", default=default_metrics())
+        metrics: list[str] = Field(
+            description="List of metric keys", default=default_metrics()
+        )
 
     kind: Literal["projects"]
     selector: SonarQubeProjectSelector

@@ -5,7 +5,11 @@ from typing import Any, Optional, AsyncGenerator, cast
 import httpx
 from loguru import logger
 
-from integration import SonarQubeIssueResourceConfig, CustomSelector, SonarQubeProjectResourceConfig
+from integration import (
+    SonarQubeIssueResourceConfig,
+    CustomSelector,
+    SonarQubeProjectResourceConfig,
+)
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
@@ -249,7 +253,9 @@ class SonarQubeClient:
         :return (list[Any]): A list containing projects data for your organization.
         """
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
-        self.metrics = cast(SonarQubeProjectResourceConfig, event.resource_config).selector.metrics
+        self.metrics = cast(
+            SonarQubeProjectResourceConfig, event.resource_config
+        ).selector.metrics
         components = await self.get_components()
         for component in components:
             project_data = await self.get_single_project(project=component)
