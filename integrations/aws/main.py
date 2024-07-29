@@ -1,11 +1,13 @@
 import json
 import typing
 
+import aioboto3
 from fastapi import Response, status
 import fastapi
 from starlette import responses
 from pydantic import BaseModel
 
+from aws.aws_credentials import AwsCredentials
 from port_ocean.core.models import Entity
 
 from utils.resources import (
@@ -18,6 +20,8 @@ from utils.resources import (
 
 from utils.aws import (
     describe_accessible_accounts,
+    get_accounts,
+    get_default_region_from_credentials,
     get_sessions,
     update_available_access_credentials,
     validate_request,
@@ -33,21 +37,48 @@ from utils.misc import (
 )
 
 
+async def _handle_global_resource_resync(
+    kind: str,
+    credentials: AwsCredentials,
+    current_session: aioboto3.Session,
+    handle_exceptions: bool = True,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    try:
+        async for batch in resync_cloudcontrol(kind, current_session):
+            yield batch
+    except Exception as e:
+        if is_access_denied_exception(e):
+            if handle_exceptions:
+                logger.warning(f"Trying to resync {kind} in all regions until success")
+                async for session in credentials.create_session_for_each_region():
+                    s = await session
+                    async for batch in _handle_global_resource_resync(
+                        kind, credentials, s, False
+                    ):
+                        yield batch
+                    break
+
+
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
         return
     await update_available_access_credentials()
     is_global = is_global_resource(kind)
-    try:
-        async for batch in resync_cloudcontrol(kind, is_global):
-            yield batch
-    except Exception as e:
-        if is_access_denied_exception(e):
-            async for batch in resync_cloudcontrol(
-                kind, is_global=False, stop_on_first_region=True
-            ):
+    async for credentials in get_accounts():
+        if is_global:
+            default_region = get_default_region_from_credentials(credentials)
+            s = await credentials.create_session(default_region)
+            async for batch in _handle_global_resource_resync(kind, credentials, s):
                 yield batch
+        else:
+            async for session in credentials.create_session_for_each_region():
+                s = await session
+                try:
+                    async for batch in resync_cloudcontrol(kind, s):
+                        yield batch
+                except Exception as e:
+                    continue
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
