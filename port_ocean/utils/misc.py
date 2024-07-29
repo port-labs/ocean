@@ -90,5 +90,5 @@ def calculate_next_resync(
     if not interval:
         return None
 
-    next_resync_date = now + datetime.timedelta(minutes=float(interval or 0))
+    next_resync_date = now + datetime.timedelta(minutes=interval)
     return next_resync_date.timestamp()
