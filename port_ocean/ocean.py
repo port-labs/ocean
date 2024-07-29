@@ -25,7 +25,7 @@ from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import init_signal_handler, signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.utils.misc import calculate_next_resync
+from port_ocean.utils.misc import calculate_next_resync, to_utc_timestamp
 
 
 class Ocean:
@@ -71,11 +71,11 @@ class Ocean:
         if interval is None:
             interval = self.config.scheduled_resync_interval
 
-        start = datetime.datetime.now(datetime.timezone.utc)
+        start = datetime.datetime.now()
         await self.port_client.update_resync_state(
             {
                 "status": "running",
-                "last_resync_start": start,
+                "last_resync_start": start.timestamp(),
                 "last_resync_end": None,
                 "interval": interval,
                 "next_resync": calculate_next_resync(start, interval),
@@ -92,8 +92,8 @@ class Ocean:
         await self.port_client.update_resync_state(
             {
                 "status": "completed",
-                "last_resync_start": start,
-                "last_resync_end": datetime.datetime.now(datetime.timezone.utc),
+                "last_resync_start": start.timestamp(),
+                "last_resync_end": datetime.datetime.now().timestamp(),
                 "interval": interval,
                 "next_resync": calculate_next_resync(start, interval),
             }

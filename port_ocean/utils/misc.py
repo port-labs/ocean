@@ -84,6 +84,10 @@ def convert_time_to_minutes(time_str: str) -> int:
         raise ValueError("Invalid format. Expected a string ending with 'h' or 'm'.")
 
 
+def to_utc_timestamp(dt: datetime.datetime) -> float:
+    return dt.replace(tzinfo=datetime.timezone.utc).timestamp()
+
+
 def calculate_next_resync(
     now: datetime.datetime, interval: int | None = None
 ) -> float | None:
@@ -91,5 +95,4 @@ def calculate_next_resync(
         return None
 
     next_resync_date = now + datetime.timedelta(minutes=float(interval or 0))
-    next_resync = next_resync_date.now(datetime.timezone.utc).timestamp()
-    return next_resync
+    return next_resync_date.timestamp()
