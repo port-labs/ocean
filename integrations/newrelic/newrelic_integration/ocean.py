@@ -1,7 +1,9 @@
+from typing import Any, AsyncIterable
 import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.issues import IssuesHandler, IssueState, IssueEvent
@@ -11,6 +13,13 @@ from newrelic_integration.utils import (
     get_port_resource_configuration_by_newrelic_entity_type,
     get_port_resource_configuration_by_port_kind,
 )
+
+BATCH_SIZE = 20
+
+
+## stream_async_iterators_tasks expects a list of async iterators, so we need to wrap the coroutine in a list
+async def wrap_coroutine(coroutine: Any) -> AsyncIterable[Any]:
+    yield await coroutine
 
 
 @ocean.on_resync()
@@ -69,10 +78,21 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
         async with httpx.AsyncClient() as http_client:
-            async for service_levels in ServiceLevelsHandler(
-                http_client
-            ).list_service_levels():
-                yield service_levels
+            handler = ServiceLevelsHandler(http_client)
+            batch = []
+            async for service_level in handler.list_service_levels():
+                batch.append(
+                    wrap_coroutine(handler.process_service_level(service_level))
+                )
+                if len(batch) >= BATCH_SIZE:
+                    async for item in stream_async_iterators_tasks(*batch):
+                        yield [item]
+                    batch = []
+
+            # Process any remaining items in the batch
+            if batch:
+                async for item in stream_async_iterators_tasks(*batch):
+                    yield [item]
 
 
 @ocean.router.post("/events")
