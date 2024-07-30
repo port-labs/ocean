@@ -97,14 +97,14 @@ class Ocean:
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
-                init_signal_handler()
                 await self.integration.start()
                 await self._setup_scheduled_resync()
                 yield None
-                signal_handler.exit()
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
                 sys.exit("Server stopped")
+            finally:
+                signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
         await self.fast_api_app(scope, receive, send)
