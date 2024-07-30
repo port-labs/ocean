@@ -43,6 +43,7 @@ class ServiceLevelsHandler:
     async def process_service_level(
         self, service_level: dict[str, Any]
     ) -> dict[str, Any]:
+        # Get the NRQL which is used to build the actual SLI result
         nrql = (
             service_level.get("serviceLevel", {})
             .get("indicators", [])[0]
