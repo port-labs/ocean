@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.6 (2024-07-30)
+
+### Bug Fixes
+
+- Flush logs when receiving SIGTERM
+
+
 ## 0.9.5 (2024-07-23)
 
 ### Bug Fixes
