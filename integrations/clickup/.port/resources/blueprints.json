@@ -28,50 +28,120 @@
     "relations": {}
   },
   {
-    "identifier": "clickupProject",
-    "description": "This blueprint represents a ClickUp project",
-    "title": "ClickUp Project",
-    "icon": "Clickup",
-    "schema": {
-      "properties": {
-        "url": {
-          "title": "Project URL",
-          "type": "string",
-          "format": "url",
-          "description": "URL to the project in Clickup"
-        },
-        "startDate": {
-          "title": "Project start date",
-          "type": "string",
-          "format": "date-time",
-          "description": "The start date of this project"
-        },
-        "endDate": {
-          "title": "Project end date",
-          "type": "string",
-          "format": "date-time",
-          "description": "The end date of this project"
-        },
-        "totalIssues": {
-          "title": "Total Issues",
-          "type": "number",
-          "description": "The total number of issues in the project"
+  "identifier": "clickupSpace",
+  "description": "This blueprint represents a ClickUp space",
+  "title": "ClickUp Space",
+  "icon": "Clickup",
+  "schema": {
+    "properties": {
+      "url": {
+        "title": "Space URL",
+        "type": "string",
+        "format": "url",
+        "description": "URL to the space in Clickup"
+      },
+      "statuses": {
+        "title": "Statuses",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "title": "Status",
+              "type": "string"
+            },
+            "type": {
+              "title": "Type",
+              "type": "string"
+            },
+            "orderindex": {
+              "title": "Order Index",
+              "type": "integer"
+            },
+            "color": {
+              "title": "Color",
+              "type": "string",
+              "format": "color"
+            }
+          }
         }
       },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "team": {
-        "title": "Team",
-        "target": "clickupTeam",
-        "required": false,
-        "many": false
+      "archived": {
+        "title": "Archived",
+        "type": "boolean",
+        "description": "Indicates if the space is archived"
+      },
+      "private": {
+        "title": "Private",
+        "type": "boolean",
+        "description": "Indicates if the space is private"
       }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "team": {
+      "title": "Team",
+      "description": "The ClickUp team that this space belongs to",
+      "target": "clickupTeam",
+      "required": false,
+      "many": false
+    }
+  }
+},
+  {
+  "identifier": "clickupProject",
+  "description": "This blueprint represents a ClickUp project",
+  "title": "ClickUp Project",
+  "icon": "Clickup",
+  "schema": {
+    "properties": {
+      "url": {
+        "title": "Project URL",
+        "type": "string",
+        "format": "url",
+        "description": "URL to the project in Clickup"
+      },
+      "startDate": {
+        "title": "Project start date",
+        "type": "string",
+        "format": "date-time",
+        "description": "The start date of this project"
+      },
+      "endDate": {
+        "title": "Project end date",
+        "type": "string",
+        "format": "date-time",
+        "description": "The end date of this project"
+      },
+      "totalIssues": {
+        "title": "Total Issues",
+        "type": "number",
+        "description": "The total number of issues in the project"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {
+    "team": {
+      "title": "Team",
+      "path": "space.team.$title"
     }
   },
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "space": {
+      "title": "Space",
+      "target": "clickupSpace",
+      "required": false,
+      "many": false
+    }
+  }
+},
   {
     "identifier": "clickupIssue",
     "title": "ClickUp Issue",
@@ -94,11 +164,14 @@
           "type": "string",
           "description": "The status of the issue"
         },
-        "assignee": {
-          "title": "Assignee",
-          "type": "string",
-          "format": "user",
-          "description": "The user assigned to the issue"
+        "assignees": {
+          "title": "Assignees",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email",
+            "description": "The users assigned to the issue"
+          }
         },
         "creator": {
           "title": "Creator",

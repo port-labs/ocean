@@ -12,11 +12,15 @@ EVENT_ACTIONS = {
     "taskCreated": "register",
     "taskUpdated": "register",
     "taskDeleted": "unregister",
+    "spaceCreated": "register",
+    "spaceUpdated": "register",
+    "spaceDeleted": "unregister",
 }
 
 
 class ObjectKind(StrEnum):
     TEAM = "team"
+    SPACE = "space"
     PROJECT = "project"
     ISSUE = "issue"
 
@@ -39,7 +43,17 @@ async def setup_application() -> None:
         )
         return
     clickup_client = await init_client()  # Await the initialization of the client
-    await clickup_client.create_clickup_events_webhook(app_host)
+    async for teams in clickup_client.get_clickup_teams():
+        for team in teams:
+            webhooks = await clickup_client.get_clickup_webhooks(team["id"])
+            webhook_exists = any(
+                config["endpoint"] == f"{app_host}/integration/webhook"
+                for config in webhooks
+            )
+            if webhook_exists:
+                logger.info(f"Webhook already exists for team {team['id']}")
+            else:
+                logger.info(f"Creating webhook for team {team['id']}")
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -48,6 +62,14 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for teams in clickup_client.get_clickup_teams():
         logger.info(f"Received team of length {len(teams)}")
         yield teams
+
+
+@ocean.on_resync(ObjectKind.SPACE)
+async def on_resync_spaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    clickup_client = await init_client()
+    async for spaces in clickup_client.get_all_spaces():
+        logger.info(f"Received space batch with {len(spaces)} spaces")
+        yield spaces
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -78,8 +100,10 @@ async def _handle_register(
 ) -> None:
     if kind == ObjectKind.ISSUE:
         entity = await clickup_client.get_single_issue(entity_id)
-    else:
+    elif kind == ObjectKind.PROJECT:
         entity = await clickup_client.get_single_project(entity_id)
+    else:
+        entity = await clickup_client.get_single_space(entity_id)
 
     if entity:
         await ocean.register_raw(kind, [entity])
@@ -108,6 +132,7 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     event_handlers = {
         "task": ObjectKind.ISSUE,
         "list": ObjectKind.PROJECT,
+        "space": ObjectKind.SPACE,
     }
 
     event_type = data["event"]
@@ -119,7 +144,6 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
             if not entity_id:
                 logger.error(f"No {key}_id found in data for event {event_type}")
                 continue
-
             if action == "register":
                 await _handle_register(clickup_client, entity_id, kind, event_type)
             else:

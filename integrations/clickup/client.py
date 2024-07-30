@@ -14,6 +14,9 @@ WEBHOOK_EVENTS = [
     "listCreated",
     "listUpdated",
     "listDeleted",
+    "spaceCreated",
+    "spaceUpdated",
+    "spaceDeleted",
 ]
 
 MINIMUM_LIMIT_REMAINING = 20  # This limit minus the Semaphore count will be the lower threshold for rate limit in the header
@@ -131,14 +134,19 @@ class ClickupClient:
                     )
                 ).get("folders")
 
+    async def get_all_spaces(self) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """Get all spaces across all teams."""
+        async for teams in self.get_clickup_teams():
+            for team in teams:
+                async for spaces in self._get_spaces_in_team(team.get("id")):
+                    yield [{**space, TEAM_OBJECT: team} for space in spaces]
+
     async def get_folder_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all projects with a folder parent."""
         async for teams in self.get_clickup_teams():
             for team in teams:
                 async for folders in self._get_folders_in_space(team.get("id")):
-                    for folder in folders:
-                        projects = folder.get("lists")
-                        yield [{**project, TEAM_OBJECT: team} for project in projects]
+                    yield [folder.get("lists") for folder in folders]
 
     async def get_folderless_projects(
         self,
@@ -148,29 +156,13 @@ class ClickupClient:
             for team in teams:
                 async for spaces in self._get_spaces_in_team(team.get("id")):
                     for space in spaces:
-                        response = await self._send_api_request(
-                            f"{self.api_url}/space/{space.get('id')}/list",
-                            {"is_archived": self.is_archived},
-                        )
-                        projects = response.get("lists")
+                        projects = (
+                            await self._send_api_request(
+                                f"{self.api_url}/space/{space.get('id')}/list",
+                                {"is_archived": self.is_archived},
+                            )
+                        ).get("lists")
                         yield [{**project, TEAM_OBJECT: team} for project in projects]
-
-    async def get_single_project(self, list_id: str) -> Optional[Dict[str, Any]]:
-        """Get a single project by list_id."""
-        url = f"{self.api_url}/list/{list_id}"
-        response = await self._send_api_request(url)
-        space_id = response.get("space").get("id")
-
-        async for teams in self.get_clickup_teams():
-            for team in teams:
-                async for spaces in self._get_spaces_in_team(team.get("id")):
-                    for space in spaces:
-                        logger.info(space.get("id"))
-                        if space.get("id") == space_id:
-                            return {**response, TEAM_OBJECT: team}
-
-        logger.warning("No matching space found.")
-        return None
 
     async def get_paginated_issues(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all issues in a project."""
@@ -184,6 +176,22 @@ class ClickupClient:
                     if response.get("last_page"):
                         break
                     page += 1
+
+    async def _get_all_teams(self) -> List[Dict[str, Any]]:
+        """Get all teams."""
+        return (await self._send_api_request(f"{self.api_url}/team")).get("teams", [])
+
+    async def get_single_space(self, space_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single space by space_id."""
+        async for spaces in self.get_all_spaces():
+            for space in spaces:
+                if space["id"] == space_id:
+                    return space
+        return None
+
+    async def get_single_project(self, list_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single project by list_id."""
+        return await self._send_api_request(f"{self.api_url}/list/{list_id}")
 
     async def get_single_issue(self, task_id: str) -> dict[str, Any]:
         """Get a single issue by task_id."""
@@ -210,22 +218,3 @@ class ClickupClient:
         return (await self._send_api_request(f"{self.api_url}/team/{team_id}/webhook"))[
             "webhooks"
         ]
-
-    async def create_clickup_events_webhook(self, app_host: str) -> None:
-        async for teams in self.get_clickup_teams():
-            for team in teams:
-                team_id = team["id"]
-
-                webhook_target_url = f"{app_host}/integration/webhook"
-
-                webhooks = await self.get_clickup_webhooks(team_id)
-
-                webhook_exits = any(
-                    config["endpoint"] == webhook_target_url for config in webhooks
-                )
-
-                if webhook_exits:
-                    logger.info(f"Webhook already exists for team {team_id}")
-                else:
-                    logger.info(f"Creating webhook for team {team_id}")
-                    await self.create_clickup_webhook(team_id, app_host)
