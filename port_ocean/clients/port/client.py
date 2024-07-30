@@ -78,6 +78,7 @@ class PortClient(
         return response.json()["organization"]["id"]
 
     async def update_integration_state(self, state: dict[str, Any]) -> None:
+        logger.debug(f"Updating integration state with: {state}")
         try:
             response = await self.client.patch(
                 f"{self.api_url}/integration/{self.integration_identifier}",
@@ -85,8 +86,10 @@ class PortClient(
                 json={"state": state},
             )
             if response.is_error:
-                logger.error(f"Error updating resync state, error: {response.text}")
+                logger.error(
+                    f"Error updating integration state, error: {response.text}"
+                )
             else:
-                logger.debug("Resync state updated successfully")
+                logger.info("integration state updated successfully")
         except Exception as e:
-            logger.error(f"Error updating resync state, error: {e}")
+            logger.error(f"Error updating integration state, error: {e}")
