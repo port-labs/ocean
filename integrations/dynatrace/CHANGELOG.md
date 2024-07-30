@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.34 (2024-07-30)
+
+### Bug Fixes
+
+- Fix problem where API calls return unevaluated SLOs causing stale records in Port (0.1.34)
+
+
 # Port_Ocean 0.1.33 (2024-07-24)
 
 ### Improvements
