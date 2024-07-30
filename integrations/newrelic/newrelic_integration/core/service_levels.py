@@ -1,6 +1,5 @@
 from typing import Any, AsyncIterable, Tuple, Optional
 import httpx
-import asyncio
 from port_ocean.context.ocean import ocean
 from newrelic_integration.core.query_templates.service_levels import (
     LIST_SLOS_QUERY,
