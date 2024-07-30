@@ -9,7 +9,6 @@ from port_ocean.utils import http_async_client
 
 from integration import DynatraceResourceConfig, EntityFieldsType
 
-
 # SLOs by default are not evaluated and the initial state
 # at creation is being returned in the SLO list API.
 # To force evaluation, we must pass the `evaluate` query parameter,
@@ -64,10 +63,9 @@ class DynatraceClient:
 
     async def get_slos(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for slos in self._get_paginated_resources(
-            f"{self.host_url}/slo", "slo", {
-                "pageSize": EVALUATED_SLO_MAX_PAGE_SIZE,
-                "evaluate": "true"
-            }
+            f"{self.host_url}/slo",
+            "slo",
+            {"pageSize": EVALUATED_SLO_MAX_PAGE_SIZE, "evaluate": "true"},
         ):
             yield slos
 
