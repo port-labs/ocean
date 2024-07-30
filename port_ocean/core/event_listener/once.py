@@ -69,7 +69,7 @@ class OnceEventListener(BaseEventListener):
             return None
 
     def is_saas(self) -> bool:
-        return ocean.config.runtime == Runtime.Saas.value
+        return ocean.config.runtime == Runtime.Saas
 
     async def before_resync(self) -> None:
         if self.is_saas():
