@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Flush logs when receiving SIGTERM
+- Flush all remaining buffered logs when exiting application
 
 
 ## 0.9.5 (2024-07-23)
