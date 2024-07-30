@@ -22,7 +22,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
-from port_ocean.utils.signal import signal_handler, init_signal_handler
+from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
 
 
