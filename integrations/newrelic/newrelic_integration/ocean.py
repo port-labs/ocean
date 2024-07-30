@@ -72,7 +72,7 @@ async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             async for service_levels in ServiceLevelsHandler(
                 http_client
             ).list_service_levels():
-                yield [service_levels]
+                yield service_levels
 
 
 @ocean.router.post("/events")

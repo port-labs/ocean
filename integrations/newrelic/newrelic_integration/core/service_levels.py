@@ -1,5 +1,6 @@
 from typing import Any, AsyncIterable, Tuple, Optional
 import httpx
+import asyncio
 from port_ocean.context.ocean import ocean
 from newrelic_integration.core.query_templates.service_levels import (
     LIST_SLOS_QUERY,
@@ -12,6 +13,7 @@ from newrelic_integration.utils import (
 from newrelic_integration.core.paging import send_paginated_graph_api_request
 
 SLI_OBJECT = "__SLI"
+BATCH_SIZE = 50
 
 
 class ServiceLevelsHandler:
@@ -40,13 +42,23 @@ class ServiceLevelsHandler:
             return service_levels[0]
         return {}
 
-    async def list_service_levels(self) -> AsyncIterable[dict[str, Any]]:
+    async def _process_service_level(
+        self, service_level: dict[str, Any], nrql: str
+    ) -> dict[str, Any]:
+        service_level[SLI_OBJECT] = await self.get_service_level_indicator_value(
+            self.http_client, nrql
+        )
+        self._format_tags(service_level)
+        return service_level
 
+    async def list_service_levels(self) -> AsyncIterable[list[dict[str, Any]]]:
+        batch = []
         async for service_level in send_paginated_graph_api_request(
             self.http_client,
             LIST_SLOS_QUERY,
             request_type="list_service_levels",
             extract_data=self._extract_service_levels,
+            return_batch=True,
         ):
             nrql = (
                 service_level.get("serviceLevel", {})
@@ -55,11 +67,15 @@ class ServiceLevelsHandler:
                 .get("indicator", {})
                 .get("nrql")
             )
-            service_level[SLI_OBJECT] = await self.get_service_level_indicator_value(
-                self.http_client, nrql
-            )
-            self._format_tags(service_level)
-            yield service_level
+            batch.append(self._process_service_level(service_level, nrql))
+
+            if len(batch) >= BATCH_SIZE:
+                yield await asyncio.gather(*batch)
+                batch = []  # Clear the batch for the next set of items
+
+        # Process any remaining items in the batch
+        if batch:
+            yield await asyncio.gather(*batch)
 
     @staticmethod
     async def _extract_service_levels(
