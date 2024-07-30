@@ -72,7 +72,7 @@ class Ocean:
             interval = self.config.scheduled_resync_interval
 
         start = datetime.datetime.now()
-        await self.port_client.update_resync_state(
+        await self.port_client.update_integration_state(
             {
                 "status": "running",
                 "last_resync_start": start.timestamp(),
@@ -89,7 +89,7 @@ class Ocean:
         if interval is None:
             interval = self.config.scheduled_resync_interval
 
-        await self.port_client.update_resync_state(
+        await self.port_client.update_integration_state(
             {
                 "status": "completed",
                 "last_resync_start": start.timestamp(),

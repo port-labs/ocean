@@ -77,7 +77,7 @@ class PortClient(
 
         return response.json()["organization"]["id"]
 
-    async def update_resync_state(self, state: dict[str, Any]) -> None:
+    async def update_integration_state(self, state: dict[str, Any]) -> None:
         try:
             response = await self.client.patch(
                 f"{self.api_url}/integration/{self.integration_identifier}",
