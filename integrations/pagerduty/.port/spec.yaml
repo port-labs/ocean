@@ -15,7 +15,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The PagerDuty API token. To create a token, see the <a href="https://support.pagerduty.com/docs/api-access-keys">PagerDuty documentation</a>
+    description: The PagerDuty API token. To create a token, see the <a href="https://support.pagerduty.com/docs/api-access-keys" target="_blank">PagerDuty documentation</a>
   - name: apiUrl
     required: true
     type: string
