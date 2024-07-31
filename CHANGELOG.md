@@ -12,6 +12,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Fix vulnerabilities and bump versions of dependencies
+- Add python-dateutil to the core dependencies
+- Fix misspelling in the `bump-all.sh` script
+
 
 ## 0.9.6 (2024-07-30)
 
