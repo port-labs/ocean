@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "firehydrant"
-version = "0.1.57"
+version = "0.1.58"
 description = "FireHydrant Integration Powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.9.6", extras = ["cli"]}
+port_ocean = {extras = ["cli"], version = "^0.9.7"}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
