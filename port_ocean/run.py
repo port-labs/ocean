@@ -13,6 +13,7 @@ from port_ocean.core.utils import validate_integration_runtime
 from port_ocean.log.logger_setup import setup_logger
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import get_spec_file, load_module
+from port_ocean.utils.signal import init_signal_handler
 
 
 def _get_default_config_factory() -> None | Type[BaseModel]:
@@ -33,6 +34,7 @@ def run(
 ) -> None:
     application_settings = ApplicationSettings(log_level=log_level, port=port)
 
+    init_signal_handler()
     setup_logger(
         application_settings.log_level,
         enable_http_handler=application_settings.enable_http_logging,
