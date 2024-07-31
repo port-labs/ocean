@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Add _target='blank' attribute to spec links to open a new browser tab instead of the current browser.
+- Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser.
 
 # Port_Ocean 0.1.22 (2024-07-31)
 
