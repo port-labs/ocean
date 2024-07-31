@@ -18,13 +18,13 @@ configurations:
   - name: statuspageHost
     required: true
     type: url
-    description: "The host of the Statuspage.io API. The default host is https://api.statuspage.io"
+    description: "The host of the Statuspage.io API. The default host is <a href=”https://api.statuspage.io” target=”_blank”>https://api.statuspage.io</a>"
     default: "https://api.statuspage.io"
   - name: statuspageApiKey
     required: true
     type: string
     sensitive: true
-    description: Statuspage API key. To find your API key, see the <a href="https://support.atlassian.com/statuspage/docs/create-and-manage-api-keys/">Statuspage documentation</a>.
+    description: Statuspage API key. To find your API key, see the <a href="https://support.atlassian.com/statuspage/docs/create-and-manage-api-keys/" target=”_blank”>Statuspage documentation</a>.
   - name: statuspageIds
     required: false
     type: array
