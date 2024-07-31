@@ -15,6 +15,21 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
     #     return [{"some_project_key": "someProjectValue", ...}]
     # if kind == "issues":
     #     return [{"some_issue_key": "someIssueValue", ...}]
+
+    # Initial stub to show complete flow, replace this with your own logic
+    if kind == "{{ cookiecutter.integration_slug }}-example-kind":
+        return [
+            {
+                "my_custom_id": f"id_{x}",
+                "my_custom_text": f"very long text with {x} in it",
+                "my_special_score": x * 32 % 3,
+                "my_component": f"component-{x}",
+                "my_service": f"service-{x %2}",
+                "my_enum": "VALID" if x % 2 == 0 else "FAILED",
+            }
+            for x in range(25)
+        ]
+
     return []
 
 
@@ -38,4 +53,4 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
 async def on_start() -> None:
     # Something to do when the integration starts
     # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting integration")
+    print("Starting {{ cookiecutter.integration_slug }} integration")
