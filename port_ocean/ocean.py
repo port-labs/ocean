@@ -22,7 +22,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
-from port_ocean.utils.signal import signal_handler, init_signal_handler
+from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
 
 
@@ -97,14 +97,14 @@ class Ocean:
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
-                init_signal_handler()
                 await self.integration.start()
                 await self._setup_scheduled_resync()
                 yield None
-                signal_handler.exit()
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
                 sys.exit("Server stopped")
+            finally:
+                signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
         await self.fast_api_app(scope, receive, send)

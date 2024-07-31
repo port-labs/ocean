@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.45 (2024-07-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.6 (#1)
+
+
+# Port_Ocean 0.1.44 (2024-07-25)
+
+### Bug Fixes
+
+- Fixed case where comparing events failed because ADO returns unexpected additional keys inside the PublisherInputs.
+
+
 # Port_Ocean 0.1.43 (2024-07-24)
 
 ### Improvements
