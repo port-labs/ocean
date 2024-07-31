@@ -73,3 +73,19 @@ resources:
             url: .schedule.html_url
           relations:
             pagerdutySchedule: .schedule.id
+            pagerdutyEscalationPolicy: .escalation_policy.id
+  - kind: escalation_policies
+    selector:
+      query: 'true'
+      attachOncallUsers: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"pagerdutyEscalationPolicy"'
+          properties:
+            url: .html_url
+            description: .summary
+            primaryOncall: .__oncall_users | sort_by(.escalation_level) | .[0].user.email
+            escalationRules: .escalation_rules

@@ -241,7 +241,49 @@
         "target": "pagerdutySchedule",
         "required": false,
         "many": true
+      },
+      "pagerdutyEscalationPolicy": {
+        "title": "Escalation Policy",
+        "target": "pagerdutyEscalationPolicy",
+        "required": false,
+        "many": false
       }
     }
+  },
+  {
+    "identifier": "pagerdutyEscalationPolicy",
+    "description": "This blueprint represents a PagerDuty escalation policy in our software catalog",
+    "title": "PagerDuty Escalation Policy",
+    "icon": "pagerduty",
+    "schema": {
+      "properties": {
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "primaryOncall": {
+          "title": "Primary Oncall",
+          "type": "string",
+          "format": "user"
+        },
+        "escalationRules": {
+          "title": "Escalation Rules",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]

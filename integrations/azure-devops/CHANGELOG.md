@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.45 (2024-07-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.6 (#1)
+
+
+# Port_Ocean 0.1.44 (2024-07-25)
+
+### Bug Fixes
+
+- Fixed case where comparing events failed because ADO returns unexpected additional keys inside the PublisherInputs.
+
+
+# Port_Ocean 0.1.43 (2024-07-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.5
+
+
+# Port_Ocean 0.1.41 (2024-07-18)
+
+### Bug Fixes
+
+- Fixed `visibility` property in mapping which had a typo and changed the default relation to required `false` to be more permissive 
+
+
+# Port_Ocean 0.1.41 (2024-07-10)
+
+### Improvements
+
+- Set the `isProjectsLimited` paramater to True by default
+- Revise the configuration parameters' descriptions.
+
+# Port_Ocean 0.1.40 (2024-07-09)
+
+### Improvements
+
+- Added description to the integration configuration variables
+
+# Port_Ocean 0.1.39 (2024-07-09)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.3 (#1)
+
+
+# Port_Ocean 0.1.38 (2024-07-08)
+
+### Features
+
+- Make webhook creation project-scoped by default
+
+# Port_Ocean 0.1.37 (2024-07-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.2 (#1)
+
+
 # Port_Ocean 0.1.36 (2024-06-23)
 
 ### Improvements

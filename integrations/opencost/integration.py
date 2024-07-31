@@ -78,62 +78,73 @@ class CloudCostAggregateField(str):
             )
 
 
+class OpencostSelector(Selector):
+    window: (
+        Literal[
+            "today",
+            "week",
+            "month",
+            "yesterday",
+            "lastweek",
+            "lastmonth",
+            "30m",
+            "12h",
+            "7d",
+        ]
+        | DatePairField
+        | UnixtimePairField
+    ) = Field(default="today")
+    aggregate: AggregationField | None = Field(
+        description="Field by which to aggregate the results.",
+    )
+    step: DurationField | None = Field(
+        description="Duration of a single allocation set (e.g., '30m', '2h', '1d'). Default is window.",
+    )
+    resolution: ResolutionField | None = Field(
+        description="Duration to use as resolution in Prometheus queries",
+    )
+
+
 class OpencostResourceConfig(ResourceConfig):
-    class OpencostSelector(Selector):
-        window: (
-            Literal[
-                "today",
-                "week",
-                "month",
-                "yesterday",
-                "lastweek",
-                "lastmonth",
-                "30m",
-                "12h",
-                "7d",
-            ]
-            | DatePairField
-            | UnixtimePairField
-        ) = Field(default="today")
-        aggregate: AggregationField | None = Field(
-            description="Field by which to aggregate the results.",
-        )
-        step: DurationField | None = Field(
-            description="Duration of a single allocation set (e.g., '30m', '2h', '1d'). Default is window.",
-        )
-        resolution: ResolutionField | None = Field(
-            description="Duration to use as resolution in Prometheus queries",
-        )
 
     kind: Literal["cost"]
     selector: OpencostSelector
 
 
+class CloudCostSelector(Selector):
+    window: (
+        Literal[
+            "today",
+            "week",
+            "month",
+            "yesterday",
+            "lastweek",
+            "lastmonth",
+            "30m",
+            "12h",
+            "7d",
+        ]
+        | DatePairField
+        | UnixtimePairField
+    ) = Field(default="today")
+    aggregate: CloudCostAggregateField | None = Field(
+        description="Field by which to aggregate the results of cloudcost",
+    )
+    accumulate: Literal["all", "hour", "day", "week", "month", "quarter"] | None = (
+        Field(
+            description="Step size of the accumulation.",
+        )
+    )
+    filter: str | None = Field(
+        description=(
+            "Filter results by any category which that can be aggregated by,"
+            " can support multiple filterable items in the same category in"
+            " a comma-separated list."
+        ),
+    )
+
+
 class CloudCostResourceConfig(ResourceConfig):
-    class CloudCostSelector(Selector):
-        window: (
-            Literal[
-                "today",
-                "week",
-                "month",
-                "yesterday",
-                "lastweek",
-                "lastmonth",
-                "30m",
-                "12h",
-                "7d",
-            ]
-            | DatePairField
-            | UnixtimePairField
-        ) = Field(default="today")
-        aggregate: CloudCostAggregateField | None = Field(
-            description="Field by which to aggregate the results of cloudcost",
-        )
-        accumulate: Literal["all", "hour", "day", "week", "month", "quarter"] | None = (
-            Field(
-                description="Step size of the accumulation.",
-            )
-        )
 
     kind: Literal["cloudcost"]
     selector: CloudCostSelector

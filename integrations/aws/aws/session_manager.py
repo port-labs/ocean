@@ -2,6 +2,7 @@ from typing import Any
 import typing
 import aioboto3
 from aws.aws_credentials import AwsCredentials
+from utils.misc import is_access_denied_exception
 from port_ocean.context.ocean import ocean
 from loguru import logger
 
@@ -90,16 +91,25 @@ class SessionManager:
         application_session = typing.cast(aioboto3.Session, self._application_session)
 
         async with application_session.client("sts") as sts_client:
-            organizations_client = await sts_client.assume_role(
-                RoleArn=organization_role_arn, RoleSessionName="AssumeRoleSession"
-            )
+            try:
+                organizations_client = await sts_client.assume_role(
+                    RoleArn=organization_role_arn, RoleSessionName="AssumeRoleSession"
+                )
 
-            credentials = organizations_client["Credentials"]
-            organization_role_session = aioboto3.Session(
-                aws_access_key_id=credentials["AccessKeyId"],
-                aws_secret_access_key=credentials["SecretAccessKey"],
-                aws_session_token=credentials["SessionToken"],
-            )
+                credentials = organizations_client["Credentials"]
+                organization_role_session = aioboto3.Session(
+                    aws_access_key_id=credentials["AccessKeyId"],
+                    aws_secret_access_key=credentials["SecretAccessKey"],
+                    aws_session_token=credentials["SessionToken"],
+                )
+            except sts_client.exceptions.ClientError as e:
+                if is_access_denied_exception(e):
+                    logger.warning(
+                        "Cannot assume role to the organization account, using the application role."
+                    )
+                    return self._application_session
+                else:
+                    raise
 
             return organization_role_session
 
@@ -153,7 +163,7 @@ class SessionManager:
             self._aws_credentials.append(credentials)
             self._aws_accessible_accounts.append(account)
         except sts_client.exceptions.ClientError as e:
-            if e.response["Error"]["Code"] == "AccessDenied":
+            if is_access_denied_exception(e):
                 logger.info(f"Cannot assume role in account {account['Id']}. Skipping.")
                 pass  # Skip the account if assume_role fails due to permission issues or non-existent role
             else:

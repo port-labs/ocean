@@ -16,6 +16,7 @@ class PortAppConfigCache:
     _retrieval_time: float
 
     def __init__(self, cache_ttl: int):
+        self._port_app_config = None
         self._cache_ttl = cache_ttl
 
     @property
@@ -76,6 +77,7 @@ class BasePortAppConfig(BaseHandler):
                 logger.error(
                     "Invalid port app config found. Please check that the integration has been configured correctly."
                 )
+                logger.warning(f"Invalid port app config: {raw_config}")
                 raise
 
         event.port_app_config = self._app_config_cache.port_app_config

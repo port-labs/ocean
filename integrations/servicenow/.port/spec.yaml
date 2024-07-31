@@ -12,11 +12,14 @@ configurations:
   - name: servicenowUrl
     required: true
     type: url
+    description: The URL of your ServiceNow instance. This should be the address you use to access the ServiceNow UI in your browser. For example, `https://dev12345.service-now.com`
   - name: servicenowUsername
     required: true
     type: string
     sensitive: false
+    description: The username of the ServiceNow account. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials">ServiceNow documentation</a>
   - name: servicenowPassword
     required: true
     type: string
     sensitive: true
+    description: The password of the ServiceNow account. To create user credentials, see the <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/washingtondc/servicenow_application_developer/app_store_learnv2_rest_washingtondc_creating_credentials">ServiceNow documentation</a>

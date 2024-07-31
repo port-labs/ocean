@@ -4,7 +4,12 @@
     "title": "GCP Project",
     "icon": "GoogleCloud",
     "schema": {
-      "properties": {}
+      "properties": {
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        }
+      }
     },
     "mirrorProperties": {},
     "calculationProperties": {},
@@ -25,6 +30,10 @@
           "icon": "Home",
           "title": "Location",
           "type": "string"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
         }
       },
       "required": []
