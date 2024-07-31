@@ -3,7 +3,7 @@ deleteDependentEntities: true
 resources:
   - kind: project
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -16,7 +16,9 @@ resources:
             description: .description
   - kind: issue
     selector:
-      query: 'true'
+      query: "true"
+      maxPages: 20
+      statusList: ["OPEN", "IN_PROGRESS"]
     port:
       entity:
         mappings:
@@ -53,7 +55,7 @@ resources:
             control: .sourceRule.id
   - kind: control
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -65,7 +67,7 @@ resources:
             resolutionRecommendation: .resolutionRecommendation
   - kind: serviceTicket
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
