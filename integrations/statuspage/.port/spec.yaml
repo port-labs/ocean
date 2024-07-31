@@ -14,12 +14,12 @@ configurations:
   - name: appHost
     required: false
     type: url
-    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Statuspage"
+    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Statuspage
   - name: statuspageHost
     required: true
     type: url
-    description: "The host of the Statuspage.io API. The default host is <a href=”https://api.statuspage.io” target=”_blank”>https://api.statuspage.io</a>"
-    default: "https://api.statuspage.io"
+    description: The host of the Statuspage.io API. The default host is <a href=”https://api.statuspage.io” target=”_blank”>https://api.statuspage.io</a>
+    default: https://api.statuspage.io
   - name: statuspageApiKey
     required: true
     type: string
@@ -28,4 +28,4 @@ configurations:
   - name: statuspageIds
     required: false
     type: array
-    description: "Comma-separated list of Statuspage.io page IDs to query e.g ['pageID-1','pageID-2']. If not specified, all pages will be queried"
+    description: Comma-separated list of Statuspage.io page IDs to query e.g ['pageID-1','pageID-2']. If not specified, all pages will be queried
