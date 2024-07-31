@@ -15,11 +15,11 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The SonarQube API token
+    description: The SonarQube API token, To identify your sonarQube API token, see the <a target="_blank" href="https://docs.sonarsource.com/sonarqube/latest/user-guide/user-account/generating-and-using-tokens/"></a>
   - name: sonarOrganizationId
     type: string
     required: false
-    description: The SonarQube organization ID
+    description: The SonarQube organization ID (e.g.,"kodjomiles","mike" ). To identify your SonarQube organization ID, see the <a target="_blank" href="https://docs.sonarsource.com/sonarcloud/administering-sonarcloud/managing-organizations/#change-key"></a>
   - name: appHost
     type: string
     required: false
@@ -27,7 +27,7 @@ configurations:
   - name: sonarUrl
     type: string
     required: false
-    description: The SonarQube URL
+    description: The SonarQube URL (e.g.,"https://sonarcloud.io" ). To identify your base URL, see the <a target="_blank" href="https://docs.sonarsource.com/sonarqube/latest/devops-platform-integration/github-integration/setting-up-at-global-level/verify-sonarqube-server-base-url/#:~:text=Go%20to%20Administration%20%3E%20Configuration%20%3E%20General,the%20instance's%20Server%20base%20URL."></a>
     default: https://sonarcloud.io
   - name: sonarIsOnPremise
     type: boolean
