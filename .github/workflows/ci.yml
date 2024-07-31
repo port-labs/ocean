@@ -20,7 +20,7 @@ jobs:
       - name: Prepare matrix
         id: prepare-matrix
         run: |
-          integrations_to_release=()
+          integrations_to_build=()
           # Get the list of integrations
           files=$(find integrations/*/.port -name "spec.yaml")
           for file in $files; do
@@ -37,11 +37,11 @@ jobs:
             if [ $rc -eq 0 ]; then
               echo "Image already exists in $repository: port-ocean-$type:$version"
             else
-              integrations_to_release+=($file)
+              integrations_to_build+=($file)
             fi
           done
-          echo $(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')
-          echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_release[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
+          echo $(echo ${integrations_to_build[@]} | jq -R -c 'split(" ")')
+          echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_build[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
 
 
   build-integration:
