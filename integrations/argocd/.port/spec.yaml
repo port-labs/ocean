@@ -16,7 +16,7 @@ saas:
 configurations:
   - name: token
     required: true
-    description: ArgoCD API token. To create an API token, see the <a href="https://argoproj.github.io/argo-cd/getting_started/#4-create-an-api-access-token">ArgoCD documentation</a>.
+    description: ArgoCD API token. To create an API token, see the <a href="https://argoproj.github.io/argo-cd/getting_started/#4-create-an-api-access-token" target="_blank">ArgoCD documentation</a>.
     type: string
     sensitive: true
   - name: serverUrl
