@@ -45,7 +45,7 @@ for folder in "$(pwd)"/integrations/*; do
         (cd $folder && source .venv/bin/activate && poetry version "$new_version")
         echo "New version: $new_version"
         
-        echo "Run towncrier build to increment the patcb version"
+        echo "Run towncrier build to increment the patch version"
         (cd "$folder" && source .venv/bin/activate && towncrier build --yes --version $new_version && rm changelog/1.improvement.md && git add . && echo "committing $(basename "$folder")" && git commit -m "Bumped ocean version to $VERSION for $(basename "$folder")")
     fi
 done
