@@ -55,6 +55,11 @@
           "title": "Tags",
           "type": "object",
           "description": "Tags associated with the host."
+        },
+        "metrics_availability": {
+          "title": "Metric Availability",
+          "type": "object",
+          "description": "Metrics associated with the host"
         }
       },
       "required": []
@@ -195,6 +200,11 @@
             "type": "string",
             "format": "url"
           }
+        },
+        "metrics_availability": {
+          "title": "Metric Availability",
+          "type": "object",
+          "description": "Metrics associated with the service"
         }
       },
       "required": []
