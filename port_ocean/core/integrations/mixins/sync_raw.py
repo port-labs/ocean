@@ -311,12 +311,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resource for resource in config.resources if resource.kind == kind
         ]
 
-        entities, errors = await asyncio.gather(
+        entities, errors = zip(*await asyncio.gather(
             *(
-                self._unregister_resource_raw(resource, results, user_agent_type)
-                for resource in resource_mappings
+            self._unregister_resource_raw(resource, results, user_agent_type) 
+            for resource in resource_mappings
             )
         )
+        )
+
+        entities = sum(entities, [])
+        errors = sum(errors, [])
 
         if errors:
             message = f"Failed to unregister all entities with {len(errors)} errors"
