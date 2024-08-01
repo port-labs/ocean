@@ -303,7 +303,7 @@ class DatadogClient:
         Queries the Datadog API to check if there is any data for a given metric query within a specified time window.
 
         Args:
-            query: The Datadog metric query string.
+            query: The Datadog metric query string e.g. "avg:container.cpu.usage{service:payments-app}".
             time_in_minutes: The time window (in minutes) to look back for data (default: 10 minutes).
 
         Returns:
@@ -329,7 +329,7 @@ class DatadogClient:
             logger.error(f"Rate limit exceeded: {result.get('error')}")
             return False
         else:
-            print(f"Error fetching data: {result.get('error')}")
+            logger.error(f"Error fetching data: {result.get('error')}")
             return False
 
     def create_query_with_values(
