@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Added _target='blank' attribute to html links in the spec.yaml file to open a new browser tab instead of the current browser
+- Bumped ocean version to ^0.9.7
 
 
 # Port_Ocean 0.1.62 (2024-07-31)
