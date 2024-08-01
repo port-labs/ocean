@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Fix unpacking error in unregister raw
+- Fixed an issue where a `ValueError` was raised in `unregister_raw` method due to incorrect unpacking of results from asyncio.gather. The fix involved using zip to properly handle the output and ensure both entities and errors are processed correctly.
 
 
 ## 0.9.7 (2024-07-31)
