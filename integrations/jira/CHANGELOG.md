@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added target='blank' attribute to links in config and secrets description to make them open in new tab (#69)
+- Added target='blank' attribute to links in config and secrets description to make them open in new tab
 
 
 0.1.68 (2024-07-31)
