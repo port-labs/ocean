@@ -7,6 +7,16 @@ resources:
       apiFilters:
         filter:
           qualifier: TRK
+      metrics:
+        - code_smells
+        - coverage
+        - bugs
+        - vulnerabilities
+        - duplicated_files
+        - security_hotspots
+        - new_violations
+        - new_coverage
+        - new_duplicated_lines_density
     port:
       entity:
         mappings:

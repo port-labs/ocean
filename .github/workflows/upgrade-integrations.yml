@@ -1,0 +1,44 @@
+name: Apply release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create_branch_and_open_pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Upgrade integrations
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          ./scripts/upgrade-integrations.sh
+
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.MACHINE_USER_TOKEN }}
+          title: ${{ steps.version.outputs.pr_name }}
+          branch: ${{ steps.version.outputs.branch_name }}
+          base: main
+          body: |
+            This PR was automatically created by a GitHub Action.
+
+            ## What does this PR do?
+            Upgrade dependencies for all integrations
+
+            ## How should this be manually tested?
+            ./scripts/upgrade-integrations.sh
