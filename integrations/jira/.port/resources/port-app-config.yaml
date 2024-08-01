@@ -34,6 +34,7 @@ resources:
             labels: .fields.labels
             created: .fields.created
             updated: .fields.updated
+            resolutionDate: .fields.resolutiondate
           relations:
             project: .fields.project.key
             parentIssue: .fields.parent.key
