@@ -549,7 +549,7 @@ class DatadogClient:
         for item in items:
             item_name = item_name_extractor(item)
 
-            dashboard_key = re.sub(r"\s+", "_", dashboard["title"].strip().lower())
+            dashboard_key = re.sub(r"[\s-]+", "_", dashboard["title"].strip().lower())
 
             # Get or create the metrics_availability structure
             item_metrics_availability = item.setdefault("__metrics_availability", {})
