@@ -7,12 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.1.97 (2024-08-01)
+0.1.98 (2024-08-01)
 ===================
 
 ### Improvements
 
 - Added description to configuration properties in spec.yaml (PORT-9538)
+
+
+0.1.97 (2024-07-31)
+===================
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
 
 
 0.1.96 (2024-07-31)
