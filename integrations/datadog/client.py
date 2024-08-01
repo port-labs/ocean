@@ -366,24 +366,22 @@ class DatadogClient:
             list: A list of dictionaries, each containing the widget ID, widget title, and a list of queries.
         """
         filter_name = f"${variable_name}"
-        matching_queries = {}  # Use a dictionary to group by widget ID
+        matching_queries = {}
+
         for widget in dashboard_json["widgets"]:
-            if "requests" in widget["definition"]:
-                for request in widget["definition"]["requests"]:
-                    for query in request.get("queries", []):
-                        if filter_name in query["query"]:
-                            widget_id = widget["id"]
-                            if widget_id not in matching_queries:
-                                matching_queries[widget_id] = {
-                                    "widget_id": widget_id,
-                                    "widget_title": widget["definition"].get(
-                                        "title", "Untitled"
-                                    ),
-                                    "queries": [],
-                                }
-                            matching_queries[widget_id]["queries"].append(
-                                query["query"]
-                            )
+            queries = [
+                query["query"]
+                for request in widget["definition"].get("requests", [])
+                for query in request.get("queries", [])
+                if filter_name in query["query"]
+            ]
+
+            if queries:
+                matching_queries[widget["id"]] = {
+                    "widget_id": widget["id"],
+                    "widget_title": widget["definition"].get("title", "Untitled"),
+                    "queries": queries,
+                }
 
         return list(matching_queries.values())
 
@@ -548,25 +546,21 @@ class DatadogClient:
 
         for item in items:
             item_name = item_name_extractor(item)
-
             dashboard_key = re.sub(r"[\s-]+", "_", dashboard["title"].strip().lower())
 
-            # Get or create the metrics_availability structure
-            item_metrics_availability = item.setdefault("__metrics_availability", {})
-
-            # Check if dashboard_key already exists in item_metrics_availability
-            dashboard_metrics = item_metrics_availability.setdefault(
+            dashboard_metrics = item.setdefault(
+                "__metrics_availability", {}
+            ).setdefault(
                 dashboard_key,
                 {
                     "id": dashboard["id"],
                     "title": dashboard["title"],
                     "url": f"{self.datadog_web_url}/{dashboard['url']}",
-                    "has_all_metrics": True,
+                    "has_all_metrics": True,  # Initial assumption
                     "widget_metrics": {},
                 },
             )
 
-            # Merge the existing and new metrics
             metrics_availability = await self.check_metrics_availability(
                 template_var,
                 template_var_value=item_name,
@@ -574,14 +568,12 @@ class DatadogClient:
                 default_env=default_env,
             )
 
-            # Check if all metrics are available and update the item's metrics availability
             if not all(
                 widget_metrics["has_all_metrics"]
                 for widget_metrics in metrics_availability.values()
             ):
                 dashboard_metrics["has_all_metrics"] = False
 
-            # Update the widget metrics for the dashboard
             dashboard_metrics["widget_metrics"].update(metrics_availability)
 
         return items
