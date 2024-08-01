@@ -223,7 +223,7 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
         for group in service.get_root_groups():
             async for members in service.get_all_group_members(group):
-                if selector.public_email_visibility:
+                if selector.enrich_with_public_email:
                     yield [
                         await service.enrich_member_with_public_email(member)
                         for member in members

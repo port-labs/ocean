@@ -80,14 +80,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {
-      "members": {
-        "title": "Members",
-        "target": "gitlabGroupMember",
-        "required": false,
-        "many": true
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "service",

@@ -7,6 +7,7 @@ import anyio.to_thread
 import yaml
 from gitlab import Gitlab, GitlabList, GitlabError
 from gitlab.base import RESTObject
+import gitlab.exceptions
 from gitlab.v4.objects import (
     Project,
     MergeRequest,
@@ -31,7 +32,6 @@ PROJECTS_CACHE_KEY = "__cache_all_projects"
 GROUPS_CACHE_KEY = "__cache_all_groups"
 MEMBERS_CACHE_KEY = "__cache_all_members"
 
-MAX_CONCURRENT_TASKS = 30
 
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import GitlabPortAppConfig
@@ -48,6 +48,7 @@ class GitlabService:
         "tag_push_events",
         "subgroup_events",
         "confidential_issues_events",
+        "member_events"
     ]
 
     def __init__(
@@ -319,12 +320,15 @@ class GitlabService:
             return None
 
     async def get_group(self, group_id: int) -> Group | None:
-        logger.info(f"fetching group {group_id}")
-        group = await AsyncFetcher.fetch_single(self.gitlab_client.groups.get, group_id)
-        if isinstance(group, Group) and self.should_run_for_group(group):
+        try:
+            logger.info(f"fetching group {group_id}")
+            group_response = await AsyncFetcher.fetch_single(self.gitlab_client.groups.get, group_id)
+            group: Group = typing.cast(Group, group_response)
             return group
-        else:
-            return None
+        except gitlab.exceptions.GitlabGetError as err:
+            if err.response_code == 404:
+                return None
+
 
     async def get_all_groups(self) -> typing.AsyncIterator[List[Group]]:
         logger.info("fetching all groups for the token")
@@ -549,30 +553,22 @@ class GitlabService:
             issues: List[Issue] = typing.cast(List[Issue], issues_batch)
             yield issues
 
+    def should_run_for_members(self, member: GroupMember):
+        port_app_config: GitlabPortAppConfig = typing.cast(
+            "GitlabPortAppConfig", event.port_app_config
+        )
+        include_bot_members = port_app_config.include_bot_members
+        return not(member.username.__contains__("bot")) if include_bot_members else True
+
     async def get_all_group_members(
         self, group: Group
     ) -> typing.AsyncIterator[List[GroupMember]]:
-
         try:
-            port_app_config: GitlabPortAppConfig = typing.cast(
-                "GitlabPortAppConfig", event.port_app_config
-            )
-            filter_bots = port_app_config.filter_bots
-
-            def skip_validation(_: User) -> bool:
-                return True
-
-            def should_run_for_member(member: GroupMember) -> bool:
-                return not member.username.__contains__("bot")
-
-            validation_func: Union[
-                Callable[[User], bool], Callable[[GroupMember], bool]
-            ] = (should_run_for_member if filter_bots else skip_validation)
 
             logger.info(f"Fetching all members of group {group.name}")
             async for members_batch in AsyncFetcher.fetch_batch(
                 fetch_func=group.members.list,
-                validation_func=validation_func,
+                validation_func=self.should_run_for_members,
                 pagination="offset",
                 order_by="id",
                 sort="asc",
@@ -589,7 +585,6 @@ class GitlabService:
             return
 
     async def enrich_group_with_members(self, group: Group) -> dict[str, Any]:
-
         group_members = [
             member
             async for members in self.get_all_group_members(group)
@@ -619,6 +614,15 @@ class GitlabService:
         )
         user: User = typing.cast(User, user_response)
         return user
+
+    async def get_group_member(self, group: Group, member_id: int) -> GroupMember:
+        logger.info(f"fetching group member {member_id} from group {group.id}")
+        group_member = await AsyncFetcher.fetch_single(
+            group.members.get, member_id
+        )
+        if self.should_run_for_members(group_member):
+            return group_member
+        return None
 
     def get_entities_diff(
         self,

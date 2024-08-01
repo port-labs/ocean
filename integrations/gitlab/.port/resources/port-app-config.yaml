@@ -28,8 +28,6 @@ resources:
             url: .web_url
             visibility: .visibility
             description: .description
-          relations:
-            members: '[.__members[].username]'
   - kind: project
     selector:
       query: "true"
