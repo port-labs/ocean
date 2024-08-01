@@ -88,31 +88,32 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     client = initialize_client()
-    logger.info(f'Received webhook event of type: {data.get("webhookEvent")}')
+    webhook_event: str = data.get("webhookEvent", "")
+    logger.info(f"Received webhook event of type: {webhook_event}")
     ocean_action = None
 
-    if data.get("webhookEvent") in DELETE_WEBHOOK_EVENTS:
+    if webhook_event in DELETE_WEBHOOK_EVENTS:
         ocean_action = ocean.unregister_raw
-    elif data.get("webhookEvent") in CREATE_UPDATE_WEBHOOK_EVENTS:
+    elif webhook_event in CREATE_UPDATE_WEBHOOK_EVENTS:
         ocean_action = ocean.register_raw
 
     if not ocean_action:
         logger.info("Webhook event not recognized")
         return {"ok": True}
 
-    if "project" in data:
+    if "project" in webhook_event:
         logger.info(f'Received webhook event for project: {data["project"]["key"]}')
         project = await client.get_single_project(data["project"]["key"])
         await ocean_action(ObjectKind.PROJECT, [project])
-    elif "issue" in data:
+    elif "issue" in webhook_event:
         logger.info(f'Received webhook event for issue: {data["issue"]["key"]}')
         issue = await client.get_single_issue(data["issue"]["key"])
         await ocean_action(ObjectKind.ISSUE, [issue])
-    elif "board" in data:
+    elif "board" in webhook_event:
         logger.info(f'Received webhook event for board: {data["board"]["id"]}')
         board = await client.get_single_board(data["board"]["id"])
         await ocean_action(ObjectKind.BOARD, [board])
-    elif "sprint" in data:
+    elif "sprint" in webhook_event:
         logger.info(f'Received webhook event for sprint: {data["sprint"]["id"]}')
         sprint = await client.get_single_sprint(data["sprint"]["id"])
         await ocean_action(ObjectKind.SPRINT, [sprint])
