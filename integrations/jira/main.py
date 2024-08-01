@@ -7,7 +7,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-from client import JiraClient
+from client import CREATE_UPDATE_WEBHOOK_EVENTS, DELETE_WEBHOOK_EVENTS, JiraClient
 from integration import JiraIssueResourceConfig, JiraSprintResourceConfig
 
 
@@ -89,22 +89,33 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     client = initialize_client()
     logger.info(f'Received webhook event of type: {data.get("webhookEvent")}')
+    ocean_action = None
+
+    if data.get("webhookEvent") in DELETE_WEBHOOK_EVENTS:
+        ocean_action = ocean.unregister_raw
+    elif data.get("webhookEvent") in CREATE_UPDATE_WEBHOOK_EVENTS:
+        ocean_action = ocean.register_raw
+
+    if not ocean_action:
+        logger.info("Webhook event not recognized")
+        return {"ok": True}
+
     if "project" in data:
         logger.info(f'Received webhook event for project: {data["project"]["key"]}')
         project = await client.get_single_project(data["project"]["key"])
-        await ocean.register_raw(ObjectKind.PROJECT, [project])
+        await ocean_action(ObjectKind.PROJECT, [project])
     elif "issue" in data:
         logger.info(f'Received webhook event for issue: {data["issue"]["key"]}')
         issue = await client.get_single_issue(data["issue"]["key"])
-        await ocean.register_raw(ObjectKind.ISSUE, [issue])
+        await ocean_action(ObjectKind.ISSUE, [issue])
     elif "board" in data:
         logger.info(f'Received webhook event for board: {data["board"]["id"]}')
         board = await client.get_single_board(data["board"]["id"])
-        await ocean.register_raw(ObjectKind.BOARD, [board])
+        await ocean_action(ObjectKind.BOARD, [board])
     elif "sprint" in data:
         logger.info(f'Received webhook event for sprint: {data["sprint"]["id"]}')
         sprint = await client.get_single_sprint(data["sprint"]["id"])
-        await ocean.register_raw(ObjectKind.SPRINT, [sprint])
+        await ocean_action(ObjectKind.SPRINT, [sprint])
     logger.info("Webhook event processed")
     return {"ok": True}
 

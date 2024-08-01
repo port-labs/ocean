@@ -14,26 +14,35 @@ PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 REQUEST_TIMEOUT = 60
 
-WEBHOOK_EVENTS = [
+
+CREATE_UPDATE_WEBHOOK_EVENTS = [
     "jira:issue_created",
     "jira:issue_updated",
-    "jira:issue_deleted",
     "project_created",
     "project_updated",
-    "project_deleted",
-    "project_soft_deleted",
     "project_restored_deleted",
-    "project_archived",
     "project_restored_archived",
     "sprint_created",
     "sprint_updated",
-    "sprint_deleted",
     "sprint_started",
     "sprint_closed",
     "board_created",
     "board_updated",
-    "board_deleted",
     "board_configuration_changed",
+]
+
+DELETE_WEBHOOK_EVENTS = [
+    "jira:issue_deleted",
+    "project_deleted",
+    "project_soft_deleted",
+    "project_archived",
+    "sprint_deleted",
+    "board_deleted",
+]
+
+WEBHOOK_EVENTS = [
+    *CREATE_UPDATE_WEBHOOK_EVENTS,
+    *DELETE_WEBHOOK_EVENTS,
 ]
 
 
