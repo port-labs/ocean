@@ -808,13 +808,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.9.6"
+version = "0.9.7"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.9.6-py3-none-any.whl", hash = "sha256:c501dc92b757bf76db7505ba523fa9f4489034fcae538671b636c4b087f5be28"},
-    {file = "port_ocean-0.9.6.tar.gz", hash = "sha256:cead6b0b79bf6325202145103d2c4d9e8c9dbec15005f4d733e9ad60928e8b95"},
+    {file = "port_ocean-0.9.7-py3-none-any.whl", hash = "sha256:904ae9cadfb1dd5bf0f970b8174a2653f877de418a90c4429e981f41a0b6ca36"},
+    {file = "port_ocean-0.9.7.tar.gz", hash = "sha256:457c5041109f0cfd4d22578cd18f1fc569fbdd53bbf66f2f7e2729b7deffde47"},
 ]
 
 [package.dependencies]
@@ -830,6 +830,7 @@ pydantic = {version = ">=1.10.8,<2.0.0", extras = ["dotenv"]}
 pydispatcher = ">=2.0.7,<3.0.0"
 pyhumps = ">=3.8.0,<4.0.0"
 pyjq = ">=2.6.0,<3.0.0"
+python-dateutil = ">=2.9.0.post0,<3.0.0"
 pyyaml = ">=6.0,<7.0"
 rich = {version = ">=13.4.1,<14.0.0", optional = true, markers = "extra == \"cli\""}
 six = ">=1.16.0,<2.0.0"
@@ -1419,4 +1420,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "5a02b6187d5a44a15865bf71fb3ec14d4bf529535f8cc7d1a5b5c3d09a34fb67"
+content-hash = "ab7fd0f7b5f888e95632174b6279f12259f41698e120d630de73c0bb08cf1075"
