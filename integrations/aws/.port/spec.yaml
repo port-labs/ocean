@@ -20,7 +20,7 @@ configurations:
     required: false
     type: string
     sensitive: true
-    description: AWS User Secret Access Key, for more information check <a href=”https://docs.aws.amazon.com/singlesignon/latest/userguide/howtogetcredentials.html” target=”_blank”>documentation</a>.
+    description: The AWS User Secret Access Key used for authentication. For more information, see the <a href=”https://docs.aws.amazon.com/singlesignon/latest/userguide/howtogetcredentials.html” target=”_blank”>AWS documentation</a>.
   - name: organizationRoleArn
     required: false
     type: string
