@@ -504,32 +504,28 @@ class DatadogClient:
             This key contains information about whether metrics are available for the item in each relevant widget of
             the dashboard.
         """
-
         dashboard = await self.validate_dashboard(dashboard_id)
         if not dashboard:
+            logger.error(f"Failed to fetch dashboard {dashboard_id}")
             return items
 
         if not any(
             tv.get("name") == template_var for tv in dashboard["template_variables"]
         ):
             logger.error(
-                f"Dashboard {dashboard_id} has no {template_var} template variable"
+                f"Dashboard {dashboard_id} missing '{template_var}' template variable"
             )
             return items
-
-        logger.info(
-            f"Enriching {len(items)} items with metrics from dashboard {dashboard['title']} ({dashboard['id']})"
-        )
 
         widgets = self.extract_queries_with_template_variable(dashboard, template_var)
         if not widgets:
             logger.error(
-                f"No widgets found in dashboard for template variable {template_var}"
+                f"No widgets with '{template_var}' queries found in dashboard {dashboard_id}"
             )
             return items
 
         logger.info(
-            f"Found {len(widgets)} widgets with matching queries using template variable '{template_var}'"
+            f"Enriching {len(items)} items with metrics from {len(widgets)} widgets in '{dashboard['title']}'"
         )
 
         # Check if the dashboard uses an "env" template variable, and if so, retrieve its default value.
