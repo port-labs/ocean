@@ -171,10 +171,12 @@ class JiraClient:
             "board": self._get_issues_from_board,
             "all": self._get_issues_from_org,
         }
+        logger.info("Running syncing for type {}".format(source))
 
         if source == "sprint":
             async for issues in self._get_issues_from_sprint(params, sprintState):
                 yield issues
+            return
 
         async for issues in ISSUES_MAP[source](params):
             yield issues
