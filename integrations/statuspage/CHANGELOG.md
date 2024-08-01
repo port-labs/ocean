@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.10 (2024-08-01)
+
+### Improvements
+
+- Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser.
+
+
 # Port_Ocean 0.1.9 (2024-07-31)
 
 ### Improvements
 
-- Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser. (0.1.9)
 - Bumped ocean version to ^0.9.7 (#1)
-
 
 
 # Port_Ocean 0.1.8 (2024-07-31)
