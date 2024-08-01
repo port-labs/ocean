@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Updated the JQL filter used in the default configuration mapping to also ingest Jira issues that were opened or updated in the past week
+- Updated the default mapping for the `issue` kind
+- Updated the default blueprints and their properties
 
 0.1.68 (2024-07-31)
 
