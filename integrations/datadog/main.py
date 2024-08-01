@@ -5,7 +5,7 @@ from typing import Any
 from loguru import logger
 
 from client import DatadogClient
-from overrides import SLOHistoryResourceConfig
+from overrides import SLOHistoryResourceConfig, DatadogResourceConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -30,9 +30,28 @@ def init_client() -> DatadogClient:
 @ocean.on_resync(ObjectKind.HOST)
 async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
+    dashboard_ids_to_enrich_with = typing.cast(
+        DatadogResourceConfig, event.resource_config
+    ).selector.dashboard_ids_to_enrich_with
 
     async for hosts in dd_client.get_hosts():
         logger.info(f"Received batch with {len(hosts)} hosts")
+
+        if not dashboard_ids_to_enrich_with:
+            yield hosts
+
+        logger.info(
+            f"Enriching hosts with dashboard metrics from {dashboard_ids_to_enrich_with}"
+        )
+
+        for dashboard_id in dashboard_ids_to_enrich_with:
+            enriched_hosts = await dd_client.enrich_kind_with_dashboard_metrics(
+                dashboard_id,
+                hosts,
+                template_var="host",
+                item_name_extractor=lambda item: item["host_name"],
+            )
+            yield enriched_hosts
         yield hosts
 
 
@@ -75,9 +94,25 @@ async def on_resync_slo_histories(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
+    dashboard_ids_to_enrich_with = typing.cast(
+        DatadogResourceConfig, event.resource_config
+    ).selector.dashboard_ids_to_enrich_with
+
     async for services in dd_client.get_services():
         logger.info(f"Received batch with {len(services)} service catalogs")
-        yield services
+
+        if not dashboard_ids_to_enrich_with:
+            yield services
+
+        logger.info(
+            f"Enriching services with dashboard metrics from {dashboard_ids_to_enrich_with}"
+        )
+
+        for dashboard_id in dashboard_ids_to_enrich_with:
+            enriched_services = await dd_client.enrich_kind_with_dashboard_metrics(
+                dashboard_id, services
+            )
+            yield enriched_services
 
 
 # https://docs.datadoghq.com/integrations/webhooks/

@@ -1,7 +1,10 @@
+import asyncio
+import re
 import datetime
 import http
 import json
-from typing import Any, AsyncGenerator, Optional
+import time
+from typing import Any, AsyncGenerator, Callable, Optional
 from urllib.parse import urlparse, urlunparse
 
 import httpx
@@ -13,6 +16,11 @@ from port_ocean.utils.queue_utils import process_in_queue
 
 MAX_PAGE_SIZE = 100
 MAX_CONCURRENT_REQUESTS = 2
+
+MAXIMUM_CONCURRENT_REQUESTS_METRICS = 20
+MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
+MINIMUM_LIMIT_REMAINING = 1
+DEFAULT_SLEEP_TIME = 0.1
 
 
 def embed_credentials_in_url(url: str, username: str, token: str) -> str:
@@ -62,6 +70,17 @@ class DatadogClient:
 
         self.http_client = http_async_client
 
+        # These are created to limit the concurrent requests we are making to specific routes.
+        # The limits provided to each semaphore were pre-determined by the headers sent for each one of the routes.
+        # For more information about Datadog's rate limits, please read this: https://docs.datadoghq.com/api/latest/rate-limits/
+        self._default_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_DEFAULT)
+        self._metrics_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_METRICS)
+
+    @property
+    def datadog_web_url(self) -> str:
+        """Replaces 'api' with 'app' in Datadog URLs."""
+        return re.sub(r"https://api\.", "https://app.", self.api_url)
+
     @property
     async def auth_headers(self) -> dict[str, Any]:
         return {
@@ -88,6 +107,50 @@ class DatadogClient:
         )
         response.raise_for_status()
         return response.json()
+
+    async def _fetch_with_rate_limit_handling(
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+        method: str = "GET",
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> Any:
+        if semaphore is None:
+            semaphore = self._default_semaphore
+
+        while True:
+            async with semaphore:
+                response = await self.http_client.request(
+                    url=url,
+                    method=method,
+                    headers=await self.auth_headers,
+                    params=params,
+                    json=json_data,
+                )
+            try:
+                rate_limit_remaining = int(
+                    response.headers.get("X-RateLimit-Remaining", 0)
+                )
+                if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
+                    datadog_wait_time_in_seconds = int(
+                        response.headers.get("X-RateLimit-Reset")
+                    )
+                    wait_time = max(datadog_wait_time_in_seconds, DEFAULT_SLEEP_TIME)
+
+                    logger.info(
+                        f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
+                        f"URL: {url}, Remaining: {rate_limit_remaining} "
+                    )
+                    await asyncio.sleep(wait_time)
+            except KeyError as e:
+                logger.warning(
+                    f"Rate limit headers not found in response: {str(e)} for url {url}"
+                )
+            except Exception as e:
+                logger.error(f"Error while making request to url: {url} - {str(e)}")
+                raise
+            return response.json()
 
     async def get_hosts(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         start = 0
@@ -232,6 +295,296 @@ class DatadogClient:
                 f"Failed to fetch SLO history for {slo_id}: {err}, {err.response.text}, for the given timeframe {readable_from_ts}, {readable_to_ts} in time range of {timeframe} days"
             )
             return {}
+
+    async def check_metric_data_exists(
+        self, query: str, time_in_minutes: int = 10
+    ) -> bool:
+        """
+        Queries the Datadog API to check if there is any data for a given metric query within a specified time window.
+
+        Args:
+            query: The Datadog metric query string.
+            time_in_minutes: The time window (in minutes) to look back for data (default: 10 minutes).
+
+        Returns:
+            True if the query returns at least one data series, False otherwise (including errors or rate limiting).
+        """
+        end_time = int(time.time())
+        start_time = end_time - (time_in_minutes * 60)
+
+        url = (
+            f"{self.api_url}/api/v1/query?from={start_time}&to={end_time}&query={query}"
+        )
+        result = await self._fetch_with_rate_limit_handling(
+            url, semaphore=self._metrics_semaphore
+        )
+
+        if result.get("status") == "ok":
+            # Check if the series list is populated
+            if "series" in result and result["series"]:
+                return True
+            else:
+                return False
+        elif result.get("status") == "error" and result.get("code") == 429:
+            logger.error(f"Rate limit exceeded: {result.get('error')}")
+            return False
+        else:
+            print(f"Error fetching data: {result.get('error')}")
+            return False
+
+    def create_query_with_values(
+        self, metric_query: str, variable_values: dict[str, str]
+    ) -> str:
+        """
+        Creates a Datadog query by substituting template variables with their values.
+
+        Args:
+            metric_query (str): The original query string containing template variables (e.g., "avg:container.cpu.usage{$service}").
+            variable_values (dict): A dictionary mapping variable names to their values (e.g., {"service": "svc_name", "env": "prod"}).
+
+        Returns:
+            str: The modified query with variables replaced by their values.
+        """
+        logger.debug(f"Creating query with values: {metric_query} | {variable_values}")
+        for variable_name, value in variable_values.items():
+            metric_query = metric_query.replace(
+                f"${variable_name}", f"{variable_name}:{value}"
+            )
+        return metric_query
+
+    def extract_queries_with_template_variable(
+        self, dashboard_json: dict[str, Any], variable_name: str
+    ) -> list[dict[str, Any]]:
+        """
+        Extracts metric queries from a Datadog dashboard JSON that use a specified template variable, grouping queries by widget.
+
+        Args:
+            dashboard_json (dict): The dashboard data as a Python dictionary.
+            variable_name (str): The name of the template variable to search for (e.g., "service").
+
+        Returns:
+            list: A list of dictionaries, each containing the widget ID, widget title, and a list of queries.
+        """
+        filter_name = f"${variable_name}"
+        matching_queries = {}  # Use a dictionary to group by widget ID
+        for widget in dashboard_json["widgets"]:
+            if "requests" in widget["definition"]:
+                for request in widget["definition"]["requests"]:
+                    for query in request.get("queries", []):
+                        if filter_name in query["query"]:
+                            widget_id = widget["id"]
+                            if widget_id not in matching_queries:
+                                matching_queries[widget_id] = {
+                                    "widget_id": widget_id,
+                                    "widget_title": widget["definition"].get(
+                                        "title", "Untitled"
+                                    ),
+                                    "queries": [],
+                                }
+                            matching_queries[widget_id]["queries"].append(
+                                query["query"]
+                            )
+
+        return list(matching_queries.values())
+
+    async def get_single_dashboard(self, dashboard_id: str) -> dict[str, Any] | None:
+        if not dashboard_id:
+            return None
+        url = f"{self.api_url}/api/v1/dashboard/{dashboard_id}"
+        return await self._send_api_request(url)
+
+    async def validate_dashboard(self, dashboard_id: str) -> Optional[dict[str, Any]]:
+        dashboard = await self.get_single_dashboard(dashboard_id)
+        if not dashboard:
+            logger.error(f"Failed to fetch dashboard {dashboard_id}")
+            return None
+
+        widgets = dashboard.get("widgets")
+        if not widgets:
+            logger.error(f"Dashboard {dashboard_id} has no widgets")
+            return None
+
+        template_variables = dashboard.get("template_variables")
+        if not template_variables:
+            logger.error(f"Dashboard {dashboard_id} has no template variables")
+            return None
+
+        return dashboard
+
+    async def check_metrics_availability(
+        self,
+        template_var: str,
+        template_var_value: str,
+        widgets: list[dict[str, Any]],
+        default_env: str = "",
+    ) -> dict[str, Any]:
+        """
+        Checks the availability of metrics for an item (e.g., service, host) across multiple widgets in a Datadog dashboard.
+
+        Args:
+            template_var: The name of the template variable used in the queries (e.g., "service", "host").
+            template_var_value: The value of the template variable to substitute in the queries (e.g., "service-name", "hostname").
+            widgets: A list of dictionaries, each containing information about a widget:
+                * widget_id: The ID of the widget.
+                * widget_title: The title of the widget (generated if empty).
+                * queries: A list of metric queries associated with the widget.
+            default_env: The default environment to use if the dashboard has an "env" template variable (optional).
+
+        Returns:
+            A dictionary mapping widget IDs to their metric availability status. Each entry includes:
+                * widget_id: The ID of the widget.
+                * widget_title: The title of the widget.
+                * widget_metrics_status: A list of dictionaries, each containing:
+                    * metric: The specific metric query.
+                    * has_data: True if the metric has data for the given item, False otherwise.
+                * has_all_metrics: True if all metrics in the widget have data for the item, False otherwise.
+        """
+        metrics_availability: dict[str, Any] = {}
+
+        for widget in widgets:
+            widget_id, widget_title, queries = widget.values()
+            logger.info(
+                f"Processing widget {widget_id} ({widget_title}) for {template_var} {template_var_value}"
+            )
+
+            widget_metrics = metrics_availability.setdefault(
+                f"widget_id_{widget_id}",
+                {
+                    "widget_id": widget_id,
+                    "widget_title": widget_title,
+                    "widget_metrics_status": [],
+                    "has_all_metrics": True,
+                },
+            )
+
+            for query in queries:
+                query_with_values = self.create_query_with_values(
+                    query, {template_var: template_var_value, "env": default_env}
+                )
+
+                has_data = await self.check_metric_data_exists(
+                    query_with_values, time_in_minutes=10
+                )
+
+                widget_metrics["widget_metrics_status"].append(
+                    {"metric": query_with_values, "has_data": has_data}
+                )
+                if not has_data:
+                    widget_metrics["has_all_metrics"] = False
+
+        return metrics_availability
+
+    async def enrich_kind_with_dashboard_metrics(
+        self,
+        dashboard_id: str,
+        items: list[dict[str, Any]],
+        template_var: str = "service",
+        item_name_extractor: Callable[[dict[str, Any]], str] = lambda item: item[
+            "attributes"
+        ]["schema"]["dd-service"],
+    ) -> list[dict[str, Any]]:
+        """
+        Enriches a list of Datadog items (e.g., services, hosts) with information about the availability of metrics
+        from a specified dashboard.
+
+        This function checks whether metric data exists for each item within the given dashboard's widgets that use
+        the specified template variable. It updates the items in the list with a new key, "__metrics_availability",
+        containing details about the status of metrics for each relevant widget in the dashboard.
+
+        Args:
+            dashboard_id: The ID of the Datadog dashboard to check for metrics.
+            items: A list of dictionaries representing the Datadog items (e.g., services, hosts) to enrich.
+            template_var: The name of the template variable used in the dashboard's widgets to filter items
+                        (e.g., "service", "host"). Defaults to "service".
+            item_name_extractor: A function that takes an item dictionary as input and returns the relevant
+                                item name used for metric queries (e.g., service name, hostname).
+                                Defaults to extracting the "dd-service" value from the "schema" within the
+                                item's "attributes".
+
+        Returns:
+            The list of enriched item dictionaries, where each dictionary now includes a "__metrics_availability" key.
+            This key contains information about whether metrics are available for the item in each relevant widget of
+            the dashboard.
+        """
+
+        dashboard = await self.validate_dashboard(dashboard_id)
+        if not dashboard:
+            return items
+
+        if not any(
+            tv.get("name") == template_var for tv in dashboard["template_variables"]
+        ):
+            logger.error(
+                f"Dashboard {dashboard_id} has no {template_var} template variable"
+            )
+            return items
+
+        logger.info(
+            f"Enriching {len(items)} items with metrics from dashboard {dashboard['title']} ({dashboard['id']})"
+        )
+
+        widgets = self.extract_queries_with_template_variable(dashboard, template_var)
+        if not widgets:
+            logger.error(
+                f"No widgets found in dashboard for template variable {template_var}"
+            )
+            return items
+
+        logger.info(
+            f"Found {len(widgets)} widgets with matching queries using template variable '{template_var}'"
+        )
+
+        # Check if the dashboard uses an "env" template variable, and if so, retrieve its default value.
+        # This allows us to include the default environment in metric queries if it's defined.
+        # https://docs.datadoghq.com/getting_started/tagging/
+        default_env = next(
+            (
+                var.get("default")
+                for var in dashboard["template_variables"]
+                if var["name"] == "env"
+            ),
+            "",
+        )
+
+        for item in items:
+            item_name = item_name_extractor(item)
+
+            dashboard_key = re.sub(r"\s+", "_", dashboard["title"].strip().lower())
+
+            # Get or create the metrics_availability structure
+            item_metrics_availability = item.setdefault("__metrics_availability", {})
+
+            # Check if dashboard_key already exists in item_metrics_availability
+            dashboard_metrics = item_metrics_availability.setdefault(
+                dashboard_key,
+                {
+                    "id": dashboard["id"],
+                    "title": dashboard["title"],
+                    "url": f"{self.datadog_web_url}/{dashboard['url']}",
+                    "has_all_metrics": True,
+                    "widget_metrics": {},
+                },
+            )
+
+            # Merge the existing and new metrics
+            metrics_availability = await self.check_metrics_availability(
+                template_var,
+                template_var_value=item_name,
+                widgets=widgets,
+                default_env=default_env,
+            )
+
+            # Check if all metrics are available and update the item's metrics availability
+            if not all(
+                widget_metrics["has_all_metrics"]
+                for widget_metrics in metrics_availability.values()
+            ):
+                dashboard_metrics["has_all_metrics"] = False
+
+            # Update the widget metrics for the dashboard
+            dashboard_metrics["widget_metrics"].update(metrics_availability)
+
+        return items
 
     async def get_single_monitor(self, monitor_id: str) -> dict[str, Any] | None:
         if not monitor_id:
