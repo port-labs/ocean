@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added target='blank' attribute to links in config and secrets description to make them open in new tab (PORT-9537)
+- Added target='blank' attribute to links in config and secrets description to make them open in new tab
 
 
 # Port_Ocean 0.1.47 (2024-07-31)
