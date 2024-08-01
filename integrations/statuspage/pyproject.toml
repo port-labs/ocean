@@ -8,6 +8,7 @@ authors = ["Albert Luganga <albertluganga@getport.io>"]
 python = "^3.11"
 port_ocean = {extras = ["cli"], version = "^0.9.7"}
 
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"
 black = "^23.3.0"
