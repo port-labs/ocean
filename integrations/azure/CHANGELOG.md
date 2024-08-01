@@ -1,3 +1,17 @@
+0.1.75 (2024-08-01)
+
+### Improvements
+
+- Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser.
+
+
+0.1.74 (2024-07-31)
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
 0.1.73 (2024-07-31)
 
 ### Improvements
