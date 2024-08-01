@@ -1,3 +1,17 @@
+0.1.74 (2024-07-31)
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
+0.1.73 (2024-07-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.7 (#1)
+
+
 0.1.72 (2024-07-31)
 
 ### Improvements
