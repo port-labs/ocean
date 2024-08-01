@@ -9,6 +9,7 @@ from loguru import logger
 from port_ocean.config.settings import LogLevelType
 from port_ocean.log.handlers import HTTPMemoryHandler
 from port_ocean.log.sensetive import sensitive_log_filter
+from port_ocean.utils.signal import signal_handler
 
 
 def setup_logger(level: LogLevelType, enable_http_handler: bool) -> None:
@@ -53,7 +54,10 @@ def _http_loguru_handler(level: LogLevelType) -> None:
     )
     logger.configure(patcher=exception_deserializer)
 
-    queue_listener = QueueListener(queue, HTTPMemoryHandler())
+    http_memory_handler = HTTPMemoryHandler()
+    signal_handler.register(http_memory_handler.flush)
+
+    queue_listener = QueueListener(queue, http_memory_handler)
     queue_listener.start()
 
 
