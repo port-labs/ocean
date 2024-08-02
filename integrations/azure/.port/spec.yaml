@@ -18,17 +18,17 @@ configurations:
     required: false
     type: string
     sensitive: true
-    description: Azure Client ID, for more information on how to create and manage the Credentials see here https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal.
+    description: Azure Client ID. For more information on how to create and manage credentials, see the <a href="https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal" target="_blank">Azure documentation</a>.
   - name: azureClientSecret
     required: false
     type: string
     sensitive: true
-    description: Azure Client Secret, for more information on how to create and manage the Credentials see here information https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal.
+    description: Azure Client Secret. For more information on how to create and manage credentials, see the <a href="https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal" target="_blank">Azure documentation</a>.
   - name: azureTenantId
     required: false
     type: string
     sensitive: true
-    description: Azure Tenant ID, for more information on how to create and manage the Credentials see here https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal.
+    description: Azure Tenant ID. For more information on how to create and manage credentials, see the <a href="https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal" target="_blank">Azure documentation</a>
 deploymentMethodRequirements:
   - type: default
     configurations: ['azureClientId', 'azureClientSecret', 'azureTenantId']
