@@ -9,6 +9,13 @@ from port_ocean.utils import http_async_client
 
 from integration import DynatraceResourceConfig, EntityFieldsType
 
+# SLOs by default are not evaluated and the initial state
+# at creation is being returned in the SLO list API.
+# To force evaluation, we must pass the `evaluate` query parameter,
+# setting it to `true`. This will return the current state of the SLOs.
+# The maximum page size for the SLO list API when it is evaluated is 25.
+EVALUATED_SLO_MAX_PAGE_SIZE = 25
+
 
 class ResourceKey(StrEnum):
     PROBLEM = "problem"
@@ -56,7 +63,9 @@ class DynatraceClient:
 
     async def get_slos(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for slos in self._get_paginated_resources(
-            f"{self.host_url}/slo", "slo", {"pageSize": 200}
+            f"{self.host_url}/slo",
+            "slo",
+            {"pageSize": EVALUATED_SLO_MAX_PAGE_SIZE, "evaluate": "true"},
         ):
             yield slos
 
