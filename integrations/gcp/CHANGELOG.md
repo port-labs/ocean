@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.35 (2024-08-02)
+
+### Improvements
+
+- Added sonar-project.properties configuration file for the Sonar scanner GitHub action
+
+
 # Port_Ocean 0.1.34 (2024-07-31)
 
 ### Improvements
