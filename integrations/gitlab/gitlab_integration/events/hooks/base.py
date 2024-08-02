@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import List, Any
+from typing import List, Any, Optional
 from loguru import logger
 from gitlab.v4.objects import Project, Group
-from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.gitlab_service import GitlabService
+from gitlab_integration.utils import ObjectKind
+from port_ocean.context.ocean import ocean
 
 
 class HookHandler(ABC):
@@ -48,15 +49,21 @@ class ProjectHandler(HookHandler):
 
 class GroupHandler(HookHandler):
     async def on_hook(self, event: str, body: dict[str, Any]) -> None:
-        event_name = body["event_name"]
         group_id = body.get("group_id", body.get("group", {}).get("id"))
-        logger.info(f"Handling {event_name} for {event} and group {group_id}")
         group = await self.gitlab_service.get_group(group_id)
-        group_path = body.get('full_path',body.get('group_path'))
-        logger.info(f"Handling hook {event} for group {group_path}")
         await self._on_hook(body, group)
+        group_path = body.get("full_path", body.get("group_path"))
         logger.info(f"Finished handling {event} for group {group_path}")
 
     @abstractmethod
-    async def _on_hook(self, body: dict[str, Any], gitlab_group: Group) -> None:
+    async def _on_hook(
+        self, body: dict[str, Any], gitlab_group: Optional[Group]
+    ) -> None:
         pass
+
+    async def _register_group(self, gitlab_group: Group) -> None:
+        if self.gitlab_service.should_run_for_group(gitlab_group):
+            await ocean.register_raw(
+                ObjectKind.GROUP,
+                [await self.gitlab_service.enrich_group_with_members(gitlab_group)],
+            )

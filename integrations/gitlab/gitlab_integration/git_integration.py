@@ -121,6 +121,7 @@ class GitlabSelector(Selector):
 class GitlabResourceConfig(ResourceConfig):
     selector: GitlabSelector
 
+
 class MembersSelector(Selector):
 
     enrich_with_public_email: bool | None = Field(
@@ -128,6 +129,7 @@ class MembersSelector(Selector):
         default=False,
         description="If set to true, the integration will enrich members with public email field. Default value is false",
     )
+
 
 class GitlabMembersResourceConfig(ResourceConfig):
     kind: Literal["member"]

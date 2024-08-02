@@ -123,7 +123,7 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
         Issues(gitlab_service),
         Pipelines(gitlab_service),
         Groups(gitlab_service),
-        Members(gitlab_service)
+        Members(gitlab_service),
     ]
     for handler in handlers:
         logger.info(
@@ -141,7 +141,7 @@ def setup_system_listeners(gitlab_clients: list[GitlabService]) -> None:
         Issues,
         Pipelines,
         Groups,
-        Members
+        Members,
     ]
     for handler in handlers:
         system_event_handler.on(handler)

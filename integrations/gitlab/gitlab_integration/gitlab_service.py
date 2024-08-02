@@ -1,7 +1,7 @@
 import asyncio
 import typing
 from datetime import datetime, timedelta
-from typing import List, Tuple, Any, Union, TYPE_CHECKING, Callable
+from typing import List, Tuple, Any, Union, TYPE_CHECKING, Optional
 
 import anyio.to_thread
 import yaml
@@ -27,6 +27,7 @@ from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.utils import does_pattern_apply
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
+from port_ocean.utils.cache import cache_iterator_result
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 GROUPS_CACHE_KEY = "__cache_all_groups"
@@ -48,7 +49,7 @@ class GitlabService:
         "tag_push_events",
         "subgroup_events",
         "confidential_issues_events",
-        "member_events"
+        "member_events",
     ]
 
     def __init__(
@@ -319,27 +320,25 @@ class GitlabService:
         else:
             return None
 
-    async def get_group(self, group_id: int) -> Group | None:
+    async def get_group(self, group_id: int) -> Optional[Group]:
         try:
-            logger.info(f"fetching group {group_id}")
-            group_response = await AsyncFetcher.fetch_single(self.gitlab_client.groups.get, group_id)
+            logger.info(f"Fetching group with ID: {group_id}")
+            group_response = await AsyncFetcher.fetch_single(
+                self.gitlab_client.groups.get, group_id
+            )
             group: Group = typing.cast(Group, group_response)
             return group
         except gitlab.exceptions.GitlabGetError as err:
             if err.response_code == 404:
+                logger.warning(f"Group with ID {group_id} not found (404).")
                 return None
+            else:
+                logger.error(f"Failed to fetch group with ID {group_id}: {err}")
+                raise
 
-
+    @cache_iterator_result()
     async def get_all_groups(self) -> typing.AsyncIterator[List[Group]]:
         logger.info("fetching all groups for the token")
-
-        cached_groups = event.attributes.setdefault(GROUPS_CACHE_KEY, {}).setdefault(
-            self.gitlab_client.private_token, {}
-        )
-
-        if cached_groups:
-            yield cached_groups.values()
-            return
 
         async for groups_batch in AsyncFetcher.fetch_batch(
             fetch_func=self.gitlab_client.groups.list,
@@ -352,7 +351,6 @@ class GitlabService:
             logger.info(
                 f"Queried {len(groups)} groups {[group.path for group in groups]}"
             )
-            cached_groups.update({group.id: group for group in groups})
             yield groups
 
     async def get_all_projects(self) -> typing.AsyncIterator[List[Project]]:
@@ -558,7 +556,9 @@ class GitlabService:
             "GitlabPortAppConfig", event.port_app_config
         )
         include_bot_members = port_app_config.include_bot_members
-        return not(member.username.__contains__("bot")) if include_bot_members else True
+        return (
+            not (member.username.__contains__("bot")) if include_bot_members else True
+        )
 
     async def get_all_group_members(
         self, group: Group
@@ -601,7 +601,9 @@ class GitlabService:
         )
         return group_dict
 
-    async def enrich_member_with_public_email(self, member) -> dict[str, Any]:
+    async def enrich_member_with_public_email(
+        self, member: GroupMember
+    ) -> dict[str, Any]:
         user: User = await self.get_user(member.id)
         member_dict: dict[str, Any] = member.asdict()
         member_dict.update({"__public_email": user.public_email})
@@ -615,14 +617,23 @@ class GitlabService:
         user: User = typing.cast(User, user_response)
         return user
 
-    async def get_group_member(self, group: Group, member_id: int) -> GroupMember:
-        logger.info(f"fetching group member {member_id} from group {group.id}")
-        group_member = await AsyncFetcher.fetch_single(
-            group.members.get, member_id
-        )
-        if self.should_run_for_members(group_member):
-            return group_member
-        return None
+    async def get_group_member(
+        self, group: Group, member_id: int
+    ) -> Optional[GroupMember]:
+        try:
+
+            logger.info(f"fetching group member {member_id} from group {group.id}")
+            result = await AsyncFetcher.fetch_single(group.members.get, member_id)
+            group_member = typing.cast(GroupMember, result)
+            return group_member if self.should_run_for_members(group_member) else None
+
+        except gitlab.exceptions.GitlabGetError as err:
+            if err.response_code == 404:
+                logger.warning(f"Group Member with ID {member_id} not found (404).")
+                return None
+            else:
+                logger.error(f"Failed to fetch group with ID {member_id}: {err}")
+                raise
 
     def get_entities_diff(
         self,

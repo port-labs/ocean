@@ -13,6 +13,7 @@ from gitlab.v4.objects import (
     Issue,
     Group,
     User,
+    GroupMember,
 )
 from loguru import logger
 
@@ -36,6 +37,7 @@ class AsyncFetcher:
                 Project,
                 Group,
                 User,
+                GroupMember,
             ],
         ],
         *args,
