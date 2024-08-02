@@ -5,7 +5,11 @@ from typing import Any, Optional, AsyncGenerator, cast
 import httpx
 from loguru import logger
 
-from integration import SonarQubeIssueResourceConfig, CustomSelector
+from integration import (
+    SonarQubeIssueResourceConfig,
+    CustomSelector,
+    SonarQubeProjectResourceConfig,
+)
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
@@ -39,18 +43,6 @@ class SonarQubeClient:
         self.is_onpremise = is_onpremise
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
-
-        self.metrics = [
-            "code_smells",
-            "coverage",
-            "bugs",
-            "vulnerabilities",
-            "duplicated_files",
-            "security_hotspots",
-            "new_violations",
-            "new_coverage",
-            "new_duplicated_lines_density",
-        ]
 
     @property
     def api_auth_params(self) -> dict[str, Any]:
@@ -261,6 +253,9 @@ class SonarQubeClient:
         :return (list[Any]): A list containing projects data for your organization.
         """
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
+        self.metrics = cast(
+            SonarQubeProjectResourceConfig, event.resource_config
+        ).selector.metrics
         components = await self.get_components()
         for component in components:
             project_data = await self.get_single_project(project=component)
