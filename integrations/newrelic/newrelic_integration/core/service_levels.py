@@ -70,9 +70,8 @@ class ServiceLevelsHandler:
 
             if len(batch) >= BATCH_SIZE:
                 yield batch
-                batch = []  # Clear the batch for the next set of items
+                batch = []  # Clearing the batch for the next set of items
 
-        # Process any remaining items in the batch
         if batch:
             yield batch
 
