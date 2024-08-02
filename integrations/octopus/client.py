@@ -38,7 +38,6 @@ class OctopusClient:
                 f"Got HTTP error to url: {url} with status code: {e.response.status_code} and response text: {e.response.text}"
             )
             raise
-        logger.warning(f"Response: {response.json()}")
         return response.json()
 
     async def _get_paginated_objects(
