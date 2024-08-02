@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.1.37 (2024-08-01)
+
+### Improvements
+
+- Added target='blank' attribute to links in config and secrets description to make them open in new tab
+
+
+# Port_Ocean 0.1.36 (2024-07-31)
+
+### Improvements
+
+- Upgraded integration dependencies (#1)
+
+
 # Port_Ocean 0.1.35 (2024-07-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.7 (#1)
 
 ### Bug Fixes
 
