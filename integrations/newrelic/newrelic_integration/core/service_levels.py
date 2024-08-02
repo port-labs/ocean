@@ -12,6 +12,7 @@ from newrelic_integration.utils import (
 from newrelic_integration.core.paging import send_paginated_graph_api_request
 
 SLI_OBJECT = "__SLI"
+BATCH_SIZE = 50
 
 
 class ServiceLevelsHandler:
@@ -40,7 +41,7 @@ class ServiceLevelsHandler:
             return service_levels[0]
         return {}
 
-    async def process_service_level(
+    async def enrich_slo_with_sli_and_tags(
         self, service_level: dict[str, Any]
     ) -> dict[str, Any]:
         # Get the NRQL which is used to build the actual SLI result
@@ -57,14 +58,23 @@ class ServiceLevelsHandler:
         self._format_tags(service_level)
         return service_level
 
-    async def list_service_levels(self) -> AsyncIterable[dict[str, Any]]:
+    async def list_service_levels(self) -> AsyncIterable[list[dict[str, Any]]]:
+        batch = []
         async for service_level in send_paginated_graph_api_request(
             self.http_client,
             LIST_SLOS_QUERY,
             request_type="list_service_levels",
             extract_data=self._extract_service_levels,
         ):
-            yield service_level
+            batch.append(service_level)
+
+            if len(batch) >= BATCH_SIZE:
+                yield batch
+                batch = []  # Clear the batch for the next set of items
+
+        # Process any remaining items in the batch
+        if batch:
+            yield batch
 
     @staticmethod
     async def _extract_service_levels(

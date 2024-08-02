@@ -1,10 +1,9 @@
-from typing import Any, AsyncIterable
+from typing import Any
 import httpx
+import asyncio
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-
 from newrelic_integration.core.entities import EntitiesHandler
 from newrelic_integration.core.issues import IssuesHandler, IssueState, IssueEvent
 from newrelic_integration.core.service_levels import ServiceLevelsHandler
@@ -14,12 +13,16 @@ from newrelic_integration.utils import (
     get_port_resource_configuration_by_port_kind,
 )
 
-BATCH_SIZE = 20
+MAX_CONCURRENT_REQUESTS = 10
 
 
-## stream_async_iterators_tasks expects a list of async iterators, so we need to wrap the coroutine in a list
-async def wrap_coroutine(coroutine: Any) -> AsyncIterable[Any]:
-    yield await coroutine
+async def enrich_service_level(
+    handler: ServiceLevelsHandler,
+    semaphore: asyncio.Semaphore,
+    service_level: dict[str, Any],
+) -> dict[str, Any]:
+    async with semaphore:
+        return await handler.enrich_slo_with_sli_and_tags(service_level)
 
 
 @ocean.on_resync()
@@ -78,21 +81,18 @@ async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
         async with httpx.AsyncClient() as http_client:
-            handler = ServiceLevelsHandler(http_client)
-            batch = []
-            async for service_level in handler.list_service_levels():
-                batch.append(
-                    wrap_coroutine(handler.process_service_level(service_level))
-                )
-                if len(batch) >= BATCH_SIZE:
-                    async for item in stream_async_iterators_tasks(*batch):
-                        yield [item]
-                    batch = []
+            service_level_handler = ServiceLevelsHandler(http_client)
+            semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
-            # Process any remaining items in the batch
-            if batch:
-                async for item in stream_async_iterators_tasks(*batch):
-                    yield [item]
+            async for service_levels in service_level_handler.list_service_levels():
+                tasks = [
+                    enrich_service_level(
+                        service_level_handler, semaphore, service_level
+                    )
+                    for service_level in service_levels
+                ]
+                enriched_service_levels = await asyncio.gather(*tasks)
+                yield enriched_service_levels
 
 
 @ocean.router.post("/events")
