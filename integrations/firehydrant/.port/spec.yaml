@@ -14,7 +14,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: API token for your FireHydrant account, for example, "jakdlfja933948anz.cnapaira". It can be found on your <a target="_blank" href="https://app.firehydrant.io/organizations/bots">Firehydrant dashboard</a>
+    description: The API token for your FireHydrant account used for authentication. To create a token, see the  <a target="_blank" href="https://docs.firehydrant.com/docs/api-keys">FireHydrant document</a>
   - name: apiUrl
     type: string
     required: true
