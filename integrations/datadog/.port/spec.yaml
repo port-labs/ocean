@@ -12,7 +12,7 @@ features:
       - kind: datadogSloHistory
 configurations:
   - name: datadogBaseUrl
-    description: Datadog Base URL (e.g., "https://api.datadoghq.com" or "https://api.datadoghq.eu"). To identify your base URL, see the <a target=”_blank” href="https://docs.datadoghq.com/getting_started/site/#:~:text=within%20their%20environments.-,Access%20the%20Datadog%20site,-You%20can%20identify">Datadog documentation</a>.
+    description: Datadog Base URL (e.g., "https://api.datadoghq.com" or "https://api.datadoghq.eu"). To identify your base URL, see the <a target="_blank" href="https://docs.datadoghq.com/getting_started/site/#:~:text=within%20their%20environments.-,Access%20the%20Datadog%20site,-You%20can%20identify">Datadog documentation</a>.
     type: url
     required: true
     default: "https://api.datadoghq.com"
