@@ -165,7 +165,25 @@ class CustomResourceConfig(ResourceConfig):
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
     class SonarQubeProjectSelector(SelectorWithApiFilters):
+
+        @staticmethod
+        def default_metrics() -> list[str]:
+            return [
+                "code_smells",
+                "coverage",
+                "bugs",
+                "vulnerabilities",
+                "duplicated_files",
+                "security_hotspots",
+                "new_violations",
+                "new_coverage",
+                "new_duplicated_lines_density",
+            ]
+
         api_filters: SonarQubeProjectApiFilter | None = Field(alias="apiFilters")
+        metrics: list[str] = Field(
+            description="List of metric keys", default=default_metrics()
+        )
 
     kind: Literal["projects"]
     selector: SonarQubeProjectSelector
