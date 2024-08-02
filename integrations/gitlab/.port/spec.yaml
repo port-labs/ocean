@@ -12,7 +12,7 @@ configurations:
   - name: tokenMapping
     required: true
     type: object
-    description: "Mapping of Gitlab tokens to the groups scopes to ingest data from into port. Example: {\"THE_GROUP_TOKEN\":[\"getport-labs/**\", \"GROUP/PROJECT PATTERN TO RUN FOR\"]}"
+    description: 'Mapping of Gitlab tokens to the groups scopes to ingest data from into port. Example: {\"THE_GROUP_TOKEN\":[\"getport-labs/**\", \"GROUP/PROJECT PATTERN TO RUN FOR\"]}. To create a group token, see the <a target="_blank" href="https://docs.gitlab.com/ee/user/group/settings/group_access_tokens.html#create-a-group-access-token-using-ui">Gitlab Documentation</a>'
     sensitive: true
   - name: appHost
     required: false
@@ -26,7 +26,7 @@ configurations:
   - name: useSystemHook
     required: false
     type: boolean
-    description: If set to true, will use system hook instead of project hooks.
+    description: If set to true, will use system hook instead of project hooks. See the <a target="_blank" href= "https://docs.gitlab.com/ee/administration/system_hooks.html"> Gitlab Documentation</a>' for the list of system hooks
     default: false
   - name: tokenGroupHooksOverrideMapping
     required: false
