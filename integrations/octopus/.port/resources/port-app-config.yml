@@ -1,0 +1,96 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .SpaceId
+          title: .Name
+          blueprint: '"octopusDeployProject"'
+          properties:
+            slug: .Slug
+            id: .Id
+            url: >-
+              'https://testport.octopus.app/app#/' + 
+              .SpaceId + '/projects/' + .Slug
+            description: .Description
+            spaceId: .SpaceId
+            isDisabled: .IsDisabled
+            lifecycleId: .LifecycleId
+            tenantedDeploymentMode: .TenantedDeploymentMode
+            allowIgnoreChannelRules: .AllowIgnoreChannelRules
+  - kind: release
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: ".Version + \" (\" + .ProjectId + \")\""
+          blueprint: '"octopusDeployRelease"'
+          properties:
+            version: .Version
+            assembled: .Assembled
+            channelId: .ChannelId
+            releaseNotes: .ReleaseNotes
+            projectId: .ProjectId
+            url: >-
+              'https://testport.octopus.app/app#/' +
+              .SpaceId + '/projects/' + .ProjectId + '/deployments/releases/' + .Version
+          relations:
+            project: .SpaceId
+  - kind: deployment
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: .Name
+          blueprint: '"octopusDeployDeployment"'
+          properties:
+            releaseId: .ReleaseId
+            environmentId: .EnvironmentId
+            created: .Created
+            deployedBy: .DeployedBy
+            taskId: .TaskId
+            projectId: .ProjectId
+            failureEncountered: .FailureEncountered
+            comments: .Comments
+            spaceId: .SpaceId
+            useGuidedFailure: .UseGuidedFailure
+            deployedToMachineIds: .DeployedToMachineIds[]
+            url: >-
+              'https://testport.octopus.app/app#/Spaces-' +
+              .SpaceId + '/projects/' + .ProjectId + '/deployments?groupBy=Channel'
+          relations:
+            release: .ReleaseId
+            project: .SpaceId
+  - kind: target
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: .Name
+          blueprint: '"octopusDeployTarget"'
+          properties:
+            roles: .Roles
+            status: .HealthStatus
+            spaceId: .SpaceId
+            uri: .Uri
+            machinePolicyId: .MachinePolicyId
+            isDisabled: .IsDisabled
+            operatingSystem: .OperatingSystem
+            architecture: .Architecture
+            statusSummary: .StatusSummary
+            slug: .Slug
+            endpointType: .Endpoint.DeploymentTargetTypeId
+            hasLatestCalamari: .HasLatestCalamari
+            communicationStyle: .Endpoint.CommunicationStyle
+          relations:
+            project: .SpaceId
