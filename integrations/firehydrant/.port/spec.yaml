@@ -19,7 +19,7 @@ configurations:
     type: string
     required: true
     default: https://api.firehydrant.io
-    description: FireHydrant API URL, (e.g., "https://api.firehydrant.io"). To identify your base URL, see the <a target="_blank" href="https://developers.firehydrant.com/#/</a>
+    description: The FireHydrant API URL. If not provided, the default value is https://api.firehydrant.io
   - name: appHost
     type: string
     required: false
