@@ -96,7 +96,7 @@ class OctopusClient:
         subscription_data = {
             "EventNotificationSubscription": {
                 "WebhookURI": f"{app_host}/integration/webhook",
-                "WebhookTimeout": "00:00:50"
+                "WebhookTimeout": "00:00:50",
             },
             "IsDisabled": False,
             "Name": "Port Subscription",
