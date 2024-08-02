@@ -1,5 +1,5 @@
 createMissingRelatedEntities: true
-deleteDependentEntities: true
+deleteDependentEntities:
 resources:
   - kind: project
     selector:
@@ -14,7 +14,7 @@ resources:
             slug: .Slug
             id: .Id
             url: >-
-              'https://testport.octopus.app/app#/' + 
+              'https://testport.octopus.app/app#/' +
               .SpaceId + '/projects/' + .Slug
             description: .Description
             spaceId: .SpaceId
