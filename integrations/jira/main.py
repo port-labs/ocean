@@ -91,9 +91,11 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     webhook_event: str = data.get("webhookEvent", "")
     logger.info(f"Received webhook event of type: {webhook_event}")
     ocean_action = None
+    delete_action = False
 
     if webhook_event in DELETE_WEBHOOK_EVENTS:
         ocean_action = ocean.unregister_raw
+        delete_action = True
     elif webhook_event in CREATE_UPDATE_WEBHOOK_EVENTS:
         ocean_action = ocean.register_raw
 
@@ -103,19 +105,31 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
     if "project" in webhook_event:
         logger.info(f'Received webhook event for project: {data["project"]["key"]}')
-        project = await client.get_single_project(data["project"]["key"])
+        if delete_action:
+            project = data["project"]
+        else:
+            project = await client.get_single_project(data["project"]["key"])
         await ocean_action(ObjectKind.PROJECT, [project])
     elif "issue" in webhook_event:
         logger.info(f'Received webhook event for issue: {data["issue"]["key"]}')
-        issue = await client.get_single_issue(data["issue"]["key"])
+        if delete_action:
+            issue = data["issue"]
+        else:
+            issue = await client.get_single_issue(data["issue"]["key"])
         await ocean_action(ObjectKind.ISSUE, [issue])
     elif "board" in webhook_event:
         logger.info(f'Received webhook event for board: {data["board"]["id"]}')
-        board = await client.get_single_board(data["board"]["id"])
+        if delete_action:
+            board = data["board"]
+        else:
+            board = await client.get_single_board(data["board"]["id"])
         await ocean_action(ObjectKind.BOARD, [board])
     elif "sprint" in webhook_event:
         logger.info(f'Received webhook event for sprint: {data["sprint"]["id"]}')
-        sprint = await client.get_single_sprint(data["sprint"]["id"])
+        if delete_action:
+            sprint = data["sprint"]
+        else:
+            sprint = await client.get_single_sprint(data["sprint"]["id"])
         await ocean_action(ObjectKind.SPRINT, [sprint])
     logger.info("Webhook event processed")
     return {"ok": True}
