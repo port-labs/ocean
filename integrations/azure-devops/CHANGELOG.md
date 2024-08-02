@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added sonar-project.properties configuration file for the Sonar scanner
+- Added sonar-project.properties configuration file for the Sonar scanner GitHub action
 
 
 # Port_Ocean 0.1.48 (2024-08-01)
