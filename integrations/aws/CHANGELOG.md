@@ -7,42 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.2.21 (2024-08-01)
+## 0.2.21 (2024-08-01)
 
-### Improvements
+
+###  Improvements
 
 - Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser
 
 
-# Port_Ocean 0.2.20 (2024-07-31)
+## 0.2.20 (2024-07-31)
 
-### Improvements
+
+###  Improvements
 
 - Upgraded integration dependencies (#1)
 
 
-# Port_Ocean 0.2.19 (2024-07-31)
+## 0.2.19 (2024-07-31)
 
-### Improvements
+
+###  Improvements
 
 - Bumped ocean version to ^0.9.7 (#1)
 
 
-# Port_Ocean 0.2.18 (2024-07-31)
+## 0.2.18 (2024-07-31)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.6 (#1)
 
 
-# Port_Ocean 0.2.17 (2024-07-24)
+## 0.2.17 (2024-07-24)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.5
 
 
-# Port_Ocean 0.2.16 (2024-07-16)
+## 0.2.16 (2024-07-16)
+
 
 ### Bug Fixes
 
@@ -51,88 +57,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add access denied handler to custom kind resync
 
 
-# Port_Ocean 0.2.15 (2024-07-12)
+## 0.2.15 (2024-07-12)
+
 
 ### Improvements
 
 - Add logs to indicate the size of batches being fetched in each resync
 
 
-# Port_Ocean 0.2.14 (2024-07-11)
+## 0.2.14 (2024-07-11)
+
 
 ### Improvements
 
 - Add access denied exception support (#1)
 
-# Port_Ocean 0.2.13 (2024-07-10)
+## 0.2.13 (2024-07-10)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.4 (#1)
 
 
-# Port_Ocean 0.2.12 (2024-07-09)
+## 0.2.12 (2024-07-09)
+
 
 ### Improvements
 
 - Fix default useGetResourceAPI property name (#1)
 - Use by default the actual S3 Bucket region instead of default region used to fetch it (#2)
 
-# Port_Ocean 0.2.11 (2024-07-09)
+## 0.2.11 (2024-07-09)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.3 (#1)
 
 
-# Port_Ocean 0.2.10 (2024-07-07)
+## 0.2.10 (2024-07-07)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.2 (#1)
 
 
-# Port_Ocean 0.2.9 (2024-07-02)
+## 0.2.9 (2024-07-02)
+
 
 ### Bugfix
 
 - Ensure default region for global resources (#1)
 
 
-# Port_Ocean 0.2.8 (2024-06-23)
+## 0.2.8 (2024-06-23)
+
 
 ### Improvements
 
 - Added support for default installation methods ( Helm, docker, githubworkflow and gitlabCI ) to improve ease of use (#1)
 
 
-# Port_Ocean 0.2.7 (2024-06-23)
+## 0.2.7 (2024-06-23)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.1 (#1)
 
 
-# Port_Ocean 0.2.6 (2024-06-19)
+## 0.2.6 (2024-06-19)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.0 (#1)
 
 
-# Port_Ocean 0.2.5 (2024-06-17)
+## 0.2.5 (2024-06-17)
+
 
 ### Improvements
 
 - Changed default mapping to include describeResources for resources which doesn't include tags by default from cloud control (#1)
 
-# Port_Ocean 0.2.4 (2024-06-17)
+## 0.2.4 (2024-06-17)
+
 
 ### Improvements
 
 - Fix _aws_credentials overflow bug (#1)
 
-# Port_Ocean 0.2.3 (2024-06-17)
+## 0.2.3 (2024-06-17)
+
 
 ### Improvements
 
@@ -141,27 +160,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix AWS rate-limit issues (#3)
 
 
-# Port_Ocean 0.2.2 (2024-06-16)
+## 0.2.2 (2024-06-16)
+
 
 ### Improvements
 
 - Run all single describe in parallel (#1)
 
-# Port_Ocean 0.2.1 (2024-06-16)
+## 0.2.1 (2024-06-16)
+
 
 ### Improvements
 
 - Updated spec.yaml indication that saas installation is not supported
 
 
-# Port_Ocean 0.2.0 (2024-06-16)
+## 0.2.0 (2024-06-16)
+
 
 ### Improvements
 
 - Added support for "describeResource" mapping option (#1)
 
 
-# Port_Ocean 0.1.8 (2024-06-16)
+## 0.1.8 (2024-06-16)
+
 
 ### Improvements
 
@@ -169,56 +192,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-# Port_Ocean 0.1.7 (2024-06-13)
+## 0.1.7 (2024-06-13)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.1 (#1)
 
 
-# Port_Ocean 0.1.6 (2024-06-13)
+## 0.1.6 (2024-06-13)
+
 
 ### Improvements
 
 - Add support for syncing ACM certificates, AMI images and Cloudformation Stacks
 
 
-# Port_Ocean 0.1.5 (2024-06-13)
+## 0.1.5 (2024-06-13)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.0 (#1)
 
 
-# Port_Ocean 0.1.4 (2024-06-10)
+## 0.1.4 (2024-06-10)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.6.0 (#1)
 
 
-# Port_Ocean 0.1.3 (2024-06-05)
+## 0.1.3 (2024-06-05)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.27 (#1)
 
 
-# Port_Ocean 0.1.2 (2024-06-03)
+## 0.1.2 (2024-06-03)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.25 (#1)
 
 
-# Port_Ocean 0.1.1 (2024-06-02)
+## 0.1.1 (2024-06-02)
+
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.24 (#1)
 
 
-# Port_Ocean 0.1.0 (2024-05-30)
+## 0.1.0 (2024-05-30)
+
 
 ### Features
 
