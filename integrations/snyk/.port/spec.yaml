@@ -14,26 +14,26 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The Snyk API token used for authentication
+    description: The Snyk API token used for authentication. To create a token, see the <a href="https://docs.snyk.io/getting-started/how-to-obtain-and-authenticate-with-your-snyk-api-token" target="_blank">Snyk documentation</a>
   - name: webhookSecret
     required: false
     type: string
     sensitive: true
-    description: Secret key used for webhook authentication, if applicable
+    description: Snyk webhook secret (optional). This is used to secure webhook communication between Snyk and Port. To learn more, see the <a href="https://docs.snyk.io/snyk-api/snyk-webhooks/validation-and-versioning-of-payloads" target="_blank">Snyk documentation</a>
   - name: apiUrl
     type: string
     required: false
     default: https://api.snyk.io
-    description: The base URL of the Snyk API. Defaults to https://api.snyk.io
+    description: The base URL of the Snyk API. The default value is https://api.snyk.io is not provided
   - name: organizationId
     type: string
     required: false
-    description: The unique identifier for the specific organization. Fetches data for a single organization when provided
+    description: The unique identifier for the specific organization. When provided, the integration fetches data for a single organization. To find the organization id, see the <a href="https://docs.snyk.io/snyk-admin/groups-and-organizations/organizations/organization-general-settings" target="_blank">Snyk documentation</a>
   - name: groups
     type: string
     required: false
-    description: A comma-separated list of group ids to filter data for. Fetches data for organizations within the specified groups
+    description: A comma-separated list of group ids to filter data for. Fetches data for organizations within the specified groups. To learn more, see the <a href="https://docs.snyk.io/snyk-admin/groups-and-organizations/groups/group-general-settings" target="_blank">Snyk documentation</a>
   - name: appHost
     type: string
     required: false
-    description: The application host, if applicable
+    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Snyk
