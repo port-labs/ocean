@@ -5,7 +5,11 @@ from typing import Any, Optional, AsyncGenerator, cast
 import httpx
 from loguru import logger
 
-from integration import SonarQubeIssueResourceConfig, CustomSelector
+from integration import (
+    SonarQubeIssueResourceConfig,
+    CustomSelector,
+    SonarQubeProjectResourceConfig,
+)
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
@@ -39,18 +43,6 @@ class SonarQubeClient:
         self.is_onpremise = is_onpremise
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
-
-        self.metrics = [
-            "code_smells",
-            "coverage",
-            "bugs",
-            "vulnerabilities",
-            "duplicated_files",
-            "security_hotspots",
-            "new_violations",
-            "new_coverage",
-            "new_duplicated_lines_density",
-        ]
 
     @property
     def api_auth_params(self) -> dict[str, Any]:
@@ -131,7 +123,7 @@ class SonarQubeClient:
 
                 # Check for paging information and decide whether to fetch more pages
                 paging_info = response_json.get("paging")
-                if len(resource) < PAGE_SIZE:
+                if paging_info is None or len(resource) < PAGE_SIZE:
                     break
 
                 query_params["p"] = paging_info["pageIndex"] + 1
@@ -161,13 +153,21 @@ class SonarQubeClient:
             logger.info(
                 f"Fetching all components in organization: {self.organization_id}"
             )
-        if api_query_params:
-            query_params.update(api_query_params)
-        elif event.resource_config:
-            # This might be called from places where event.resource_config is not set
-            # like on_start() when creating webhooks
-            selector = cast(CustomSelector, event.resource_config.selector)
-            query_params.update(selector.generate_request_params())
+
+        ## Handle api_query_params based on environment
+        if not self.is_onpremise:
+            logger.warning(
+                f"Received request to fetch SonarQube components with api_query_params {api_query_params}. Skipping because api_query_params is only supported on on-premise environments"
+            )
+        else:
+            if api_query_params:
+                query_params.update(api_query_params)
+            elif event.resource_config:
+                # This might be called from places where event.resource_config is not set
+                # like on_start() when creating webhooks
+
+                selector = cast(CustomSelector, event.resource_config.selector)
+                query_params.update(selector.generate_request_params())
 
         try:
             response = await self.send_paginated_api_request(
@@ -253,6 +253,9 @@ class SonarQubeClient:
         :return (list[Any]): A list containing projects data for your organization.
         """
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
+        self.metrics = cast(
+            SonarQubeProjectResourceConfig, event.resource_config
+        ).selector.metrics
         components = await self.get_components()
         for component in components:
             project_data = await self.get_single_project(project=component)

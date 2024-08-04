@@ -117,17 +117,17 @@ data "aws_iam_policy_document" "task_execution_role_policy" {
 }
 
 resource "aws_iam_role" "task_role" {
-  name               = "ecs-task-role-${local.service_name}"
+  name               = "ecs-${local.service_name}"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume_role_policy.json
 }
 
 resource "aws_iam_policy" "execution-policy" {
-  name   = "ecs-task-execution-policy-${local.service_name}"
+  name   = local.service_name
   policy = data.aws_iam_policy_document.task_execution_role_policy.json
 }
 
 resource "aws_iam_role" "task_execution_role" {
-  name               = "ecs-task-execution-role-${local.service_name}"
+  name               = "ecs-execution-${local.service_name}"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume_role_policy.json
 }
 
