@@ -20,7 +20,7 @@ configurations:
     required: true
     type: string
     default: https://api.pagerduty.com
-    description: Pagerduty Api URL. If not specified, the default will be https://api.pagerduty.com. Customers on the EU data centers should set this to https://api.eu.pagerduty.com
+    description: Pagerduty Api URL. If not specified, the default will be <a href="https://api.pagerduty.com" target="_blank">https://api.pagerduty.com</a>. Customers on the EU data centers should set this to https://api.eu.pagerduty.com
   - name: appHost
     required: false
     type: string
