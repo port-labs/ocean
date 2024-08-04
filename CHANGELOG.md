@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.9 (2024-08-04)
+
+
+### Bug Fixes
+
+- Fixed an issue where passing an object for OCEAN__INTEGRATION__CONFIG that holds an object might not be parsed correctly and cause validation error for invalid type (#1)
+
+
 ## 0.9.8 (2024-08-01)
 
 
