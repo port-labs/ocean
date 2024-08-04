@@ -2,7 +2,7 @@ import asyncio
 import sys
 import threading
 from contextlib import asynccontextmanager
-from typing import Callable, Any, Dict, AsyncIterator
+from typing import Callable, Any, Dict, AsyncIterator, Type
 
 from fastapi import FastAPI, APIRouter
 from loguru import logger
@@ -32,7 +32,7 @@ class Ocean:
         app: FastAPI | None = None,
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
         integration_router: APIRouter | None = None,
-        config_factory: Callable[..., BaseModel] | None = None,
+        config_factory: Type[BaseModel] | None = None,
         config_override: Dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
@@ -40,16 +40,11 @@ class Ocean:
         self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(
-            base_path="./", **(config_override or {})
+            # type: ignore
+            _integration_config_model=config_factory,
+            **(config_override or {}),
         )
 
-        if config_factory:
-            raw_config = (
-                self.config.integration.config
-                if isinstance(self.config.integration.config, dict)
-                else self.config.integration.config.dict()
-            )
-            self.config.integration.config = config_factory(**raw_config)
         # add the integration sensitive configuration to the sensitive patterns to mask out
         sensitive_log_filter.hide_sensitive_strings(
             *self.config.get_sensitive_fields_data()
