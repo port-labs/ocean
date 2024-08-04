@@ -95,7 +95,7 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-async def _handle_register(
+async def handle_register(
     clickup_client: Any, entity_id: str, kind: ObjectKind, event_type: str
 ) -> None:
     if kind == ObjectKind.ISSUE:
@@ -112,7 +112,7 @@ async def _handle_register(
         logger.error(f"Handler returned None for entity_id {entity_id}")
 
 
-async def _handle_unregister(entity_id: str, kind: ObjectKind, event_type: str) -> None:
+async def handle_unregister(entity_id: str, kind: ObjectKind, event_type: str) -> None:
     try:
         await ocean.unregister_raw(kind, [{"id": entity_id}])
         logger.info(f"Unregistered {kind} for event {event_type}")
@@ -145,9 +145,9 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
                 logger.error(f"No {key}_id found in data for event {event_type}")
                 continue
             if action == "register":
-                await _handle_register(clickup_client, entity_id, kind, event_type)
+                await handle_register(clickup_client, entity_id, kind, event_type)
             else:
-                await _handle_unregister(entity_id, kind, event_type)
+                await handle_unregister(entity_id, kind, event_type)
             break
 
     logger.info("Webhook event processed")

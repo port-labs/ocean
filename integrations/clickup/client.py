@@ -6,6 +6,14 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 
+MINIMUM_LIMIT_REMAINING = (
+    1001  # The minimum limit returned in the headers before waiting
+)
+DEFAULT_SLEEP_TIME = 5  # The Default wait time when limit is hit
+DEFAULT_SEMAPHORE_VALUE = 1000  # The default number of concurrent requests allowed
+SEMAPHORE = asyncio.BoundedSemaphore(DEFAULT_SEMAPHORE_VALUE)
+SEMAPHORE_UPDATED = False
+
 TEAM_OBJECT = "__team"
 WEBHOOK_EVENTS = [
     "taskCreated",
@@ -18,10 +26,6 @@ WEBHOOK_EVENTS = [
     "spaceUpdated",
     "spaceDeleted",
 ]
-
-MINIMUM_LIMIT_REMAINING = 20  # This limit minus the Semaphore count will be the lower threshold for rate limit in the header
-DEFAULT_SLEEP_TIME = 30  # The Default wait time when limit is hit
-SEMAPHORE = asyncio.BoundedSemaphore(10)  # The number of concurrent requests allowed
 
 
 class ClickupClient:
@@ -51,8 +55,12 @@ class ClickupClient:
         """
         Sends an HTTP request to the ClickUp API with rate limit handling.
         The acceptable rate is described in the documentation provided by Clickup at
-        https://clickup.com/api/developer-portal/rate-limits/
+        https://clickup.com/api/developer-portal/rate-limits/ and the rate limit headers are described at
+        https://rdrr.io/github/psolymos/clickrup/src/R/cu-ratelimit.R
         """
+        global SEMAPHORE_UPDATED
+        global SEMAPHORE
+        global MINIMUM_LIMIT_REMAINING
         while True:
             async with SEMAPHORE:
                 response = await self.client.request(
@@ -64,15 +72,28 @@ class ClickupClient:
                 )
                 try:
                     response.raise_for_status()
+                    # Update semaphore based on the rate limit if not updated already
+                    if not SEMAPHORE_UPDATED:
+                        rate_limit = int(
+                            response.headers.get(
+                                "X-RateLimit-Limit", DEFAULT_SEMAPHORE_VALUE
+                            )
+                        )
+                        SEMAPHORE = asyncio.BoundedSemaphore(int(rate_limit / 10))
+                        MINIMUM_LIMIT_REMAINING = int((rate_limit / 10) + 1)
+                        SEMAPHORE_UPDATED = True
+                        logger.info(
+                            f"Number of concurrent requests allowed adjusted to {int(rate_limit/10)} based on X-RateLimit-Limit header"
+                        )
                     rate_limit_remaining = int(
                         response.headers.get("X-RateLimit-Remaining", 1)
                     )
-                    rate_limit_reset = int(response.headers.get("X-RateLimit-Reset"))
+                    rate_limit_reset = int(
+                        response.headers.get("X-RateLimit-Reset", DEFAULT_SLEEP_TIME)
+                    )
                     if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
                         current_time = int(time.time())
-                        wait_time = max(
-                            rate_limit_reset - current_time, DEFAULT_SLEEP_TIME
-                        )
+                        wait_time = rate_limit_reset - current_time
                         logger.info(
                             f"Approaching rate limit. Waiting for {wait_time} seconds to continue export. "
                             f"URL: {url}, Remaining: {rate_limit_remaining} "
@@ -156,13 +177,12 @@ class ClickupClient:
             for team in teams:
                 async for spaces in self._get_spaces_in_team(team.get("id")):
                     for space in spaces:
-                        projects = (
+                        yield (
                             await self._send_api_request(
                                 f"{self.api_url}/space/{space.get('id')}/list",
                                 {"is_archived": self.is_archived},
                             )
                         ).get("lists")
-                        yield [{**project, TEAM_OBJECT: team} for project in projects]
 
     async def get_paginated_issues(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all issues in a project."""
@@ -177,16 +197,13 @@ class ClickupClient:
                         break
                     page += 1
 
-    async def _get_all_teams(self) -> List[Dict[str, Any]]:
-        """Get all teams."""
-        return (await self._send_api_request(f"{self.api_url}/team")).get("teams", [])
-
     async def get_single_space(self, space_id: str) -> Optional[Dict[str, Any]]:
         """Get a single space by space_id."""
         async for spaces in self.get_all_spaces():
             for space in spaces:
                 if space["id"] == space_id:
                     return space
+        logger.warning(f"No matching space found for {space_id}.")
         return None
 
     async def get_single_project(self, list_id: str) -> Optional[Dict[str, Any]]:

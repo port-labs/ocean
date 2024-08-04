@@ -60,8 +60,7 @@
             },
             "color": {
               "title": "Color",
-              "type": "string",
-              "format": "color"
+              "type": "string"
             }
           }
         }
