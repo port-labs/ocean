@@ -14,12 +14,12 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: API token for your FireHydrant account, for example, "jakdlfja933948anz.cnapaira". It can be found on your <a href="https://app.firehydrant.io/organizations/bots">Firehydrant dashboard</a>
+    description: The API token for your FireHydrant account used for authentication. To create a token, see the  <a target="_blank" href="https://docs.firehydrant.com/docs/api-keys">FireHydrant document</a>
   - name: apiUrl
     type: string
     required: true
     default: https://api.firehydrant.io
-    description: "FireHydrant API URL, default is `https://api.firehydrant.io`"
+    description: The FireHydrant API URL. If not provided, the default value is https://api.firehydrant.io
   - name: appHost
     type: string
     required: false
