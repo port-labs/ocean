@@ -81,7 +81,10 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         if not (config_model := values.get("_integration_config_model")):
             return values
 
+        # Using the integration dynamic config model to parse the config
         def parse_config(model: Type[BaseModel], config: Any) -> BaseModel:
+            # In some cases, the config is parsed as a string so we need to handle it
+            # Example: when the config is loaded from the environment variables and there is an object inside the config
             if isinstance(config, str):
                 return parse_raw_as(model, config)
             else:
