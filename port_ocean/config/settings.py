@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, Type
 
 from pydantic import Extra, AnyHttpUrl, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
@@ -84,10 +84,15 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         if not (integration_config := values.get("integration")):
             return values
 
-        parser = (
-            parse_raw_as if isinstance(integration_config.config, str) else parse_obj_as
+        def parse_config(model: Type[BaseModel], config: Any) -> BaseModel:
+            if isinstance(config, str):
+                return parse_raw_as(model, config)
+            else:
+                return parse_obj_as(model, config)
+
+        integration_config.config = parse_config(
+            config_model, integration_config.config
         )
-        integration_config.config = parser(config_model, integration_config.config)
 
         return values
 
