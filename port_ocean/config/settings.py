@@ -1,14 +1,15 @@
-from typing import Any, Literal
+from typing import Any, Literal, Type
+
+from pydantic import Extra, AnyHttpUrl, parse_obj_as, parse_raw_as
+from pydantic.class_validators import root_validator, validator
+from pydantic.env_settings import InitSettingsSource, EnvSettingsSource, BaseSettings
+from pydantic.fields import Field
+from pydantic.main import BaseModel
 
 from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
 from port_ocean.core.event_listener import EventListenerSettingsType
 from port_ocean.core.models import Runtime
 from port_ocean.utils.misc import get_integration_name, get_spec_file
-from pydantic import Extra, AnyHttpUrl, parse_obj_as
-from pydantic.class_validators import root_validator, validator
-from pydantic.env_settings import InitSettingsSource, EnvSettingsSource, BaseSettings
-from pydantic.fields import Field
-from pydantic.main import BaseModel
 
 LogLevelType = Literal["ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"]
 
@@ -44,7 +45,7 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
     identifier: str
     type: str
-    config: dict[str, Any] | BaseModel = Field(default_factory=dict)
+    config: Any = Field(default_factory=dict)
 
     @root_validator(pre=True)
     def root_validator(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -62,6 +63,8 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
 
 
 class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
+    _integration_config_model: BaseModel | None = None
+
     allow_environment_variables_jq_access: bool = True
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
@@ -72,6 +75,27 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = IntegrationSettings(type="", identifier="")
     runtime: Runtime = "OnPrem"
+
+    @root_validator()
+    def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
+        if not (config_model := values.get("_integration_config_model")):
+            return values
+
+        # Using the integration dynamic config model to parse the config
+        def parse_config(model: Type[BaseModel], config: Any) -> BaseModel:
+            # In some cases, the config is parsed as a string so we need to handle it
+            # Example: when the config is loaded from the environment variables and there is an object inside the config
+            if isinstance(config, str):
+                return parse_raw_as(model, config)
+            else:
+                return parse_obj_as(model, config)
+
+        integration_config = values["integration"]
+        integration_config.config = parse_config(
+            config_model, integration_config.config
+        )
+
+        return values
 
     @validator("runtime")
     def validate_runtime(cls, runtime: Literal["OnPrem", "Saas"]) -> Runtime:
