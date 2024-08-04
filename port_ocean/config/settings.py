@@ -81,15 +81,13 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         if not (config_model := values.get("_integration_config_model")):
             return values
 
-        if not (integration_config := values.get("integration")):
-            return values
-
         def parse_config(model: Type[BaseModel], config: Any) -> BaseModel:
             if isinstance(config, str):
                 return parse_raw_as(model, config)
             else:
                 return parse_obj_as(model, config)
 
+        integration_config = values["integration"]
         integration_config.config = parse_config(
             config_model, integration_config.config
         )

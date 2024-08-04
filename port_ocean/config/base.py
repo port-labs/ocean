@@ -14,13 +14,17 @@ PROVIDER_WRAPPER_PATTERN = r"{{ from (.*) }}"
 PROVIDER_CONFIG_PATTERN = r"^[a-zA-Z0-9]+ .*$"
 
 
-def read_yaml_config_settings_source(
-    settings: "BaseOceanSettings", base_path: str
-) -> dict[str, Any]:
+def read_yaml_config_settings_source(settings: "BaseOceanSettings") -> dict[str, Any]:
     yaml_file = getattr(settings.Config, "yaml_file", "")
 
     assert yaml_file, "Settings.yaml_file not properly configured"
-    path = Path(base_path, yaml_file)
+    path = Path(
+        getattr(
+            settings,
+            "_base_path",
+        ),
+        yaml_file,
+    )
 
     if not path.exists():
         return {}
@@ -121,7 +125,7 @@ def decamelize_config(
 def load_providers(
     settings: "BaseOceanSettings", existing_values: dict[str, Any]
 ) -> dict[str, Any]:
-    data = read_yaml_config_settings_source(settings, getattr(settings, "_base_path"))
+    data = read_yaml_config_settings_source(settings)
     snake_case_config = decamelize_config(settings, data)
     return parse_providers(settings, snake_case_config, existing_values)
 
