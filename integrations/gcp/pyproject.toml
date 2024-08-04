@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gcp"
-version = "0.1.33"
+version = "0.1.35"
 description = "A GCP ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
@@ -22,7 +22,8 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

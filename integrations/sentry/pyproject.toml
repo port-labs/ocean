@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sentry"
-version = "0.1.61"
+version = "0.1.62"
 description = "Sentry Integration"
 authors = ["Dvir Segev <dvir@getport.io>","Matan Geva <matang@getport.io>"]
 
@@ -19,7 +19,8 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

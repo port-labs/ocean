@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kafka"
-version = "0.1.58"
+version = "0.1.59"
 description = "Integration to import information from a Kafka cluster into Port. The integration supports importing metadata regarding the Kafka cluster, brokers and topics."
 authors = ["Tal Sabag <tal@getport.io>"]
 
@@ -20,7 +20,8 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "newrelic"
-version = "0.1.63"
+version = "0.1.65"
 description = "New Relic Integration"
 authors = ["Tom Tankilevitch <tomtankilevitch@gmail.com>"]
 
@@ -20,7 +20,8 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

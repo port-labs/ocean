@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "azure-devops"
-version = "0.1.46"
+version = "0.1.48"
 description = "An Azure Devops Ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
@@ -20,7 +20,8 @@ types-pyyaml = "^6.0.12.10"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

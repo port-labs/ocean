@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sonarqube"
-version = "0.1.74"
+version = "0.1.77"
 description = "SonarQube projects and code quality analysis integration"
 authors = ["Port Team <support@getport.io>"]
 
@@ -21,7 +21,8 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

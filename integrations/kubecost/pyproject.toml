@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kubecost"
-version = "0.1.62"
+version = "0.1.63"
 description = "Kubecost integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
@@ -19,7 +19,8 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

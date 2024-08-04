@@ -7,7 +7,32 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.10 (2024-08-04)
+
+
+### Bug Fixes
+
+- Fixed & Aligned scaffolding files
+
+
+## 0.9.9 (2024-08-04)
+
+
+### Bug Fixes
+
+- Fixed an issue where passing an object for OCEAN__INTEGRATION__CONFIG that holds an object might not be parsed correctly and cause validation error for invalid type (#1)
+
+
+## 0.9.8 (2024-08-01)
+
+
+### Bug Fixes
+
+- Fixed an issue where a `ValueError` was raised in `unregister_raw` method due to incorrect unpacking of results from asyncio.gather. The fix involved using zip to properly handle the output and ensure both entities and errors are processed correctly.
+
+
 ## 0.9.7 (2024-07-31)
+
 
 ### Bug Fixes
 
@@ -18,12 +43,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.9.6 (2024-07-30)
 
+
 ### Bug Fixes
 
 - Flush all remaining buffered logs when exiting application
 
 
 ## 0.9.5 (2024-07-23)
+
 
 ### Bug Fixes
 
@@ -32,6 +59,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.9.4 (2024-07-09)
 
+
 ### Bug Fixes
 
 - Handle non existing config mapping for cases where the integration was created by SAAS and the config mapping was not set
@@ -39,12 +67,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.9.3 (2024-07-08)
 
+
 ### Improvements
 
 - Added Ocean integration config to remove all environment variables from jq access
 - Added log for when receiving invalid port app config mapping
 
 ## 0.9.2 (2024-07-05)
+
 
 ### Improvements
 
@@ -144,11 +174,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.23 (2024-05-30)
 
+
 ### Improvements
 
 - Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
 
 ## 0.5.22 (2024-05-29)
+
 
 ### Bug Fixes
 
@@ -156,6 +188,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## 0.5.21 (2024-05-26)
+
 
 ### Features
 
@@ -179,12 +212,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.19 (2024-05-16)
 
+
 ### Improvements
 
 - Added caching to port-app-config.yml retrieval from port api (only for live events)
 
 
 ## 0.5.18 (2024-05-12)
+
 
 ### Improvements
 
@@ -195,6 +230,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.17 (2024-05-01)
 
+
 ### Bug Fixes
 
 - Fixed an issue in creating a child event context from the parent context by removing an unnecessary line of code
@@ -203,12 +239,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.16 (2024-05-01)
 
+
 ### Features
 
 - Allowing override of parent event context in ocean's event context manager
 
 
 ## 0.5.15 (2024-04-30)
+
 
 ### Bug Fixes
 
@@ -217,6 +255,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.14 (2024-04-24)
 
+
 ### Improvements
 
 - Implemented real-time entity deletion exclusively for instances that haven't matched any selectors.
@@ -224,12 +263,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.13 (2024-04-17)
 
+
 ### Features
 
 - Delete entities that doesn't passed the selector on real time events
 
 
 ## 0.5.12 (2024-04-12)
+
 
 ### Features
 
@@ -251,6 +292,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.10 (2024-04-10)
 
+
 ### Bug Fixes
 
 - Fixed application settings to be loaded from the environment variables
@@ -261,6 +303,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## 0.5.9 (2024-03-30)
+
 
 ### Bug Fixes
 
@@ -394,6 +437,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.4.13 (2023-12-31)
 
+
 ### Features
 
 - Added capability to create pages as part of the integration setup (PORT-5689)
@@ -412,6 +456,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## 0.4.11 (2023-12-21)
+
 
 ### Improvements
 
@@ -498,6 +543,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.4.3 (2023-11-09)
 
+
 ### Features
 
 - Added `RetryTransport` as a helper for retrying requests that integrations can use (PORT-5161)
@@ -509,6 +555,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed a bug where the `retry_every` didn't count failed runs as repetitions (PORT-5161) 
 
 ## 0.4.2 (2023-11-04)
+
 
 ### Features
 
@@ -530,6 +577,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.4.1 (2023-11-03)
 
+
 ### Bug Fixes
 
 - Fixed the `initialize-port-resources` option in `ocean sail` to not be a flag.
@@ -539,12 +587,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.4.0 (2023-10-31)
 
+
 ### Features
 
 - Added support for running ocean integrations once and new ocean sail options to support it. As part of it we added ImmediateEventListener.
 
 
 ## 0.3.2 (2023-10-29)
+
 
 ### Improvements
 
@@ -553,11 +603,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.3.1 (2023-09-27)
 
+
 ### Bug Fixes
 
 - Fix missing user agent when apply default resources on initialization (PORT-4813)
 
 ## 0.3.0 (2023-09-06)
+
 
 ### Deprecations
 
@@ -583,9 +635,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.2.3 (2023-08-17)
 
+
 ### Features
 
 - Added the ability to create and clean the defaults of an integration using the following CLI commands: `ocean defaults dock` and `ocean defaults clean` (dock-clean-defaults)
+
 
 ### Improvements
 
@@ -600,17 +654,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.2.2 (2023-08-11)
 
+
 ### Bug Fixes
 
 - Fixed an issue causing the config yaml providers to not be parsed
 
 ## 0.2.1 (2023-08-09)
 
+
 ### Bug Fixes
 
 - Fixed an issue causing ocean to convert the integration config objects to camelized objects
 
 ## 0.2.0 (2023-08-09)
+
 
 ### Breaking Changes
 
@@ -632,11 +689,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.1.3 (2023-08-02)
 
+
 ### Bug Fixes
 
 - Fixed an issue preventing the setup of an integration with config values passed exclusively as environment variables. This fix also enables the option to deploy an integration to AWS ECS using Terraform (PORT-4379)
 
 ## 0.1.2 (2023-07-27)
+
 
 ### Breaking Changes
 
@@ -657,6 +716,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed a crash when there are no resources in the port-app-config
 
 ## 0.1.1 (2023-07-26)
+
 
 ### Breaking Changes
 
@@ -679,6 +739,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed an issue with initializePortResources that caused failure for unknown file names on init (PORT-4343)
 
 ## 0.1.0 (2023-07-20)
+
 
 ### Features
 
