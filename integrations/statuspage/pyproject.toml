@@ -6,7 +6,7 @@ authors = ["Albert Luganga <albertluganga@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {extras = ["cli"], version = "^0.9.7"}
+port_ocean = {version = "^0.9.7", extras = ["cli"]}
 
 
 [tool.poetry.group.dev.dependencies]

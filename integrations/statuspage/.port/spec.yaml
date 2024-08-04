@@ -24,7 +24,7 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: Statuspage API key. To find your API key, see the <a href="https://support.atlassian.com/statuspage/docs/create-and-manage-api-keys/" target=”_blank”>Statuspage documentation</a>.
+    description: Statuspage API key. To find your API key, see the <a href="https://support.atlassian.com/statuspage/docs/create-and-manage-api-keys/" target="_blank">Statuspage documentation</a>.
   - name: statuspageIds
     required: false
     type: array
