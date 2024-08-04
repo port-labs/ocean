@@ -27,7 +27,7 @@ configurations:
   - name: sonarUrl
     type: string
     required: false
-    description: The SonarQube URL to connect to. This is required if you are using SonarQube on-premise. If you are using SonarCloud, the default URL is https://sonarcloud.io
+    description: The SonarQube URL to connect to. This is required if you are using SonarQube on-premise. If you are using SonarCloud, the default URL is <a href="https://sonarcloud.io" target="_blank">https://sonarcloud.io</a>
     default: https://sonarcloud.io
   - name: sonarIsOnPremise
     type: boolean
