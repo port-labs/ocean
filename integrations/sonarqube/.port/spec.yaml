@@ -15,22 +15,22 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The SonarQube API token
+    description: The SonarQube API token used to authenticate with the SonarQube API. SonarQube has 3 types of tokens namely user, project analysis, and global analysis token. We recommend using the user token. To create a user token, see the <a href="https://docs.sonarsource.com/sonarqube/latest/user-guide/user-account/generating-and-using-tokens/" target="_blank">SonarQube documentation</a>
   - name: sonarOrganizationId
     type: string
     required: false
-    description: The SonarQube organization ID
+    description: The SonarQube organization ID. This is required if you are using SonarCloud. To find the organization ID, see the <a href="https://docs.sonarsource.com/sonarcloud/administering-sonarcloud/managing-organizations/" target="_blank">SonarQube documentation</a>
   - name: appHost
     type: string
     required: false
-    description: The host to subscribe webhooks to
+    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for webhooks created in SonarQube
   - name: sonarUrl
     type: string
     required: false
-    description: The SonarQube URL
+    description: The SonarQube URL to connect to. This is required if you are using SonarQube on-premise. If you are using SonarCloud, the default URL is <a href="https://sonarcloud.io" target="_blank">https://sonarcloud.io</a>
     default: https://sonarcloud.io
   - name: sonarIsOnPremise
     type: boolean
     required: false
-    description: Whether the SonarQube instance is on-premise
+    description: Whether the SonarQube instance is on-premise. If set to true, the sonarUrl configuration is required.
     default: false
