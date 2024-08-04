@@ -94,12 +94,11 @@ class ClickupClient:
                     if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
                         current_time = int(time.time())
                         wait_time = rate_limit_reset - current_time
-                        logger.info(
+                        logger.warning(
                             f"Approaching rate limit. Waiting for {wait_time} seconds to continue export. "
                             f"URL: {url}, Remaining: {rate_limit_remaining} "
                         )
                         await asyncio.sleep(wait_time)
-                    logger.debug(f"{rate_limit_reset} - {rate_limit_remaining}")
                 except KeyError as e:
                     logger.error(
                         f"Rate limit headers not found in response: {str(e)} for url {url}"
@@ -167,7 +166,14 @@ class ClickupClient:
         async for teams in self.get_clickup_teams():
             for team in teams:
                 async for folders in self._get_folders_in_space(team.get("id")):
-                    yield [folder.get("lists") for folder in folders]
+                    for folder in folders:
+                        projects = (
+                            await self._send_api_request(
+                                f"{self.api_url}/folder/{folder.get('id')}/list",
+                                {"is_archived": self.is_archived},
+                            )
+                        ).get("lists")
+                        yield [{**project, TEAM_OBJECT: team} for project in projects]
 
     async def get_folderless_projects(
         self,
@@ -177,12 +183,13 @@ class ClickupClient:
             for team in teams:
                 async for spaces in self._get_spaces_in_team(team.get("id")):
                     for space in spaces:
-                        yield (
+                        projects = (
                             await self._send_api_request(
                                 f"{self.api_url}/space/{space.get('id')}/list",
                                 {"is_archived": self.is_archived},
                             )
                         ).get("lists")
+                        yield [{**project, TEAM_OBJECT: team} for project in projects]
 
     async def get_paginated_issues(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all issues in a project."""

@@ -54,6 +54,7 @@ async def setup_application() -> None:
                 logger.info(f"Webhook already exists for team {team['id']}")
             else:
                 logger.info(f"Creating webhook for team {team['id']}")
+                await clickup_client.create_clickup_webhook(team["id"], app_host)
 
 
 @ocean.on_resync(ObjectKind.TEAM)
