@@ -311,10 +311,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resource for resource in config.resources if resource.kind == kind
         ]
 
-        entities, errors = await asyncio.gather(
-            *(
-                self._unregister_resource_raw(resource, results, user_agent_type)
-                for resource in resource_mappings
+        entities, errors = zip_and_sum(
+            await asyncio.gather(
+                *(
+                    self._unregister_resource_raw(resource, results, user_agent_type)
+                    for resource in resource_mappings
+                )
             )
         )
 
