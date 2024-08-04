@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.1.24 (2024-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.10 (#1)
+
+
 # Port_Ocean 0.1.23 (2024-08-01)
 
 ### Improvements
