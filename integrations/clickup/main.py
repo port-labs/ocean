@@ -61,7 +61,7 @@ async def setup_application() -> None:
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     clickup_client = await init_client()
     async for teams in clickup_client.get_clickup_teams():
-        logger.info(f"Received team of length {len(teams)}")
+        logger.info(f"Received batch of {len(teams)} teams")
         yield teams
 
 
