@@ -236,10 +236,6 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     )
                 resource = None
 
-            # some aws resources return not found as an empty response
-            if not resource:
-                resource = None
-
             for kind in matching_resource_configs:
                 blueprints = matching_resource_configs[kind]
                 if not resource:  # Resource probably deleted
