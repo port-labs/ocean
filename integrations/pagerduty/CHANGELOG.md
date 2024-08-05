@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 - Fixed incident assignees mapping to get email from the user object (#1)
-
+- Fixed incident default relation to service to one-to-one relation instead of many (#2)
 
 ## 0.1.86 (2024-08-05)
 
