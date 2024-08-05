@@ -33,6 +33,7 @@ from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
+    is_server_error,
 )
 
 
@@ -225,7 +226,7 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     resource_type, identifier, account_id, region
                 )
             except Exception as e:
-                if is_access_denied_exception(e):
+                if is_access_denied_exception(e) or is_server_error(e):
                     logger.error(
                         f"Skipping resyncing {resource_type} in region {region} due to missing access permissions"
                     )
