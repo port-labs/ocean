@@ -44,26 +44,9 @@
                     "title": "Statuses",
                     "type": "array",
                     "items": {
-                        "type": "object",
-                        "properties": {
-                            "status": {
-                                "title": "Status",
-                                "type": "string"
-                            },
-                            "type": {
-                                "title": "Type",
-                                "type": "string"
-                            },
-                            "orderindex": {
-                                "title": "Order Index",
-                                "type": "integer"
-                            },
-                            "color": {
-                                "title": "Color",
-                                "type": "string"
-                            }
-                        }
-                    }
+                        "type": "object"
+                    },
+                    "icon": "DefaultProperty"
                 },
                 "archived": {
                     "title": "Archived",
