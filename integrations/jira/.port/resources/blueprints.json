@@ -84,10 +84,24 @@
           "type": "string",
           "description": "The updated datetime of the issue",
           "format": "date-time"
+        },
+        "resolutionDate": {
+          "title": "Resolved At",
+          "type": "string",
+          "description": "The datetime the issue changed to a resolved state",
+          "format": "date-time"
         }
       }
     },
-    "calculationProperties": {},
+    "calculationProperties": {
+      "handlingDuration": {
+        "title": "Handling Duration (Days)",
+        "icon": "Clock",
+        "description": "The amount of time in days from issue creation to issue resolution",
+        "calculation": "if (.properties.resolutionDate != null and .properties.created != null) then ((.properties.resolutionDate[0:19] + \"Z\" | fromdateiso8601) - (.properties.created[0:19] + \"Z\" | fromdateiso8601)) / 86400 else null end",
+        "type": "number"
+      }
+    },
     "relations": {
       "project": {
         "target": "jiraProject",

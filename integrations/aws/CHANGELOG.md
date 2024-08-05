@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+# Port_Ocean 0.2.24 (2024-08-05)
+
+### Improvements
+
+- Fix global resources not reading through all accounts
+
+
+## 0.2.23 (2024-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.11 (#1)
+
+
 ## 0.2.22 (2024-08-04)
 
 
