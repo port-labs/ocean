@@ -24,7 +24,7 @@ resources:
       query: 'true'
       apiQueryParams:
         include:
-        - assignees
+          - assignees
     port:
       entity:
         mappings:
@@ -61,7 +61,8 @@ resources:
     selector:
       query: 'true'
       apiQueryParams:
-        include: [ 'users' ]
+        include:
+          - users
     port:
       entity:
         mappings:
