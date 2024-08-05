@@ -228,6 +228,10 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                 if is_access_denied_exception(e):
                     raise e
                 resource = None
+                
+            # some aws resources return not found as an empty response
+            if not resource:
+                resource = None
 
             for kind in matching_resource_configs:
                 blueprints = matching_resource_configs[kind]
