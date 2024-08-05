@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "pagerduty"
-version = "0.1.84"
+version = "0.1.85"
 description = "Pagerduty Integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.9.7", extras = ["cli"]}
+port_ocean = {version = "^0.9.10", extras = ["cli"]}
 httpx = "^0.24.1"
 
 [tool.poetry.group.dev.dependencies]
@@ -20,7 +20,8 @@ towncrier = "^23.6.0"
 [tool.towncrier]
 directory = "changelog"
 filename = "CHANGELOG.md"
-package = "port_ocean"
+title_format = "## {version} ({project_date})"
+underlines = [""]
 
   [[tool.towncrier.type]]
   directory = "breaking"

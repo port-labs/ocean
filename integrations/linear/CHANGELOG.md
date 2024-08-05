@@ -7,132 +7,140 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.22 (2024-08-02)
+## 0.1.23 (2024-08-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.10 (#1)
+
+
+## 0.1.22 (2024-08-02)
 
 ### Improvements
 
 - Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser. 
 
 
-# Port_Ocean 0.1.21 (2024-07-31)
+## 0.1.21 (2024-07-31)
 
 ### Improvements
 
 - Upgraded integration dependencies (#1)
 
 
-# Port_Ocean 0.1.20 (2024-07-31)
+## 0.1.20 (2024-07-31)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.7 (#1)
 
 
-# Port_Ocean 0.1.19 (2024-07-31)
+## 0.1.19 (2024-07-31)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.6 (#1)
 
 
-# Port_Ocean 0.1.18 (2024-07-24)
+## 0.1.18 (2024-07-24)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.5
 
 
-# Port_Ocean 0.1.17 (2024-07-10)
+## 0.1.17 (2024-07-10)
 
 ### Improvements
 
 - Fix links in descriptions of integration configuration variables
 
-# Port_Ocean 0.1.16 (2024-07-10)
+## 0.1.16 (2024-07-10)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.4 (#1)
 
 
-# Port_Ocean 0.1.15 (2024-07-09)
+## 0.1.15 (2024-07-09)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.3 (#1)
 
 
-# Port_Ocean 0.1.14 (2024-07-07)
+## 0.1.14 (2024-07-07)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.2 (#1)
 
 
-# Port_Ocean 0.1.13 (2024-06-23)
+## 0.1.13 (2024-06-23)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.1 (#1)
 
 
-# Port_Ocean 0.1.12 (2024-06-19)
+## 0.1.12 (2024-06-19)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.0 (#1)
 
 
-# Port_Ocean 0.1.11 (2024-06-16)
+## 0.1.11 (2024-06-16)
 
 ### Improvements
 
 - Bumped ocean version to ^0.8.0 (#1)
 
 
-# Port_Ocean 0.1.10 (2024-06-13)
+## 0.1.10 (2024-06-13)
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.1 (#1)
 
 
-# Port_Ocean 0.1.9 (2024-06-13)
+## 0.1.9 (2024-06-13)
 
 ### Improvements
 
 - Bumped ocean version to ^0.7.0 (#1)
 
 
-# Port_Ocean 0.1.8 (2024-06-10)
+## 0.1.8 (2024-06-10)
 
 ### Improvements
 
 - Bumped ocean version to ^0.6.0 (#1)
 
 
-# Port_Ocean 0.1.7 (2024-06-05)
+## 0.1.7 (2024-06-05)
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.27 (#1)
 
 
-# Port_Ocean 0.1.6 (2024-06-03)
+## 0.1.6 (2024-06-03)
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.25 (#1)
 
 
-# Port_Ocean 0.1.5 (2024-06-02)
+## 0.1.5 (2024-06-02)
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.24 (#1)
 
 
-# Port_Ocean 0.1.4 (2024-05-30)
+## 0.1.4 (2024-05-30)
 
 ### Improvements
 
@@ -140,21 +148,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
 
 
-# Port_Ocean 0.1.3 (2024-05-29)
+## 0.1.3 (2024-05-29)
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.22 (#1)
 
 
-# Port_Ocean 0.1.2 (2024-05-26)
+## 0.1.2 (2024-05-26)
 
 ### Improvements
 
 - Bumped ocean version to ^0.5.21 (#1)
 
 
-# Port_Ocean 0.1.1 (2024-05-26)
+## 0.1.1 (2024-05-26)
 
 ### Improvements
 
@@ -162,7 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed the config.yaml file due to unused overrides
 
 
-# Port_Ocean 0.1.0 (2024-05-18)
+## 0.1.0 (2024-05-18)
 
 ### Features
 

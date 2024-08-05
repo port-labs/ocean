@@ -7,82 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.12 (2024-08-04)
 
-# Port_Ocean 0.1.11 (2024-08-01)
+
+### Improvements
+
+- Bumped ocean version to ^0.9.10 (#1)
+
+
+## 0.1.11 (2024-08-01)
 
 ### Improvements
 
 - Added _target='blank' attribute to spec links to open a new browser tab instead of the current browser.
 
 
-# Port_Ocean 0.1.10 (2024-07-31)
+## 0.1.10 (2024-07-31)
 
 ### Improvements
 
 - Upgraded integration dependencies (#1)
 
 
-# Port_Ocean 0.1.9 (2024-07-31)
+## 0.1.9 (2024-07-31)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.7 (#1)
 
 
-# Port_Ocean 0.1.8 (2024-07-31)
+## 0.1.8 (2024-07-31)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.6 (#1)
 
 
-# Port_Ocean 0.1.7 (2024-07-24)
+## 0.1.7 (2024-07-24)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.5
 
 
-# Port_Ocean 0.1.6 (2024-07-10)
+## 0.1.6 (2024-07-10)
 
 ### Improvements
 
 - Added the StatusPage icon to the integration and default blueprints
 
-# Port_Ocean 0.1.5 (2024-07-10)
+## 0.1.5 (2024-07-10)
 
 ### Improvements
 
 - Fix links in descriptions of integration configuration variables
 
-# Port_Ocean 0.1.4 (2024-07-10)
+## 0.1.4 (2024-07-10)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.4 (#1)
 
 
-# Port_Ocean 0.1.3 (2024-07-09)
+## 0.1.3 (2024-07-09)
 
 ### Improvements
 
 - Revised description to the integration configuration variables
 
-# Port_Ocean 0.1.2 (2024-07-09)
+## 0.1.2 (2024-07-09)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.3 (#1)
 
 
-# Port_Ocean 0.1.1 (2024-07-07)
+## 0.1.1 (2024-07-07)
 
 ### Improvements
 
 - Bumped ocean version to ^0.9.2 (#1)
 
 
-# Port_Ocean 0.1.0 (2024-06-25)
+## 0.1.0 (2024-06-25)
 
 ### Features
 
