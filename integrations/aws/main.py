@@ -226,9 +226,15 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                 )
             except Exception as e:
                 if is_access_denied_exception(e):
-                    raise e
+                    logger.error(
+                        f"Skipping resyncing {resource_type} in region {region} due to missing access permissions"
+                    )
+                    return fastapi.Response(
+                        status_code=status.HTTP_200_OK,
+                        content=json.dumps({"ok": True}),
+                    )
                 resource = None
-                
+
             # some aws resources return not found as an empty response
             if not resource:
                 resource = None
