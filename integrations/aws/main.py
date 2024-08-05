@@ -1,7 +1,6 @@
 import json
 import typing
 
-import aioboto3
 from fastapi import Response, status
 import fastapi
 from starlette import responses
