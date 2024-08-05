@@ -162,7 +162,7 @@
         "title": "PagerDuty Service",
         "target": "pagerdutyService",
         "required": false,
-        "many": true
+        "many": false
       }
     }
   },
