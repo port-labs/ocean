@@ -50,6 +50,6 @@ class AwsCredentials:
 
     async def create_session_for_each_region(
         self,
-    ) -> AsyncIterator[Coroutine[Any, Any, aioboto3.Session]]:
+    ) -> AsyncIterator[aioboto3.Session]:
         for region in self.enabled_regions:
-            yield self.create_session(region)
+            yield await self.create_session(region)

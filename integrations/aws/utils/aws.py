@@ -68,7 +68,7 @@ async def get_sessions(
             yield await credentials.create_session(custom_region)
         else:
             async for session in credentials.create_session_for_each_region():
-                yield await session
+                yield session
         return
 
     async for credentials in get_accounts():
@@ -79,7 +79,7 @@ async def get_sessions(
             yield await credentials.create_session(custom_region)
         else:
             async for session in credentials.create_session_for_each_region():
-                yield await session
+                yield session
 
 
 def validate_request(request: Request) -> tuple[bool, str]:

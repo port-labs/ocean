@@ -41,23 +41,27 @@ async def _handle_global_resource_resync(
     kind: str,
     credentials: AwsCredentials,
     current_session: aioboto3.Session,
-    handle_exceptions: bool = True,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    denied_access_to_default_region = False
     try:
         async for batch in resync_cloudcontrol(kind, current_session):
             yield batch
     except Exception as e:
         if is_access_denied_exception(e):
-            if handle_exceptions:
-                logger.info(f"Trying to resync {kind} in all regions until success")
-                async for async_session in credentials.create_session_for_each_region():
-                    session = await async_session
-                    try:
-                        async for batch in resync_cloudcontrol(kind, session):
-                            yield batch
-                        break
-                    except Exception as e:
-                        continue
+            denied_access_to_default_region = True
+        else:
+            raise e
+
+        if denied_access_to_default_region:
+            logger.info(f"Trying to resync {kind} in all regions until success")
+            async for session in credentials.create_session_for_each_region():
+                try:
+                    async for batch in resync_cloudcontrol(kind, session):
+                        yield batch
+                    break
+                except Exception as e:
+                    if not is_access_denied_exception(e):
+                        raise e
 
 
 @ocean.on_resync()
@@ -75,8 +79,7 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 yield batch
         else:
-            async for async_session in credentials.create_session_for_each_region():
-                session = await async_session
+            async for session in credentials.create_session_for_each_region():
                 try:
                     async for batch in resync_cloudcontrol(kind, session):
                         yield batch
