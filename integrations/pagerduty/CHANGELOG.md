@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.86 (2024-08-05)
+
+### Bug Fixes
+
+- Fixed incident assignees mapping to get email from the user object (#1)
+
+
 ## 0.1.85 (2024-08-04)
 
 

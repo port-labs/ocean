@@ -22,7 +22,9 @@ resources:
   - kind: incidents
     selector:
       query: 'true'
-      include: ['assignees']
+      apiQueryParams:
+        include:
+        - assignees
     port:
       entity:
         mappings:
@@ -59,7 +61,7 @@ resources:
     selector:
       query: 'true'
       apiQueryParams:
-        include: ['users']
+        include: [ 'users' ]
     port:
       entity:
         mappings:
