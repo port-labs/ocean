@@ -23,7 +23,7 @@ configurations:
     description: This is to filter archived projects. If set to true, archived projects will be included in the export. If set to false, archived projects will be excluded from the export. Default is false.
     type: boolean
     required: false
-    default: "false"
+    default: false
   - name: appHost
     required: false
     type: url
