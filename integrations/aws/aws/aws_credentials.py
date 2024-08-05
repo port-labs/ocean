@@ -1,4 +1,4 @@
-from typing import Any, AsyncIterator, Coroutine, Optional
+from typing import AsyncIterator, Optional
 import aioboto3
 
 
