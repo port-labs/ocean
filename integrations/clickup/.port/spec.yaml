@@ -17,7 +17,7 @@ configurations:
   - name: clickupBaseUrl
     description: The Clickup Base URL. Defaults to https://api.clickup.com when not specified
     type: url
-    required: true
+    required: false
     default: https://api.clickup.com
   - name: includeArchivedProjects
     description: This is to filter archived projects. If set to true, archived projects will be included in the export. If set to false, archived projects will be excluded from the export. Default is false.
