@@ -49,7 +49,7 @@ resources:
   - kind: issue
     selector:
       query: "true"
-      jql: "statusCategory != done"
+      jql: "(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)"
       source: "sprint"
       sprintState: "active"
     port:
@@ -70,6 +70,7 @@ resources:
             labels: .fields.labels
             created: .fields.created
             updated: .fields.updated
+            resolutionDate: .fields.resolutiondate
           relations:
             sprint: if .fields.sprint.id then .fields.sprint.id | tostring else '' end
             project: .fields.project.key

@@ -40,6 +40,15 @@ def get_default_region_from_credentials(
     return credentials.default_regions[0] if credentials.default_regions else None
 
 
+async def get_accounts() -> AsyncIterator[AwsCredentials]:
+    """
+    Gets the AWS account IDs that the current IAM role can access.
+    """
+    await update_available_access_credentials()
+    for credentials in _session_manager._aws_credentials:
+        yield credentials
+
+
 async def get_sessions(
     custom_account_id: Optional[str] = None,
     custom_region: Optional[str] = None,
@@ -59,10 +68,10 @@ async def get_sessions(
             yield await credentials.create_session(custom_region)
         else:
             async for session in credentials.create_session_for_each_region():
-                yield await session
+                yield session
         return
 
-    for credentials in _session_manager._aws_credentials:
+    async for credentials in get_accounts():
         if use_default_region:
             default_region = get_default_region_from_credentials(credentials)
             yield await credentials.create_session(default_region)
@@ -70,7 +79,7 @@ async def get_sessions(
             yield await credentials.create_session(custom_region)
         else:
             async for session in credentials.create_session_for_each_region():
-                yield await session
+                yield session
 
 
 def validate_request(request: Request) -> tuple[bool, str]:
