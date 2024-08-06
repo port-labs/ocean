@@ -140,20 +140,6 @@ class ClickupClient:
             )
         ).get("spaces", [])
 
-    @cache_iterator_result()
-    async def _get_folders_in_space(
-        self, team_id: str
-    ) -> AsyncGenerator[List[dict[str, Any]], None]:
-        """Get all folders in a space."""
-        async for spaces in self._get_spaces_in_team(team_id):
-            for space in spaces:
-                yield (
-                    await self._send_api_request(
-                        f"{self.api_url}/space/{space.get('id')}/folder",
-                        {"is_archived": self.is_archived},
-                    )
-                ).get("folders")
-
     async def get_all_spaces(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all spaces across all teams."""
         async for teams in self.get_clickup_teams():
@@ -161,35 +147,50 @@ class ClickupClient:
                 async for spaces in self._get_spaces_in_team(team.get("id")):
                     yield [{**space, TEAM_OBJECT: team} for space in spaces]
 
-    async def get_folder_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
-        """Get all projects with a folder parent."""
-        async for teams in self.get_clickup_teams():
-            for team in teams:
-                async for folders in self._get_folders_in_space(team.get("id")):
-                    for folder in folders:
-                        projects = (
-                            await self._send_api_request(
-                                f"{self.api_url}/folder/{folder.get('id')}/list",
-                                {"is_archived": self.is_archived},
-                            )
-                        ).get("lists")
-                        yield [{**project, TEAM_OBJECT: team} for project in projects]
-
-    async def get_folderless_projects(
-        self,
+    @cache_iterator_result()
+    async def _get_folders_in_space(
+        self, space_id: str
     ) -> AsyncGenerator[List[dict[str, Any]], None]:
-        """Get all projects without a folder parent."""
+        """Get all folders in a space."""
+        yield (
+            await self._send_api_request(
+                f"{self.api_url}/space/{space_id}/folder",
+                {"is_archived": self.is_archived},
+            )
+        ).get("folders")
+
+    async def _fetch_projects(
+        self, parent_type: str, parent_id: str
+    ) -> List[dict[str, Any]]:
+        """Fetch projects based on the parent type and id."""
+        url = f"{self.api_url}/{parent_type}/{parent_id}/list"
+        response = await self._send_api_request(url, {"is_archived": self.is_archived})
+        return response.get("lists", [])
+
+    async def get_all_projects(self) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """Get all projects, both foldered and folderless."""
         async for teams in self.get_clickup_teams():
             for team in teams:
                 async for spaces in self._get_spaces_in_team(team.get("id")):
                     for space in spaces:
-                        projects = (
-                            await self._send_api_request(
-                                f"{self.api_url}/space/{space.get('id')}/list",
-                                {"is_archived": self.is_archived},
-                            )
-                        ).get("lists")
-                        yield [{**project, TEAM_OBJECT: team} for project in projects]
+                        folderless_projects = await self._fetch_projects(
+                            "space", space.get("id")
+                        )
+                        yield [
+                            {**project, TEAM_OBJECT: team}
+                            for project in folderless_projects
+                        ]
+                        async for folders in self._get_folders_in_space(
+                            space.get("id")
+                        ):
+                            for folder in folders:
+                                projects = await self._fetch_projects(
+                                    "folder", folder.get("id")
+                                )
+                                yield [
+                                    {**project, TEAM_OBJECT: team}
+                                    for project in projects
+                                ]
 
     async def get_paginated_issues(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all issues in a project."""
@@ -204,28 +205,35 @@ class ClickupClient:
                         break
                     page += 1
 
-    async def get_single_space(self, space_id: str) -> Optional[Dict[str, Any]]:
+    async def get_single_space(
+        self, space_id: str, team_id: str
+    ) -> Optional[Dict[str, Any]]:
         """Get a single space by space_id."""
-        async for spaces in self.get_all_spaces():
+        async for spaces in self._get_spaces_in_team(team_id):
             for space in spaces:
                 if space["id"] == space_id:
-                    return space
-        logger.warning(f"No matching space found for {space_id}.")
+                    return {**space, TEAM_OBJECT: {"id": team_id}}
+        logger.warning(f"No matching space found for {space_id}")
         return None
 
-    async def get_single_project(self, list_id: str) -> Optional[Dict[str, Any]]:
+    async def get_single_project(
+        self, list_id: str, team_id: str
+    ) -> Optional[Dict[str, Any]]:
         """Get a single project by list_id."""
-        return await self._send_api_request(f"{self.api_url}/list/{list_id}")
+        response = await self._send_api_request(f"{self.api_url}/list/{list_id}")
+        return {**response, TEAM_OBJECT: {"id": team_id}}
 
     async def get_single_issue(self, task_id: str) -> dict[str, Any]:
         """Get a single issue by task_id."""
         return await self._send_api_request(f"{self.api_url}/task/{task_id}")
 
-    async def create_clickup_webhook(self, team_id: str, app_host: str) -> None:
+    async def create_clickup_webhook(
+        self, team_id: str, app_host: str
+    ) -> Dict[str, Any]:
         """
         Create a new webhook for a given team.
         """
-        await self._send_api_request(
+        response = await self._send_api_request(
             f"{self.api_url}/team/{team_id}/webhook",
             method="POST",
             json_data={
@@ -234,6 +242,7 @@ class ClickupClient:
             },
         )
         logger.info("Webhook created successfully")
+        return response
 
     async def get_clickup_webhooks(self, team_id: str) -> list[dict[str, Any]]:
         """

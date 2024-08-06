@@ -17,6 +17,8 @@ EVENT_ACTIONS = {
     "spaceDeleted": "unregister",
 }
 
+WEBHOOK_TEAM_MAP = {}
+
 
 class ObjectKind(StrEnum):
     TEAM = "team"
@@ -42,19 +44,22 @@ async def setup_application() -> None:
             "Without setting up the webhook, you will have to manually initiate resync to get updates from ClickUp."
         )
         return
-    clickup_client = await init_client()  # Await the initialization of the client
+    clickup_client = await init_client()
     async for teams in clickup_client.get_clickup_teams():
         for team in teams:
             webhooks = await clickup_client.get_clickup_webhooks(team["id"])
-            webhook_exists = any(
-                config["endpoint"] == f"{app_host}/integration/webhook"
-                for config in webhooks
-            )
-            if webhook_exists:
-                logger.info(f"Webhook already exists for team {team['id']}")
-            else:
-                logger.info(f"Creating webhook for team {team['id']}")
-                await clickup_client.create_clickup_webhook(team["id"], app_host)
+            for webhook in webhooks:
+                if webhook["endpoint"] == f"{app_host}/integration/webhook":
+                    logger.info(f"Webhook already exists for team {team['id']}")
+                    WEBHOOK_TEAM_MAP[webhook["id"]] = team["id"]
+                    break
+                else:
+                    logger.info(f"Creating webhook for team {team['id']}")
+                    webhook = await clickup_client.create_clickup_webhook(
+                        team["id"], app_host
+                    )
+                    WEBHOOK_TEAM_MAP[webhook["id"]] = team["id"]
+    logger.warning(f"Webhook team map: {WEBHOOK_TEAM_MAP}")
 
 
 @ocean.on_resync(ObjectKind.TEAM)
@@ -69,22 +74,15 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_spaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     clickup_client = await init_client()
     async for spaces in clickup_client.get_all_spaces():
-        logger.info(f"Received space batch with {len(spaces)} spaces")
+        logger.info(f"Received batch of {len(spaces)} spaces")
         yield spaces
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     clickup_client = await init_client()
-    async for folderless_projects in clickup_client.get_folderless_projects():
-        logger.info(
-            f"Received folderless project batch with {len(folderless_projects)} projects"
-        )
-        yield folderless_projects
-    async for projects in clickup_client.get_folder_projects():
-        logger.info(
-            f"Received a batch of project in folders with {len(projects)} projects"
-        )
+    async for projects in clickup_client.get_all_projects():
+        logger.info(f"Received batch of  {len(projects)} projects")
         yield projects
 
 
@@ -92,19 +90,24 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     clickup_client = await init_client()
     async for issues in clickup_client.get_paginated_issues():
-        logger.info(f"Received issue batch with {len(issues)} issues")
+        logger.info(f"Received batch of {len(issues)} issues")
         yield issues
 
 
 async def handle_register(
-    clickup_client: Any, entity_id: str, kind: ObjectKind, event_type: str
+    clickup_client: Any,
+    entity_id: str,
+    kind: ObjectKind,
+    event_type: str,
+    webhook_id: str,
 ) -> None:
+    team_id = WEBHOOK_TEAM_MAP.get(webhook_id)
     if kind == ObjectKind.ISSUE:
         entity = await clickup_client.get_single_issue(entity_id)
     elif kind == ObjectKind.PROJECT:
-        entity = await clickup_client.get_single_project(entity_id)
+        entity = await clickup_client.get_single_project(entity_id, team_id)
     else:
-        entity = await clickup_client.get_single_space(entity_id)
+        entity = await clickup_client.get_single_space(entity_id, team_id)
 
     if entity:
         await ocean.register_raw(kind, [entity])
@@ -137,6 +140,7 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
     event_type = data["event"]
+    webhook_id = data["webhook_id"]
     action = "unregister" if "Deleted" in event_type else "register"
 
     for key, kind in event_handlers.items():
@@ -146,7 +150,9 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
                 logger.error(f"No {key}_id found in data for event {event_type}")
                 continue
             if action == "register":
-                await handle_register(clickup_client, entity_id, kind, event_type)
+                await handle_register(
+                    clickup_client, entity_id, kind, event_type, webhook_id
+                )
             else:
                 await handle_unregister(entity_id, kind, event_type)
             break
