@@ -5,11 +5,13 @@ features:
   - type: exporter
     section: APM & Alerting
     resources:
-      - kind: datadogHost
-      - kind: datadogMonitor
-      - kind: datadogService
-      - kind: datadogSlo
-      - kind: datadogSloHistory
+      - kind: host
+      - kind: monitor
+      - kind: service
+      - kind: slo
+      - kind: sloHistory
+      - kind: dashboard
+      - kind: dashboardMetric
 configurations:
   - name: datadogBaseUrl
     description: Datadog Base URL (e.g., "https://api.datadoghq.com" or "https://api.datadoghq.eu"). To identify your base URL, see the <a href="https://docs.datadoghq.com/getting_started/site/#:~:text=within%20their%20environments.-,Access%20the%20Datadog%20site,-You%20can%20identify">Datadog documentation</a>.

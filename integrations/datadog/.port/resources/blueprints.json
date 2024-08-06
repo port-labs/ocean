@@ -1,5 +1,76 @@
 [
   {
+    "identifier": "datadogDashboard",
+    "description": "This blueprint represents a Datadog dashboard.",
+    "title": "Datadog Dashboard",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "format": "url"
+        },
+        "is_read_only": {
+          "title": "Read Only",
+          "type": "boolean"
+        },
+        "created_on": {
+          "title": "Created On",
+          "type": "string",
+          "format": "date-time"
+        },
+        "modified_on": {
+          "title": "Modified On",
+          "type": "string",
+          "format": "date-time"
+        },
+        "author_handle": {
+          "title": "Author Handle",
+          "type": "string"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "datadogDashboardMetric",
+    "description": "This blueprint represents a widget (collection of metrics) within a Datadog dashboard.",
+    "title": "Datadog Dashboard Metric",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "The widget type",
+          "type": "string"
+        },
+        "queries": {
+          "title": "Queries",
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "dashboard": {
+        "target": "datadogDashboard",
+        "description": "The dashboard this metric belongs to"
+      }
+    }
+  },
+  {
     "identifier": "datadogHost",
     "description": "This blueprint represents a datadog host",
     "title": "Datadog Host",
@@ -66,7 +137,15 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "availableMetrics": {
+        "title": "Available Metrics",
+       "description": "The metrics associated with this host that have data available",
+        "target": "datadogDashboardMetric",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "datadogMonitor",
@@ -212,7 +291,15 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "availableMetrics": {
+        "title": "Available Metrics",
+        "description": "The metrics associated with this service that have data available",
+        "target": "datadogDashboardMetric",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "datadogSlo",
@@ -325,10 +412,7 @@
         "timeframe": {
           "type": "number",
           "title": "Timeframe",
-          "enum": [
-            7,
-            30
-          ],
+          "enum": [7, 30],
           "enumColors": {
             "7": "purple",
             "30": "pink"
