@@ -1,96 +1,90 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: space
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: .Name
+          blueprint: '"octopusSpace"'
+          properties:
+            url: "\"https://testport.octopus.app/app#/\" + .Id"
+            description: .Description
   - kind: project
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
-          identifier: .SpaceId
+          identifier: .Id
           title: .Name
-          blueprint: '"octopusDeployProject"'
+          blueprint: '"octopusProject"'
           properties:
-            slug: .Slug
-            id: .Id
-            url: >-
-              'https://testport.octopus.app/app#/' +
-              .SpaceId + '/projects/' + .Slug
+            url: "\"https://testport.octopus.app/app#/\" + .SpaceId + \"/projects/\" + .Id"
             description: .Description
-            spaceId: .SpaceId
             isDisabled: .IsDisabled
-            lifecycleId: .LifecycleId
             tenantedDeploymentMode: .TenantedDeploymentMode
-            allowIgnoreChannelRules: .AllowIgnoreChannelRules
+          relations:
+            space: .SpaceId
   - kind: release
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
           identifier: .Id
-          title: ".Version + \" (\" + .ProjectId + \")\""
-          blueprint: '"octopusDeployRelease"'
+          title: ".Version + \"(\" + .ProjectId + \")\""
+          blueprint: '"octopusRelease"'
           properties:
             version: .Version
-            assembled: .Assembled
+            assembledDate: .Assembled
             channelId: .ChannelId
             releaseNotes: .ReleaseNotes
-            projectId: .ProjectId
-            url: >-
-              'https://testport.octopus.app/app#/' +
-              .SpaceId + '/projects/' + .ProjectId + '/deployments/releases/' + .Version
+            url: "\"https://testport.octopus.app/app#/\" + .SpaceId + \"/releases/\" + .Id"
           relations:
-            project: .SpaceId
+            project: .ProjectId
+            space: .SpaceId
   - kind: deployment
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
           identifier: .Id
           title: .Name
-          blueprint: '"octopusDeployDeployment"'
+          blueprint: '"octopusDeployment"'
           properties:
-            releaseId: .ReleaseId
-            environmentId: .EnvironmentId
-            created: .Created
+            createdAt: .Created
             deployedBy: .DeployedBy
             taskId: .TaskId
-            projectId: .ProjectId
             failureEncountered: .FailureEncountered
             comments: .Comments
-            spaceId: .SpaceId
-            useGuidedFailure: .UseGuidedFailure
-            deployedToMachineIds: .DeployedToMachineIds[]
-            url: >-
-              'https://testport.octopus.app/app#/Spaces-' +
-              .SpaceId + '/projects/' + .ProjectId + '/deployments?groupBy=Channel'
+            url: "\"https://testport.octopus.app/app#/\" + .SpaceId + \"/deployments/\" + .Id"
           relations:
             release: .ReleaseId
-            project: .SpaceId
-  - kind: target
+            project: .ProjectId
+            space: .SpaceId
+  - kind: machine
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
           identifier: .Id
           title: .Name
-          blueprint: '"octopusDeployTarget"'
+          blueprint: '"octopusMachine"'
           properties:
             roles: .Roles
             status: .HealthStatus
-            spaceId: .SpaceId
-            uri: .Uri
-            machinePolicyId: .MachinePolicyId
+            url: "\"https://testport.octopus.app/app#/\" + .SpaceId + \"/infrastructure/machines/\" + .Id + \"/settings\""
             isDisabled: .IsDisabled
             operatingSystem: .OperatingSystem
             architecture: .Architecture
             statusSummary: .StatusSummary
-            slug: .Slug
             endpointType: .Endpoint.DeploymentTargetTypeId
-            hasLatestCalamari: .HasLatestCalamari
             communicationStyle: .Endpoint.CommunicationStyle
           relations:
-            project: .SpaceId
+            space: .SpaceId

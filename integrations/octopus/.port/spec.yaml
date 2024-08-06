@@ -5,17 +5,18 @@ features:
   - type: exporter
     section: DevOps
     resources:
+      - kind: space
       - kind: project
       - kind: release
       - kind: deployment
-      - kind: target
+      - kind: machine
 configurations:
   - name: octopusApiKey
     required: true
     type: string
     description: Octopus Deploy API key. For more information on creating an API key, refer to the <a href="https://octopus.com/docs/octopus-rest-api/how-to-create-an-api-key">Octopus API documentation</a>.
     sensitive: true
-  - name: octopusUrl
+  - name: serverUrl
     required: true
     type: url
     description: The base URL of your Octopus Deploy instance. It should include the protocol (e.g., https://).

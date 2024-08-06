@@ -5,18 +5,27 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from client import OctopusClient
 
+TRACKED_EVENTS = [
+    "spaces",
+    "projects",
+    "deployments",
+    "releases",
+    "machines",
+]
+
 
 class ObjectKind(StrEnum):
+    SPACE = "space"
     PROJECT = "project"
     DEPLOYMENT = "deployment"
     RELEASE = "release"
-    TARGET = "target"
+    MACHINE = "machine"
 
 
 async def init_client() -> OctopusClient:
     client = OctopusClient(
         ocean.integration_config["octopus_api_key"],
-        ocean.integration_config["octopus_url"],
+        ocean.integration_config["server_url"],
     )
     return client
 
@@ -43,36 +52,12 @@ async def setup_application() -> None:
         logger.info(f"Webhook created with URI: {webhook_uri}")
 
 
-@ocean.on_resync(ObjectKind.PROJECT)
-async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync()
+async def on_global_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     octopus_client = await init_client()
-    async for projects in octopus_client.get_projects():
-        logger.info(f"Received project batch with {len(projects)} projects")
-        yield projects
-
-
-@ocean.on_resync(ObjectKind.DEPLOYMENT)
-async def on_resync_deployments(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    octopus_client = await init_client()
-    async for deployments in octopus_client.get_deployments():
-        logger.info(f"Received deployment batch with {len(deployments)} deployments")
-        yield deployments
-
-
-@ocean.on_resync(ObjectKind.RELEASE)
-async def on_resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    octopus_client = await init_client()
-    async for releases in octopus_client.get_releases():
-        logger.info(f"Received release batch with {len(releases)} releases")
-        yield releases
-
-
-@ocean.on_resync(ObjectKind.TARGET)
-async def on_resync_machines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    octopus_client = await init_client()
-    async for machines in octopus_client.get_targets():
-        logger.info(f"Received machine batch with {len(machines)} machines")
-        yield machines
+    async for resource_batch in octopus_client.get_paginated_resources(kind):
+        logger.info(f"Received length  {len(resource_batch)} of {kind} ")
+        yield resource_batch
 
 
 @ocean.router.post("/webhook")
@@ -80,27 +65,26 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle the webhook request from Octopus Deploy.
     """
-    logger.info(f"Received webhook event: {data}")
     payload = data.get("Payload", {}).get("Event", {})
     related_document_ids = payload.get("RelatedDocumentIds", [])
     event_category = payload.get("Category", "")
     action = "unregister" if "Deleted" in event_category else "register"
     client = await init_client()
     for entity_id in related_document_ids:
-        logger.info(f"{action.capitalize()}ing entity with ID: {entity_id}")
+        logger.info(f"Received webhook event with ID: {entity_id}")
         entity_prefix = entity_id.split("-")[0].lower()
-        if entity_prefix == "machines":
-            kind = ObjectKind.TARGET
-        else:
-            kind = ObjectKind(entity_prefix)
-        try:
-            entity_data = await client.get_single_entity(entity_prefix, entity_id)
-            if action == "register":
-                await ocean.register_raw(kind, [entity_data])
-            else:
-                await ocean.unregister_raw(kind, [{"id": entity_id}])
-        except Exception as e:
-            logger.error(f"Failed to process entity {entity_id}: {e}")
+        if entity_prefix in TRACKED_EVENTS:
+            kind = ObjectKind(entity_prefix.rstrip("s"))
+            try:
+                if action == "register":
+                    entity_data = await client.get_single_entity(
+                        entity_prefix, entity_id
+                    )
+                    await ocean.register_raw(kind, [entity_data])
+                else:
+                    await ocean.unregister_raw(kind, [{"id": entity_id}])
+            except Exception as e:
+                logger.error(f"Failed to process entity {entity_id}: {e}")
     logger.info("Webhook event processed")
     return {"ok": True}
 

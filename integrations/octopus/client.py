@@ -9,8 +9,7 @@ PAGE_SIZE = 50  # Number of items to fetch per page
 class OctopusClient:
     def __init__(self, octopus_api_key: str, octopus_url: str) -> None:
         self.octopus_url = f"{octopus_url.rstrip('/')}/api/"
-        self.octopus_api_key = octopus_api_key
-        self.api_auth_header = {"X-Octopus-ApiKey": self.octopus_api_key}
+        self.api_auth_header = {"X-Octopus-ApiKey": octopus_api_key}
         self.client = http_async_client
         self.client.timeout = Timeout(60)
         self.client.headers.update(self.api_auth_header)
@@ -40,9 +39,9 @@ class OctopusClient:
             raise
         return response.json()
 
-    async def _get_paginated_objects(
+    async def get_paginated_resources(
         self,
-        endpoint: str,
+        kind: str,
         params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch paginated data from the Octopus Deploy API."""
@@ -50,34 +49,16 @@ class OctopusClient:
             params = {}
         params["skip"] = 0
         params["take"] = PAGE_SIZE
+        page = 0
         while True:
-            logger.debug(f"Fetching data from {endpoint} with params {params}")
-            response = await self._send_api_request(endpoint, params=params)
+            response = await self._send_api_request(f"{kind}s", params=params)
             items = response.get("Items", [])
+            last_page = response.get("LastPageNumber", 0)
             yield items
-            if len(items) < PAGE_SIZE:
+            if page >= last_page:
                 break
             params["skip"] += PAGE_SIZE
-
-    async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get all projects."""
-        async for projects in self._get_paginated_objects("projects"):
-            yield projects
-
-    async def get_deployments(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get all deployments."""
-        async for deployments in self._get_paginated_objects("deployments"):
-            yield deployments
-
-    async def get_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get all releases."""
-        async for releases in self._get_paginated_objects("releases"):
-            yield releases
-
-    async def get_targets(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get all targets."""
-        async for targets in self._get_paginated_objects("machines"):
-            yield targets
+            page += 1
 
     async def get_single_entity(
         self, entity_kind: str, entity_id: str
@@ -102,7 +83,7 @@ class OctopusClient:
             "SpaceId": f"{space_id}",
         }
         logger.info(
-            f"Webhook Subscription - '{subscription_data['Name']}' created successfully."
+            f"Creating Webhook Subscription - '{subscription_data['Name']}' in '{space_id}'"
         )
         return await self._send_api_request(
             endpoint, json_data=subscription_data, method="POST"
