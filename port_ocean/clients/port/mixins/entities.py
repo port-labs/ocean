@@ -29,7 +29,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> None:
+    ) -> Entity:
         validation_only = request_options["validation_only"]
         async with self.semaphore:
             logger.debug(
@@ -57,6 +57,8 @@ class EntityClientMixin:
                 f"blueprint: {entity.blueprint}"
             )
         handle_status_code(response, should_raise)
+        result = response.json()
+        return Entity.parse_obj(result.get("entity"))
 
     async def batch_upsert_entities(
         self,
@@ -64,8 +66,8 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> None:
-        await asyncio.gather(
+    ) -> list[Entity]:
+        modified_entities = await asyncio.gather(
             *(
                 self.upsert_entity(
                     entity,
@@ -77,6 +79,7 @@ class EntityClientMixin:
             ),
             return_exceptions=True,
         )
+        return modified_entities
 
     async def delete_entity(
         self,
