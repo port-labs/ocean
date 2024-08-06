@@ -77,7 +77,6 @@ class EntityClientMixin:
                 )
                 for entity in entities
             ),
-            return_exceptions=True,
         )
         return modified_entities
 
