@@ -70,6 +70,8 @@ class Ocean:
         # TODO: remove this once we separate the state from the integration
         self.last_resync_start: datetime.datetime | None = None
         self.last_integration_updated_at: str = ""
+        # self.next_time_prediction: float | None = None  # TODO: delete
+        # self.last_scheduled_execution: datetime.datetime | None = None  # TODO: delete
 
     def get_last_updated_at(self) -> str | None:
         return self.last_integration_updated_at
@@ -80,15 +82,24 @@ class Ocean:
     def is_saas(self) -> bool:
         return self.config.runtime == Runtime.Saas
 
-    def _calculate_next_scheduled_resync(self, interval: int | None) -> float | None:
+    def _calculate_next_scheduled_resync(
+        self,
+        interval: int | None = None,
+        custom_start_time: datetime.datetime | None = None,
+    ) -> float | None:
         if interval is None:
             return None
-        return get_next_occurrence(interval * 60, self.created_at).timestamp()
+        return get_next_occurrence(
+            interval * 60, custom_start_time or self.created_at
+        ).timestamp()
 
     async def update_state_before_scheduled_sync(
-        self, interval: int | None = None
+        self,
+        interval: int | None = None,
+        custom_start_time: datetime.datetime | None = None,
     ) -> None:
         _interval = interval or self.config.scheduled_resync_interval
+
         self.last_resync_start = datetime.datetime.now()
         integration = await self.port_client.update_integration_state(
             {
@@ -96,13 +107,17 @@ class Ocean:
                 "last_resync_start": self.last_resync_start.timestamp(),
                 "last_resync_end": None,
                 "interval": _interval,
-                "next_resync": self._calculate_next_scheduled_resync(_interval),
+                "next_resync": self._calculate_next_scheduled_resync(
+                    _interval, custom_start_time
+                ),
             }
         )
         self.set_last_updated_at(integration["updatedAt"])
 
     async def update_state_after_scheduled_sync(
-        self, interval: int | None = None
+        self,
+        interval: int | None = None,
+        custom_start_time: datetime.datetime | None = None,
     ) -> None:
         _interval = interval or self.config.scheduled_resync_interval
 
@@ -116,15 +131,28 @@ class Ocean:
                 ),
                 "last_resync_end": datetime.datetime.now().timestamp(),
                 "interval": _interval,
-                "next_resync": self._calculate_next_scheduled_resync(_interval),
+                "next_resync": self._calculate_next_scheduled_resync(
+                    _interval, custom_start_time
+                ),
             }
         )
         self.set_last_updated_at(integration["updatedAt"])
+        # self.next_time_prediction = self._calculate_next_scheduled_resync(
+        #     _interval, custom_start_time
+        # )  # TODO: delete
 
     async def _setup_scheduled_resync(
         self,
     ) -> None:
         async def execute_resync_all() -> None:
+            # logger.info(
+            #     f"prediction was: {str(datetime.datetime.fromtimestamp(self.next_time_prediction or 0))}"
+            #     + f" now is: {str(datetime.datetime.now())}"
+            #     + f" last time this function ran was: {str(self.last_scheduled_execution)}"
+            #     + f" time from last execution: {str(datetime.datetime.now() - (self.last_scheduled_execution or datetime.datetime.now()))}"
+            # )  # TODO: delete
+
+            # self.last_scheduled_execution = datetime.datetime.now()  # TODO: delete
             await self.update_state_before_scheduled_sync()
             logger.info("Starting a new scheduled resync")
             await self.integration.sync_raw_all()

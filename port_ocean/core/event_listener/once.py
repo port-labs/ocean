@@ -4,7 +4,6 @@ from typing import Literal, Any
 
 from loguru import logger
 
-from port_ocean.core.models import Runtime
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
     EventListenerEvents,
@@ -46,44 +45,52 @@ class OnceEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
         self.resync_start_time: datetime.datetime | None = None
-        self.resync_interval: int | None = None
+        self.cached_integration: dict[str, Any] | None = None
 
-    async def get_scheduled_resync_interval(self) -> int | None:
-        if not self.is_saas():
-            return None
-
-        if self.resync_interval:
-            return self.resync_interval
+    async def get_current_integration_cached(self) -> dict[str, Any] | None:
+        if self.cached_integration:
+            return self.cached_integration
 
         try:
-            integration = await ocean.port_client.get_current_integration()
-            interval_str = (
-                integration.get("spec", {})
-                .get("appSpec", {})
-                .get("scheduledResyncInterval")
-            )
-            self.resync_interval = convert_time_to_minutes(interval_str)
-            return self.resync_interval
+            self.cached_integration = await ocean.port_client.get_current_integration()
+            return self.cached_integration
         except Exception:
-            logger.exception("Error occurred while calculating next resync")
+            logger.exception("Error occurred while getting current integration")
             return None
 
-    def is_saas(self) -> bool:
-        return ocean.config.runtime == Runtime.Saas
+    async def get_saas_integration_prediction_data(
+        self,
+    ) -> tuple[int | None, datetime.datetime | None]:
+        if not ocean.app.is_saas():
+            return (None, None)
 
-    async def before_resync(self) -> None:
-        if self.is_saas():
-            interval = await self.get_scheduled_resync_interval()
-            self.resync_start_time = await ocean.app.update_state_before_scheduled_sync(
-                interval
-            )
+        integration = await self.get_current_integration_cached()
+        if not integration:
+            return (None, None)
 
-    async def after_resync(self) -> None:
-        if self.is_saas() and self.resync_start_time:
-            interval = await self.get_scheduled_resync_interval()
-            await ocean.app.update_state_after_scheduled_sync(
-                self.resync_start_time, interval
-            )
+        integration = await ocean.port_client.get_current_integration()
+        interval_str = (
+            integration.get("spec", {})
+            .get("appSpec", {})
+            .get("scheduledResyncInterval")
+        )
+        return (convert_time_to_minutes(interval_str), integration.get("createdAt"))
+
+    async def _before_resync(self) -> None:
+        if not ocean.app.is_saas():
+            await super()._before_resync()
+            return
+
+        (interval, start_time) = await self.get_saas_integration_prediction_data()
+        await ocean.app.update_state_before_scheduled_sync(interval, start_time)
+
+    async def _after_resync(self) -> None:
+        if not ocean.app.is_saas():
+            await super()._before_resync()
+            return
+
+        (interval, start_time) = await self.get_saas_integration_prediction_data()
+        await ocean.app.update_state_after_scheduled_sync(interval, start_time)
 
     async def _start(self) -> None:
         """
@@ -96,9 +103,9 @@ class OnceEventListener(BaseEventListener):
         async def resync_and_exit() -> None:
             logger.info("Once event listener started")
             try:
-                await self.before_resync()
+                await self._before_resync()
                 await self.events["on_resync"]({})
-                await self.after_resync()
+                await self._after_resync()
             except Exception:
                 # we catch all exceptions here to make sure the application will exit gracefully
                 logger.exception("Error occurred while resyncing")
