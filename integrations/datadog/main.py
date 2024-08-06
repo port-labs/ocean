@@ -17,6 +17,8 @@ class ObjectKind(StrEnum):
     SLO = "slo"
     SERVICE = "service"
     SLO_HISTORY = "sloHistory"
+    DASHBOARD = "dashboard"
+    DASHBOARD_METRIC = "dashboardMetric"
 
 
 def init_client() -> DatadogClient:
@@ -99,7 +101,7 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector.dashboard_ids_to_enrich_with
 
     async for services in dd_client.get_services():
-        logger.info(f"Received batch with {len(services)} service catalogs")
+        logger.info(f"Received batch with {len(services)} services")
 
         if not dashboard_ids_to_enrich_with:
             yield services
@@ -113,6 +115,24 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 dashboard_id, services
             )
             yield enriched_services
+
+
+@ocean.on_resync(ObjectKind.DASHBOARD)
+async def on_resync_dashboards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    async for dashboards in dd_client.get_dashboards():
+        logger.info(f"Received batch with {len(dashboards)} dashboards")
+        yield dashboards
+
+
+@ocean.on_resync(ObjectKind.DASHBOARD_METRIC)
+async def on_resync_dashboard_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    async for dashboard_metrics in dd_client.get_dashboard_metrics():
+        logger.info(f"Received batch with {len(dashboard_metrics)} dashboard metrics")
+        yield dashboard_metrics
 
 
 # https://docs.datadoghq.com/integrations/webhooks/

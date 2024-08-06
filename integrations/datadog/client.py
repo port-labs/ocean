@@ -391,6 +391,86 @@ class DatadogClient:
         url = f"{self.api_url}/api/v1/dashboard/{dashboard_id}"
         return await self._send_api_request(url)
 
+    async def enrich_dashboard_url(self, dashboard: dict[str, Any]) -> dict[str, Any]:
+        """
+        Enriches a dashboard item with the full Datadog web URL.
+        """
+        dashboard["url"] = f"{self.datadog_web_url}{dashboard['url']}"
+        return dashboard
+
+    async def get_dashboards(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        page = 0
+        page_size = MAX_PAGE_SIZE
+
+        while True:
+            url = f"{self.api_url}/api/v1/dashboard"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "start": page,
+                    "count": page_size,
+                    "filter[shared]": "false",
+                    "filter[deleted]": "false",
+                },
+            )
+            dashboards = result.get("dashboards")
+            if not dashboards:
+                break
+
+            # Enrich items concurrently using asyncio.gather
+            dashboards = await asyncio.gather(
+                *[self.enrich_dashboard_url(dashboard) for dashboard in dashboards]
+            )
+
+            yield dashboards
+            page += 1
+
+    async def add_dashboard_id_to_widget(
+        self, widget: dict[str, Any], dashboard_id: str
+    ) -> dict[str, Any]:
+        """
+        Adds the dashboard ID to a widget dictionary.
+        """
+        widget["dashboard_id"] = dashboard_id
+        return widget
+
+    async def get_dashboard_metrics(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Asynchronously fetches and yields lists of widgets (metrics) from multiple Datadog dashboards.
+
+        This method retrieves dashboards in batches, processes them concurrently to extract widgets (metrics),
+        and yields each list of widgets as they become available.
+
+        Yields:
+            Lists of dictionaries, where each dictionary represents a widget (metric) from a Datadog dashboard.
+            The structure of each widget dictionary depends on the Datadog API response.
+        """
+        async for dashboards in self.get_dashboards():
+            metrics = await process_in_queue(
+                [dashboard["id"] for dashboard in dashboards],
+                self.get_single_dashboard,
+                concurrency=MAX_CONCURRENT_REQUESTS,
+            )
+
+            for metric in metrics:
+                if metric and (widgets := metric.get("widgets")):
+                    # Filter out widgets with 'definition.type' == 'group' since they are usually containers for other widgets
+                    filtered_widgets = [
+                        widget
+                        for widget in widgets
+                        if widget.get("definition", {}).get("type") != "group"
+                    ]
+
+                    # Add dashboard_id to each filtered widget
+                    await asyncio.gather(
+                        *[
+                            self.add_dashboard_id_to_widget(widget, metric["id"])
+                            for widget in filtered_widgets
+                        ]
+                    )
+
+                    yield filtered_widgets
+
     async def validate_dashboard(self, dashboard_id: str) -> Optional[dict[str, Any]]:
         dashboard = await self.get_single_dashboard(dashboard_id)
         if not dashboard:
@@ -571,6 +651,15 @@ class DatadogClient:
                 dashboard_metrics["has_all_metrics"] = False
 
             dashboard_metrics["widget_metrics"].update(metrics_availability)
+
+            # Add an array of available metrics to the item
+            available_metrics = [
+                widget_metrics
+                for widget_metrics in metrics_availability.values()
+                if widget_metrics["has_all_metrics"]
+            ]
+            
+            item["__available_metrics"] = available_metrics
 
         return items
 
