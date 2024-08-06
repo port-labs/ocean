@@ -122,7 +122,9 @@ class KafkaEventListener(BaseEventListener):
 
         if "change.log" in topic and message is not None:
             try:
+                await self._before_resync()
                 await self.events["on_resync"](message)
+                await self._after_resync()
             except Exception as e:
                 _type, _, tb = sys.exc_info()
                 logger.opt(exception=(_type, None, tb)).error(

@@ -84,11 +84,31 @@ def convert_time_to_minutes(time_str: str) -> int:
         raise ValueError("Invalid format. Expected a string ending with 'h' or 'm'.")
 
 
-def calculate_next_resync(
-    now: datetime.datetime, interval: int | None = None
-) -> float | None:
-    if not interval:
-        return None
+def get_next_occurrence(
+    interval_seconds: int,
+    start_time: datetime.datetime,
+    now: datetime.datetime | None = None,
+) -> datetime.datetime:
+    """
+    Predict the next occurrence of an event based on interval, start time, and current time.
 
-    next_resync_date = now + datetime.timedelta(minutes=interval)
-    return next_resync_date.timestamp()
+    :param interval_minutes: Interval between occurrences in minutes.
+    :param start_time: Start time of the event as a datetime object.
+    :param now: Current time as a datetime object.
+    :return: The next occurrence time as a datetime object.
+    """
+
+    if now is None:
+        now = datetime.datetime.now()
+    # Calculate the total minutes elapsed since the start time
+    elapsed_seconds = (now - start_time).total_seconds()
+
+    # Calculate the number of intervals that have passed
+    intervals_passed = int(elapsed_seconds // interval_seconds)
+
+    # Calculate the next occurrence time
+    next_occurrence = start_time + datetime.timedelta(
+        seconds=(intervals_passed + 1) * interval_seconds
+    )
+
+    return next_occurrence
