@@ -658,7 +658,7 @@ class DatadogClient:
                 for widget_metrics in metrics_availability.values()
                 if widget_metrics["has_all_metrics"]
             ]
-            
+
             item["__available_metrics"] = available_metrics
 
         return items
