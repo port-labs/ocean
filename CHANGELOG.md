@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.11 (2024-08-05)
+
+
+### Bug Fixes
+
+- Not showing misleading error message if port state is empty
+
 ## 0.9.10 (2024-08-04)
 
 

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.73 (2024-08-05)
+
+
+### Improvements
+
+- Updated the JQL filter used in the default configuration mapping to also ingest Jira issues that were opened or updated in the past week
+- Updated the default mapping for the `issue` kind
+- Updated the default blueprints and their properties
+
+
+## 0.1.72 (2024-08-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.11 (#1)
+
+
 ## 0.1.71 (2024-08-04)
 
 
