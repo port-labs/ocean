@@ -116,6 +116,8 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    logger.warning(event.resource_config)
+
     for service in get_cached_all_services():
         masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
         logger.info(f"fetching projects for token {masked_token}")
