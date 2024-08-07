@@ -24,7 +24,7 @@ from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
-from port_ocean.utils.signal import init_signal_handler, signal_handler
+from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
 from port_ocean.utils.misc import get_next_occurrence
 
@@ -167,7 +167,6 @@ class Ocean:
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
             try:
-                init_signal_handler()
                 await self.integration.start()
                 await self._setup_scheduled_resync()
                 yield None
