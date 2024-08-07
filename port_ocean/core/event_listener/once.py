@@ -11,7 +11,7 @@ from port_ocean.core.event_listener.base import (
 )
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.context.ocean import ocean
-from port_ocean.utils.misc import convert_time_to_minutes
+from port_ocean.utils.misc import convert_str_to_datetime, convert_time_to_minutes
 
 
 class OnceEventListenerSettings(EventListenerSettings):
@@ -74,7 +74,25 @@ class OnceEventListener(BaseEventListener):
             .get("appSpec", {})
             .get("scheduledResyncInterval")
         )
-        return (convert_time_to_minutes(interval_str), integration.get("createdAt"))
+
+        if not interval_str:
+            logger.error(
+                "Integration scheduled resync interval not found for integration state update"
+            )
+            return (None, None)
+
+        start_time_str = integration.get("createdAt")
+
+        if not start_time_str:
+            logger.error(
+                "Integration creation time not found for integration state update"
+            )
+            return (None, None)
+
+        return (
+            convert_time_to_minutes(interval_str),
+            convert_str_to_datetime(start_time_str),
+        )
 
     async def _before_resync(self) -> None:
         if not ocean.app.is_saas():
