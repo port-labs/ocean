@@ -1,5 +1,6 @@
 import asyncio
 import typing
+import json
 from datetime import datetime, timedelta
 from typing import List, Tuple, Any, Union, TYPE_CHECKING
 
@@ -15,6 +16,7 @@ from gitlab.v4.objects import (
     ProjectPipeline,
     GroupMergeRequest,
     ProjectPipelineJob,
+    ProjectFile
 )
 from loguru import logger
 from yaml.parser import ParserError
@@ -26,6 +28,7 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
+MAX_FILE_SIZE = 1024 * 1024 # 1MB
 
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import (
@@ -406,6 +409,14 @@ class GitlabService:
             return file["type"] == "tree"
         return False
 
+    @staticmethod
+    def validate_file_is_blob(
+        file: Union[RESTObject, dict[str, Any], Project]
+    ) -> bool:
+        if isinstance(file, dict):
+            return file["type"] == "blob"
+        return False
+    
     async def get_all_folders_in_project_path(
         self, project: Project, folder_selector
     ) -> typing.AsyncIterator[List[dict[str, Any]]]:
@@ -556,3 +567,55 @@ class GitlabService:
         logger.info(f"Found {len(entities_after)} entities in the current state")
 
         return entities_before, entities_after
+
+    async def get_all_files_in_project(
+        self, project: Project, path: str
+    ) -> typing.AsyncIterator[List[dict[str, Any]]]:
+        branch = project.default_branch
+        try:
+            file_paths = self._get_file_paths(project, path, branch)
+            logger.debug(f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}")
+            files = []
+            for file_path in file_paths:
+                try:
+                    project_file = project.files.get(file_path=file_path, ref=branch)
+                    parsed_file = self._process_project_file(project_file)
+                    processed_file = project_file.asdict()
+                    if parsed_file:
+                        processed_file["content"] = parsed_file # update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
+                        files.append(
+                            {
+                                "file": processed_file,
+                                "repo": project.asdict()
+                            }
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to get content for file {file_path} in project {project.path_with_namespace}. error={e}"
+                    )
+            yield files
+        except Exception as e:
+            logger.error(
+                f"Failed to get files in project={project.path_with_namespace} for path={path} and "
+                f"branch={branch}. error={e}"
+            )
+            return
+    
+    def _process_project_file(self, file: ProjectFile) -> Union[str, dict[str, Any]] | None:
+        """
+        Process a file that is a blob
+        :param file: file object
+        :return: parsed content of the file if it is a JSON or YAML, otherwise the raw content
+        """
+        if file.size > MAX_FILE_SIZE:
+            logger.warning(
+                f"File {file.file_path} is too large to be processed. Maximum size allowed is 1MB. Given size of file: {file.size}"
+            )
+            return None
+        try:
+            return json.loads(file.decode())
+        except json.JSONDecodeError:
+            try:
+                return yaml.safe_load(file.decode())
+            except ParserError:
+                return file.decode()

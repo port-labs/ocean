@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple, List, Type
+from typing import Dict, Any, Literal, Tuple, List, Type
 
 from gitlab.v4.objects import Project
 from loguru import logger
@@ -113,7 +113,6 @@ class FoldersSelector(BaseModel):
     repos: List[str] = Field(default_factory=list)
     branch: str | None = None
 
-
 class GitlabSelector(Selector):
     folders: List[FoldersSelector] = Field(default_factory=list)
 
@@ -121,6 +120,18 @@ class GitlabSelector(Selector):
 class GitlabResourceConfig(ResourceConfig):
     selector: GitlabSelector
 
+
+class FilesSelector(BaseModel):
+    path: str = Field(description="The path to the file to filter", default="/")
+    repos: List[str] = Field(description= "A list of repositories to filter", default_factory=list)
+
+
+class GitLabFilesSelector(Selector):
+    files: FilesSelector
+
+class GitLabFilesResourceConfig(ResourceConfig):
+    selector: GitLabFilesSelector
+    kind: Literal["file"]
 
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
@@ -131,7 +142,7 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-    resources: list[GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:
