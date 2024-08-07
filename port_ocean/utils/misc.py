@@ -7,6 +7,7 @@ from types import ModuleType
 from typing import Callable, Any
 from uuid import uuid4
 
+
 import tomli
 import yaml
 
@@ -67,6 +68,17 @@ def load_module(file_path: str) -> ModuleType:
     spec.loader.exec_module(module)
 
     return module
+
+
+def convert_str_to_datetime(time_str: str) -> datetime.datetime | None:
+    """
+    Convert a string representing time to a datetime object.
+    :param time_str: a string representing time in the format "2021-09-01T12:00:00Z"
+    """
+    if time_str.endswith("Z"):
+        aware_date = datetime.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+    aware_date = datetime.datetime.fromisoformat(time_str)
+    return datetime.datetime.fromtimestamp(aware_date.timestamp())
 
 
 def convert_time_to_minutes(time_str: str) -> int:
