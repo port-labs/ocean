@@ -123,7 +123,7 @@ class GitlabResourceConfig(ResourceConfig):
 
 
 class FilesSelector(BaseModel):
-    path: str = Field(description="The path to the file to filter", default="/")
+    path: str = Field(description="The path to the file to filter")
     repos: List[str] = Field(
         description="A list of repositories to filter", default_factory=list
     )
