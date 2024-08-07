@@ -11,6 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added Octopus integration with support for Project, Release, Deployments and Targets (PORT-9398)
+- Added Octopus integration with support for Space, Project, Release, Deployment and Machine (PORT-9398)
 
 

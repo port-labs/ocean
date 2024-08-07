@@ -10,7 +10,7 @@
                     "type": "string",
                     "title": "Space URL",
                     "format": "url",
-                    "description": "The name of the space"
+                    "description": "The Link to the Space in Octopus Deploy"
                 },
                 "description": {
                     "type": "string",

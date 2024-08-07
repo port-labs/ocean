@@ -36,7 +36,7 @@ resources:
       entity:
         mappings:
           identifier: .Id
-          title: ".Version + \"(\" + .ProjectId + \")\""
+          title: ".ProjectId + \"(\" + .Version + \")\""
           blueprint: '"octopusRelease"'
           properties:
             version: .Version

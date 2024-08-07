@@ -3,12 +3,12 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Timeout
 
-PAGE_SIZE = 50  # Number of items to fetch per page
+PAGE_SIZE = 50
 
 
 class OctopusClient:
-    def __init__(self, octopus_api_key: str, octopus_url: str) -> None:
-        self.octopus_url = f"{octopus_url.rstrip('/')}/api/"
+    def __init__(self, server_url: str, octopus_api_key: str) -> None:
+        self.octopus_url = f"{server_url.rstrip('/')}/api/"
         self.api_auth_header = {"X-Octopus-ApiKey": octopus_api_key}
         self.client = http_async_client
         self.client.timeout = Timeout(60)
@@ -89,13 +89,13 @@ class OctopusClient:
             endpoint, json_data=subscription_data, method="POST"
         )
 
-    async def create_subscription(self, app_host: str) -> dict[str, Any]:
+    async def create_webhook_subscription(self, app_host: str) -> dict[str, Any]:
         """Create a new subscription."""
         for space in await self.get_all_spaces():
             await self._create_subscription(space["Id"], app_host)
         return {"ok": True}
 
-    async def get_subscriptions(self) -> list[dict[str, Any]]:
+    async def get_webhook_subscriptions(self) -> list[dict[str, Any]]:
         """Get existing subscriptions."""
         response = await self._send_api_request("subscriptions/all")
         logger.info(f"Retrieved {len(response)} subscriptions.")

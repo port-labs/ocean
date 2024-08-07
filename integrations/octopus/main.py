@@ -24,8 +24,8 @@ class ObjectKind(StrEnum):
 
 async def init_client() -> OctopusClient:
     client = OctopusClient(
-        ocean.integration_config["octopus_api_key"],
         ocean.integration_config["server_url"],
+        ocean.integration_config["octopus_api_key"],
     )
     return client
 
@@ -39,7 +39,7 @@ async def setup_application() -> None:
         )
         return
     octopus_client = await init_client()
-    existing_subscriptions = await octopus_client.get_subscriptions()
+    existing_subscriptions = await octopus_client.get_webhook_subscriptions()
     existing_webhook_uris = {
         subscription.get("EventNotificationSubscription", {}).get("WebhookURI")
         for subscription in existing_subscriptions
@@ -48,7 +48,7 @@ async def setup_application() -> None:
     if webhook_uri in existing_webhook_uris:
         logger.info(f"Webhook already exists with URI: {webhook_uri}")
     else:
-        await octopus_client.create_subscription(app_host)
+        await octopus_client.create_webhook_subscription(app_host)
         logger.info(f"Webhook created with URI: {webhook_uri}")
 
 
