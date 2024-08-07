@@ -113,6 +113,7 @@ class FoldersSelector(BaseModel):
     repos: List[str] = Field(default_factory=list)
     branch: str | None = None
 
+
 class GitlabSelector(Selector):
     folders: List[FoldersSelector] = Field(default_factory=list)
 
@@ -123,15 +124,19 @@ class GitlabResourceConfig(ResourceConfig):
 
 class FilesSelector(BaseModel):
     path: str = Field(description="The path to the file to filter", default="/")
-    repos: List[str] = Field(description= "A list of repositories to filter", default_factory=list)
+    repos: List[str] = Field(
+        description="A list of repositories to filter", default_factory=list
+    )
 
 
 class GitLabFilesSelector(Selector):
     files: FilesSelector
 
+
 class GitLabFilesResourceConfig(ResourceConfig):
     selector: GitLabFilesSelector
     kind: Literal["file"]
+
 
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
