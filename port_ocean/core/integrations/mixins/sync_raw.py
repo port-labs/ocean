@@ -311,10 +311,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resource for resource in config.resources if resource.kind == kind
         ]
 
-        entities, errors = await asyncio.gather(
-            *(
-                self._unregister_resource_raw(resource, results, user_agent_type)
-                for resource in resource_mappings
+        entities, errors = zip_and_sum(
+            await asyncio.gather(
+                *(
+                    self._unregister_resource_raw(resource, results, user_agent_type)
+                    for resource in resource_mappings
+                )
             )
         )
 
@@ -416,6 +418,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
             try:
+                did_fetched_current_state = True
                 entities_at_port = await ocean.port_client.search_entities(
                     user_agent_type
                 )
@@ -427,7 +430,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     f"Response status code: {e.response.status_code if isinstance(e, httpx.HTTPStatusError) else None}\n"
                     f"Response content: {e.response.text if isinstance(e, httpx.HTTPStatusError) else None}\n"
                 )
-                entities_at_port = []
+                did_fetched_current_state = False
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
@@ -446,7 +449,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully")
             else:
-                if not entities_at_port:
+                if not did_fetched_current_state:
                     logger.warning(
                         "Due to an error before the resync, the previous state of entities at Port is unknown."
                         " Skipping delete phase due to unknown initial state."
