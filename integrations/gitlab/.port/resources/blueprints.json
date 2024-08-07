@@ -1,88 +1,5 @@
 [
   {
-    "identifier": "gitlabGroupMember",
-    "title": "Member",
-    "icon": "GitLab",
-    "schema": {
-      "properties": {
-        "state": {
-          "title": "State",
-          "type": "string",
-          "icon": "GitLab",
-          "description": "The current state of the GitLab member (e.g., active)."
-        },
-        "locked": {
-          "type": "string",
-          "title": "Locked",
-          "icon": "GitLab",
-          "description": "Indicates if the GitLab member is locked."
-        },
-        "link": {
-          "icon": "Link",
-          "type": "string",
-          "title": "Link",
-          "format": "url",
-          "description": "URL link to the GitLab member."
-        },
-        "email": {
-          "type": "string",
-          "title": "Email",
-          "description": "GitLab primary email address.",
-          "icon": "User",
-          "format": "user"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
-  },
-  {
-    "identifier": "gitlabGroup",
-    "title": "Group",
-    "icon": "GitLab",
-    "schema": {
-      "properties": {
-        "visibility": {
-          "icon": "Lock",
-          "title": "Visibility",
-          "type": "string",
-          "description": "Visibility status of the group. (e.g public, internal etc. )",
-          "enum": [
-            "public",
-            "internal",
-            "private"
-          ],
-          "enumColors": {
-            "public": "red",
-            "internal": "yellow",
-            "private": "green"
-          }
-        },
-        "url": {
-          "title": "URL",
-          "format": "url",
-          "type": "string",
-          "icon": "Link",
-          "description": "Link to the gitlab group"
-        },
-        "description": {
-          "title": "Description",
-          "type": "string",
-          "icon": "BlankPage",
-          "description": "A short description of the gitlab group"
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
-  },
-  {
     "identifier": "service",
     "title": "Service",
     "icon": "GitLab",
@@ -135,13 +52,6 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {
-      "group": {
-        "title": "Group",
-        "target": "gitlabGroup",
-        "required": true,
-        "many": false
-      }
-    }
+    "relations": {}
   }
 ]

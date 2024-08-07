@@ -69,10 +69,13 @@ class AsyncFetcher:
                 List[Union[RESTObject, Dict[str, Any]]],
             ],
         ],
-        validation_func: Callable[
-            [Any],
-            bool,
-        ],
+        validation_func: (
+            Callable[
+                [Any],
+                bool,
+            ]
+            | None
+        ) = None,
         page_size: int = DEFAULT_PAGINATION_PAGE_SIZE,
         **kwargs,
     ) -> AsyncIterator[

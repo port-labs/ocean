@@ -1,33 +1,6 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
-  - kind: member
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .username
-          title: .name
-          blueprint: '"gitlabGroupMember"'
-          properties:
-            state: .state
-            locked: .locked
-            link: .web_url
-            email: .email
-  - kind: group
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .full_path
-          title: .name
-          blueprint: '"gitlabGroup"'
-          properties:
-            url: .web_url
-            visibility: .visibility
-            description: .description
   - kind: project
     selector:
       query: "true"
@@ -42,7 +15,3 @@ resources:
             readme: file://README.md
             description: .description
             language: .__languages | to_entries | max_by(.value) | .key
-          relations:
-            group: >-
-              .path_with_namespace | gsub(" "; "") | split("/") | .[:-1] |
-              join("/")

@@ -150,8 +150,8 @@ class GitlabPortAppConfig(PortAppConfig):
     # Therefore, it should be included at the top level of the configuration.
     include_bot_members: bool | None = Field(
         alias="includeBotMembers",
-        default=False,
-        description="If set to true, bots will be filtered out from the members list. Default value is false",
+        default=True,
+        description="If set to false, bots will be filtered out from the members list. Default value is true",
     )
     resources: list[GitlabMembersResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 

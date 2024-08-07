@@ -32,10 +32,13 @@ from port_ocean.utils.cache import cache_iterator_result
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 GROUPS_CACHE_KEY = "__cache_all_groups"
 MEMBERS_CACHE_KEY = "__cache_all_members"
-
+USERS_CACHE_KEY = "__cache_all_users"
 
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import GitlabPortAppConfig
+
+MAXIMUM_CONCURRENT_TASK = 10
+semaphore = asyncio.BoundedSemaphore(MAXIMUM_CONCURRENT_TASK)
 
 
 class GitlabService:
@@ -337,12 +340,16 @@ class GitlabService:
                 raise
 
     @cache_iterator_result()
-    async def get_all_groups(self) -> typing.AsyncIterator[List[Group]]:
+    async def get_all_groups(
+        self, skip_validation: bool = False
+    ) -> typing.AsyncIterator[List[Group]]:
         logger.info("fetching all groups for the token")
 
         async for groups_batch in AsyncFetcher.fetch_batch(
             fetch_func=self.gitlab_client.groups.list,
-            validation_func=self.should_run_for_group,
+            validation_func=(
+                self.should_run_for_group if not (skip_validation) else None
+            ),
             pagination="offset",
             order_by="id",
             sort="asc",
@@ -556,15 +563,12 @@ class GitlabService:
             "GitlabPortAppConfig", event.port_app_config
         )
         include_bot_members = port_app_config.include_bot_members
-        return (
-            not (member.username.__contains__("bot")) if include_bot_members else True
-        )
+        return include_bot_members or not member.username.__contains__("bot")
 
     async def get_all_group_members(
         self, group: Group
     ) -> typing.AsyncIterator[List[GroupMember]]:
         try:
-
             logger.info(f"Fetching all members of group {group.name}")
             async for members_batch in AsyncFetcher.fetch_batch(
                 fetch_func=group.members.list,
@@ -610,12 +614,23 @@ class GitlabService:
         return member_dict
 
     async def get_user(self, user_id: str) -> User:
-        logger.info(f"fetching user {user_id}")
-        user_response = await AsyncFetcher.fetch_single(
-            self.gitlab_client.users.get, user_id
-        )
-        user: User = typing.cast(User, user_response)
-        return user
+        async with semaphore:
+            logger.info(f"fetching user {user_id}")
+            users = event.attributes.setdefault(USERS_CACHE_KEY, {}).setdefault(
+                self.gitlab_client.private_token, {}
+            )
+
+            if cached_user := users.get(user_id):
+                return cached_user
+
+            user_response = await AsyncFetcher.fetch_single(
+                self.gitlab_client.users.get, user_id
+            )
+            user: User = typing.cast(User, user_response)
+            event.attributes[USERS_CACHE_KEY][self.gitlab_client.private_token][
+                user_id
+            ] = user
+            return user
 
     async def get_group_member(
         self, group: Group, member_id: int

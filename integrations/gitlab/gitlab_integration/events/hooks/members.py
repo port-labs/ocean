@@ -30,18 +30,8 @@ class Members(GroupHandler):
         logger.info(f"Handling {event_name} for group member {user_username}")
 
         if event_name == "user_remove_from_group":
-            # This event is triggered by GitLab when a group or subgroup is destroyed.
-            # When a group is deleted, GitLab tries to remove all direct members associated with that group.
-            # However, to prevent accidental deletion of members who may also be part of other groups,
-            # we perform a check to determine if the member is associated with any other groups.
-            # If the member is not associated with any other groups, we proceed to delete the member from Port.
-            # Otherwise, we skip the deletion process to ensure that members are not inadvertently removed
-            # from groups they are still part of.
             if not (await self._is_root_group_member(body["user_id"])):
-                body = remove_prefix_from_keys(
-                    "user_", body
-                )  # Removing user_ prefix from the keys makes the event data close to being consistent with the member api response data.
-                # Thereby enhancing flexibility in processing custom identifiers.
+                body = remove_prefix_from_keys("user_", body)
                 await ocean.unregister_raw(ObjectKind.MEMBER, [body])
             else:
                 logger.warning(
@@ -54,8 +44,6 @@ class Members(GroupHandler):
             ):
                 await self._register_group_member(group_member)
                 if body["event_name"] == "user_add_to_group":
-                    # This step ensures that when a new user is added to a group, we update the group entities to link the newly created member to the group.
-                    # Note: This event is triggered by Gitlab when a group or subgroup is created.
                     await self._register_group(gitlab_group)
 
         else:
@@ -105,7 +93,7 @@ class Members(GroupHandler):
             try:
                 result = await completed_task
                 if result:
-                    return True  # A single validation is enough
+                    return True
             except Exception as e:
                 logger.error(
                     f"Error checking group membership for member {member_id}: {e}"
