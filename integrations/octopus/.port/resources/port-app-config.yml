@@ -11,7 +11,7 @@ resources:
           title: .Name
           blueprint: '"octopusSpace"'
           properties:
-            url: "\"https://testport.octopus.app/app#/\" + .Id"
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .Id
             description: .Description
   - kind: project
     selector:
@@ -23,7 +23,7 @@ resources:
           title: .Name
           blueprint: '"octopusProject"'
           properties:
-            url: "\"https://testport.octopus.app/app#/\" + .SpaceId + \"/projects/\" + .Id"
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/projects/" + .Id
             description: .Description
             isDisabled: .IsDisabled
             tenantedDeploymentMode: .TenantedDeploymentMode
@@ -43,7 +43,7 @@ resources:
             assembledDate: .Assembled
             channelId: .ChannelId
             releaseNotes: .ReleaseNotes
-            url: "\"https://testport.octopus.app/app#/\" + .SpaceId + \"/releases/\" + .Id"
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/releases/" + .Id
           relations:
             project: .ProjectId
             space: .SpaceId
@@ -62,7 +62,7 @@ resources:
             taskId: .TaskId
             failureEncountered: .FailureEncountered
             comments: .Comments
-            url: "\"https://testport.octopus.app/app#/\" + .SpaceId + \"/deployments/\" + .Id"
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/deployments/" + .Id
           relations:
             release: .ReleaseId
             project: .ProjectId
@@ -79,7 +79,7 @@ resources:
           properties:
             roles: .Roles
             status: .HealthStatus
-            url: "\"https://testport.octopus.app/app#/\" + .SpaceId + \"/infrastructure/machines/\" + .Id + \"/settings\""
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/infrastructure/machines/" + .Id + "/settings"
             isDisabled: .IsDisabled
             operatingSystem: .OperatingSystem
             architecture: .Architecture
