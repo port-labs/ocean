@@ -81,7 +81,7 @@ class OnceEventListener(BaseEventListener):
             )
             return (None, None)
 
-        start_time_str = integration.get("createdAt")
+        start_time_str = integration.get("statusInfo", {}).get("updatedAt")
 
         if not start_time_str:
             logger.error(
