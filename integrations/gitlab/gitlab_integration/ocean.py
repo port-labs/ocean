@@ -222,21 +222,20 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = gitlab_resource_config.selector
 
     async def fetch_group_members(service, group):
+        members = [
+            member
+            async for members_batch in service.get_all_group_members(group)
+            for member in members_batch
+        ]
+
         if selector.enrich_with_public_email:
             enriched_member_tasks = [
-                service.enrich_member_with_public_email(member)
-                async for members in service.get_all_group_members(group)
-                for member in members
+                service.enrich_member_with_public_email(member) for member in members
             ]
             enriched_members = await asyncio.gather(*enriched_member_tasks)
             return enriched_members
-        else:
-            member_dicts = [
-                member.asdict()
-                async for members in service.get_all_group_members(group)
-                for member in members
-            ]
-            return member_dicts
+
+        return [member.asdict() for member in members]
 
     for service in get_cached_all_services():
         async for groups in service.get_all_groups(skip_validation=True):
