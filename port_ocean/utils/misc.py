@@ -112,7 +112,7 @@ def get_next_occurrence(
 
     if now is None:
         now = datetime.datetime.now()
-    # Calculate the total minutes elapsed since the start time
+    # Calculate the total seconds elapsed since the start time
     elapsed_seconds = (now - start_time).total_seconds()
 
     # Calculate the number of intervals that have passed
