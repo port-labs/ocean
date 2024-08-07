@@ -29,6 +29,7 @@ from port_ocean.core.models import Entity
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 MAX_FILE_SIZE = 1024 * 1024  # 1MB
+BATCH_SIZE = 25
 
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import (
@@ -576,21 +577,30 @@ class GitlabService:
                 f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
             )
             files = []
-            for file_path in file_paths:
+            for i, file_path in enumerate(file_paths):
                 try:
                     project_file = project.files.get(file_path=file_path, ref=branch)
                     parsed_file = self._process_project_file(project_file)
-                    processed_file = project_file.asdict()
+                    project_file_dict = project_file.asdict()
                     if parsed_file:
-                        processed_file["content"] = (
+                        project_file_dict["content"] = (
                             parsed_file  # update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
                         )
-                        files.append({"file": processed_file, "repo": project.asdict()})
+                        files.append(
+                            {"file": project_file_dict, "repo": project.asdict()}
+                        )
+
+                    # Check if the batch size is reached
+                    if (i + 1) % BATCH_SIZE == 0:
+                        yield files
+                        files = []  # Reset the batch
                 except Exception as e:
                     logger.error(
                         f"Failed to get content for file {file_path} in project {project.path_with_namespace}. error={e}"
                     )
-            yield files
+
+            if files:  # Yield the remaining files if any
+                yield files
         except Exception as e:
             logger.error(
                 f"Failed to get files in project={project.path_with_namespace} for path={path} and "
