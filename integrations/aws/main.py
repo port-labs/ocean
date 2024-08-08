@@ -232,7 +232,6 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     )
                     return fastapi.Response(
                         status_code=status.HTTP_200_OK,
-                        content=json.dumps({"ok": True}),
                     )
                 resource = None
 
