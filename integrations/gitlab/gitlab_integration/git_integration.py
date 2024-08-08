@@ -123,9 +123,9 @@ class GitlabResourceConfig(ResourceConfig):
 
 
 class FilesSelector(BaseModel):
-    path: str = Field(description="The path to the file to filter")
+    path: str = Field(description="The path to get the files from")
     repos: List[str] = Field(
-        description="A list of repositories to filter", default_factory=list
+        description="A list of repositories to search files in", default_factory=list
     )
 
 

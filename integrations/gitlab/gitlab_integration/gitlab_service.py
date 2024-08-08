@@ -2,7 +2,7 @@ import asyncio
 import typing
 import json
 from datetime import datetime, timedelta
-from typing import List, Tuple, Any, Union, TYPE_CHECKING
+from typing import List, Optional, Tuple, Any, Union, TYPE_CHECKING
 
 import anyio.to_thread
 import yaml
@@ -28,8 +28,8 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
-MAX_FILE_SIZE = 1024 * 1024  # 1MB
-BATCH_SIZE = 25
+MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
+PROJECT_FILES_BATCH_SIZE = 25
 
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import (
@@ -183,6 +183,15 @@ class GitlabService:
             issue.references.get("short")
         )
         return self.should_run_for_path(project_path)
+
+    def should_process_project(
+        self, project: Project, repos: Optional[List[str]]
+    ) -> bool:
+        # If `repos` selector is None or empty, we process all projects
+        if not repos:
+            return True
+        # Otherwise, only process projects that are in the `repos` list
+        return project.name in repos
 
     def get_root_groups(self) -> List[Group]:
         groups = self.gitlab_client.groups.list(iterator=True)
@@ -571,7 +580,7 @@ class GitlabService:
                 f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
             )
             files = []
-            for i, file_path in enumerate(file_paths):
+            for file_path in file_paths:
                 try:
                     project_file = project.files.get(file_path=file_path, ref=branch)
                     parsed_file = self._process_project_file(project_file)
@@ -585,7 +594,7 @@ class GitlabService:
                         )
 
                     # Check if the batch size is reached
-                    if (i + 1) % BATCH_SIZE == 0:
+                    if len(files) == PROJECT_FILES_BATCH_SIZE:
                         yield files
                         files = []  # Reset the batch
                 except Exception as e:
@@ -604,13 +613,13 @@ class GitlabService:
 
     def _process_project_file(
         self, file: ProjectFile
-    ) -> Union[str, dict[str, Any]] | None:
+    ) -> Union[str, dict[str, Any], list[Any]] | None:
         """
         Process a file from a project. If the file is a JSON or YAML, it will be parsed, otherwise the raw content will be returned
         :param file: file object
         :return: parsed content of the file
         """
-        if file.size > MAX_FILE_SIZE:
+        if file.size > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
             logger.warning(
                 f"File {file.file_path} is too large to be processed. Maximum size allowed is 1MB. Given size of file: {file.size}"
             )
@@ -619,6 +628,6 @@ class GitlabService:
             return json.loads(file.decode())
         except json.JSONDecodeError:
             try:
-                return yaml.safe_load(file.decode())
-            except ParserError:
+                return list(yaml.load_all(file.decode(), Loader=yaml.SafeLoader))
+            except yaml.YAMLError:
                 return file.decode().decode("utf-8")

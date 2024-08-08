@@ -173,29 +173,19 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             return
 
         selector = gitlab_resource_config.selector
-        async for projects_batch in service.get_all_projects():
 
-            ## If user does not provide any path, we won't be able to fetch files since this can be a very expensive operation going through all the files in all the projects
-            if selector.files and selector.files.path:
-                if (
-                    selector.files.repos
-                ):  ## If user provides repos, we will only fetch files from those repos
-                    for project in projects_batch:
-                        if project.name in selector.files.repos:
-                            async for files_batch in service.get_all_files_in_project(
-                                project, selector.files.path
-                            ):
-                                yield files_batch
-                else:  ## If user does not provide repos, we will fetch files from all the projects
-                    for project in projects_batch:
+        if not (selector.files and selector.files.path):
+            logger.warning("No path provided in the selector, skipping fetching files")
+            return
+
+        for service in get_cached_all_services():
+            async for projects_batch in service.get_all_projects():
+                for project in projects_batch:
+                    if service.should_process_project(project, selector.files.repos):
                         async for files_batch in service.get_all_files_in_project(
                             project, selector.files.path
                         ):
                             yield files_batch
-            else:
-                logger.warning(
-                    "No path provided in the selector, skipping fetching files"
-                )
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
