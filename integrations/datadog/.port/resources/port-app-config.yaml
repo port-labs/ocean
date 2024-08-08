@@ -3,7 +3,8 @@ createMissingRelatedEntities: true
 resources:
   - kind: host
     selector:
-      query: 'true'
+      query: "true"
+      enrichWithDashboards: []
     port:
       entity:
         mappings:
@@ -20,10 +21,13 @@ resources:
             sources: .sources
             cpu_cores: .meta.cpuCores
             agent_version: .meta.agent_version
+            metrics_availability: .__metrics_availability
             tags: .tags_by_source
+          relations:
+            availableMetrics: '[.__available_metrics[].widget_id | tostring]'
   - kind: monitor
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -41,7 +45,8 @@ resources:
             updatedAt: .modified
   - kind: service
     selector:
-      query: 'true'
+      query: "true"
+      enrichWithDashboards: []
     port:
       entity:
         mappings:
@@ -55,12 +60,15 @@ resources:
             tags: .attributes.schema.tags
             type: .attributes.schema.type
             links: .attributes.schema.links | map(.url)
+            metrics_availability: .__metrics_availability
             owners: >-
               [.attributes.schema.contacts[] | select(.type == "email") |
               .contact]
+          relations:
+            availableMetrics: '[.__available_metrics[].widget_id | tostring]'
   - kind: slo
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -83,7 +91,7 @@ resources:
               unique | map(split(":")[1])
   - kind: sloHistory
     selector:
-      query: 'true'
+      query: "true"
       timeframe: 30
       period_of_time_in_years: 12
     port:
@@ -102,3 +110,33 @@ resources:
             timeframe: .__timeframe
           relations:
             slo: .slo.id
+  - kind: dashboard
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"datadogDashboard"'
+          properties:
+            url: .url
+            description: .description
+            is_read_only: .is_read_only
+            created_at: .created_at
+            modified_at: .modified_at
+            author_handle: .author_handle
+  - kind: dashboardMetric
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogDashboardMetric"'
+          identifier: .id | tostring
+          title: .definition | if (.title == "") then "Untitled Widget" else .title end
+          properties:
+            type: .definition.type
+            queries: .definition.requests[0].queries
+          relations:
+            dashboard: .dashboard_id | tostring

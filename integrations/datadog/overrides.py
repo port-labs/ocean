@@ -33,10 +33,22 @@ class SLOHistoryResourceConfig(ResourceConfig):
     selector: SLOHistorySelector
 
 
-class DataDogPortAppConfig(PortAppConfig):
-    resources: list[SLOHistoryResourceConfig | ResourceConfig] = Field(
-        default_factory=list
+class DatadogResourceSelector(Selector):
+    dashboard_ids_to_enrich_with: list[str] = Field(
+        alias="enrichWithDashboards",
+        description="List of dashboard ids to enrich the data with",
+        default_factory=list,
     )
+
+
+class DatadogResourceConfig(ResourceConfig):
+    selector: DatadogResourceSelector
+
+
+class DataDogPortAppConfig(PortAppConfig):
+    resources: list[
+        SLOHistoryResourceConfig | DatadogResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class DatadogIntegration(BaseIntegration):
