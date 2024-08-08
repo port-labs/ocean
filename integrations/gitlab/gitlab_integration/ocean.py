@@ -192,6 +192,10 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             project, selector.files.path
                         ):
                             yield files_batch
+            else:
+                logger.warning(
+                    "No path provided in the selector, skipping fetching files"
+                )
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
