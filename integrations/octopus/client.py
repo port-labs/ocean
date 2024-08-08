@@ -101,9 +101,6 @@ class OctopusClient:
                         f"Subscription created for space '{space['Id']}' with ID {response['Id']}"
                     )
                 else:
-                    error_message = response.get(
-                        "ErrorMessage", "Unknown error occurred"
-                    )
                     logger.error(
                         f"Failed to create subscription for space '{space['Id']}': {error_message}"
                     )
