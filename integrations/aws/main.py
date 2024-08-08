@@ -226,9 +226,16 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     resource_type, identifier, account_id, region
                 )
             except Exception as e:
-                if is_access_denied_exception(e) or is_server_error(e):
+                if is_access_denied_exception(e):
                     logger.error(
-                        f"Skipping resyncing {resource_type} in region {region} due to missing access permissions"
+                        f"Cannot sync {resource_type} in region {region} in account {account_id} due to missing access permissions {e}"
+                    )
+                    return fastapi.Response(
+                        status_code=status.HTTP_200_OK,
+                    )
+                if is_server_error(e):
+                    logger.error(
+                        f"Cannot sync {resource_type} in region {region} in account {account_id} due to server error {e}"
                     )
                     return fastapi.Response(
                         status_code=status.HTTP_200_OK,
