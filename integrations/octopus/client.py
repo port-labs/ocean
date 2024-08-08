@@ -102,7 +102,7 @@ class OctopusClient:
                     )
                 else:
                     logger.error(
-                        f"Failed to create subscription for space '{space['Id']}': {error_message}"
+                        f"Failed to create subscription for space '{space['Id']}'"
                     )
             except Exception as e:
                 logger.error(f"Unexpected error for space '{space['Id']}': {str(e)}")
