@@ -221,7 +221,7 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     )
     selector = gitlab_resource_config.selector
 
-    async def fetch_group_members(service, group):
+    async def process_group_members(service, group):
         members = [
             member
             async for members_batch in service.get_all_group_members(group)
@@ -239,7 +239,7 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     for service in get_cached_all_services():
         async for groups in service.get_all_groups(skip_validation=True):
-            group_tasks = [fetch_group_members(service, group) for group in groups]
+            group_tasks = [process_group_members(service, group) for group in groups]
             for group_task in asyncio.as_completed(group_tasks):
                 group_members = await group_task
                 yield group_members
