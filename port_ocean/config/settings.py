@@ -74,7 +74,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     event_listener: EventListenerSettingsType
     # If an identifier or type is not provided, it will be generated based on the integration name
     integration: IntegrationSettings = IntegrationSettings(type="", identifier="")
-    runtime: Runtime = "OnPrem"
+    runtime: Runtime = Runtime.OnPrem
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -98,8 +98,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         return values
 
     @validator("runtime")
-    def validate_runtime(cls, runtime: Literal["OnPrem", "Saas"]) -> Runtime:
-        if runtime == "Saas":
+    def validate_runtime(cls, runtime: Runtime) -> Runtime:
+        if runtime == Runtime.Saas:
             spec = get_spec_file()
             if spec is None:
                 raise ValueError(
