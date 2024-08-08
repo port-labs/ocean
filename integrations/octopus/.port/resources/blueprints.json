@@ -112,13 +112,6 @@
                 "description": "The project to which this release belongs",
                 "required": false,
                 "many": false
-            },
-            "space": {
-                "target": "octopusSpace",
-                "title": "Space",
-                "description": "The space to which this release belongs",
-                "required": false,
-                "many": false
             }
         }
     },
@@ -176,13 +169,6 @@
                 "target": "octopusProject",
                 "title": "Project",
                 "description": "The project associated with this deployment",
-                "required": false,
-                "many": false
-            },
-            "space": {
-                "target": "octopusSpace",
-                "title": "Space",
-                "description": "The space associated with this deployment",
                 "required": false,
                 "many": false
             }

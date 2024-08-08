@@ -46,7 +46,6 @@ resources:
             url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/releases/" + .Id
           relations:
             project: .ProjectId
-            space: .SpaceId
   - kind: deployment
     selector:
       query: "true"
@@ -66,7 +65,6 @@ resources:
           relations:
             release: .ReleaseId
             project: .ProjectId
-            space: .SpaceId
   - kind: machine
     selector:
       query: "true"

@@ -70,7 +70,9 @@ class OctopusClient:
         """Get all spaces in the Octopus instance."""
         return await self._send_api_request("spaces/all")
 
-    async def _create_subscription(self, space_id: str, app_host: str) -> None:
+    async def _create_subscription(
+        self, space_id: str, app_host: str
+    ) -> dict[str, Any]:
         """Create a new subscription for a space."""
         endpoint = "subscriptions"
         subscription_data = {
@@ -79,7 +81,7 @@ class OctopusClient:
                 "WebhookTimeout": "00:00:50",
             },
             "IsDisabled": False,
-            "Name": "Port Subscription",
+            "Name": f"Port Subscription - {space_id}",
             "SpaceId": f"{space_id}",
         }
         logger.info(
@@ -90,9 +92,23 @@ class OctopusClient:
         )
 
     async def create_webhook_subscription(self, app_host: str) -> dict[str, Any]:
-        """Create a new subscription."""
+        """Create a new subscription for all spaces."""
         for space in await self.get_all_spaces():
-            await self._create_subscription(space["Id"], app_host)
+            try:
+                response = await self._create_subscription(space["Id"], app_host)
+                if response.get("Id"):
+                    logger.info(
+                        f"Subscription created for space '{space['Id']}' with ID {response['Id']}"
+                    )
+                else:
+                    error_message = response.get(
+                        "ErrorMessage", "Unknown error occurred"
+                    )
+                    logger.error(
+                        f"Failed to create subscription for space '{space['Id']}': {error_message}"
+                    )
+            except Exception as e:
+                logger.error(f"Unexpected error for space '{space['Id']}': {str(e)}")
         return {"ok": True}
 
     async def get_webhook_subscriptions(self) -> list[dict[str, Any]]:
