@@ -32,6 +32,14 @@ def is_access_denied_exception(e: Exception) -> bool:
     return False
 
 
+def is_server_error(e: Exception) -> bool:
+    if hasattr(e, "response"):
+        status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        return status >= 500
+
+    return False
+
+
 def get_matching_kinds_and_blueprints_from_config(
     kind: str,
 ) -> dict[str, list[str]]:
