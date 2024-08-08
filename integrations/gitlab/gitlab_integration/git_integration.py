@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple, List, Type
+from typing import Dict, Any, Tuple, List, Type, Literal
 
 from gitlab.v4.objects import Project
 from loguru import logger
@@ -66,7 +66,7 @@ class SearchEntityProcessor(JQEntityProcessor):
         match = None
         if project:
             if scope == "blobs":
-                # if the query does not contain a path filter, we add the base path to the query
+                # if the query does not contain a path ots, we add the base path to the query
                 # this is done to avoid searching the entire project for the file, if the base path is known
                 # having the base path applies to the case where we export a folder as a monorepo
                 if base_path and "path:" not in query:
@@ -122,6 +122,20 @@ class GitlabResourceConfig(ResourceConfig):
     selector: GitlabSelector
 
 
+class MembersSelector(Selector):
+
+    enrich_with_public_email: bool | None = Field(
+        alias="enrichWithPublicEmail",
+        default=False,
+        description="If set to true, the integration will enrich members with public email field. Default value is false",
+    )
+
+
+class GitlabMembersResourceConfig(ResourceConfig):
+    kind: Literal["member"]
+    selector: MembersSelector
+
+
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str | None
@@ -131,7 +145,15 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-    resources: list[GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    # The "include bot members" flag affects both the "group" and "member" kinds.
+    # To prevent inconsistencies, the behavior or value of this parameter should be consistent for both "groups" and "members".
+    # Therefore, it should be included at the top level of the configuration.
+    include_bot_members: bool | None = Field(
+        alias="includeBotMembers",
+        default=True,
+        description="If set to false, bots will be filtered out from the members list. Default value is true",
+    )
+    resources: list[GitlabMembersResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

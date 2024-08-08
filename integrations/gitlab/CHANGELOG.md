@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.0 (2024-08-06)
+===================
+
+### Features
+
+- Added support for gitlab member ingestion (PORT-7708)
+
+  
 0.1.99 (2024-08-05)
 ===================
 

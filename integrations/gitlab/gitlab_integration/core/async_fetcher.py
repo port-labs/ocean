@@ -6,7 +6,15 @@ from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 import gitlab.exceptions
 from gitlab import GitlabList
 from gitlab.base import RESTObject, RESTObjectList
-from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue, Group
+from gitlab.v4.objects import (
+    Project,
+    ProjectPipelineJob,
+    ProjectPipeline,
+    Issue,
+    Group,
+    User,
+    GroupMember,
+)
 from loguru import logger
 
 from port_ocean.core.models import Entity
@@ -28,6 +36,8 @@ class AsyncFetcher:
                 Issue,
                 Project,
                 Group,
+                User,
+                GroupMember,
             ],
         ],
         *args,
@@ -59,10 +69,13 @@ class AsyncFetcher:
                 List[Union[RESTObject, Dict[str, Any]]],
             ],
         ],
-        validation_func: Callable[
-            [Any],
-            bool,
-        ],
+        validation_func: (
+            Callable[
+                [Any],
+                bool,
+            ]
+            | None
+        ) = None,
         page_size: int = DEFAULT_PAGINATION_PAGE_SIZE,
         **kwargs,
     ) -> AsyncIterator[
