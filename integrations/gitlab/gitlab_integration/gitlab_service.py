@@ -410,12 +410,6 @@ class GitlabService:
             return file["type"] == "tree"
         return False
 
-    @staticmethod
-    def validate_file_is_blob(file: Union[RESTObject, dict[str, Any], Project]) -> bool:
-        if isinstance(file, dict):
-            return file["type"] == "blob"
-        return False
-
     async def get_all_folders_in_project_path(
         self, project: Project, folder_selector
     ) -> typing.AsyncIterator[List[dict[str, Any]]]:
