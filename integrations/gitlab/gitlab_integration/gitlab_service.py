@@ -28,7 +28,7 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
-MAX_FILE_SIZE = 1024 * 1024  # 1MB
+MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
 BATCH_SIZE = 25
 
 if TYPE_CHECKING:
