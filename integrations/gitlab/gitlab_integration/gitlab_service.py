@@ -570,48 +570,7 @@ class GitlabService:
 
         return entities_before, entities_after
 
-    async def get_all_files_in_project(
-        self, project: Project, path: str
-    ) -> typing.AsyncIterator[List[dict[str, Any]]]:
-        branch = project.default_branch
-        try:
-            file_paths = self._get_file_paths(project, path, branch)
-            logger.debug(
-                f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
-            )
-            files = []
-            for file_path in file_paths:
-                try:
-                    project_file = project.files.get(file_path=file_path, ref=branch)
-                    parsed_file = self._process_project_file(project_file)
-                    project_file_dict = project_file.asdict()
-                    if parsed_file:
-                        project_file_dict["content"] = (
-                            parsed_file  # update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
-                        )
-                        files.append(
-                            {"file": project_file_dict, "repo": project.asdict()}
-                        )
-
-                    # Check if the batch size is reached
-                    if len(files) == PROJECT_FILES_BATCH_SIZE:
-                        yield files
-                        files = []  # Reset the batch
-                except Exception as e:
-                    logger.error(
-                        f"Failed to get content for file {file_path} in project {project.path_with_namespace}. error={e}"
-                    )
-
-            if files:  # Yield the remaining files if any
-                yield files
-        except Exception as e:
-            logger.error(
-                f"Failed to get files in project={project.path_with_namespace} for path={path} and "
-                f"branch={branch}. error={e}"
-            )
-            return
-
-    def _process_project_file(
+    def _parse_file_content(
         self, file: ProjectFile
     ) -> Union[str, dict[str, Any], list[Any]] | None:
         """
@@ -632,3 +591,59 @@ class GitlabService:
                 return documents if len(documents) > 1 else documents[0]
             except yaml.YAMLError:
                 return file.decode().decode("utf-8")
+
+    def get_and_parse_single_file(
+        self, project: Project, file_path: str, branch: str
+    ) -> dict[str, Any] | None:
+        try:
+            project_file = project.files.get(file_path=file_path, ref=branch)
+            parsed_file = self._parse_file_content(project_file)
+            project_file_dict = project_file.asdict()
+
+            if parsed_file:
+                project_file_dict["content"] = (
+                    parsed_file  # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
+                )
+
+            return {"file": project_file_dict, "repo": project.asdict()}
+        except Exception as e:
+            logger.error(
+                f"Failed to process file {file_path} in project {project.path_with_namespace}. error={e}"
+            )
+            return None
+
+    async def get_all_files_in_project(
+        self, project: Project, path: str
+    ) -> typing.AsyncIterator[List[dict[str, Any]]]:
+        branch = project.default_branch
+        try:
+            file_paths = self._get_file_paths(project, path, branch)
+            logger.debug(
+                f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
+            )
+            files = []
+            for file_path in file_paths:
+                try:
+                    file_data = self.get_and_parse_single_file(
+                        project, file_path, branch
+                    )
+                    if file_data:
+                        files.append(file_data)
+
+                    # Check if the batch size is reached
+                    if len(files) == PROJECT_FILES_BATCH_SIZE:
+                        yield files
+                        files = []  # Reset the batch
+                except Exception as e:
+                    logger.error(
+                        f"Failed to get content for file {file_path} in project {project.path_with_namespace}. error={e}"
+                    )
+
+            if files:  # Yield the remaining files if any
+                yield files
+        except Exception as e:
+            logger.error(
+                f"Failed to get files in project={project.path_with_namespace} for path={path} and "
+                f"branch={branch}. error={e}"
+            )
+            return
