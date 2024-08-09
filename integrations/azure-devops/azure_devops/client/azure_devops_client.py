@@ -137,6 +137,50 @@ class AzureDevopsClient(HTTPBaseClient):
                     policy["__repository"] = repo
                 yield repo_policies
 
+    @cache_iterator_result()
+    async def generate_work_items(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
+        """
+        async for projects in self.generate_projects():
+            for project in projects:
+                # 1. Execute WIQL query to get work item IDs
+                wiql_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
+                wiql_response = await self.send_request(
+                    "POST",
+                    wiql_url,
+                    params={"api-version": "7.1-preview.2"},
+                    data=json.dumps({"query": "SELECT [Id] from WorkItems"}),
+                    headers={
+                        "Content-Type": "application/json",
+                    },
+                )
+                wiql_response.raise_for_status()
+                work_item_ids = [
+                    item["id"] for item in wiql_response.json()["workItems"]
+                ]
+
+                # 2. Fetch work items using the IDs (in batches if needed)
+                work_items = []
+                for i in range(
+                    0, len(work_item_ids), 200
+                ):  # Process in batches of up to 200 IDs
+                    batch_ids = work_item_ids[i : i + 200]
+                    work_items_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/workitems"
+                    params = {
+                        "ids": ",".join(map(str, batch_ids)),
+                        "api-version": "7.1-preview.3",
+                    }
+                    work_items_response = await self.send_request(
+                        "GET", work_items_url, params=params
+                    )
+                    work_items_response.raise_for_status()
+                    work_items.extend(work_items_response.json()["value"])
+
+                for work_item in work_items:
+                    work_item["__projectId"] = project["id"]
+                yield work_items
+
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any]:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
         response = await self.send_request("GET", get_single_pull_request_url)

@@ -54,3 +54,26 @@ resources:
           blueprint: '"service"'
           properties:
             workItemLinking: '.isEnabled and .isBlocking'
+
+  - kind: work-item 
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: '.id | tostring'
+          blueprint: '"workItem"' 
+          title: '.fields."System.Title"'
+          properties:
+            type: '.fields."System.WorkItemType"'
+            state: '.fields."System.State"'
+            effort: '.fields."Microsoft.VSTS.Scheduling.Effort"'
+            description: '.fields."System.Description"'
+            link: '.url'
+            reason: '.fields."System.Reason"'
+            createdBy: '.fields."System.CreatedBy".displayName'
+            changedBy: '.fields."System.ChangedBy".displayName'
+            createdDate: '.fields."System.CreatedDate"'
+            changedDate: '.fields."System.ChangedDate"'
+          relations:
+            project: '.fields."System.TeamProject" | gsub(" "; "")' 
