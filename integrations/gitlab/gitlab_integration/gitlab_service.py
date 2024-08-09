@@ -1,7 +1,8 @@
 import asyncio
 import typing
+import json
 from datetime import datetime, timedelta
-from typing import List, Tuple, Any, Union, TYPE_CHECKING
+from typing import List, Optional, Tuple, Any, Union, TYPE_CHECKING
 
 import anyio.to_thread
 import yaml
@@ -15,6 +16,7 @@ from gitlab.v4.objects import (
     ProjectPipeline,
     GroupMergeRequest,
     ProjectPipelineJob,
+    ProjectFile,
 )
 from loguru import logger
 from yaml.parser import ParserError
@@ -26,6 +28,8 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
+MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
+PROJECT_FILES_BATCH_SIZE = 25
 
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import (
@@ -179,6 +183,15 @@ class GitlabService:
             issue.references.get("short")
         )
         return self.should_run_for_path(project_path)
+
+    def should_process_project(
+        self, project: Project, repos: Optional[List[str]]
+    ) -> bool:
+        # If `repos` selector is None or empty, we process all projects
+        if not repos:
+            return True
+        # Otherwise, only process projects that are in the `repos` list
+        return project.name in repos
 
     def get_root_groups(self) -> List[Group]:
         groups = self.gitlab_client.groups.list(iterator=True)
@@ -556,3 +569,66 @@ class GitlabService:
         logger.info(f"Found {len(entities_after)} entities in the current state")
 
         return entities_before, entities_after
+
+    async def get_all_files_in_project(
+        self, project: Project, path: str
+    ) -> typing.AsyncIterator[List[dict[str, Any]]]:
+        branch = project.default_branch
+        try:
+            file_paths = self._get_file_paths(project, path, branch)
+            logger.debug(
+                f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
+            )
+            files = []
+            for file_path in file_paths:
+                try:
+                    project_file = project.files.get(file_path=file_path, ref=branch)
+                    parsed_file = self._process_project_file(project_file)
+                    project_file_dict = project_file.asdict()
+                    if parsed_file:
+                        project_file_dict["content"] = (
+                            parsed_file  # update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
+                        )
+                        files.append(
+                            {"file": project_file_dict, "repo": project.asdict()}
+                        )
+
+                    # Check if the batch size is reached
+                    if len(files) == PROJECT_FILES_BATCH_SIZE:
+                        yield files
+                        files = []  # Reset the batch
+                except Exception as e:
+                    logger.error(
+                        f"Failed to get content for file {file_path} in project {project.path_with_namespace}. error={e}"
+                    )
+
+            if files:  # Yield the remaining files if any
+                yield files
+        except Exception as e:
+            logger.error(
+                f"Failed to get files in project={project.path_with_namespace} for path={path} and "
+                f"branch={branch}. error={e}"
+            )
+            return
+
+    def _process_project_file(
+        self, file: ProjectFile
+    ) -> Union[str, dict[str, Any], list[Any]] | None:
+        """
+        Process a file from a project. If the file is a JSON or YAML, it will be parsed, otherwise the raw content will be returned
+        :param file: file object
+        :return: parsed content of the file
+        """
+        if file.size > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
+            logger.warning(
+                f"File {file.file_path} is too large to be processed. Maximum size allowed is 1MB. Given size of file: {file.size}"
+            )
+            return None
+        try:
+            return json.loads(file.decode())
+        except json.JSONDecodeError:
+            try:
+                documents = list(yaml.load_all(file.decode(), Loader=yaml.SafeLoader))
+                return documents if len(documents) > 1 else documents[0]
+            except yaml.YAMLError:
+                return file.decode().decode("utf-8")

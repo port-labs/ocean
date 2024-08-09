@@ -12,6 +12,7 @@ from gitlab_integration.events.hooks.merge_request import MergeRequest
 from gitlab_integration.events.hooks.pipelines import Pipelines
 from gitlab_integration.events.hooks.push import PushHook
 from gitlab_integration.events.hooks.group import GroupHook
+from gitlab_integration.events.hooks.project_files import ProjectFiles
 from gitlab_integration.gitlab_service import GitlabService
 from gitlab_integration.models.webhook_groups_override_config import (
     WebhookMappingConfig,
@@ -122,6 +123,7 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
         Issues(gitlab_service),
         Pipelines(gitlab_service),
         GroupHook(gitlab_service),
+        ProjectFiles(gitlab_service),
     ]
     for handler in handlers:
         logger.info(
@@ -139,6 +141,7 @@ def setup_system_listeners(gitlab_clients: list[GitlabService]) -> None:
         Issues,
         Pipelines,
         GroupHook,
+        ProjectFiles,
     ]
     for handler in handlers:
         system_event_handler.on(handler)
