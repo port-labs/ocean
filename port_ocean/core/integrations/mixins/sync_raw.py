@@ -140,11 +140,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         objects_diff = await self._calculate_raw(
             [(resource, results)], parse_all, send_raw_data_examples_amount
         )
-        await self.entities_state_applier.upsert(
+        modified_objects = await self.entities_state_applier.upsert(
             objects_diff[0].entity_selector_diff.passed, user_agent_type
         )
-
-        return objects_diff[0]
+        return CalculationResult(
+            objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
+            errors=objects_diff[0].errors,
+        )
 
     async def _unregister_resource_raw(
         self,
