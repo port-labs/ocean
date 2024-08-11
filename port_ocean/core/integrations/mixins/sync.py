@@ -97,9 +97,11 @@ class SyncMixin(HandlerMixin):
         """
         entities_at_port = await ocean.port_client.search_entities(user_agent_type)
 
-        await self.entities_state_applier.upsert(entities, user_agent_type)
+        modified_entities = await self.entities_state_applier.upsert(
+            entities, user_agent_type
+        )
         await self.entities_state_applier.delete_diff(
-            {"before": entities_at_port, "after": entities}, user_agent_type
+            {"before": entities_at_port, "after": modified_entities}, user_agent_type
         )
 
         logger.info("Finished syncing change")
