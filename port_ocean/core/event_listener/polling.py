@@ -50,12 +50,6 @@ class PollingEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
 
-    async def _before_resync(self) -> None:
-        await ocean.app.update_state_before_scheduled_sync()
-
-    async def _after_resync(self) -> None:
-        await ocean.app.update_state_after_scheduled_sync()
-
     def should_resync(self, last_updated_at: str) -> bool:
         _last_updated_at = ocean.app.get_last_updated_at()
 
