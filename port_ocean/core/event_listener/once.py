@@ -103,7 +103,7 @@ class OnceEventListener(BaseEventListener):
 
     async def _after_resync(self) -> None:
         if not ocean.app.is_saas():
-            await super()._before_resync()
+            await super()._after_resync()
             return
 
         (interval, start_time) = await self.get_saas_integration_prediction_data()
