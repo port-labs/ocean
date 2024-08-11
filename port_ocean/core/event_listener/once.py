@@ -11,7 +11,7 @@ from port_ocean.core.event_listener.base import (
 )
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.context.ocean import ocean
-from port_ocean.utils.misc import convert_str_to_datetime, convert_time_to_minutes
+from port_ocean.utils.time import convert_str_to_naive_datetime, convert_to_minutes
 
 
 class OnceEventListenerSettings(EventListenerSettings):
@@ -46,16 +46,12 @@ class OnceEventListener(BaseEventListener):
         self.event_listener_config = event_listener_config
         self.cached_integration: dict[str, Any] | None = None
 
-    async def get_current_integration_cached(self) -> dict[str, Any] | None:
+    async def get_current_integration_cached(self) -> dict[str, Any]:
         if self.cached_integration:
             return self.cached_integration
 
-        try:
-            self.cached_integration = await ocean.port_client.get_current_integration()
-            return self.cached_integration
-        except Exception:
-            logger.exception("Error occurred while getting current integration")
-            return None
+        self.cached_integration = await ocean.port_client.get_current_integration()
+        return self.cached_integration
 
     async def get_saas_integration_prediction_data(
         self,
@@ -63,8 +59,10 @@ class OnceEventListener(BaseEventListener):
         if not ocean.app.is_saas():
             return (None, None)
 
-        integration = await self.get_current_integration_cached()
-        if not integration:
+        try:
+            integration = await self.get_current_integration_cached()
+        except Exception:
+            logger.exception("Error occurred while getting current integration")
             return (None, None)
 
         interval_str = (
@@ -74,26 +72,26 @@ class OnceEventListener(BaseEventListener):
         )
 
         if not interval_str:
-            logger.error(
-                "Integration scheduled resync interval not found for integration state update"
-            )
+            logger.error("scheduledResyncInterval not found for integration")
             return (None, None)
 
-        start_time_str = integration.get("statusInfo", {}).get("updatedAt")
+        last_updated_saas_integration_config_str = integration.get(
+            "statusInfo", {}
+        ).get("updatedAt")
 
-        if not start_time_str:
-            logger.error(
-                "Integration creation time not found for integration state update"
-            )
+        # we use the last updated time of the integration config as the start time since in saas application the interval is configured by the user from the portal
+        if not last_updated_saas_integration_config_str:
+            logger.error("updatedAt not found for integration")
             return (None, None)
 
         return (
-            convert_time_to_minutes(interval_str),
-            convert_str_to_datetime(start_time_str),
+            convert_to_minutes(interval_str),
+            convert_str_to_naive_datetime(last_updated_saas_integration_config_str),
         )
 
     async def _before_resync(self) -> None:
         if not ocean.app.is_saas():
+            # in case of non-saas, we still want to update the state before and after the resync
             await super()._before_resync()
             return
 
@@ -102,6 +100,7 @@ class OnceEventListener(BaseEventListener):
 
     async def _after_resync(self) -> None:
         if not ocean.app.is_saas():
+            # in case of non-saas, we still want to update the state before and after the resync
             await super()._after_resync()
             return
 

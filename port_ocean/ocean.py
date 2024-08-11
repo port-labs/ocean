@@ -26,7 +26,7 @@ from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.utils.misc import get_next_occurrence
+from port_ocean.utils.time import get_next_occurrence
 
 
 class Ocean:
@@ -71,12 +71,6 @@ class Ocean:
         self.last_resync_start: datetime.datetime | None = None
         self.last_integration_updated_at: str = ""
 
-    def get_last_updated_at(self) -> str | None:
-        return self.last_integration_updated_at
-
-    def set_last_updated_at(self, last_updated_at: str) -> None:
-        self.last_integration_updated_at = last_updated_at
-
     def is_saas(self) -> bool:
         return self.config.runtime == Runtime.Saas
 
@@ -104,13 +98,13 @@ class Ocean:
                 "status": "running",
                 "last_resync_start": self.last_resync_start.timestamp(),
                 "last_resync_end": None,
-                "interval": _interval,
+                "interval_in minuets": _interval,
                 "next_resync": self._calculate_next_scheduled_resync(
                     _interval, custom_start_time
                 ),
             }
         )
-        self.set_last_updated_at(integration["updatedAt"])
+        self.last_integration_updated_at = integration["updatedAt"]
 
     async def update_state_after_scheduled_sync(
         self,
@@ -128,13 +122,13 @@ class Ocean:
                     else None
                 ),
                 "last_resync_end": datetime.datetime.now().timestamp(),
-                "interval": _interval,
+                "interval_in minuets": _interval,
                 "next_resync": self._calculate_next_scheduled_resync(
                     _interval, custom_start_time
                 ),
             }
         )
-        self.set_last_updated_at(integration["updatedAt"])
+        self.last_integration_updated_at = integration["updatedAt"]
 
     async def _setup_scheduled_resync(
         self,
