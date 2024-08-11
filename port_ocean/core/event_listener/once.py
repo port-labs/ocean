@@ -44,7 +44,6 @@ class OnceEventListener(BaseEventListener):
     ):
         super().__init__(events)
         self.event_listener_config = event_listener_config
-        self.resync_start_time: datetime.datetime | None = None
         self.cached_integration: dict[str, Any] | None = None
 
     async def get_current_integration_cached(self) -> dict[str, Any] | None:
