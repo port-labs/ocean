@@ -65,7 +65,7 @@ class Ocean:
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
-        self.created_at = datetime.datetime.now()
+        self.initiated_at = datetime.datetime.now()
 
         # TODO: remove this once we separate the state from the integration
         self.last_resync_start: datetime.datetime | None = None
@@ -88,7 +88,7 @@ class Ocean:
         if interval is None:
             return None
         return get_next_occurrence(
-            interval * 60, custom_start_time or self.created_at
+            interval * 60, custom_start_time or self.initiated_at
         ).timestamp()
 
     async def update_state_before_scheduled_sync(
