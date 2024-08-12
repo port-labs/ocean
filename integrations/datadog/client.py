@@ -332,7 +332,7 @@ class DatadogClient:
             logger.error(f"Error fetching data: {result.get('error')}")
             return False
 
-    def create_query_with_values(
+    def _create_query_with_values(
         self, metric_query: str, variable_values: dict[str, str]
     ) -> str:
         """
