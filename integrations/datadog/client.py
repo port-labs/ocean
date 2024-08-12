@@ -326,7 +326,7 @@ class DatadogClient:
             else:
                 return False
         elif result.get("status") == "error" and result.get("code") == 429:
-            logger.error(f"Rate limit exceeded: {result.get('error')}")
+            logger.warning(f"Rate limit exceeded: {result.get('error')}")
             return False
         else:
             logger.error(f"Error fetching data: {result.get('error')}")
