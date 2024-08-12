@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.101 (2024-08-12)
+====================
+
+### Improvements
+
+- Changed default action creation json to new v2 format (#1)
+
+
 0.1.100 (2024-08-11)
 ====================
 

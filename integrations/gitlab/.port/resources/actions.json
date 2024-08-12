@@ -1,157 +1,144 @@
 [
   {
-    "blueprint": "service",
-    "data": [
-      {
-        "identifier": "gitlab_scaffold_service",
-        "title": "Scaffold Service",
-        "icon": "Microservice",
-        "userInputs": {
-          "properties": {
-            "service_name": {
-              "title": "Service Name",
-              "description": "The new service's name",
-              "type": "string"
-            }
-          },
-          "required": [
-            "service_name"
-          ],
-          "order": [
-            "service_name"
-          ]
+    "identifier": "gitlab_scaffold_service",
+    "title": "Scaffold Service",
+    "icon": "Microservice",
+    "description": "To complete setting up this action, please refer to the following guide: [Setup scaffold service action ->](https://docs.getport.io/guides-and-tutorials/scaffold-a-new-service?git-provider=gitlab)",
+    "trigger": {
+      "operation": "CREATE",
+      "type": "self-service",
+      "blueprintIdentifier": "service",
+      "userInputs": {
+        "properties": {
+          "service_name": {
+            "title": "Service Name",
+            "description": "The new service's name",
+            "type": "string"
+          }
         },
-        "invocationMethod": {
-          "type": "WEBHOOK",
-          "agent": false,
-          "synchronized": false,
-          "method": "POST",
-          "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
-        },
-        "trigger": "CREATE",
-        "description": "To complete setting up this action, please refer to the following guide: [Setup scaffold service action ->](https://docs.getport.io/guides-and-tutorials/scaffold-a-new-service?git-provider=gitlab)",
-        "requiredApproval": false
-      },
-      {
-        "identifier": "gitlab_send_scorecard_reminder",
-        "icon": "Slack",
-        "title": "Send scorecard reminder",
-        "userInputs": {
-          "properties": {},
-          "required": []
-        },
-        "invocationMethod": {
-          "type": "WEBHOOK",
-          "agent": false,
-          "synchronized": true,
-          "method": "POST",
-          "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
-        },
-        "trigger": "CREATE",
-        "description": "To complete setting up this action, please refer to the following guide: [Setup send scorecard reminder action ->](https://docs.getport.io/guides-and-tutorials/setup-slack-reminders?git-provider=gitlab)",
-        "requiredApproval": false
-      },
-      {
-        "identifier": "gitlab_enrich_service",
-        "title": "Enrich service",
-        "icon": "Git",
-        "userInputs": {
-          "properties": {
-            "type": {
-              "icon": "BlankPage",
-              "title": "Type",
-              "description": "The service's type",
-              "type": "string",
-              "enum": [
-                "backend",
-                "frontend",
-                "integration"
-              ],
-              "enumColors": {
-                "backend": "lightGray",
-                "frontend": "lightGray",
-                "integration": "lightGray"
-              }
-            },
-            "lifecycle": {
-              "icon": "CICD",
-              "title": "Lifecycle",
-              "description": "The service's lifecycle state",
-              "type": "string",
-              "enum": [
-                "Production",
-                "Experimental",
-                "Deprecated"
-              ],
-              "enumColors": {
-                "Production": "green",
-                "Experimental": "orange",
-                "Deprecated": "red"
-              }
-            }
-          },
-          "required": [],
-          "order": [
-            "type",
-            "lifecycle"
-          ]
-        },
-        "invocationMethod": {
-          "type": "WEBHOOK",
-          "agent": false,
-          "synchronized": true,
-          "method": "POST",
-          "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
-        },
-        "trigger": "DAY-2",
-        "description": "To complete setting up this action, please refer to the following guide: [Setup enrich service action ->](https://docs.getport.io/guides-and-tutorials/let-developers-enrich-services-using-gitops?git-provider=gitlab)",
-        "requiredApproval": false
-      },
-      {
-        "identifier": "gitlab_create_s3_bucket",
-        "icon": "S3",
-        "title": "Create s3 bucket",
-        "userInputs": {
-          "properties": {
-            "name": {
-              "title": "Name",
-              "description": "The name of the cloud resource",
-              "type": "string"
-            },
-            "visibility": {
-              "title": "Visibility",
-              "description": "The resource's public/private visibility",
-              "type": "string",
-              "enum": [
-                "public",
-                "private"
-              ],
-              "enumColors": {
-                "public": "green",
-                "private": "red"
-              }
-            }
-          },
-          "required": [
-            "name",
-            "visibility"
-          ],
-          "order": [
-            "name",
-            "visibility"
-          ]
-        },
-        "invocationMethod": {
-          "type": "WEBHOOK",
-          "agent": false,
-          "synchronized": true,
-          "method": "POST",
-          "url": "https://example.com"
-        },
-        "trigger": "DAY-2",
-        "description": "To complete setting up this action, please refer to the following guide: [Setup create s3 bucket ->](https://docs.getport.io/guides-and-tutorials/create-cloud-resource-using-iac?git-provider=gitlab)",
-        "requiredApproval": false
+        "required": ["service_name"],
+        "order": ["service_name"]
       }
-    ]
+    },
+    "invocationMethod": {
+      "type": "WEBHOOK",
+      "agent": false,
+      "synchronized": false,
+      "method": "POST",
+      "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
+    },
+    "requiredApproval": false
+  },
+  {
+    "identifier": "gitlab_send_scorecard_reminder",
+    "title": "Send scorecard reminder",
+    "icon": "Slack",
+    "description": "To complete setting up this action, please refer to the following guide: [Setup send scorecard reminder action ->](https://docs.getport.io/guides-and-tutorials/setup-slack-reminders?git-provider=gitlab)",
+    "trigger": {
+      "operation": "CREATE",
+      "type": "self-service",
+      "blueprintIdentifier": "service",
+      "userInputs": {
+        "properties": {},
+        "required": []
+      }
+    },
+    "invocationMethod": {
+      "type": "WEBHOOK",
+      "agent": false,
+      "synchronized": true,
+      "method": "POST",
+      "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
+    },
+    "requiredApproval": false
+  },
+  {
+    "identifier": "gitlab_enrich_service",
+    "title": "Enrich service",
+    "icon": "Git",
+    "description": "To complete setting up this action, please refer to the following guide: [Setup enrich service action ->](https://docs.getport.io/guides-and-tutorials/let-developers-enrich-services-using-gitops?git-provider=gitlab)",
+    "trigger": {
+      "operation": "DAY-2",
+      "blueprintIdentifier": "service",
+      "type": "self-service",
+      "userInputs": {
+        "properties": {
+          "type": {
+            "icon": "BlankPage",
+            "title": "Type",
+            "description": "The service's type",
+            "type": "string",
+            "enum": ["backend", "frontend", "integration"],
+            "enumColors": {
+              "backend": "lightGray",
+              "frontend": "lightGray",
+              "integration": "lightGray"
+            }
+          },
+          "lifecycle": {
+            "icon": "CICD",
+            "title": "Lifecycle",
+            "description": "The service's lifecycle state",
+            "type": "string",
+            "enum": ["Production", "Experimental", "Deprecated"],
+            "enumColors": {
+              "Production": "green",
+              "Experimental": "orange",
+              "Deprecated": "red"
+            }
+          }
+        },
+        "required": [],
+        "order": ["type", "lifecycle"]
+      }
+    },
+    "invocationMethod": {
+      "type": "WEBHOOK",
+      "agent": false,
+      "synchronized": true,
+      "method": "POST",
+      "url": "https://gitlab.com/api/v4/projects/<YourGitlabProject>/ref/main/trigger/pipeline?token=<YourGitlabToken>"
+    },
+    "requiredApproval": false
+  },
+  {
+    "identifier": "gitlab_create_s3_bucket",
+    "title": "Create s3 bucket",
+    "icon": "S3",
+    "description": "To complete setting up this action, please refer to the following guide: [Setup create s3 bucket ->](https://docs.getport.io/guides-and-tutorials/create-cloud-resource-using-iac?git-provider=gitlab)",
+    "invocationMethod": {
+      "type": "WEBHOOK",
+      "agent": false,
+      "synchronized": true,
+      "method": "POST",
+      "url": "https://example.com"
+    },
+    "trigger": {
+      "operation": "DAY-2",
+      "type": "self-service",
+      "blueprintIdentifier": "service",
+      "userInputs": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "description": "The name of the cloud resource",
+            "type": "string"
+          },
+          "visibility": {
+            "title": "Visibility",
+            "description": "The resource's public/private visibility",
+            "type": "string",
+            "enum": ["public", "private"],
+            "enumColors": {
+              "public": "green",
+              "private": "red"
+            }
+          }
+        },
+        "required": ["name", "visibility"],
+        "order": ["name", "visibility"]
+      }
+    },
+    "requiredApproval": false
   }
 ]
