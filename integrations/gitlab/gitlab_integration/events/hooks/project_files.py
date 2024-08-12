@@ -32,9 +32,9 @@ class ProjectFiles(ProjectHandler):
             for modified_file in commit.get("modified", [])
         ]
         removed_files = [
-            modified_file
+            removed_file
             for commit in body.get("commits", [])
-            for modified_file in commit.get("removed", [])
+            for removed_file in commit.get("removed", [])
         ]
         changed_files = list(set(added_files + modified_files))
 
