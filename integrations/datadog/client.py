@@ -471,7 +471,9 @@ class DatadogClient:
 
                     yield filtered_widgets
 
-    async def fetch_dashboard_by_id(self, dashboard_id: str) -> Optional[dict[str, Any]]:
+    async def fetch_dashboard_by_id(
+        self, dashboard_id: str
+    ) -> Optional[dict[str, Any]]:
         dashboard = await self.get_single_dashboard(dashboard_id)
         if not dashboard:
             logger.error(f"Failed to fetch dashboard {dashboard_id}")
@@ -536,7 +538,7 @@ class DatadogClient:
             )
 
             for query in queries:
-                query_with_values = self.create_query_with_values(
+                query_with_values = self._create_query_with_values(
                     query, {template_var: template_var_value, "env": default_env}
                 )
 
@@ -584,7 +586,7 @@ class DatadogClient:
             This key contains information about whether metrics are available for the item in each relevant widget of
             the dashboard.
         """
-        dashboard = await self.validate_dashboard(dashboard_id)
+        dashboard = await self.fetch_dashboard_by_id(dashboard_id)
         if not dashboard:
             logger.error(f"Failed to fetch dashboard {dashboard_id}")
             return items
@@ -597,7 +599,7 @@ class DatadogClient:
             )
             return items
 
-        widgets = self.extract_queries_with_template_variable(dashboard, template_var)
+        widgets = self._extract_queries_with_template_variable(dashboard, template_var)
         if not widgets:
             logger.error(
                 f"No widgets with '{template_var}' queries found in dashboard {dashboard_id}"
