@@ -471,7 +471,7 @@ class DatadogClient:
 
                     yield filtered_widgets
 
-    async def validate_dashboard(self, dashboard_id: str) -> Optional[dict[str, Any]]:
+    async def fetch_dashboard_by_id(self, dashboard_id: str) -> Optional[dict[str, Any]]:
         dashboard = await self.get_single_dashboard(dashboard_id)
         if not dashboard:
             logger.error(f"Failed to fetch dashboard {dashboard_id}")
