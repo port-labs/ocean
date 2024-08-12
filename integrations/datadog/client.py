@@ -352,7 +352,7 @@ class DatadogClient:
             )
         return metric_query
 
-    def extract_queries_with_template_variable(
+    def _extract_queries_with_template_variable(
         self, dashboard_json: dict[str, Any], variable_name: str
     ) -> list[dict[str, Any]]:
         """
