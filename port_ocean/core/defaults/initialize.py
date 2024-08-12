@@ -154,10 +154,7 @@ async def _create_resources(
             )
 
         await asyncio.gather(
-            *(
-                port_client.create_action(action)
-                for action in defaults.actions
-            )
+            *(port_client.create_action(action) for action in defaults.actions)
         )
 
         await asyncio.gather(
