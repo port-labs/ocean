@@ -634,7 +634,6 @@ class GitlabService:
                     files = []
                     tasks = []
 
-            # Process the remaining files
             if tasks:
                 results = await asyncio.gather(*tasks)
                 files.extend([file_data for file_data in results if file_data])
