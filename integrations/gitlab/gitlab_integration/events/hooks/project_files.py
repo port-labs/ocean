@@ -67,9 +67,14 @@ class ProjectFiles(ProjectHandler):
                 await self._process_modified_files(
                     gitlab_project, changed_files, matched_file_paths
                 )
-                await self._process_removed_files(
-                    gitlab_project, removed_files, selector.files.path, body["before"]
-                )
+
+                commit_id_before_push = body.get("before") 
+                if commit_id_before_push:
+                    await self._process_removed_files(
+                        gitlab_project, removed_files, selector.files.path, commit_id_before_push
+                    )
+                else:
+                    logger.warning("Missing the 'before' commit ID in the webhook body, skipping deletion processing")
 
     async def _process_modified_files(
         self,
