@@ -639,7 +639,7 @@ class GitlabService:
                         f"Failed to get content for file {file_path} in project {project.path_with_namespace}. error={e}"
                     )
 
-            if files:  # Yield the remaining files if any
+            if files: 
                 yield files
         except Exception as e:
             logger.error(
