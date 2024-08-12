@@ -600,9 +600,8 @@ class GitlabService:
             project_file_dict = project_file.asdict()
 
             if parsed_file:
-                project_file_dict["content"] = (
-                    parsed_file  # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
-                )
+               # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
+                project_file_dict["content"] = parsed_file
 
             return {"file": project_file_dict, "repo": project.asdict()}
         except Exception as e:
@@ -638,7 +637,7 @@ class GitlabService:
                         f"Failed to get content for file {file_path} in project {project.path_with_namespace}. error={e}"
                     )
 
-            if files:  # Yield the remaining files if any
+            if files: 
                 yield files
         except Exception as e:
             logger.error(
