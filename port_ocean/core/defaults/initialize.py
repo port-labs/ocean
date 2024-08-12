@@ -21,7 +21,7 @@ from port_ocean.exceptions.port_defaults import (
 
 
 def deconstruct_blueprints_to_creation_steps(
-    raw_blueprints: list[dict[str, Any]]
+    raw_blueprints: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], ...]:
     """
     Deconstructing the blueprint into stages so the api wont fail to create a blueprint if there is a conflict
@@ -155,9 +155,8 @@ async def _create_resources(
 
         await asyncio.gather(
             *(
-                port_client.create_action(blueprint_actions["blueprint"], action)
-                for blueprint_actions in defaults.actions
-                for action in blueprint_actions["data"]
+                port_client.create_action(action)
+                for action in defaults.actions
             )
         )
 
