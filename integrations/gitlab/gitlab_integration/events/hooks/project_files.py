@@ -104,8 +104,8 @@ class ProjectFiles(ProjectHandler):
         Process unregister the removed files.
         """
         for removed_file in removed_files:
-            # after a file in GitLab is deleted, we can't get it's content using the list repository tree API since it returns the current files. But we can still get the file by using the commit ID just before it was deleted.
             if does_pattern_apply(selector_path, removed_file):
+                # After a file is deleted in GitLab, the list repository tree API won't return its content as it only shows the current files. However, you can still retrieve the file by using the commit ID before it was deleted.
                 file_data = await self.gitlab_service.get_and_parse_single_file(
                     project, removed_file, commit_id_before_push
                 )
