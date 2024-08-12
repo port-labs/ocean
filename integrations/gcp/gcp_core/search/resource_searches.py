@@ -1,10 +1,16 @@
 from typing import Any
 import typing
 
-from google.api_core.exceptions import NotFound, PermissionDenied
+from google.api_core.exceptions import (
+    NotFound,
+    PermissionDenied,
+    TooManyRequests,
+    ServiceUnavailable,
+)
 from google.cloud.asset_v1 import (
     AssetServiceAsyncClient,
 )
+from google.api_core.retry_async import AsyncRetry
 from google.cloud.asset_v1.services.asset_service import pagers
 from google.cloud.resourcemanager_v3 import (
     FoldersAsyncClient,
@@ -24,6 +30,17 @@ from gcp_core.utils import (
     parse_protobuf_message,
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
+)
+
+_RETRIABLE_ERROR_TYPES = (TooManyRequests, ServiceUnavailable)
+
+
+def _is_retryable(exc):
+    return isinstance(exc, _RETRIABLE_ERROR_TYPES)
+
+
+retry_policy = AsyncRetry(
+    predicate=_is_retryable, initial=1.0, maximum=60.0, multiplier=2.0, deadline=300.0
 )
 
 
@@ -54,7 +71,7 @@ async def search_all_resources_in_project(
         try:
             paginated_responses: pagers.SearchAllResourcesAsyncPager = (
                 await async_assets_client.search_all_resources(
-                    search_all_resources_request
+                    search_all_resources_request, retry=retry_policy
                 )
             )
             async for paginated_response in paginated_responses.pages:
