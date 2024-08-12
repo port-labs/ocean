@@ -7,12 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.1.100 (2024-08-07)
-==================
+0.1.100 (2024-08-11)
+====================
 
 ### Improvements
 
-- Added support for exporting files (0.1.100)
+- Bumped ocean version to ^0.9.12 (#1)
 
 
 0.1.99 (2024-08-05)
