@@ -601,9 +601,8 @@ class GitlabService:
             project_file_dict = project_file.asdict()
 
             if parsed_file:
-                project_file_dict["content"] = (
-                    parsed_file  # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
-                )
+               # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
+                project_file_dict["content"] = parsed_file
 
             return {"file": project_file_dict, "repo": project.asdict()}
         except Exception as e:
