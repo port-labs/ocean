@@ -138,13 +138,13 @@ jobs:
         run: |
           # Temporary file
           temp_file="temp.yaml"
-          
+
           # Output file name
           index_file="index.json"
-          
+
           # AWS S3 bucket details
           aws_s3_bucket="ocean-registry"
-          
+
           # Fetch existing index file or create empty one of not exists
           if aws s3 ls "s3://$aws_s3_bucket/$index_file" > /dev/null 2>&1; then
             aws s3 cp "s3://$aws_s3_bucket/$index_file" $index_file
@@ -153,39 +153,38 @@ jobs:
             echo "Index file does not exist in the S3 bucket, Creating new one..."
             echo "[]" > "$index_file"
           fi
-          
+
           # Find all ocean-spec.yaml files under the specified directory
           find integrations/*/.port -type f -name "spec.yaml" > file_list.txt
-          
+
           while IFS= read -r file; do
           integration_dir=$(dirname "$file")
           integration_name=$(echo "$integration_dir" | awk -F'/' '{print $2}')
-          
+
           # Extract the type for pyproject.toml
           type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
-          
+
           # Extract the version from pyproject.toml
           version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
-          
-          
+
           integration_spec="$integration_name-$version.json"
           integration_dest="$integration_name/$integration_spec"
           integration_legacy_dest="$integration_name.json" # TODO: legacy support, remove once not in use
-          
+
           # Convert YAML to JSON
           yq -o json "$file" > "$temp_file"
-          
+
           # Add version attribute
           jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" > "$integration_spec"
-          
+
           # Upload integration's version manifest to s3
           aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_dest"
           aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_legacy_dest" # TODO: legacy support, remove once not in use
           echo "Successfully uploaded $integration_spec to s3 bucket."
-          
+
           # Get the latest version of the current integration
           latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
-          
+
           # Add integration's spec to global index file
           regexp="^[0-9.]+$"
           if [[ ! "$latest_version" ]]; then
@@ -199,7 +198,7 @@ jobs:
             mv "$temp_file" "$index_file"
           fi
           done < file_list.txt
-          
+
           # Upload global index file to s3
           aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
           echo "Successfully uploaded $index_file to s3 bucket."
