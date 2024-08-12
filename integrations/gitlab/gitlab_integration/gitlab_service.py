@@ -29,7 +29,7 @@ from port_ocean.core.models import Entity
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
-PROJECT_FILES_BATCH_SIZE = 25
+PROJECT_FILES_BATCH_SIZE = 10
 
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import (
@@ -190,7 +190,6 @@ class GitlabService:
         # If `repos` selector is None or empty, we process all projects
         if not repos:
             return True
-        # Otherwise, only process projects that are in the `repos` list
         return project.name in repos
 
     def get_root_groups(self) -> List[Group]:
@@ -580,7 +579,7 @@ class GitlabService:
         """
         if file.size > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
             logger.warning(
-                f"File {file.file_path} is too large to be processed. Maximum size allowed is 1MB. Given size of file: {file.size}"
+                f"File {file.file_path} is too large to be processed. Maximum size allowed is 1MB. Actual size of file: {file.size}"
             )
             return None
         try:

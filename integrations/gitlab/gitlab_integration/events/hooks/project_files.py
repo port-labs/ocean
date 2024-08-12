@@ -20,7 +20,6 @@ class ProjectFiles(ProjectHandler):
     system_events = ["push"]
 
     async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
-        before, after, ref = body.get("before"), body.get("after"), body.get("ref")
         added_files = [
             added_file
             for commit in body.get("commits", [])
@@ -38,11 +37,6 @@ class ProjectFiles(ProjectHandler):
         ]
         changed_files = list(set(added_files + modified_files))
 
-        if before is None or after is None or ref is None:
-            raise ValueError(
-                "Invalid push hook. Missing one or more of the required fields (before, after, ref)"
-            )
-
         resource_configs = typing.cast(
             GitlabPortAppConfig, event.port_app_config
         ).resources
@@ -56,8 +50,8 @@ class ProjectFiles(ProjectHandler):
             )
         ]
         if not matching_resource_configs:
-            logger.info(
-                "Resource kind was not found in the config mapping, please update your config mapping to include the file kind"
+            logger.debug(
+                "Could not find file kind to handle the push event"
             )
             return
 
@@ -76,7 +70,7 @@ class ProjectFiles(ProjectHandler):
                     gitlab_project, changed_files, matched_file_paths
                 )
                 await self._process_removed_files(
-                    gitlab_project, removed_files, selector.files.path
+                    gitlab_project, removed_files, selector.files.path, body["before"]
                 )
 
     async def _process_modified_files(
@@ -97,15 +91,19 @@ class ProjectFiles(ProjectHandler):
                     await ocean.register_raw(ObjectKind.FILE, [file_data])
 
     async def _process_removed_files(
-        self, project: Project, removed_files: list[str], selector_path: str
+        self, project: Project, removed_files: list[str],  selector_path: str, commit_id_before_push: str
     ) -> None:
         """
         Process unregister the removed files.
         """
         for removed_file in removed_files:
-            ## after a file in GitLab, we can't get it's content using the project.files.get() api. The way to still delete the file from Port is to use the file_path. This will look for the file in the Port database and delete it according to the mapping with the repo.
+            # after a file in GitLab is deleted, we can't get it's content using the list repository tree API since it returns the current files. But we can still get the file by using the commit ID just before it was deleted.
             if does_pattern_apply(selector_path, removed_file):
-                await ocean.unregister_raw(
-                    ObjectKind.FILE,
-                    [{"file": {"file_path": removed_file}, "repo": project.asdict()}],
+                file_data = self.gitlab_service.get_and_parse_single_file(
+                    project, removed_file, commit_id_before_push
                 )
+                if file_data:
+                    await ocean.unregister_raw(
+                        ObjectKind.FILE,
+                        [file_data]
+                    )
