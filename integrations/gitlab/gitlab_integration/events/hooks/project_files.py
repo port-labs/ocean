@@ -50,9 +50,7 @@ class ProjectFiles(ProjectHandler):
             )
         ]
         if not matching_resource_configs:
-            logger.debug(
-                "Could not find file kind to handle the push event"
-            )
+            logger.debug("Could not find file kind to handle the push event")
             return
 
         for resource_config in matching_resource_configs:
@@ -84,14 +82,18 @@ class ProjectFiles(ProjectHandler):
         """
         for modified_file in modified_files:
             if modified_file in matched_file_paths:
-                file_data = self.gitlab_service.get_and_parse_single_file(
+                file_data = await self.gitlab_service.get_and_parse_single_file(
                     gitlab_project, modified_file, gitlab_project.default_branch
                 )
                 if file_data:
                     await ocean.register_raw(ObjectKind.FILE, [file_data])
 
     async def _process_removed_files(
-        self, project: Project, removed_files: list[str],  selector_path: str, commit_id_before_push: str
+        self,
+        project: Project,
+        removed_files: list[str],
+        selector_path: str,
+        commit_id_before_push: str,
     ) -> None:
         """
         Process unregister the removed files.
@@ -99,11 +101,8 @@ class ProjectFiles(ProjectHandler):
         for removed_file in removed_files:
             # after a file in GitLab is deleted, we can't get it's content using the list repository tree API since it returns the current files. But we can still get the file by using the commit ID just before it was deleted.
             if does_pattern_apply(selector_path, removed_file):
-                file_data = self.gitlab_service.get_and_parse_single_file(
+                file_data = await self.gitlab_service.get_and_parse_single_file(
                     project, removed_file, commit_id_before_push
                 )
                 if file_data:
-                    await ocean.unregister_raw(
-                        ObjectKind.FILE,
-                        [file_data]
-                    )
+                    await ocean.unregister_raw(ObjectKind.FILE, [file_data])

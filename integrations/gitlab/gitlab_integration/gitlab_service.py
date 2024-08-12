@@ -591,16 +591,19 @@ class GitlabService:
             except yaml.YAMLError:
                 return file.decode().decode("utf-8")
 
-    def get_and_parse_single_file(
+    async def get_and_parse_single_file(
         self, project: Project, file_path: str, branch: str
     ) -> dict[str, Any] | None:
         try:
-            project_file = project.files.get(file_path=file_path, ref=branch)
+            project_file = await AsyncFetcher.fetch_single(
+                project.files.get, file_path, branch
+            )
+            project_file = typing.cast(ProjectFile, project_file)
             parsed_file = self._parse_file_content(project_file)
             project_file_dict = project_file.asdict()
 
             if parsed_file:
-               # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
+                # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
                 project_file_dict["content"] = parsed_file
 
             return {"file": project_file_dict, "repo": project.asdict()}
@@ -620,24 +623,21 @@ class GitlabService:
                 f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
             )
             files = []
+            tasks = []
             for file_path in file_paths:
-                try:
-                    file_data = self.get_and_parse_single_file(
-                        project, file_path, branch
-                    )
-                    if file_data:
-                        files.append(file_data)
+                tasks.append(self.get_and_parse_single_file(project, file_path, branch))
 
-                    # Check if the batch size is reached
-                    if len(files) == PROJECT_FILES_BATCH_SIZE:
-                        yield files
-                        files = []  # Reset the batch
-                except Exception as e:
-                    logger.error(
-                        f"Failed to get content for file {file_path} in project {project.path_with_namespace}. error={e}"
-                    )
+                if len(tasks) == PROJECT_FILES_BATCH_SIZE:
+                    results = await asyncio.gather(*tasks)
+                    files.extend([file_data for file_data in results if file_data])
+                    yield files
+                    files = []
+                    tasks = []
 
-            if files: 
+            # Process the remaining files
+            if tasks:
+                results = await asyncio.gather(*tasks)
+                files.extend([file_data for file_data in results if file_data])
                 yield files
         except Exception as e:
             logger.error(
