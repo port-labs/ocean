@@ -46,7 +46,7 @@ def _is_retryable(error: Exception) -> bool:
 
 def _log_retry_attempt(error: Exception) -> None:
     logger.warning(
-        f"Retrying due to {error.__class__.__name__} error: {exc}",
+        f"Retrying due to {error.__class__.__name__} error: {error}",
     )
 
 
