@@ -53,7 +53,7 @@ async def setup_application() -> None:
 
 
 @ocean.on_resync()
-async def on_global_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     octopus_client = await init_client()
     async for resource_batch in octopus_client.get_paginated_resources(kind):
         logger.info(f"Received length  {len(resource_batch)} of {kind} ")
