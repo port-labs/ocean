@@ -40,7 +40,7 @@ _MULTIPLIER_FOR_EXPONENTIAL_BACKOFF = 2.0
 _TOTAL_TIME_ALLOWED_FOR_RETRIES = 300.0
 
 
-def _is_retryable(exc: Exception) -> bool:
+def _is_retryable(error: Exception) -> bool:
     return isinstance(exc, _RETRIABLE_ERROR_TYPES)
 
 
