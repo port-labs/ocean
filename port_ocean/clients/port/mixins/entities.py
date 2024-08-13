@@ -29,7 +29,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> None:
+    ) -> Entity:
         validation_only = request_options["validation_only"]
         async with self.semaphore:
             logger.debug(
@@ -57,6 +57,12 @@ class EntityClientMixin:
                 f"blueprint: {entity.blueprint}"
             )
         handle_status_code(response, should_raise)
+        result = response.json()
+        result_entity = Entity.parse_obj(result)
+        # Set the results of the search relation and identifier to the entity
+        entity.identifier = result_entity.identifier or entity.identifier
+        entity.relations = result_entity.relations or entity.relations
+        return entity
 
     async def batch_upsert_entities(
         self,
@@ -64,8 +70,8 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> None:
-        await asyncio.gather(
+    ) -> list[Entity]:
+        modified_entities_results = await asyncio.gather(
             *(
                 self.upsert_entity(
                     entity,
@@ -75,8 +81,19 @@ class EntityClientMixin:
                 )
                 for entity in entities
             ),
-            return_exceptions=True,
+            return_exceptions=should_raise,
         )
+        entity_results = [
+            entity for entity in modified_entities_results if isinstance(entity, Entity)
+        ]
+        if not should_raise:
+            return entity_results
+
+        for entity_result in modified_entities_results:
+            if isinstance(entity_result, Exception):
+                raise entity_result
+
+        return entity_results
 
     async def delete_entity(
         self,
