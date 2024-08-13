@@ -19,6 +19,7 @@ mypy = "^1.3.0"
 ruff = "^0.0.278"
 types-pyyaml = "^6.0.12.10"
 towncrier = "^23.6.0"
+pytest-xdist = "^3.6.1"
 
 [tool.towncrier]
 directory = "changelog"
