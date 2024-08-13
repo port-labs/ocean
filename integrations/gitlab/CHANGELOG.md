@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Changed default action creation json to new v2 format (#1)
+- Changed default action creation json to new v2 format
 
 
 0.1.100 (2024-08-11)
