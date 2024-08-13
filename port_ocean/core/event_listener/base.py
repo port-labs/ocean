@@ -49,6 +49,17 @@ class BaseEventListener:
         """
         await ocean.app.update_state_after_scheduled_sync()
 
+    async def _resync(
+        self,
+        resync_args: dict[Any, Any],
+    ) -> None:
+        """
+        Triggers the "on_resync" event.
+        """
+        await self._before_resync()
+        await self.events["on_resync"](resync_args)
+        await self._after_resync()
+
 
 class EventListenerSettings(BaseOceanModel, extra=Extra.allow):
     type: str

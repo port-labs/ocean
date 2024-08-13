@@ -118,9 +118,7 @@ class OnceEventListener(BaseEventListener):
         async def resync_and_exit() -> None:
             logger.info("Once event listener started")
             try:
-                await self._before_resync()
-                await self.events["on_resync"]({})
-                await self._after_resync()
+                await self._resync({})
             except Exception:
                 # we catch all exceptions here to make sure the application will exit gracefully
                 logger.exception("Error occurred while resyncing")
