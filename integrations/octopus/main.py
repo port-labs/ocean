@@ -70,7 +70,7 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     event_category = payload.get("Category", "")
     action = "unregister" if "Deleted" in event_category else "register"
     client = await init_client()
-    for entity_id in related_document_ids:
+    for document_id in related_document_ids:
         logger.info(f"Received webhook event with ID: {entity_id}")
         entity_prefix = entity_id.split("-")[0].lower()
         if entity_prefix in TRACKED_EVENTS:
