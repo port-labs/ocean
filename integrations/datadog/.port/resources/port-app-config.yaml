@@ -4,7 +4,6 @@ resources:
   - kind: host
     selector:
       query: "true"
-      enrichWithDashboards: []
     port:
       entity:
         mappings:
@@ -21,10 +20,7 @@ resources:
             sources: .sources
             cpu_cores: .meta.cpuCores
             agent_version: .meta.agent_version
-            metrics_availability: .__metrics_availability
             tags: .tags_by_source
-          relations:
-            availableMetrics: '[.__available_metrics[].widget_id | tostring]'
   - kind: monitor
     selector:
       query: "true"
@@ -46,7 +42,6 @@ resources:
   - kind: service
     selector:
       query: "true"
-      enrichWithDashboards: []
     port:
       entity:
         mappings:
@@ -60,12 +55,9 @@ resources:
             tags: .attributes.schema.tags
             type: .attributes.schema.type
             links: .attributes.schema.links | map(.url)
-            metrics_availability: .__metrics_availability
             owners: >-
               [.attributes.schema.contacts[] | select(.type == "email") |
               .contact]
-          relations:
-            availableMetrics: '[.__available_metrics[].widget_id | tostring]'
   - kind: slo
     selector:
       query: "true"
@@ -110,33 +102,41 @@ resources:
             timeframe: .__timeframe
           relations:
             slo: .slo.id
-  - kind: dashboard
+  - kind: metric
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: .id | tostring
-          title: .title
-          blueprint: '"datadogDashboard"'
+          identifier: .metric
+          title: .short_name // .metric
+          blueprint: '"datadogMetric"'
           properties:
-            url: .url
             description: .description
-            is_read_only: .is_read_only
-            created_at: .created_at
-            modified_at: .modified_at
-            author_handle: .author_handle
-  - kind: dashboardMetric
+            short_name: .short_name
+            type: .type
+            unit: .unit
+            per_unit: .per_unit
+            statsd_interval: .statsd_interval
+            integration: .integration
+  - kind: serviceMetric
     selector:
       query: "true"
+      metric: "avg:system.mem.used"
+      env: prod
+      service: '*'
     port:
       entity:
         mappings:
-          blueprint: '"datadogDashboardMetric"'
-          identifier: .id | tostring
-          title: .definition | if (.title == "") then "Untitled Widget" else .title end
+          blueprint: '"datadogServiceMetric"'
+          identifier: .__query_id
+          title: .query
           properties:
-            type: .definition.type
-            queries: .definition.requests[0].queries
+            series: .series
+            values: .values
+            res_type: .res_type
+            from_date: '.from_date / 1000 | todate'
+            to_date: '.to_date / 1000 | todate'
           relations:
-            dashboard: .dashboard_id | tostring
+            service: .__service
+            metric: .__metric

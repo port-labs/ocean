@@ -1,76 +1,5 @@
 [
   {
-    "identifier": "datadogDashboard",
-    "description": "This blueprint represents a Datadog dashboard.",
-    "title": "Datadog Dashboard",
-    "icon": "Datadog",
-    "schema": {
-      "properties": {
-        "description": {
-          "title": "Description",
-          "type": "string"
-        },
-        "url": {
-          "title": "URL",
-          "type": "string",
-          "format": "url"
-        },
-        "is_read_only": {
-          "title": "Read Only",
-          "type": "boolean"
-        },
-        "created_on": {
-          "title": "Created On",
-          "type": "string",
-          "format": "date-time"
-        },
-        "modified_on": {
-          "title": "Modified On",
-          "type": "string",
-          "format": "date-time"
-        },
-        "author_handle": {
-          "title": "Author Handle",
-          "type": "string"
-        }
-      }
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
-  },
-  {
-    "identifier": "datadogDashboardMetric",
-    "description": "This blueprint represents a widget (collection of metrics) within a Datadog dashboard.",
-    "title": "Datadog Dashboard Metric",
-    "icon": "Datadog",
-    "schema": {
-      "properties": {
-        "type": {
-          "title": "The widget type",
-          "type": "string"
-        },
-        "queries": {
-          "title": "Queries",
-          "type": "array",
-          "items": {
-            "type": "object"
-          }
-        }
-      }
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "dashboard": {
-        "target": "datadogDashboard",
-        "description": "The dashboard this metric belongs to"
-      }
-    }
-  },
-  {
     "identifier": "datadogHost",
     "description": "This blueprint represents a datadog host",
     "title": "Datadog Host",
@@ -126,26 +55,13 @@
           "title": "Tags",
           "type": "object",
           "description": "Tags associated with the host."
-        },
-        "metrics_availability": {
-          "title": "Metric Availability",
-          "type": "object",
-          "description": "Metrics associated with the host"
         }
       },
       "required": []
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {
-      "availableMetrics": {
-        "title": "Available Metrics",
-       "description": "The metrics associated with this host that have data available",
-        "target": "datadogDashboardMetric",
-        "required": false,
-        "many": true
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "datadogMonitor",
@@ -279,11 +195,6 @@
             "type": "string",
             "format": "url"
           }
-        },
-        "metrics_availability": {
-          "title": "Metric Availability",
-          "type": "object",
-          "description": "Metrics associated with the service"
         }
       },
       "required": []
@@ -291,15 +202,7 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {
-      "availableMetrics": {
-        "title": "Available Metrics",
-        "description": "The metrics associated with this service that have data available",
-        "target": "datadogDashboardMetric",
-        "required": false,
-        "many": true
-      }
-    }
+    "relations": {}
   },
   {
     "identifier": "datadogSlo",
@@ -438,6 +341,108 @@
         "title": "SLO",
         "description": "The SLO to which this history belongs to",
         "target": "datadogSlo",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "datadogMetric",
+    "description": "This blueprint represents a Datadog metric",
+    "title": "Datadog Metric",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "short_name": {
+          "type": "string",
+          "title": "Short Name"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type"
+        },
+        "unit": {
+          "type": "string",
+          "title": "Unit"
+        },
+        "per_unit": {
+          "type": "string",
+          "title": "Per Unit"
+        },
+        "statsd_interval": {
+          "type": "number",
+          "title": "StatsD Interval"
+        },
+        "integration": {
+          "type": "string",
+          "title": "Integration"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "datadogServiceMetric",
+    "description": "This blueprint represents a Datadog service metric",
+    "title": "Datadog Service Metric",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "query": {
+          "type": "string",
+          "title": "Query",
+          "description": "The Datadog query used to retrieve this metric"
+        },
+        "series": {
+          "type": "array",
+          "title": "Series",
+          "description": "Array containing detailed information about the metric series"
+        },
+        "values": {
+          "type": "array",
+          "title": "Values",
+          "description": " (Deprecated) Array of values returned by the query"
+        },
+        "res_type": {
+          "type": "string",
+          "title": "Response Type",
+          "description": "The type of response from the Datadog API"
+        },
+        "from_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "From Date",
+          "description": "Unix timestamp of the start of the queried time period"
+        },
+        "to_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "To Date",
+          "description": "Unix timestamp of the end of the queried time period"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "metric": {
+        "title": "Metric",
+        "description": "The metric associated with this query",
+        "target": "datadogMetric",
+        "required": false,
+        "many": false
+      },
+      "service": {
+        "title": "Service",
+        "description": "The service associated with this query",
+        "target": "datadogService",
         "required": false,
         "many": false
       }

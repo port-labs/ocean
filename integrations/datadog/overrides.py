@@ -34,11 +34,9 @@ class SLOHistoryResourceConfig(ResourceConfig):
 
 
 class DatadogResourceSelector(Selector):
-    dashboard_ids_to_enrich_with: list[str] = Field(
-        alias="enrichWithDashboards",
-        description="List of dashboard ids to enrich the data with",
-        default_factory=list,
-    )
+    metric: str = Field(alias="metric", default="")
+    env: str = Field(alias="env", default="")
+    service: str = Field(alias="service", default="")
 
 
 class DatadogResourceConfig(ResourceConfig):

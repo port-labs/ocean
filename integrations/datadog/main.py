@@ -17,8 +17,8 @@ class ObjectKind(StrEnum):
     SLO = "slo"
     SERVICE = "service"
     SLO_HISTORY = "sloHistory"
-    DASHBOARD = "dashboard"
-    DASHBOARD_METRIC = "dashboardMetric"
+    METRIC = "metric"
+    SERVICE_METRIC = "serviceMetric"
 
 
 def init_client() -> DatadogClient:
@@ -117,22 +117,27 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield enriched_services
 
 
-@ocean.on_resync(ObjectKind.DASHBOARD)
-async def on_resync_dashboards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync()
+async def on_resync_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
-    async for dashboards in dd_client.get_dashboards():
-        logger.info(f"Received batch with {len(dashboards)} dashboards")
-        yield dashboards
+    params = typing.cast(DatadogResourceConfig, event.resource_config).selector
 
+    if kind == ObjectKind.SERVICE_METRIC:
+        logger.info(
+            f"Fetching metrics for {params.metric} for service {params.service}"
+        )
 
-@ocean.on_resync(ObjectKind.DASHBOARD_METRIC)
-async def on_resync_dashboard_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    dd_client = init_client()
+        metric_name = dd_client.extract_metric_name(params.metric)
+        metric_metadata = await dd_client.get_metric_metadata(metric_name)
+        metric_metadata["metric"] = metric_name
+        await ocean.register_raw(ObjectKind.METRIC, [metric_metadata])
 
-    async for dashboard_metrics in dd_client.get_dashboard_metrics():
-        logger.info(f"Received batch with {len(dashboard_metrics)} dashboard metrics")
-        yield dashboard_metrics
+        async for metrics in dd_client.get_metrics(
+            params.metric, params.env, params.service
+        ):
+            logger.info(f"Received batch with {len(metrics)} metrics")
+            yield metrics
 
 
 # https://docs.datadoghq.com/integrations/webhooks/
