@@ -1,16 +1,10 @@
 from typing import Any
 import typing
 
-from google.api_core.exceptions import (
-    NotFound,
-    PermissionDenied,
-    TooManyRequests,
-    ServiceUnavailable,
-)
+from google.api_core.exceptions import NotFound, PermissionDenied
 from google.cloud.asset_v1 import (
     AssetServiceAsyncClient,
 )
-from google.api_core.retry_async import AsyncRetry
 from google.cloud.asset_v1.services.asset_service import pagers
 from google.cloud.resourcemanager_v3 import (
     FoldersAsyncClient,
@@ -31,33 +25,7 @@ from gcp_core.utils import (
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
 )
-
-# Retry policy constants
-_RETRIABLE_ERROR_TYPES = (TooManyRequests, ServiceUnavailable)
-_INITIAL_DELAY_BEFORE_FIRST_RETRY_ATTEMPT = 1.0
-_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS = 60.0
-_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF = 2.0
-_TOTAL_TIME_ALLOWED_FOR_RETRIES = 300.0
-
-
-def _is_retryable(error: Exception) -> bool:
-    return isinstance(error, _RETRIABLE_ERROR_TYPES)
-
-
-def _log_retry_attempt(error: Exception) -> None:
-    logger.warning(
-        f"Retrying due to {error.__class__.__name__} error: {error}",
-    )
-
-
-retry_policy = AsyncRetry(
-    predicate=_is_retryable,
-    on_error=_log_retry_attempt,
-    initial=_INITIAL_DELAY_BEFORE_FIRST_RETRY_ATTEMPT,
-    maximum=_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS,
-    multiplier=_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF,
-    deadline=_TOTAL_TIME_ALLOWED_FOR_RETRIES,
-)
+from gcp_core.search.utils import retry_policy
 
 
 async def search_all_resources(
