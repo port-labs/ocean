@@ -35,7 +35,7 @@ from gcp_core.utils import (
 _RETRIABLE_ERROR_TYPES = (TooManyRequests, ServiceUnavailable)
 
 
-def _is_retryable(exc: Exception) -> bool:
+def _is_retryable(error: Exception) -> bool:
     return isinstance(exc, _RETRIABLE_ERROR_TYPES)
 
 
