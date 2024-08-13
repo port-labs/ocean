@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all lint build run new test clean
+.SILENT: install install/all test/all lint build run new test clean bump/integrations bump/single-integration
 
 
 # Install dependencies
@@ -54,6 +54,8 @@ install:
 	$(ACTIVATE) && \
 	$(call install_precommit)
 
+test/all: test
+	pytest --import-mode=importlib -n auto ./port_ocean/tests ./integrations/*/tests
 
 install/all: install
 	exit_code=0; \
@@ -85,8 +87,8 @@ run: lint
 new:
 	$(ACTIVATE) && poetry run ocean new ./integrations --public
 
-test: lint
-	$(ACTIVATE) && pytest
+test:
+	$(ACTIVATE) && pytest -vv -n auto --ignore-glob=./integrations/* ./port_ocean/tests
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
