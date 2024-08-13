@@ -82,7 +82,7 @@ class OctopusClient:
             },
             "IsDisabled": False,
             "Name": f"Port Subscription - {space_id}",
-            "SpaceId": f"{space_id}",
+            "SpaceId": space_id,
         }
         logger.info(
             f"Creating Webhook Subscription - '{subscription_data['Name']}' in '{space_id}'"
