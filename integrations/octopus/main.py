@@ -22,6 +22,15 @@ class ObjectKind(StrEnum):
     MACHINE = "machine"
 
 
+@ocean.on_start()
+async def on_start() -> None:
+    logger.info("Starting Port Ocean Octopus integration")
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+    await setup_application()
+
+
 async def init_client() -> OctopusClient:
     client = OctopusClient(
         ocean.integration_config["server_url"],
@@ -70,29 +79,20 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     event_category = payload.get("Category", "")
     action = "unregister" if "Deleted" in event_category else "register"
     client = await init_client()
-    for document_id in related_document_ids:
-        logger.info(f"Received webhook event with ID: {entity_id}")
-        entity_prefix = entity_id.split("-")[0].lower()
-        if entity_prefix in TRACKED_EVENTS:
-            kind = ObjectKind(entity_prefix.rstrip("s"))
+    for resource_id in related_document_ids:
+        logger.info(f"Received webhook event with ID: {resource_id}")
+        resource_prefix = resource_id.split("-")[0].lower()
+        if resource_prefix in TRACKED_EVENTS:
+            kind = ObjectKind(resource_prefix.rstrip("s"))
             try:
                 if action == "register":
-                    entity_data = await client.get_single_entity(
-                        entity_prefix, entity_id
+                    resource_data = await client.get_single_resource(
+                        resource_prefix, resource_id
                     )
-                    await ocean.register_raw(kind, [entity_data])
+                    await ocean.register_raw(kind, [resource_data])
                 else:
-                    await ocean.unregister_raw(kind, [{"id": entity_id}])
+                    await ocean.unregister_raw(kind, [{"id": resource_id}])
             except Exception as e:
-                logger.error(f"Failed to process entity {entity_id}: {e}")
+                logger.error(f"Failed to process resource {resource_id}: {e}")
     logger.info("Webhook event processed")
     return {"ok": True}
-
-
-@ocean.on_start()
-async def on_start() -> None:
-    logger.info("Starting Port Ocean Octopus integration")
-    if ocean.event_listener_type == "ONCE":
-        logger.info("Skipping webhook creation because the event listener is ONCE")
-        return
-    await setup_application()

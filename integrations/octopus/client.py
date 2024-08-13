@@ -4,6 +4,7 @@ from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Timeout
 
 PAGE_SIZE = 50
+WEBHOOK_TIMEOUT = "00:00:50"
 
 
 class OctopusClient:
@@ -60,13 +61,13 @@ class OctopusClient:
             params["skip"] += PAGE_SIZE
             page += 1
 
-    async def get_single_entity(
-        self, entity_kind: str, entity_id: str
+    async def get_single_resource(
+        self, resource_kind: str, resource_id: str
     ) -> dict[str, Any]:
-        """Get a single entity by kind and ID."""
-        return await self._send_api_request(f"{entity_kind}/{entity_id}")
+        """Get a single resource by kind and ID."""
+        return await self._send_api_request(f"{resource_kind}/{resource_id}")
 
-    async def get_all_spaces(self) -> list[dict[str, Any]]:
+    async def _get_all_spaces(self) -> list[dict[str, Any]]:
         """Get all spaces in the Octopus instance."""
         return await self._send_api_request("spaces/all")
 
@@ -78,7 +79,7 @@ class OctopusClient:
         subscription_data = {
             "EventNotificationSubscription": {
                 "WebhookURI": f"{app_host}/integration/webhook",
-                "WebhookTimeout": "00:00:50",
+                "WebhookTimeout": WEBHOOK_TIMEOUT,
             },
             "IsDisabled": False,
             "Name": f"Port Subscription - {space_id}",
@@ -93,7 +94,7 @@ class OctopusClient:
 
     async def create_webhook_subscription(self, app_host: str) -> dict[str, Any]:
         """Create a new subscription for all spaces."""
-        for space in await self.get_all_spaces():
+        for space in await self._get_all_spaces():
             try:
                 response = await self._create_subscription(space["Id"], app_host)
                 if response.get("Id"):

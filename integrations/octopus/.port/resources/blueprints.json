@@ -2,7 +2,7 @@
     {
         "identifier": "octopusSpace",
         "title": "Octopus Space",
-        "icon": "octopus",
+        "icon": "Octopus",
         "description": "A space in Octopus Deploy",
         "schema": {
             "properties": {
@@ -25,7 +25,7 @@
     {
         "identifier": "octopusProject",
         "title": "Octopus Project",
-        "icon": "octopus",
+        "icon": "Octopus",
         "description": "An Octopus project",
         "schema": {
             "properties": {
@@ -71,7 +71,7 @@
     {
         "identifier": "octopusRelease",
         "title": "Octopus Release",
-        "icon": "octopus",
+        "icon": "Octopus",
         "description": "A release in Octopus Deploy",
         "schema": {
             "properties": {
@@ -118,7 +118,7 @@
     {
         "identifier": "octopusDeployment",
         "title": "Octopus Deployment",
-        "icon": "octopus",
+        "icon": "Octopus",
         "description": "A deployment in Octopus Deploy",
         "schema": {
             "properties": {
@@ -177,7 +177,7 @@
     {
         "identifier": "octopusMachine",
         "title": "Octopus Machine",
-        "icon": "octopus",
+        "icon": "Octopus",
         "description": "A deployment target in Octopus Deploy",
         "schema": {
             "properties": {
