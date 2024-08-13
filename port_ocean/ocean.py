@@ -98,7 +98,7 @@ class Ocean:
                 "status": "running",
                 "last_resync_start": self.last_resync_start.timestamp(),
                 "last_resync_end": None,
-                "interval_in minuets": _interval,
+                "interval_in_minuets": _interval,
                 "next_resync": self._calculate_next_scheduled_resync(
                     _interval, custom_start_time
                 ),
@@ -122,7 +122,7 @@ class Ocean:
                     else None
                 ),
                 "last_resync_end": datetime.datetime.now().timestamp(),
-                "interval_in minuets": _interval,
+                "interval_in_minuets": _interval,
                 "next_resync": self._calculate_next_scheduled_resync(
                     _interval, custom_start_time
                 ),
