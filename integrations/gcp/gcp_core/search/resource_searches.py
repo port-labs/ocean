@@ -41,12 +41,12 @@ _TOTAL_TIME_ALLOWED_FOR_RETRIES = 300.0
 
 
 def _is_retryable(error: Exception) -> bool:
-    return isinstance(exc, _RETRIABLE_ERROR_TYPES)
+    return isinstance(error, _RETRIABLE_ERROR_TYPES)
 
 
-def _log_retry_attempt(exc: Exception) -> None:
+def _log_retry_attempt(error: Exception) -> None:
     logger.warning(
-        f"Retrying due to {exc.__class__.__name__} error: {exc}",
+        f"Retrying due to {error.__class__.__name__} error: {exc}",
     )
 
 
