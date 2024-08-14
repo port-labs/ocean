@@ -12,7 +12,10 @@ from gitlab_integration.models.webhook_groups_override_config import (
     WebhookMappingConfig,
 )
 from gitlab_integration.events.setup import setup_application
-from gitlab_integration.git_integration import GitlabResourceConfig
+from gitlab_integration.git_integration import (
+    GitlabResourceConfig,
+    GitLabFilesResourceConfig,
+)
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
@@ -158,6 +161,30 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             project, folder_selector
                         ):
                             yield folders_batch
+
+
+@ocean.on_resync(ObjectKind.FILE)
+async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    for service in get_cached_all_services():
+        gitlab_resource_config: GitLabFilesResourceConfig = typing.cast(
+            "GitLabFilesResourceConfig", event.resource_config
+        )
+        if not isinstance(gitlab_resource_config, GitLabFilesResourceConfig):
+            return
+
+        selector = gitlab_resource_config.selector
+
+        if not (selector.files and selector.files.path):
+            logger.warning("No path provided in the selector, skipping fetching files")
+            return
+
+        async for projects_batch in service.get_all_projects():
+            for project in projects_batch:
+                if service.should_process_project(project, selector.files.repos):
+                    async for files_batch in service.get_all_files_in_project(
+                        project, selector.files.path
+                    ):
+                        yield files_batch
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
