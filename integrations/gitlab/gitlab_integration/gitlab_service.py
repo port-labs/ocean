@@ -95,13 +95,17 @@ class GitlabService:
         return project.commits.get(head).diff()
 
     async def _get_file_paths(
-        self, project: Project, path: str | List[str], commit_sha: str
+        self,
+        project: Project,
+        path: str | List[str],
+        commit_sha: str,
+        return_files_only: bool = False,
     ) -> list[str]:
         if not isinstance(path, list):
             path = [path]
         try:
             files = await AsyncFetcher.fetch_repository_tree(
-                project, ref=commit_sha, recursive=True, get_all=True
+                project, ref=commit_sha, recursive=True, all_items=True
             )
         except GitlabError as err:
             if err.response_code != 404:
@@ -114,7 +118,8 @@ class GitlabService:
         return [
             file["path"]
             for file in files
-            if does_pattern_apply(path, file["path"] or "")
+            if (not return_files_only or file["type"] == "blob")
+            and does_pattern_apply(path, file["path"] or "")
         ]
 
     def _get_entities_from_git(
@@ -622,7 +627,7 @@ class GitlabService:
     ) -> typing.AsyncIterator[List[dict[str, Any]]]:
         branch = project.default_branch
         try:
-            file_paths = await self._get_file_paths(project, path, branch)
+            file_paths = await self._get_file_paths(project, path, branch, True)
             logger.debug(
                 f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
             )

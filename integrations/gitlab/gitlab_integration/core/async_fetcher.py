@@ -153,14 +153,18 @@ class AsyncFetcher:
         path: str = "",
         ref: str = "",
         recursive: bool = False,
+        all_items: bool = False,
         **kwargs: Any,
     ) -> GitlabList | List[Dict[str, Any]]:
         with ThreadPoolExecutor() as executor:
-            return await get_event_loop().run_in_executor(
-                executor,
-                project.repository_tree,
-                path,
-                ref,
-                recursive,
-                **kwargs,
-            )
+
+            def fetch_func():
+                return project.repository_tree(
+                    path=path,
+                    ref=ref,
+                    recursive=recursive,
+                    all=all_items,
+                    **kwargs,
+                )
+
+            return await get_event_loop().run_in_executor(executor, fetch_func)
