@@ -105,7 +105,7 @@ class GitlabService:
             path = [path]
         try:
             files = await AsyncFetcher.fetch_repository_tree(
-                project, ref=commit_sha, recursive=True, all_items=True
+                project, ref=commit_sha, recursive=True, get_all=True
             )
         except GitlabError as err:
             if err.response_code != 404:

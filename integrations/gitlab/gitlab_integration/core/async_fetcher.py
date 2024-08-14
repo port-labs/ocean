@@ -153,7 +153,7 @@ class AsyncFetcher:
         path: str = "",
         ref: str = "",
         recursive: bool = False,
-        all_items: bool = False,
+        get_all: bool = False,
         **kwargs: Any,
     ) -> GitlabList | List[Dict[str, Any]]:
         with ThreadPoolExecutor() as executor:
@@ -163,7 +163,7 @@ class AsyncFetcher:
                     path=path,
                     ref=ref,
                     recursive=recursive,
-                    all=all_items,
+                    all=get_all,
                     **kwargs,
                 )
 
