@@ -11,7 +11,9 @@ import asyncio
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
-
+# Maximum number of work item IDs allowed in a single API request 
+# (based on Azure DevOps API limitations) https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1&tabs=HTTP
+MAX_WORK_ITEMS_PER_REQUEST = 200
 
 class AzureDevopsClient(HTTPBaseClient):
     def __init__(self, organization_url: str, personal_access_token: str) -> None:
@@ -137,7 +139,6 @@ class AzureDevopsClient(HTTPBaseClient):
                     policy["__repository"] = repo
                 yield repo_policies
 
-    @cache_iterator_result()
     async def generate_work_items(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
@@ -163,9 +164,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 # 2. Fetch work items using the IDs (in batches if needed)
                 work_items = []
                 for i in range(
-                    0, len(work_item_ids), 200
+                    0, len(work_item_ids), MAX_WORK_ITEMS_PER_REQUEST
                 ):  # Process in batches of up to 200 IDs
-                    batch_ids = work_item_ids[i : i + 200]
+                    batch_ids = work_item_ids[i : i + MAX_WORK_ITEMS_PER_REQUEST]
                     work_items_url = f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/workitems"
                     params = {
                         "ids": ",".join(map(str, batch_ids)),
