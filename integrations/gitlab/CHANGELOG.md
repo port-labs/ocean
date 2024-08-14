@@ -15,6 +15,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed issue with webhook not syncing repository languages
 
 
+0.1.103 (2024-08-14)
+====================
+
+### Improvements
+
+- Added support for exporting files 
+
+
 0.1.102 (2024-08-13)
 ====================
 
