@@ -100,11 +100,8 @@ class GitlabService:
         if not isinstance(path, list):
             path = [path]
         try:
-            # files = project.repository_tree(
-            #     ref=commit_sha, recursive=True, get_all=True
-            # )
-            files = await AsyncFetcher.fetch_single(
-                project.repository_tree, ref=commit_sha, recursive=True, get_all=True
+            files = await AsyncFetcher.fetch_repository_tree(
+                project, ref=commit_sha, recursive=True, get_all=True
             )
         except GitlabError as err:
             if err.response_code != 404:
@@ -562,11 +559,15 @@ class GitlabService:
             f'Getting entities diff for project {project.path_with_namespace}, in path "{spec_path}", before {before},'
             f" after {after}, ref {ref}"
         )
-        entities_before = await self._get_entities_by_commit(project, spec_path, before, ref)
+        entities_before = await self._get_entities_by_commit(
+            project, spec_path, before, ref
+        )
 
         logger.info(f"Found {len(entities_before)} entities in the previous state")
 
-        entities_after = await self._get_entities_by_commit(project, spec_path, after, ref)
+        entities_after = await self._get_entities_by_commit(
+            project, spec_path, after, ref
+        )
 
         logger.info(f"Found {len(entities_after)} entities in the current state")
 
