@@ -32,7 +32,7 @@ def init_client() -> DatadogClient:
 @ocean.on_resync(ObjectKind.HOST)
 async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
-    
+
     async for hosts in dd_client.get_hosts():
         logger.info(f"Received batch with {len(hosts)} hosts")
         yield hosts

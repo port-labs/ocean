@@ -404,11 +404,6 @@
           "title": "Series",
           "description": "Array containing detailed information about the metric series"
         },
-        "values": {
-          "type": "array",
-          "title": "Values",
-          "description": " (Deprecated) Array of values returned by the query"
-        },
         "res_type": {
           "type": "string",
           "title": "Response Type",

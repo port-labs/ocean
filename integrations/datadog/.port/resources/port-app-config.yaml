@@ -133,7 +133,6 @@ resources:
           title: .query
           properties:
             series: .series
-            values: .values
             res_type: .res_type
             from_date: '.from_date / 1000 | todate'
             to_date: '.to_date / 1000 | todate'
