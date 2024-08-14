@@ -79,9 +79,7 @@ class PollingEventListener(BaseEventListener):
             if self.should_resync(last_updated_at):
                 logger.info("Detected change in integration, resyncing")
                 ocean.app.last_integration_updated_at = last_updated_at
-                running_task: Task[Any] = get_event_loop().create_task(
-                    self._resync({})  # type: ignore
-                )
+                running_task: Task[Any] = get_event_loop().create_task(self._resync({}))
                 signal_handler.register(running_task.cancel)
 
                 await running_task
