@@ -94,14 +94,17 @@ class GitlabService:
         project = self.gitlab_client.projects.get(project_id)
         return project.commits.get(head).diff()
 
-    def _get_file_paths(
+    async def _get_file_paths(
         self, project: Project, path: str | List[str], commit_sha: str
     ) -> list[str]:
         if not isinstance(path, list):
             path = [path]
         try:
-            files = project.repository_tree(
-                ref=commit_sha, recursive=True, get_all=True
+            # files = project.repository_tree(
+            #     ref=commit_sha, recursive=True, get_all=True
+            # )
+            files = await AsyncFetcher.fetch_single(
+                project.repository_tree, ref=commit_sha, recursive=True, get_all=True
             )
         except GitlabError as err:
             if err.response_code != 404:
@@ -144,10 +147,10 @@ class GitlabService:
             )
         return []
 
-    def _get_entities_by_commit(
+    async def _get_entities_by_commit(
         self, project: Project, spec: str | List["str"], commit: str, ref: str
     ) -> List[Entity]:
-        spec_paths = self._get_file_paths(project, spec, commit)
+        spec_paths = await self._get_file_paths(project, spec, commit)
         return [
             entity
             for path in spec_paths
@@ -547,7 +550,7 @@ class GitlabService:
             issues: List[Issue] = typing.cast(List[Issue], issues_batch)
             yield issues
 
-    def get_entities_diff(
+    async def get_entities_diff(
         self,
         project: Project,
         spec_path: str | List[str],
@@ -559,11 +562,11 @@ class GitlabService:
             f'Getting entities diff for project {project.path_with_namespace}, in path "{spec_path}", before {before},'
             f" after {after}, ref {ref}"
         )
-        entities_before = self._get_entities_by_commit(project, spec_path, before, ref)
+        entities_before = await self._get_entities_by_commit(project, spec_path, before, ref)
 
         logger.info(f"Found {len(entities_before)} entities in the previous state")
 
-        entities_after = self._get_entities_by_commit(project, spec_path, after, ref)
+        entities_after = await self._get_entities_by_commit(project, spec_path, after, ref)
 
         logger.info(f"Found {len(entities_after)} entities in the current state")
 
@@ -618,7 +621,7 @@ class GitlabService:
     ) -> typing.AsyncIterator[List[dict[str, Any]]]:
         branch = project.default_branch
         try:
-            file_paths = self._get_file_paths(project, path, branch)
+            file_paths = await self._get_file_paths(project, path, branch)
             logger.debug(
                 f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
             )

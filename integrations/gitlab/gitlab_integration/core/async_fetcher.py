@@ -29,6 +29,8 @@ class AsyncFetcher:
         fetch_func: Callable[
             ...,
             Union[
+                List[Any],
+                List[Dict[str, Any]],
                 RESTObject,
                 ProjectPipelineJob,
                 ProjectPipeline,
@@ -38,6 +40,7 @@ class AsyncFetcher:
             ],
         ],
         *args,
+        **kwargs,
     ) -> Union[
         RESTObject,
         RESTObject,
@@ -47,9 +50,11 @@ class AsyncFetcher:
         Project,
         Group,
         ProjectFile,
+        GitlabList,
+        List[Any]
     ]:
         with ThreadPoolExecutor() as executor:
-            return await get_event_loop().run_in_executor(executor, fetch_func, *args)
+            return await get_event_loop().run_in_executor(executor, fetch_func, *args, **kwargs)
 
     @staticmethod
     async def fetch_batch(

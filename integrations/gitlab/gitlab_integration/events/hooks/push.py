@@ -34,14 +34,16 @@ class PushHook(ProjectHandler):
         branch = config.branch or gitlab_project.default_branch
 
         if generate_ref(branch) == ref:
-            entities_before, entities_after = await AsyncFetcher.fetch_entities_diff(
-                self.gitlab_service,
-                gitlab_project,
-                config.spec_path,
-                before,
-                after,
-                branch,
-            )
+            # entities_before, entities_after = await AsyncFetcher.fetch_entities_diff(
+            #     self.gitlab_service,
+            #     gitlab_project,
+            #     config.spec_path,
+            #     before,
+            #     after,
+            #     branch,
+            # )
+            entities_before, entities_after = await self.gitlab_service.get_entities_diff(
+                gitlab_project, config.spec_path, before, after, branch)
 
             # update the entities diff found in the `config.spec_path` file the user configured
             await ocean.update_diff(

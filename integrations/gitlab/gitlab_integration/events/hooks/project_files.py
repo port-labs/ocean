@@ -61,7 +61,7 @@ class ProjectFiles(ProjectHandler):
             if self.gitlab_service.should_process_project(
                 gitlab_project, selector.files.repos
             ):
-                matched_file_paths = self.gitlab_service._get_file_paths(
+                matched_file_paths = await self.gitlab_service._get_file_paths(
                     gitlab_project, selector.files.path, gitlab_project.default_branch
                 )
                 await self._process_modified_files(
