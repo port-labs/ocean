@@ -52,7 +52,7 @@ class PushHook(ProjectHandler):
             logger.info(
                 f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
             )
-            enriched_project = self.gitlab_service.enrich_project_with_extras(project)
+            enriched_project = await self.gitlab_service.enrich_project_with_extras(gitlab_project)
             await ocean.register_raw(ObjectKind.PROJECT, [enriched_project])
         else:
             logger.debug(
