@@ -53,9 +53,15 @@ class OnceEventListener(BaseEventListener):
         self.cached_integration = await ocean.port_client.get_current_integration()
         return self.cached_integration
 
-    async def get_saas_integration_prediction_data(
+    async def get_saas_resync_initialization_and_interval(
         self,
     ) -> tuple[int | None, datetime.datetime | None]:
+        """
+        Get the scheduled resync interval and the last updated time of the integration config for the saas application.
+        interval is the saas configured resync interval time.
+        start_time is the last updated time of the integration config.
+        return: (interval, start_time)
+        """
         if not ocean.app.is_saas():
             return (None, None)
 
@@ -95,7 +101,9 @@ class OnceEventListener(BaseEventListener):
             await super()._before_resync()
             return
 
-        (interval, start_time) = await self.get_saas_integration_prediction_data()
+        (interval, start_time) = (
+            await self.get_saas_resync_initialization_and_interval()
+        )
         await ocean.app.update_state_before_scheduled_sync(interval, start_time)
 
     async def _after_resync(self) -> None:
@@ -104,8 +112,25 @@ class OnceEventListener(BaseEventListener):
             await super()._after_resync()
             return
 
-        (interval, start_time) = await self.get_saas_integration_prediction_data()
-        await ocean.app.update_state_after_scheduled_sync(interval, start_time)
+        (interval, start_time) = (
+            await self.get_saas_resync_initialization_and_interval()
+        )
+        await ocean.app.update_state_after_scheduled_sync(
+            "completed", interval, start_time
+        )
+
+    async def _on_resync_failure(self, e: Exception) -> None:
+        if not ocean.app.is_saas():
+            # in case of non-saas, we still want to update the state before and after the resync
+            await super()._after_resync()
+            return
+
+        (interval, start_time) = (
+            await self.get_saas_resync_initialization_and_interval()
+        )
+        await ocean.app.update_state_after_scheduled_sync(
+            "failed", interval, start_time
+        )
 
     async def _start(self) -> None:
         """

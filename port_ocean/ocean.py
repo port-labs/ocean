@@ -3,7 +3,7 @@ import datetime
 import sys
 import threading
 from contextlib import asynccontextmanager
-from typing import Callable, Any, Dict, AsyncIterator, Type
+from typing import Callable, Any, Dict, AsyncIterator, Literal, Type
 
 from fastapi import FastAPI, APIRouter
 from loguru import logger
@@ -108,6 +108,7 @@ class Ocean:
 
     async def update_state_after_scheduled_sync(
         self,
+        status: Literal["completed", "failed"] = "completed",
         interval: int | None = None,
         custom_start_time: datetime.datetime | None = None,
     ) -> None:
@@ -115,7 +116,7 @@ class Ocean:
 
         integration = await self.port_client.update_integration_state(
             {
-                "status": "completed",
+                "status": status,
                 "last_resync_start": (
                     self.last_resync_start.timestamp()
                     if self.last_resync_start
@@ -136,8 +137,12 @@ class Ocean:
         async def execute_resync_all() -> None:
             await self.update_state_before_scheduled_sync()
             logger.info("Starting a new scheduled resync")
-            await self.integration.sync_raw_all()
-            await self.update_state_after_scheduled_sync()
+            try:
+                await self.integration.sync_raw_all()
+                await self.update_state_after_scheduled_sync()
+            except Exception as e:
+                await self.update_state_after_scheduled_sync("failed")
+                raise e
 
         interval = self.config.scheduled_resync_interval
         if interval is not None:

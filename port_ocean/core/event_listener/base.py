@@ -49,6 +49,12 @@ class BaseEventListener:
         """
         await ocean.app.update_state_after_scheduled_sync()
 
+    async def _on_resync_failure(self, e: Exception) -> None:
+        """
+        Can be used for event listeners that need to handle resync failures.
+        """
+        await ocean.app.update_state_after_scheduled_sync("failed")
+
     async def _resync(
         self,
         resync_args: dict[Any, Any],
@@ -57,8 +63,12 @@ class BaseEventListener:
         Triggers the "on_resync" event.
         """
         await self._before_resync()
-        await self.events["on_resync"](resync_args)
-        await self._after_resync()
+        try:
+            await self.events["on_resync"](resync_args)
+            await self._after_resync()
+        except Exception as e:
+            await self._on_resync_failure(e)
+            raise e
 
 
 class EventListenerSettings(BaseOceanModel, extra=Extra.allow):
