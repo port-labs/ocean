@@ -77,7 +77,6 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     payload = data.get("Payload", {}).get("Event", {})
     related_document_ids = payload.get("RelatedDocumentIds", [])
     event_category = payload.get("Category", "")
-    action = "unregister" if "Deleted" in event_category else "register"
     client = await init_client()
     for resource_id in related_document_ids:
         logger.info(f"Received webhook event with ID: {resource_id}")
@@ -85,13 +84,13 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
         if resource_prefix in TRACKED_EVENTS:
             kind = ObjectKind(resource_prefix.rstrip("s"))
             try:
-                if action == "register":
+                if event_category == "Deleted":
+                    await ocean.unregister_raw(kind, [{"id": resource_id}])
+                else:
                     resource_data = await client.get_single_resource(
                         resource_prefix, resource_id
                     )
                     await ocean.register_raw(kind, [resource_data])
-                else:
-                    await ocean.unregister_raw(kind, [{"id": resource_id}])
             except Exception as e:
                 logger.error(f"Failed to process resource {resource_id}: {e}")
     logger.info("Webhook event processed")
