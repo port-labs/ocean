@@ -68,7 +68,6 @@ class Ocean:
         self.initiated_at = datetime.datetime.now()
 
         # TODO: remove this once we separate the state from the integration
-        self.last_resync_start: datetime.datetime | None = None
         self.last_integration_updated_at: str = ""
 
     def is_saas(self) -> bool:
@@ -92,12 +91,10 @@ class Ocean:
     ) -> None:
         _interval = interval or self.config.scheduled_resync_interval
 
-        self.last_resync_start = datetime.datetime.now()
         integration = await self.port_client.update_integration_state(
             {
                 "status": "running",
-                "last_resync_start": self.last_resync_start.timestamp(),
-                "last_resync_end": None,
+                "last_resync_start": datetime.datetime.now().timestamp(),
                 "interval_in_minuets": _interval,
                 "next_resync": self._calculate_next_scheduled_resync(
                     _interval, custom_start_time
@@ -117,11 +114,6 @@ class Ocean:
         integration = await self.port_client.update_integration_state(
             {
                 "status": status,
-                "last_resync_start": (
-                    self.last_resync_start.timestamp()
-                    if self.last_resync_start
-                    else None
-                ),
                 "last_resync_end": datetime.datetime.now().timestamp(),
                 "interval_in_minuets": _interval,
                 "next_resync": self._calculate_next_scheduled_resync(
