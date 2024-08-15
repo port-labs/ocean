@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "clickup"
-version = "0.1.0"
+version = "0.1.0-beta"
 description = "Integration module for ClickUp"
 authors = ["Iyanuoluwa Adebayo <ioluwadunsinadebayo@gmail.com>"]
 
