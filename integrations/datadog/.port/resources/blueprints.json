@@ -347,47 +347,6 @@
     }
   },
   {
-    "identifier": "datadogMetric",
-    "description": "This blueprint represents a Datadog metric",
-    "title": "Datadog Metric",
-    "icon": "Datadog",
-    "schema": {
-      "properties": {
-        "description": {
-          "type": "string",
-          "title": "Description"
-        },
-        "short_name": {
-          "type": "string",
-          "title": "Short Name"
-        },
-        "type": {
-          "type": "string",
-          "title": "Type"
-        },
-        "unit": {
-          "type": "string",
-          "title": "Unit"
-        },
-        "per_unit": {
-          "type": "string",
-          "title": "Per Unit"
-        },
-        "statsd_interval": {
-          "type": "number",
-          "title": "StatsD Interval"
-        },
-        "integration": {
-          "type": "string",
-          "title": "Integration"
-        }
-      }
-    },
-    "mirrorProperties": {},
-    "calculationProperties": {},
-    "relations": {}
-  },
-  {
     "identifier": "datadogServiceMetric",
     "description": "This blueprint represents a Datadog service metric",
     "title": "Datadog Service Metric",
@@ -420,6 +379,16 @@
           "format": "date-time",
           "title": "To Date",
           "description": "Unix timestamp of the end of the queried time period"
+        },
+        "metric_name": {
+          "type": "string",
+          "title": "Metric Name",
+          "description": "The name of the metric"
+        },
+        "env": {
+          "type": "string",
+          "title": "Environment",
+          "description": "The environment of the service"
         }
       },
       "required": []
@@ -427,13 +396,6 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {
-      "metric": {
-        "title": "Metric",
-        "description": "The metric associated with this query",
-        "target": "datadogMetric",
-        "required": false,
-        "many": false
-      },
       "service": {
         "title": "Service",
         "description": "The service associated with this query",

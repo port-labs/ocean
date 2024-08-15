@@ -17,7 +17,6 @@ class ObjectKind(StrEnum):
     SLO = "slo"
     SERVICE = "service"
     SLO_HISTORY = "sloHistory"
-    METRIC = "metric"
     SERVICE_METRIC = "serviceMetric"
 
 
@@ -82,27 +81,19 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield services
 
 
-@ocean.on_resync()
+@ocean.on_resync(ObjectKind.SERVICE_METRIC)
 async def on_resync_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
     params = typing.cast(DatadogResourceConfig, event.resource_config).selector
 
-    if kind == ObjectKind.SERVICE_METRIC:
-        logger.info(
-            f"Fetching metrics for {params.metric} for service {params.service}"
-        )
+    logger.info(f"Fetching metrics for {params.metric} for service {params.service}")
 
-        metric_name = dd_client.extract_metric_name(params.metric)
-        metric_metadata = await dd_client.get_metric_metadata(metric_name)
-        metric_metadata["metric"] = metric_name
-        await ocean.register_raw(ObjectKind.METRIC, [metric_metadata])
-
-        async for metrics in dd_client.get_metrics(
-            params.metric, params.env, params.service
-        ):
-            logger.info(f"Received batch with {len(metrics)} metrics")
-            yield metrics
+    async for metrics in dd_client.get_metrics(
+        params.metric, params.env, params.service
+    ):
+        logger.info(f"Received batch with {len(metrics)} metrics")
+        yield metrics
 
 
 # https://docs.datadoghq.com/integrations/webhooks/

@@ -4,7 +4,7 @@ import datetime
 import http
 import json
 import time
-from typing import Any, AsyncGenerator, Callable, Optional
+from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
 
 import httpx
@@ -21,6 +21,7 @@ MAXIMUM_CONCURRENT_REQUESTS_METRICS = 20
 MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
 MINIMUM_LIMIT_REMAINING = 1
 DEFAULT_SLEEP_TIME = 0.1
+FETCH_WINDOW_TIME_IN_MINUTES = 10
 
 
 def embed_credentials_in_url(url: str, username: str, token: str) -> str:
@@ -296,6 +297,13 @@ class DatadogClient:
             )
             return {}
 
+    async def get_tags(self) -> dict[str, Any]:
+        url = f"{self.api_url}/api/v1/tags/hosts"
+        result = await self._send_api_request(url)
+
+        tags = result.get("tags")
+        return tags
+
     def _create_query_with_values(
         self, metric_query: str, variable_values: dict[str, str]
     ) -> str:
@@ -316,7 +324,7 @@ class DatadogClient:
             )
         return metric_query
 
-    def extract_metric_name(self, query_string):
+    def extract_metric_name(self, query_string: str) -> str | None:
         """Extracts the Datadog metric name from a query string.
 
         Args:
@@ -345,8 +353,70 @@ class DatadogClient:
         url = f"{self.api_url}/api/v1/metrics/{metric}"
         return await self._send_api_request(url)
 
+    def get_env_tags(self, tags: dict[str, Any]) -> list[str]:
+        """
+        Extracts environment names from the provided data structure.
+
+        Args:
+            data (dict): A dictionary containing tag information, potentially nested.
+
+        Returns:
+            list: A list of environment names (e.g., ['prod', 'staging']).
+        """
+        return [tag.split(":")[1] for tag in tags.keys() if tag.startswith("env:")]
+
+    async def _fetch_metrics_for_services(
+        self,
+        query: str,
+        envs_to_fetch: list[str],
+        services: list[dict[str, Any]],
+        time_window: int,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Helper function to fetch metrics for a list of services and provided environments."""
+        metrics = []
+
+        logger.info(
+            f"Fetching metrics for {len(services)} services and {len(envs_to_fetch)} environments"
+        )
+
+        for service in services:
+            service_id = service["attributes"]["schema"]["dd-service"]
+
+            for env_to_fetch in envs_to_fetch:
+                params = {"env": env_to_fetch, "service": service_id}
+                query_with_values = self._create_query_with_values(
+                    f"{query}{{service:{service_id},env:{env_to_fetch}}}", params
+                )
+
+                end_time = int(time.time())
+                start_time = end_time - (time_window * 60)
+
+                url = f"{self.api_url}/api/v1/query?from={start_time}&to={end_time}&query={query_with_values}"
+                result = await self._fetch_with_rate_limit_handling(
+                    url, semaphore=self._metrics_semaphore
+                )
+
+                # Update result with metadata
+                result.update(
+                    {
+                        "__service": service_id,
+                        "__metric": self.extract_metric_name(query),
+                        "__query_id": f"{query}/service:{service_id}/env:{env_to_fetch}",
+                        "__query": query,
+                        "__env": env_to_fetch,
+                    }
+                )
+
+                metrics.append(result)
+
+            yield metrics
+
     async def get_metrics(
-        self, query: str, env: str = "prod", service: str = "*"
+        self,
+        query: str,
+        env: str = "*",
+        service: str = "*",
+        time_window: int = FETCH_WINDOW_TIME_IN_MINUTES,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetches metrics for specified services and environment.
@@ -355,57 +425,37 @@ class DatadogClient:
             query (str): The Datadog query string to execute.
             env (str): The environment to filter by (default: "prod").
             service (str): The service ID to filter by, or "*" to fetch metrics for all services.
+            time_window (int): Time window in minutes for fetching metrics (default: FETCH_WINDOW_TIME_IN_MINUTES).
 
         Yields:
-            AsyncGenerator[list[dict[str, Any]], None]: A list of metrics for each service.
+            AsyncGenerator[list[dict[str, Any]], None]: Each individual metric as it's fetched.
         """
-        url = f"{self.api_url}/api/v1/metrics"
 
-        metrics = []
+        envs_to_fetch = (
+            [env] if env != "*" else self.get_env_tags(await self.get_tags())
+        )
+        if not envs_to_fetch:
+            logger.warning("No environments found, exiting...")
+            return
 
-        services = []
         if service == "*":
-            # get all services
             async for service_list in self.get_services():
-                services.extend(service_list)
+                async for metric in self._fetch_metrics_for_services(
+                    query, envs_to_fetch, service_list, time_window
+                ):
+                    yield metric
         else:
-            # get service by id
             result = await self.get_single_service(service)
-            if not result.get("data"):
+            if not result:
                 logger.warning(f"Service with id {service} not found")
                 return
 
-            services = [result.get("data")]
+            service_details: dict[str, Any] = result["data"]
 
-        logger.info(f"Fetching metrics for {len(services)} services")
-
-        for service in services:
-            service_id = service["attributes"]["schema"]["dd-service"]
-
-            params = {"env": env, "service": service_id}
-            query_with_values = self._create_query_with_values(
-                f"{query}{{service:{service_id},env:{env}}}", params
-            )
-
-            time_in_minutes = 10
-            end_time = int(time.time())
-            start_time = end_time - (time_in_minutes * 60)
-
-            url = f"{self.api_url}/api/v1/query?from={start_time}&to={end_time}&query={query_with_values}"
-            result = await self._fetch_with_rate_limit_handling(
-                url, semaphore=self._metrics_semaphore
-            )
-
-            query_id = (
-                f"{query}/service:{service_id}/env:{env if env != '*' else 'all'}"
-            )
-            result["__service"] = service_id
-            result["__metric"] = self.extract_metric_name(query)
-            result["__query_id"] = query_id
-
-            metrics.append(result)
-
-        yield metrics
+            async for metrics in self._fetch_metrics_for_services(
+                query, envs_to_fetch, [service_details], time_window
+            ):
+                yield metrics
 
     async def get_single_monitor(self, monitor_id: str) -> dict[str, Any] | None:
         if not monitor_id:
