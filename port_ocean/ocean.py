@@ -93,7 +93,7 @@ class Ocean:
         nest_resync = self._calculate_next_scheduled_resync(
             _interval, custom_start_time
         )
-        state = {
+        state: dict[str, Any] = {
             "status": "running",
             "last_resync_start": datetime.datetime.now(
                 tz=datetime.timezone.utc
@@ -117,7 +117,7 @@ class Ocean:
         nest_resync = self._calculate_next_scheduled_resync(
             _interval, custom_start_time
         )
-        state = {
+        state: dict[str, Any] = {
             "status": status,
             "last_resync_end": datetime.datetime.now(
                 tz=datetime.timezone.utc
