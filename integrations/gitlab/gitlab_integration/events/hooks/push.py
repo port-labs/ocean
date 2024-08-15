@@ -4,7 +4,6 @@ from typing import Any
 from loguru import logger
 from gitlab.v4.objects import Project
 
-from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.utils import generate_ref
 from gitlab_integration.events.hooks.base import ProjectHandler
 from gitlab_integration.git_integration import GitlabPortAppConfig
@@ -34,13 +33,10 @@ class PushHook(ProjectHandler):
         branch = config.branch or gitlab_project.default_branch
 
         if generate_ref(branch) == ref:
-            entities_before, entities_after = await AsyncFetcher.fetch_entities_diff(
-                self.gitlab_service,
-                gitlab_project,
-                config.spec_path,
-                before,
-                after,
-                branch,
+            entities_before, entities_after = (
+                await self.gitlab_service.get_entities_diff(
+                    gitlab_project, config.spec_path, before, after, branch
+                )
             )
 
             # update the entities diff found in the `config.spec_path` file the user configured
@@ -52,7 +48,10 @@ class PushHook(ProjectHandler):
             logger.info(
                 f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
             )
-            await ocean.register_raw(ObjectKind.PROJECT, [gitlab_project.asdict()])
+            enriched_project = await self.gitlab_service.enrich_project_with_extras(
+                gitlab_project
+            )
+            await ocean.register_raw(ObjectKind.PROJECT, [enriched_project])
         else:
             logger.debug(
                 f"Skipping push hook for project {gitlab_project.path_with_namespace} because the ref {ref} "

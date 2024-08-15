@@ -6,7 +6,14 @@ from typing import List, Union, Callable, AsyncIterator, TypeVar, Any, Dict
 import gitlab.exceptions
 from gitlab import GitlabList
 from gitlab.base import RESTObject, RESTObjectList
-from gitlab.v4.objects import Project, ProjectPipelineJob, ProjectPipeline, Issue, Group
+from gitlab.v4.objects import (
+    Project,
+    ProjectPipelineJob,
+    ProjectPipeline,
+    Issue,
+    Group,
+    ProjectFile,
+)
 from loguru import logger
 
 from port_ocean.core.models import Entity
@@ -39,6 +46,7 @@ class AsyncFetcher:
         Issue,
         Project,
         Group,
+        ProjectFile,
     ]:
         with ThreadPoolExecutor() as executor:
             return await get_event_loop().run_in_executor(executor, fetch_func, *args)
@@ -138,3 +146,25 @@ class AsyncFetcher:
                 after,
                 ref,
             )
+
+    @staticmethod
+    async def fetch_repository_tree(
+        project: Project,
+        path: str = "",
+        ref: str = "",
+        recursive: bool = False,
+        get_all: bool = False,
+        **kwargs: Any,
+    ) -> GitlabList | List[Dict[str, Any]]:
+        with ThreadPoolExecutor() as executor:
+
+            def fetch_func():
+                return project.repository_tree(
+                    path=path,
+                    ref=ref,
+                    recursive=recursive,
+                    all=get_all,
+                    **kwargs,
+                )
+
+            return await get_event_loop().run_in_executor(executor, fetch_func)

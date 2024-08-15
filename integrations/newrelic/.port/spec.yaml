@@ -13,14 +13,14 @@ configurations:
     required: true
     type: string
     sensitive: true
-    description: The New Relic API key. To create a User API key, see the <a href="https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys"> New Relic documentation</a>.
+    description: The New Relic API key. To create a User API key, see the <a href="https://docs.newrelic.com/docs/apis/intro-apis/new-relic-api-keys" target="_blank"> New Relic documentation</a>.
   - name: newRelicAccountID
     required: true
     type: string
     sensitive: true
-    description: The New Relic account ID. To retrieve the account ID, click the user menu on the lower-left corner of your New Relic dashboard, then go to Administration > Access management > Accounts to see account IDs. For more information on how to find the account ID, see the <a href="https://docs.newrelic.com/docs/accounts/accounts-billing/account-structure/account-id/"> New Relic documentation</a>.
+    description: The New Relic account ID. To retrieve the account ID, click the user menu on the lower-left corner of your New Relic dashboard, then go to Administration > Access management > Accounts to see account IDs. For more information on how to find the account ID, see the <a href="https://docs.newrelic.com/docs/accounts/accounts-billing/account-structure/account-id/" target="_blank"> New Relic documentation</a>.
   - name: newRelicGraphqlURL
     required: false
     type: string
     default: https://api.newrelic.com/graphql
-    description: URL for New Relic GraphQL API. If not provided, the default value will be https://api.newrelic.com/graphql. Users in the EU region should use https://api.eu.newrelic.com/graphql. For more information on GraphQL URL, see the <a href="https://docs.newrelic.com/docs/apis/nerdgraph/get-started/introduction-new-relic-nerdgraph/"> New Relic documentation</a>.
+    description: URL for New Relic GraphQL API. If not provided, the default value will be https://api.newrelic.com/graphql. Users in the EU region should use <a href="https://api.eu.newrelic.com/graphql" target="_blank"> https://api.eu.newrelic.com/graphql</a>. For more information on GraphQL URL, see the <a href="https://docs.newrelic.com/docs/apis/nerdgraph/get-started/introduction-new-relic-nerdgraph/" target="_blank"> New Relic documentation</a>.

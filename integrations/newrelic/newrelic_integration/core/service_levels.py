@@ -5,7 +5,7 @@ from newrelic_integration.core.query_templates.service_levels import (
     LIST_SLOS_QUERY,
     GET_SLI_BY_NRQL_QUERY,
 )
-from newrelic_integration.core.utils import send_graph_api_request
+from newrelic_integration.core.utils import send_graph_api_request, format_tags
 from newrelic_integration.utils import (
     render_query,
 )
@@ -55,7 +55,7 @@ class ServiceLevelsHandler:
         service_level[SLI_OBJECT] = await self.get_service_level_indicator_value(
             self.http_client, nrql
         )
-        self._format_tags(service_level)
+        format_tags(service_level)
         return service_level
 
     async def list_service_levels(self) -> AsyncIterable[list[dict[str, Any]]]:
@@ -87,8 +87,3 @@ class ServiceLevelsHandler:
             .get("results", {})
         )
         return results.get("nextCursor"), results.get("entities", [])
-
-    @staticmethod
-    def _format_tags(entity: dict[Any, Any]) -> dict[Any, Any]:
-        entity["tags"] = {tag["key"]: tag["values"] for tag in entity.get("tags", [])}
-        return entity

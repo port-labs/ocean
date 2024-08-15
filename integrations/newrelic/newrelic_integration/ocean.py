@@ -13,7 +13,7 @@ from newrelic_integration.utils import (
     get_port_resource_configuration_by_port_kind,
 )
 
-MAX_CONCURRENT_REQUESTS = 10
+SERVICE_LEVEL_MAX_CONCURRENT_REQUESTS = 10
 
 
 async def enrich_service_level(
@@ -82,7 +82,7 @@ async def resync_service_levels(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     with logger.contextualize(resource_kind=kind):
         async with httpx.AsyncClient() as http_client:
             service_level_handler = ServiceLevelsHandler(http_client)
-            semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+            semaphore = asyncio.Semaphore(SERVICE_LEVEL_MAX_CONCURRENT_REQUESTS)
 
             async for service_levels in service_level_handler.list_service_levels():
                 tasks = [

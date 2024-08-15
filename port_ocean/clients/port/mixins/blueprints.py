@@ -82,12 +82,10 @@ class BlueprintClientMixin:
             handle_status_code(response, should_raise)
             return response.json().get("migrationId", "")
 
-    async def create_action(
-        self, blueprint_identifier: str, action: dict[str, Any]
-    ) -> None:
+    async def create_action(self, action: dict[str, Any]) -> None:
         logger.info(f"Creating action: {action}")
         response = await self.client.post(
-            f"{self.auth.api_url}/blueprints/{blueprint_identifier}/actions",
+            f"{self.auth.api_url}/actions",
             json=action,
             headers=await self.auth.headers(),
         )

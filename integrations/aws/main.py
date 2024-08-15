@@ -6,6 +6,7 @@ import fastapi
 from starlette import responses
 from pydantic import BaseModel
 
+from aws.aws_credentials import AwsCredentials
 from port_ocean.core.models import Entity
 
 from utils.resources import (
@@ -18,6 +19,8 @@ from utils.resources import (
 
 from utils.aws import (
     describe_accessible_accounts,
+    get_accounts,
+    get_default_region_from_credentials,
     get_sessions,
     update_available_access_credentials,
     validate_request,
@@ -30,7 +33,36 @@ from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
+    is_server_error,
 )
+
+
+async def _handle_global_resource_resync(
+    kind: str,
+    credentials: AwsCredentials,
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    denied_access_to_default_region = False
+    default_region = get_default_region_from_credentials(credentials)
+    default_session = await credentials.create_session(default_region)
+    try:
+        async for batch in resync_cloudcontrol(kind, default_session):
+            yield batch
+    except Exception as e:
+        if is_access_denied_exception(e):
+            denied_access_to_default_region = True
+        else:
+            raise e
+
+    if denied_access_to_default_region:
+        logger.info(f"Trying to resync {kind} in all regions until success")
+        async for session in credentials.create_session_for_each_region():
+            try:
+                async for batch in resync_cloudcontrol(kind, session):
+                    yield batch
+                break
+            except Exception as e:
+                if not is_access_denied_exception(e):
+                    raise e
 
 
 @ocean.on_resync()
@@ -39,15 +71,17 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
     await update_available_access_credentials()
     is_global = is_global_resource(kind)
-    try:
-        async for batch in resync_cloudcontrol(kind, is_global):
-            yield batch
-    except Exception as e:
-        if is_access_denied_exception(e):
-            async for batch in resync_cloudcontrol(
-                kind, is_global=False, stop_on_first_region=True
-            ):
+    async for credentials in get_accounts():
+        if is_global:
+            async for batch in _handle_global_resource_resync(kind, credentials):
                 yield batch
+        else:
+            async for session in credentials.create_session_for_each_region():
+                try:
+                    async for batch in resync_cloudcontrol(kind, session):
+                        yield batch
+                except Exception:
+                    continue
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
@@ -191,7 +225,21 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                 resource = await describe_single_resource(
                     resource_type, identifier, account_id, region
                 )
-            except Exception:
+            except Exception as e:
+                if is_access_denied_exception(e):
+                    logger.error(
+                        f"Cannot sync {resource_type} in region {region} in account {account_id} due to missing access permissions {e}"
+                    )
+                    return fastapi.Response(
+                        status_code=status.HTTP_200_OK,
+                    )
+                if is_server_error(e):
+                    logger.error(
+                        f"Cannot sync {resource_type} in region {region} in account {account_id} due to server error {e}"
+                    )
+                    return fastapi.Response(
+                        status_code=status.HTTP_200_OK,
+                    )
                 resource = None
 
             for kind in matching_resource_configs:
