@@ -48,7 +48,10 @@ class PushHook(ProjectHandler):
             logger.info(
                 f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
             )
-            await ocean.register_raw(ObjectKind.PROJECT, [gitlab_project.asdict()])
+            enriched_project = await self.gitlab_service.enrich_project_with_extras(
+                gitlab_project
+            )
+            await ocean.register_raw(ObjectKind.PROJECT, [enriched_project])
         else:
             logger.debug(
                 f"Skipping push hook for project {gitlab_project.path_with_namespace} because the ref {ref} "
