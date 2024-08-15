@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.14 (2024-08-15)
+
+### Improvements
+
+- Add search identifier support (Allow to run a search query to find the identifier of the entity as part of the mapping)
+
+
 ## 0.9.13 (2024-08-13)
 
 ### Improvements
