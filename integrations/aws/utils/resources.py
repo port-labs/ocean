@@ -163,80 +163,75 @@ async def resync_custom_kind(
 
 
 async def resync_cloudcontrol(
-    kind: str, is_global: bool = False, stop_on_first_region: bool = False
+    kind: str, session: aioboto3.Session
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     use_get_resource_api = typing.cast(
         AWSResourceConfig, event.resource_config
     ).selector.use_get_resource_api
-    found_data = False
-    async for session in get_sessions(None, None, is_global):
-        region = session.region_name
-        logger.info(f"Resyncing {kind} in region {region}")
-        account_id = await _session_manager.find_account_id_by_session(session)
-        next_token = None
-        while True:
-            async with session.client("cloudcontrol") as cloudcontrol:
-                try:
-                    params = {
-                        "TypeName": kind,
-                    }
-                    if next_token:
-                        params["NextToken"] = next_token
+    region = session.region_name
+    account_id = await _session_manager.find_account_id_by_session(session)
+    logger.info(f"Resyncing {kind} in account {account_id} in region {region}")
+    next_token = None
+    while True:
+        async with session.client("cloudcontrol") as cloudcontrol:
+            try:
+                params = {
+                    "TypeName": kind,
+                }
+                if next_token:
+                    params["NextToken"] = next_token
 
-                    response = await cloudcontrol.list_resources(**params)
-                    next_token = response.get("NextToken")
-                    resources = response.get("ResourceDescriptions", [])
-                    if not resources:
-                        break
-                    found_data = True
-                    page_resources = []
-                    if use_get_resource_api:
-                        resources = await asyncio.gather(
-                            *(
-                                describe_single_resource(
-                                    kind,
-                                    instance.get("Identifier"),
-                                    account_id=account_id,
-                                    region=region,
-                                )
-                                for instance in resources
+                response = await cloudcontrol.list_resources(**params)
+                next_token = response.get("NextToken")
+                resources = response.get("ResourceDescriptions", [])
+                if not resources:
+                    break
+                page_resources = []
+                if use_get_resource_api:
+                    resources = await asyncio.gather(
+                        *(
+                            describe_single_resource(
+                                kind,
+                                instance.get("Identifier"),
+                                account_id=account_id,
+                                region=region,
                             )
-                        )
-                    else:
-                        resources = [
-                            {
-                                "Identifier": instance.get("Identifier"),
-                                "Properties": json.loads(instance.get("Properties")),
-                            }
                             for instance in resources
-                        ]
-
-                    for instance in resources:
-                        serialized = instance.copy()
-                        serialized.update(
-                            {
-                                CustomProperties.KIND: kind,
-                                CustomProperties.ACCOUNT_ID: account_id,
-                                CustomProperties.REGION: region,
-                            }
                         )
-                        page_resources.append(
-                            fix_unserializable_date_properties(serialized)
-                        )
-                    logger.info(
-                        f"Fetched batch of {len(page_resources)} from {kind} in region {region}"
                     )
-                    yield page_resources
+                else:
+                    resources = [
+                        {
+                            "Identifier": instance.get("Identifier"),
+                            "Properties": json.loads(instance.get("Properties")),
+                        }
+                        for instance in resources
+                    ]
 
-                    if not next_token:
-                        break
-                except cloudcontrol.exceptions.ClientError as e:
-                    if is_access_denied_exception(e):
-                        if not is_global:
-                            logger.warning(
-                                f"Skipping resyncing {kind} in region {region} due to missing access permissions"
-                            )
-                            break  # no need to continue querying on the same region since we don't have access
-                    raise e
-        if found_data and stop_on_first_region:
-            return
+                for instance in resources:
+                    serialized = instance.copy()
+                    serialized.update(
+                        {
+                            CustomProperties.KIND: kind,
+                            CustomProperties.ACCOUNT_ID: account_id,
+                            CustomProperties.REGION: region,
+                        }
+                    )
+                    page_resources.append(
+                        fix_unserializable_date_properties(serialized)
+                    )
+                logger.info(
+                    f"Fetched batch of {len(page_resources)} from {kind} in region {region}"
+                )
+                yield page_resources
+
+                if not next_token:
+                    break
+            except Exception as e:
+                if is_access_denied_exception(e):
+                    logger.warning(
+                        f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                    )
+                else:
+                    logger.warning(f"Error resyncing {kind} in region {region}, {e}")
+                raise e
