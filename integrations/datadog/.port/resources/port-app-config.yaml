@@ -105,9 +105,11 @@ resources:
   - kind: serviceMetric
     selector:
       query: "true"
-      metric: "avg:system.mem.used"
-      env: '*'
-      service: '*'
+      datadogSelector:
+        metric: "avg:system.mem.used"
+        env: '*'
+        service: '*'
+        timeframe: 10
     port:
       entity:
         mappings:
