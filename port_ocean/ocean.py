@@ -65,7 +65,7 @@ class Ocean:
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
-        self.initiated_at = datetime.datetime.now()
+        self.initiated_at = datetime.datetime.now(tz=datetime.timezone.utc)
 
         # TODO: remove this once we separate the state from the integration
         self.last_integration_updated_at: str = ""
@@ -77,12 +77,12 @@ class Ocean:
         self,
         interval: int | None = None,
         custom_start_time: datetime.datetime | None = None,
-    ) -> float | None:
+    ) -> str | None:
         if interval is None:
             return None
         return get_next_occurrence(
             interval * 60, custom_start_time or self.initiated_at
-        ).timestamp()
+        ).isoformat()
 
     async def update_state_before_scheduled_sync(
         self,
@@ -90,17 +90,21 @@ class Ocean:
         custom_start_time: datetime.datetime | None = None,
     ) -> None:
         _interval = interval or self.config.scheduled_resync_interval
-
-        integration = await self.port_client.update_integration_state(
-            {
-                "status": "running",
-                "last_resync_start": datetime.datetime.now().timestamp(),
-                "interval_in_minuets": _interval,
-                "next_resync": self._calculate_next_scheduled_resync(
-                    _interval, custom_start_time
-                ),
-            }
+        nest_resync = self._calculate_next_scheduled_resync(
+            _interval, custom_start_time
         )
+        state = {
+            "status": "running",
+            "last_resync_start": datetime.datetime.now(
+                tz=datetime.timezone.utc
+            ).isoformat(),
+        }
+        if nest_resync:
+            state["next_resync"] = nest_resync
+        if _interval:
+            state["interval_in_minuets"] = _interval
+
+        integration = await self.port_client.update_integration_state(state)
         self.last_integration_updated_at = integration["updatedAt"]
 
     async def update_state_after_scheduled_sync(
@@ -110,17 +114,21 @@ class Ocean:
         custom_start_time: datetime.datetime | None = None,
     ) -> None:
         _interval = interval or self.config.scheduled_resync_interval
-
-        integration = await self.port_client.update_integration_state(
-            {
-                "status": status,
-                "last_resync_end": datetime.datetime.now().timestamp(),
-                "interval_in_minuets": _interval,
-                "next_resync": self._calculate_next_scheduled_resync(
-                    _interval, custom_start_time
-                ),
-            }
+        nest_resync = self._calculate_next_scheduled_resync(
+            _interval, custom_start_time
         )
+        state = {
+            "status": status,
+            "last_resync_end": datetime.datetime.now(
+                tz=datetime.timezone.utc
+            ).isoformat(),
+        }
+        if nest_resync:
+            state["next_resync"] = nest_resync
+        if _interval:
+            state["interval_in_minuets"] = _interval
+
+        integration = await self.port_client.update_integration_state(state)
         self.last_integration_updated_at = integration["updatedAt"]
 
     async def _setup_scheduled_resync(

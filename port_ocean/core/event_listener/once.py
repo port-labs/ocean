@@ -11,7 +11,7 @@ from port_ocean.core.event_listener.base import (
 )
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.context.ocean import ocean
-from port_ocean.utils.time import convert_str_to_naive_datetime, convert_to_minutes
+from port_ocean.utils.time import convert_str_to_utc_datetime, convert_to_minutes
 
 
 class OnceEventListenerSettings(EventListenerSettings):
@@ -92,7 +92,7 @@ class OnceEventListener(BaseEventListener):
 
         return (
             convert_to_minutes(interval_str),
-            convert_str_to_naive_datetime(last_updated_saas_integration_config_str),
+            convert_str_to_utc_datetime(last_updated_saas_integration_config_str),
         )
 
     async def _before_resync(self) -> None:
