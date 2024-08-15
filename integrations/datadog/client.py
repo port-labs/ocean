@@ -373,8 +373,6 @@ class DatadogClient:
         time_window: int,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Helper function to fetch metrics for a list of services and provided environments."""
-        metrics = []
-
         logger.info(
             f"Fetching metrics for {len(services)} services and {len(envs_to_fetch)} environments"
         )
@@ -382,6 +380,8 @@ class DatadogClient:
         for service in services:
             service_id = service["attributes"]["schema"]["dd-service"]
 
+            # Create tasks for concurrent fetching
+            tasks = []
             for env_to_fetch in envs_to_fetch:
                 params = {"env": env_to_fetch, "service": service_id}
                 query_with_values = self._create_query_with_values(
@@ -392,10 +392,21 @@ class DatadogClient:
                 start_time = end_time - (time_window * 60)
 
                 url = f"{self.api_url}/api/v1/query?from={start_time}&to={end_time}&query={query_with_values}"
-                result = await self._fetch_with_rate_limit_handling(
-                    url, semaphore=self._metrics_semaphore
-                )
 
+                # Create a task for each fetch operation
+                task = asyncio.create_task(
+                    self._fetch_with_rate_limit_handling(
+                        url, semaphore=self._metrics_semaphore
+                    )
+                )
+                tasks.append(task)
+
+            # Gather results concurrently
+            results = await asyncio.gather(*tasks)
+
+            # Process and yield results
+            metrics = []
+            for result, env_to_fetch in zip(results, envs_to_fetch):
                 # Update result with metadata
                 result.update(
                     {
@@ -406,7 +417,6 @@ class DatadogClient:
                         "__env": env_to_fetch,
                     }
                 )
-
                 metrics.append(result)
 
             yield metrics
