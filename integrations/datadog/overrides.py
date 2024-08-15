@@ -34,18 +34,16 @@ class SLOHistoryResourceConfig(ResourceConfig):
 
 
 class DatadogSelector(BaseModel):
-    metric: str = Field(alias="metric", default="")
-    env: str = Field(alias="env", default="")
-    service: str = Field(alias="service", default="")
+    metric: str = Field(alias="metric", required=True)
+    env: str = Field(alias="env", default="*")
+    service: str = Field(alias="service", default="*")
     timeframe: int = Field(
         alias="timeframe", description="Time frame in minutes", default=10
     )
 
 
 class DatadogResourceSelector(Selector):
-    datadogSelector: DatadogSelector = Field(
-        alias="datadogSelector", default_factory=DatadogSelector
-    )
+    datadog_selector: DatadogSelector = Field(alias="datadogSelector")
 
 
 class DatadogResourceConfig(ResourceConfig):

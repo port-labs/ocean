@@ -343,9 +343,7 @@ class DatadogClient:
         else:
             return None
 
-    async def get_single_service(self, service_id: str) -> dict[str, Any] | None:
-        if not service_id:
-            return None
+    async def get_single_service(self, service_id: str) -> dict[str, Any]:
         url = f"{self.api_url}/api/v2/services/definitions/{service_id}"
         return await self._send_api_request(url)
 
@@ -433,7 +431,7 @@ class DatadogClient:
 
         Args:
             query (str): The Datadog query string to execute.
-            env (str): The environment to filter by (default: "prod").
+            env (str): The environment to filter by, or "*" to fetch metrics for all environments.
             service (str): The service ID to filter by, or "*" to fetch metrics for all services.
             time_window (int): Time window in minutes for fetching metrics (default: FETCH_WINDOW_TIME_IN_MINUTES).
 
@@ -445,7 +443,9 @@ class DatadogClient:
             [env] if env != "*" else self.get_env_tags(await self.get_tags())
         )
         if not envs_to_fetch:
-            logger.warning("No environments found, exiting...")
+            logger.warning(
+                f"No environments found, can't fetch metrics for metric {query}"
+            )
             return
 
         if service == "*":
@@ -456,9 +456,6 @@ class DatadogClient:
                     yield metric
         else:
             result = await self.get_single_service(service)
-            if not result:
-                logger.warning(f"Service with id {service} not found")
-                return
 
             service_details: dict[str, Any] = result["data"]
 

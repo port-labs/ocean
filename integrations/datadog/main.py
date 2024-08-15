@@ -87,9 +87,9 @@ async def on_resync_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     params = typing.cast(
         DatadogResourceConfig, event.resource_config
-    ).selector.datadogSelector
+    ).selector.datadog_selector
 
-    logger.info(f"Fetching metrics for {params.metric} for service {params.service}")
+    logger.info(f"Fetching metrics for params: {params}")
 
     async for metrics in dd_client.get_metrics(
         params.metric, params.env, params.service, params.timeframe
