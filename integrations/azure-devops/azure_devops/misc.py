@@ -47,10 +47,23 @@ class AzureDevopsProjectResourceConfig(ResourceConfig):
     selector: AzureDevopsSelector
 
 
+class AzureDevopsWorkItemResourceConfig(ResourceConfig):
+    class AzureDevopsSelector(Selector):
+        query: str
+        wiql: str | None = Field(
+            default=None,
+            description="WIQL query to filter work items. If not provided, all work items will be fetched.",
+            alias="wiql",
+        )
+
+    kind: Literal["work-item"]
+    selector: AzureDevopsSelector
+
+
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
     branch: str = "main"
-    resources: list[AzureDevopsProjectResourceConfig | ResourceConfig] = Field(
+    resources: list[AzureDevopsProjectResourceConfig | AzureDevopsWorkItemResourceConfig | ResourceConfig] = Field(
         default_factory=list
     )
 

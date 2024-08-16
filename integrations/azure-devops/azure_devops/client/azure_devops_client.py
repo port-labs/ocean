@@ -1,13 +1,20 @@
 import json
+import asyncio
+import typing
+
 from typing import Any, AsyncGenerator, Optional
-from azure_devops.webhooks.webhook_event import WebhookEvent
 from httpx import HTTPStatusError
+from loguru import logger
+
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from loguru import logger
-from .base_client import HTTPBaseClient
 from port_ocean.utils.cache import cache_iterator_result
-import asyncio
+
+from azure_devops.misc import AzureDevopsWorkItemResourceConfig
+from azure_devops.webhooks.webhook_event import WebhookEvent
+
+from .base_client import HTTPBaseClient
+
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
@@ -166,6 +173,15 @@ class AzureDevopsClient(HTTPBaseClient):
         :param project_id: The ID of the project.
         :return: A list of work item IDs.
         """
+        config = typing.cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
+
+        wiql_query = "SELECT [Id] from WorkItems"
+
+        if config.selector.wiql:
+            # Append the user-provided wiql to the WHERE clause
+            wiql_query += f" WHERE {config.selector.wiql}"
+            logger.info(f"Found and appended WIQL filter: {config.selector.wiql}")
+
         wiql_url = (
             f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/wiql"
         )
@@ -173,7 +189,7 @@ class AzureDevopsClient(HTTPBaseClient):
             "POST",
             wiql_url,
             params={"api-version": "7.1-preview.2"},
-            data=json.dumps({"query": "SELECT [Id] from WorkItems"}),
+            data=json.dumps({"query": wiql_query}),
             headers={"Content-Type": "application/json"},
         )
         wiql_response.raise_for_status()
