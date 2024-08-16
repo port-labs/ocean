@@ -82,7 +82,7 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(ObjectKind.SERVICE_METRIC)
-async def on_resync_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
     params = typing.cast(

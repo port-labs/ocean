@@ -23,6 +23,12 @@ MINIMUM_LIMIT_REMAINING = 1
 DEFAULT_SLEEP_TIME = 0.1
 FETCH_WINDOW_TIME_IN_MINUTES = 10
 
+SERVICE_KEY = "__service"
+METRIC_KEY = "__metric"
+QUERY_ID_KEY = "__query_id"
+QUERY_KEY = "__query"
+ENV_KEY = "__env"
+
 
 def embed_credentials_in_url(url: str, username: str, token: str) -> str:
     """
@@ -408,11 +414,11 @@ class DatadogClient:
                 # Update result with metadata
                 result.update(
                     {
-                        "__service": service_id,
-                        "__metric": self.extract_metric_name(query),
-                        "__query_id": f"{query}/service:{service_id}/env:{env_to_fetch}",
-                        "__query": query,
-                        "__env": env_to_fetch,
+                        SERVICE_KEY: service_id,
+                        METRIC_KEY: self.extract_metric_name(query),
+                        QUERY_ID_KEY: f"{query}/service:{service_id}/env:{env_to_fetch}",
+                        QUERY_KEY: query,
+                        ENV_KEY: env_to_fetch,
                     }
                 )
                 metrics.append(result)
@@ -421,7 +427,7 @@ class DatadogClient:
 
     async def get_metrics(
         self,
-        query: str,
+        metric_query: str,
         env: str = "*",
         service: str = "*",
         time_window: int = FETCH_WINDOW_TIME_IN_MINUTES,
@@ -430,7 +436,7 @@ class DatadogClient:
         Fetches metrics for specified services and environment.
 
         Args:
-            query (str): The Datadog query string to execute.
+            metric (str): The Datadog metric to fetch.
             env (str): The environment to filter by, or "*" to fetch metrics for all environments.
             service (str): The service ID to filter by, or "*" to fetch metrics for all services.
             time_window (int): Time window in minutes for fetching metrics (default: FETCH_WINDOW_TIME_IN_MINUTES).
@@ -444,23 +450,23 @@ class DatadogClient:
         )
         if not envs_to_fetch:
             logger.warning(
-                f"No environments found, can't fetch metrics for metric {query}"
+                f"No environments found, can't fetch metrics for metric {metric_query}"
             )
             return
 
         if service == "*":
             async for service_list in self.get_services():
-                async for metric in self._fetch_metrics_for_services(
-                    query, envs_to_fetch, service_list, time_window
+                async for metrics in self._fetch_metrics_for_services(
+                    metric_query, envs_to_fetch, service_list, time_window
                 ):
-                    yield metric
+                    yield metrics
         else:
             result = await self.get_single_service(service)
 
             service_details: dict[str, Any] = result["data"]
 
             async for metrics in self._fetch_metrics_for_services(
-                query, envs_to_fetch, [service_details], time_window
+                metric_query, envs_to_fetch, [service_details], time_window
             ):
                 yield metrics
 

@@ -38,7 +38,7 @@ class DatadogSelector(BaseModel):
     env: str = Field(alias="env", default="*")
     service: str = Field(alias="service", default="*")
     timeframe: int = Field(
-        alias="timeframe", description="Time frame in minutes", default=10
+        alias="timeframe", description="Time frame in minutes", default=1
     )
 
 
