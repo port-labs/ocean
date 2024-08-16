@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.70 (2024-08-15)
+
+
+### Improvements
+
+- Added support for service level indicators and objectives
+
+
+## 0.1.69 (2024-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.13 (#1)
+
+
+## 0.1.68 (2024-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.12 (#1)
+
+
 ## 0.1.67 (2024-08-05)
 
 

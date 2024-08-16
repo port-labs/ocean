@@ -7,6 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.9.13 (2024-08-13)
+
+### Improvements
+
+- Changed action CREATE route to use new v2 option
+
+
+## 0.9.12 (2024-08-06)
+
+### Bug Fixes
+
+- Fixed resync issue when calculating the diff of entities failed due to search identifier in relation mapping
+
+
 ## 0.9.11 (2024-08-05)
 
 

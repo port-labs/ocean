@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "{{cookiecutter.integration_slug}}"
-version = "0.1.0"
+version = "0.1.0-beta"
 description = "{{cookiecutter.integration_short_description}}"
 authors = ["{{cookiecutter.full_name}} <{{cookiecutter.email}}>"]
 
