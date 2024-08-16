@@ -102,27 +102,3 @@ resources:
             timeframe: .__timeframe
           relations:
             slo: .slo.id
-  - kind: serviceMetric
-    selector:
-      query: "true"
-      datadogSelector:
-        metric: "avg:system.mem.used"
-        env: '*'
-        service: '*'
-        timeframe: 10
-    port:
-      entity:
-        mappings:
-          blueprint: '"datadogServiceMetric"'
-          identifier: .__query_id
-          title: .query
-          properties:
-            query: .__query
-            series: .series
-            res_type: .res_type
-            from_date: '.from_date / 1000 | todate'
-            to_date: '.to_date / 1000 | todate'
-            metric_name: .__metric
-            env: .__env
-          relations:
-            service: .__service
