@@ -26,6 +26,10 @@ define install_poetry
 	fi
 endef
 
+define install_precommit
+	command pre-commit install
+endef
+
 define deactivate_virtualenv
     if [ -n "$$VIRTUAL_ENV" ]; then \
         unset VIRTUAL_ENV; \
@@ -46,7 +50,9 @@ endef
 install:
 	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
-	poetry install --with dev --all-extras
+	poetry install --with dev --all-extras &&  \
+	$(ACTIVATE) && \
+	$(call install_precommit)
 
 
 install/all: install
@@ -70,7 +76,7 @@ lint:
 	$(call run_checks,.)
 
 # Development commands
-build: 
+build:
 	$(ACTIVATE) && poetry build
 
 run: lint
@@ -97,6 +103,10 @@ clean:
 	rm -rf docs/_build
 	rm -rf dist/
 
-# make bump/integrations VERSION=0.3.2 
+# make bump/integrations VERSION=0.3.2
 bump/integrations:
 	./scripts/bump-all.sh $(VERSION)
+
+# make bump/single-integration INTEGRATION=aws
+bump/single-integration:
+	./scripts/bump-single-integration.sh -i $(INTEGRATION)
