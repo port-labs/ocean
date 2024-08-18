@@ -95,14 +95,13 @@ class Ocean:
         )
         state: dict[str, Any] = {
             "status": "running",
-            "last_resync_start": datetime.datetime.now(
+            "lastResyncEnd": None,
+            "lastResyncStart": datetime.datetime.now(
                 tz=datetime.timezone.utc
             ).isoformat(),
+            "nextResync": nest_resync,
+            "intervalInMinuets": _interval,
         }
-        if nest_resync:
-            state["next_resync"] = nest_resync
-        if _interval:
-            state["interval_in_minuets"] = _interval
 
         integration = await self.port_client.update_integration_state(state)
         self.last_integration_updated_at = integration["updatedAt"]
@@ -119,14 +118,12 @@ class Ocean:
         )
         state: dict[str, Any] = {
             "status": status,
-            "last_resync_end": datetime.datetime.now(
+            "lastResyncEnd": datetime.datetime.now(
                 tz=datetime.timezone.utc
             ).isoformat(),
+            "nextResync": nest_resync,
+            "intervalInMinuets": _interval,
         }
-        if nest_resync:
-            state["next_resync"] = nest_resync
-        if _interval:
-            state["interval_in_minuets"] = _interval
 
         integration = await self.port_client.update_integration_state(state)
         self.last_integration_updated_at = integration["updatedAt"]
