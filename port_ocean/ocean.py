@@ -104,7 +104,8 @@ class Ocean:
         }
 
         integration = await self.port_client.update_integration_state(state)
-        self.last_integration_updated_at = integration["updatedAt"]
+        if integration:
+            self.last_integration_updated_at = integration["state"]["updatedAt"]
 
     async def update_state_after_scheduled_sync(
         self,
@@ -126,7 +127,8 @@ class Ocean:
         }
 
         integration = await self.port_client.update_integration_state(state)
-        self.last_integration_updated_at = integration["updatedAt"]
+        if integration:
+            self.last_integration_updated_at = integration["state"]["updatedAt"]
 
     async def _setup_scheduled_resync(
         self,
