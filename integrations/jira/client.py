@@ -120,20 +120,6 @@ class JiraClient:
         ):
             yield projects["values"]
 
-    async def _get_issues_from_board(
-        self, params: dict[str, str]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for boards in self.get_all_boards():
-            for board in boards:
-                async for issues in self._make_paginated_request(
-                    f"{self.agile_url}/board/{board['id']}/issue",
-                    params=params,
-                    is_last_function=lambda response: response["startAt"]
-                    + response["maxResults"]
-                    >= response["total"],
-                ):
-                    yield issues["issues"]
-
     async def _get_issues_from_sprint(
         self, params: dict[str, str], sprint_state: SprintState
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -163,22 +149,20 @@ class JiraClient:
 
     async def get_all_issues(
         self,
-        source: Literal["board", "sprint", "all"],
+        source: Literal["sprint", "all"],
         params: dict[str, Any] = {},
         sprintState: SprintState = "active",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        ISSUES_MAP = {
-            "board": self._get_issues_from_board,
-            "all": self._get_issues_from_org,
-        }
-        logger.info("Running syncing for type {}".format(source))
+        logger.info("Running syncing for issues from source {}".format(
+            source
+        ))
 
         if source == "sprint":
             async for issues in self._get_issues_from_sprint(params, sprintState):
                 yield issues
             return
 
-        async for issues in ISSUES_MAP[source](params):
+        async for issues in self._get_issues_from_org(params):
             yield issues
 
     @cache_iterator_result()

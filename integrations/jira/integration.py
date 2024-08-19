@@ -16,7 +16,7 @@ class JiraIssueSelector(Selector):
     jql: str | None = Field(
         description="Jira Query Language (JQL) query to filter issues",
     )
-    source: Literal["board", "sprint", "all"] = Field(
+    source: Literal["sprint", "all"] = Field(
         default="sprint",
         description="Where issues are sourced from",
     )
