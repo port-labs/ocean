@@ -5,7 +5,7 @@ from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from gcp_core.errors import NoProjectsFoundError
 from gcp_core.search.resource_searches import search_all_projects
-from gcp_core.search.utils import execute_with_concurrency_control
+from gcp_core.search.utils import rate_limiter
 
 
 async def iterate_per_available_project(
@@ -16,7 +16,7 @@ async def iterate_per_available_project(
     try:
         async for projects in search_all_projects():
             tasks = [
-                execute_with_concurrency_control(
+                rate_limiter.paginate_with_limit(
                     project_dependent_callable, project, *args, **kwargs
                 )
                 for project in projects
