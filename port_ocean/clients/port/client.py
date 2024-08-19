@@ -77,15 +77,18 @@ class PortClient(
 
         return response.json()["organization"]["id"]
 
-    async def update_integration_state(self, state: dict[str, Any]) -> dict[str, Any]:
-        logger.debug(f"Updating integration state with: {state}")
+    async def update_integration_state(
+        self, state: dict[str, Any], should_raise: bool = False, should_log: bool = True
+    ) -> dict[str, Any]:
+        if should_log:
+            logger.debug(f"Updating integration state with: {state}")
         response = await self.client.patch(
             f"{self.api_url}/integration/{self.integration_identifier}/state",
             headers=await self.auth.headers(),
             json=state,
         )
-        handle_status_code(response, should_raise=False, should_log=True)
-        if response.is_success:
+        handle_status_code(response, should_raise, should_log)
+        if response.is_success and should_log:
             logger.info("Integration state updated successfully")
 
         return response.json().get("integration", {})
