@@ -436,7 +436,7 @@ class DatadogClient:
         Fetches metrics for specified services and environment.
 
         Args:
-            metric (str): The Datadog metric to fetch.
+            metric_query (str): The Datadog metric to fetch (e.g., "avg:container.cpu.usage").
             env (str): The environment to filter by, or "*" to fetch metrics for all environments.
             service (str): The service ID to filter by, or "*" to fetch metrics for all services.
             time_window (int): Time window in minutes for fetching metrics (default: FETCH_WINDOW_TIME_IN_MINUTES).
