@@ -7,6 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.106 (2024-08-19)
+====================
+
+### Bug Fixes
+
+- Fixed an issue when we were still processing a file larger than the allowed file size
+- Added more verbosity to the logs of the file kind
+
+
 0.1.105 (2024-08-15)
 ===================
 
