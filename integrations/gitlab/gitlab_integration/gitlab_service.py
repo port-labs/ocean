@@ -635,20 +635,26 @@ class GitlabService:
         self, project: Project, path: str
     ) -> typing.AsyncIterator[List[dict[str, Any]]]:
         branch = project.default_branch
-        files = []
         try:
             file_paths = await self._get_file_paths(project, path, branch, True)
             logger.info(
                 f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
             )
+            files = []
+            tasks = []
             for file_path in file_paths:
-                file = await self.get_and_parse_single_file(project, file_path, branch)
-                if file:
-                    files.append(file)
-                    if len(files) >= PROJECT_FILES_BATCH_SIZE:
-                        yield files
-                        files = []
-            if files:
+                tasks.append(self.get_and_parse_single_file(project, file_path, branch))
+
+                if len(tasks) == PROJECT_FILES_BATCH_SIZE:
+                    results = await asyncio.gather(*tasks)
+                    files.extend([file_data for file_data in results if file_data])
+                    yield files
+                    files = []
+                    tasks = []
+
+            if tasks:
+                results = await asyncio.gather(*tasks)
+                files.extend([file_data for file_data in results if file_data])
                 yield files
         except Exception as e:
             logger.error(
