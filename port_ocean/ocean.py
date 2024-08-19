@@ -71,7 +71,7 @@ class Ocean:
         # This is used to differ between integration changes that require a full resync and state changes
         # So that the polling event-listener can decide whether to perform a full resync or not
         # TODO: remove this once we separate the state from the integration
-        self.last_integration_updated_at: str = ""
+        self.last_integration_state_updated_at: str = ""
 
     def is_saas(self) -> bool:
         return self.config.runtime == Runtime.Saas
@@ -108,7 +108,7 @@ class Ocean:
 
         integration = await self.port_client.update_integration_state(state)
         if integration:
-            self.last_integration_updated_at = integration["state"]["updatedAt"]
+            self.last_integration_state_updated_at = integration["state"]["updatedAt"]
 
     async def update_state_after_scheduled_sync(
         self,
@@ -133,7 +133,7 @@ class Ocean:
 
         integration = await self.port_client.update_integration_state(state)
         if integration:
-            self.last_integration_updated_at = integration["state"]["updatedAt"]
+            self.last_integration_state_updated_at = integration["state"]["updatedAt"]
 
     async def _setup_scheduled_resync(
         self,
