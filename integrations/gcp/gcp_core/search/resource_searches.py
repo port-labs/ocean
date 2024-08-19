@@ -94,7 +94,7 @@ async def list_all_topics_per_project(
     async with PublisherAsyncClient() as async_publisher_client:
         try:
             list_topics_pagers = await async_publisher_client.list_topics(
-                project=project_name, 
+                project=project_name,
             )
             async for paginated_response in list_topics_pagers.pages:
                 topics = parse_protobuf_messages(paginated_response.topics)
@@ -152,9 +152,7 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     logger.info("Searching organizations")
     async with OrganizationsAsyncClient() as organizations_client:
-        search_organizations_pager = await organizations_client.search_organizations(
-            
-        )
+        search_organizations_pager = await organizations_client.search_organizations()
         async for organizations_page in search_organizations_pager.pages:
             raw_orgs = organizations_page.organizations
             logger.info(f"Found {len(raw_orgs)} organizations")
@@ -172,18 +170,14 @@ async def get_single_project(project_name: str) -> RAW_ITEM:
 @async_retry.retry_single_resource
 async def get_single_folder(folder_name: str) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
-        return parse_protobuf_message(
-            await folders_client.get_folder(name=folder_name)
-        )
+        return parse_protobuf_message(await folders_client.get_folder(name=folder_name))
 
 
 @async_retry.retry_single_resource
 async def get_single_organization(organization_name: str) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
-            await organizations_client.get_organization(
-                name=organization_name
-            )
+            await organizations_client.get_organization(name=organization_name)
         )
 
 
@@ -197,7 +191,6 @@ async def get_single_topic(topic_id: str) -> RAW_ITEM:
         return parse_protobuf_message(
             await async_publisher_client.get_topic(topic=topic_id)
         )
-
 
 
 async def search_single_resource(
