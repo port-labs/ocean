@@ -12,6 +12,7 @@ from port_ocean.core.event_listener.base import (
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.time import convert_str_to_utc_datetime, convert_to_minutes
+from port_ocean.utils.misc import IntegrationStateStatus
 
 
 class OnceEventListenerSettings(EventListenerSettings):
@@ -116,7 +117,7 @@ class OnceEventListener(BaseEventListener):
             await self.get_saas_resync_initialization_and_interval()
         )
         await ocean.app.update_state_after_scheduled_sync(
-            "completed", interval, start_time
+            IntegrationStateStatus.Completed, interval, start_time
         )
 
     async def _on_resync_failure(self, e: Exception) -> None:
@@ -129,7 +130,7 @@ class OnceEventListener(BaseEventListener):
             await self.get_saas_resync_initialization_and_interval()
         )
         await ocean.app.update_state_after_scheduled_sync(
-            "failed", interval, start_time
+            IntegrationStateStatus.Failed, interval, start_time
         )
 
     async def _start(self) -> None:

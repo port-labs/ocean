@@ -1,3 +1,4 @@
+from enum import Enum
 import inspect
 from importlib.util import spec_from_file_location, module_from_spec
 from pathlib import Path
@@ -7,6 +8,12 @@ from typing import Callable, Any
 from uuid import uuid4
 import tomli
 import yaml
+
+
+class IntegrationStateStatus(Enum):
+    Running = "running"
+    Failed = "failed"
+    Completed = "completed"
 
 
 def get_time(seconds_precision: bool = True) -> float:

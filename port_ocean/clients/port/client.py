@@ -85,7 +85,7 @@ class PortClient(
             json=state,
         )
         handle_status_code(response, should_raise=False, should_log=True)
-        if not response.is_error:
+        if response.is_success:
             logger.info("Integration state updated successfully")
 
         return response.json().get("integration", {})

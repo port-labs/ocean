@@ -27,6 +27,7 @@ from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
 from port_ocean.utils.time import get_next_occurrence
+from port_ocean.utils.misc import IntegrationStateStatus
 
 
 class Ocean:
@@ -94,7 +95,7 @@ class Ocean:
             _interval, custom_start_time
         )
         state: dict[str, Any] = {
-            "status": "running",
+            "status": IntegrationStateStatus.Running.value,
             "lastResyncEnd": None,
             "lastResyncStart": datetime.datetime.now(
                 tz=datetime.timezone.utc
@@ -109,7 +110,9 @@ class Ocean:
 
     async def update_state_after_scheduled_sync(
         self,
-        status: Literal["completed", "failed"] = "completed",
+        status: Literal[
+            IntegrationStateStatus.Completed, IntegrationStateStatus.Failed
+        ] = IntegrationStateStatus.Completed,
         interval: int | None = None,
         custom_start_time: datetime.datetime | None = None,
     ) -> None:
@@ -118,7 +121,7 @@ class Ocean:
             _interval, custom_start_time
         )
         state: dict[str, Any] = {
-            "status": status,
+            "status": status.value,
             "lastResyncEnd": datetime.datetime.now(
                 tz=datetime.timezone.utc
             ).isoformat(),
@@ -140,7 +143,9 @@ class Ocean:
                 await self.integration.sync_raw_all()
                 await self.update_state_after_scheduled_sync()
             except Exception as e:
-                await self.update_state_after_scheduled_sync("failed")
+                await self.update_state_after_scheduled_sync(
+                    IntegrationStateStatus.Failed
+                )
                 raise e
 
         interval = self.config.scheduled_resync_interval

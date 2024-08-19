@@ -6,6 +6,7 @@ from pydantic import Extra
 from port_ocean.config.base import BaseOceanModel
 from port_ocean.utils.signal import signal_handler
 from port_ocean.context.ocean import ocean
+from port_ocean.utils.misc import IntegrationStateStatus
 
 
 class EventListenerEvents(TypedDict):
@@ -53,7 +54,7 @@ class BaseEventListener:
         """
         Can be used for event listeners that need to handle resync failures.
         """
-        await ocean.app.update_state_after_scheduled_sync("failed")
+        await ocean.app.update_state_after_scheduled_sync(IntegrationStateStatus.Failed)
 
     async def _resync(
         self,
