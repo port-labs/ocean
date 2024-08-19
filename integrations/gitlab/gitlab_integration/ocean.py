@@ -192,21 +192,29 @@ async def resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     updated_after = datetime.now() - timedelta(days=14)
 
     for service in get_cached_all_services():
-        for group in service.get_root_groups():
-            async for merge_request_batch in service.get_opened_merge_requests(group):
-                yield [merge_request.asdict() for merge_request in merge_request_batch]
-            async for merge_request_batch in service.get_closed_merge_requests(
-                group, updated_after
-            ):
-                yield [merge_request.asdict() for merge_request in merge_request_batch]
+        async for groups_batch in service.get_all_root_groups():
+            for group in groups_batch:
+                async for merge_request_batch in service.get_opened_merge_requests(
+                    group
+                ):
+                    yield [
+                        merge_request.asdict() for merge_request in merge_request_batch
+                    ]
+                async for merge_request_batch in service.get_closed_merge_requests(
+                    group, updated_after
+                ):
+                    yield [
+                        merge_request.asdict() for merge_request in merge_request_batch
+                    ]
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
-        for group in service.get_root_groups():
-            async for issues_batch in service.get_all_issues(group):
-                yield [issue.asdict() for issue in issues_batch]
+        async for groups_batch in service.get_all_root_groups():
+            for group in groups_batch:
+                async for issues_batch in service.get_all_issues(group):
+                    yield [issue.asdict() for issue in issues_batch]
 
 
 @ocean.on_resync(ObjectKind.JOB)

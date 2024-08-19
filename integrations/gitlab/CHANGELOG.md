@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.107 (2024-08-19)
+====================
+
+### Bug Fixes 
+
+- Fixed merge requests and issue resync methods to use an async method of listing root groups to avoid blocking the event loop
+
+
 0.1.106 (2024-08-19)
 ====================
 
