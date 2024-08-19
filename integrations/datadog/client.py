@@ -24,7 +24,6 @@ DEFAULT_SLEEP_TIME = 0.1
 FETCH_WINDOW_TIME_IN_MINUTES = 10
 
 SERVICE_KEY = "__service"
-METRIC_KEY = "__metric"
 QUERY_ID_KEY = "__query_id"
 QUERY_KEY = "__query"
 ENV_KEY = "__env"
@@ -330,25 +329,6 @@ class DatadogClient:
             )
         return metric_query
 
-    def _extract_metric_name(self, query_string: str) -> str | None:
-        """Extracts the Datadog metric name from a query string.
-
-        Args:
-            query_string: The Datadog query string.
-
-        Returns:
-            The metric name, or None if no metric name is found.
-
-        Examples:
-            - "sum:container.memory.usage" -> "container.memory.usage"
-            - "avg:system.cpu.used{service:my-service}" -> "system.cpu.used"
-        """
-        match = re.search(r"(?:\w+:)?(\w+\.\w+\.\w+)", query_string)
-        if match:
-            return match.group(1)
-        else:
-            return None
-
     async def get_single_service(self, service_id: str) -> dict[str, Any]:
         url = f"{self.api_url}/api/v2/services/definitions/{service_id}"
         return await self._send_api_request(url)
@@ -415,7 +395,6 @@ class DatadogClient:
                 result.update(
                     {
                         SERVICE_KEY: service_id,
-                        METRIC_KEY: self._extract_metric_name(query),
                         QUERY_ID_KEY: f"{query}/service:{service_id}/env:{env_to_fetch}",
                         QUERY_KEY: query,
                         ENV_KEY: env_to_fetch,
