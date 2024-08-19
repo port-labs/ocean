@@ -3,7 +3,7 @@ icon: Octopus
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/octopus
 features:
   - type: exporter
-    section: DevOps
+    section: CICD
     resources:
       - kind: space
       - kind: project
@@ -14,7 +14,7 @@ configurations:
   - name: octopusApiKey
     required: true
     type: string
-    description: Octopus Deploy API key. For more information on creating an API key, refer to the <a href="https://octopus.com/docs/octopus-rest-api/how-to-create-an-api-key">Octopus API documentation</a>.
+    description: Octopus Deploy API key. For more information on creating an API key, refer to the <a href="https://octopus.com/docs/octopus-rest-api/how-to-create-an-api-key" target="_blank">Octopus API documentation</a>.
     sensitive: true
   - name: serverUrl
     required: true
