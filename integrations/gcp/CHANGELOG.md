@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
+- Implemented a custom retry mechanism to replace GCP's AsyncRetry due to reliability issues.
+- Added rate limiting for "Search All Resources" requests, configurable via the SEARCH_ALL_RESOURCES_PER_MINUTE_QUOTA environment variable.
+
+
+## 0.1.40 (2024-08-13)
+
+
+### Improvements
+
 - Added rate limit strategy to api calls
 
 

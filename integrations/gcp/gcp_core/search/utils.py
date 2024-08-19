@@ -10,14 +10,14 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 # Constants for retry logic
 _DEFAULT_RETRIABLE_ERROR_TYPES = (TooManyRequests, ServiceUnavailable)
-_DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES = 5.0
-_DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS = 60.0
-_DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF = 2.0
-_DEFAULT_TIMEOUT = 300.0
+_DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES:float = 5.0
+_DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS:float = 60.0
+_DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF:float = 2.0
+_DEFAULT_TIMEOUT:float = 300.0
 
 # Constants for rate limiting
-_DEFAULT_RATE_LIMIT_TIME_PERIOD = 60
-_DEFAULT_RATE_LIMIT_QUOTA = ocean.integration_config[
+_DEFAULT_RATE_LIMIT_TIME_PERIOD:float = 60
+_DEFAULT_RATE_LIMIT_QUOTA:int = ocean.integration_config[
     "search_all_resources_per_minute_quota"
 ]
 
@@ -25,8 +25,8 @@ _DEFAULT_RATE_LIMIT_QUOTA = ocean.integration_config[
 class AsyncRateLimiter:
     def __init__(
         self,
-        max_rate: Optional[int] = _DEFAULT_RATE_LIMIT_QUOTA,
-        time_period: Optional[int] = _DEFAULT_RATE_LIMIT_TIME_PERIOD,
+        max_rate: int = _DEFAULT_RATE_LIMIT_QUOTA,
+        time_period: float = _DEFAULT_RATE_LIMIT_TIME_PERIOD,
     ):
         self.limiter = AsyncLimiter(max_rate=max_rate, time_period=time_period)
         logger.info(
@@ -56,7 +56,7 @@ class AsyncRetry:
         exception_to_check: Optional[
             Tuple[Type[Exception], ...]
         ] = _DEFAULT_RETRIABLE_ERROR_TYPES,
-        timeout: Optional[int] = _DEFAULT_TIMEOUT,
+        timeout: Optional[float] = _DEFAULT_TIMEOUT,
         delay: Optional[float] = _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES,
         max_delay: Optional[float] = _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS,
         backoff: Optional[float] = _DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF,
@@ -100,14 +100,14 @@ class AsyncRetry:
 
                     if elapsed_time + next_delay >= self.timeout:
                         logger.warning(
-                            f"Making final attempt for {func.__name__} due to timeout constraints."
+                            f"Making final retry attempt due to timeout constraints."
                         )
                         async for item in func(*args, **kwargs):
                             yield item
                         return
 
                     logger.warning(
-                        f"Retrying {func.__name__} due to {e.__class__.__name__} error in {next_delay:.2f} seconds..."
+                        f"Retrying due to {e.__class__.__name__} error in {next_delay:.2f} seconds..."
                     )
                     await asyncio.sleep(next_delay)
 

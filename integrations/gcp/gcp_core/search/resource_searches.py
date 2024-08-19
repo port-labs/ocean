@@ -28,6 +28,7 @@ from gcp_core.utils import (
 from gcp_core.search.utils import async_retry
 
 
+@async_retry.retry_paginated_resource
 async def search_all_resources(
     project_data: dict[str, Any], asset_type: str
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -35,6 +36,7 @@ async def search_all_resources(
         yield resources
 
 
+@async_retry.retry_paginated_resource
 async def search_all_resources_in_project(
     project: dict[str, Any], asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -76,6 +78,7 @@ async def search_all_resources_in_project(
             raise e
 
 
+@async_retry.retry_paginated_resource
 async def list_all_topics_per_project(
     project: dict[str, Any],
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -113,6 +116,7 @@ async def list_all_topics_per_project(
             )
 
 
+@async_retry.retry_paginated_resource
 @cache_iterator_result()
 async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
@@ -127,6 +131,7 @@ async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield parse_protobuf_messages(raw_projects)
 
 
+@async_retry.retry_paginated_resource
 async def search_all_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Search for folders that the caller has ``resourcemanager.folders.get`` permission on
@@ -140,6 +145,7 @@ async def search_all_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield parse_protobuf_messages(raw_folders)
 
 
+@async_retry.retry_paginated_resource
 async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Search for organizations that the caller has ``resourcemanager.organizations.get``` permission on
@@ -155,6 +161,7 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield parse_protobuf_messages(raw_orgs)
 
 
+@async_retry.retry_single_resource
 async def get_single_project(project_name: str) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         return parse_protobuf_message(
@@ -162,6 +169,7 @@ async def get_single_project(project_name: str) -> RAW_ITEM:
         )
 
 
+@async_retry.retry_single_resource
 async def get_single_folder(folder_name: str) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(
@@ -169,6 +177,7 @@ async def get_single_folder(folder_name: str) -> RAW_ITEM:
         )
 
 
+@async_retry.retry_single_resource
 async def get_single_organization(organization_name: str) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
@@ -178,6 +187,7 @@ async def get_single_organization(organization_name: str) -> RAW_ITEM:
         )
 
 
+@async_retry.retry_single_resource
 async def get_single_topic(topic_id: str) -> RAW_ITEM:
     """
     The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
