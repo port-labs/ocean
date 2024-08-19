@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.0 (2024-08-19)
+
+### Improvements
+
+- Add updates to the integration resync state in port
+
+
 ## 0.9.13 (2024-08-13)
 
 ### Improvements
