@@ -1,7 +1,8 @@
 import asyncio
 import typing
+import json
 from datetime import datetime, timedelta
-from typing import List, Tuple, Any, Union, TYPE_CHECKING
+from typing import List, Optional, Tuple, Any, Union, TYPE_CHECKING
 
 import anyio.to_thread
 import yaml
@@ -15,6 +16,7 @@ from gitlab.v4.objects import (
     ProjectPipeline,
     GroupMergeRequest,
     ProjectPipelineJob,
+    ProjectFile,
 )
 from loguru import logger
 from yaml.parser import ParserError
@@ -26,6 +28,8 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
+MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
+PROJECT_FILES_BATCH_SIZE = 10
 
 if TYPE_CHECKING:
     from gitlab_integration.git_integration import (
@@ -90,14 +94,18 @@ class GitlabService:
         project = self.gitlab_client.projects.get(project_id)
         return project.commits.get(head).diff()
 
-    def _get_file_paths(
-        self, project: Project, path: str | List[str], commit_sha: str
+    async def _get_file_paths(
+        self,
+        project: Project,
+        path: str | List[str],
+        commit_sha: str,
+        return_files_only: bool = False,
     ) -> list[str]:
         if not isinstance(path, list):
             path = [path]
         try:
-            files = project.repository_tree(
-                ref=commit_sha, recursive=True, get_all=True
+            files = await AsyncFetcher.fetch_repository_tree(
+                project, ref=commit_sha, recursive=True, get_all=True
             )
         except GitlabError as err:
             if err.response_code != 404:
@@ -110,7 +118,8 @@ class GitlabService:
         return [
             file["path"]
             for file in files
-            if does_pattern_apply(path, file["path"] or "")
+            if (not return_files_only or file["type"] == "blob")
+            and does_pattern_apply(path, file["path"] or "")
         ]
 
     def _get_entities_from_git(
@@ -140,10 +149,10 @@ class GitlabService:
             )
         return []
 
-    def _get_entities_by_commit(
+    async def _get_entities_by_commit(
         self, project: Project, spec: str | List["str"], commit: str, ref: str
     ) -> List[Entity]:
-        spec_paths = self._get_file_paths(project, spec, commit)
+        spec_paths = await self._get_file_paths(project, spec, commit)
         return [
             entity
             for path in spec_paths
@@ -179,6 +188,14 @@ class GitlabService:
             issue.references.get("short")
         )
         return self.should_run_for_path(project_path)
+
+    def should_process_project(
+        self, project: Project, repos: Optional[List[str]]
+    ) -> bool:
+        # If `repos` selector is None or empty, we process all projects
+        if not repos:
+            return True
+        return project.name in repos
 
     def get_root_groups(self) -> List[Group]:
         groups = self.gitlab_client.groups.list(iterator=True)
@@ -535,7 +552,7 @@ class GitlabService:
             issues: List[Issue] = typing.cast(List[Issue], issues_batch)
             yield issues
 
-    def get_entities_diff(
+    async def get_entities_diff(
         self,
         project: Project,
         spec_path: str | List[str],
@@ -547,12 +564,101 @@ class GitlabService:
             f'Getting entities diff for project {project.path_with_namespace}, in path "{spec_path}", before {before},'
             f" after {after}, ref {ref}"
         )
-        entities_before = self._get_entities_by_commit(project, spec_path, before, ref)
+        entities_before = await self._get_entities_by_commit(
+            project, spec_path, before, ref
+        )
 
         logger.info(f"Found {len(entities_before)} entities in the previous state")
 
-        entities_after = self._get_entities_by_commit(project, spec_path, after, ref)
+        entities_after = await self._get_entities_by_commit(
+            project, spec_path, after, ref
+        )
 
         logger.info(f"Found {len(entities_after)} entities in the current state")
 
         return entities_before, entities_after
+
+    def _parse_file_content(
+        self, file: ProjectFile
+    ) -> Union[str, dict[str, Any], list[Any]] | None:
+        """
+        Process a file from a project. If the file is a JSON or YAML, it will be parsed, otherwise the raw content will be returned
+        :param file: file object
+        :return: parsed content of the file
+        """
+        if file.size > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
+            logger.warning(
+                f"File {file.file_path} is too large to be processed. Maximum size allowed is 1MB. Actual size of file: {file.size}"
+            )
+            return None
+        try:
+            return json.loads(file.decode())
+        except json.JSONDecodeError:
+            try:
+                documents = list(yaml.load_all(file.decode(), Loader=yaml.SafeLoader))
+                return documents if len(documents) > 1 else documents[0]
+            except yaml.YAMLError:
+                return file.decode().decode("utf-8")
+
+    async def get_and_parse_single_file(
+        self, project: Project, file_path: str, branch: str
+    ) -> dict[str, Any] | None:
+        try:
+            logger.info(
+                f"Processing file {file_path} in project {project.path_with_namespace}"
+            )
+            project_file = await AsyncFetcher.fetch_single(
+                project.files.get, file_path, branch
+            )
+            logger.info(
+                f"Fetched file {file_path} in project {project.path_with_namespace}"
+            )
+            project_file = typing.cast(ProjectFile, project_file)
+            parsed_file = self._parse_file_content(project_file)
+            project_file_dict = project_file.asdict()
+
+            if not parsed_file:
+                # if the file is too large to be processed, we return None
+                return None
+
+            # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
+            project_file_dict["content"] = parsed_file
+
+            return {"file": project_file_dict, "repo": project.asdict()}
+        except Exception as e:
+            logger.error(
+                f"Failed to process file {file_path} in project {project.path_with_namespace}. error={e}"
+            )
+            return None
+
+    async def get_all_files_in_project(
+        self, project: Project, path: str
+    ) -> typing.AsyncIterator[List[dict[str, Any]]]:
+        branch = project.default_branch
+        try:
+            file_paths = await self._get_file_paths(project, path, branch, True)
+            logger.info(
+                f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
+            )
+            files = []
+            tasks = []
+            for file_path in file_paths:
+                tasks.append(self.get_and_parse_single_file(project, file_path, branch))
+
+                if len(tasks) == PROJECT_FILES_BATCH_SIZE:
+                    results = await asyncio.gather(*tasks)
+                    files.extend([file_data for file_data in results if file_data])
+                    yield files
+                    files = []
+                    tasks = []
+
+            if tasks:
+                results = await asyncio.gather(*tasks)
+                files.extend([file_data for file_data in results if file_data])
+                yield files
+        except Exception as e:
+            logger.error(
+                f"Failed to get files in project={project.path_with_namespace} for path={path} and "
+                f"branch={branch}. error={e}"
+            )
+            return
