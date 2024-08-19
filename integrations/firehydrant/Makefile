@@ -43,7 +43,7 @@ install:
 	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
 	poetry install --with dev
-	
+
 install/prod:
 	$(call install_poetry) && \
 	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
@@ -55,8 +55,8 @@ lint:
 run:
 	$(ACTIVATE) && ocean sail
 
-test: lint
-	$(ACTIVATE) && poetry run pytest
+test:
+	$(ACTIVATE) && poetry run pytest -n auto
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
