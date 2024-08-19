@@ -330,7 +330,7 @@ class DatadogClient:
             )
         return metric_query
 
-    def extract_metric_name(self, query_string: str) -> str | None:
+    def _extract_metric_name(self, query_string: str) -> str | None:
         """Extracts the Datadog metric name from a query string.
 
         Args:
