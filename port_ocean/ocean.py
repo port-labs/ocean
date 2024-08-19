@@ -68,6 +68,8 @@ class Ocean:
         )
         self.initiated_at = datetime.datetime.now(tz=datetime.timezone.utc)
 
+        # This is used to differ between integration changes that require a full resync and state changes
+        # So that the polling event-listener can decide whether to perform a full resync or not
         # TODO: remove this once we separate the state from the integration
         self.last_integration_updated_at: str = ""
 
