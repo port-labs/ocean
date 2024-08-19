@@ -106,7 +106,9 @@ class Ocean:
             "intervalInMinuets": _interval,
         }
 
-        integration = await self.port_client.update_integration_state(state)
+        integration = await self.port_client.update_integration_state(
+            state, should_raise=False
+        )
         if integration:
             self.last_integration_state_updated_at = integration["state"]["updatedAt"]
 
@@ -131,7 +133,9 @@ class Ocean:
             "intervalInMinuets": _interval,
         }
 
-        integration = await self.port_client.update_integration_state(state)
+        integration = await self.port_client.update_integration_state(
+            state, should_raise=False
+        )
         if integration:
             self.last_integration_state_updated_at = integration["state"]["updatedAt"]
 

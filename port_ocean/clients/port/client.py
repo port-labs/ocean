@@ -78,7 +78,7 @@ class PortClient(
         return response.json()["organization"]["id"]
 
     async def update_integration_state(
-        self, state: dict[str, Any], should_raise: bool = False, should_log: bool = True
+        self, state: dict[str, Any], should_raise: bool = True, should_log: bool = True
     ) -> dict[str, Any]:
         if should_log:
             logger.debug(f"Updating integration state with: {state}")
