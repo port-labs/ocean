@@ -73,7 +73,9 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     port: PortSettings
     event_listener: EventListenerSettingsType
     # If an identifier or type is not provided, it will be generated based on the integration name
-    integration: IntegrationSettings = IntegrationSettings(type="", identifier="")
+    integration: IntegrationSettings = Field(
+        default_factory=lambda: IntegrationSettings(type="", identifier="")
+    )
     runtime: Runtime = "OnPrem"
 
     @root_validator()
