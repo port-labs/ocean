@@ -23,9 +23,9 @@ _DEFAULT_TIMEOUT: float = 300.0
 
 # Constants for rate limiting
 _DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
-_DEFAULT_RATE_LIMIT_QUOTA: int = int(ocean.integration_config[
-    "search_all_resources_per_minute_quota"
-])
+_DEFAULT_RATE_LIMIT_QUOTA: int = int(
+    ocean.integration_config["search_all_resources_per_minute_quota"]
+)
 
 
 class AsyncRateLimiter:
