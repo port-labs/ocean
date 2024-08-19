@@ -1,0 +1,82 @@
+@port-labs/experiences-team
+
+# Ocean framework
+/port_ocean/** @port-labs/experiences-team
+
+# argocd integration
+/integrations/argocd/** @port-labs/experiences-team
+
+# aws integration
+/integrations/aws/** @port-labs/experiences-team
+
+# azure-devops integration
+/integrations/azure-devops/** @port-labs/experiences-team
+
+# azure integration
+/integrations/azure/** @port-labs/experiences-team
+
+# datadog integration
+/integrations/datadog/** @port-labs/experiences-team
+
+# dynatrace integration
+/integrations/dynatrace/** @port-labs/experiences-team
+
+# firehydrant integration
+/integrations/firehydrant/** @port-labs/experiences-team
+
+# gcp integration
+/integrations/gcp/** @port-labs/experiences-team
+
+# gitlab integration
+/integrations/gitlab/** @port-labs/experiences-team
+
+# jenkins integration
+/integrations/jenkins/** @port-labs/experiences-team
+
+# jira integration
+/integrations/jira/** @port-labs/experiences-team
+
+# kafka integration
+/integrations/kafka/** @port-labs/experiences-team
+
+# kubecost integration
+/integrations/kubecost/** @port-labs/experiences-team
+
+# launchdarkly integration
+/integrations/launchdarkly/** @port-labs/experiences-team
+
+# linear integration
+/integrations/linear/** @port-labs/experiences-team
+
+# newrelic integration
+/integrations/newrelic/** @port-labs/experiences-team
+
+# opencost integration
+/integrations/opencost/** @port-labs/experiences-team
+
+# opsgenie integration
+/integrations/opsgenie/** @port-labs/experiences-team
+
+# pagerduty integration
+/integrations/pagerduty/** @port-labs/experiences-team
+
+# sentry integration
+/integrations/sentry/** @port-labs/experiences-team
+
+# servicenow integration
+/integrations/servicenow/** @port-labs/experiences-team
+
+# snyk integration
+/integrations/snyk/** @port-labs/experiences-team
+
+# sonarqube integration
+/integrations/sonarqube/** @port-labs/experiences-team
+
+# statuspage integration
+/integrations/statuspage/** @port-labs/experiences-team
+
+# terraform-cloud integration
+/integrations/terraform-cloud/** @port-labs/experiences-team
+
+# wiz integration
+/integrations/wiz/** @port-labs/experiences-team
