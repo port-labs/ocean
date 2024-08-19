@@ -604,16 +604,25 @@ class GitlabService:
         self, project: Project, file_path: str, branch: str
     ) -> dict[str, Any] | None:
         try:
+            logger.info(
+                f"Processing file {file_path} in project {project.path_with_namespace}"
+            )
             project_file = await AsyncFetcher.fetch_single(
                 project.files.get, file_path, branch
+            )
+            logger.info(
+                f"Fetched file {file_path} in project {project.path_with_namespace}"
             )
             project_file = typing.cast(ProjectFile, project_file)
             parsed_file = self._parse_file_content(project_file)
             project_file_dict = project_file.asdict()
 
-            if parsed_file:
-                # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
-                project_file_dict["content"] = parsed_file
+            if not parsed_file:
+                # if the file is too large to be processed, we return None
+                return None
+
+            # Update the content with the parsed content. Useful for JSON and YAML files that can be further processed using itemsToParse
+            project_file_dict["content"] = parsed_file
 
             return {"file": project_file_dict, "repo": project.asdict()}
         except Exception as e:
@@ -628,7 +637,7 @@ class GitlabService:
         branch = project.default_branch
         try:
             file_paths = await self._get_file_paths(project, path, branch, True)
-            logger.debug(
+            logger.info(
                 f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
             )
             files = []
