@@ -604,8 +604,14 @@ class GitlabService:
         self, project: Project, file_path: str, branch: str
     ) -> dict[str, Any] | None:
         try:
+            logger.info(
+                f"Processing file {file_path} in project {project.path_with_namespace}"
+            )
             project_file = await AsyncFetcher.fetch_single(
                 project.files.get, file_path, branch
+            )
+            logger.debug(
+                f"Fetched file {file_path} in project {project.path_with_namespace}"
             )
             project_file = typing.cast(ProjectFile, project_file)
             parsed_file = self._parse_file_content(project_file)
@@ -628,24 +634,18 @@ class GitlabService:
         branch = project.default_branch
         try:
             file_paths = await self._get_file_paths(project, path, branch, True)
-            logger.debug(
+            logger.info(
                 f"Found {len(file_paths)} files in project {project.path_with_namespace} files: {file_paths}"
             )
             files = []
-            tasks = []
             for file_path in file_paths:
-                tasks.append(self.get_and_parse_single_file(project, file_path, branch))
-
-                if len(tasks) == PROJECT_FILES_BATCH_SIZE:
-                    results = await asyncio.gather(*tasks)
-                    files.extend([file_data for file_data in results if file_data])
-                    yield files
-                    files = []
-                    tasks = []
-
-            if tasks:
-                results = await asyncio.gather(*tasks)
-                files.extend([file_data for file_data in results if file_data])
+                file = await self.get_and_parse_single_file(project, file_path, branch)
+                if file:
+                    files.append(file)
+                    if len(files) >= PROJECT_FILES_BATCH_SIZE:
+                        yield files
+                        files = []
+            if files:
                 yield files
         except Exception as e:
             logger.error(
