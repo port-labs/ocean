@@ -5,7 +5,7 @@ define run_checks
 	cd $1; \
 	poetry check || exit_code=$$?;\
 	mypy . --exclude '/\.venv/' || exit_code=$$?; \
-	ruff . || exit_code=$$?; \
+	ruff check . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
 	yamllint . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
@@ -55,6 +55,7 @@ install:
 	$(call install_precommit)
 
 test/all: test
+	$(ACTIVATE) && \
 	pytest --import-mode=importlib -n auto ./port_ocean/tests ./integrations/*/tests
 
 install/all: install
