@@ -1,7 +1,13 @@
 import asyncio
 import random
 import time
-from typing import Any, Callable, AsyncGenerator, Optional, Type, Tuple
+from typing import (
+    Any,
+    Callable,
+    Type,
+    Tuple,
+    Coroutine,
+)
 from loguru import logger
 from google.api_core.exceptions import TooManyRequests, ServiceUnavailable
 from aiolimiter import AsyncLimiter
@@ -10,14 +16,14 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 
 # Constants for retry logic
 _DEFAULT_RETRIABLE_ERROR_TYPES = (TooManyRequests, ServiceUnavailable)
-_DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES:float = 5.0
-_DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS:float = 60.0
-_DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF:float = 2.0
-_DEFAULT_TIMEOUT:float = 300.0
+_DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES: float = 5.0
+_DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS: float = 60.0
+_DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF: float = 2.0
+_DEFAULT_TIMEOUT: float = 300.0
 
 # Constants for rate limiting
-_DEFAULT_RATE_LIMIT_TIME_PERIOD:float = 60
-_DEFAULT_RATE_LIMIT_QUOTA:int = ocean.integration_config[
+_DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60
+_DEFAULT_RATE_LIMIT_QUOTA: int = ocean.integration_config[
     "search_all_resources_per_minute_quota"
 ]
 
@@ -44,7 +50,10 @@ class AsyncRateLimiter:
                 yield item
 
     async def execute_with_limit(
-        self, func: Callable[..., RAW_ITEM], *args: Any, **kwargs: Any
+        self,
+        func: Callable[..., Coroutine[Any, Any, RAW_ITEM]],
+        *args: Any,
+        **kwargs: Any,
     ) -> RAW_ITEM:
         async with self.limiter:
             return await func(*args, **kwargs)
@@ -53,13 +62,13 @@ class AsyncRateLimiter:
 class AsyncRetry:
     def __init__(
         self,
-        exception_to_check: Optional[
-            Tuple[Type[Exception], ...]
+        exception_to_check: Tuple[
+            Type[Exception], ...
         ] = _DEFAULT_RETRIABLE_ERROR_TYPES,
-        timeout: Optional[float] = _DEFAULT_TIMEOUT,
-        delay: Optional[float] = _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES,
-        max_delay: Optional[float] = _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS,
-        backoff: Optional[float] = _DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF,
+        timeout: float = _DEFAULT_TIMEOUT,
+        delay: float = _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES,
+        max_delay: float = _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS,
+        backoff: float = _DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF,
         jitter: bool = True,
     ):
         self.exception_to_check = exception_to_check
@@ -72,10 +81,10 @@ class AsyncRetry:
     def _get_delay(self, attempt: int) -> float:
         """Calculate the delay for the current attempt."""
         delay = self.delay * (self.backoff ** (attempt - 1))
-        delay = min(delay, self.max_delay)
+        minimum_delay = min(delay, self.max_delay)
         if self.jitter:
-            delay += random.uniform(0, delay)
-        return delay
+            minimum_delay += random.uniform(0, delay)
+        return minimum_delay
 
     def retry_paginated_resource(
         self, func: Callable[..., ASYNC_GENERATOR_RESYNC_TYPE]
@@ -100,7 +109,7 @@ class AsyncRetry:
 
                     if elapsed_time + next_delay >= self.timeout:
                         logger.warning(
-                            f"Making final retry attempt due to timeout constraints."
+                            "Making final retry attempt due to timeout constraints."
                         )
                         async for item in func(*args, **kwargs):
                             yield item
@@ -112,10 +121,10 @@ class AsyncRetry:
                     await asyncio.sleep(next_delay)
 
         return wrapper
-    
+
     def retry_single_resource(
-        self, func: Callable[..., RAW_ITEM]
-    ) -> Callable[..., RAW_ITEM]:
+        self, func: Callable[..., Coroutine[Any, Any, RAW_ITEM]]
+    ) -> Callable[..., Coroutine[Any, Any, RAW_ITEM]]:
         async def wrapper(*args: Any, **kwargs: Any) -> RAW_ITEM:
             start_time = time.monotonic()
             attempt = 0
