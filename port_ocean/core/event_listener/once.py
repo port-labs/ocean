@@ -68,8 +68,8 @@ class OnceEventListener(BaseEventListener):
 
         try:
             integration = await self.get_current_integration_cached()
-        except Exception:
-            logger.exception("Error occurred while getting current integration")
+        except Exception as e:
+            logger.exception(f"Error occurred while getting current integration {e}")
             return (None, None)
 
         interval_str = (
@@ -79,7 +79,9 @@ class OnceEventListener(BaseEventListener):
         )
 
         if not interval_str:
-            logger.error("scheduledResyncInterval not found for integration")
+            logger.error(
+                "Unexpected: scheduledResyncInterval not found for Saas integration, Cannot predict the next resync"
+            )
             return (None, None)
 
         last_updated_saas_integration_config_str = integration.get(
@@ -88,7 +90,9 @@ class OnceEventListener(BaseEventListener):
 
         # we use the last updated time of the integration config as the start time since in saas application the interval is configured by the user from the portal
         if not last_updated_saas_integration_config_str:
-            logger.error("updatedAt not found for integration")
+            logger.error(
+                "Unexpected: updatedAt not found for Saas integration, Cannot predict the next resync"
+            )
             return (None, None)
 
         return (
