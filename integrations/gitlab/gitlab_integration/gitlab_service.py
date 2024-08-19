@@ -354,6 +354,25 @@ class GitlabService:
             )
             yield groups
 
+    async def get_all_root_groups(self) -> typing.AsyncIterator[List[Group]]:
+        logger.info("fetching all root groups for the token")
+
+        def is_root_group(group: Group) -> bool:
+            return group.parent_id is None
+
+        async for groups_batch in AsyncFetcher.fetch_batch(
+            fetch_func=self.gitlab_client.groups.list,
+            validation_func=is_root_group,
+            pagination="offset",
+            order_by="id",
+            sort="asc",
+        ):
+            groups: List[Group] = typing.cast(List[Group], groups_batch)
+            logger.info(
+                f"Queried {len(groups)} root groups {[group.path for group in groups]}"
+            )
+            yield groups
+
     async def get_all_projects(self) -> typing.AsyncIterator[List[Project]]:
         logger.info("fetching all projects for the token")
         port_app_config: GitlabPortAppConfig = typing.cast(
