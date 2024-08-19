@@ -42,7 +42,10 @@ async def setup_application() -> None:
         logic_settings["app_host"],
     )
 
-"board", 
+
+"board",
+
+
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()

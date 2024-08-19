@@ -153,9 +153,7 @@ class JiraClient:
         params: dict[str, Any] = {},
         sprintState: SprintState = "active",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info("Running syncing for issues from source {}".format(
-            source
-        ))
+        logger.info("Running syncing for issues from source {}".format(source))
 
         if source == "sprint":
             async for issues in self._get_issues_from_sprint(params, sprintState):
