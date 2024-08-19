@@ -415,7 +415,7 @@ class DatadogClient:
                 result.update(
                     {
                         SERVICE_KEY: service_id,
-                        METRIC_KEY: self.extract_metric_name(query),
+                        METRIC_KEY: self._extract_metric_name(query),
                         QUERY_ID_KEY: f"{query}/service:{service_id}/env:{env_to_fetch}",
                         QUERY_KEY: query,
                         ENV_KEY: env_to_fetch,
