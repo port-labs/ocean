@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.1.28 (2024-08-19)
+
+### Features
+
+- Added the `serviceMetric` resource to the Datadog integration, enabling users to fetch specific metrics using filters like `metric`, `env`, `service`, and `timeframe`
+
+## 0.1.27 (2024-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.13 (#1)
+
+
+## 0.1.26 (2024-08-11)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.12 (#1)
+
 
 ## 0.1.25 (2024-08-05)
 

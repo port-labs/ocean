@@ -39,7 +39,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all lint build run new test clean
+.SILENT: install install/all test/all lint build run new test clean bump/integrations bump/single-integration
 
 
 # Install dependencies
@@ -48,6 +48,8 @@ install:
 	$(call install_poetry) && \
 	poetry install --with dev --all-extras
 
+test/all: test
+	pytest --import-mode=importlib -n auto ./port_ocean/tests ./integrations/*/tests
 
 install/all: install
 	exit_code=0; \
@@ -70,7 +72,7 @@ lint:
 	$(call run_checks,.)
 
 # Development commands
-build: 
+build:
 	$(ACTIVATE) && poetry build
 
 run: lint
@@ -79,8 +81,8 @@ run: lint
 new:
 	$(ACTIVATE) && poetry run ocean new ./integrations --public
 
-test: lint
-	$(ACTIVATE) && pytest
+test:
+	$(ACTIVATE) && pytest -vv -n auto --ignore-glob=./integrations/* ./port_ocean/tests
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
@@ -97,6 +99,6 @@ clean:
 	rm -rf docs/_build
 	rm -rf dist/
 
-# make bump/integrations VERSION=0.3.2 
+# make bump/integrations VERSION=0.3.2
 bump/integrations:
 	./scripts/bump-all.sh $(VERSION)
