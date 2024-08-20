@@ -14,6 +14,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add support for reporting the integration resync state to expose more information about the integration state in the portal
 
 
+## 0.9.14 (2024-08-19)
+
+
+### Bug Fixes
+
+- Fixed an issue causing the cli to fail in a directory with no pyproject.toml in it
+
+
 ## 0.9.13 (2024-08-13)
 
 ### Improvements
