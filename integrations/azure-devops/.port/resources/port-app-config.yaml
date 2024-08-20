@@ -17,7 +17,6 @@ resources:
             visibility: '.visibility'
             defaultTeam: '.defaultTeam.name'
             link: '.url | gsub("_apis/projects/"; "")'
-
   - kind: repository
     selector:
       query: "true"
@@ -54,7 +53,6 @@ resources:
           blueprint: '"service"'
           properties:
             workItemLinking: '.isEnabled and .isBlocking'
-
   - kind: work-item 
     selector:
       query: 'true'
