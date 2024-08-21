@@ -1,9 +1,8 @@
 import asyncio
-import datetime
 import sys
 import threading
 from contextlib import asynccontextmanager
-from typing import Callable, Any, Dict, AsyncIterator, Literal, Type
+from typing import Callable, Any, Dict, AsyncIterator, Type
 
 from fastapi import FastAPI, APIRouter
 from loguru import logger
@@ -27,7 +26,6 @@ from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.utils.time import get_next_occurrence
 from port_ocean.utils.misc import IntegrationStateStatus
 
 
