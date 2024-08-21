@@ -6,7 +6,8 @@ from httpx import HTTPStatusError, Timeout
 PAGE_SIZE = 50
 WEBHOOK_TIMEOUT = "00:00:50"
 CLIENT_TIMEOUT = 60
-KIND_WITH_LIMITATION = ['release']
+KIND_WITH_LIMITATION = ["release"]
+
 
 class OctopusClient:
     def __init__(self, server_url: str, octopus_api_key: str) -> None:
