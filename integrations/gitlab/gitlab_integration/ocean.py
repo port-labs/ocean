@@ -115,11 +115,12 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(ObjectKind.GROUPWITHMEMBERS)
-async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
         async for groups_batch in service.get_all_groups():
             tasks = [service.enrich_group_with_members(group) for group in groups_batch]
             enriched_groups = await asyncio.gather(*tasks)
+            logger.warning(f"Enriched Groups {enriched_groups}")
             yield enriched_groups
 
 
