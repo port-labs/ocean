@@ -81,14 +81,14 @@ class PortClient(
         self, state: dict[str, Any], should_raise: bool = True, should_log: bool = True
     ) -> dict[str, Any]:
         if should_log:
-            logger.debug(f"Updating integration state with: {state}")
+            logger.debug(f"Updating integration resync state with: {state}")
         response = await self.client.patch(
-            f"{self.api_url}/integration/{self.integration_identifier}/state",
+            f"{self.api_url}/integration/{self.integration_identifier}/resync-state",
             headers=await self.auth.headers(),
             json=state,
         )
         handle_status_code(response, should_raise, should_log)
         if response.is_success and should_log:
-            logger.info("Integration state updated successfully")
+            logger.info("Integration resync state updated successfully")
 
         return response.json().get("integration", {})

@@ -50,7 +50,9 @@ class ResyncStateUpdater:
             state, should_raise=False
         )
         if integration:
-            self.last_integration_state_updated_at = integration["state"]["updatedAt"]
+            self.last_integration_state_updated_at = integration["resyncState"][
+                "updatedAt"
+            ]
 
     async def update_after_resync(
         self,
@@ -77,4 +79,6 @@ class ResyncStateUpdater:
             state, should_raise=False
         )
         if integration:
-            self.last_integration_state_updated_at = integration["state"]["updatedAt"]
+            self.last_integration_state_updated_at = integration["resyncState"][
+                "updatedAt"
+            ]
