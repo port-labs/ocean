@@ -3,7 +3,7 @@ createMissingRelatedEntities: true
 resources:
   - kind: host
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -23,7 +23,7 @@ resources:
             tags: .tags_by_source
   - kind: monitor
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -41,7 +41,7 @@ resources:
             updatedAt: .modified
   - kind: service
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -60,7 +60,7 @@ resources:
               .contact]
   - kind: slo
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -83,7 +83,7 @@ resources:
               unique | map(split(":")[1])
   - kind: sloHistory
     selector:
-      query: 'true'
+      query: "true"
       timeframe: 30
       period_of_time_in_years: 12
     port:
