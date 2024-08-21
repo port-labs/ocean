@@ -36,3 +36,8 @@ async def send_graph_api_request(
     logger.debug("Received graph api response", **log_fields)
     response.raise_for_status()
     return response.json()
+
+
+def format_tags(entity: dict[Any, Any]) -> dict[Any, Any]:
+    entity["tags"] = {tag["key"]: tag["values"] for tag in entity.get("tags", [])}
+    return entity

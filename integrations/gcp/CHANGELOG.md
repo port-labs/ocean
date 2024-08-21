@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.41 (2024-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.14 (#1)
+
+
+## 0.1.40 (2024-08-13)
+
+
+### Improvements
+
+- Added rate limit strategy to api calls
+
+
+## 0.1.39 (2024-08-13)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.13 (#1)
+
+
 ## 0.1.38 (2024-08-11)
 
 
