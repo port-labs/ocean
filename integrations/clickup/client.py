@@ -31,12 +31,23 @@ WEBHOOK_EVENTS = [
 class ClickupClient:
     """Clickup client to interact with Clickup API."""
 
-    def __init__(self, clickup_url: str, clickup_token: str, is_archived: bool):
+    def __init__(
+        self,
+        clickup_url: str,
+        clickup_token: str,
+        is_archived: bool,
+        workspace_ids: Optional[str] = None,
+    ) -> None:
         self.clickup_token = clickup_token
         self.api_url = f"{clickup_url}/api/v2"
         self.client = http_async_client
         self.client.timeout = Timeout(60)
         self.is_archived = is_archived
+        self.workspace_ids = (
+            [ws_id.strip() for ws_id in workspace_ids.split(",")]
+            if workspace_ids
+            else []
+        )
 
     @property
     def api_headers(self) -> dict[str, Any]:
@@ -126,7 +137,10 @@ class ClickupClient:
     @cache_iterator_result()
     async def get_clickup_teams(self) -> AsyncGenerator[List[dict[str, Any]], None]:
         """Get all Clickup teams."""
-        yield (await self._send_api_request(f"{self.api_url}/team")).get("teams", [])
+        teams = (await self._send_api_request(f"{self.api_url}/team")).get("teams", [])
+        if self.workspace_ids:
+            teams = [team for team in teams if team["id"] in self.workspace_ids]
+        yield teams
 
     @cache_iterator_result()
     async def _get_spaces_in_team(
@@ -192,8 +206,8 @@ class ClickupClient:
                                     for project in projects
                                 ]
 
-    async def get_paginated_issues(self) -> AsyncGenerator[List[dict[str, Any]], None]:
-        """Get all issues in a project."""
+    async def get_paginated_tasks(self) -> AsyncGenerator[List[dict[str, Any]], None]:
+        """Get all tasks in a project."""
         async for teams in self.get_clickup_teams():
             for team in teams:
                 url = f"{self.api_url}/team/{team.get('id')}/task"
@@ -223,8 +237,8 @@ class ClickupClient:
         response = await self._send_api_request(f"{self.api_url}/list/{list_id}")
         return {**response, TEAM_OBJECT: {"id": team_id}}
 
-    async def get_single_issue(self, task_id: str) -> dict[str, Any]:
-        """Get a single issue by task_id."""
+    async def get_single_task(self, task_id: str) -> dict[str, Any]:
+        """Get a single task by task_id."""
         return await self._send_api_request(f"{self.api_url}/task/{task_id}")
 
     async def create_clickup_webhook(

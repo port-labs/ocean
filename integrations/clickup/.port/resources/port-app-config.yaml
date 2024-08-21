@@ -42,16 +42,16 @@ resources:
             url: "\"https://app.clickup.com/\" + .__team.id + \"/v/b/li/\" + .id"
             startDate: if .start_date!=null then .start_date | tonumber / 1000 | todate else "" | todate end
             endDate: if .due_date!=null then .due_date | tonumber / 1000 | todate else "" | todate end
-            totalIssues: .task_count
+            totalTasks: .task_count
           relations:
             space: .space.id
-  - kind: issue
+  - kind: task
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          blueprint: '"clickupIssue"'
+          blueprint: '"clickupTask"'
           identifier: .id
           title: .name
           properties:

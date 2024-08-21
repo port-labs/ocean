@@ -2,4 +2,4 @@
 
 ### Features
 
-- New Integration Module to export data from Clickup. Export teams, spaces,  projects and issues
+- New Integration Module to export data from Clickup. Export teams, spaces,  projects and tasks
