@@ -53,14 +53,14 @@ resources:
           blueprint: '"service"'
           properties:
             workItemLinking: '.isEnabled and .isBlocking'
-  - kind: work-item 
+  - kind: work-item
     selector:
       query: 'true'
     port:
       entity:
         mappings:
           identifier: '.id | tostring'
-          blueprint: '"workItem"' 
+          blueprint: '"workItem"'
           title: '.fields."System.Title"'
           properties:
             type: '.fields."System.WorkItemType"'
@@ -74,4 +74,4 @@ resources:
             createdDate: '.fields."System.CreatedDate"'
             changedDate: '.fields."System.ChangedDate"'
           relations:
-            project: '.fields."System.TeamProject" | gsub(" "; "")' 
+            project: '.fields."System.TeamProject" | gsub(" "; "")'
