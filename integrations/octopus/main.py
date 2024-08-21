@@ -85,7 +85,7 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
             kind = ObjectKind(resource_prefix.rstrip("s"))
             try:
                 if event_category == "Deleted":
-                    await ocean.unregister_raw(kind, [{"id": resource_id}])
+                    await ocean.unregister_raw(kind, [{"Id": resource_id}])
                 else:
                     resource_data = await client.get_single_resource(
                         resource_prefix, resource_id

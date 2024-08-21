@@ -6,7 +6,7 @@ from httpx import HTTPStatusError, Timeout
 PAGE_SIZE = 50
 WEBHOOK_TIMEOUT = "00:00:50"
 CLIENT_TIMEOUT = 60
-
+KIND_WITH_LIMITATION = ['release']
 
 class OctopusClient:
     def __init__(self, server_url: str, octopus_api_key: str) -> None:
@@ -59,7 +59,7 @@ class OctopusClient:
             yield items
             if page >= last_page:
                 break
-            if kind == "release" and params["skip"] >= 100:
+            if kind in KIND_WITH_LIMITATION and params["skip"] >= 100:
                 break
             params["skip"] += PAGE_SIZE
             page += 1
