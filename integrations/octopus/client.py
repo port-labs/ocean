@@ -59,7 +59,7 @@ class OctopusClient:
             yield items
             if page >= last_page:
                 break
-            if kind == 'release' and params["skip"] >= 100:
+            if kind == "release" and params["skip"] >= 100:
                 break
             params["skip"] += PAGE_SIZE
             page += 1
