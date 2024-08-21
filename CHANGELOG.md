@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.0 (2024-08-19)
+
+### Improvements
+
+- Add support for reporting the integration resync state to expose more information about the integration state in the portal
+
+
 ## 0.9.14 (2024-08-19)
 
 
