@@ -588,6 +588,28 @@ class GitlabService:
             logger.error(f"Failed to get members for group={group.name}. error={e}")
             return
 
+    async def get_unsynced_group_members(
+        self, group: Group
+    ) -> typing.AsyncIterator[List[GroupMember]]:
+        logger.info(f"Fetching unsynced members of group {group.name}")
+
+        cached_member_ids = event.attributes.setdefault(
+            MEMBERS_CACHE_KEY, {}
+        ).setdefault(self.gitlab_client.private_token, [])
+        async for members_batch in self.get_all_group_members(group):
+            unsynced_members = [
+                member for member in members_batch if member.id not in cached_member_ids
+            ]
+
+            if unsynced_members:
+                cached_member_ids.extend(member.id for member in unsynced_members)
+
+                logger.info(
+                    f"Found {len(unsynced_members)} unsynced members "
+                    f"{[member.username for member in unsynced_members]} from {group.name}"
+                )
+                yield unsynced_members
+
     async def enrich_group_with_members(self, group: Group) -> dict[str, Any]:
         group_members = [
             member

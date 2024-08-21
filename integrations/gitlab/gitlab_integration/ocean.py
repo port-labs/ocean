@@ -111,6 +111,13 @@ async def on_start() -> None:
 async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
         async for groups_batch in service.get_all_groups():
+            yield [group.asdict() for group in groups_batch]
+
+
+@ocean.on_resync(ObjectKind.GROUPWITHMEMBERS)
+async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    for service in get_cached_all_services():
+        async for groups_batch in service.get_all_groups():
             tasks = [service.enrich_group_with_members(group) for group in groups_batch]
             enriched_groups = await asyncio.gather(*tasks)
             yield enriched_groups
@@ -224,7 +231,7 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async def process_group_members(service, group):
         members = [
             member
-            async for members_batch in service.get_all_group_members(group)
+            async for members_batch in service.get_unsynced_group_members(group)
             for member in members_batch
         ]
 

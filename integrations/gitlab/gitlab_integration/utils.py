@@ -52,3 +52,4 @@ class ObjectKind:
     PROJECT = "project"
     FOLDER = "folder"
     MEMBER = "member"
+    GROUPWITHMEMBERS = "group-with-members"
