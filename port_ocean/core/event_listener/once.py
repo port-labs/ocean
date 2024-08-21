@@ -109,7 +109,7 @@ class OnceEventListener(BaseEventListener):
         (interval, start_time) = (
             await self.get_saas_resync_initialization_and_interval()
         )
-        await ocean.app.update_state_before_scheduled_sync(interval, start_time)
+        await ocean.app.resync_state_updater.update_before_resync(interval, start_time)
 
     async def _after_resync(self) -> None:
         if not ocean.app.is_saas():
@@ -120,7 +120,7 @@ class OnceEventListener(BaseEventListener):
         (interval, start_time) = (
             await self.get_saas_resync_initialization_and_interval()
         )
-        await ocean.app.update_state_after_scheduled_sync(
+        await ocean.app.resync_state_updater.update_after_resync(
             IntegrationStateStatus.Completed, interval, start_time
         )
 
@@ -133,7 +133,7 @@ class OnceEventListener(BaseEventListener):
         (interval, start_time) = (
             await self.get_saas_resync_initialization_and_interval()
         )
-        await ocean.app.update_state_after_scheduled_sync(
+        await ocean.app.resync_state_updater.update_after_resync(
             IntegrationStateStatus.Failed, interval, start_time
         )
 

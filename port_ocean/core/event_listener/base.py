@@ -42,19 +42,21 @@ class BaseEventListener:
         """
         Can be used for event listeners that need to perform some action before resync.
         """
-        await ocean.app.update_state_before_scheduled_sync()
+        await ocean.app.resync_state_updater.update_before_resync()
 
     async def _after_resync(self) -> None:
         """
         Can be used for event listeners that need to perform some action after resync.
         """
-        await ocean.app.update_state_after_scheduled_sync()
+        await ocean.app.resync_state_updater.update_after_resync()
 
     async def _on_resync_failure(self, e: Exception) -> None:
         """
         Can be used for event listeners that need to handle resync failures.
         """
-        await ocean.app.update_state_after_scheduled_sync(IntegrationStateStatus.Failed)
+        await ocean.app.resync_state_updater.update_after_resync(
+            IntegrationStateStatus.Failed
+        )
 
     async def _resync(
         self,

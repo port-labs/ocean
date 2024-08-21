@@ -10,6 +10,7 @@ from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Scope, Receive, Send
 
+from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.models import Runtime
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
@@ -66,90 +67,25 @@ class Ocean:
         self.integration = (
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
-        self.initiated_at = datetime.datetime.now(tz=datetime.timezone.utc)
 
-        # This is used to differ between integration changes that require a full resync and state changes
-        # So that the polling event-listener can decide whether to perform a full resync or not
-        # TODO: remove this once we separate the state from the integration
-        self.last_integration_state_updated_at: str = ""
+        self.resync_state_updater = ResyncStateUpdater(
+            self.port_client, self.config.scheduled_resync_interval
+        )
 
     def is_saas(self) -> bool:
         return self.config.runtime == Runtime.Saas
-
-    def _calculate_next_scheduled_resync(
-        self,
-        interval: int | None = None,
-        custom_start_time: datetime.datetime | None = None,
-    ) -> str | None:
-        if interval is None:
-            return None
-        return get_next_occurrence(
-            interval * 60, custom_start_time or self.initiated_at
-        ).isoformat()
-
-    async def update_state_before_scheduled_sync(
-        self,
-        interval: int | None = None,
-        custom_start_time: datetime.datetime | None = None,
-    ) -> None:
-        _interval = interval or self.config.scheduled_resync_interval
-        nest_resync = self._calculate_next_scheduled_resync(
-            _interval, custom_start_time
-        )
-        state: dict[str, Any] = {
-            "status": IntegrationStateStatus.Running.value,
-            "lastResyncEnd": None,
-            "lastResyncStart": datetime.datetime.now(
-                tz=datetime.timezone.utc
-            ).isoformat(),
-            "nextResync": nest_resync,
-            "intervalInMinuets": _interval,
-        }
-
-        integration = await self.port_client.update_integration_state(
-            state, should_raise=False
-        )
-        if integration:
-            self.last_integration_state_updated_at = integration["state"]["updatedAt"]
-
-    async def update_state_after_scheduled_sync(
-        self,
-        status: Literal[
-            IntegrationStateStatus.Completed, IntegrationStateStatus.Failed
-        ] = IntegrationStateStatus.Completed,
-        interval: int | None = None,
-        custom_start_time: datetime.datetime | None = None,
-    ) -> None:
-        _interval = interval or self.config.scheduled_resync_interval
-        nest_resync = self._calculate_next_scheduled_resync(
-            _interval, custom_start_time
-        )
-        state: dict[str, Any] = {
-            "status": status.value,
-            "lastResyncEnd": datetime.datetime.now(
-                tz=datetime.timezone.utc
-            ).isoformat(),
-            "nextResync": nest_resync,
-            "intervalInMinuets": _interval,
-        }
-
-        integration = await self.port_client.update_integration_state(
-            state, should_raise=False
-        )
-        if integration:
-            self.last_integration_state_updated_at = integration["state"]["updatedAt"]
 
     async def _setup_scheduled_resync(
         self,
     ) -> None:
         async def execute_resync_all() -> None:
-            await self.update_state_before_scheduled_sync()
+            await self.resync_state_updater.update_before_resync()
             logger.info("Starting a new scheduled resync")
             try:
                 await self.integration.sync_raw_all()
-                await self.update_state_after_scheduled_sync()
+                await self.resync_state_updater.update_after_resync()
             except Exception as e:
-                await self.update_state_after_scheduled_sync(
+                await self.resync_state_updater.update_after_resync(
                     IntegrationStateStatus.Failed
                 )
                 raise e
