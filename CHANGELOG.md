@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.1 (2024-08-21)
+
+### Improvements
+
+- Fix kafka listener never ending resync loop due to resyncState updates
+
 ## 0.10.0 (2024-08-19)
 
 ### Improvements
