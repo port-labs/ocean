@@ -99,9 +99,13 @@ class KafkaEventListener(BaseEventListener):
             return False
 
         integration_identifier = after.get("identifier")
-        if integration_identifier == self.integration_identifier and (
-            "change.log" in topic
-        ):
+        if integration_identifier != self.integration_identifier:
+            return False
+
+        if after.get("updatedAt") == after.get("resyncState", {}).get("updatedAt"):
+            return False
+
+        if "change.log" in topic:
             return msg_value.get("changelogDestination", {}).get("type", "") == "KAFKA"
 
         return False
