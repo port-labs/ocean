@@ -1,4 +1,4 @@
-from typing import Dict, Any, Tuple, List, Type, Literal
+from typing import Dict, Any, Literal, Tuple, List, Type
 
 from gitlab.v4.objects import Project
 from loguru import logger
@@ -134,6 +134,22 @@ class MembersSelector(Selector):
 class GitlabMembersResourceConfig(ResourceConfig):
     kind: Literal["member"]
     selector: MembersSelector
+      
+      
+class FilesSelector(BaseModel):
+    path: str = Field(description="The path to get the files from")
+    repos: List[str] = Field(
+        description="A list of repositories to search files in", default_factory=list
+    )
+
+
+class GitLabFilesSelector(Selector):
+    files: FilesSelector
+
+
+class GitLabFilesResourceConfig(ResourceConfig):
+    selector: GitLabFilesSelector
+    kind: Literal["file"]
 
 
 class GitlabPortAppConfig(PortAppConfig):
@@ -145,6 +161,7 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
+
     # The "include bot members" flag affects both the "group" and "member" kinds.
     # To prevent inconsistencies, the behavior or value of this parameter should be consistent for both "groups" and "members".
     # Therefore, it should be included at the top level of the configuration.
@@ -153,7 +170,7 @@ class GitlabPortAppConfig(PortAppConfig):
         default=True,
         description="If set to false, bots will be filtered out from the members list. Default value is true",
     )
-    resources: list[GitlabMembersResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitlabMembersResourceConfig | GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

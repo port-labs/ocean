@@ -37,7 +37,12 @@ async def on_cloud_cost_resync(kind: str) -> list[dict[Any, Any]]:
         CloudCostV1ResourceConfig | CloudCostV2ResourceConfig, event.resource_config
     ).selector
     data = await client.get_cloud_cost_allocation(selector)
-    return [value for item in data for value in item.get("cloudCosts", {}).values()]
+    results: list[dict[str, Any]] = []
+    for item in data:
+        if item.get("cloudCosts"):
+            results.extend(item.values())
+
+    return results
 
 
 @ocean.on_start()

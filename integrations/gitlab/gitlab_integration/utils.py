@@ -53,3 +53,4 @@ class ObjectKind:
     FOLDER = "folder"
     MEMBER = "member"
     GROUPWITHMEMBERS = "group-with-members"
+    FILE = "file"
