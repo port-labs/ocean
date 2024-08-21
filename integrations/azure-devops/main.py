@@ -103,6 +103,14 @@ async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield policies
 
 
+@ocean.on_resync(Kind.WORK_ITEM)
+async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for work_items in azure_devops_client.generate_work_items():
+        logger.info(f"Resyncing {len(work_items)} work items")
+        yield work_items
+
+
 @ocean.router.post("/webhook")
 async def webhook(request: Request) -> dict[str, Any]:
     body = await request.json()
