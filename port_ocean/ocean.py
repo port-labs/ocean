@@ -165,7 +165,7 @@ class Ocean:
                 wait_first=True,
             )(
                 lambda: threading.Thread(
-                    target=asyncio.run(execute_resync_all())
+                    target=lambda: asyncio.run(execute_resync_all())
                 ).start()
             )
             await repeated_function()
