@@ -5,6 +5,7 @@ from httpx import HTTPStatusError, Timeout
 
 PAGE_SIZE = 50
 WEBHOOK_TIMEOUT = "00:00:50"
+CLIENT_TIMEOUT = 60
 
 
 class OctopusClient:
@@ -12,7 +13,7 @@ class OctopusClient:
         self.octopus_url = f"{server_url.rstrip('/')}/api/"
         self.api_auth_header = {"X-Octopus-ApiKey": octopus_api_key}
         self.client = http_async_client
-        self.client.timeout = Timeout(60)
+        self.client.timeout = Timeout(CLIENT_TIMEOUT)
         self.client.headers.update(self.api_auth_header)
 
     async def _send_api_request(
@@ -57,6 +58,8 @@ class OctopusClient:
             last_page = response.get("LastPageNumber", 0)
             yield items
             if page >= last_page:
+                break
+            if kind == 'release' and skip >= 100:
                 break
             params["skip"] += PAGE_SIZE
             page += 1
