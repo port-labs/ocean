@@ -1,6 +1,8 @@
 from typing import Any
 import typing
 
+import asyncio
+
 from google.api_core.exceptions import NotFound, PermissionDenied
 from google.cloud.asset_v1 import (
     AssetServiceAsyncClient,
@@ -27,11 +29,11 @@ from gcp_core.utils import (
 )
 from gcp_core.search.utils import async_retry
 
-
+MAXIMUM_CONCURENCY_LIMIT = 100
 _REQUEST_TIMEOUT = 120.0
+semaphore = asyncio.BoundedSemaphore(MAXIMUM_CONCURENCY_LIMIT)
 
 
-@async_retry.retry_paginated_resource
 async def search_all_resources(
     project_data: dict[str, Any], asset_type: str
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -47,44 +49,43 @@ async def search_all_resources_in_project(
     List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
     Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
     """
-    project_name = project["name"]
-    logger.info(f"Searching all {asset_type}'s in project {project_name}")
-    async with AssetServiceAsyncClient() as async_assets_client:
-        search_all_resources_request = {
-            "scope": project_name,
-            "asset_types": [asset_type],
-            "read_mask": "*",
-        }
-        if asset_name:
-            search_all_resources_request["query"] = f"name={asset_name}"
-        try:
-            paginated_responses: pagers.SearchAllResourcesAsyncPager = (
-                await async_assets_client.search_all_resources(
-                    search_all_resources_request, timeout=_REQUEST_TIMEOUT
+    async with semaphore:
+        project_name = project["name"]
+        logger.info(f"Searching all {asset_type}'s in project {project_name}")
+        async with AssetServiceAsyncClient() as async_assets_client:
+            search_all_resources_request = {
+                "scope": project_name,
+                "asset_types": [asset_type],
+                "read_mask": "*",
+            }
+            if asset_name:
+                search_all_resources_request["query"] = f"name={asset_name}"
+            try:
+                paginated_responses: pagers.SearchAllResourcesAsyncPager = (
+                    await async_assets_client.search_all_resources(
+                        search_all_resources_request, timeout=_REQUEST_TIMEOUT
+                    )
                 )
-            )
-            async for paginated_response in paginated_responses.pages:
-                raw_assets = parse_protobuf_messages(paginated_response.results)
-                assets = typing.cast(list[AssetData], raw_assets)
-                if assets:
-                    logger.info(f"Found {len(assets)} {asset_type}'s")
-                    latest_resources = []
-                    for asset in assets:
-                        latest_resource = parse_latest_resource_from_asset(asset)
-                        latest_resource[EXTRA_PROJECT_FIELD] = project
-                        latest_resources.append(latest_resource)
-                    yield latest_resources
-        except PermissionDenied as e:
-            logger.exception(
-                f"Couldn't access the API Cloud Assets to get kind {asset_type}. Please set cloudasset.assets.searchAllResources permissions for project {project_name}"
-            )
-            raise e
-        except Exception as e:
-            logger.exception(
-                f"Couldn't perform search_all_resources on project {project_name} on kind {asset_type} because: {str(e)}"
-            )
-        finally:
-            logger.info(f"Finished searching {asset_type}'s in project {project_name}")
+                async for paginated_response in paginated_responses.pages:
+                    raw_assets = parse_protobuf_messages(paginated_response.results)
+                    assets = typing.cast(list[AssetData], raw_assets)
+                    if assets:
+                        logger.info(f"Found {len(assets)} {asset_type}'s")
+                        latest_resources = []
+                        for asset in assets:
+                            latest_resource = parse_latest_resource_from_asset(asset)
+                            latest_resource[EXTRA_PROJECT_FIELD] = project
+                            latest_resources.append(latest_resource)
+                        yield latest_resources
+            except PermissionDenied as e:
+                logger.exception(
+                    f"Couldn't access the API Cloud Assets to get kind {asset_type}. Please set cloudasset.assets.searchAllResources permissions for project {project_name}"
+                )
+                raise e
+            else:
+                logger.info(
+                    f"Successfully searched all resources in kind {asset_type} for project {project_name}"
+                )
 
 
 @async_retry.retry_paginated_resource
@@ -123,6 +124,8 @@ async def list_all_topics_per_project(
             logger.debug(
                 f"Couldn't perform list_topics on project {project_name} since it's deleted."
             )
+        else:
+            logger.info(f"Successfully listed all topics within project {project_name}")
 
 
 @async_retry.retry_paginated_resource

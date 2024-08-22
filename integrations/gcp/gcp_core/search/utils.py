@@ -131,6 +131,12 @@ class AsyncRetry:
                         f"Retrying due to {exc.__class__.__name__} error in {sleep:.2f} seconds..."
                     )
                     await asyncio.sleep(sleep)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to execute function '{func.__name__}' with arguments {args} and keyword arguments {kwargs}. Error: {e}"
+                    )
+                    return
+
             raise ValueError("Sleep generator stopped yielding sleep values.")
 
         return retry_wrapped_function
@@ -161,6 +167,11 @@ class AsyncRetry:
                         f"Retrying due to {exc.__class__.__name__} error in {sleep:.2f} seconds..."
                     )
                     await asyncio.sleep(sleep)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to execute function '{func.__name__}' with arguments {args} and keyword arguments {kwargs}. Error: {e}"
+                    )
+                    return
             raise ValueError("Sleep generator stopped yielding sleep values.")
 
         return retry_wrapped_function
