@@ -1,6 +1,7 @@
 import asyncio
 import random
 import time
+import functools
 from typing import (
     Any,
     Callable,
@@ -9,13 +10,30 @@ from typing import (
     Coroutine,
 )
 from loguru import logger
-from google.api_core.exceptions import TooManyRequests, ServiceUnavailable
+from google.api_core.exceptions import (
+    TooManyRequests,
+    ServiceUnavailable,
+    DeadlineExceeded,
+    InternalServerError,
+)
+from google.auth import exceptions as auth_exceptions
+import requests.exceptions
+
 from aiolimiter import AsyncLimiter
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
+from google.api_core.retry_async import AsyncRetry
 
 # Constants for retry logic
-_DEFAULT_RETRIABLE_ERROR_TYPES = (TooManyRequests, ServiceUnavailable)
+_DEFAULT_RETRIABLE_ERROR_TYPES = (
+    TooManyRequests,
+    ServiceUnavailable,
+    DeadlineExceeded,
+    InternalServerError,
+    requests.exceptions.ConnectionError,
+    requests.exceptions.ChunkedEncodingError,
+    auth_exceptions.TransportError,
+)
 _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES: float = 5.0
 _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS: float = 60.0
 _DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF: float = 2.0
@@ -26,6 +44,13 @@ _DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
 _DEFAULT_RATE_LIMIT_QUOTA: int = int(
     ocean.integration_config["search_all_resources_per_minute_quota"]
 )
+
+
+def _exponential_sleep_generator(initial, maximum, multiplier):
+    max_delay = min(initial, maximum)
+    while True:
+        yield random.uniform(0.0, max_delay)
+        max_delay = min(max_delay * multiplier, maximum)
 
 
 class AsyncRateLimiter:
@@ -62,98 +87,83 @@ class AsyncRateLimiter:
 class AsyncRetry:
     def __init__(
         self,
-        exception_to_check: Tuple[
-            Type[Exception], ...
-        ] = _DEFAULT_RETRIABLE_ERROR_TYPES,
+        predicate: Tuple[Type[Exception], ...] = _DEFAULT_RETRIABLE_ERROR_TYPES,
         timeout: float = _DEFAULT_TIMEOUT,
-        delay: float = _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES,
-        max_delay: float = _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS,
-        backoff: float = _DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF,
+        initial: float = _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES,
+        maximum: float = _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS,
+        multiplier: float = _DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF,
         jitter: bool = True,
     ):
-        self.exception_to_check = exception_to_check
+        self.predicate = predicate
         self.timeout = timeout
-        self.delay = delay
-        self.max_delay = max_delay
-        self.backoff = backoff
+        self.initial = initial
+        self.maximum = maximum
+        self.multiplier = multiplier
         self.jitter = jitter
-
-    def _get_delay(self, attempt: int) -> float:
-        """Calculate the delay for the current attempt."""
-        delay = self.delay * (self.backoff ** (attempt - 1))
-        minimum_delay = min(delay, self.max_delay)
-        if self.jitter:
-            minimum_delay += random.uniform(0, delay)
-        return minimum_delay
 
     def retry_paginated_resource(
         self, func: Callable[..., ASYNC_GENERATOR_RESYNC_TYPE]
     ) -> Callable[..., ASYNC_GENERATOR_RESYNC_TYPE]:
-        async def wrapper(*args: Any, **kwargs: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+
+        @functools.wraps(func)
+        async def retry_wrapped_function(
+            *args: Any, **kwargs: Any
+        ) -> ASYNC_GENERATOR_RESYNC_TYPE:
             start_time = time.monotonic()
-            attempt = 0
-            while True:
+            sleep_generator = _exponential_sleep_generator(
+                self.initial, self.maximum, self.multiplier
+            )
+            for sleep in sleep_generator:
                 try:
                     async for item in func(*args, **kwargs):
                         yield item
                     return
-                except self.exception_to_check as e:
-                    attempt += 1
+                except self.predicate as exc:
                     elapsed_time = time.monotonic() - start_time
-                    if elapsed_time >= self.timeout:
-                        logger.warning(
-                            f"Timeout reached. Giving up after {elapsed_time:.2f} seconds."
-                        )
-                        raise e
-                    next_delay = self._get_delay(attempt)
 
-                    if elapsed_time + next_delay >= self.timeout:
-                        logger.warning(
-                            "Making final retry attempt due to timeout constraints."
+                    if elapsed_time + sleep > self.timeout:
+                        logger.error(
+                            f"Timeout reached. Giving up due to {exc.__class__.__name__} error after {elapsed_time:.2f} seconds."
                         )
-                        async for item in func(*args, **kwargs):
-                            yield item
-                        return
+                        raise exc
 
                     logger.warning(
-                        f"Retrying due to {e.__class__.__name__} error in {next_delay:.2f} seconds..."
+                        f"Retrying due to {exc.__class__.__name__} error in {sleep:.2f} seconds..."
                     )
-                    await asyncio.sleep(next_delay)
+                    await asyncio.sleep(sleep)
+            raise ValueError("Sleep generator stopped yielding sleep values.")
 
-        return wrapper
+        return retry_wrapped_function
 
     def retry_single_resource(
         self, func: Callable[..., Coroutine[Any, Any, RAW_ITEM]]
     ) -> Callable[..., Coroutine[Any, Any, RAW_ITEM]]:
-        async def wrapper(*args: Any, **kwargs: Any) -> RAW_ITEM:
+
+        @functools.wraps(func)
+        async def retry_wrapped_function(*args: Any, **kwargs: Any) -> RAW_ITEM:
             start_time = time.monotonic()
-            attempt = 0
-            while True:
+            sleep_generator = _exponential_sleep_generator(
+                self.initial, self.maximum, self.multiplier
+            )
+            for sleep in sleep_generator:
                 try:
                     return await func(*args, **kwargs)
-                except self.exception_to_check as e:
-                    attempt += 1
+                except self.predicate as exc:
                     elapsed_time = time.monotonic() - start_time
-                    if elapsed_time >= self.timeout:
-                        logger.warning(
-                            f"Timeout reached. Giving up after {elapsed_time:.2f} seconds."
-                        )
-                        raise e
-                    next_delay = self._get_delay(attempt)
 
-                    # Check if next delay would exceed the timeout, making this the final attempt
-                    if elapsed_time + next_delay >= self.timeout:
-                        logger.warning(
-                            f"Making final attempt for {func.__name__} due to timeout constraints."
+                    if elapsed_time + sleep > self.timeout:
+                        logger.error(
+                            f"Timeout reached. Giving up due to {exc.__class__.__name__} error after {elapsed_time:.2f} seconds."
                         )
-                        return await func(*args, **kwargs)
+                        raise exc
 
                     logger.warning(
-                        f"Retrying {func.__name__} due to {e.__class__.__name__} error in {next_delay:.2f} seconds..."
+                        f"Retrying due to {exc.__class__.__name__} error in {sleep:.2f} seconds..."
                     )
-                    await asyncio.sleep(next_delay)
+                    await asyncio.sleep(sleep)
+            raise ValueError("Sleep generator stopped yielding sleep values.")
 
-        return wrapper
+        return retry_wrapped_function
 
 
 rate_limiter = AsyncRateLimiter()

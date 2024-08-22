@@ -28,6 +28,9 @@ from gcp_core.utils import (
 from gcp_core.search.utils import async_retry
 
 
+_REQUEST_TIMEOUT = 120.0
+
+
 @async_retry.retry_paginated_resource
 async def search_all_resources(
     project_data: dict[str, Any], asset_type: str
@@ -57,7 +60,7 @@ async def search_all_resources_in_project(
         try:
             paginated_responses: pagers.SearchAllResourcesAsyncPager = (
                 await async_assets_client.search_all_resources(
-                    search_all_resources_request
+                    search_all_resources_request, timeout=_REQUEST_TIMEOUT
                 )
             )
             async for paginated_response in paginated_responses.pages:
@@ -94,7 +97,7 @@ async def list_all_topics_per_project(
     async with PublisherAsyncClient() as async_publisher_client:
         try:
             list_topics_pagers = await async_publisher_client.list_topics(
-                project=project_name,
+                project=project_name, timeout=_REQUEST_TIMEOUT
             )
             async for paginated_response in list_topics_pagers.pages:
                 topics = parse_protobuf_messages(paginated_response.topics)
@@ -124,7 +127,9 @@ async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     logger.info("Searching projects")
     async with ProjectsAsyncClient() as projects_client:
-        search_projects_pager = await projects_client.search_projects()
+        search_projects_pager = await projects_client.search_projects(
+            timeout=_REQUEST_TIMEOUT
+        )
         async for projects_page in search_projects_pager.pages:
             raw_projects = projects_page.projects
             logger.info(f"Found {len(raw_projects)} Projects")
@@ -138,7 +143,9 @@ async def search_all_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     logger.info("Searching folders")
     async with FoldersAsyncClient() as folders_client:
-        search_folders_pager = await folders_client.search_folders()
+        search_folders_pager = await folders_client.search_folders(
+            timeout=_REQUEST_TIMEOUT
+        )
         async for folders_page in search_folders_pager.pages:
             raw_folders = folders_page.folders
             logger.info(f"Found {len(raw_folders)} Folders")
@@ -152,7 +159,9 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     logger.info("Searching organizations")
     async with OrganizationsAsyncClient() as organizations_client:
-        search_organizations_pager = await organizations_client.search_organizations()
+        search_organizations_pager = await organizations_client.search_organizations(
+            timeout=_REQUEST_TIMEOUT
+        )
         async for organizations_page in search_organizations_pager.pages:
             raw_orgs = organizations_page.organizations
             logger.info(f"Found {len(raw_orgs)} organizations")
@@ -163,21 +172,27 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def get_single_project(project_name: str) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         return parse_protobuf_message(
-            await projects_client.get_project(name=project_name)
+            await projects_client.get_project(
+                name=project_name, timeout=_REQUEST_TIMEOUT
+            )
         )
 
 
 @async_retry.retry_single_resource
 async def get_single_folder(folder_name: str) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
-        return parse_protobuf_message(await folders_client.get_folder(name=folder_name))
+        return parse_protobuf_message(
+            await folders_client.get_folder(name=folder_name, timeout=_REQUEST_TIMEOUT)
+        )
 
 
 @async_retry.retry_single_resource
 async def get_single_organization(organization_name: str) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
-            await organizations_client.get_organization(name=organization_name)
+            await organizations_client.get_organization(
+                name=organization_name, timeout=_REQUEST_TIMEOUT
+            )
         )
 
 
@@ -189,7 +204,9 @@ async def get_single_topic(topic_id: str) -> RAW_ITEM:
     """
     async with PublisherAsyncClient() as async_publisher_client:
         return parse_protobuf_message(
-            await async_publisher_client.get_topic(topic=topic_id)
+            await async_publisher_client.get_topic(
+                topic=topic_id, timeout=_REQUEST_TIMEOUT
+            )
         )
 
 
