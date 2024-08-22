@@ -16,7 +16,7 @@ jobs:
 
       - name: Get list of changed files
         id: changed-files
-        uses: tj-actions/changed-files@v44.5.2
+        uses: tj-actions/changed-files@v44.5.7
       - name: Set matrix
         id: set-matrix
         run: |
