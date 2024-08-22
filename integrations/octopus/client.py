@@ -61,9 +61,9 @@ class OctopusClient:
             yield items
             if page >= last_page:
                 break
-            if kind in KIND_WITH_LIMITATION and params["skip"] >= LIMITATION:
+            if kind in KINDS_WITH_LIMITATION and params["skip"] >= MAX_ITEMS_LIMITATION:
                 logger.warning(
-                    f"Reached the limit of {LIMITATION} {kind}s. Skipping the rest of the {kind}s."
+                    f"Reached the limit of {MAX_ITEMS_LIMITATION} {kind}s. Skipping the rest of the {kind}s."
                 )
                 break
             params["skip"] += PAGE_SIZE
