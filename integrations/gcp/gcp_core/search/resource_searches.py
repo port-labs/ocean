@@ -79,6 +79,12 @@ async def search_all_resources_in_project(
                 f"Couldn't access the API Cloud Assets to get kind {asset_type}. Please set cloudasset.assets.searchAllResources permissions for project {project_name}"
             )
             raise e
+        except Exception as e:
+            logger.exception(
+                f"Couldn't perform search_all_resources on project {project_name} on kind {asset_type} because: {str(e)}"
+            )
+        finally:
+            logger.info(f"Finished searching {asset_type}'s in project {project_name}")
 
 
 @async_retry.retry_paginated_resource
