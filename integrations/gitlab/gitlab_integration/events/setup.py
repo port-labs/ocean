@@ -187,29 +187,30 @@ def create_webhooks_by_client(
 
 
 def setup_application(
-    token_mapping: dict[str, list[str]],
+    token_mapping: dict[str, list[str]] | None,
+    token: str | None,
+    paths: list[str],
     gitlab_host: str,
     app_host: str,
     use_system_hook: bool,
     token_group_override_hooks_mapping: WebhookMappingConfig | None,
 ) -> None:
-    validate_token_mapping(token_mapping)
+    mapping: dict[str, list[str]] = token_mapping if token_mapping else {token: paths}  # type: ignore
+    validate_token_mapping(mapping)
 
     if use_system_hook:
-        validate_use_system_hook(token_mapping)
-        token, group_mapping = list(token_mapping.items())[0]
+        validate_use_system_hook(mapping)
+        token, group_mapping = list(mapping.items())[0]
         gitlab_client = Gitlab(gitlab_host, token)
         gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
         setup_system_listeners([gitlab_service])
 
     else:
-        validate_hooks_override_config(
-            token_mapping, token_group_override_hooks_mapping
-        )
+        validate_hooks_override_config(mapping, token_group_override_hooks_mapping)
 
         client_to_webhooks: list[tuple[GitlabService, list[str]]] = []
 
-        for token, group_mapping in token_mapping.items():
+        for token, group_mapping in mapping.items():
             if not token_group_override_hooks_mapping:
                 client_to_webhooks.append(
                     create_webhooks_by_client(

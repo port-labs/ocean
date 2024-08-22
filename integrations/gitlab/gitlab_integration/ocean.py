@@ -67,7 +67,8 @@ async def on_start() -> None:
     hook_override_mapping: dict = integration_config[
         "token_group_hooks_override_mapping"
     ]
-    sensitive_log_filter.hide_sensitive_strings(*token_mapping.keys())
+    if token_mapping:
+        sensitive_log_filter.hide_sensitive_strings(*token_mapping.keys())
 
     if hook_override_mapping is not None:
         sensitive_log_filter.hide_sensitive_strings(*hook_override_mapping.keys())
@@ -92,6 +93,8 @@ async def on_start() -> None:
     try:
         setup_application(
             integration_config["token_mapping"],
+            integration_config["token"],
+            integration_config["group_mapping"],
             integration_config["gitlab_host"],
             integration_config["app_host"],
             integration_config["use_system_hook"],

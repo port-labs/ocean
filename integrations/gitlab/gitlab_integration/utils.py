@@ -10,12 +10,14 @@ from port_ocean.exceptions.context import EventContextNotFoundError
 
 def get_all_services() -> List[GitlabService]:
     logic_settings = ocean.integration_config
+    token_mapping = logic_settings.get("token_mapping") or {
+        logic_settings["token"]: logic_settings["group_mapping"]
+    }
+    logger.info(f"token_mapping: {token_mapping}")
     all_tokens_services = []
 
-    logger.info(
-        f"Creating gitlab clients for {len(logic_settings['token_mapping'])} tokens"
-    )
-    for token, group_mapping in logic_settings["token_mapping"].items():
+    logger.info(f"Creating gitlab clients for {len(token_mapping)} tokens")
+    for token, group_mapping in token_mapping.items():
         gitlab_client = Gitlab(logic_settings["gitlab_host"], token)
         gitlab_service = GitlabService(
             gitlab_client, logic_settings["app_host"], group_mapping

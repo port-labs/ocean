@@ -10,10 +10,20 @@ features:
       - kind: projects
 configurations:
   - name: tokenMapping
-    required: true
     type: object
     description: 'Mapping of Gitlab tokens to the groups scopes to ingest data from into port. Example: {\"THE_GROUP_TOKEN\":[\"getport-labs/**\", \"GROUP/PROJECT PATTERN TO RUN FOR\"]}. To create a group token, see the <a target="_blank" href="https://docs.gitlab.com/ee/user/group/settings/group_access_tokens.html#create-a-group-access-token-using-ui">Gitlab Documentation</a>'
     sensitive: true
+    requires_if_missing: ['token']
+  - name: token
+    type: string
+    description: 'token'
+    sensitive: true
+    requires_if_missing: ['tokenMapping']
+  - name: groupMapping
+    required: false
+    type: array
+    description: 'group mapping to go over'
+    default: ['**']
   - name: appHost
     required: false
     type: url

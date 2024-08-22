@@ -1,8 +1,16 @@
 import json
-from typing import Type, Any, Optional
+from typing import Type, Any, Optional, List
 
 from humps import decamelize
-from pydantic import BaseModel, AnyUrl, create_model, Extra, parse_obj_as, validator
+from pydantic import (
+    BaseModel,
+    AnyUrl,
+    create_model,
+    Extra,
+    parse_obj_as,
+    validator,
+    root_validator,
+)
 from pydantic.fields import ModelField, Field
 
 from port_ocean.config.base import BaseOceanModel
@@ -14,6 +22,7 @@ class Configuration(BaseModel, extra=Extra.allow):
     required: bool = False
     default: Optional[Any]
     sensitive: bool = False
+    requires_if_missing: Optional[List[str]] = None
 
 
 def dynamic_parse(value: Any, field: ModelField) -> Any:
@@ -29,8 +38,10 @@ def dynamic_parse(value: Any, field: ModelField) -> Any:
 
 
 def default_config_factory(configurations: Any) -> Type[BaseModel]:
-    configurations = parse_obj_as(list[Configuration], configurations)
+    configurations = parse_obj_as(List[Configuration], configurations)
     fields: dict[str, tuple[Any, Any]] = {}
+
+    conditional_requirements = {}
 
     for config in configurations:
         field_type: Type[Any]
@@ -59,10 +70,31 @@ def default_config_factory(configurations: Any) -> Type[BaseModel]:
             Field(default, sensitive=config.sensitive),
         )
 
+        if config.requires_if_missing:
+            conditional_requirements[decamelize(config.name)] = [
+                decamelize(prop) for prop in config.requires_if_missing
+            ]
+
+    @root_validator(pre=True)
+    def check_conditional_requirements(
+        cls: Type["BaseOceanModel"], values: dict[str, Any]
+    ) -> dict[str, Any]:
+        for field, dependencies in conditional_requirements.items():
+            # Check if all fields in the dependencies list are missing
+            if all(dep not in values or values[dep] is None for dep in dependencies):
+                if field not in values or values[field] is None:
+                    raise ValueError(
+                        f"{field} is required when all of {dependencies} are not supplied."
+                    )
+        return values
+
     dynamic_model = create_model(  # type: ignore
         __model_name="Config",
         __base__=BaseOceanModel,
         **fields,
-        __validators__={"dynamic_parse": validator("*", pre=True)(dynamic_parse)},
+        __validators__={
+            "dynamic_parse": validator("*", pre=True)(dynamic_parse),
+            "check_conditional_requirements": check_conditional_requirements,
+        },
     )
     return dynamic_model
