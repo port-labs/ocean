@@ -6,7 +6,8 @@ from httpx import HTTPStatusError, Timeout
 PAGE_SIZE = 50
 WEBHOOK_TIMEOUT = "00:00:50"
 CLIENT_TIMEOUT = 60
-KIND_WITH_LIMITATION = ["release"]
+KIND_WITH_LIMITATION = ["deployment"]
+LIMITATION = 100
 
 
 class OctopusClient:
@@ -60,7 +61,10 @@ class OctopusClient:
             yield items
             if page >= last_page:
                 break
-            if kind in KIND_WITH_LIMITATION and params["skip"] >= 100:
+            if kind in KIND_WITH_LIMITATION and params["skip"] >= LIMITATION:
+                logger.warning(
+                    f"Reached the limit of {LIMITATION} {kind}s. Skipping the rest of the {kind}s."
+                )
                 break
             params["skip"] += PAGE_SIZE
             page += 1
