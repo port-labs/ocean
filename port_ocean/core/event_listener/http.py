@@ -64,6 +64,6 @@ class HttpEventListener(BaseEventListener):
 
         @target_channel_router.post("/resync")
         async def resync() -> None:
-            await self.events["on_resync"]({})
+            await self._resync({})
 
         ocean.app.fast_api_app.include_router(target_channel_router)
