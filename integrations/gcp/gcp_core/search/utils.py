@@ -2,13 +2,8 @@ import asyncio
 import random
 import time
 import functools
-from typing import (
-    Any,
-    Callable,
-    Type,
-    Tuple,
-    Coroutine,
-)
+from typing import Any, Callable, Tuple, Coroutine, Type
+
 from loguru import logger
 from google.api_core.exceptions import (
     TooManyRequests,
@@ -22,7 +17,7 @@ import requests.exceptions
 from aiolimiter import AsyncLimiter
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
-from google.api_core.retry_async import AsyncRetry
+from google.api_core.retry_async import exponential_sleep_generator
 
 # Constants for retry logic
 _DEFAULT_RETRIABLE_ERROR_TYPES = (
@@ -44,13 +39,6 @@ _DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
 _DEFAULT_RATE_LIMIT_QUOTA: int = int(
     ocean.integration_config["search_all_resources_per_minute_quota"]
 )
-
-
-def _exponential_sleep_generator(initial, maximum, multiplier):
-    max_delay = min(initial, maximum)
-    while True:
-        yield random.uniform(0.0, max_delay)
-        max_delay = min(max_delay * multiplier, maximum)
 
 
 class AsyncRateLimiter:
@@ -110,7 +98,7 @@ class AsyncRetry:
             *args: Any, **kwargs: Any
         ) -> ASYNC_GENERATOR_RESYNC_TYPE:
             start_time = time.monotonic()
-            sleep_generator = _exponential_sleep_generator(
+            sleep_generator = exponential_sleep_generator(
                 self.initial, self.maximum, self.multiplier
             )
             for sleep in sleep_generator:
@@ -148,7 +136,7 @@ class AsyncRetry:
         @functools.wraps(func)
         async def retry_wrapped_function(*args: Any, **kwargs: Any) -> RAW_ITEM:
             start_time = time.monotonic()
-            sleep_generator = _exponential_sleep_generator(
+            sleep_generator = exponential_sleep_generator(
                 self.initial, self.maximum, self.multiplier
             )
             for sleep in sleep_generator:

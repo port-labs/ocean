@@ -66,11 +66,15 @@ async def search_all_resources_in_project(
                         search_all_resources_request, timeout=_REQUEST_TIMEOUT
                     )
                 )
+                page = 0
                 async for paginated_response in paginated_responses.pages:
+                    page += 1
                     raw_assets = parse_protobuf_messages(paginated_response.results)
                     assets = typing.cast(list[AssetData], raw_assets)
                     if assets:
-                        logger.info(f"Found {len(assets)} {asset_type}'s")
+                        logger.info(
+                            f"Found {len(assets)} {asset_type}'s in page {page}"
+                        )
                         latest_resources = []
                         for asset in assets:
                             latest_resource = parse_latest_resource_from_asset(asset)
@@ -106,11 +110,13 @@ async def list_all_topics_per_project(
             list_topics_pagers = await async_publisher_client.list_topics(
                 project=project_name, timeout=_REQUEST_TIMEOUT
             )
+            page = 0
             async for paginated_response in list_topics_pagers.pages:
                 topics = parse_protobuf_messages(paginated_response.topics)
                 if topics:
+                    page += 1
                     logger.info(
-                        f"Found {len(topics)} {AssetTypesWithSpecialHandling.TOPIC}'s"
+                        f"Found {len(topics)} {AssetTypesWithSpecialHandling.TOPIC}'s on page {page}"
                     )
                     for topic in topics:
                         topic[EXTRA_PROJECT_FIELD] = project
@@ -135,13 +141,15 @@ async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
     Search for projects that the caller has ``resourcemanager.projects.get`` permission on
     """
     logger.info("Searching projects")
+    page = 0
     async with ProjectsAsyncClient() as projects_client:
         search_projects_pager = await projects_client.search_projects(
             timeout=_REQUEST_TIMEOUT
         )
         async for projects_page in search_projects_pager.pages:
+            page += 1
             raw_projects = projects_page.projects
-            logger.info(f"Found {len(raw_projects)} Projects")
+            logger.info(f"Found {len(raw_projects)} Projects on page {page}")
             yield parse_protobuf_messages(raw_projects)
 
 
@@ -151,13 +159,15 @@ async def search_all_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
     Search for folders that the caller has ``resourcemanager.folders.get`` permission on
     """
     logger.info("Searching folders")
+    page = 0
     async with FoldersAsyncClient() as folders_client:
         search_folders_pager = await folders_client.search_folders(
             timeout=_REQUEST_TIMEOUT
         )
         async for folders_page in search_folders_pager.pages:
+            page += 1
             raw_folders = folders_page.folders
-            logger.info(f"Found {len(raw_folders)} Folders")
+            logger.info(f"Found {len(raw_folders)} Folders on page {page}")
             yield parse_protobuf_messages(raw_folders)
 
 
@@ -167,13 +177,15 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
     Search for organizations that the caller has ``resourcemanager.organizations.get``` permission on
     """
     logger.info("Searching organizations")
+    page = 0
     async with OrganizationsAsyncClient() as organizations_client:
         search_organizations_pager = await organizations_client.search_organizations(
             timeout=_REQUEST_TIMEOUT
         )
         async for organizations_page in search_organizations_pager.pages:
+            page += 1
             raw_orgs = organizations_page.organizations
-            logger.info(f"Found {len(raw_orgs)} organizations")
+            logger.info(f"Found {len(raw_orgs)} organizations on page {page}")
             yield parse_protobuf_messages(raw_orgs)
 
 
