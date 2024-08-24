@@ -37,7 +37,9 @@ def _resolve_resync_method_for_resource(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     match kind:
         case AssetTypesWithSpecialHandling.TOPIC:
-            return iterate_per_available_project(list_all_topics_per_project)
+            return iterate_per_available_project(
+                list_all_topics_per_project, asset_type=kind
+            )
         case AssetTypesWithSpecialHandling.FOLDER:
             return search_all_folders()
         case AssetTypesWithSpecialHandling.ORGANIZATION:
@@ -85,7 +87,9 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.TOPIC)
 async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in iterate_per_available_project(list_all_topics_per_project):
+    async for batch in iterate_per_available_project(
+        list_all_topics_per_project, asset_type=kind
+    ):
         yield batch
 
 

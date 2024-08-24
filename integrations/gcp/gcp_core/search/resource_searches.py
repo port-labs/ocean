@@ -7,7 +7,6 @@ from google.api_core.exceptions import NotFound, PermissionDenied
 from google.cloud.asset_v1 import (
     AssetServiceAsyncClient,
 )
-from google.cloud.asset_v1.services.asset_service import pagers
 from google.cloud.resourcemanager_v3 import (
     FoldersAsyncClient,
     OrganizationsAsyncClient,
@@ -27,11 +26,52 @@ from gcp_core.utils import (
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
 )
-from gcp_core.search.utils import async_retry
+from gcp_core.search.utils import rate_limiter, async_generator_retry
+
 
 MAXIMUM_CONCURENCY_LIMIT = 100
 _REQUEST_TIMEOUT = 120.0
 semaphore = asyncio.BoundedSemaphore(MAXIMUM_CONCURENCY_LIMIT)
+
+
+@async_generator_retry
+async def paginated_query(
+    client: Any, method: str, request: dict[str, Any], parse_fn: Any
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    General function to handle paginated requests with rate limiting.
+    """
+    page = 0
+    page_token = None
+
+    while True:
+        if page_token:
+            request["page_token"] = page_token
+
+        async with rate_limiter:
+            response = await getattr(client, method)(
+                request,
+                timeout=_REQUEST_TIMEOUT,
+            )
+
+        items = parse_fn(response)
+        if items:
+            page += 1
+            logger.info(
+                f"Found {len(items)} items on page {page} for `{method}` with request: {request}"
+            )
+            yield items
+        else:
+            logger.warning(
+                f"No items found on page {page} for `{method}` with request: {request}"
+            )
+
+        page_token = getattr(response, "next_page_token", None)
+        if not page_token:
+            logger.info(
+                f"No more pages left for `{method}`. Query complete after {page} pages."
+            )
+            break
 
 
 async def search_all_resources(
@@ -41,86 +81,57 @@ async def search_all_resources(
         yield resources
 
 
-@async_retry.retry_paginated_resource
 async def search_all_resources_in_project(
     project: dict[str, Any], asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
-    Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
-    """
-    async with semaphore:
-        project_name = project["name"]
-        logger.info(f"Searching all {asset_type}'s in project {project_name}")
-        async with AssetServiceAsyncClient() as async_assets_client:
-            search_all_resources_request = {
-                "scope": project_name,
-                "asset_types": [asset_type],
-                "read_mask": "*",
-            }
-            if asset_name:
-                search_all_resources_request["query"] = f"name={asset_name}"
-            try:
-                paginated_responses: pagers.SearchAllResourcesAsyncPager = (
-                    await async_assets_client.search_all_resources(
-                        search_all_resources_request, timeout=_REQUEST_TIMEOUT
-                    )
-                )
-                page = 0
-                async for paginated_response in paginated_responses.pages:
-                    page += 1
-                    raw_assets = parse_protobuf_messages(paginated_response.results)
-                    assets = typing.cast(list[AssetData], raw_assets)
-                    if assets:
-                        logger.info(
-                            f"Found {len(assets)} {asset_type}'s in page {page}"
-                        )
-                        latest_resources = []
-                        for asset in assets:
-                            latest_resource = parse_latest_resource_from_asset(asset)
-                            latest_resource[EXTRA_PROJECT_FIELD] = project
-                            latest_resources.append(latest_resource)
-                        yield latest_resources
-            except PermissionDenied as e:
-                logger.exception(
-                    f"Couldn't access the API Cloud Assets to get kind {asset_type}. Please set cloudasset.assets.searchAllResources permissions for project {project_name}"
-                )
-                raise e
-            else:
-                logger.info(
-                    f"Successfully searched all resources in kind {asset_type} for project {project_name}"
-                )
-
-
-@async_retry.retry_paginated_resource
-async def list_all_topics_per_project(
-    project: dict[str, Any],
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    This lists all Topics under a certain project.
-    The Topics are handled specifically due to lacks of data in the asset itselfwithin the asset inventory - e.g. some properties missing.
-    The listing is being done via the PublisherAsyncClient, ignoring state in assets inventory
-    """
     project_name = project["name"]
-    logger.info(
-        f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"
-    )
+    logger.info(f"Searching all {asset_type}'s in project {project_name}")
+
+    search_all_resources_request = {
+        "scope": project_name,
+        "asset_types": [asset_type],
+        "read_mask": "*",
+    }
+    if asset_name:
+        search_all_resources_request["query"] = f"name={asset_name}"
+
+    async with AssetServiceAsyncClient() as async_assets_client:
+        async for assets in paginated_query(
+            async_assets_client,
+            "search_all_resources",
+            search_all_resources_request,
+            lambda response: typing.cast(
+                list[AssetData], parse_protobuf_messages(response.results)
+            ),
+        ):
+            latest_resources = [
+                {
+                    **parse_latest_resource_from_asset(asset),
+                    EXTRA_PROJECT_FIELD: project,
+                }
+                for asset in assets
+            ]
+            yield latest_resources
+
+
+async def list_all_topics_per_project(
+    project: dict[str, Any], **kwargs: Any
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async with PublisherAsyncClient() as async_publisher_client:
+        project_name = project["name"]
+        logger.info(
+            f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"
+        )
         try:
-            list_topics_pagers = await async_publisher_client.list_topics(
-                project=project_name, timeout=_REQUEST_TIMEOUT
-            )
-            page = 0
-            async for paginated_response in list_topics_pagers.pages:
-                topics = parse_protobuf_messages(paginated_response.topics)
-                if topics:
-                    page += 1
-                    logger.info(
-                        f"Found {len(topics)} {AssetTypesWithSpecialHandling.TOPIC}'s on page {page}"
-                    )
-                    for topic in topics:
-                        topic[EXTRA_PROJECT_FIELD] = project
-                    yield topics
+            async for topics in paginated_query(
+                async_publisher_client,
+                "list_topics",
+                {"project": project_name},
+                lambda response: parse_protobuf_messages(response.topics),
+            ):
+                for topic in topics:
+                    topic[EXTRA_PROJECT_FIELD] = project
+                yield topics
         except PermissionDenied as e:
             logger.exception(
                 f"Service account doesn't have permissions to list topics from project {project_name}"
@@ -134,62 +145,43 @@ async def list_all_topics_per_project(
             logger.info(f"Successfully listed all topics within project {project_name}")
 
 
-@async_retry.retry_paginated_resource
 @cache_iterator_result()
 async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Search for projects that the caller has ``resourcemanager.projects.get`` permission on
-    """
     logger.info("Searching projects")
-    page = 0
     async with ProjectsAsyncClient() as projects_client:
-        search_projects_pager = await projects_client.search_projects(
-            timeout=_REQUEST_TIMEOUT
-        )
-        async for projects_page in search_projects_pager.pages:
-            page += 1
-            raw_projects = projects_page.projects
-            logger.info(f"Found {len(raw_projects)} Projects on page {page}")
-            yield parse_protobuf_messages(raw_projects)
+        async for projects in paginated_query(
+            projects_client,
+            "search_projects",
+            {},
+            lambda response: parse_protobuf_messages(response.projects),
+        ):
+            yield projects
 
 
-@async_retry.retry_paginated_resource
 async def search_all_folders() -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Search for folders that the caller has ``resourcemanager.folders.get`` permission on
-    """
     logger.info("Searching folders")
-    page = 0
     async with FoldersAsyncClient() as folders_client:
-        search_folders_pager = await folders_client.search_folders(
-            timeout=_REQUEST_TIMEOUT
-        )
-        async for folders_page in search_folders_pager.pages:
-            page += 1
-            raw_folders = folders_page.folders
-            logger.info(f"Found {len(raw_folders)} Folders on page {page}")
-            yield parse_protobuf_messages(raw_folders)
+        async for folders in paginated_query(
+            folders_client,
+            "search_folders",
+            {},
+            lambda response: parse_protobuf_messages(response.folders),
+        ):
+            yield folders
 
 
-@async_retry.retry_paginated_resource
 async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    Search for organizations that the caller has ``resourcemanager.organizations.get``` permission on
-    """
     logger.info("Searching organizations")
-    page = 0
     async with OrganizationsAsyncClient() as organizations_client:
-        search_organizations_pager = await organizations_client.search_organizations(
-            timeout=_REQUEST_TIMEOUT
-        )
-        async for organizations_page in search_organizations_pager.pages:
-            page += 1
-            raw_orgs = organizations_page.organizations
-            logger.info(f"Found {len(raw_orgs)} organizations on page {page}")
-            yield parse_protobuf_messages(raw_orgs)
+        async for organizations in paginated_query(
+            organizations_client,
+            "search_organizations",
+            {},
+            lambda response: parse_protobuf_messages(response.organizations),
+        ):
+            yield organizations
 
 
-@async_retry.retry_single_resource
 async def get_single_project(project_name: str) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         return parse_protobuf_message(
@@ -199,7 +191,6 @@ async def get_single_project(project_name: str) -> RAW_ITEM:
         )
 
 
-@async_retry.retry_single_resource
 async def get_single_folder(folder_name: str) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(
@@ -207,7 +198,6 @@ async def get_single_folder(folder_name: str) -> RAW_ITEM:
         )
 
 
-@async_retry.retry_single_resource
 async def get_single_organization(organization_name: str) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
@@ -217,7 +207,6 @@ async def get_single_organization(organization_name: str) -> RAW_ITEM:
         )
 
 
-@async_retry.retry_single_resource
 async def get_single_topic(topic_id: str) -> RAW_ITEM:
     """
     The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
