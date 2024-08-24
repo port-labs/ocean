@@ -1,0 +1,88 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: space
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: .Name
+          blueprint: '"octopusSpace"'
+          properties:
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .Id
+            description: .Description
+  - kind: project
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: .Name
+          blueprint: '"octopusProject"'
+          properties:
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/projects/" + .Id
+            description: .Description
+            isDisabled: .IsDisabled
+            tenantedDeploymentMode: .TenantedDeploymentMode
+          relations:
+            space: .SpaceId
+  - kind: release
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: ".ProjectId + \"(\" + .Version + \")\""
+          blueprint: '"octopusRelease"'
+          properties:
+            version: .Version
+            assembledDate: .Assembled
+            channelId: .ChannelId
+            releaseNotes: .ReleaseNotes
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/releases/" + .Id
+          relations:
+            project: .ProjectId
+  - kind: deployment
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: .Name
+          blueprint: '"octopusDeployment"'
+          properties:
+            createdAt: .Created
+            deployedBy: .DeployedBy
+            taskId: .TaskId
+            failureEncountered: .FailureEncountered
+            comments: .Comments
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/deployments/" + .Id
+          relations:
+            release: .ReleaseId
+            project: .ProjectId
+  - kind: machine
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .Id
+          title: .Name
+          blueprint: '"octopusMachine"'
+          properties:
+            roles: .Roles
+            status: .HealthStatus
+            url: env.OCEAN__INTEGRATION__CONFIG__SERVER_URL + "/app#/" + .SpaceId + "/infrastructure/machines/" + .Id + "/settings"
+            isDisabled: .IsDisabled
+            operatingSystem: .OperatingSystem
+            architecture: .Architecture
+            statusSummary: .StatusSummary
+            endpointType: .Endpoint.DeploymentTargetTypeId
+            communicationStyle: .Endpoint.CommunicationStyle
+          relations:
+            space: .SpaceId
