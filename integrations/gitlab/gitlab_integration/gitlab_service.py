@@ -704,7 +704,9 @@ class GitlabService:
 
                         if len(tasks) == PROJECT_FILES_BATCH_SIZE:
                             results = await asyncio.gather(*tasks)
-                            files.extend([file_data for file_data in results if file_data])
+                            files.extend(
+                                [file_data for file_data in results if file_data]
+                            )
                             yield files
                             files = []
                             tasks = []
