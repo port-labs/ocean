@@ -104,8 +104,8 @@ class GitlabService:
         if not isinstance(path, list):
             path = [path]
         try:
-            files = await AsyncFetcher.fetch_repository_tree(
-                project, ref=commit_sha, recursive=True, get_all=True
+            files = await AsyncFetcher().filter_repository_tree(
+                project=project, filtering_callable=does_pattern_apply, filtering_paths=path, ref=commit_sha, recursive=True
             )
         except GitlabError as err:
             if err.response_code != 404:
@@ -119,7 +119,6 @@ class GitlabService:
             file["path"]
             for file in files
             if (not return_files_only or file["type"] == "blob")
-            and does_pattern_apply(path, file["path"] or "")
         ]
 
     def _get_entities_from_git(
