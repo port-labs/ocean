@@ -6,13 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.1.43 (2024-08-25)
+
+
+### Improvements
+
+- Changed tf module in order to detach provider creation from the module and QOL changes with the module (#1)
+
 
 ## 0.1.42 (2024-08-22)
 
 
 ### Improvements
 
-- Changed tf module in order to detach provider creation from the module and QOL changes with the module (#1)
+- Bumped ocean version to ^0.10.0 (#1)
 
 
 ## 0.1.41 (2024-08-20)
