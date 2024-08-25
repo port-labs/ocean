@@ -23,6 +23,7 @@ T = TypeVar("T", bound=RESTObject)
 DEFAULT_PAGINATION_PAGE_SIZE = 100
 FIRST_PAGE = 1
 
+
 class AsyncFetcher:
     @staticmethod
     async def fetch_single(
@@ -147,13 +148,11 @@ class AsyncFetcher:
                 ref,
             )
 
-    def _parse_file_metadata(self, file:dict[str,Any])-> dict[str,Any]:
-        return {
-            "path": file["path"],
-            "type": file["type"]
-        }
+    def _parse_file_metadata(self, file: dict[str, Any]) -> dict[str, Any]:
+        return {"path": file["path"], "type": file["type"]}
 
-    async def filter_repository_tree(self,
+    async def filter_repository_tree(
+        self,
         project: Project,
         filtering_callable: None | Callable[..., bool] = None,
         filtering_paths: list[str] = [],
@@ -162,12 +161,15 @@ class AsyncFetcher:
         **kwargs: Any,
     ) -> GitlabList | List[Dict[str, Any]]:
         with ThreadPoolExecutor() as executor:
-            def fetch_func()-> Any:
+
+            def fetch_func() -> Any:
                 current_page_id = FIRST_PAGE
                 files: List[Dict[str, Any]] = []
                 while True:
                     try:
-                        logger.info(f"Requesting page {current_page_id} of project {project.path_with_namespace}, Currently found {len(files)} relevant files / directories..")
+                        logger.info(
+                            f"Requesting page {current_page_id} of project {project.path_with_namespace}, Currently found {len(files)} relevant files / directories.."
+                        )
                         page_files = project.repository_tree(
                             ref=ref,
                             recursive=recursive,
@@ -176,14 +178,20 @@ class AsyncFetcher:
                             **kwargs,
                         )
                         if not page_files:
-                            logger.info(f"Done iterating file pages for project {project.path_with_namespace}, Found {len(files)} relevant files..")
+                            logger.info(
+                                f"Done iterating file pages for project {project.path_with_namespace}, Found {len(files)} relevant files.."
+                            )
                             return files
                         if filtering_paths and filtering_callable:
                             for file in page_files:
-                                if filtering_callable(filtering_paths, file["path"] or ""):
+                                if filtering_callable(
+                                    filtering_paths, file["path"] or ""
+                                ):
                                     files.append(self._parse_file_metadata(file))
                         else:
-                            files.extend([self._parse_file_metadata(file) for file in page_files])
+                            files.extend(
+                                [self._parse_file_metadata(file) for file in page_files]
+                            )
                     except gitlab.exceptions.GitlabListError as err:
                         logger.warning(f"Failed to access resource, error={str(err)}")
                         return []
