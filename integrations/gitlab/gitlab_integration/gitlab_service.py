@@ -688,6 +688,7 @@ class GitlabService:
     ) -> typing.AsyncIterator[List[dict[str, Any]]]:
         branch = project.default_branch
         try:
+            tasks: List[Any] = []
             async for file_paths_page in self.get_paginated_file_paths(
                 project, path, branch, True
             ):
