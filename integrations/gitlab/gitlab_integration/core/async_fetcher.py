@@ -151,7 +151,47 @@ class AsyncFetcher:
     def _parse_file_metadata(self, file: dict[str, Any]) -> dict[str, Any]:
         return {"path": file["path"], "type": file["type"]}
 
-    async def filter_repository_tree(
+    async def paginate_repository_tree(
+        self,
+        project: Project,
+        filtering_callable: Callable[..., bool] | None = None,
+        filtering_paths: list[str] = [],
+        ref: str = "",
+        recursive: bool = False,
+        **kwargs: Any,
+    ) -> AsyncIterator[GitlabList | List[Dict[str, Any]]]:
+        current_page_id = FIRST_PAGE
+        while True:
+            try:
+                logger.info(
+                    f"Requesting page {current_page_id} of project {project.path_with_namespace}"
+                )
+                page_files = project.repository_tree(
+                    ref=ref,
+                    recursive=recursive,
+                    page=current_page_id,
+                    per_page=DEFAULT_PAGINATION_PAGE_SIZE,
+                    **kwargs,
+                )
+                if not page_files:
+                    logger.info(
+                        f"Done iterating file pages for project {project.path_with_namespace}"
+                    )
+                    break
+                if filtering_paths and filtering_callable:
+                    yield [
+                        self._parse_file_metadata(file)
+                        for file in page_files
+                        if filtering_callable(filtering_paths, file["path"] or "")
+                    ]
+                else:
+                    yield [self._parse_file_metadata(file) for file in page_files]
+            except gitlab.exceptions.GitlabListError as err:
+                logger.warning(f"Failed to access resource, error={str(err)}")
+                break
+            current_page_id += 1
+
+    async def full_repository_tree(
         self,
         project: Project,
         filtering_callable: None | Callable[..., bool] = None,
@@ -160,41 +200,14 @@ class AsyncFetcher:
         recursive: bool = False,
         **kwargs: Any,
     ) -> GitlabList | List[Dict[str, Any]]:
-        with ThreadPoolExecutor() as executor:
-
-            def fetch_func() -> Any:
-                current_page_id = FIRST_PAGE
-                files: List[Dict[str, Any]] = []
-                while True:
-                    try:
-                        logger.info(
-                            f"Requesting page {current_page_id} of project {project.path_with_namespace}, Currently found {len(files)} relevant files / directories.."
-                        )
-                        page_files = project.repository_tree(
-                            ref=ref,
-                            recursive=recursive,
-                            page=current_page_id,
-                            per_page=DEFAULT_PAGINATION_PAGE_SIZE,
-                            **kwargs,
-                        )
-                        if not page_files:
-                            logger.info(
-                                f"Done iterating file pages for project {project.path_with_namespace}, Found {len(files)} relevant files.."
-                            )
-                            return files
-                        if filtering_paths and filtering_callable:
-                            for file in page_files:
-                                if filtering_callable(
-                                    filtering_paths, file["path"] or ""
-                                ):
-                                    files.append(self._parse_file_metadata(file))
-                        else:
-                            files.extend(
-                                [self._parse_file_metadata(file) for file in page_files]
-                            )
-                    except gitlab.exceptions.GitlabListError as err:
-                        logger.warning(f"Failed to access resource, error={str(err)}")
-                        return []
-                    current_page_id += 1
-
-            return await get_event_loop().run_in_executor(executor, fetch_func)
+        all_files: List[Dict[str, Any]] = []
+        async for files in self.paginate_repository_tree(
+            project,
+            filtering_callable,
+            filtering_paths,
+            ref,
+            recursive,
+            **kwargs,
+        ):
+            all_files.extend(files)
+        return all_files

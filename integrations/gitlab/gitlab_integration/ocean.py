@@ -181,7 +181,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for projects_batch in service.get_all_projects():
             for project in projects_batch:
                 if service.should_process_project(project, selector.files.repos):
-                    async for files_batch in service.get_all_files_in_project(
+                    async for files_batch in service.get_paginated_files_in_project(
                         project, selector.files.path
                     ):
                         yield files_batch
