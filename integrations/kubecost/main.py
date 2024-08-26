@@ -37,9 +37,9 @@ async def on_cloud_cost_resync(kind: str) -> list[dict[Any, Any]]:
         CloudCostV1ResourceConfig | CloudCostV2ResourceConfig, event.resource_config
     ).selector
     data = await client.get_cloud_cost_allocation(selector)
-    results = []
+    results: list[dict[str, Any]] = []
     for item in data:
-        if not item.get("cloudCosts"):
+        if item.get("cloudCosts"):
             results.extend(item.values())
 
     return results

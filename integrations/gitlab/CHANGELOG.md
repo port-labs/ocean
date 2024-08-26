@@ -7,6 +7,95 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.110 (2024-08-26)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.1 (#1)
+
+
+0.1.109 (2024-08-22)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.0 (#1)
+
+
+0.1.108 (2024-08-20)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.14 (#1)
+
+
+0.1.107 (2024-08-19)
+====================
+
+### Bug Fixes 
+
+- Fixed merge requests and issue resync methods to use an async method of listing root groups to avoid blocking the event loop
+
+
+0.1.106 (2024-08-19)
+====================
+
+### Bug Fixes
+
+- Fixed an issue when we were still processing a file larger than the allowed file size
+- Added more verbosity to the logs of the file kind
+
+
+0.1.105 (2024-08-15)
+===================
+
+### Improvements
+
+- Added description to configuration properties in spec.yaml (PORT-9538)
+
+
+0.1.104 (2024-08-14)
+====================
+
+### Improvements
+
+- Fixed issue with webhook not syncing repository languages
+
+
+0.1.103 (2024-08-14)
+====================
+
+### Improvements
+
+- Added support for exporting files 
+
+
+0.1.102 (2024-08-13)
+====================
+
+### Improvements
+
+- Changed default action creation json to new v2 format
+
+
+0.1.101 (2024-08-13)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.13 (#1)
+
+
+0.1.100 (2024-08-11)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.12 (#1)
+
+
 0.1.99 (2024-08-05)
 ===================
 

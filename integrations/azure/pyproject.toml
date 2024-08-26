@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "azure"
-version = "0.1.77"
+version = "0.1.82"
 description = "Azure integration"
 authors = ["Tom Tankilevitch <tom@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.9.11", extras = ["cli"]}
+port_ocean = {version = "^0.10.1", extras = ["cli"]}
 # due to patching the azure-mgmt-resource package, we need to use a specific version
 azure-mgmt-resource = "23.0.1"
 azure-identity = "^1.13.0"
@@ -16,12 +16,15 @@ azure-mgmt-subscription = "^3.1.1"
 aiostream = "^0.5.2"
 
 [tool.poetry.group.dev.dependencies]
+# Uncomment this if you want to debug the ocean core together with your integration
+# port_ocean = { path = '../../', develop = true, extras = ['all'] }
 pytest = "^7.2"
 black = "^24.4.2"
 mypy = "^1.3.0"
 ruff = "^0.0.278"
 pylint = "^2.17.4"
 towncrier = "^23.6.0"
+pytest-xdist = "^3.6.1"
 
 [tool.towncrier]
 directory = "changelog"
@@ -58,8 +61,8 @@ filename = "CHANGELOG.md"
   showcontent = true
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 exclude = [
