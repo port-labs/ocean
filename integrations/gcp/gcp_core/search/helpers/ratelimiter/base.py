@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, TYPE_CHECKING
 from aiolimiter import AsyncLimiter
-from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest
+from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest  # type: ignore
 from loguru import logger
 from enum import Enum
-from port_ocean.context.ocean import ocean
+from port_ocean.context.ocean import ocean  # type: ignore
 from gcp_core.cache import cache_coroutine_result
 from collections.abc import MutableSequence
 
