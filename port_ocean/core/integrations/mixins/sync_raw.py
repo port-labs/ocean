@@ -155,7 +155,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
     ) -> tuple[list[Entity], list[Exception]]:
         if not isinstance(resource.port.entity.mappings.identifier, str):
-            logger.info("Skip unregistering due to non string identifier mapping")
+            logger.info(
+                f"Skip unregistering resource of kind {resource.kind}, as identifier mapping defined with search query"
+            )
             return [], []
 
         objects_diff = await self._calculate_raw([(resource, results)])
