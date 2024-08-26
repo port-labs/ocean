@@ -1,4 +1,4 @@
-from gcp_core.search.helpers.ratelimiter.base import (
+from gcp_core.helpers.ratelimiter.base import (
     GCPResourceRateLimiter,
     ContainerType,
 )

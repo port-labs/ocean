@@ -24,7 +24,7 @@ from gcp_core.utils import (
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
 )
-from gcp_core.search.helpers.ratelimiter.overrides import (
+from gcp_core.helpers.ratelimiter.overrides import (
     SearchAllResourcesQpmPerProject,
     PubSubAdministratorPerMinutePerProject,
 )

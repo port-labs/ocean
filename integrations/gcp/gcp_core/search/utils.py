@@ -1,4 +1,4 @@
-from gcp_core.search.helpers.retry.async_retry import async_generator_retry
+from gcp_core.helpers.retry.async_retry import async_generator_retry
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from aiolimiter import AsyncLimiter
 from typing import Any, Optional
