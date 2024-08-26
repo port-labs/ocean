@@ -13,8 +13,6 @@ from google.api_core.exceptions import (
 from google.auth import exceptions as auth_exceptions
 import requests.exceptions
 
-from aiolimiter import AsyncLimiter
-from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from google.api_core.retry_async import exponential_sleep_generator
 from google.api_core.retry.retry_base import (
@@ -25,17 +23,12 @@ from google.api_core.retry.retry_base import (
     if_exception_type,
 )
 
-# Constants for retry logic
+
 _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES: float = 5.0
 _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS: float = 60.0
 _DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF: float = 2.0
 _DEFAULT_TIMEOUT: float = 300.0
 
-# Constants for rate limiting
-_DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
-_DEFAULT_RATE_LIMIT_QUOTA: int = int(
-    ocean.integration_config["search_all_resources_per_minute_quota"]
-)
 
 if_transient_error = if_exception_type(
     TooManyRequests,
@@ -127,7 +120,7 @@ async def retry_generator_target(
 
 
 class AsyncGeneratorRetry(_BaseRetry):
-    """Exponential retry decorator for async generators.
+    """An Exponential Backoff Retry Decorator for Async Generators in Google's AsyncRetry Framework.
 
     This class is a decorator used to add exponential back-off retry behavior
     to an async generator.
@@ -182,11 +175,6 @@ class AsyncGeneratorRetry(_BaseRetry):
         return retry_wrapped_generator
 
 
-rate_limiter = AsyncLimiter(
-    max_rate=_DEFAULT_RATE_LIMIT_QUOTA, time_period=_DEFAULT_RATE_LIMIT_TIME_PERIOD
-)
-
-# resource request retry policy
 async_generator_retry: AsyncGeneratorRetry = AsyncGeneratorRetry(
     initial=_DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES,
     predicate=if_transient_error,

@@ -1,7 +1,5 @@
-from typing import Any
+from typing import Any, Optional
 import typing
-
-import asyncio
 
 from google.api_core.exceptions import NotFound, PermissionDenied
 from google.cloud.asset_v1 import (
@@ -26,17 +24,24 @@ from gcp_core.utils import (
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
 )
-from gcp_core.search.utils import rate_limiter, async_generator_retry
+from gcp_core.search.helpers.retry.async_retry import async_generator_retry
+from gcp_core.search.helpers.ratelimiter.overrides import (
+    SearchAllResourcesQpmPerProject,
+)
+from aiolimiter import AsyncLimiter
 
-
-MAXIMUM_CONCURENCY_LIMIT = 100
 _REQUEST_TIMEOUT = 120.0
-semaphore = asyncio.BoundedSemaphore(MAXIMUM_CONCURENCY_LIMIT)
+
+search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
 
 
 @async_generator_retry
 async def paginated_query(
-    client: Any, method: str, request: dict[str, Any], parse_fn: Any
+    client: Any,
+    method: str,
+    request: dict[str, Any],
+    parse_fn: Any,
+    rate_limiter: Optional[AsyncLimiter] = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     General function to handle paginated requests with rate limiting.
@@ -48,7 +53,14 @@ async def paginated_query(
         if page_token:
             request["page_token"] = page_token
 
-        async with rate_limiter:
+        if rate_limiter:
+            logger.debug(f"Rate limiting enabled for `{method}`")
+            async with rate_limiter:
+                response = await getattr(client, method)(
+                    request,
+                    timeout=_REQUEST_TIMEOUT,
+                )
+        else:
             response = await getattr(client, method)(
                 request,
                 timeout=_REQUEST_TIMEOUT,
@@ -95,6 +107,10 @@ async def search_all_resources_in_project(
     if asset_name:
         search_all_resources_request["query"] = f"name={asset_name}"
 
+    rate_limiter = await search_all_resources_qpm_per_project[
+        project_name.split("/")[-1]
+    ]
+
     async with AssetServiceAsyncClient() as async_assets_client:
         async for assets in paginated_query(
             async_assets_client,
@@ -103,13 +119,15 @@ async def search_all_resources_in_project(
             lambda response: typing.cast(
                 list[AssetData], parse_protobuf_messages(response.results)
             ),
+            rate_limiter=rate_limiter,
         ):
+            asset_data: list[AssetData] = typing.cast(list[AssetData], assets)
             latest_resources = [
                 {
                     **parse_latest_resource_from_asset(asset),
                     EXTRA_PROJECT_FIELD: project,
                 }
-                for asset in assets
+                for asset in asset_data
             ]
             yield latest_resources
 
