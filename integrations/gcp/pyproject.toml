@@ -11,6 +11,7 @@ google-cloud-asset = "^3.25.1"
 google-cloud-pubsub = "^2.21.1"
 google-cloud-resource-manager = "^1.12.3"
 aiolimiter = "^1.1.0"
+types-requests = "^2.32.0.20240712"
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
