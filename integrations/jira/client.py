@@ -26,9 +26,6 @@ CREATE_UPDATE_WEBHOOK_EVENTS = [
     "sprint_updated",
     "sprint_started",
     "sprint_closed",
-    "board_created",
-    "board_updated",
-    "board_configuration_changed",
 ]
 
 DELETE_WEBHOOK_EVENTS = [
@@ -37,7 +34,6 @@ DELETE_WEBHOOK_EVENTS = [
     "project_soft_deleted",
     "project_archived",
     "sprint_deleted",
-    "board_deleted",
 ]
 
 WEBHOOK_EVENTS = [
@@ -208,9 +204,6 @@ class JiraClient:
 
     async def get_single_sprint(self, sprint_id: int) -> dict[str, Any]:
         return await self._get_single_item(f"{self.agile_url}/sprint/{sprint_id}")
-
-    async def get_single_board(self, board_id: int) -> dict[str, Any]:
-        return await self._get_single_item(f"{self.agile_url}/board/{board_id}")
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"

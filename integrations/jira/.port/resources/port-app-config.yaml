@@ -14,21 +14,6 @@ resources:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
             totalIssues: .insight.totalIssueCount
 
-  - kind: board
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .name
-          blueprint: '"jiraBoard"'
-          properties:
-            url: (.self | split("/") | .[:3] | join("/")) + "/jira/software/c/projects/" + .location.projectKey + "/boards/" + (.id | tostring)
-            type: .type
-          relations:
-            project: if .location.projectId == null then '' else .location.projectId | tostring end
-
   - kind: sprint
     selector:
       query: "true"
@@ -43,8 +28,6 @@ resources:
             state: .state
             startDate: .startDate
             endDate: .endDate
-          relations:
-            board: if .originBoardId then .originBoardId | tostring else '' end
 
   - kind: issue
     selector:
