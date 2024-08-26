@@ -91,7 +91,7 @@ async def search_all_resources_in_project(
 
             except PermissionDenied:
                 logger.error(
-                    f"Service account doesn't have permissions to list topics from project {project_name}"
+                    f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}"
                 )
             except NotFound:
                 logger.debug(

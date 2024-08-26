@@ -45,24 +45,31 @@ class GCPResourceQuota(ABC):
 
         try:
             quota_infos = await self._request_quota_info(name)
-            quota_info = quota_infos[0] if quota_infos else None
 
-            if not quota_info or quota_info.get("applicable_locations") != ["global"]:
+            if not quota_infos:
                 logger.warning(
-                    f"Quota mismatch detected: The quota '{self.quota_id}' for service '{self.service}' "
-                    f"in container '{container_id}' is not applicable globally. Default quota of {self._default_quota} will be used."
+                    f"No quota information found for '{self.service}:{self.quota_id}' in container '{container_id}'. "
+                    f"Default quota of {self._default_quota} will be used."
                 )
                 return self._default_quota
 
-            if quota_info.get("dimensions_infos"):
-                quota_value = int(quota_info["dimensions_infos"][0]["details"]["value"])
-                return quota_value
-            else:
-                logger.warning(
-                    f"No quota dimensions found in the quota response for '{self.service}:{self.quota_id}' "
-                    f"in '{container_id}'. Default quota will be used."
+            # Find the dimension with the least quota value
+            least_quota_info = quota_infos[0]
+            least_value = int(least_quota_info["details"]["value"])
+
+            for info in quota_infos[1:]:
+                current_value = int(info["details"]["value"])
+                if current_value < least_value:
+                    least_quota_info = info
+                    least_value = current_value
+
+            if len(quota_infos) > 1:
+                logger.info(
+                    f"Multiple quota dimensionsInfos found for '{self.service}:{self.quota_id}' in container '{container_id}'. "
+                    f"Using the least value: {least_value}"
                 )
-                return self._default_quota
+
+            return least_value
 
         except Exception as e:
             logger.warning(
