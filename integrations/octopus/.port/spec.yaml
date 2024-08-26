@@ -19,7 +19,7 @@ configurations:
   - name: serverUrl
     required: true
     type: url
-    description: The base URL of your Octopus Deploy instance. It should include the protocol (e.g., https://).
+    description: The base URL of your Octopus Deploy instance. It should include the protocol (e.g. <a href="https://demo.octopus.app/" target="_blank">https://demo.octopus.app/</a> or <a href="https://example.com/" target="_blank">https://example.com/</a>).
   - name: appHost
     required: false
     type: url
