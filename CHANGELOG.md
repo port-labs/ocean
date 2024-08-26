@@ -7,11 +7,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.9.14 (2024-08-26)
+## 0.10.1 (2024-08-26)
 
 ### Bug Fixes
 
-- Fixed reference to upsert entity api response that causes failure in deleting entities with search identifier/relations
+- Fixed unhashable type: 'dict' error when trying to delete entities with search identifier/relations
 
 
 ## 0.10.0 (2024-08-19)
