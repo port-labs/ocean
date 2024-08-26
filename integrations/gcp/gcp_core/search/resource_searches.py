@@ -30,7 +30,7 @@ from gcp_core.helpers.ratelimiter.overrides import (
 )
 from gcp_core.search.utils import paginated_query, semaphore, REQUEST_TIMEOUT
 
-# rate limiters managers
+# rate limiters
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
 pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
 
