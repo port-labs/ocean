@@ -14,7 +14,6 @@ from integration import JiraIssueResourceConfig, JiraSprintResourceConfig
 class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
-    BOARD = "board"
     SPRINT = "sprint"
 
 
@@ -43,9 +42,6 @@ async def setup_application() -> None:
     )
 
 
-"board",
-
-
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
@@ -53,15 +49,6 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for projects in client.get_projects():
         logger.info(f"Received project batch with {len(projects)} projects")
         yield projects
-
-
-@ocean.on_resync(ObjectKind.BOARD)
-async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_client()
-
-    async for boards in client.get_all_boards():
-        logger.info(f"Received board batch with {len(boards)} boards")
-        yield boards
 
 
 @ocean.on_resync(ObjectKind.SPRINT)
@@ -120,13 +107,6 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         else:
             issue = await client.get_single_issue(data["issue"]["key"])
         await ocean_action(ObjectKind.ISSUE, [issue])
-    elif "board" in webhook_event:
-        logger.info(f'Received webhook event for board: {data["board"]["id"]}')
-        if delete_action:
-            board = data["board"]
-        else:
-            board = await client.get_single_board(data["board"]["id"])
-        await ocean_action(ObjectKind.BOARD, [board])
     elif "sprint" in webhook_event:
         logger.info(f'Received webhook event for sprint: {data["sprint"]["id"]}')
         if delete_action:
