@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.66 (2024-08-14)
+
+
+### Bug Fixes
+
+- Fixed NoneType error in cloud resync function when cloudCost data isn't available (#66)
+
+
 ## 0.1.65 (2024-08-05)
 
 
