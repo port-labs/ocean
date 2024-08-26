@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 import typing
 
 from google.api_core.exceptions import NotFound, PermissionDenied
@@ -24,66 +24,12 @@ from gcp_core.utils import (
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
 )
-from gcp_core.search.helpers.retry.async_retry import async_generator_retry
 from gcp_core.search.helpers.ratelimiter.overrides import (
     SearchAllResourcesQpmPerProject,
 )
-from aiolimiter import AsyncLimiter
-
-_REQUEST_TIMEOUT = 120.0
+from gcp_core.search.utils import paginated_query, semaphore, REQUEST_TIMEOUT
 
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
-
-
-@async_generator_retry
-async def paginated_query(
-    client: Any,
-    method: str,
-    request: dict[str, Any],
-    parse_fn: Any,
-    rate_limiter: Optional[AsyncLimiter] = None,
-) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    """
-    General function to handle paginated requests with rate limiting.
-    """
-    page = 0
-    page_token = None
-
-    while True:
-        if page_token:
-            request["page_token"] = page_token
-
-        if rate_limiter:
-            logger.debug(f"Rate limiting enabled for `{method}`")
-            async with rate_limiter:
-                response = await getattr(client, method)(
-                    request,
-                    timeout=_REQUEST_TIMEOUT,
-                )
-        else:
-            response = await getattr(client, method)(
-                request,
-                timeout=_REQUEST_TIMEOUT,
-            )
-
-        items = parse_fn(response)
-        if items:
-            page += 1
-            logger.info(
-                f"Found {len(items)} items on page {page} for `{method}` with request: {request}"
-            )
-            yield items
-        else:
-            logger.warning(
-                f"No items found on page {page} for `{method}` with request: {request}"
-            )
-
-        page_token = getattr(response, "next_page_token", None)
-        if not page_token:
-            logger.info(
-                f"No more pages left for `{method}`. Query complete after {page} pages."
-            )
-            break
 
 
 async def search_all_resources(
@@ -96,40 +42,61 @@ async def search_all_resources(
 async def search_all_resources_in_project(
     project: dict[str, Any], asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    project_name = project["name"]
-    logger.info(f"Searching all {asset_type}'s in project {project_name}")
 
-    search_all_resources_request = {
-        "scope": project_name,
-        "asset_types": [asset_type],
-        "read_mask": "*",
-    }
-    if asset_name:
-        search_all_resources_request["query"] = f"name={asset_name}"
+    async with semaphore:
+        """
+        List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
+        Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
+        """
+        project_name = project["name"]
+        logger.info(f"Searching all {asset_type}'s in project {project_name}")
 
-    rate_limiter = await search_all_resources_qpm_per_project[
-        project_name.split("/")[-1]
-    ]
+        search_all_resources_request = {
+            "scope": project_name,
+            "asset_types": [asset_type],
+            "read_mask": "*",
+        }
+        if asset_name:
+            search_all_resources_request["query"] = f"name={asset_name}"
 
-    async with AssetServiceAsyncClient() as async_assets_client:
-        async for assets in paginated_query(
-            async_assets_client,
-            "search_all_resources",
-            search_all_resources_request,
-            lambda response: typing.cast(
-                list[AssetData], parse_protobuf_messages(response.results)
-            ),
-            rate_limiter=rate_limiter,
-        ):
-            asset_data: list[AssetData] = typing.cast(list[AssetData], assets)
-            latest_resources = [
-                {
-                    **parse_latest_resource_from_asset(asset),
-                    EXTRA_PROJECT_FIELD: project,
-                }
-                for asset in asset_data
-            ]
-            yield latest_resources
+        rate_limiter = await search_all_resources_qpm_per_project[
+            project_name.split("/")[-1]
+        ]
+
+        async with AssetServiceAsyncClient() as async_assets_client:
+
+            try:
+                async for assets in paginated_query(
+                    async_assets_client,
+                    "search_all_resources",
+                    search_all_resources_request,
+                    lambda response: typing.cast(
+                        list[AssetData], parse_protobuf_messages(response.results)
+                    ),
+                    rate_limiter=rate_limiter,
+                ):
+                    asset_data: list[AssetData] = typing.cast(list[AssetData], assets)
+                    latest_resources = [
+                        {
+                            **parse_latest_resource_from_asset(asset),
+                            EXTRA_PROJECT_FIELD: project,
+                        }
+                        for asset in asset_data
+                    ]
+                    yield latest_resources
+
+            except PermissionDenied:
+                logger.error(
+                    f"Service account doesn't have permissions to list topics from project {project_name}"
+                )
+            except NotFound:
+                logger.debug(
+                    f"Couldn't perform search_all_resources on project {project_name} since it's deleted."
+                )
+            else:
+                logger.info(
+                    f"Successfully searched all resources within project {project_name}"
+                )
 
 
 async def list_all_topics_per_project(
@@ -150,11 +117,10 @@ async def list_all_topics_per_project(
                 for topic in topics:
                     topic[EXTRA_PROJECT_FIELD] = project
                 yield topics
-        except PermissionDenied as e:
-            logger.exception(
+        except PermissionDenied:
+            logger.error(
                 f"Service account doesn't have permissions to list topics from project {project_name}"
             )
-            raise e
         except NotFound:
             logger.debug(
                 f"Couldn't perform list_topics on project {project_name} since it's deleted."
@@ -204,7 +170,7 @@ async def get_single_project(project_name: str) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         return parse_protobuf_message(
             await projects_client.get_project(
-                name=project_name, timeout=_REQUEST_TIMEOUT
+                name=project_name, timeout=REQUEST_TIMEOUT
             )
         )
 
@@ -212,7 +178,7 @@ async def get_single_project(project_name: str) -> RAW_ITEM:
 async def get_single_folder(folder_name: str) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(
-            await folders_client.get_folder(name=folder_name, timeout=_REQUEST_TIMEOUT)
+            await folders_client.get_folder(name=folder_name, timeout=REQUEST_TIMEOUT)
         )
 
 
@@ -220,7 +186,7 @@ async def get_single_organization(organization_name: str) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
             await organizations_client.get_organization(
-                name=organization_name, timeout=_REQUEST_TIMEOUT
+                name=organization_name, timeout=REQUEST_TIMEOUT
             )
         )
 
@@ -233,7 +199,7 @@ async def get_single_topic(topic_id: str) -> RAW_ITEM:
     async with PublisherAsyncClient() as async_publisher_client:
         return parse_protobuf_message(
             await async_publisher_client.get_topic(
-                topic=topic_id, timeout=_REQUEST_TIMEOUT
+                topic=topic_id, timeout=REQUEST_TIMEOUT
             )
         )
 

@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest
 from loguru import logger
 from enum import Enum
 from port_ocean.context.ocean import ocean
-from gcp_core.search.helpers.ratelimiter.utils import cache_coroutine_result
+from gcp_core.cache import cache_coroutine_result
+from collections.abc import MutableSequence
+
 
 _DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
 _DEFAULT_RATE_LIMIT_QUOTA: int = int(
@@ -28,7 +30,7 @@ class GCPResourceQuota(ABC):
     container_type: ContainerType = ContainerType.PROJECT
     _default_quota: int = _DEFAULT_RATE_LIMIT_QUOTA
 
-    async def _request_quota_info(self, name: str) -> List["DimensionsInfo"]:
+    async def _request_quota_info(self, name: str) -> MutableSequence["DimensionsInfo"]:
         async with AsyncLimiter(
             max_rate=_DEFAULT_RATE_LIMIT_QUOTA,
             time_period=_DEFAULT_RATE_LIMIT_TIME_PERIOD,
@@ -48,7 +50,7 @@ class GCPResourceQuota(ABC):
             if not quota_info or quota_info.get("applicable_locations") != ["global"]:
                 logger.warning(
                     f"Quota mismatch detected: The quota '{self.quota_id}' for service '{self.service}' "
-                    f"in container '{container_id}' is not applicable globally. Default quota will be used."
+                    f"in container '{container_id}' is not applicable globally. Default quota of {self._default_quota} will be used."
                 )
                 return self._default_quota
 
@@ -65,7 +67,7 @@ class GCPResourceQuota(ABC):
         except Exception as e:
             logger.warning(
                 f"Failed to retrieve quota from GCP for '{self.service}:{self.quota_id}' in container '{container_id}'. "
-                f"Default quota will be used. Error: {e}"
+                f"Default quota {self._default_quota} will be used. Error: {e}"
             )
             return self._default_quota
 
