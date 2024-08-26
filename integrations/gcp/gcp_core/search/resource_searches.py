@@ -43,6 +43,17 @@ async def search_all_resources_in_project(
     project: dict[str, Any], asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
+    def parse_asset_response(response: Any) -> list[AssetData]:
+        assets = typing.cast(list[AssetData], parse_protobuf_messages(response.results))
+        latest_resources = [
+            {
+                **parse_latest_resource_from_asset(asset),
+                EXTRA_PROJECT_FIELD: project,
+            }
+            for asset in assets
+        ]
+        return latest_resources
+
     async with semaphore:
         """
         List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
@@ -70,20 +81,10 @@ async def search_all_resources_in_project(
                     async_assets_client,
                     "search_all_resources",
                     search_all_resources_request,
-                    lambda response: typing.cast(
-                        list[AssetData], parse_protobuf_messages(response.results)
-                    ),
+                    parse_asset_response,
                     rate_limiter=rate_limiter,
                 ):
-                    asset_data: list[AssetData] = typing.cast(list[AssetData], assets)
-                    latest_resources = [
-                        {
-                            **parse_latest_resource_from_asset(asset),
-                            EXTRA_PROJECT_FIELD: project,
-                        }
-                        for asset in asset_data
-                    ]
-                    yield latest_resources
+                    yield assets
 
             except PermissionDenied:
                 logger.error(
