@@ -26,10 +26,13 @@ from gcp_core.utils import (
 )
 from gcp_core.search.helpers.ratelimiter.overrides import (
     SearchAllResourcesQpmPerProject,
+    PubSubAdministratorPerMinutePerProject,
 )
 from gcp_core.search.utils import paginated_query, semaphore, REQUEST_TIMEOUT
 
+# rate limiters managers
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
+pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
 
 
 async def search_all_resources(
@@ -43,7 +46,7 @@ async def search_all_resources_in_project(
     project: dict[str, Any], asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
-    def parse_asset_response(response: Any) -> list[AssetData]:
+    def parse_asset_response(response: Any) -> list[dict[Any, Any]]:
         assets = typing.cast(list[AssetData], parse_protobuf_messages(response.results))
         latest_resources = [
             {
@@ -70,7 +73,7 @@ async def search_all_resources_in_project(
         if asset_name:
             search_all_resources_request["query"] = f"name={asset_name}"
 
-        rate_limiter = await search_all_resources_qpm_per_project[
+        asset_rate_limiter = await search_all_resources_qpm_per_project[
             project_name.split("/")[-1]
         ]
 
@@ -82,7 +85,7 @@ async def search_all_resources_in_project(
                     "search_all_resources",
                     search_all_resources_request,
                     parse_asset_response,
-                    rate_limiter=rate_limiter,
+                    rate_limiter=asset_rate_limiter,
                 ):
                     yield assets
 
@@ -108,12 +111,17 @@ async def list_all_topics_per_project(
         logger.info(
             f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"
         )
+
+        pubsub_rate_limiter = await pubsub_administrator_per_minute_per_project[
+            project_name.split("/")[-1]
+        ]
         try:
             async for topics in paginated_query(
                 async_publisher_client,
                 "list_topics",
                 {"project": project_name},
                 lambda response: parse_protobuf_messages(response.topics),
+                pubsub_rate_limiter,
             ):
                 for topic in topics:
                     topic[EXTRA_PROJECT_FIELD] = project
