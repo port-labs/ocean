@@ -6,13 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-0.1.110 (2024-08-25)
+0.1.111 (2024-08-26)
 ====================
 
 ### Improvements
 
 - Added pagination to file-kind iteration over repositories (#1)
+
+
+0.1.110 (2024-08-26)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.1 (#1)
 
 
 0.1.109 (2024-08-22)
@@ -34,7 +41,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 0.1.107 (2024-08-19)
 ====================
 
-### Bug Fixes 
+### Bug Fixes
 
 - Fixed merge requests and issue resync methods to use an async method of listing root groups to avoid blocking the event loop
 
@@ -69,7 +76,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added support for exporting files 
+- Added support for exporting files
 
 
 0.1.102 (2024-08-13)
@@ -553,7 +560,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Updated templates to have description in scorecard rules and pie charts (#1) 
+- Updated templates to have description in scorecard rules and pie charts (#1)
 
 
 ## 0.1.42 (2024-01-01)
