@@ -58,7 +58,7 @@ class EntityClientMixin:
             )
         handle_status_code(response, should_raise)
         result = response.json()
-        result_entity = Entity.parse_obj(result.get("entity", {}))
+        result_entity = Entity.parse_obj(result["entity"])
         # Set the results of the search relation and identifier to the entity
         entity.identifier = result_entity.identifier or entity.identifier
         entity.relations = result_entity.relations or entity.relations

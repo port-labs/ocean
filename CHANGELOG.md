@@ -7,11 +7,33 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.9.14 (2024-08-15)
+## 0.10.2 (2024-08-26)
 
 ### Improvements
 
 - Add search identifier support (Allow to run a search query to find the identifier of the entity as part of the mapping)
+
+
+## 0.10.1 (2024-08-26)
+
+### Bug Fixes
+
+- Fixed unhashable type: 'dict' error when trying to delete entities with search identifier/relations
+
+
+## 0.10.0 (2024-08-19)
+
+### Improvements
+
+- Add support for reporting the integration resync state to expose more information about the integration state in the portal
+- Fix kafka listener never ending resync loop due to resyncState updates
+
+
+## 0.9.14 (2024-08-19)
+
+### Bug Fixes
+
+- Fixed an issue causing the cli to fail in a directory with no pyproject.toml in it
 
 
 ## 0.9.13 (2024-08-13)
@@ -119,7 +141,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Safely get changelogDestination key instead of accessing it directly 
+- Safely get changelogDestination key instead of accessing it directly
 
 
 ## 0.9.0 (2024-06-19)
@@ -580,7 +602,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Fixed kafka consumer to poll messages asynchronously, to avoid max poll timeout when running long resyncs (PORT-5160)
 - Fixed a bug where the expiration of a Port token is not properly handled (PORT-5161)
-- Fixed a bug where the `retry_every` didn't count failed runs as repetitions (PORT-5161) 
+- Fixed a bug where the `retry_every` didn't count failed runs as repetitions (PORT-5161)
 
 ## 0.4.2 (2023-11-04)
 
@@ -610,7 +632,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Fixed the `initialize-port-resources` option in `ocean sail` to not be a flag.
 - Changed default of `initialize-port-resources` to `true`.
-- Catch all exceptions in the resync of ONCE event listener,to make sure the application will exit gracefully 
+- Catch all exceptions in the resync of ONCE event listener,to make sure the application will exit gracefully
 
 
 ## 0.4.0 (2023-10-31)

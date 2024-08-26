@@ -7,6 +7,47 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.110 (2024-08-26)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.1 (#1)
+
+
+0.1.109 (2024-08-22)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.0 (#1)
+
+
+0.1.108 (2024-08-20)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.14 (#1)
+
+
+0.1.107 (2024-08-19)
+====================
+
+### Bug Fixes 
+
+- Fixed merge requests and issue resync methods to use an async method of listing root groups to avoid blocking the event loop
+
+
+0.1.106 (2024-08-19)
+====================
+
+### Bug Fixes
+
+- Fixed an issue when we were still processing a file larger than the allowed file size
+- Added more verbosity to the logs of the file kind
+
+
 0.1.105 (2024-08-15)
 ===================
 

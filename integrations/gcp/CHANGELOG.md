@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.44 (2024-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.1 (#1)
+
+
+## 0.1.43 (2024-08-25)
+
+
+### Improvements
+
+- Changed tf module in order to detach provider creation from the module and QOL changes with the module (#1)
+
+
+## 0.1.42 (2024-08-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.0 (#1)
+
+
+## 0.1.41 (2024-08-20)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.9.14 (#1)
+
+
 ## 0.1.40 (2024-08-13)
 
 
