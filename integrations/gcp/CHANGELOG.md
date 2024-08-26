@@ -7,13 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.43 (2024-08-13)
+
+## 0.1.45 (2024-08-26)
 
 
 ### Improvements
 
-- Implemented a custom retry mechanism to replace GCP's AsyncRetry due to reliability issues.
-- Added rate limiting for "Search All Resources" requests, configurable via the SEARCH_ALL_RESOURCES_PER_MINUTE_QUOTA environment variable.
+- Introduced AsyncGeneratorRetry, a custom retry mechanism designed to handle entire resource retrieval retries instead of individual page retries. This change addresses the recurring DEADLINE_EXCEEDED errors that occurred with GCP's AsyncRetry during page-based retries, significantly improving reliability in GCP integrations.
+- Implemented a sophisticated rate limiting system based on quota levels, allowing for precise control over request limits per project, per service, and per quota.
+- Added a `SEARCH_ALL_RESOURCES_PER_MINUTE_QUOTA` environment variable for controlling the rate limit quota should the integration fail to query quota from GCP as stated in the last point. Default is 400
+
+
+## 0.1.44 (2024-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.1 (#1)
+
+
+## 0.1.43 (2024-08-25)
+
+
+### Improvements
+
+- Changed tf module in order to detach provider creation from the module and QOL changes with the module (#1)
 
 
 ## 0.1.42 (2024-08-22)
