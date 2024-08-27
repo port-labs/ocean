@@ -62,8 +62,6 @@ class EntityClientMixin:
             Entity.parse_obj(result["entity"]) if result.get("entity") else entity
         )
 
-        if not result_entity:
-            result_entity.identifier = entity.identifier
         result_entity.relations = {
             key: None if isinstance(relation, dict) else relation
             for key, relation in result_entity.relations.items()
