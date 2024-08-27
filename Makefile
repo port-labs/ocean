@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all lint build run new test clean bump/integrations bump/single-integration
+.SILENT: install install/all test/all lint build run new test test-watch clean bump/integrations bump/single-integration
 
 
 # Install dependencies
@@ -56,7 +56,15 @@ install:
 
 test/all: test
 	$(ACTIVATE) && \
-	pytest --import-mode=importlib -n auto ./port_ocean/tests ./integrations/*/tests
+	for dir in $(wildcard $(CURDIR)/integrations/*); do \
+		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
+		if [ $$count -ne 0 ]; then \
+			echo "Testing $$dir"; \
+		  	cd $$dir; \
+			$(MAKE) test || exit_code=$$?; \
+			cd ../..; \
+		fi; \
+	done;
 
 install/all: install
 	exit_code=0; \
@@ -89,7 +97,13 @@ new:
 	$(ACTIVATE) && poetry run ocean new ./integrations --public
 
 test:
-	$(ACTIVATE) && pytest -vv -n auto --ignore-glob=./integrations/* ./port_ocean/tests
+	$(ACTIVATE) && pytest
+
+test-watch:
+	$(ACTIVATE) && \
+		pytest \
+			--color=yes \
+			-f
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;

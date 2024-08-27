@@ -1,0 +1,55 @@
+[
+    {
+        "identifier": "dummy-category",
+        "title": "Dummy Category",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "identifier": "dummy-joke",
+        "title": "Dummy Joke",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "YAAS",
+                        "NOPE"
+                    ],
+                    "enumColors": {
+                        "YAAS": "green",
+                        "NOPE": "red"
+                    },
+                    "title": "Funny"
+                },
+                "text": {
+                    "type": "string",
+                    "title": "Text"
+                },
+                "score": {
+                    "type": "number",
+                    "title": "Score"
+                }
+            }
+        },
+        "relations": {
+            "category": {
+                "title": "Category",
+                "description": "Joke Category",
+                "target": "dummy-category",
+                "required": false,
+                "many": false
+            }
+        }
+    }
+]

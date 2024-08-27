@@ -1,0 +1,29 @@
+resources:
+  - kind: dummy-joke
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"dummy-joke"'
+          properties:
+            funny: .funny
+            text: .text
+            score: .score
+            category: .category.name
+        relations:
+          category: .category.name
+  - kind: dummy-category
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"dummy-category"'
+          properties:
+            name: .name
+            id: .id

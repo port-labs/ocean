@@ -76,6 +76,17 @@
       "python": "${workspaceFolder}/integrations/aws/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/dummy-integration",
+      "envFile": "${workspaceFolder}/integrations/dummy-integration/.env",
+      "justMyCode": true,
+      "name": "Run dummy-integration integration",
+      "program": "${workspaceFolder}/integrations/dummy-integration/debug.py",
+      "python": "${workspaceFolder}/integrations/dummy-integration/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }
