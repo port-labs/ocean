@@ -67,16 +67,20 @@ class GCPResourceQuota(ABC):
 
             if len(quota_infos) > 1:
                 logger.info(
-                    f"Multiple quota dimensionsInfos found for '{self.service}:{self.quota_id}' in container '{container_id}'. "
+                    f"Multiple quota dimensions found for '{self.service}:{self.quota_id}' in container '{container_id}'. "
                     f"Selected the least value: {least_value} for further processing."
                 )
 
-            logger.info(
-                f"Found quota information for '{self.service}:{self.quota_id}' in container '{container_id}' with value: {least_value} for locations: {least_quota_info.applicable_locations}."
-                f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {int(least_value * _PERCENTAGE_OF_QUOTA)} for rate limiting."
+            effective_quota_limit: int = int(
+                round(least_value * _PERCENTAGE_OF_QUOTA, 1)
             )
 
-            return least_value * _PERCENTAGE_OF_QUOTA
+            logger.info(
+                f"Found quota information for '{self.service}:{self.quota_id}' in container '{container_id}' with value: {least_value} for locations: {least_quota_info.applicable_locations}."
+                f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {effective_quota_limit} for rate limiting."
+            )
+
+            return effective_quota_limit
 
         except GoogleAPICallError as e:
             logger.warning(
