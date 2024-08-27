@@ -62,6 +62,9 @@ class EntityClientMixin:
             Entity.parse_obj(result["entity"]) if result.get("entity") else entity
         )
 
+        # Turning dict typed relations (raw search relations) is required
+        # for us to be able to successfully calculate the participation related entities
+        # and ignore the ones that don't as they weren't upserted
         result_entity.relations = {
             key: None if isinstance(relation, dict) else relation
             for key, relation in result_entity.relations.items()
