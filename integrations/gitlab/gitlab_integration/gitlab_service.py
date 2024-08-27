@@ -649,7 +649,7 @@ class GitlabService:
             try:
                 documents = list(yaml.load_all(file.decode(), Loader=yaml.SafeLoader))
                 if not documents:
-                    raise yaml.YAMLError()
+                    return file.decode().decode("utf-8")
                 return documents if len(documents) > 1 else documents[0]
             except yaml.YAMLError:
                 return file.decode().decode("utf-8")
