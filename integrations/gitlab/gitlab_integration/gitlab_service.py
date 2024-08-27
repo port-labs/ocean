@@ -1,8 +1,9 @@
+import os
 import asyncio
 import typing
 import json
 from datetime import datetime, timedelta
-from typing import AsyncIterator, List, Optional, Tuple, Any, Union, TYPE_CHECKING
+from typing import AsyncIterator, Dict, List, Optional, Tuple, Any, Union, TYPE_CHECKING
 
 import anyio.to_thread
 import yaml
@@ -26,6 +27,7 @@ from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.utils import does_pattern_apply
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
@@ -125,35 +127,63 @@ class GitlabService:
             if (not return_files_only or file["type"] == "blob")
         ]
 
-    async def get_paginated_file_paths(
+    async def search_file_paths_in_project(
         self,
         project: Project,
         path: str | List[str],
-        commit_sha: str,
-        return_files_only: bool = False,
-    ) -> AsyncIterator[list[str]]:
-        if not isinstance(path, list):
-            path = [path]
-        try:
-            async for files in AsyncFetcher().paginate_repository_tree(
-                project=project,
-                filtering_callable=does_pattern_apply,
-                filtering_paths=path,
-                ref=commit_sha,
-                recursive=True,
+    ) -> AsyncIterator[list[dict[str, dict[str, Any]]]]:
+        paths = [path] if not isinstance(path, list) else path
+        for path in paths:
+            file_pattern = os.path.basename(path)
+            logger.info(f"Searching project {project.path_with_namespace} for file pattern {file_pattern}")
+            async for files in AsyncFetcher().fetch_batch(
+                project.search,
+                scope="blobs",
+                search=file_pattern,
+                validation_func=lambda file: True,
             ):
-                if files:
-                    yield [
-                        file["path"]
-                        for file in files
-                        if (not return_files_only or file["type"] == "blob")
-                    ]
-        except GitlabError as err:
-            if err.response_code != 404:
-                raise err
-            logger.warning(
-                f"Failed to retrieve project tree for commit sha: {commit_sha} as it was not found."
-            )
+                logger.info(f"Found {len(files)} files in project {project.path_with_namespace} with file pattern {file_pattern}, filtering all that don't match path pattern {path}")
+                files = typing.cast(Union[GitlabList, List[Dict[str, Any]]], files)
+                valid_files = []
+                for file in files:
+                    if does_pattern_apply(path, file["path"]):
+                        file_metadata = {
+                            key: value
+                            for key, value in file.items()
+                            if key != "data"
+                        }
+                        file_suffix = file["filename"].split(".")[-1]
+                        if file_suffix in [".yml", ".yaml"]:
+                            documents = list(
+                                yaml.load_all(file["data"], Loader=yaml.SafeLoader)
+                            )
+                            for document in documents:
+                                document_file = file_metadata.copy()
+                                document_file["content"] = document
+                                valid_files.append(
+                                    {
+                                        "file": document_file,
+                                        "repo": project.asdict(),
+                                    }
+                                )
+                            valid_files.extend(
+                                documents if len(documents) > 1 else [documents[0]]
+                            )
+                        elif file_suffix == ".json":
+                            document_file = file_metadata.copy()
+                            document_file["content"] = json.loads(file["data"])
+                            valid_files.append(
+                                {"file": document_file, "repo": project.asdict()}
+                            )
+                        else:
+                            document_file = file_metadata.copy()
+                            document_file["content"] = file["data"]
+                            valid_files.append(
+                                {"file": document_file, "repo": project.asdict()}
+                            )
+                if valid_files:
+                    logger.info(f"Found {len(valid_files)} files in project {project.path_with_namespace} that match the path pattern {path}")
+                    yield valid_files
 
     def _get_entities_from_git(
         self, project: Project, file_name: str, sha: str, ref: str
@@ -684,46 +714,3 @@ class GitlabService:
                 f"Failed to process file {file_path} in project {project.path_with_namespace}. error={e}"
             )
             return None
-
-    async def get_paginated_files_in_project(
-        self, project: Project, path: str
-    ) -> typing.AsyncIterator[List[dict[str, Any]]]:
-        branch = project.default_branch
-        try:
-            tasks: List[Any] = []
-            logger.info(
-                f"Getting files in project {project.path_with_namespace} based on pattern {path}"
-            )
-            async for file_paths_page in self.get_paginated_file_paths(
-                project, path, branch, True
-            ):
-                logger.info(
-                    f"Found {len(file_paths_page)} files in project {project.path_with_namespace} files: {file_paths_page}"
-                )
-                if file_paths_page:
-                    files = []
-                    tasks = []
-                    for file_path in file_paths_page:
-                        tasks.append(
-                            self.get_and_parse_single_file(project, file_path, branch)
-                        )
-
-                        if len(tasks) == PROJECT_FILES_BATCH_SIZE:
-                            results = await asyncio.gather(*tasks)
-                            files.extend(
-                                [file_data for file_data in results if file_data]
-                            )
-                            yield files
-                            files = []
-                            tasks = []
-
-            if tasks:
-                results = await asyncio.gather(*tasks)
-                files.extend([file_data for file_data in results if file_data])
-                yield files
-        except Exception as e:
-            logger.error(
-                f"Failed to get files in project={project.path_with_namespace} for path={path} and "
-                f"branch={branch}. error={e}"
-            )
-            return

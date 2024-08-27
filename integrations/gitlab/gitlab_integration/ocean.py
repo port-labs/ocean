@@ -179,14 +179,35 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.warning("No path provided in the selector, skipping fetching files")
             return
 
-        async for projects_batch in service.get_all_projects():
-            tasks = [
-                service.get_paginated_files_in_project(project, selector.files.path)
-                for project in projects_batch
-                if service.should_process_project(project, selector.files.repos)
-            ]
-            async for batch in stream_async_iterators_tasks(*tasks):
-                yield batch
+        async for projects in service.get_all_projects():
+            projects_batch_iter = iter(projects)
+            projects_processed_in_full_batch = 0
+            while projects_batch := tuple(
+                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+            ):
+                projects_processed_in_full_batch += len(projects_batch)
+                logger.info(
+                    f"Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
+                )
+                tasks = [
+                    service.search_file_paths_in_project(project, selector.files.path)
+                    for project in projects_batch
+                    if service.should_process_project(project, selector.files.repos)
+                ]
+                file_kind_objects = []
+                async for batch in stream_async_iterators_tasks(*tasks):
+                    file_kind_objects.extend(batch)
+                logger.info(
+                    f"Finished Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
+                )
+                file_kind_objects_iter = iter(file_kind_objects)
+                objects_processed_in_full_batch = 0
+                while objects_batch := list(islice(file_kind_objects_iter, 20)):
+                    objects_processed_in_full_batch += len(objects_batch)
+                    logger.info(
+                        f"Batching objects for upsert - {objects_processed_in_full_batch}/{len(file_kind_objects)}"
+                    )
+                    yield objects_batch
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
