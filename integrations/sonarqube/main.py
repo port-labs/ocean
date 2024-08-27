@@ -55,7 +55,6 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
     logger.info(
         f"Processing Sonarqube webhook for event type: {webhook_data.get('project', {}).get('key')}"
     )
-    sonar_client = init_sonar_client()
 
     project = await sonar_client.get_single_component(
         webhook_data.get("project", {})
