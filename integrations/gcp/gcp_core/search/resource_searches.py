@@ -28,7 +28,7 @@ from gcp_core.helpers.ratelimiter.overrides import (
     SearchAllResourcesQpmPerProject,
     PubSubAdministratorPerMinutePerProject,
 )
-from gcp_core.search.utils import paginated_query, semaphore, REQUEST_TIMEOUT
+from gcp_core.search.utils import paginated_query, semaphore, DEFAULT_REQUEST_TIMEOUT
 
 # rate limiters
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
@@ -179,7 +179,7 @@ async def get_single_project(project_name: str) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         return parse_protobuf_message(
             await projects_client.get_project(
-                name=project_name, timeout=REQUEST_TIMEOUT
+                name=project_name, timeout=DEFAULT_REQUEST_TIMEOUT
             )
         )
 
@@ -187,7 +187,9 @@ async def get_single_project(project_name: str) -> RAW_ITEM:
 async def get_single_folder(folder_name: str) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(
-            await folders_client.get_folder(name=folder_name, timeout=REQUEST_TIMEOUT)
+            await folders_client.get_folder(
+                name=folder_name, timeout=DEFAULT_REQUEST_TIMEOUT
+            )
         )
 
 
@@ -195,7 +197,7 @@ async def get_single_organization(organization_name: str) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
             await organizations_client.get_organization(
-                name=organization_name, timeout=REQUEST_TIMEOUT
+                name=organization_name, timeout=DEFAULT_REQUEST_TIMEOUT
             )
         )
 
@@ -208,7 +210,7 @@ async def get_single_topic(topic_id: str) -> RAW_ITEM:
     async with PublisherAsyncClient() as async_publisher_client:
         return parse_protobuf_message(
             await async_publisher_client.get_topic(
-                topic=topic_id, timeout=REQUEST_TIMEOUT
+                topic=topic_id, timeout=DEFAULT_REQUEST_TIMEOUT
             )
         )
 

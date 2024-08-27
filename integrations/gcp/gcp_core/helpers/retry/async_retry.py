@@ -83,7 +83,7 @@ async def retry_generator_target(
         *args, **kwargs: Arguments to pass to the generator function.
 
     Yields:
-        Any: Items yielded by the generator function.
+        ASYNC_GENERATOR_RESYNC_TYPE: Items yielded by the generator function.
 
     Raises:
         ValueError: If the sleep generator stops yielding values.

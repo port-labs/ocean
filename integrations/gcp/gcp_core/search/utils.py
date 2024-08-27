@@ -1,13 +1,13 @@
 from gcp_core.helpers.retry.async_retry import async_generator_retry
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from aiolimiter import AsyncLimiter
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 from loguru import logger
 import asyncio
 
-REQUEST_TIMEOUT = 120.0
-MAXIMUM_CONCURRENT_REQUEST = 100
-semaphore = asyncio.BoundedSemaphore(MAXIMUM_CONCURRENT_REQUEST)
+DEFAULT_REQUEST_TIMEOUT: float = 120
+MAXIMUM_CONCURRENT_REQUESTS: int = 100
+semaphore = asyncio.BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS)
 
 
 @async_generator_retry
@@ -15,13 +15,20 @@ async def paginated_query(
     client: Any,
     method: str,
     request: dict[str, Any],
-    parse_fn: Any,
+    parse_fn: Callable[..., Any],
     rate_limiter: Optional[AsyncLimiter] = None,
-    *args: Any,
-    **kwargs: Any,
+    timeout: float = DEFAULT_REQUEST_TIMEOUT,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     General function to handle paginated requests with rate limiting.
+
+    :param client: The client object to use for the request.
+    :param method: The method to call on the client object.
+    :param request: The request to send to the method.
+    :param parse_fn: The function to parse the response. This must be a nullary function - apply arguments with `functools.partial` if needed.
+    :param rate_limiter: The rate limiter to use for the request. Optional, defaults to None.
+    :param timeout: The timeout for the request. Defaults to 120 seconds.
+    :return: An async generator that yields the parsed items.
     """
     page = 0
     page_token = None
@@ -37,14 +44,11 @@ async def paginated_query(
         if rate_limiter:
             logger.debug(f"Rate limiting enabled for `{method}`")
             async with rate_limiter:
-                response = await getattr(client, method)(
-                    request,
-                    timeout=kwargs.get("timeout", REQUEST_TIMEOUT),
-                )
+                response = await getattr(client, method)(request, timeout=timeout)
         else:
             response = await getattr(client, method)(
                 request,
-                timeout=REQUEST_TIMEOUT,
+                timeout=DEFAULT_REQUEST_TIMEOUT,
             )
 
         items = parse_fn(response)

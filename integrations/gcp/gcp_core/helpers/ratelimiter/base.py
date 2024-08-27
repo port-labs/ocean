@@ -27,6 +27,17 @@ class ContainerType(Enum):
 
 
 class GCPResourceQuota(ABC):
+    """
+    GCPResourceQuota is an abstract base class designed to fetch and manage quota information for Google Cloud Platform (GCP) resources.
+    It provides core logic to retrieve and process quota details from GCP using CloudQuotasAsyncClient, ensuring that the application stays within the allocated limits.
+    The class handles multiple quota dimensions by selecting the one with the least value, allowing the system to dynamically adjust to varying quota constraints across different containers (e.g., projects, folders).
+
+    This abstraction supports extending the class for different GCP services, offering a flexible and reusable solution for quota management.
+
+    Requirements:
+    - Permissions: The service account must have `cloudquotas.quotas.get` permission to access quota information. https://cloud.google.com/docs/quotas/reference/rest/v1/projects.locations.services.quotaInfos/list?apix_params=%7B%22parent%22%3A%22projects%2Fgcp-exporter-sandbox%2Flocations%2Fglobal%2Fservices%2Fpubsub.googleapis.com%22%7D#iam-permissions
+    """
+
     quota_id: str | None = None
     service: str | None = None
     container_type: ContainerType = ContainerType.PROJECT
@@ -103,6 +114,12 @@ class GCPResourceQuota(ABC):
 
 
 class GCPResourceRateLimiter(GCPResourceQuota):
+    """
+    GCPResourceRateLimiter manages rate limits based on GCP resource quotas.
+    It inherits from GCPResourceQuota and leverages GCP's quota information to dynamically determine and apply rate limits using the AsyncLimiter.
+    This class allows efficient control over the rate of API requests per container (e.g., projects, folders) based on the actual quota allocated by GCP.
+    """
+
     time_period: float = _DEFAULT_RATE_LIMIT_TIME_PERIOD
 
     @cache_coroutine_result()
