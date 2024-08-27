@@ -29,7 +29,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> Entity:
+    ) -> Entity | None:
         validation_only = request_options["validation_only"]
         async with self.semaphore:
             logger.debug(
@@ -58,9 +58,12 @@ class EntityClientMixin:
             )
         handle_status_code(response, should_raise)
         result = response.json()
-        result_entity = Entity.parse_obj(result["entity"])
+        result_entity = Entity.parse_obj(result.get("entity", {}))
         # Set the results of the search relation and identifier to the entity
         entity.identifier = result_entity.identifier or entity.identifier
+        if isinstance(entity.identifier, dict):
+            return None
+
         entity.relations = result_entity.relations or entity.relations
         return entity
 
