@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Handle upsert entity failure when saving modified data for search relations calculations
+- Fixed upsert entity failure when saving modified data for search relations calculations
 
 
 ## 0.10.2 (2024-08-26)
