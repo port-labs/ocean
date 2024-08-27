@@ -12,9 +12,8 @@ class PubSubAPI(GCPResourceRateLimiter):
     service = "pubsub.googleapis.com"
 
 
-class AdministratorPerMinutePerProjectAPI(GCPResourceRateLimiter):
-    container = ContainerType.PROJECT
-    quota_id = "apiAdministratorPerMinutePerProject"
+class AdministratorPerMinutePerProject(GCPResourceRateLimiter):
+    quota_id = "administratorPerMinutePerProject"
 
 
 class SearchAllResourcesQpmPerProject(CloudAssetAPI):
@@ -23,5 +22,6 @@ class SearchAllResourcesQpmPerProject(CloudAssetAPI):
 
 
 class PubSubAdministratorPerMinutePerProject(
-    AdministratorPerMinutePerProjectAPI, PubSubAPI
-): ...
+    AdministratorPerMinutePerProject, PubSubAPI
+):
+    container = ContainerType.PROJECT

@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional, TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest  # type: ignore
+from google.api_core.exceptions import GoogleAPICallError
 from loguru import logger
 from enum import Enum
 from port_ocean.context.ocean import ocean
@@ -13,6 +14,7 @@ _DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
 _DEFAULT_RATE_LIMIT_QUOTA: int = int(
     ocean.integration_config["search_all_resources_per_minute_quota"]
 )
+_PERCENTAGE_OF_QUOTA: float = 0.8
 
 if TYPE_CHECKING:
     from google.cloud.cloudquotas_v1 import DimensionsInfo
@@ -38,7 +40,7 @@ class GCPResourceQuota(ABC):
             async with CloudQuotasAsyncClient() as quotas_client:
                 request = GetQuotaInfoRequest(name=name)
                 response = await quotas_client.get_quota_info(request=request)
-                return list(response.dimensions_infos)
+                return response.dimensions_infos
 
     async def _get_quota(self, container_id: str) -> int:
         name = self.quota_name(container_id)
@@ -55,10 +57,10 @@ class GCPResourceQuota(ABC):
 
             # Find the dimension with the least quota value
             least_quota_info = quota_infos[0]
-            least_value = int(least_quota_info["details"]["value"])
+            least_value: int = least_quota_info.details.value
 
             for info in quota_infos[1:]:
-                current_value = int(info["details"]["value"])
+                current_value = int(info.details.value)
                 if current_value < least_value:
                     least_quota_info = info
                     least_value = current_value
@@ -66,14 +68,26 @@ class GCPResourceQuota(ABC):
             if len(quota_infos) > 1:
                 logger.info(
                     f"Multiple quota dimensionsInfos found for '{self.service}:{self.quota_id}' in container '{container_id}'. "
-                    f"Using the least value: {least_value}"
+                    f"Selected the least value: {least_value} for further processing."
                 )
 
-            return least_value
+            logger.info(
+                f"Found quota information for '{self.service}:{self.quota_id}' in container '{container_id}' with value: {least_value} for locations: {least_quota_info.applicable_locations}."
+                f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {int(least_value * _PERCENTAGE_OF_QUOTA)} for rate limiting."
+            )
 
-        except Exception as e:
+            return least_value * _PERCENTAGE_OF_QUOTA
+
+        except GoogleAPICallError as e:
             logger.warning(
                 f"Failed to retrieve quota from GCP for '{self.service}:{self.quota_id}' in container '{container_id}'. "
+                f"Default quota {self._default_quota} will be used. Error: {e}"
+            )
+            return self._default_quota
+
+        except Exception as e:
+            logger.error(
+                f"An internal server error occured while quota from GCP for '{self.service}:{self.quota_id}' in container '{container_id}'. "
                 f"Default quota {self._default_quota} will be used. Error: {e}"
             )
             return self._default_quota

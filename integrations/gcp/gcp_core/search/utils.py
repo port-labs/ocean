@@ -26,6 +26,10 @@ async def paginated_query(
     page = 0
     page_token = None
 
+    if rate_limiter:
+        logger.info(
+            f"Executing {method} request: {request}. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
+        )
     while True:
         if page_token:
             request["page_token"] = page_token

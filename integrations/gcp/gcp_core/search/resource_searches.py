@@ -45,6 +45,10 @@ async def search_all_resources(
 async def search_all_resources_in_project(
     project: dict[str, Any], asset_type: str, asset_name: str | None = None
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
+    Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
+    """
 
     def parse_asset_response(response: Any) -> list[dict[Any, Any]]:
         assets = typing.cast(list[AssetData], parse_protobuf_messages(response.results))
@@ -58,10 +62,6 @@ async def search_all_resources_in_project(
         return latest_resources
 
     async with semaphore:
-        """
-        List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
-        Search for resources that the caller has ``cloudasset.assets.searchAllResources`` permission on within the project's scope.
-        """
         project_name = project["name"]
         logger.info(f"Searching all {asset_type}'s in project {project_name}")
 
