@@ -28,7 +28,7 @@ Please leave one option from the following and delete the rest:
 - [ ] Resync able to detect and delete entities
 - [ ] Scheduled resync able to abort existing resync and start a new one
 - [ ] Tested with at least 2 integrations from scratch
-- [ ] Tested with all event listeners e.g. Kafka, Polling
+- [ ] Tested with Kafka and Polling event listeners
 
 
 ### Integration testing checklist
@@ -40,12 +40,15 @@ Please leave one option from the following and delete the rest:
 - [ ] Resync finishes successfully
 - [ ] If new resource kind is added or updated in the integration, add example raw data, mapping and expected result to the `examples` folder in the integration directory. 
 - [ ] If resource kind is updated, run the integration with the example data and check if the expected result is achieved
-- [ ] If new resource kind is added or updated, validate that webhook is working as expected
+- [ ] If new resource kind is added or updated, validate that live-events for that resource are working as expected
 - [ ] Docs PR link [here](#)
 
 ### Preflight checklist
 
 - [ ] Handled rate limiting
+- [ ] Handled pagination
+- [ ] Implemented the code in async
+- [ ] Support Multi account
 
 ## Screenshots
 
