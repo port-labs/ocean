@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Introduced AsyncGeneratorRetry, a custom retry mechanism designed to handle entire resource retrieval retries instead of individual page retries. This change addresses the recurring DEADLINE_EXCEEDED errors that occurred with GCP's AsyncRetry during page-based retries, significantly improving reliability in GCP integrations.
 - Implemented a sophisticated rate limiting system based on quota levels, allowing for precise control over request limits per project, per service, and per quota.
-- Added a `SEARCH_ALL_RESOURCES_PER_MINUTE_QUOTA` environment variable for controlling the rate limit quota should the integration fail to query quota from GCP as stated in the last point. Default is 400
+- Added a `searchAllResourcesPerMinuteQuota` integration config for controlling the rate limit quota should the integration fail to query quota from GCP as stated in the last point. Default is 400
 
 
 ## 0.1.45 (2024-08-26)
