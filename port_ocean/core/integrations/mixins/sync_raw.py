@@ -278,7 +278,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 [
                     entity
                     for entity in entities_to_delete
-                    if (entity.identifier, entity.blueprint)
+                    if not isinstance(entity.identifier, dict)
+                    and (entity.identifier, entity.blueprint)
                     not in registered_entities_attributes
                 ],
             )
