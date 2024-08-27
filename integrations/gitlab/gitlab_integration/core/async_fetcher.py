@@ -175,7 +175,7 @@ class AsyncFetcher:
                 )
                 if not page_files:
                     logger.info(
-                        f"Done iterating file pages for project {project.path_with_namespace}"
+                        f"Done iterating file pages for project {project.path_with_namespace} after {current_page_id} pages"
                     )
                     break
                 if filtering_paths and filtering_callable:

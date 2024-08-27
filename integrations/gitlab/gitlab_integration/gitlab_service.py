@@ -648,6 +648,8 @@ class GitlabService:
         except json.JSONDecodeError:
             try:
                 documents = list(yaml.load_all(file.decode(), Loader=yaml.SafeLoader))
+                if not documents:
+                    raise yaml.YAMLError()
                 return documents if len(documents) > 1 else documents[0]
             except yaml.YAMLError:
                 return file.decode().decode("utf-8")
@@ -689,13 +691,16 @@ class GitlabService:
         branch = project.default_branch
         try:
             tasks: List[Any] = []
+            logger.info(
+                f"Getting files in project {project.path_with_namespace} based on pattern {path}"
+            )
             async for file_paths_page in self.get_paginated_file_paths(
                 project, path, branch, True
             ):
+                logger.info(
+                    f"Found {len(file_paths_page)} files in project {project.path_with_namespace} files: {file_paths_page}"
+                )
                 if file_paths_page:
-                    logger.info(
-                        f"Found {len(file_paths_page)} files in project {project.path_with_namespace} files: {file_paths_page}"
-                    )
                     files = []
                     tasks = []
                     for file_path in file_paths_page:
