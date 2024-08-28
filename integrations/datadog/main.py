@@ -85,15 +85,7 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
-    params = typing.cast(
-        DatadogResourceConfig, event.resource_config
-    ).selector.datadog_selector
-
-    logger.info(f"Fetching metrics for params: {params}")
-
-    async for metrics in dd_client.get_metrics(
-        params.metric, params.env, params.service, params.timeframe
-    ):
+    async for metrics in dd_client.get_metrics():
         logger.info(f"Received batch with {len(metrics)} metrics")
         yield metrics
 
