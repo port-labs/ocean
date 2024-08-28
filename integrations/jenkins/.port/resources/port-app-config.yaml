@@ -58,6 +58,6 @@ resources:
             status: .status
             startTimeMillis: .startTimeMillis
             durationMillis: .durationMillis
-            stageUrl: '.__fullUrl'
+            stageUrl: env.OCEAN__INTEGRATION__CONFIG__JENKINS_HOST  + ._links.self.href
           relations:
             parentBuild: '._links.self.href | sub("/execution/node/[0-9]+/wfapi/describe$"; "") | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("%252F"; "-") | gsub("/"; "-")'

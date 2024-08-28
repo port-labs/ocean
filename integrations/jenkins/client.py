@@ -50,12 +50,6 @@ class JenkinsClient:
         response = await self.client.get(f"{build_url}/wfapi/describe")
         response.raise_for_status()
         stages = response.json()["stages"]
-
-        # Enrich stages with full URLs
-        for stage in stages:
-            relative_url = stage["_links"]["self"]["href"]
-            stage["__fullUrl"] = f"{self.jenkins_base_url}{relative_url}"
-
         return stages
 
     async def get_stages(self) -> AsyncGenerator[list[dict[str, Any]], None]:
