@@ -187,7 +187,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
-                    f"Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
+                    f"Processing projects files for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
                 )
                 tasks = [
                     service.search_file_paths_in_project(project, selector.files.path)
@@ -198,14 +198,14 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 async for batch in stream_async_iterators_tasks(*tasks):
                     file_kind_objects.extend(batch)
                 logger.info(
-                    f"Finished Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
+                    f"Finished Processing project fles for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
                 )
                 file_kind_objects_iter = iter(file_kind_objects)
                 objects_processed_in_full_batch = 0
                 while objects_batch := list(islice(file_kind_objects_iter, 20)):
                     objects_processed_in_full_batch += len(objects_batch)
                     logger.info(
-                        f"Batching objects for upsert - {objects_processed_in_full_batch}/{len(file_kind_objects)}"
+                        f"Upserting file-kinds per batches - {objects_processed_in_full_batch}/{len(file_kind_objects)}"
                     )
                     yield objects_batch
 
