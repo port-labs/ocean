@@ -48,6 +48,7 @@ async def on_resync_builds(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(builds)} builds")
         yield builds
 
+
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     jenkins_client = init_client()
@@ -56,6 +57,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received {len(users)} users")
         yield users
 
+
 @ocean.on_resync(ObjectKind.STAGE)
 async def on_resync_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     jenkins_client = init_client()
@@ -63,6 +65,7 @@ async def on_resync_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for stages in jenkins_client.get_stages():
         logger.info(f"Received batch with {len(stages)} stages")
         yield stages
+
 
 @ocean.router.post("/events")
 async def handle_events(event: dict[str, Any]) -> dict[str, bool]:
