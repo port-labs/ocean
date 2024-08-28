@@ -63,6 +63,8 @@ class EntityClientMixin:
             Entity.parse_obj(result["entity"]) if result.get("entity") else entity
         )
 
+        # Happens when upsert fails and search identifier is defined.
+        # We return None to ignore the entity later in the delete process
         if result_entity.is_search_identifier:
             return None
 
