@@ -4,6 +4,6 @@ from port_ocean.core.integrations.base import BaseIntegration
 from utils.overrides import AWSPortAppConfig
 
 
-class AzureIntegration(BaseIntegration):
+class AWSIntegration(BaseIntegration):
     class AppConfigHandlerClass(APIPortAppConfig):
         CONFIG_CLASS = AWSPortAppConfig
