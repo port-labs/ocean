@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.4 (2024-08-28)
+
+### Bug Fixes
+
+- Fixed upsert entity failure when saving modified data for search relations calculations
+
+
 ## 0.10.3 (2024-08-28)
 
 ### Bug Fixes
@@ -19,6 +26,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Reverted last bugfix
+
 
 ## 0.10.1 (2024-08-26)
 
