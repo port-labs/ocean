@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added the `stage` kind to the integration
+- Added the `stage` kind to the integration to bring stages information about Jenkins builds
 
 ## 0.1.52 (2024-08-28)
 
