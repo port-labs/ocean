@@ -71,7 +71,7 @@ class AsyncFetcher:
         validation_func: Callable[
             [Any],
             bool,
-        ],
+        ] | None = None,
         page_size: int = DEFAULT_PAGINATION_PAGE_SIZE,
         **kwargs,
     ) -> AsyncIterator[

@@ -190,24 +190,12 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     f"Processing projects files for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
                 )
                 tasks = [
-                    service.search_file_paths_in_project(project, selector.files.path)
+                    service.search_files_in_project(project, selector.files.path)
                     for project in projects_batch
                     if service.should_process_project(project, selector.files.repos)
                 ]
-                file_kind_objects = []
                 async for batch in stream_async_iterators_tasks(*tasks):
-                    file_kind_objects.extend(batch)
-                logger.info(
-                    f"Finished Processing project fles for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
-                )
-                file_kind_objects_iter = iter(file_kind_objects)
-                objects_processed_in_full_batch = 0
-                while objects_batch := list(islice(file_kind_objects_iter, 20)):
-                    objects_processed_in_full_batch += len(objects_batch)
-                    logger.info(
-                        f"Upserting file-kinds per batches - {objects_processed_in_full_batch}/{len(file_kind_objects)}"
-                    )
-                    yield objects_batch
+                    yield batch
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
