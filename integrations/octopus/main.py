@@ -1,9 +1,9 @@
-from enum import StrEnum
 from typing import Any, Dict
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from client import OctopusClient
+from client import OctopusClient, ObjectKind
 
 TRACKED_EVENTS = [
     "spaces",
@@ -12,14 +12,6 @@ TRACKED_EVENTS = [
     "releases",
     "machines",
 ]
-
-
-class ObjectKind(StrEnum):
-    SPACE = "space"
-    PROJECT = "project"
-    DEPLOYMENT = "deployment"
-    RELEASE = "release"
-    MACHINE = "machine"
 
 
 @ocean.on_start()
@@ -85,12 +77,12 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
     octopus_client = await init_client()
     async for spaces in octopus_client.get_all_spaces():
-        for space in spaces:
-            async for resource_batch in octopus_client.get_paginated_resources(
-                kind, path_parameter=space.get("Id")
-            ):
-                logger.info(f"Received batch of {len(resource_batch)} {kind} ")
-                yield resource_batch
+        tasks = [
+            octopus_client.get_paginated_resources(kind, path_parameter=space["Id"])
+            for space in spaces
+        ]
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
 
 
 @ocean.on_resync(ObjectKind.SPACE)
@@ -109,13 +101,13 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     payload = data.get("Payload", {}).get("Event", {})
     related_document_ids = payload.get("RelatedDocumentIds", [])
     event_category = payload.get("Category", "")
-    space_id = payload.get("SpaceId", "")
+    space_id = payload["SpaceId"]
     client = await init_client()
     if event_category == "Deleted":
         resource_id = (
             payload.get("ChangeDetails", {}).get("DocumentContext", {}).get("Id")
         )
-        if resource_id.split("-")[0].lower() in TRACKED_EVENTS:
+        if resource_id and resource_id.split("-")[0].lower() in TRACKED_EVENTS:
             kind = ObjectKind(resource_id.split("-")[0].lower().rstrip("s"))
             await ocean.unregister_raw(kind, [{"Id": resource_id}])
     else:

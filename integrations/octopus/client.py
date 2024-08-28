@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from loguru import logger
 from port_ocean.utils.cache import cache_iterator_result
@@ -9,6 +10,14 @@ WEBHOOK_TIMEOUT = "00:00:50"
 CLIENT_TIMEOUT = 60
 KINDS_WITH_LIMITATION = ["deployment"]
 MAX_ITEMS_LIMITATION = 100
+
+
+class ObjectKind(StrEnum):
+    SPACE = "space"
+    PROJECT = "project"
+    DEPLOYMENT = "deployment"
+    RELEASE = "release"
+    MACHINE = "machine"
 
 
 class OctopusClient:
@@ -44,13 +53,14 @@ class OctopusClient:
             raise
         return response.json()
 
-    async def _get_paginated_resources(
+    async def get_paginated_resources(
         self,
-        endpoint: str,
+        kind: str,
         params: Optional[dict[str, Any]] = None,
-        kind: Optional[str] = None,
+        path_parameter: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch paginated data from the Octopus Deploy API."""
+        endpoint = f"{path_parameter}/{kind}s" if path_parameter else f"{kind}s"
         if params is None:
             params = {}
         params["skip"] = 0
@@ -71,18 +81,6 @@ class OctopusClient:
             params["skip"] += PAGE_SIZE
             page += 1
 
-    async def get_paginated_resources(
-        self,
-        kind: str,
-        params: Optional[dict[str, Any]] = None,
-        path_parameter: Optional[str] = None,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        endpoint = f"{path_parameter}/{kind}s" if path_parameter else f"{kind}s"
-        async for resource_batch in self._get_paginated_resources(
-            endpoint, params, kind
-        ):
-            yield resource_batch
-
     async def get_single_resource(
         self, resource_kind: str, resource_id: str, space_id: str
     ) -> dict[str, Any]:
@@ -92,7 +90,7 @@ class OctopusClient:
     @cache_iterator_result()
     async def get_all_spaces(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all spaces in the Octopus instance."""
-        async for spaces in self.get_paginated_resources("space"):
+        async for spaces in self.get_paginated_resources(ObjectKind.SPACE):
             yield spaces
 
     async def _create_subscription(
