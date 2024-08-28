@@ -11,7 +11,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added pagination to file-kind iteration over repositories (#1)
+- Improved Resync performance for file-kind: Now will search if the project has a file-base name for the searched file-kind, and only after the metadata object gets filtered as relevant, we pull the file kind. (#1)
+- Improved Resync stability using an aiolimiter to make sure calls to the Gitlab API aren't getting rate-limited, In a way that's not blocking the event loop (as Gitlab's way of handling a rate-limit is a time.sleep, which blocks the entire event loop)
+- Improved verbosity for the resync, as more logs and pagination were taken place.
+- Improved Real-time mechanism - now paginating through a file instead of waiting for Gitlab's api to return the entire repository tree.
 
 
 0.1.110 (2024-08-26)
