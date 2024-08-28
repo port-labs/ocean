@@ -89,6 +89,7 @@ class Ocean:
                 raise e
 
         interval = self.config.scheduled_resync_interval
+        loop = asyncio.get_event_loop()
         if interval is not None:
             logger.info(
                 f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)"
@@ -99,7 +100,9 @@ class Ocean:
                 wait_first=True,
             )(
                 lambda: threading.Thread(
-                    target=lambda: asyncio.run(execute_resync_all())
+                    target=lambda: asyncio.run_coroutine_threadsafe(
+                        execute_resync_all(), loop
+                    )
                 ).start()
             )
             await repeated_function()

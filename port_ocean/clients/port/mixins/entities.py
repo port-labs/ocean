@@ -58,11 +58,24 @@ class EntityClientMixin:
             )
         handle_status_code(response, should_raise)
         result = response.json()
-        result_entity = Entity.parse_obj(result["entity"])
-        # Set the results of the search relation and identifier to the entity
-        entity.identifier = result_entity.identifier or entity.identifier
-        entity.relations = result_entity.relations or entity.relations
-        return entity
+        result_entity = (
+            Entity.parse_obj(result["entity"]) if result.get("entity") else entity
+        )
+        # In order to save memory we'll keep only the identifier, blueprint and relations of the
+        # upserted entity result for later calculations
+        reduced_entity = Entity(
+            identifier=result_entity.identifier, blueprint=result_entity.blueprint
+        )
+
+        # Turning dict typed relations (raw search relations) is required
+        # for us to be able to successfully calculate the participation related entities
+        # and ignore the ones that don't as they weren't upserted
+        reduced_entity.relations = {
+            key: None if isinstance(relation, dict) else relation
+            for key, relation in result_entity.relations.items()
+        }
+
+        return reduced_entity
 
     async def batch_upsert_entities(
         self,
