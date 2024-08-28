@@ -22,7 +22,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1]
+          identifier: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("%252F"; "-") | gsub("/"; "-") | .[:-1]
           title: .displayName
           blueprint: '"jenkinsBuild"'
           properties:
@@ -31,8 +31,8 @@ resources:
             buildDuration: .duration
             timestamp: '.timestamp / 1000 | todate'
           relations:
-            parentJob: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1] | gsub("-[0-9]+$"; "")
-            previousBuild: .previousBuild.url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("/"; "-") | .[:-1]
+            parentJob: .url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("%252F"; "-") | gsub("/"; "-") | .[:-1] | gsub("-[0-9]+$"; "")
+            previousBuild: .previousBuild.url | split("://")[1] | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("%252F"; "-") | gsub("/"; "-") | .[:-1]
   - kind: user
     selector:
       query: "true"
@@ -45,3 +45,19 @@ resources:
           properties:
             url: .user.absoluteUrl
             lastUpdateTime: if .lastChange then (.lastChange/1000) else now end | strftime("%Y-%m-%dT%H:%M:%SZ")
+  - kind: stage
+    selector:
+      query: 'true' 
+    port:
+      entity:
+        mappings:
+          identifier: '._links.self.href  | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("%252F"; "-") | gsub("/"; "-")'
+          title: .name
+          blueprint: '"jenkinsStage"'
+          properties:
+            status: .status
+            startTimeMillis: .startTimeMillis
+            durationMillis: .durationMillis
+            stageUrl: '.__fullUrl'
+          relations:
+            parentBuild: '._links.self.href | sub("/execution/node/[0-9]+/wfapi/describe$"; "") | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("%252F"; "-") | gsub("/"; "-")'

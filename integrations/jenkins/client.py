@@ -14,6 +14,7 @@ PAGE_SIZE = 50
 class ResourceKey(StrEnum):
     JOBS = "jobs"
     BUILDS = "builds"
+    STAGES = "stages"
 
 
 class JenkinsClient:
@@ -44,6 +45,37 @@ class JenkinsClient:
             builds = [build for job in _jobs for build in job.get("builds", [])]
             event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
             yield builds
+
+    async def get_build_stages(self, build_url: str) -> dict[str, Any]:
+        response = await self.client.get(f"{build_url}/wfapi/describe")
+        response.raise_for_status()
+        stages = response.json()["stages"]
+
+        # Enrich stages with full URLs
+        for stage in stages:
+            relative_url = stage["_links"]["self"]["href"]
+            stage["__fullUrl"] = f"{self.jenkins_base_url}{relative_url}"
+
+        return stages
+    
+    async def get_stages(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if cache := event.attributes.get(ResourceKey.STAGES):
+            logger.info("picking jenkins stages from cache")
+            yield cache
+            return
+
+        async for builds in self.get_builds():
+            stages = []
+            for build in builds:
+                build_url = build["url"]
+                try:
+
+                    stages.extend(await self.get_build_stages(build_url))
+                except Exception as e:
+                    logger.error(f"Failed to get stages for build {build_url}: {e}")
+                    
+            event.attributes.setdefault(ResourceKey.STAGES, []).extend(stages)
+            yield stages
 
     async def fetch_resources(
         self, resource: str, parent_job: Optional[dict[str, Any]] = None
