@@ -65,7 +65,7 @@ class EntityClientMixin:
 
         # Happens when upsert fails and search identifier is defined.
         # We return None to ignore the entity later in the delete process
-        if result_entity.is_search_identifier:
+        if result_entity.is_using_search_identifier:
             return None
 
         # In order to save memory we'll keep only the identifier, blueprint and relations of the

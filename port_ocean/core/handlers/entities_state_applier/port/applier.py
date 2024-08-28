@@ -109,7 +109,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
             entities_with_search_identifier: list[Entity] = []
             entities_without_search_identifier: list[Entity] = []
             for entity in entities:
-                if entity.is_search_identifier:
+                if entity.is_using_search_identifier:
                     entities_with_search_identifier.append(entity)
                 else:
                     entities_without_search_identifier.append(entity)

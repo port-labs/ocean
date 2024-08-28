@@ -154,7 +154,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[RAW_ITEM],
         user_agent_type: UserAgentType,
     ) -> tuple[list[Entity], list[Exception]]:
-        if resource.port.entity.mappings.is_search_identifier:
+        if resource.port.entity.mappings.is_using_search_identifier:
             logger.info(
                 f"Skip unregistering resource of kind {resource.kind}, as mapping defined with search identifier"
             )
@@ -278,7 +278,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 [
                     entity
                     for entity in entities_to_delete
-                    if not entity.is_search_identifier
+                    if not entity.is_using_search_identifier
                     and (entity.identifier, entity.blueprint)
                     not in registered_entities_attributes
                 ],

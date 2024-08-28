@@ -20,7 +20,7 @@ class Entity(BaseModel):
     relations: dict[str, Any] = {}
 
     @property
-    def is_search_identifier(self) -> bool:
+    def is_using_search_identifier(self) -> bool:
         return isinstance(self.identifier, dict)
 
 
