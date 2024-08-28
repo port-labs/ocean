@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all lint build run new test test-watch clean bump/integrations bump/single-integration
+.SILENT: install install/all test/all lint build run new test test/watch clean bump/integrations bump/single-integration
 
 
 # Install dependencies
@@ -99,7 +99,7 @@ new:
 test:
 	$(ACTIVATE) && pytest
 
-test-watch:
+test/watch:
 	$(ACTIVATE) && \
 		pytest \
 			--color=yes \

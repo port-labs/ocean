@@ -37,7 +37,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod lint run test clean
+.SILENT: install install/prod lint run test test/watch clean
 
 install:
 	$(call deactivate_virtualenv) && \
@@ -56,7 +56,12 @@ run:
 	$(ACTIVATE) && ocean sail
 
 test:
-	$(ACTIVATE) && poetry run pytest -n auto
+	$(ACTIVATE) && pytest
+
+test/watch:
+	$(ACTIVATE) && pytest \
+		--color=yes \
+		-f
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
