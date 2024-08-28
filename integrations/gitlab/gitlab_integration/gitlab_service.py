@@ -103,6 +103,13 @@ class GitlabService:
         commit_sha: str,
         return_files_only: bool = False,
     ) -> list[str]:
+        """
+        This function iterates through repository tree pages and returns all files in the repository that match the path pattern.
+
+        The search features of gitlab only support searches on the default branch as for writing this code,
+        So in order to check the existence of a file in a specific branch, we need to fetch the entire repository tree.
+        https://docs.gitlab.com/ee/user/search/advanced_search.html#known-issues
+        """
         if not isinstance(path, list):
             path = [path]
         try:
@@ -135,22 +142,24 @@ class GitlabService:
         paths = [path] if not isinstance(path, list) else path
         for path in paths:
             file_pattern = os.path.basename(path)
-            logger.info(f"Searching project {project.path_with_namespace} for file pattern {file_pattern}")
+            logger.info(
+                f"Searching project {project.path_with_namespace} for file pattern {file_pattern}"
+            )
             async for files in AsyncFetcher().fetch_batch(
                 project.search,
                 scope="blobs",
                 search=file_pattern,
                 validation_func=lambda file: True,
             ):
-                logger.info(f"Found {len(files)} files in project {project.path_with_namespace} with file pattern {file_pattern}, filtering all that don't match path pattern {path}")
+                logger.info(
+                    f"Found {len(files)} files in project {project.path_with_namespace} with file pattern {file_pattern}, filtering all that don't match path pattern {path}"
+                )
                 files = typing.cast(Union[GitlabList, List[Dict[str, Any]]], files)
                 valid_files = []
                 for file in files:
                     if does_pattern_apply(path, file["path"]):
                         file_metadata = {
-                            key: value
-                            for key, value in file.items()
-                            if key != "data"
+                            key: value for key, value in file.items() if key != "data"
                         }
                         file_suffix = file["filename"].split(".")[-1]
                         if file_suffix in [".yml", ".yaml"]:
@@ -182,7 +191,9 @@ class GitlabService:
                                 {"file": document_file, "repo": project.asdict()}
                             )
                 if valid_files:
-                    logger.info(f"Found {len(valid_files)} files in project {project.path_with_namespace} that match the path pattern {path}")
+                    logger.info(
+                        f"Found {len(valid_files)} files in project {project.path_with_namespace} that match the path pattern {path}"
+                    )
                     yield valid_files
 
     def _get_entities_from_git(
