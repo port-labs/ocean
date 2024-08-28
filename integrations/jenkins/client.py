@@ -63,12 +63,12 @@ class JenkinsClient:
             for build in builds:
                 build_url = build["url"]
                 try:
-                    stages.extend(await self.get_build_stages(build_url))
+                    build_stages = await self.get_build_stages(build_url)
+                    event.attributes.setdefault(ResourceKey.STAGES, []).extend(stages)
+                    stages.extend(build_stages)
+                    yield build_stages
                 except Exception as e:
                     logger.error(f"Failed to get stages for build {build_url}: {e}")
-
-            event.attributes.setdefault(ResourceKey.STAGES, []).extend(stages)
-            yield stages
 
     async def fetch_resources(
         self, resource: str, parent_job: Optional[dict[str, Any]] = None
