@@ -7,11 +7,25 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.10.3 (2024-08-27)
+## 0.10.5 (2024-08-28)
 
 ### Improvements
 
 - Add search identifier support (Allow to run a search query to find the identifier of the entity as part of the mapping)
+
+
+## 0.10.4 (2024-08-28)
+
+### Bug Fixes
+
+- Fixed upsert entity failure when saving modified data for search relations calculations
+
+
+## 0.10.3 (2024-08-28)
+
+### Bug Fixes
+
+- Bugfix Semaphores get fail when moving to the next scheduled resync when syncing a large number of entities, using a single event loop for all threads
 
 
 ## 0.10.2 (2024-08-26)
@@ -19,6 +33,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Reverted last bugfix
+
 
 ## 0.10.1 (2024-08-26)
 

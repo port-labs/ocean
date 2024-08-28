@@ -19,6 +19,10 @@ class Entity(BaseModel):
     properties: dict[str, Any] = {}
     relations: dict[str, Any] = {}
 
+    @property
+    def is_search_identifier(self) -> bool:
+        return isinstance(self.identifier, dict)
+
 
 class BlueprintRelation(BaseModel):
     many: bool

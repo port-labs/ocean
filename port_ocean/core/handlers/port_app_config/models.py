@@ -26,6 +26,10 @@ class EntityMapping(BaseModel):
     properties: dict[str, str] = Field(default_factory=dict)
     relations: dict[str, str | IngestSearchQuery] = Field(default_factory=dict)
 
+    @property
+    def is_search_identifier(self) -> bool:
+        return isinstance(self.identifier, dict)
+
 
 class MappingsConfig(BaseModel):
     mappings: EntityMapping
