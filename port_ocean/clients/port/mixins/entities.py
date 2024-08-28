@@ -61,9 +61,11 @@ class EntityClientMixin:
         result_entity = (
             Entity.parse_obj(result["entity"]) if result.get("entity") else entity
         )
-        # In order to save memory we'll keep only the identifier and relations of the
+        # In order to save memory we'll keep only the identifier, blueprint and relations of the
         # upserted entity result for later calculations
-        reduced_entity = Entity(identifier=result_entity.identifier)
+        reduced_entity = Entity(
+            identifier=result_entity.identifier, blueprint=result_entity.blueprint
+        )
 
         # Turning dict typed relations (raw search relations) is required
         # for us to be able to successfully calculate the participation related entities
