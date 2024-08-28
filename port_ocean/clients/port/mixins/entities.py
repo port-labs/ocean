@@ -61,16 +61,19 @@ class EntityClientMixin:
         result_entity = (
             Entity.parse_obj(result["entity"]) if result.get("entity") else entity
         )
+        # In order to save memory we'll keep only the identifier and relations of the
+        # upserted entity result for later calculations
+        reduced_entity = Entity(identifier=result_entity.identifier)
 
         # Turning dict typed relations (raw search relations) is required
         # for us to be able to successfully calculate the participation related entities
         # and ignore the ones that don't as they weren't upserted
-        result_entity.relations = {
+        reduced_entity.relations = {
             key: None if isinstance(relation, dict) else relation
             for key, relation in result_entity.relations.items()
         }
 
-        return result_entity
+        return reduced_entity
 
     async def batch_upsert_entities(
         self,
