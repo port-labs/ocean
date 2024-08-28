@@ -67,9 +67,11 @@ async def on_resync_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for stages in jenkins_client.get_stages():
         logger.info(f"Received batch with {len(stages)} stages")
         if stages_count + len(stages) > max_stages:
-            stages = stages[:max_stages - stages_count]
+            stages = stages[: max_stages - stages_count]
             yield stages
-            logger.warning(f"Reached the maximum limit of {max_stages} stages. Stopping the sync.")
+            logger.warning(
+                f"Reached the maximum limit of {max_stages} stages. Stopping the sync."
+            )
             return
         stages_count += len(stages)
         yield stages
