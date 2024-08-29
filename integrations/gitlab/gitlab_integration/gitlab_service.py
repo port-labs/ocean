@@ -3,17 +3,23 @@ import json
 import os
 import typing
 from datetime import datetime, timedelta
-from typing import (TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional,
-                    Tuple, Union)
+from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional, Tuple, Union
 
 import aiolimiter
 import anyio.to_thread
 import yaml
 from gitlab import Gitlab, GitlabError, GitlabList
 from gitlab.base import RESTObject
-from gitlab.v4.objects import (Group, GroupMergeRequest, Issue, MergeRequest,
-                               Project, ProjectFile, ProjectPipeline,
-                               ProjectPipelineJob)
+from gitlab.v4.objects import (
+    Group,
+    GroupMergeRequest,
+    Issue,
+    MergeRequest,
+    Project,
+    ProjectFile,
+    ProjectPipeline,
+    ProjectPipelineJob,
+)
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
 from gitlab_integration.core.utils import does_pattern_apply
