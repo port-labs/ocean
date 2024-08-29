@@ -18,18 +18,19 @@ def init_sonar_client() -> SonarQubeClient:
     )
 
 
+sonar_client = init_sonar_client()
+
+
 @ocean.on_resync(ObjectKind.PROJECTS)
 async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
 
-    sonar_client = init_sonar_client()
     async for project_list in sonar_client.get_all_projects():
         yield project_list
 
 
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sonar_client = init_sonar_client()
     async for issues_list in sonar_client.get_all_issues():
         yield issues_list
 
@@ -37,7 +38,6 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ANALYSIS)
 @ocean.on_resync(ObjectKind.SASS_ANALYSIS)
 async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sonar_client = init_sonar_client()
     if not ocean.integration_config["sonar_is_on_premise"]:
         async for analyses_list in sonar_client.get_all_sonarcloud_analyses():
             yield analyses_list
@@ -45,7 +45,6 @@ async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ONPREM_ANALYSIS)
 async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sonar_client = init_sonar_client()
     if ocean.integration_config["sonar_is_on_premise"]:
         async for analyses_list in sonar_client.get_all_sonarqube_analyses():
             yield analyses_list
@@ -56,7 +55,6 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
     logger.info(
         f"Processing Sonarqube webhook for event type: {webhook_data.get('project', {}).get('key')}"
     )
-    sonar_client = init_sonar_client()
 
     project = await sonar_client.get_single_component(
         webhook_data.get("project", {})
@@ -89,7 +87,6 @@ async def on_start() -> None:
                 "Organization ID is required for SonarCloud. Please specify a valid sonarOrganizationId"
             )
 
-    sonar_client = init_sonar_client()
     sonar_client.sanity_check()
 
     if ocean.event_listener_type == "ONCE":
