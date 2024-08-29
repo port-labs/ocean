@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.5 (2024-08-29)
+
+### Bug Fixes
+
+- Fixed error log when looking for existence of integration on initialization
+
+
 ## 0.10.4 (2024-08-28)
 
 ### Bug Fixes
