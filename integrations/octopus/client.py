@@ -114,9 +114,7 @@ class OctopusClient:
             endpoint, json_data=subscription_data, method="POST"
         )
 
-    async def create_webhook_subscription(
-        self, app_host: str, space_id: str
-    ) -> dict[str, Any]:
+    async def create_webhook_subscription(self, app_host: str, space_id: str) -> None:
         """Create a new subscription for all spaces."""
         try:
             response = await self._create_subscription(space_id, app_host)
@@ -128,7 +126,6 @@ class OctopusClient:
                 logger.error(f"Failed to create subscription for space '{space_id}'")
         except Exception as e:
             logger.error(f"Unexpected error for space '{space_id}': {str(e)}")
-        return {"ok": True}
 
     async def get_webhook_subscriptions(
         self,
