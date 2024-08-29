@@ -39,7 +39,9 @@ async def validate_integration_runtime(
     requested_runtime: Runtime,
 ) -> None:
     logger.debug("Validating integration runtime")
-    current_integration = await port_client.get_current_integration(should_raise=False, should_log=False)
+    current_integration = await port_client.get_current_integration(
+        should_raise=False, should_log=False
+    )
     current_runtime = current_integration.get("installationType", "OnPrem")
     if current_integration and current_runtime != requested_runtime.value:
         raise IntegrationRuntimeException(
@@ -51,8 +53,8 @@ Q = TypeVar("Q")
 
 
 async def gather_and_split_errors_from_results(
-    task: Iterable[Awaitable[Q]],
-    result_threshold_validation: Callable[[Q | Exception], bool] | None = None,
+        task: Iterable[Awaitable[Q]],
+        result_threshold_validation: Callable[[Q | Exception], bool] | None = None,
 ) -> tuple[list[Q], list[Exception]]:
     valid_items: list[Q] = []
     errors: list[Exception] = []
