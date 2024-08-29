@@ -1,0 +1,58 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: serviceMetric
+    selector:
+      query: 'true'
+      datadogSelector:
+        metric: avg:system.disk.used
+        env:
+          tag: env
+          value: '*'
+        service:
+          tag: service
+          value: '*'
+        timeframe: 5
+    port:
+      entity:
+        mappings:
+          identifier: .__query_id
+          title: .query
+          blueprint: '"datadogServiceMetric"'
+          properties:
+            query: .__query
+            series: .series
+            res_type: .res_type
+            from_date: .from_date / 1000 | todate
+            to_date: .to_date / 1000 | todate
+            env: .__env
+          relations:
+            service: .__service
+
+  - kind: serviceMetric
+    selector:
+      query: "true"
+      datadogSelector:
+        metric: "avg:system.mem.used"
+        env:
+          tag: env
+          value: prod
+        service:
+          tag: servicename
+          value: 'prod'
+        timeframe: 5
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogServiceMetric"'
+          identifier: .__query_id
+          title: .query
+          properties:
+            query: .__query
+            series: .series
+            res_type: .res_type
+            from_date: ".from_date / 1000 | todate"
+            to_date: ".to_date / 1000 | todate"
+            env: .__env
+          relations:
+            service: .__service
