@@ -1,4 +1,5 @@
 from typing import Any, Literal
+from pydantic import Field, BaseModel
 
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -6,11 +7,6 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-
-from port_ocean.core.integrations.base import BaseIntegration
-
-from pydantic import Field, BaseModel
-
 from port_ocean.core.integrations.base import BaseIntegration
 
 class APIQueryParams(BaseModel):
