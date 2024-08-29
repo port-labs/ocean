@@ -31,7 +31,6 @@ from port_ocean.core.models import Entity
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
-PROJECT_FILES_BATCH_SIZE = 10
 GITLAB_SEARCH_RATE_LIMIT = 100
 
 if TYPE_CHECKING:
