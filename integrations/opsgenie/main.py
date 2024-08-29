@@ -1,12 +1,18 @@
-from typing import Any
+from typing import Any, cast
 from loguru import logger
+from more_itertools import chunked
+from collections import defaultdict
 import asyncio
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
 from client import OpsGenieClient
 from utils import ObjectKind
 
+from integration import AlertResourceConfig, IncidentResourceConfig
+
 CONCURRENT_REQUESTS = 5
+INCIDENT_CHUNK_SIZE = 20
 
 
 def init_client() -> OpsGenieClient:
@@ -32,32 +38,38 @@ async def enrich_services_with_team_data(
             service["__oncalls"] = await opsgenie_client.get_oncall_user(schedule["id"])
         return service
 
-
-async def enrich_incident_with_alert_data(
+async def enrich_incidents_with_impacted_services(
     opsgenie_client: OpsGenieClient,
     semaphore: asyncio.Semaphore,
-    incident: dict[str, Any],
-) -> dict[str, Any]:
-    async with semaphore:
-        if not incident["impactedServices"]:
-            return incident
-        impacted_services = await opsgenie_client.get_impacted_services(
-            incident["impactedServices"]
-        )
-        incident["__impactedServices"] = impacted_services
-        return incident
+    incidents: list[dict[str, Any]],
+    chunk_size: int = INCIDENT_CHUNK_SIZE
+) -> list[dict[str, Any]]:
+    enriched_incidents = []
 
+    for incident_chunk in chunked(incidents, chunk_size):
+        impacted_service_ids = set()
+        incident_to_service_map = defaultdict(list)
 
-async def enrich_alert_with_related_Incident_data(
-    opsgenie_client: OpsGenieClient,
-    semaphore: asyncio.Semaphore,
-    alert: dict[str, Any],
-) -> dict[str, Any]:
-    async with semaphore:
-        alert_with_related_incident = (
-            await opsgenie_client.get_related_incident_by_alert(alert)
-        )
-        return alert_with_related_incident
+        for incident in incident_chunk:
+            if incident["impactedServices"]:
+                impacted_service_ids.update(incident["impactedServices"])
+                incident_to_service_map[incident["id"]] = incident["impactedServices"]
+        logger.info(f"Got {len(impacted_service_ids)} unique impacted services from {len(incident_chunk)} incidents with a chunk size of {chunk_size}")
+        
+        # Fetch all impacted services for this chunk in one API call
+        async with semaphore:
+            all_impacted_services = await opsgenie_client.get_impacted_services(list(impacted_service_ids))
+
+        # Map impacted services back to the incidents in this chunk
+        services_dict = {service["id"]: service for service in all_impacted_services}
+        for incident in incident_chunk:
+            incident["__impactedServices"] = [
+                services_dict[service_id]
+                for service_id in incident_to_service_map[incident["id"]]
+                if service_id in services_dict
+            ]
+        enriched_incidents.extend(incident_chunk)
+    return enriched_incidents
 
 
 @ocean.on_resync(ObjectKind.SERVICE)
@@ -82,34 +94,30 @@ async def on_incident_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
     semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
 
+    selector = cast(IncidentResourceConfig, event.resource_config).selector
     async for incident_batch in opsgenie_client.get_paginated_resources(
-        resource_type=ObjectKind.INCIDENT
-    ):
-        logger.info(f"Received batch with {len(incident_batch)} incident")
-        tasks = [
-            enrich_incident_with_alert_data(opsgenie_client, semaphore, incident)
-            for incident in incident_batch
-        ]
-        enriched_incidents = await asyncio.gather(*tasks)
-        yield enriched_incidents
+        resource_type=ObjectKind.INCIDENT, query_params=selector.api_query_params.generate_request_params() if selector.api_query_params else None,
+    ): 
+        logger.info(f"Received batch with {len(incident_batch)} incidents")
+
+        if selector.enrich_services:
+            enriched_incidents = await enrich_incidents_with_impacted_services(
+                opsgenie_client, semaphore, incident_batch, chunk_size=INCIDENT_CHUNK_SIZE
+            )
+            yield enriched_incidents
+        yield incident_batch
 
 
 @ocean.on_resync(ObjectKind.ALERT)
 async def on_alert_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     opsgenie_client = init_client()
-    semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
 
+    selector = cast(AlertResourceConfig, event.resource_config).selector
     async for alerts_batch in opsgenie_client.get_paginated_resources(
-        resource_type=ObjectKind.ALERT
-    ):
+        resource_type=ObjectKind.ALERT, query_params=selector.api_query_params.generate_request_params() if selector.api_query_params else None,
+    ): 
         logger.info(f"Received batch with {len(alerts_batch)} alerts")
-
-        tasks = [
-            enrich_alert_with_related_Incident_data(opsgenie_client, semaphore, alert)
-            for alert in alerts_batch
-        ]
-        enriched_alerts = await asyncio.gather(*tasks)
-        yield enriched_alerts
+        yield alerts_batch
 
 
 @ocean.router.post("/webhook")

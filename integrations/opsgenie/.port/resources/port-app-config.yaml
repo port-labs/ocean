@@ -20,6 +20,8 @@ resources:
   - kind: alert
     selector:
       query: 'true'
+      apiQueryParams:
+        status: open
     port:
       entity:
         mappings:
@@ -40,10 +42,12 @@ resources:
             description: .description
             integration: .integration.name
           relations:
-            relatedIncident: .__relatedIncident.id
+            relatedIncident: 'if (.alias | contains("_")) then (.alias | split("_")[0]) else null end'
   - kind: incident
     selector:
       query: 'true'
+      apiQueryParams:
+        status: open
     port:
       entity:
         mappings:

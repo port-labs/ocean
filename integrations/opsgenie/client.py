@@ -5,6 +5,7 @@ from loguru import logger
 
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+from port_ocean.utils.cache import cache_iterator_result
 from utils import ObjectKind, RESOURCE_API_VERSIONS
 
 PAGE_SIZE = 100
@@ -40,26 +41,22 @@ class OpsGenieClient:
             )
             raise
 
+    @cache_iterator_result()
     async def get_paginated_resources(
-        self, resource_type: ObjectKind
+        self, resource_type: ObjectKind,  query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        cache_key = resource_type.value
 
-        if cache := event.attributes.get(cache_key):
-            yield cache
-            return
         api_version = await self.get_resource_api_version(resource_type)
         url = f"{self.api_url}/{api_version}/{resource_type.value}s"
-        pagination_params: dict[str, Any] = {"limit": PAGE_SIZE}
-        resources_list = []
+
+        pagination_params: dict[str, Any] = {"limit": PAGE_SIZE, **(query_params or {})}
         while url:
             try:
+                logger.info(f"Fetching data from {url} with query params {pagination_params}")
                 response = await self._get_single_resource(
                     url=url, query_params=pagination_params
                 )
-                batch_data = response["data"]
-                resources_list.extend(batch_data)
-                yield batch_data
+                yield response["data"]
 
                 url = response.get("paging", {}).get("next")
             except httpx.HTTPStatusError as e:
@@ -67,82 +64,101 @@ class OpsGenieClient:
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
                 raise
-        event.attributes[cache_key] = resources_list
 
     async def get_alert(self, identifier: str) -> dict[str, Any]:
         api_version = await self.get_resource_api_version(ObjectKind.ALERT)
         url = f"{self.api_url}/{api_version}/alerts/{identifier}"
         alert_data = (await self._get_single_resource(url))["data"]
-        return await self.get_related_incident_by_alert(alert_data)
+        return alert_data
 
     async def get_oncall_team(self, identifier: str) -> dict[str, Any]:
+        if not identifier:
+            return {}
+        logger.debug(f"Fetching on-call team with identifier: {identifier}")
         cache_key = f"{ObjectKind.TEAM}-{identifier}"
+
         if cache := event.attributes.get(cache_key):
+            logger.debug(f"Returning on-call team {identifier} from cache")
             return cache
+        
         api_version = await self.get_resource_api_version(ObjectKind.TEAM)
         url = f"{self.api_url}/{api_version}/teams/{identifier}"
         oncall_team = (await self._get_single_resource(url))["data"]
         event.attributes[cache_key] = oncall_team
+        logger.debug(f"Fetched and cached on-call team {identifier}")
         return oncall_team
 
     async def get_oncall_user(self, schedule_identifier: str) -> dict[str, Any]:
+        logger.debug(f"Fetching on-call user for schedule {schedule_identifier}")
+        cache_key = f"{ObjectKind.SCHEDULE}-USER-{schedule_identifier}"
+
+        if cache := event.attributes.get(cache_key):
+            logger.debug(f"Returning on-call user {schedule_identifier} from cache")
+            return cache
+        
         api_version = await self.get_resource_api_version(ObjectKind.SCHEDULE)
         url = f"{self.api_url}/{api_version}/schedules/{schedule_identifier}/on-calls?flat=true"
-        return (await self._get_single_resource(url))["data"]
+        oncall_user = (await self._get_single_resource(url))["data"]
+        event.attributes[cache_key] = oncall_user
+        logger.debug(f"Fetched and cached on-call user {schedule_identifier}")
+        return oncall_user
+
 
     async def get_schedule_by_team(
         self, team_identifier: str
     ) -> Optional[dict[str, Any]]:
-        schedules = []
-        async for schedule_batch in self.get_paginated_resources(ObjectKind.SCHEDULE):
-            schedules.extend(schedule_batch)
-        return next(
-            (
-                schedule
-                for schedule in schedules
-                if schedule["ownerTeam"]["id"] == team_identifier
-            ),
-            {},
-        )
-
-    async def get_associated_alerts(
-        self, incident_identifier: str
-    ) -> list[dict[str, Any]]:
-        cache_key = f"{ObjectKind.INCIDENT}-{incident_identifier}"
+        if not team_identifier:
+            return {}
+        cache_key = f"{ObjectKind.SCHEDULE}-{ObjectKind.TEAM}-{team_identifier}"
         if cache := event.attributes.get(cache_key):
             return cache
+        async for schedule_batch in self.get_paginated_resources(ObjectKind.SCHEDULE):
+            for schedule in schedule_batch:
+                if schedule["ownerTeam"]["id"] == team_identifier:
+                    event.attributes[cache_key] = schedule
+                    return schedule
 
-        api_version = await self.get_resource_api_version(ObjectKind.INCIDENT)
-        url = f"{self.api_url}/{api_version}/incidents/{incident_identifier}/associated-alert-ids"
-        associated_alerts = (await self._get_single_resource(url))["data"]
-        event.attributes[cache_key] = associated_alerts
-        return associated_alerts
+        return {}
 
     async def get_impacted_services(
         self, impacted_service_ids: list[str]
     ) -> list[dict[str, Any]]:
-        services = []
-        async for service_batch in self.get_paginated_resources(ObjectKind.SERVICE):
-            services.extend(service_batch)
-        service_dict = {service["id"]: service for service in services}
-        services_data = [
-            service_dict[service_id]
-            for service_id in impacted_service_ids
-            if service_id in service_dict
-        ]
-        return services_data
+        if not impacted_service_ids:
+            return []
 
-    async def get_related_incident_by_alert(
-        self, alert: dict[str, Any]
-    ) -> dict[str, Any]:
-        incidents = []
-        async for incident_batch in self.get_paginated_resources(ObjectKind.INCIDENT):
-            incidents.extend(incident_batch)
+        cached_services = {}
+        missing_service_ids = []
 
-        for incident in incidents:
-            associated_alerts = await self.get_associated_alerts(incident["id"])
-            if alert["id"] in associated_alerts:
-                alert["__relatedIncident"] = incident
-                break  # Stop searching once a related incident is found
+        logger.info(f"Received request to fetch data for impacted services: {impacted_service_ids}")
+        # Check the cache first
+        for service_id in impacted_service_ids:
+            cache_key = f"{ObjectKind.SERVICE}-{service_id}"
+            if cached_service := event.attributes.get(cache_key):
+                cached_services[service_id] = cached_service
+                logger.info(f"Fetched service {service_id} from cache")
+            else:
+                missing_service_ids.append(service_id)
 
-        return alert
+        # If all services are cached, return them
+        if not missing_service_ids:
+            return [cached_services[service_id] for service_id in impacted_service_ids]
+
+        # Fetch missing services from the API
+        logger.info(f"Fetching missing services: {missing_service_ids}")
+        query = f"id: ({' OR '.join(missing_service_ids)})" # Info on service filtering can be found here: https://support.atlassian.com/opsgenie/docs/search-syntax-for-services/
+        query_params = {"query": query}
+        services_dict = {}
+
+        async for service_batch in self.get_paginated_resources(
+            ObjectKind.SERVICE, query_params=query_params
+        ):
+            for service in service_batch:
+                service_id = service["id"]
+                services_dict[service_id] = service
+                cache_key = f"{ObjectKind.SERVICE}-{service_id}"
+                event.attributes[cache_key] = service
+                logger.info(f"Cached service {service_id}")
+
+        # Combine cached and fetched services
+        services_dict.update(cached_services)
+        return [services_dict[service_id] for service_id in impacted_service_ids if service_id in services_dict]
