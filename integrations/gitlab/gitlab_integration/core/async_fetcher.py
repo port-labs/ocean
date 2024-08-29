@@ -68,10 +68,13 @@ class AsyncFetcher:
                 List[Union[RESTObject, Dict[str, Any]]],
             ],
         ],
-        validation_func: Callable[
-            [Any],
-            bool,
-        ] | None = None,
+        validation_func: (
+            Callable[
+                [Any],
+                bool,
+            ]
+            | None
+        ) = None,
         page_size: int = DEFAULT_PAGINATION_PAGE_SIZE,
         **kwargs,
     ) -> AsyncIterator[
@@ -151,7 +154,7 @@ class AsyncFetcher:
     def _parse_file_metadata(self, file: dict[str, Any]) -> dict[str, Any]:
         return {"path": file["path"], "type": file["type"]}
 
-    async def paginate_repository_tree(
+    async def _paginate_repository_tree(
         self,
         project: Project,
         filtering_callable: Callable[..., bool] | None = None,
@@ -201,7 +204,7 @@ class AsyncFetcher:
         **kwargs: Any,
     ) -> GitlabList | List[Dict[str, Any]]:
         all_files: List[Dict[str, Any]] = []
-        async for files in self.paginate_repository_tree(
+        async for files in self._paginate_repository_tree(
             project,
             filtering_callable,
             filtering_paths,
