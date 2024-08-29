@@ -64,18 +64,20 @@ cli = ["click", "rich", "cookiecutter", "jinja2-time"]
 
 
 [tool.poetry.group.dev.dependencies]
-pytest = ">=7.2,<9.0"
 black = ">=23.3,<25.0"
 mypy = "^1.3.0"
-pylint = ">=2.17.4,<4.0.0"
-types-pyyaml = "^6.0.12.10"
-ruff = ">=0.0.278,<0.4.11"
-types-toml = "^0.10.8.6"
-towncrier = "^23.6.0"
-yamllint = "^1.32.0"
-types-python-dateutil = "^2.9.0.20240316"
-pytest-xdist = "^3.6.1"
 pre-commit = "^3.7.1"
+pylint = ">=2.17.4,<4.0.0"
+pytest = ">=8.2,<9.0"
+pytest-asyncio = ">=0.24.0"
+pytest-httpx = ">=0.30.0"
+pytest-xdist = "^3.6.1"
+ruff = ">=0.0.278,<0.4.11"
+towncrier = "^23.6.0"
+types-python-dateutil = "^2.9.0.20240316"
+types-pyyaml = "^6.0.12.10"
+types-toml = "^0.10.8.6"
+yamllint = "^1.32.0"
 
 [tool.towncrier]
 directory = "changelog"
@@ -168,3 +170,8 @@ exclude = '''
   |node_modules
 )/
 '''
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-vv -n auto --ignore-glob='./integrations/*' ./port_ocean/tests"
