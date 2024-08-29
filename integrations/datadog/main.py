@@ -5,7 +5,7 @@ from typing import Any
 from loguru import logger
 
 from client import DatadogClient
-from overrides import SLOHistoryResourceConfig, DatadogResourceConfig
+from overrides import SLOHistoryResourceConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE

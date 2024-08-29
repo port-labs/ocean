@@ -9,10 +9,10 @@ import typing
 from urllib.parse import urlparse, urlunparse
 
 import httpx
-from integrations.datadog.overrides import DatadogResourceConfig, DatadogSelector
+from overrides import DatadogResourceConfig, DatadogSelector, DatadogMetricSelector
 from loguru import logger
 
-from port_ocean.context import event
+from port_ocean.context.event import event
 from utils import transform_period_of_time_in_days_to_timestamps
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
@@ -340,7 +340,7 @@ class DatadogClient:
         url = f"{self.api_url}/api/v1/metrics/{metric}"
         return await self._send_api_request(url)
 
-    def get_metric_config(self, params: any) -> tuple[str, str]:
+    def get_metric_config(self, params: DatadogMetricSelector) -> tuple[str, str]:
         logger.info(f"metric config: {params}")
         return params.tag, params.value
 
@@ -361,15 +361,15 @@ class DatadogClient:
         query: str,
         envs_to_fetch: list[str],
         services: list[dict[str, Any]],
-        time_window: int,
+        timeframe: int,
         env_tag: str = "env",
         service_tag: str = "service",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Helper function to fetch metrics for a list of services and provided environments."""
         logger.info(
-            f"Fetching metrics for {len(services)} services and {len(envs_to_fetch)} environments"
+            f"Fetching metrics for {len(services)} services and {len(envs_to_fetch)} environments. "
+            f"env_tag: {env_tag}, service_tag: {service_tag}"
         )
-        logger.info(f"env_tag: {env_tag}, service_tag: {service_tag}")
 
         for service in services:
             service_id = service["attributes"]["schema"]["dd-service"]
@@ -384,7 +384,7 @@ class DatadogClient:
                 )
 
                 end_time = int(time.time())
-                start_time = end_time - (time_window * 60)
+                start_time = end_time - (timeframe * 60)
 
                 url = f"{self.api_url}/api/v1/query?from={start_time}&to={end_time}&query={query_with_values}"
 
@@ -423,7 +423,7 @@ class DatadogClient:
             metric_query (str): The Datadog metric to fetch (e.g., "avg:container.cpu.usage").
             env (str): The environment to filter by, or "*" to fetch metrics for all environments.
             service (str): The service ID to filter by, or "*" to fetch metrics for all services.
-            time_window (int): Time window in minutes for fetching metrics (default: FETCH_WINDOW_TIME_IN_MINUTES).
+            timeframe (int): Time window in minutes for fetching metrics (default: FETCH_WINDOW_TIME_IN_MINUTES).
 
         Yields:
             AsyncGenerator[list[dict[str, Any]], None]: Each individual metric as it's fetched.
@@ -457,7 +457,7 @@ class DatadogClient:
                     params.metric,
                     envs_to_fetch,
                     service_list,
-                    params.time_window,
+                    params.timeframe,
                     env_tag,
                     service_tag,
                 ):
@@ -471,7 +471,7 @@ class DatadogClient:
                 params.metric,
                 envs_to_fetch,
                 [service_details],
-                params.time_window,
+                params.timeframe,
                 env_tag,
                 service_tag,
             ):

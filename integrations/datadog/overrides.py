@@ -32,9 +32,11 @@ class SLOHistoryResourceConfig(ResourceConfig):
     kind: typing.Literal["sloHistory"]
     selector: SLOHistorySelector
 
+
 class DatadogMetricSelector(BaseModel):
     tag: str = Field(alias="tag", required=True)
     value: str = Field(alias="value", default="*")
+
 
 class DatadogSelector(BaseModel):
     metric: str = Field(alias="metric", required=True)
