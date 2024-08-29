@@ -53,8 +53,8 @@ Q = TypeVar("Q")
 
 
 async def gather_and_split_errors_from_results(
-        task: Iterable[Awaitable[Q]],
-        result_threshold_validation: Callable[[Q | Exception], bool] | None = None,
+    task: Iterable[Awaitable[Q]],
+    result_threshold_validation: Callable[[Q | Exception], bool] | None = None,
 ) -> tuple[list[Q], list[Exception]]:
     valid_items: list[Q] = []
     errors: list[Exception] = []
