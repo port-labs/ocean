@@ -38,11 +38,12 @@ async def enrich_services_with_team_data(
             service["__oncalls"] = await opsgenie_client.get_oncall_user(schedule["id"])
         return service
 
+
 async def enrich_incidents_with_impacted_services(
     opsgenie_client: OpsGenieClient,
     semaphore: asyncio.Semaphore,
     incidents: list[dict[str, Any]],
-    chunk_size: int = INCIDENT_CHUNK_SIZE
+    chunk_size: int = INCIDENT_CHUNK_SIZE,
 ) -> list[dict[str, Any]]:
     enriched_incidents = []
 
@@ -54,11 +55,15 @@ async def enrich_incidents_with_impacted_services(
             if incident["impactedServices"]:
                 impacted_service_ids.update(incident["impactedServices"])
                 incident_to_service_map[incident["id"]] = incident["impactedServices"]
-        logger.info(f"Got {len(impacted_service_ids)} unique impacted services from {len(incident_chunk)} incidents with a chunk size of {chunk_size}")
-        
+        logger.info(
+            f"Got {len(impacted_service_ids)} unique impacted services from {len(incident_chunk)} incidents with a chunk size of {chunk_size}"
+        )
+
         # Fetch all impacted services for this chunk in one API call
         async with semaphore:
-            all_impacted_services = await opsgenie_client.get_impacted_services(list(impacted_service_ids))
+            all_impacted_services = await opsgenie_client.get_impacted_services(
+                list(impacted_service_ids)
+            )
 
         # Map impacted services back to the incidents in this chunk
         services_dict = {service["id"]: service for service in all_impacted_services}
@@ -96,13 +101,19 @@ async def on_incident_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     selector = cast(IncidentResourceConfig, event.resource_config).selector
     async for incident_batch in opsgenie_client.get_paginated_resources(
-        resource_type=ObjectKind.INCIDENT, query_params=selector.api_query_params.generate_request_params() if selector.api_query_params else None,
-    ): 
+        resource_type=ObjectKind.INCIDENT,
+        query_params=selector.api_query_params.generate_request_params()
+        if selector.api_query_params
+        else None,
+    ):
         logger.info(f"Received batch with {len(incident_batch)} incidents")
 
         if selector.enrich_services:
             enriched_incidents = await enrich_incidents_with_impacted_services(
-                opsgenie_client, semaphore, incident_batch, chunk_size=INCIDENT_CHUNK_SIZE
+                opsgenie_client,
+                semaphore,
+                incident_batch,
+                chunk_size=INCIDENT_CHUNK_SIZE,
             )
             yield enriched_incidents
         yield incident_batch
@@ -114,8 +125,11 @@ async def on_alert_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     selector = cast(AlertResourceConfig, event.resource_config).selector
     async for alerts_batch in opsgenie_client.get_paginated_resources(
-        resource_type=ObjectKind.ALERT, query_params=selector.api_query_params.generate_request_params() if selector.api_query_params else None,
-    ): 
+        resource_type=ObjectKind.ALERT,
+        query_params=selector.api_query_params.generate_request_params()
+        if selector.api_query_params
+        else None,
+    ):
         logger.info(f"Received batch with {len(alerts_batch)} alerts")
         yield alerts_batch
 

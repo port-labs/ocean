@@ -9,19 +9,44 @@ from port_ocean.core.handlers.port_app_config.models import (
 )
 from port_ocean.core.integrations.base import BaseIntegration
 
+
 class APIQueryParams(BaseModel):
-    created_at: str | None = Field(alias="createdAt", description="The date and time the alert was created")
-    last_occurred_at: str | None = Field(alias="lastOccurredAt", description="The date and time the alert was last occurred")
-    snoozed_until: str | None = Field(alias="snoozedUntil", description="The date and time the alert was snoozed until")
-    status: Literal["open", "resolved", "closed"] | None = Field(description="The status of the alert")
-    is_seen: Literal["true", "false"] | None = Field(description="Whether the alert has been seen")
-    acknowledged: Literal["true", "false"] | None = Field(description="Whether the alert has been acknowledged")
-    snoozed: Literal["true", "false"] | None = Field(description="Whether the alert has been snoozed")
-    priority: Literal["P1", "P2", "P3", "P4", "P5"] | None = Field(description="The priority of the alert")
-    owner: str | None = Field(description="The owner of the alert. Accepts OpsGenie username")
+    created_at: str | None = Field(
+        alias="createdAt", description="The date and time the alert was created"
+    )
+    last_occurred_at: str | None = Field(
+        alias="lastOccurredAt",
+        description="The date and time the alert was last occurred",
+    )
+    snoozed_until: str | None = Field(
+        alias="snoozedUntil",
+        description="The date and time the alert was snoozed until",
+    )
+    status: Literal["open", "resolved", "closed"] | None = Field(
+        description="The status of the alert"
+    )
+    is_seen: Literal["true", "false"] | None = Field(
+        description="Whether the alert has been seen"
+    )
+    acknowledged: Literal["true", "false"] | None = Field(
+        description="Whether the alert has been acknowledged"
+    )
+    snoozed: Literal["true", "false"] | None = Field(
+        description="Whether the alert has been snoozed"
+    )
+    priority: Literal["P1", "P2", "P3", "P4", "P5"] | None = Field(
+        description="The priority of the alert"
+    )
+    owner: str | None = Field(
+        description="The owner of the alert. Accepts OpsGenie username"
+    )
     teams: str | None = Field(description="The teams associated with the alert")
-    acknowledged_by: str | None = Field(alias="acknowledgedBy", description="The user who acknowledged the alert")
-    closed_by: str | None = Field(alias="closedBy", description="The user who closed the alert")
+    acknowledged_by: str | None = Field(
+        alias="acknowledgedBy", description="The user who acknowledged the alert"
+    )
+    closed_by: str | None = Field(
+        alias="closedBy", description="The user who closed the alert"
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         params = []
@@ -36,21 +61,38 @@ class APIQueryParams(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
+
 class AlertResourceConfig(ResourceConfig):
     class AlertSelector(Selector):
-        api_query_params: APIQueryParams | None = Field(alias="apiQueryParams", description="The query parameters to filter alerts")
+        api_query_params: APIQueryParams | None = Field(
+            alias="apiQueryParams", description="The query parameters to filter alerts"
+        )
+
     kind: Literal["alert"]
     selector: AlertSelector
 
+
 class IncidentResourceConfig(ResourceConfig):
     class IncidentSelector(Selector):
-        api_query_params: APIQueryParams | None = Field(alias="apiQueryParams", description="The query parameters to filter incidents")
-        enrich_services: bool = Field(alias="enrichServices", default=True, description="Whether to enrich incidents with more information about the impacted services")
+        api_query_params: APIQueryParams | None = Field(
+            alias="apiQueryParams",
+            description="The query parameters to filter incidents",
+        )
+        enrich_services: bool = Field(
+            alias="enrichServices",
+            default=True,
+            description="Whether to enrich incidents with more information about the impacted services",
+        )
+
     kind: Literal["incident"]
     selector: IncidentSelector
 
+
 class OpsGeniePortAppConfig(PortAppConfig):
-    resources: list[AlertResourceConfig | IncidentResourceConfig | ResourceConfig] = Field(default_factory=list) # type: ignore
+    resources: list[
+        AlertResourceConfig | IncidentResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
+
 
 class OpsGenieIntegration(BaseIntegration):
     class AppConfigHandlerClass(APIPortAppConfig):

@@ -43,16 +43,17 @@ class OpsGenieClient:
 
     @cache_iterator_result()
     async def get_paginated_resources(
-        self, resource_type: ObjectKind,  query_params: Optional[dict[str, Any]] = None
+        self, resource_type: ObjectKind, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         api_version = await self.get_resource_api_version(resource_type)
         url = f"{self.api_url}/{api_version}/{resource_type.value}s"
 
         pagination_params: dict[str, Any] = {"limit": PAGE_SIZE, **(query_params or {})}
         while url:
             try:
-                logger.info(f"Fetching data from {url} with query params {pagination_params}")
+                logger.info(
+                    f"Fetching data from {url} with query params {pagination_params}"
+                )
                 response = await self._get_single_resource(
                     url=url, query_params=pagination_params
                 )
@@ -80,7 +81,7 @@ class OpsGenieClient:
         if cache := event.attributes.get(cache_key):
             logger.debug(f"Returning on-call team {identifier} from cache")
             return cache
-        
+
         api_version = await self.get_resource_api_version(ObjectKind.TEAM)
         url = f"{self.api_url}/{api_version}/teams/{identifier}"
         oncall_team = (await self._get_single_resource(url))["data"]
@@ -95,14 +96,13 @@ class OpsGenieClient:
         if cache := event.attributes.get(cache_key):
             logger.debug(f"Returning on-call user {schedule_identifier} from cache")
             return cache
-        
+
         api_version = await self.get_resource_api_version(ObjectKind.SCHEDULE)
         url = f"{self.api_url}/{api_version}/schedules/{schedule_identifier}/on-calls?flat=true"
         oncall_user = (await self._get_single_resource(url))["data"]
         event.attributes[cache_key] = oncall_user
         logger.debug(f"Fetched and cached on-call user {schedule_identifier}")
         return oncall_user
-
 
     async def get_schedule_by_team(
         self, team_identifier: str
@@ -129,7 +129,9 @@ class OpsGenieClient:
         cached_services = {}
         missing_service_ids = []
 
-        logger.info(f"Received request to fetch data for impacted services: {impacted_service_ids}")
+        logger.info(
+            f"Received request to fetch data for impacted services: {impacted_service_ids}"
+        )
         # Check the cache first
         for service_id in impacted_service_ids:
             cache_key = f"{ObjectKind.SERVICE}-{service_id}"
@@ -145,7 +147,7 @@ class OpsGenieClient:
 
         # Fetch missing services from the API
         logger.info(f"Fetching missing services: {missing_service_ids}")
-        query = f"id: ({' OR '.join(missing_service_ids)})" # Info on service filtering can be found here: https://support.atlassian.com/opsgenie/docs/search-syntax-for-services/
+        query = f"id: ({' OR '.join(missing_service_ids)})"  # Info on service filtering can be found here: https://support.atlassian.com/opsgenie/docs/search-syntax-for-services/
         query_params = {"query": query}
         services_dict = {}
 
@@ -161,4 +163,8 @@ class OpsGenieClient:
 
         # Combine cached and fetched services
         services_dict.update(cached_services)
-        return [services_dict[service_id] for service_id in impacted_service_ids if service_id in services_dict]
+        return [
+            services_dict[service_id]
+            for service_id in impacted_service_ids
+            if service_id in services_dict
+        ]
