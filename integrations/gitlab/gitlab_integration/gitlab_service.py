@@ -140,7 +140,7 @@ class GitlabService:
         self,
         project: Project,
         path: str | List[str],
-    ) -> AsyncIterator[list[dict[str, dict[str, Any]]]]:
+    ) -> AsyncIterator[list[dict[str, Any]]]:
         paths = [path] if not isinstance(path, list) else path
         for path in paths:
             file_pattern = os.path.basename(path)
@@ -166,7 +166,7 @@ class GitlabService:
                         if does_pattern_apply(path, file["path"])
                     ]
                     parsed_files = await asyncio.gather(*tasks)
-                    yield parsed_files
+                    yield [file for file in parsed_files if file]
 
     def _get_entities_from_git(
         self, project: Project, file_name: str, sha: str, ref: str
