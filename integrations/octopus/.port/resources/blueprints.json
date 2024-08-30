@@ -1,0 +1,246 @@
+[
+    {
+        "identifier": "octopusSpace",
+        "title": "Octopus Space",
+        "icon": "Octopus",
+        "description": "A space in Octopus Deploy",
+        "schema": {
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "title": "Space URL",
+                    "format": "url",
+                    "description": "The Link to the Space in Octopus Deploy"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description",
+                    "description": "The description of the space"
+                }
+            }
+        },
+        "calculationProperties": {},
+        "relations": {}
+    },
+    {
+        "identifier": "octopusProject",
+        "title": "Octopus Project",
+        "icon": "Octopus",
+        "description": "An Octopus project",
+        "schema": {
+            "properties": {
+                "slug": {
+                    "type": "string",
+                    "title": "Slug",
+                    "description": "The slug identifier of the project"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "Project URL",
+                    "format": "url",
+                    "description": "The URL to access the project in Octopus Deploy"
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description",
+                    "description": "The project description"
+                },
+                "isDisabled": {
+                    "type": "boolean",
+                    "title": "Is Disabled",
+                    "description": "Indicates if the project is disabled"
+                },
+                "tenantedDeploymentMode": {
+                    "type": "string",
+                    "title": "Tenanted Deployment Mode",
+                    "description": "The deployment mode regarding tenants"
+                }
+            }
+        },
+        "calculationProperties": {},
+        "relations": {
+            "space": {
+                "target": "octopusSpace",
+                "title": "Space",
+                "description": "The space to which this project belongs",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "octopusRelease",
+        "title": "Octopus Release",
+        "icon": "Octopus",
+        "description": "A release in Octopus Deploy",
+        "schema": {
+            "properties": {
+                "version": {
+                    "type": "string",
+                    "title": "Version",
+                    "description": "The version of the release"
+                },
+                "assembledDate": {
+                    "type": "string",
+                    "title": "Assembled Date",
+                    "format": "date-time",
+                    "description": "The datetime the release was assembled"
+                },
+                "channelId": {
+                    "type": "string",
+                    "title": "Channel ID",
+                    "description": "The ID of the channel associated with the release"
+                },
+                "releaseNotes": {
+                    "type": "string",
+                    "title": "Release Notes",
+                    "description": "Notes provided for the release"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "Release URL",
+                    "format": "url",
+                    "description": "The URL to access the release in Octopus Deploy"
+                }
+            }
+        },
+        "calculationProperties": {},
+        "relations": {
+            "project": {
+                "target": "octopusProject",
+                "title": "Project",
+                "description": "The project to which this release belongs",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "octopusDeployment",
+        "title": "Octopus Deployment",
+        "icon": "Octopus",
+        "description": "A deployment in Octopus Deploy",
+        "schema": {
+            "properties": {
+                "createdAt": {
+                    "type": "string",
+                    "title": "Created At",
+                    "format": "date-time",
+                    "description": "The datetime when the deployment was created"
+                },
+                "deployedBy": {
+                    "type": "string",
+                    "title": "Deployed By",
+                    "description": "The user or system that performed the deployment"
+                },
+                "taskId": {
+                    "type": "string",
+                    "title": "Task ID",
+                    "description": "The ID of the task associated with the deployment"
+                },
+                "failureEncountered": {
+                    "type": "boolean",
+                    "title": "Failure Encountered",
+                    "description": "Indicates if any failure was encountered during the deployment"
+                },
+                "comments": {
+                    "type": "string",
+                    "title": "Comments",
+                    "description": "Comments regarding the deployment"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "Deployment URL",
+                    "format": "url",
+                    "description": "The URL to access the deployment in Octopus Deploy"
+                }
+            }
+        },
+        "calculationProperties": {},
+        "relations": {
+            "release": {
+                "target": "octopusRelease",
+                "title": "Release",
+                "description": "The release associated with this deployment",
+                "required": false,
+                "many": false
+            },
+            "project": {
+                "target": "octopusProject",
+                "title": "Project",
+                "description": "The project associated with this deployment",
+                "required": false,
+                "many": false
+            }
+        }
+    },
+    {
+        "identifier": "octopusMachine",
+        "title": "Octopus Machine",
+        "icon": "Octopus",
+        "description": "A deployment target in Octopus Deploy",
+        "schema": {
+            "properties": {
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Roles",
+                    "description": "Roles assigned to the target"
+                },
+                "status": {
+                    "type": "string",
+                    "title": "Status",
+                    "description": "The health status of the target"
+                },
+                "url": {
+                    "type": "string",
+                    "title": "Machine URL",
+                    "format": "url",
+                    "description": "The URL of the target"
+                },
+                "isDisabled": {
+                    "type": "boolean",
+                    "title": "Is Disabled",
+                    "description": "Indicates if the target is disabled"
+                },
+                "operatingSystem": {
+                    "type": "string",
+                    "title": "Operating System",
+                    "description": "The operating system of the target"
+                },
+                "architecture": {
+                    "type": "string",
+                    "title": "Architecture",
+                    "description": "The architecture of the target"
+                },
+                "statusSummary": {
+                    "type": "string",
+                    "title": "Status Summary",
+                    "description": "Summary of the target's status"
+                },
+                "endpointType": {
+                    "type": "string",
+                    "title": "Endpoint Type",
+                    "description": "The type of deployment target endpoint"
+                },
+                "communicationStyle": {
+                    "type": "string",
+                    "title": "Communication Style",
+                    "description": "The communication style of the target"
+                }
+            }
+        },
+        "calculationProperties": {},
+        "relations": {
+            "space": {
+                "target": "octopusSpace",
+                "title": "Space",
+                "description": "The space associated with this target",
+                "required": false,
+                "many": false
+            }
+        }
+    }
+]
