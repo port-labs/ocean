@@ -57,7 +57,7 @@ async def paginated_query(
             yield items
         else:
             logger.warning(
-                f"No items found on page {page+1} for `{method}` with request: {request}"
+                f"No items found on page {page} for `{method}` with request: {request}"
             )
 
         page_token = getattr(response, "next_page_token", None)

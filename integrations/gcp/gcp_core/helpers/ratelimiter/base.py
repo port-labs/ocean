@@ -171,7 +171,7 @@ class ResourceBoundedSemaphore(GCPResourceRateLimiter):
         logger.info(
             f"The integration will process {limit} {self.container_type.value}'s at a time based on {container_id}'s/{self.service}/{self.quota_id} quota's capacity"
         )
-        if limit >= self.default_maximum_limit <= 15:
+        if limit <= self.default_maximum_limit:
             logger.warning(
                 f"Consider increasing the {container_id}'s/{self.service}/{self.quota_id} quota for the {container_id} to process more {self.container_type.value}'s at a time."
             )
