@@ -431,9 +431,9 @@ class DatadogClient:
         Yields:
             AsyncGenerator[list[dict[str, Any]], None]: Each individual metric as it's fetched.
         """
-        logger.info(f"Fetching metrics for query: {metric_query}")
-        logger.info(f"env_tag: {env_tag}, env_value: {env_value}")
-        logger.info(f"service_tag: {service_tag}, service_value: {service_value}")
+        logger.info(
+            f"Fetching metrics for query: {metric_query} | env_tag: {env_tag}, env_value: {env_value} | service_tag: {service_tag}, service_value: {service_value}"
+        )
 
         envs_to_fetch = (
             [env_value]
