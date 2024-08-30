@@ -1,14 +1,14 @@
 description: {{cookiecutter.integration_name}} integration for Port Ocean
-icon: Cookiecutter # Should be one of the available icons in Port
+icon: Cookiecutter  # Should be one of the available icons in Port
 features:
   - type: exporter
-    section: Git Providers # Should be one of the available sections in Port
+    section: Under Development  # Should be one of the available sections in Port
     resources:
-      - kind: <ResourceName1>
-      - kind: <ResourceName2>
+      - kind: {{ cookiecutter.integration_slug }}-example-kind
+      # - kind: <ResourceName2>
 configurations:
-  - name: myGitToken
-    required: true
+  - name: my{{ cookiecutter.integration_slug}}Token
+    # required: true
     type: string
     sensitive: true
   - name: someApplicationUrl
