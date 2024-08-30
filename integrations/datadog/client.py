@@ -5,14 +5,11 @@ import http
 import json
 import time
 from typing import Any, AsyncGenerator, Optional
-import typing
 from urllib.parse import urlparse, urlunparse
 
 import httpx
-from overrides import DatadogResourceConfig, DatadogSelector, DatadogMetricSelector
 from loguru import logger
 
-from port_ocean.context.event import event
 from utils import transform_period_of_time_in_days_to_timestamps
 from port_ocean.utils import http_async_client
 from port_ocean.utils.queue_utils import process_in_queue
@@ -340,10 +337,6 @@ class DatadogClient:
         url = f"{self.api_url}/api/v1/metrics/{metric}"
         return await self._send_api_request(url)
 
-    def get_metric_config(self, params: DatadogMetricSelector) -> tuple[str, str]:
-        logger.info(f"metric config: {params}")
-        return params.tag, params.value
-
     def get_env_tags(self, tags: dict[str, Any], tag_name: str = "env") -> list[str]:
         """
         Extracts environment names from the provided data structure.
@@ -415,28 +408,30 @@ class DatadogClient:
 
             yield metrics
 
-    async def get_metrics(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_metrics(
+        self,
+        metric_query: str,
+        env_tag: str = "env",
+        env_value: str = "*",
+        service_tag: str = "service",
+        service_value: str = "*",
+        time_window_in_minutes: int = 60,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Fetches metrics for specified services and environment.
 
         Args:
             metric_query (str): The Datadog metric to fetch (e.g., "avg:container.cpu.usage").
-            env (str): The environment to filter by, or "*" to fetch metrics for all environments.
-            service (str): The service ID to filter by, or "*" to fetch metrics for all services.
-            timeframe (int): Time window in minutes for fetching metrics (default: FETCH_WINDOW_TIME_IN_MINUTES).
+            env_tag (str): The tag name for environment.
+            env_value (str): The environment value to filter by, or "*" for all environments.
+            service_tag (str): The tag name for service.
+            service_value (str): The service value to filter by, or "*" for all services.
+            timeframe (int): Time window in minutes for fetching metrics.
 
         Yields:
             AsyncGenerator[list[dict[str, Any]], None]: Each individual metric as it's fetched.
         """
-        params: DatadogSelector = typing.cast(
-            DatadogResourceConfig, event.resource_config
-        ).selector.datadog_selector
-
-        logger.info(f"Fetching metrics for params: {params}")
-
-        env_tag, env_value = self.get_metric_config(params.env)
-        service_tag, service_value = self.get_metric_config(params.service)
-
+        logger.info(f"Fetching metrics for query: {metric_query}")
         logger.info(f"env_tag: {env_tag}, env_value: {env_value}")
         logger.info(f"service_tag: {service_tag}, service_value: {service_value}")
 
@@ -447,31 +442,29 @@ class DatadogClient:
         )
         if not envs_to_fetch:
             logger.warning(
-                f"No environments found, can't fetch metrics for metric {params.metric}"
+                f"No environments found, can't fetch metrics for metric {metric_query}"
             )
             return
 
         if service_value == "*":
             async for service_list in self.get_services():
                 async for metrics in self._fetch_metrics_for_services(
-                    params.metric,
+                    metric_query,
                     envs_to_fetch,
                     service_list,
-                    params.timeframe,
+                    time_window_in_minutes,
                     env_tag,
                     service_tag,
                 ):
                     yield metrics
         else:
             result = await self.get_single_service(service_value)
-
             service_details: dict[str, Any] = result["data"]
-
             async for metrics in self._fetch_metrics_for_services(
-                params.metric,
+                metric_query,
                 envs_to_fetch,
                 [service_details],
-                params.timeframe,
+                time_window_in_minutes,
                 env_tag,
                 service_tag,
             ):

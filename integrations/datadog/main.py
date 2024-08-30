@@ -5,7 +5,7 @@ from typing import Any
 from loguru import logger
 
 from client import DatadogClient
-from overrides import SLOHistoryResourceConfig
+from overrides import SLOHistoryResourceConfig, DatadogResourceConfig, DatadogSelector
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -85,7 +85,19 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
-    async for metrics in dd_client.get_metrics():
+    # Extract parameters from event.resource_config
+    params: DatadogSelector = typing.cast(
+        DatadogResourceConfig, event.resource_config
+    ).selector.datadog_selector
+
+    async for metrics in dd_client.get_metrics(
+        metric_query=params.metric,
+        env_tag=params.env.tag,
+        env_value=params.env.value,
+        service_tag=params.service.tag,
+        service_value=params.service.value,
+        time_window_in_minutes=params.timeframe,
+    ):
         logger.info(f"Received batch with {len(metrics)} metrics")
         yield metrics
 
