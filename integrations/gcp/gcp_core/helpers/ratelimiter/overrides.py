@@ -1,27 +1,22 @@
 from gcp_core.helpers.ratelimiter.base import (
-    GCPResourceRateLimiter,
     ContainerType,
+    ResourceBoundedSemaphore,
 )
 
 
-class CloudAssetAPI(GCPResourceRateLimiter):
+class CloudAssetAPI(ResourceBoundedSemaphore):
     service = "asset.googleapis.com"
 
 
-class PubSubAPI(GCPResourceRateLimiter):
+class PubSubAPI(ResourceBoundedSemaphore):
     service = "pubsub.googleapis.com"
 
 
-class AdministratorPerMinutePerProject(GCPResourceRateLimiter):
-    quota_id = "administratorPerMinutePerProject"
-
-
 class SearchAllResourcesQpmPerProject(CloudAssetAPI):
-    container = ContainerType.PROJECT
     quota_id = "apiSearchAllResourcesQpmPerProject"
+    container_type = ContainerType.PROJECT
 
 
-class PubSubAdministratorPerMinutePerProject(
-    AdministratorPerMinutePerProject, PubSubAPI
-):
-    container = ContainerType.PROJECT
+class PubSubAdministratorPerMinutePerProject(PubSubAPI):
+    quota_id = "administratorPerMinutePerProject"
+    container_type = ContainerType.PROJECT

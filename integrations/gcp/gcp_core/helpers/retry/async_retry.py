@@ -27,7 +27,7 @@ from google.api_core.retry.retry_base import (
 _DEFAULT_INITIAL_DELAY_BETWEEN_RETRIES: float = 5.0
 _DEFAULT_MAXIMUM_DELAY_BETWEEN_RETRY_ATTEMPTS: float = 60.0
 _DEFAULT_MULTIPLIER_FOR_EXPONENTIAL_BACKOFF: float = 2.0
-_DEFAULT_TIMEOUT: float = 300.0
+_DEFAULT_TIMEOUT: float = 360.0
 
 
 if_transient_error = if_exception_type(
@@ -62,7 +62,7 @@ async def retry_generator_target(
     predicate: Callable[[Exception], bool],
     sleep_generator: Iterable[float],
     timeout: float | None = None,
-    on_error: Callable[[Exception], None] | None = None,
+    on_error: Callable[..., None] | None = None,
     exception_factory: Callable[
         [list[Exception], RetryFailureReason, float | None],
         tuple[Exception, Exception | None],
@@ -99,7 +99,7 @@ async def retry_generator_target(
 
     for sleep in sleep_generator:
         try:
-            async for item in target(*args, **kwargs):
+            async for item in target():
                 yield item
             return
         except Exception as exc:

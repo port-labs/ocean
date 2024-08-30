@@ -3,11 +3,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from aiolimiter import AsyncLimiter
 from typing import Any, Optional, Callable
 from loguru import logger
-import asyncio
 
 DEFAULT_REQUEST_TIMEOUT: float = 120
-MAXIMUM_CONCURRENT_REQUESTS: int = 100
-semaphore = asyncio.BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS)
 
 
 @async_generator_retry
@@ -60,7 +57,7 @@ async def paginated_query(
             yield items
         else:
             logger.warning(
-                f"No items found on page {page} for `{method}` with request: {request}"
+                f"No items found on page {page+1} for `{method}` with request: {request}"
             )
 
         page_token = getattr(response, "next_page_token", None)

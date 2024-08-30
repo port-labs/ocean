@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING, final
+
 from aiolimiter import AsyncLimiter
 from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest  # type: ignore
 from google.api_core.exceptions import GoogleAPICallError
@@ -8,6 +9,7 @@ from enum import Enum
 from port_ocean.context.ocean import ocean
 from gcp_core.cache import cache_coroutine_result
 from collections.abc import MutableSequence
+import asyncio
 
 
 _DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
@@ -15,6 +17,7 @@ _DEFAULT_RATE_LIMIT_QUOTA: int = int(
     ocean.integration_config["search_all_resources_per_minute_quota"]
 )
 _PERCENTAGE_OF_QUOTA: float = 0.8
+_MAXIMUM_CONCURRENT_REQUESTS: int = 10
 
 if TYPE_CHECKING:
     from google.cloud.cloudquotas_v1 import DimensionsInfo
@@ -53,7 +56,7 @@ class GCPResourceQuota(ABC):
                 response = await quotas_client.get_quota_info(request=request)
                 return response.dimensions_infos
 
-    async def _get_quota(self, container_id: str) -> int:
+    async def _get_quota(self, container_id: str, *args: Any) -> int:
         name = self.quota_name(container_id)
 
         try:
@@ -67,14 +70,10 @@ class GCPResourceQuota(ABC):
                 return self._default_quota
 
             # Find the dimension with the least quota value
-            least_quota_info = quota_infos[0]
-            least_value: int = least_quota_info.details.value
-
-            for info in quota_infos[1:]:
-                current_value = int(info.details.value)
-                if current_value < least_value:
-                    least_quota_info = info
-                    least_value = current_value
+            least_quota_info = min(
+                quota_infos, key=lambda info: int(info.details.value)
+            )
+            least_value = int(least_quota_info.details.value)
 
             if len(quota_infos) > 1:
                 logger.info(
@@ -124,13 +123,56 @@ class GCPResourceRateLimiter(GCPResourceQuota):
 
     @cache_coroutine_result()
     async def register(self, container_id: str, *arg: Optional[Any]) -> AsyncLimiter:
-        quota = await self._get_quota(container_id)
+        quota = await self._get_quota(container_id, *arg)
+
+        effective_quota_limit: int = int(max(round(quota * _PERCENTAGE_OF_QUOTA, 1), 1))
+        logger.info(
+            f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {effective_quota_limit} for rate limiting."
+        )
+
         limiter = AsyncLimiter(max_rate=quota, time_period=self.time_period)
+        limiter.container_id = container_id
         return limiter
 
+    @final
     def quota_name(self, container_id: str) -> str:
         return f"{self.container_type.value}/{container_id}/locations/global/services/{self.service}/quotaInfos/{self.quota_id}"
 
-    async def __getitem__(self, container_id: str) -> AsyncLimiter:
+    async def limiter(self, container_id: str) -> AsyncLimiter:
+        "fetches the rate limiter for the given container"
         name = self.quota_name(container_id)
         return await self.register(container_id, name)
+
+
+class ResourceBoundedSemaphore(GCPResourceRateLimiter):
+    """
+    scope: The container (project, organization or folder) within which the service account was created.
+    Implement access to the scope via container_id class method.
+    The class inherits from GCPResourceRateLimiter and provides a semaphore that can be used to control the number of containers queried concurrently for a given service and quota based on the base container's quota.
+    """
+
+    _semaphore: Optional[asyncio.BoundedSemaphore] = None
+    default_maximum_limit: int = _MAXIMUM_CONCURRENT_REQUESTS
+
+    async def semaphore(self, container_id: str) -> asyncio.BoundedSemaphore:
+        if self._semaphore is None:
+            _maximum_concurrent_requests = await self._maximum_concurrent_requests(
+                container_id
+            )
+            self._semaphore = asyncio.BoundedSemaphore(_maximum_concurrent_requests)
+        return self._semaphore
+
+    async def _maximum_concurrent_requests(self, container_id: str) -> int:
+        name = self.quota_name(container_id)
+        quota = await self.register(container_id, name)
+        limit = max(
+            int(quota.max_rate / self.default_maximum_limit), self.default_maximum_limit
+        )
+        logger.info(
+            f"The integration will process {limit} {self.container_type.value}'s at a time based on {container_id}'s/{self.service}/{self.quota_id} quota's capacity"
+        )
+        if limit >= self.default_maximum_limit <= 15:
+            logger.warning(
+                f"Consider increasing the {container_id}'s/{self.service}/{self.quota_id} quota for the {container_id} to process more {self.container_type.value}'s at a time."
+            )
+        return limit

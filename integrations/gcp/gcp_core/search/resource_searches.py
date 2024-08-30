@@ -24,26 +24,23 @@ from gcp_core.utils import (
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
 )
-from gcp_core.helpers.ratelimiter.overrides import (
-    SearchAllResourcesQpmPerProject,
-    PubSubAdministratorPerMinutePerProject,
-)
-from gcp_core.search.utils import paginated_query, semaphore, DEFAULT_REQUEST_TIMEOUT
-
-# rate limiters
-search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
-pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
+from gcp_core.search.utils import paginated_query, DEFAULT_REQUEST_TIMEOUT
 
 
 async def search_all_resources(
-    project_data: dict[str, Any], asset_type: str
+    project_data: dict[str, Any], asset_type: str, **kwargs: Any
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for resources in search_all_resources_in_project(project_data, asset_type):
+    async for resources in search_all_resources_in_project(
+        project_data, asset_type, **kwargs
+    ):
         yield resources
 
 
 async def search_all_resources_in_project(
-    project: dict[str, Any], asset_type: str, asset_name: str | None = None
+    project: dict[str, Any],
+    asset_type: str,
+    asset_name: str | None = None,
+    **kwargs: Any,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     List of supported assets: https://cloud.google.com/asset-inventory/docs/supported-asset-types
@@ -61,7 +58,7 @@ async def search_all_resources_in_project(
         ]
         return latest_resources
 
-    async with semaphore:
+    async with kwargs["asset_semaphore"]:
         project_name = project["name"]
         logger.info(f"Searching all {asset_type}'s in project {project_name}")
 
@@ -73,10 +70,6 @@ async def search_all_resources_in_project(
         if asset_name:
             search_all_resources_request["query"] = f"name={asset_name}"
 
-        asset_rate_limiter = await search_all_resources_qpm_per_project[
-            project_name.split("/")[-1]
-        ]
-
         async with AssetServiceAsyncClient() as async_assets_client:
 
             try:
@@ -85,7 +78,7 @@ async def search_all_resources_in_project(
                     "search_all_resources",
                     search_all_resources_request,
                     parse_asset_response,
-                    rate_limiter=asset_rate_limiter,
+                    kwargs.get("asset_rate_limiter"),
                 ):
                     yield assets
 
@@ -111,31 +104,30 @@ async def list_all_topics_per_project(
         logger.info(
             f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"
         )
-
-        pubsub_rate_limiter = await pubsub_administrator_per_minute_per_project[
-            project_name.split("/")[-1]
-        ]
-        try:
-            async for topics in paginated_query(
-                async_publisher_client,
-                "list_topics",
-                {"project": project_name},
-                lambda response: parse_protobuf_messages(response.topics),
-                pubsub_rate_limiter,
-            ):
-                for topic in topics:
-                    topic[EXTRA_PROJECT_FIELD] = project
-                yield topics
-        except PermissionDenied:
-            logger.error(
-                f"Service account doesn't have permissions to list topics from project {project_name}"
-            )
-        except NotFound:
-            logger.debug(
-                f"Couldn't perform list_topics on project {project_name} since it's deleted."
-            )
-        else:
-            logger.info(f"Successfully listed all topics within project {project_name}")
+        async with kwargs["topic_semaphore"]:
+            try:
+                async for topics in paginated_query(
+                    async_publisher_client,
+                    "list_topics",
+                    {"project": project_name},
+                    lambda response: parse_protobuf_messages(response.topics),
+                    kwargs.get("topic_rate_limiter"),
+                ):
+                    for topic in topics:
+                        topic[EXTRA_PROJECT_FIELD] = project
+                    yield topics
+            except PermissionDenied:
+                logger.error(
+                    f"Service account doesn't have permissions to list topics from project {project_name}"
+                )
+            except NotFound:
+                logger.debug(
+                    f"Couldn't perform list_topics on project {project_name} since it's deleted."
+                )
+            else:
+                logger.info(
+                    f"Successfully listed all topics within project {project_name}"
+                )
 
 
 @cache_iterator_result()
@@ -202,7 +194,7 @@ async def get_single_organization(organization_name: str) -> RAW_ITEM:
         )
 
 
-async def get_single_topic(topic_id: str) -> RAW_ITEM:
+async def get_single_topic(project_id: str, topic_id: str) -> RAW_ITEM:
     """
     The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
     Here the PublisherAsyncClient is used, ignoring state in assets inventory
@@ -239,7 +231,7 @@ async def feed_event_to_resource(
     match asset_type:
         case AssetTypesWithSpecialHandling.TOPIC:
             topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
-            resource = await get_single_topic(topic_name)
+            resource = await get_single_topic(project_id, topic_name)
             resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id)
         case AssetTypesWithSpecialHandling.FOLDER:
             folder_id = asset_name.replace("//cloudresourcemanager.googleapis.com/", "")
