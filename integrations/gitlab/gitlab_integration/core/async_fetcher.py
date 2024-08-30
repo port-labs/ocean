@@ -151,9 +151,6 @@ class AsyncFetcher:
                 ref,
             )
 
-    def _parse_file_metadata(self, file: dict[str, Any]) -> dict[str, Any]:
-        return {"path": file["path"], "type": file["type"]}
-
     @staticmethod
     async def fetch_repository_tree(
         project: Project,

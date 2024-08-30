@@ -114,7 +114,7 @@ class GitlabService:
         if not isinstance(path, list):
             path = [path]
         try:
-            files = await AsyncFetcher().fetch_repository_tree(
+            files = await AsyncFetcher.fetch_repository_tree(
                 project, ref=commit_sha, recursive=True, get_all=True
             )
         except GitlabError as err:
@@ -144,7 +144,7 @@ class GitlabService:
                 logger.info(
                     f"Searching project {project.path_with_namespace} for file pattern {file_pattern}"
                 )
-                async for files in AsyncFetcher().fetch_batch(
+                async for files in AsyncFetcher.fetch_batch(
                     project.search,
                     scope="blobs",
                     search=f"filename:{file_pattern}",
