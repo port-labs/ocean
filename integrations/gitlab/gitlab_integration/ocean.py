@@ -14,6 +14,7 @@ from gitlab_integration.models.webhook_groups_override_config import (
 from gitlab_integration.events.setup import setup_application
 from gitlab_integration.git_integration import (
     GitlabResourceConfig,
+    GitlabMembersResourceConfig,
     GitLabFilesResourceConfig,
 )
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
@@ -112,6 +113,16 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
         async for groups_batch in service.get_all_groups():
             yield [group.asdict() for group in groups_batch]
+
+
+@ocean.on_resync(ObjectKind.GROUPWITHMEMBERS)
+async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    for service in get_cached_all_services():
+        async for groups_batch in service.get_all_groups():
+            tasks = [service.enrich_group_with_members(group) for group in groups_batch]
+            enriched_groups = await asyncio.gather(*tasks)
+            logger.warning(f"Enriched Groups {enriched_groups}")
+            yield enriched_groups
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -242,3 +253,34 @@ async def resync_pipelines(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         {**pipeline.asdict(), "__project": project.asdict()}
                         for pipeline in pipelines_batch
                     ]
+
+
+@ocean.on_resync(ObjectKind.MEMBER)
+async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    gitlab_resource_config: GitlabMembersResourceConfig = typing.cast(
+        GitlabMembersResourceConfig, event.resource_config
+    )
+    selector = gitlab_resource_config.selector
+
+    async def process_group_members(service, group):
+        members = [
+            member
+            async for members_batch in service.get_unsynced_group_members(group)
+            for member in members_batch
+        ]
+
+        if selector.enrich_with_public_email:
+            enriched_member_tasks = [
+                service.enrich_member_with_public_email(member) for member in members
+            ]
+            enriched_members = await asyncio.gather(*enriched_member_tasks)
+            return enriched_members
+
+        return [member.asdict() for member in members]
+
+    for service in get_cached_all_services():
+        async for groups in service.get_all_groups(skip_validation=True):
+            group_tasks = [process_group_members(service, group) for group in groups]
+            for group_task in asyncio.as_completed(group_tasks):
+                group_members = await group_task
+                yield group_members

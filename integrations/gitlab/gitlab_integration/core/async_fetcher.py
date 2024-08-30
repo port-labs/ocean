@@ -12,6 +12,8 @@ from gitlab.v4.objects import (
     ProjectPipeline,
     Issue,
     Group,
+    User,
+    GroupMember,
     ProjectFile,
 )
 from loguru import logger
@@ -35,6 +37,8 @@ class AsyncFetcher:
                 Issue,
                 Project,
                 Group,
+                User,
+                GroupMember,
             ],
         ],
         *args,
@@ -67,10 +71,13 @@ class AsyncFetcher:
                 List[Union[RESTObject, Dict[str, Any]]],
             ],
         ],
-        validation_func: Callable[
-            [Any],
-            bool,
-        ],
+        validation_func: (
+            Callable[
+                [Any],
+                bool,
+            ]
+            | None
+        ) = None,
         page_size: int = DEFAULT_PAGINATION_PAGE_SIZE,
         **kwargs,
     ) -> AsyncIterator[
