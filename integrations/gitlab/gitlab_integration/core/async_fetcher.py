@@ -14,7 +14,7 @@ from gitlab.v4.objects import (
     Group,
     User,
     GroupMember,
-    ProjectFile
+    ProjectFile,
 )
 from loguru import logger
 

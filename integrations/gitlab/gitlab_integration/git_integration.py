@@ -134,8 +134,8 @@ class MembersSelector(Selector):
 class GitlabMembersResourceConfig(ResourceConfig):
     kind: Literal["member"]
     selector: MembersSelector
-      
-      
+
+
 class FilesSelector(BaseModel):
     path: str = Field(description="The path to get the files from")
     repos: List[str] = Field(

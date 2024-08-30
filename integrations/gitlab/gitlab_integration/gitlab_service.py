@@ -709,7 +709,6 @@ class GitlabService:
                 logger.error(f"Failed to fetch group with ID {member_id}: {err}")
                 raise
 
-                
     async def get_entities_diff(
         self,
         project: Project,
