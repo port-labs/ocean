@@ -29,6 +29,7 @@ Please leave one option from the following and delete the rest:
 - [ ] Scheduled resync able to abort existing resync and start a new one
 - [ ] Tested with at least 2 integrations from scratch
 - [ ] Tested with Kafka and Polling event listeners
+- [ ] Tested deletion of entities that don't pass the selector
 
 
 ### Integration testing checklist
@@ -38,7 +39,7 @@ Please leave one option from the following and delete the rest:
 - [ ] Resync able to update entities
 - [ ] Resync able to detect and delete entities
 - [ ] Resync finishes successfully
-- [ ] If new resource kind is added or updated in the integration, add example raw data, mapping and expected result to the `examples` folder in the integration directory. 
+- [ ] If new resource kind is added or updated in the integration, add example raw data, mapping and expected result to the `examples` folder in the integration directory.
 - [ ] If resource kind is updated, run the integration with the example data and check if the expected result is achieved
 - [ ] If new resource kind is added or updated, validate that live-events for that resource are working as expected
 - [ ] Docs PR link [here](#)
