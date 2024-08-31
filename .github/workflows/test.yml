@@ -57,7 +57,7 @@ jobs:
       - name: Test
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
         env:
-          PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}.xml
+          PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || 'ocean/core' }}.xml
         run: |
           make test
       - name: Publish Test Report
@@ -65,3 +65,5 @@ jobs:
         if: ${{ always() }}
         with:
           report_paths: '**/junit/test-results-**/*.xml'
+          include_passed: true
+          require_tests: true
