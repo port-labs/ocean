@@ -153,7 +153,7 @@ class EntityClientMixin:
 
     async def batch_delete_entities(
         self,
-        entities: list[EntityRef],
+        entities_refs: list[EntityRef],
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
@@ -161,12 +161,12 @@ class EntityClientMixin:
         await asyncio.gather(
             *(
                 self.delete_entity(
-                    entity,
+                    entity_ref,
                     request_options,
                     user_agent_type,
                     should_raise=should_raise,
                 )
-                for entity in entities
+                for entity_ref in entities_refs
             ),
             return_exceptions=True,
         )

@@ -162,10 +162,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         objects_diff = await self._calculate_raw([(resource, results)])
         entities_selector_diff, errors = objects_diff[0]
-
-        await self.entities_state_applier.delete(
-            entities_selector_diff.passed, user_agent_type
-        )
+        passed_refs = [
+            EntityRef.from_entity(entity) for entity in entities_selector_diff.passed
+        ]
+        await self.entities_state_applier.delete(passed_refs, user_agent_type)
         logger.info("Finished unregistering change")
         return entities_selector_diff.passed, errors
 
@@ -191,7 +191,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             send_raw_data_examples_amount=send_raw_data_examples_amount,
         )
         errors.extend(register_errors)
-        passed_entities = [EntityRef.from_entity(entity) for entity in list(all_entities.passed)]
+        passed_entities = [
+            EntityRef.from_entity(entity) for entity in list(all_entities.passed)
+        ]
 
         for generator in async_generators:
             try:
@@ -208,7 +210,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         send_raw_data_examples_amount=send_raw_data_examples_amount,
                     )
                     errors.extend(register_errors)
-                    refs_passed = [EntityRef.from_entity(entity) for entity in entities.passed]
+                    refs_passed = [
+                        EntityRef.from_entity(entity) for entity in entities.passed
+                    ]
                     passed_entities.extend(refs_passed)
             except* OceanAbortException as error:
                 errors.append(error)
