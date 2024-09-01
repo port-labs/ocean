@@ -18,7 +18,7 @@ from port_ocean.core.integrations.mixins.utils import (
     resync_generator_wrapper,
     resync_function_wrapper,
 )
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, EntityRef
 from port_ocean.core.ocean_types import (
     RAW_RESULT,
     RESYNC_RESULT,
@@ -52,7 +52,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     async def _get_resource_raw_results(
         self, resource_config: ResourceConfig
-    ) -> tuple[RESYNC_RESULT, list[Exception]]:
+    ) -> tuple[RESYNC_RESULT, list[RAW_RESULT | Exception]]:
         logger.info(f"Fetching {resource_config.kind} resync results")
 
         if not is_resource_supported(
@@ -171,7 +171,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
     async def _register_in_batches(
         self, resource_config: ResourceConfig, user_agent_type: UserAgentType
-    ) -> tuple[list[Entity], list[Exception]]:
+    ) -> tuple[list[EntityRef], list[Exception]]:
         results, errors = await self._get_resource_raw_results(resource_config)
         async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
         raw_results: RAW_RESULT = []
@@ -191,7 +191,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             send_raw_data_examples_amount=send_raw_data_examples_amount,
         )
         errors.extend(register_errors)
-        passed_entities = list(all_entities.passed)
+        passed_entities = [EntityRef.from_entity(entity) for entity in list(all_entities.passed)]
 
         for generator in async_generators:
             try:
@@ -208,7 +208,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         send_raw_data_examples_amount=send_raw_data_examples_amount,
                     )
                     errors.extend(register_errors)
-                    passed_entities.extend(entities.passed)
+                    refs_passed = [EntityRef.from_entity(entity) for entity in entities.passed]
+                    passed_entities.extend(refs_passed)
             except* OceanAbortException as error:
                 errors.append(error)
 
@@ -272,8 +273,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             (entity.identifier, entity.blueprint) for entity in registered_entities
         }
 
-        filtered_entities_to_delete: list[Entity] = (
-            await ocean.port_client.search_batch_entities(
+        filtered_entities_to_delete: list[EntityRef] = (
+            await ocean.port_client.search_batch_entities_refs(
                 user_agent_type,
                 [
                     entity
@@ -428,7 +429,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
             try:
                 did_fetched_current_state = True
-                entities_at_port = await ocean.port_client.search_entities(
+                entities_at_port = await ocean.port_client.search_entities_refs(
                     user_agent_type
                 )
             except httpx.HTTPError as e:
@@ -441,7 +442,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 )
                 did_fetched_current_state = False
 
-            creation_results: list[tuple[list[Entity], list[Exception]]] = []
+            creation_results: list[tuple[list[EntityRef], list[Exception]]] = []
 
             try:
                 for resource in app_config.resources:

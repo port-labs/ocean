@@ -5,7 +5,7 @@ from pydantic.main import BaseModel
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, EntityRef
 from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
     START_EVENT_LISTENER,
@@ -121,7 +121,7 @@ class PortOceanContext:
 
     async def unregister(
         self,
-        entities: list[Entity],
+        entities: list[EntityRef],
         user_agent_type: UserAgentType = UserAgentType.exporter,
     ) -> None:
         await self.integration.unregister(entities, user_agent_type)

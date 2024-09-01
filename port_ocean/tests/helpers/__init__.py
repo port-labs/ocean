@@ -6,7 +6,7 @@ from yaml import safe_load
 
 from port_ocean.bootstrap import create_default_app
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
-from port_ocean.core.ocean_types import RESYNC_RESULT
+from port_ocean.core.ocean_types import RAW_RESULT, RESYNC_RESULT
 from port_ocean.ocean import Ocean
 from port_ocean.utils.misc import load_module
 
@@ -53,7 +53,7 @@ def get_integation_resource_config_by_name(
 
 async def get_raw_result_on_integration_sync_kinds(
     integration_path: str, override_kinds: Union[Set[str], None] = None
-) -> Dict[str, List[Tuple[RESYNC_RESULT, List[Exception]]]]:
+) -> Dict[str, List[Tuple[RESYNC_RESULT, List[RAW_RESULT | Exception]]]]:
     app = get_integration_ocean_app(integration_path)
 
     resource_configs = get_integation_resource_configs(integration_path)
@@ -61,7 +61,7 @@ async def get_raw_result_on_integration_sync_kinds(
     if override_kinds:
         resource_configs = [x for x in resource_configs if x.kind in override_kinds]
 
-    results: Dict[str, List[Tuple[RESYNC_RESULT, List[Exception]]]] = {}
+    results: Dict[str, List[Tuple[RESYNC_RESULT, List[RAW_RESULT | Exception]]]] = {}
 
     for resource_config in resource_configs:
         resource_result = await app.integration._get_resource_raw_results(

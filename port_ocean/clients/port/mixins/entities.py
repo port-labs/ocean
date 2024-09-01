@@ -11,7 +11,7 @@ from port_ocean.clients.port.utils import (
     handle_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
 )
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, EntityRef
 
 
 class EntityClientMixin:
@@ -117,7 +117,7 @@ class EntityClientMixin:
 
     async def delete_entity(
         self,
-        entity: Entity,
+        entity: EntityRef,
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
@@ -153,7 +153,7 @@ class EntityClientMixin:
 
     async def batch_delete_entities(
         self,
-        entities: list[Entity],
+        entities: list[EntityRef],
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
@@ -170,6 +170,14 @@ class EntityClientMixin:
             ),
             return_exceptions=True,
         )
+
+    async def search_entities_refs(
+        self, user_agent_type: UserAgentType, query: dict[Any, Any] | None = None
+    ) -> list[EntityRef]:
+        return [
+            EntityRef.from_entity(entity)
+            for entity in await self.search_entities(user_agent_type, query)
+        ]
 
     async def search_entities(
         self, user_agent_type: UserAgentType, query: dict[Any, Any] | None = None
@@ -234,6 +242,36 @@ class EntityClientMixin:
             )
 
         return await self.search_entities(
+            user_agent_type,
+            {
+                "combinator": "and",
+                "rules": [{"combinator": "or", "rules": search_rules}],
+            },
+        )
+
+    async def search_batch_entities_refs(
+        self, user_agent_type: UserAgentType, entities_to_search: list[Entity]
+    ) -> list[EntityRef]:
+        search_rules = []
+        for entity in entities_to_search:
+            search_rules.append(
+                {
+                    "combinator": "and",
+                    "rules": [
+                        {
+                            "property": "$identifier",
+                            "operator": "=",
+                            "value": entity.identifier,
+                        },
+                        {
+                            "property": "$blueprint",
+                            "operator": "=",
+                            "value": entity.blueprint,
+                        },
+                    ],
+                }
+            )
+        return await self.search_entities_refs(
             user_agent_type,
             {
                 "combinator": "and",

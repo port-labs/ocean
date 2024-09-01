@@ -1,13 +1,13 @@
 from graphlib import TopologicalSorter, CycleError
 from typing import Set
 
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, EntityRef
 from port_ocean.exceptions.core import OceanAbortException
 
 Node = tuple[str, str]
 
 
-def node(entity: Entity) -> Node:
+def node(entity: EntityRef | Entity) -> Node:
     return entity.identifier, entity.blueprint
 
 
@@ -44,3 +44,12 @@ def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
             "If you do want to have cyclic dependencies, please make sure to set the keys"
             " 'createMissingRelatedEntities' and 'deleteDependentEntities' in the integration config in Port."
         ) from ex
+
+
+def order_by_entities_ref_dependencies(entity_refs: list[EntityRef]) -> list[EntityRef]:
+    entities = [Entity.parse_obj(entity_ref) for entity_ref in entity_refs]
+    ordered_refs = [
+        EntityRef.from_entity(entity)
+        for entity in order_by_entities_dependencies(entities)
+    ]
+    return ordered_refs

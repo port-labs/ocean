@@ -5,8 +5,8 @@ from loguru import logger
 from pydantic import parse_obj_as, ValidationError
 
 from port_ocean.clients.port.client import PortClient
-from port_ocean.core.models import Entity, Runtime
-from port_ocean.core.models import EntityPortDiff
+from port_ocean.core.models import Entity, EntityPortDiff, EntityRef, Runtime
+from port_ocean.core.models import EntityPortRefDiff
 from port_ocean.core.ocean_types import RAW_RESULT
 from port_ocean.exceptions.core import (
     RawObjectValidationException,
@@ -27,7 +27,9 @@ def validate_result(result: Any) -> RAW_RESULT:
         raise RawObjectValidationException(f"Expected list[dict[str, Any]], Error: {e}")
 
 
-def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
+def is_same_entity(
+    first_entity: Entity | EntityRef, second_entity: Entity | EntityRef
+) -> bool:
     return (
         first_entity.identifier == second_entity.identifier
         and first_entity.blueprint == second_entity.blueprint
@@ -105,3 +107,36 @@ def get_port_diff(
             deleted.append(obj)
 
     return EntityPortDiff(created=created, modified=modified, deleted=deleted)
+
+
+def get_port_ref_diff(
+    before: Iterable[EntityRef],
+    after: Iterable[EntityRef],
+) -> EntityPortRefDiff:
+    before_dict = {}
+    after_dict = {}
+    created = []
+    modified = []
+    deleted = []
+
+    # Create dictionaries for before and after lists
+    for entity in before:
+        key = (entity.identifier, entity.blueprint)
+        before_dict[key] = entity
+
+    for entity in after:
+        key = (entity.identifier, entity.blueprint)
+        after_dict[key] = entity
+
+    # Find created, modified, and deleted objects
+    for key, obj in after_dict.items():
+        if key not in before_dict:
+            created.append(obj)
+        else:
+            modified.append(obj)
+
+    for key, obj in before_dict.items():
+        if key not in after_dict:
+            deleted.append(obj)
+
+    return EntityPortRefDiff(created=created, modified=modified, deleted=deleted)

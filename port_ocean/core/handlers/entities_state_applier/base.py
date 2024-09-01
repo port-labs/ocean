@@ -2,8 +2,8 @@ from abc import abstractmethod
 
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.core.handlers.base import BaseHandler
-from port_ocean.core.models import Entity
-from port_ocean.core.ocean_types import EntityDiff
+from port_ocean.core.models import Entity, EntityRef
+from port_ocean.core.ocean_types import EntityDiff, EntityRefDiff
 
 
 class BaseEntitiesStateApplier(BaseHandler):
@@ -33,13 +33,13 @@ class BaseEntitiesStateApplier(BaseHandler):
     @abstractmethod
     async def delete_diff(
         self,
-        entities: EntityDiff,
+        entities_ref_diff: EntityRefDiff,
         user_agent: UserAgentType,
     ) -> None:
         """Delete the specified entity differences from the state.
 
         Args:
-            entities (EntityDiff): The differences to be deleted.
+            entities_ref_diff (EntityDiff): The differences to be deleted.
             user_agent (UserAgentType): The user agent responsible for the deletion.
         """
         pass
@@ -61,7 +61,7 @@ class BaseEntitiesStateApplier(BaseHandler):
 
     @abstractmethod
     async def delete(
-        self, entities: list[Entity], user_agent_type: UserAgentType
+        self, entities: list[EntityRef], user_agent_type: UserAgentType
     ) -> None:
         """Delete the specified entities from the state.
 

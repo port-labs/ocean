@@ -11,13 +11,24 @@ class Runtime(Enum):
     OnPrem = "OnPrem"
 
 
-class Entity(BaseModel):
+class EntityRef(BaseModel):
     identifier: Any
     blueprint: Any
+    relations: dict[str, Any] = {}
+
+    @classmethod
+    def from_entity(cls, entity: "Entity") -> "EntityRef":
+        return cls(
+            identifier=entity.identifier,
+            blueprint=entity.blueprint,
+            relations=entity.relations,
+        )
+
+
+class Entity(EntityRef):
     title: Any
     team: str | None | list[Any] = []
     properties: dict[str, Any] = {}
-    relations: dict[str, Any] = {}
 
     @property
     def is_using_search_identifier(self) -> bool:
@@ -58,3 +69,16 @@ class EntityPortDiff:
     deleted: list[Entity] = field(default_factory=list)
     modified: list[Entity] = field(default_factory=list)
     created: list[Entity] = field(default_factory=list)
+
+
+@dataclass
+class EntityPortRefDiff:
+    """Represents the differences between entities for porting.
+
+    This class holds the lists of deleted, modified, and created entities as part
+    of the porting process.
+    """
+
+    deleted: list[EntityRef] = field(default_factory=list)
+    modified: list[EntityRef] = field(default_factory=list)
+    created: list[EntityRef] = field(default_factory=list)
