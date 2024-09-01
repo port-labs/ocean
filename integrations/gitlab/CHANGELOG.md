@@ -17,6 +17,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Improved Real-time mechanism - now paginating through a file instead of waiting for Gitlab's api to return the entire repository tree.
 
 
+0.1.114 (2024-08-30)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.5 (#1)
+
+
 0.1.113 (2024-08-28)
 ====================
 
