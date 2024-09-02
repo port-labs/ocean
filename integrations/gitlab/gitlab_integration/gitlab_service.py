@@ -162,7 +162,9 @@ class GitlabService:
                         if does_pattern_apply(path, file["path"])
                     ]
                     parsed_files = await asyncio.gather(*tasks)
-                    yield [file for file in parsed_files if file]
+                    files_with_content = [file for file in parsed_files if file]
+                    if files_with_content:
+                        yield files_with_content
 
     def _get_entities_from_git(
         self, project: Project, file_name: str, sha: str, ref: str
