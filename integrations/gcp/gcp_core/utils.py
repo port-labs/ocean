@@ -77,7 +77,7 @@ def get_credentials_json() -> str:
     return credentials_json
 
 
-def service_account_project() -> str:
+def get_service_account_project_id() -> str:
     "get project id associated with service account"
     default_credentials = json.loads(get_credentials_json())
     project_id = default_credentials["project_id"]
@@ -89,17 +89,17 @@ async def resolve_request_controllers(
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     if kind == AssetTypesWithSpecialHandling.TOPIC:
         topic_rate_limiter = await pubsub_administrator_per_minute_per_project.limiter(
-            service_account_project()
+            get_service_account_project_id()
         )
         topic_semaphore = await pubsub_administrator_per_minute_per_project.semaphore(
-            service_account_project()
+            get_service_account_project_id()
         )
         return (topic_rate_limiter, topic_semaphore)
 
     asset_rate_limiter = await search_all_resources_qpm_per_project.limiter(
-        service_account_project()
+        get_service_account_project_id()
     )
     asset_semaphore = await search_all_resources_qpm_per_project.semaphore(
-        service_account_project()
+        get_service_account_project_id()
     )
     return (asset_rate_limiter, asset_semaphore)

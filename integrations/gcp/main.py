@@ -38,14 +38,11 @@ async def _resolve_resync_method_for_resource(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     match kind:
         case AssetTypesWithSpecialHandling.TOPIC:
-            topic_rate_limiter, topic_semaphore = await resolve_request_controllers(
-                kind
-            )
+            topic_rate_limiter, _ = await resolve_request_controllers(kind)
             return iterate_per_available_project(
                 list_all_topics_per_project,
                 asset_type=kind,
-                topic_rate_limiter=topic_rate_limiter,
-                topic_semaphore=topic_semaphore,
+                rate_limiter=topic_rate_limiter,
             )
         case AssetTypesWithSpecialHandling.FOLDER:
             return search_all_folders()
@@ -60,8 +57,8 @@ async def _resolve_resync_method_for_resource(
             return iterate_per_available_project(
                 search_all_resources,
                 asset_type=kind,
-                asset_rate_limiter=asset_rate_limiter,
-                asset_semaphore=asset_semaphore,
+                rate_limiter=asset_rate_limiter,
+                semaphore=asset_semaphore,
             )
 
 
@@ -102,12 +99,11 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.TOPIC)
 async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    topic_rate_limiter, topic_semaphore = await resolve_request_controllers(kind)
+    topic_rate_limiter, _ = await resolve_request_controllers(kind)
     async for batch in iterate_per_available_project(
         list_all_topics_per_project,
         asset_type=kind,
         topic_rate_limiter=topic_rate_limiter,
-        topic_semaphore=topic_semaphore,
     ):
         yield batch
 
@@ -121,8 +117,8 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for batch in iterate_per_available_project(
         search_all_resources,
         asset_type=kind,
-        asset_rate_limiter=asset_rate_limiter,
-        asset_semaphore=asset_semaphore,
+        rate_limiter=asset_rate_limiter,
+        semaphore=asset_semaphore,
     ):
         yield batch
 

@@ -24,7 +24,9 @@ from gcp_core.utils import (
     parse_protobuf_messages,
     parse_latest_resource_from_asset,
 )
-from gcp_core.search.utils import paginated_query, DEFAULT_REQUEST_TIMEOUT
+from gcp_core.search.paginated_query import paginated_query, DEFAULT_REQUEST_TIMEOUT
+from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
+from asyncio import BoundedSemaphore
 
 
 async def search_all_resources(
@@ -39,6 +41,7 @@ async def search_all_resources(
 async def search_all_resources_in_project(
     project: dict[str, Any],
     asset_type: str,
+    semaphore: BoundedSemaphore,
     asset_name: str | None = None,
     **kwargs: Any,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -58,7 +61,7 @@ async def search_all_resources_in_project(
         ]
         return latest_resources
 
-    async with kwargs["asset_semaphore"]:
+    async with semaphore:
         project_name = project["name"]
         logger.info(f"Searching all {asset_type}'s in project {project_name}")
 
@@ -78,7 +81,7 @@ async def search_all_resources_in_project(
                     "search_all_resources",
                     search_all_resources_request,
                     parse_asset_response,
-                    kwargs.get("asset_rate_limiter"),
+                    kwargs.get("rate_limiter"),
                 ):
                     yield assets
 
@@ -87,7 +90,7 @@ async def search_all_resources_in_project(
                     f"Service account doesn't have permissions to search all resources within project {project_name} for kind {asset_type}"
                 )
             except NotFound:
-                logger.debug(
+                logger.info(
                     f"Couldn't perform search_all_resources on project {project_name} since it's deleted."
                 )
             else:
@@ -99,35 +102,37 @@ async def search_all_resources_in_project(
 async def list_all_topics_per_project(
     project: dict[str, Any], **kwargs: Any
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    This lists all Topics under a certain project.
+    The Topics are handled specifically due to lacks of data in the asset itselfwithin the asset inventory - e.g. some properties missing.
+    The listing is being done via the PublisherAsyncClient, ignoring state in assets inventory
+    """
     async with PublisherAsyncClient() as async_publisher_client:
         project_name = project["name"]
         logger.info(
             f"Searching all {AssetTypesWithSpecialHandling.TOPIC}'s in project {project_name}"
         )
-        async with kwargs["topic_semaphore"]:
-            try:
-                async for topics in paginated_query(
-                    async_publisher_client,
-                    "list_topics",
-                    {"project": project_name},
-                    lambda response: parse_protobuf_messages(response.topics),
-                    kwargs.get("topic_rate_limiter"),
-                ):
-                    for topic in topics:
-                        topic[EXTRA_PROJECT_FIELD] = project
-                    yield topics
-            except PermissionDenied:
-                logger.error(
-                    f"Service account doesn't have permissions to list topics from project {project_name}"
-                )
-            except NotFound:
-                logger.debug(
-                    f"Couldn't perform list_topics on project {project_name} since it's deleted."
-                )
-            else:
-                logger.info(
-                    f"Successfully listed all topics within project {project_name}"
-                )
+        try:
+            async for topics in paginated_query(
+                async_publisher_client,
+                "list_topics",
+                {"project": project_name},
+                lambda response: parse_protobuf_messages(response.topics),
+                kwargs.get("rate_limiter"),
+            ):
+                for topic in topics:
+                    topic[EXTRA_PROJECT_FIELD] = project
+                yield topics
+        except PermissionDenied:
+            logger.error(
+                f"Service account doesn't have permissions to list topics from project {project_name}"
+            )
+        except NotFound:
+            logger.info(
+                f"Couldn't perform list_topics on project {project_name} since it's deleted."
+            )
+        else:
+            logger.info(f"Successfully listed all topics within project {project_name}")
 
 
 @cache_iterator_result()
@@ -214,7 +219,10 @@ async def search_single_resource(
         resource = [
             resources
             async for resources in search_all_resources_in_project(
-                project, asset_kind, asset_name
+                project,
+                asset_kind,
+                BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS),
+                asset_name,
             )
         ][0][0]
     except IndexError:
