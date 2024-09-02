@@ -1,6 +1,6 @@
 from typing import Any
 from unittest.mock import MagicMock
-
+from gitlab.v4.objects import ProjectFile
 from gitlab_integration.gitlab_service import GitlabService
 
 
@@ -26,7 +26,7 @@ async def test_search_files_in_project(
 
     mock_project = MagicMock()
     monkeypatch.setattr(mock_project, "search", mock_search)
-
+    expected_files = ["hello/my/file.yaml"]
     # Act
     actual_files = []
     async for file in mocked_gitlab_service.search_files_in_project(
@@ -36,4 +36,64 @@ async def test_search_files_in_project(
 
     # Assert
     assert len(actual_files) == 1
-    assert actual_files[0] == "hello/my/file.yaml"
+    assert actual_files == expected_files
+
+
+async def test_get_and_parse_single_file(
+    monkeypatch: Any, mocked_gitlab_service: GitlabService
+) -> None:
+    # Arrange
+    mock_file = MagicMock()
+    monkeypatch.setattr(mock_file, "size", 1)
+    mock_file.decode.return_value = "file content"
+    mock_file.asdict.return_value = {"content": "this should be overwritten"}
+
+    mock_project = MagicMock()
+    mock_project.files.get.return_value = mock_file
+    mock_project.asdict.return_value = "project data"
+
+    expected_parsed_single_file = {
+        "file": {"content": "file content"},
+        "repo": "project data",
+    }
+
+    # Act
+    actual_parsed_single_file = await mocked_gitlab_service.get_and_parse_single_file(
+        mock_project, "path", "branch"
+    )
+
+    # Assert
+    assert expected_parsed_single_file == actual_parsed_single_file
+
+
+async def test_get_and_parse_single_file_yaml(
+    monkeypatch: Any, mocked_gitlab_service: GitlabService
+) -> None:
+    # Arrange
+    mock_file = MagicMock()
+    monkeypatch.setattr(mock_file, "size", 1)
+    monkeypatch.setattr(
+        mock_file,
+        "decode",
+        lambda: """project: data
+hello:
+    value: world""",
+    )
+    mock_file.asdict.return_value = {"content": "this should be overwritten"}
+
+    mock_project = MagicMock()
+    mock_project.files.get.return_value = mock_file
+    mock_project.asdict.return_value = "project data"
+
+    expected_parsed_single_file = {
+        "file": {"content": {"project": "data", "hello": {"value": "world"}}},
+        "repo": "project data",
+    }
+
+    # Act
+    actual_parsed_single_file = await mocked_gitlab_service.get_and_parse_single_file(
+        mock_project, "path", "branch"
+    )
+
+    # Assert
+    assert expected_parsed_single_file == actual_parsed_single_file
