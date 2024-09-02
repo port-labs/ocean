@@ -7,7 +7,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .name | gsub("[^a-zA-Z0-9@_.:/=-]"; "-") | tostring
+          identifier: .id
           title: .name
           blueprint: '"opsGenieService"'
           properties:
@@ -64,4 +64,4 @@ resources:
             updatedAt: .updatedAt
             description: .description
           relations:
-            services: '[.__impactedServices[] | .name | gsub("[^a-zA-Z0-9@_.:/=-]"; "-") | tostring]'
+            services: .impactedServices

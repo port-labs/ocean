@@ -52,7 +52,7 @@ class APIQueryParams(BaseModel):
         params = []
         for field, value in self.dict(exclude_none=True).items():
             if isinstance(value, list):
-                params.append(f"{field}={','.join(value)}")
+                params.append(f"{field}:{','.join(value)}")
             else:
                 params.append(f"{field}:{value}")
 
@@ -62,35 +62,18 @@ class APIQueryParams(BaseModel):
         allow_population_by_field_name = True
 
 
-class AlertResourceConfig(ResourceConfig):
-    class AlertSelector(Selector):
+class AlertAndIncidentResourceConfig(ResourceConfig):
+    class AlertAndIncidentSelector(Selector):
         api_query_params: APIQueryParams | None = Field(
-            alias="apiQueryParams", description="The query parameters to filter alerts"
+            alias="apiQueryParams", description="The query parameters to filter alerts or incidents"
         )
 
-    kind: Literal["alert"]
-    selector: AlertSelector
-
-
-class IncidentResourceConfig(ResourceConfig):
-    class IncidentSelector(Selector):
-        api_query_params: APIQueryParams | None = Field(
-            alias="apiQueryParams",
-            description="The query parameters to filter incidents",
-        )
-        enrich_services: bool = Field(
-            alias="enrichServices",
-            default=True,
-            description="Whether to enrich incidents with more information about the impacted services",
-        )
-
-    kind: Literal["incident"]
-    selector: IncidentSelector
-
+    kind: Literal["alert", "incident"]
+    selector: AlertAndIncidentSelector
 
 class OpsGeniePortAppConfig(PortAppConfig):
     resources: list[
-        AlertResourceConfig | IncidentResourceConfig | ResourceConfig
+        AlertAndIncidentResourceConfig | ResourceConfig
     ] = Field(default_factory=list)
 
 
