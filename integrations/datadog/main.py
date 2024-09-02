@@ -85,7 +85,6 @@ async def on_resync_services(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_service_metrics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
 
-    # Extract parameters from event.resource_config
     params: DatadogSelector = typing.cast(
         DatadogResourceConfig, event.resource_config
     ).selector.datadog_selector
