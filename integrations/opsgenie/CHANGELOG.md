@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2024-09-02)
+
+
+### Improvements
+
+- Improved on the performance on the integration by removing extra API calls and adding logs for verbosity (0.2.0)
+
+
 ## 0.1.75 (2024-09-01)
 
 
