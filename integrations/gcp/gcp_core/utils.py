@@ -84,22 +84,25 @@ def get_service_account_project_id() -> str:
     return project_id
 
 
+SERVICE_ACCOUNT_PROJECT_ID = get_service_account_project_id()
+
+
 async def resolve_request_controllers(
     kind: str,
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     if kind == AssetTypesWithSpecialHandling.TOPIC:
         topic_rate_limiter = await pubsub_administrator_per_minute_per_project.limiter(
-            get_service_account_project_id()
+            SERVICE_ACCOUNT_PROJECT_ID
         )
         topic_semaphore = await pubsub_administrator_per_minute_per_project.semaphore(
-            get_service_account_project_id()
+            SERVICE_ACCOUNT_PROJECT_ID
         )
         return (topic_rate_limiter, topic_semaphore)
 
     asset_rate_limiter = await search_all_resources_qpm_per_project.limiter(
-        get_service_account_project_id()
+        SERVICE_ACCOUNT_PROJECT_ID
     )
     asset_semaphore = await search_all_resources_qpm_per_project.semaphore(
-        get_service_account_project_id()
+        SERVICE_ACCOUNT_PROJECT_ID
     )
     return (asset_rate_limiter, asset_semaphore)
