@@ -628,7 +628,7 @@ class GitlabService:
     async def get_unsynced_group_members(
         self, group: Group
     ) -> typing.AsyncIterator[List[GroupMember]]:
-        logger.info(f"Fetching unsynced members of group {group.name}")
+        logger.info(f"Fetching members unique to group {group.name}")
 
         cached_member_ids = event.attributes.setdefault(
             MEMBERS_CACHE_KEY, {}
@@ -642,8 +642,8 @@ class GitlabService:
                 cached_member_ids.extend(member.id for member in unsynced_members)
 
                 logger.info(
-                    f"Found {len(unsynced_members)} unsynced members "
-                    f"{[member.username for member in unsynced_members]} from {group.name}"
+                    f"Found {len(unsynced_members)} members "
+                    f"{[member.username for member in unsynced_members]} unique to {group.name}"
                 )
                 yield unsynced_members
 
