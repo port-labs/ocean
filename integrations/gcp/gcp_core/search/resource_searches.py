@@ -28,6 +28,8 @@ from gcp_core.search.paginated_query import paginated_query, DEFAULT_REQUEST_TIM
 from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
 from asyncio import BoundedSemaphore
 
+DEFAULT_SEMAPHORE = BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS)
+
 
 async def search_all_resources(
     project_data: dict[str, Any], asset_type: str, **kwargs: Any
@@ -221,7 +223,7 @@ async def search_single_resource(
             async for resources in search_all_resources_in_project(
                 project,
                 asset_kind,
-                BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS),
+                DEFAULT_SEMAPHORE,
                 asset_name,
             )
         ][0][0]
