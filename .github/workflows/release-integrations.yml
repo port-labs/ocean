@@ -179,28 +179,32 @@ jobs:
           # Add version attribute
           jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" > "$integration_spec"
 
-          # Upload integration's version manifest to s3
-          aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_dest"
-          aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_legacy_dest" # TODO: legacy support, remove once not in use
-          echo "Successfully uploaded $integration_spec to s3 bucket."
+          if [[ ! ${version} =~ ^.+-dev$ ]]; then
+            # Upload integration's version manifest to s3
+            aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_dest"
+            aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_legacy_dest" # TODO: legacy support, remove once not in use
+            echo "Successfully uploaded $integration_spec to s3 bucket."
 
-          # Get the latest version of the current integration
-          latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
+            # Get the latest version of the current integration
+            latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
 
-          # Add integration's spec to global index file
-          regexp="^[0-9.]+$"
-          if [[ ! "$latest_version" ]]; then
-            # Add new integration spec if latest tag doesn't exist
-            jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" > "$temp_file"
-            mv "$temp_file" "$index_file"
-          elif [[ ! "$latest_version" =~ $regexp ]] || [[ "$version" =~ $regexp ]]; then
-            # Override global index file if released non-dev version or integration doesn't have non-dev latest tag
-            jq --argjson updated_spec "$(cat "$integration_spec")" --arg type "$type" \
-              'map(if .type == $type then $updated_spec else . end)' "$index_file" > "$temp_file"
-            mv "$temp_file" "$index_file"
+            # Add integration's spec to global index file
+            regexp="^[0-9.]+$"
+            if [[ ! "$latest_version" ]]; then
+              # Add new integration spec if latest tag doesn't exist
+              jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" > "$temp_file"
+              mv "$temp_file" "$index_file"
+            elif [[ ! "$latest_version" =~ $regexp ]] || [[ "$version" =~ $regexp ]]; then
+              # Override global index file if released non-dev version or integration doesn't have non-dev latest tag
+              jq --argjson updated_spec "$(cat "$integration_spec")" --arg type "$type" \
+                'map(if .type == $type then $updated_spec else . end)' "$index_file" > "$temp_file"
+              mv "$temp_file" "$index_file"
+            fi
+            done < file_list.txt
+
+            # Upload global index file to s3
+            aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
+            echo "Successfully uploaded $index_file to s3 bucket."
+          else
+            echo "Did not upload integration spec since the version was in development ('${version}')"
           fi
-          done < file_list.txt
-
-          # Upload global index file to s3
-          aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
-          echo "Successfully uploaded $index_file to s3 bucket."
