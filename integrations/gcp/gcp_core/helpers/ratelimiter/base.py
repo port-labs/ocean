@@ -126,7 +126,6 @@ class GCPResourceRateLimiter(GCPResourceQuota):
         )
 
         limiter = AsyncLimiter(max_rate=quota, time_period=self.time_period)
-        limiter.container_id = container_id
         return limiter
 
     @final
