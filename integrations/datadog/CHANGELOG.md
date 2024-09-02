@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support for custom `env` and `service` tags in when fetching metrics
 
+## 0.1.36 (2024-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.7 (#1)
+
+
 ## 0.1.35 (2024-08-30)
 
 ### Improvements
