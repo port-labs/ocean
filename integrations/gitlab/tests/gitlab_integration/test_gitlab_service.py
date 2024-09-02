@@ -97,3 +97,36 @@ hello:
 
     # Assert
     assert expected_parsed_single_file == actual_parsed_single_file
+
+
+async def test_get_and_parse_single_file_json(
+    monkeypatch: Any, mocked_gitlab_service: GitlabService
+) -> None:
+    # Arrange
+    mock_file = MagicMock()
+    monkeypatch.setattr(mock_file, "size", 1)
+    monkeypatch.setattr(
+        mock_file,
+        "decode",
+        lambda: """{
+    "hello":"world"
+}""",
+    )
+    mock_file.asdict.return_value = {"content": "this should be overwritten"}
+
+    mock_project = MagicMock()
+    mock_project.files.get.return_value = mock_file
+    mock_project.asdict.return_value = "project data"
+
+    expected_parsed_single_file = {
+        "file": {"content": {"hello": "world"}},
+        "repo": "project data",
+    }
+
+    # Act
+    actual_parsed_single_file = await mocked_gitlab_service.get_and_parse_single_file(
+        mock_project, "path", "branch"
+    )
+
+    # Assert
+    assert expected_parsed_single_file == actual_parsed_single_file
