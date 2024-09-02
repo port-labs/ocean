@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.90 (2024-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.7 (#1)
+
+
+## 0.1.89 (2024-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.5 (#1)
+
+
+## 0.1.88 (2024-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.4 (#1)
+
+
+## 0.1.87 (2024-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.3 (#1)
+
+
+## 0.1.86 (2024-08-26)
+
+
+### Bug Fixes
+
+- Fixed SonarQube client instantiation issue by using a singleton pattern to ensure a single shared instance, resolving bug where the client is unable to find the self.metrics
+
+
 ## 0.1.85 (2024-08-26)
 
 
