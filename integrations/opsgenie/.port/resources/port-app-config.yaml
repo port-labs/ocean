@@ -48,6 +48,8 @@ resources:
             url: .links.web
             tags: .tags
             oncallUsers: .__oncalls.onCallRecipients
+          relations:
+            ownerTeam: .teamId
   - kind: alert
     selector:
       query: 'true'
