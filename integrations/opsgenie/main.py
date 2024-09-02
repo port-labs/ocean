@@ -11,6 +11,7 @@ from integration import AlertAndIncidentResourceConfig
 
 CONCURRENT_REQUESTS = 5
 
+
 def init_client() -> OpsGenieClient:
     return OpsGenieClient(
         ocean.integration_config["api_token"],
@@ -33,6 +34,7 @@ async def enrich_services_with_team_data(
         if schedule:
             service["__oncalls"] = await opsgenie_client.get_oncall_user(schedule["id"])
         return service
+
 
 @ocean.on_resync(ObjectKind.SERVICE)
 async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -59,9 +61,11 @@ async def on_incident_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AlertAndIncidentResourceConfig, event.resource_config).selector
     async for incident_batch in opsgenie_client.get_paginated_resources(
         resource_type=ObjectKind.INCIDENT,
-        query_params=selector.api_query_params.generate_request_params()
-        if selector.api_query_params
-        else None,
+        query_params=(
+            selector.api_query_params.generate_request_params()
+            if selector.api_query_params
+            else None
+        ),
     ):
         logger.info(f"Received batch with {len(incident_batch)} incidents")
         yield incident_batch
@@ -74,9 +78,11 @@ async def on_alert_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(AlertAndIncidentResourceConfig, event.resource_config).selector
     async for alerts_batch in opsgenie_client.get_paginated_resources(
         resource_type=ObjectKind.ALERT,
-        query_params=selector.api_query_params.generate_request_params()
-        if selector.api_query_params
-        else None,
+        query_params=(
+            selector.api_query_params.generate_request_params()
+            if selector.api_query_params
+            else None
+        ),
     ):
         logger.info(f"Received batch with {len(alerts_batch)} alerts")
         yield alerts_batch

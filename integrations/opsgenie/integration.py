@@ -65,16 +65,18 @@ class APIQueryParams(BaseModel):
 class AlertAndIncidentResourceConfig(ResourceConfig):
     class AlertAndIncidentSelector(Selector):
         api_query_params: APIQueryParams | None = Field(
-            alias="apiQueryParams", description="The query parameters to filter alerts or incidents"
+            alias="apiQueryParams",
+            description="The query parameters to filter alerts or incidents",
         )
 
     kind: Literal["alert", "incident"]
     selector: AlertAndIncidentSelector
 
+
 class OpsGeniePortAppConfig(PortAppConfig):
-    resources: list[
-        AlertAndIncidentResourceConfig | ResourceConfig
-    ] = Field(default_factory=list)
+    resources: list[AlertAndIncidentResourceConfig | ResourceConfig] = Field(
+        default_factory=list
+    )
 
 
 class OpsGenieIntegration(BaseIntegration):
