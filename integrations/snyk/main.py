@@ -40,7 +40,7 @@ def init_client() -> SnykClient:
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
-        ocean.integration_config.get("organization_id"),
+        ocean.integration_config.get("organization_ids"),
         ocean.integration_config.get("groups"),
         ocean.integration_config.get("webhook_secret"),
     )
