@@ -1,5 +1,84 @@
 [
   {
+    "identifier": "opsGenieTeam",
+    "description": "This blueprint represents an OpsGenie team in our software catalog",
+    "title": "OpsGenie Team",
+    "icon": "OpsGenie",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "icon": "DefaultProperty"
+        },
+        "url": {
+          "title": "URL",
+          "type": "string",
+          "description": "URL to the service",
+          "format": "url",
+          "icon": "DefaultProperty"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "opsGenieSchedule",
+    "description": "This blueprint represents a OpsGenie schedule in our software catalog",
+    "title": "OpsGenie Schedule",
+    "icon": "OpsGenie",
+    "schema": {
+      "properties": {
+        "timezone": {
+          "title": "Timezone",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "users": {
+          "title": "Users",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "user"
+          }
+        },
+        "startDate": {
+          "title": "Start Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "endDate": {
+          "title": "End Date",
+          "type": "string",
+          "format": "date-time"
+        },
+        "rotationType": {
+          "type": "string",
+          "title": "Rotation Type"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "ownerTeam": {
+        "title": "Owner Team",
+        "target": "opsGenieTeam",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
     "identifier": "opsGenieService",
     "description": "This blueprint represents an OpsGenie service in our software catalog",
     "title": "OpsGenie Service",
@@ -26,22 +105,6 @@
           "title": "Tags",
           "icon": "DefaultProperty"
         },
-        "oncallTeam": {
-          "type": "string",
-          "title": "OnCall Team",
-          "description": "Name of the team responsible for this service",
-          "icon": "DefaultProperty"
-        },
-        "teamMembers": {
-          "icon": "TwoUsers",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "user"
-          },
-          "title": "Team Members",
-          "description": "Members of team responsible for this service"
-        },
         "oncallUsers": {
           "icon": "TwoUsers",
           "type": "array",
@@ -57,13 +120,6 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {
-      "teamSize": {
-        "title": "Team Size",
-        "icon": "DefaultProperty",
-        "description": "Size of the team",
-        "calculation": ".properties.teamMembers | length",
-        "type": "number"
-      }
     },
     "aggregationProperties": {
       "numberOfOpenIncidents": {
@@ -86,7 +142,14 @@
         }
       }
     },
-    "relations": {}
+    "relations": {
+      "ownerTeam": {
+        "title": "Owner Team",
+        "target": "opsGenieTeam",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "opsGenieIncident",

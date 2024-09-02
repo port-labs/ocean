@@ -67,27 +67,11 @@ class OpsGenieClient:
                 raise
 
     async def get_alert(self, identifier: str) -> dict[str, Any]:
+        logger.debug(f"Fetching alert {identifier}")
         api_version = await self.get_resource_api_version(ObjectKind.ALERT)
         url = f"{self.api_url}/{api_version}/alerts/{identifier}"
         alert_data = (await self._get_single_resource(url))["data"]
         return alert_data
-
-    async def get_oncall_team(self, identifier: str) -> dict[str, Any]:
-        if not identifier:
-            return {}
-        logger.debug(f"Fetching on-call team with identifier: {identifier}")
-        cache_key = f"{ObjectKind.TEAM}-{identifier}"
-
-        if cache := event.attributes.get(cache_key):
-            logger.debug(f"Returning on-call team {identifier} from cache")
-            return cache
-
-        api_version = await self.get_resource_api_version(ObjectKind.TEAM)
-        url = f"{self.api_url}/{api_version}/teams/{identifier}"
-        oncall_team = (await self._get_single_resource(url))["data"]
-        event.attributes[cache_key] = oncall_team
-        logger.debug(f"Fetched and cached on-call team {identifier}")
-        return oncall_team
 
     async def get_oncall_user(self, schedule_identifier: str) -> dict[str, Any]:
         logger.debug(f"Fetching on-call user for schedule {schedule_identifier}")
@@ -104,18 +88,23 @@ class OpsGenieClient:
         logger.debug(f"Fetched and cached on-call user {schedule_identifier}")
         return oncall_user
 
-    async def get_schedule_by_team(
-        self, team_identifier: str
-    ) -> Optional[dict[str, Any]]:
-        if not team_identifier:
+    async def get_schedules_by_teams(
+        self, team_ids: list[str]
+    ) -> dict[str, dict[str, Any]]:
+        if not team_ids:
             return {}
-        cache_key = f"{ObjectKind.SCHEDULE}-{ObjectKind.TEAM}-{team_identifier}"
-        if cache := event.attributes.get(cache_key):
-            return cache
+
+        logger.debug(f"Fetching schedules for teams {team_ids}")
+        schedules = {}
+        unique_schedule_ids = set()
+
         async for schedule_batch in self.get_paginated_resources(ObjectKind.SCHEDULE):
             for schedule in schedule_batch:
-                if schedule["ownerTeam"]["id"] == team_identifier:
-                    event.attributes[cache_key] = schedule
-                    return schedule
+                team_id = schedule["ownerTeam"]["id"]
+                if team_id in team_ids:
+                    schedule_id = schedule["id"]
+                    if schedule_id not in unique_schedule_ids:
+                        schedules[schedule_id] = schedule
+                        unique_schedule_ids.add(schedule_id)
 
-        return {}
+        return schedules

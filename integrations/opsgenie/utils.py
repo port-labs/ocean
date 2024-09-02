@@ -17,3 +17,10 @@ RESOURCE_API_VERSIONS = {
     ObjectKind.INCIDENT: "v1",
     ObjectKind.SCHEDULE: "v2",
 }
+
+
+class ResourceKindsWithSpecialHandling(StrEnum):
+    SERVICE = ObjectKind.SERVICE
+    ALERT = ObjectKind.ALERT
+    INCIDENT = ObjectKind.INCIDENT
+    SCHEDULE = ObjectKind.SCHEDULE

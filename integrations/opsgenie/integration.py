@@ -22,6 +22,7 @@ class APIQueryParams(BaseModel):
         alias="snoozedUntil",
         description="The date and time the alert was snoozed until",
     )
+    message: str | None = Field(description="The message of the alert or incident")
     status: Literal["open", "resolved", "closed"] | None = Field(
         description="The status of the alert"
     )
@@ -62,6 +63,19 @@ class APIQueryParams(BaseModel):
         allow_population_by_field_name = True
 
 
+class ScheduleAPIQueryParams(BaseModel):
+    expand: Literal["rotation"] | None = Field(
+        description="The field to expand in the response"
+    )
+
+    def generate_request_params(self) -> dict[str, Any]:
+        value = self.dict(exclude_none=True)
+        if expand := value.pop("expand", None):
+            value["expand"] = expand
+
+        return value
+
+
 class AlertAndIncidentResourceConfig(ResourceConfig):
     class AlertAndIncidentSelector(Selector):
         api_query_params: APIQueryParams | None = Field(
@@ -73,10 +87,21 @@ class AlertAndIncidentResourceConfig(ResourceConfig):
     selector: AlertAndIncidentSelector
 
 
+class ScheduleResourceConfig(ResourceConfig):
+    class ScheduleSelector(Selector):
+        api_query_params: ScheduleAPIQueryParams | None = Field(
+            alias="apiQueryParams",
+            description="The query parameters to filter schedules",
+        )
+
+    kind: Literal["schedule"]
+    selector: ScheduleSelector
+
+
 class OpsGeniePortAppConfig(PortAppConfig):
-    resources: list[AlertAndIncidentResourceConfig | ResourceConfig] = Field(
-        default_factory=list
-    )
+    resources: list[
+        AlertAndIncidentResourceConfig | ScheduleResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class OpsGenieIntegration(BaseIntegration):

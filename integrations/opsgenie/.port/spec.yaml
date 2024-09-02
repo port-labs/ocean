@@ -8,6 +8,8 @@ features:
       - kind: alert
       - kind: service
       - kind: incident
+      - kind: schedule
+      - kind: team
 configurations:
   - name: apiToken
     required: true

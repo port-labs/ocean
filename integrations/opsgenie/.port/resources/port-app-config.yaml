@@ -1,6 +1,39 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"opsGenieTeam"'
+          properties:
+            description: .description
+            url: .links.web
+  - kind: schedule
+    selector:
+      query: 'true'
+      apiQueryParams:
+        expand: rotation
+    port:
+      itemsToParse: .rotations
+      entity:
+        mappings:
+          identifier: .id + "_" + .item.id
+          title: .name + "_" + .item.name
+          blueprint: '"opsGenieSchedule"'
+          properties:
+            timezone: .timezone
+            description: .description
+            startDate: .item.startDate
+            endDate: .item.endDate
+            rotationType: .item.type
+            users: '[.item.participants[] | select(has("username")) | .username]'
+          relations:
+            ownerTeam: .ownerTeam.id
   - kind: service
     selector:
       query: 'true'
@@ -14,8 +47,6 @@ resources:
             description: .description
             url: .links.web
             tags: .tags
-            oncallTeam: .__team.name
-            teamMembers: '[.__team.members[].user.username]'
             oncallUsers: .__oncalls.onCallRecipients
   - kind: alert
     selector:
