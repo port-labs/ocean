@@ -1,5 +1,6 @@
 import asyncio
 import base64
+from re import sub
 from typing import Any, Optional, AsyncGenerator, cast
 
 import httpx
@@ -22,9 +23,13 @@ class Endpoints:
     ONPREM_ISSUES = "issues/list"
     SAAS_ISSUES = "issues/search"
     ANALYSIS = "activity_feed/list"
+    PORTFOLIO_DETAILS = "views/show"
+    PORTFOLIOS = "views/list"
 
 
 PAGE_SIZE = 100
+
+PORTFOLIO_VIEW_QUALIFIERS = ["VW", "SVW"]
 
 
 class SonarQubeClient:
@@ -467,6 +472,38 @@ class SonarQubeClient:
                 project_key=component["key"]
             )
             yield analysis_data
+
+    async def _get_all_portfolios(self) -> list[dict[str, Any]]:
+        logger.info(f"Fetching all portfolios in organization: {self.organization_id}")
+        response = await self.send_api_request(endpoint=Endpoints.PORTFOLIOS)
+        return response.get("views", [])
+    
+    async def get_portfolio_details(self, portfolio_key: str) -> dict[str, Any]:
+        logger.info(f"Fetching portfolio details for: {portfolio_key}")
+        response = await self.send_api_request(
+            endpoint=Endpoints.PORTFOLIO_DETAILS,
+            query_params={"key": portfolio_key},
+        )
+        return response
+    
+    def _get_portfolio_subportfolios(self, portfolio: dict[str, Any]) -> list[dict[str, Any]]:
+        logger.info(f"Fetching subportfolios for: {portfolio['key']}")
+        subportfolios = portfolio.get("subViews", []) or []
+        all_portfolios = []
+        for subportfolio in subportfolios:
+            if subportfolio.get("qualifier") in PORTFOLIO_VIEW_QUALIFIERS:
+                all_portfolios.append(subportfolio)
+            all_portfolios.extend(self._get_portfolio_subportfolios(subportfolio))
+        return all_portfolios
+        
+    async def get_all_portfolios(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        portfolios = await self._get_all_portfolios()
+
+        for portfolio in portfolios:
+            portfolio_data = await self.get_portfolio_details(portfolio["key"])
+            yield [portfolio_data]
+            yield self._get_portfolio_subportfolios(portfolio_data)
+
 
     def sanity_check(self) -> None:
         try:

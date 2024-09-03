@@ -19,6 +19,7 @@ class ObjectKind:
     ANALYSIS = "analysis"
     SASS_ANALYSIS = "saas_analysis"
     ONPREM_ANALYSIS = "onprem_analysis"
+    PORTFOLIOS = "portfolios"
 
 
 class SonarQubeComponentSearchFilter(BaseModel):

@@ -50,6 +50,12 @@ async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield analyses_list
 
 
+@ocean.on_resync(ObjectKind.PORTFOLIOS)
+async def on_portfolio_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for portfolio_list in sonar_client.get_all_portfolios():
+        yield portfolio_list
+
+
 @ocean.router.post("/webhook")
 async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
     logger.info(
