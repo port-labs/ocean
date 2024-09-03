@@ -1,0 +1,69 @@
+{
+  "identifier": "avg:system.disk.used/service:inventory-management/env:staging",
+  "title": "avg:system.disk.used{service:inventory-management, env:staging}",
+  "icon": null,
+  "blueprint": "datadogServiceMetric",
+  "team": [],
+  "properties": {
+    "query": "avg:system.disk.used",
+    "series": [
+      {
+        "end": 1725023705000,
+        "aggr": "avg",
+        "unit": [
+          {
+            "id": 2,
+            "name": "byte",
+            "family": "bytes",
+            "plural": "bytes",
+            "short_name": "B",
+            "scale_factor": 1
+          },
+          {}
+        ],
+        "scope": "env:staging,service:inventory-management",
+        "start": 1725023434000,
+        "length": 19,
+        "metric": "system.disk.used",
+        "tag_set": [],
+        "interval": 2,
+        "pointlist": [
+          [1725023434000, 979960627.2],
+          [1725023448000, 979960627.2],
+          [1725023464000, 979960627.2],
+          [1725023478000, 979960627.2],
+          [1725023494000, 979960627.2],
+          [1725023508000, 979960627.2],
+          [1725023524000, 979960627.2],
+          [1725023538000, 979961446.4],
+          [1725023554000, 979961446.4],
+          [1725023568000, 979961446.4],
+          [1725023584000, 979961446.4],
+          [1725023598000, 979970457.6],
+          [1725023614000, 979966361.6],
+          [1725023628000, 979966361.6],
+          [1725023644000, 979966361.6],
+          [1725023658000, 981703065.6],
+          [1725023674000, 981692416],
+          [1725023688000, 981692416],
+          [1725023704000, 979052134.4]
+        ],
+        "attributes": {},
+        "expression": "avg:system.disk.used{env:staging,service:inventory-management}",
+        "query_index": 0,
+        "display_name": "system.disk.used"
+      }
+    ],
+    "res_type": "time_series",
+    "from_date": "2024-08-30T13:10:19Z",
+    "to_date": "2024-08-30T13:15:19Z",
+    "env": "staging"
+  },
+  "relations": {
+    "service": "inventory-management"
+  },
+  "createdAt": "2024-08-29T15:25:14.919Z",
+  "createdBy": "<port-client-id>",
+  "updatedAt": "2024-08-30T13:15:19.735Z",
+  "updatedBy": "<port-client-id>"
+}

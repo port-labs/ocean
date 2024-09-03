@@ -1,4 +1,3 @@
-import base64
 import http
 import os
 import tempfile
@@ -29,15 +28,22 @@ from gcp_core.search.resource_searches import (
 from gcp_core.utils import (
     AssetTypesWithSpecialHandling,
     get_current_resource_config,
+    get_credentials_json,
+    resolve_request_controllers,
 )
 
 
-def _resolve_resync_method_for_resource(
+async def _resolve_resync_method_for_resource(
     kind: str,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     match kind:
         case AssetTypesWithSpecialHandling.TOPIC:
-            return iterate_per_available_project(list_all_topics_per_project)
+            topic_rate_limiter, _ = await resolve_request_controllers(kind)
+            return iterate_per_available_project(
+                list_all_topics_per_project,
+                asset_type=kind,
+                rate_limiter=topic_rate_limiter,
+            )
         case AssetTypesWithSpecialHandling.FOLDER:
             return search_all_folders()
         case AssetTypesWithSpecialHandling.ORGANIZATION:
@@ -45,7 +51,15 @@ def _resolve_resync_method_for_resource(
         case AssetTypesWithSpecialHandling.PROJECT:
             return search_all_projects()
         case _:
-            return iterate_per_available_project(search_all_resources, asset_type=kind)
+            asset_rate_limiter, asset_semaphore = await resolve_request_controllers(
+                kind
+            )
+            return iterate_per_available_project(
+                search_all_resources,
+                asset_type=kind,
+                rate_limiter=asset_rate_limiter,
+                semaphore=asset_semaphore,
+            )
 
 
 @ocean.on_start()
@@ -55,8 +69,8 @@ async def setup_application_default_credentials() -> None:
             "Using integration's environment Application Default Credentials configuration"
         )
         return
-    b64_credentials = ocean.integration_config["encoded_adc_configuration"]
-    credentials_json = base64.b64decode(b64_credentials).decode("utf-8")
+    credentials_json = get_credentials_json()
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
         temp_file.write(credentials_json.encode("utf-8"))
         credentials_path = temp_file.name
@@ -85,7 +99,12 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(kind=AssetTypesWithSpecialHandling.TOPIC)
 async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for batch in iterate_per_available_project(list_all_topics_per_project):
+    topic_rate_limiter, _ = await resolve_request_controllers(kind)
+    async for batch in iterate_per_available_project(
+        list_all_topics_per_project,
+        asset_type=kind,
+        topic_rate_limiter=topic_rate_limiter,
+    ):
         yield batch
 
 
@@ -94,8 +113,12 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(AssetTypesWithSpecialHandling):
         logger.debug("Kind already has a specific handling, skipping")
         return
+    asset_rate_limiter, asset_semaphore = await resolve_request_controllers(kind)
     async for batch in iterate_per_available_project(
-        search_all_resources, asset_type=kind
+        search_all_resources,
+        asset_type=kind,
+        rate_limiter=asset_rate_limiter,
+        semaphore=asset_semaphore,
     ):
         yield batch
 
@@ -109,7 +132,9 @@ async def resync_cloud_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
             f"Found Cloud Resource kind {resource_kind}, finding relevant resources.."
         )
-        iterator_resync_method = _resolve_resync_method_for_resource(resource_kind)
+        iterator_resync_method = await _resolve_resync_method_for_resource(
+            resource_kind
+        )
         async for resources_batch in iterator_resync_method:
             yield resources_batch
 
