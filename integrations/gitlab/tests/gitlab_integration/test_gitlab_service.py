@@ -13,6 +13,12 @@ def mock_search(page: int, *args: Any, **kwargs: Any) -> Any:
             {"path": "hello/my/file2.yaml"},
             {"path": "hello/my/file3.yaml"},
         ]
+    elif page == 3:
+        return [
+            {"path": "hello/my/file.yml"},
+            {"path": "hello/my/file.json"},
+            {"path": "hello/my/file.md"},
+        ]
     else:
         return None
 
@@ -63,7 +69,7 @@ async def test_search_files_in_project(
     assert actual_files == expected_files
 
 
-async def test_search_files_inside_folder_inside_folder_in_project(
+async def test_search_generic_files_inside_folder_inside_folder_in_project(
     monkeypatch: Any,
     mocked_gitlab_service: GitlabService,
     mock_get_and_parse_single_file: Any,
@@ -78,6 +84,9 @@ async def test_search_files_inside_folder_inside_folder_in_project(
         "hello/my/file.yaml",
         "hello/my/file2.yaml",
         "hello/my/file3.yaml",
+        "hello/my/file.yml",
+        "hello/my/file.json",
+        "hello/my/file.md",
     ]
     # Act
     actual_files = []
@@ -87,7 +96,7 @@ async def test_search_files_inside_folder_inside_folder_in_project(
         actual_files.extend(file)
 
     # Assert
-    assert len(actual_files) == 4
+    assert len(actual_files) == 7
     assert actual_files == expected_files
 
 
