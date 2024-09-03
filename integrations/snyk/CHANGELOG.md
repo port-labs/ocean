@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.84 (2024-09-03)
+
+
+### Features
+
+- Supported multiple organization IDs in spec.yaml file
+
+
 ## 0.1.83 (2024-09-01)
 
 
