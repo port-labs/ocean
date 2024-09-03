@@ -1,10 +1,10 @@
 from typing import Any
-from loguru import logger
 
-from client import SonarQubeClient
+from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+from client import SonarQubeClient
 from integration import ObjectKind
 
 
