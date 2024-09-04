@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-# Port_Ocean 0.1.7 (2024-08-28)
+# Port_Ocean 0.1.8 (2024-09-04)
 
 ### Improvements
 
 - Updated the integration to ingest resources from all spaces instead of the default space
+
+
+# Port_Ocean 0.1.7 (2024-09-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.10.8 (#1)
 
 
 # Port_Ocean 0.1.6 (2024-09-01)

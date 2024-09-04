@@ -56,6 +56,8 @@ jobs:
       contents: read
     needs: [prepare-matrix]
     strategy:
+      # limit the number of parallel jobs to avoid hitting the ghcr.io rate limit
+      max-parallel: 15
       matrix:
         integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     steps:
