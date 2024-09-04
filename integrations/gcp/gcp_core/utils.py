@@ -12,7 +12,7 @@ from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from gcp_core.overrides import GCPCloudResourceConfig
 from port_ocean.context.ocean import ocean
 import json
-
+from pathlib import Path
 from gcp_core.helpers.ratelimiter.overrides import (
     SearchAllResourcesQpmPerProject,
     PubSubAdministratorPerMinutePerProject,
@@ -22,7 +22,9 @@ search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
 pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
 
 EXTRA_PROJECT_FIELD = "__project"
-DEFAULT_CREDENTIALS_FILE_PATH = "~/.config/gcloud/application_default_credentials.json"
+DEFAULT_CREDENTIALS_FILE_PATH = (
+    f"{Path.home()}/.config/gcloud/application_default_credentials.json"
+)
 
 if typing.TYPE_CHECKING:
     from aiolimiter import AsyncLimiter
@@ -87,9 +89,9 @@ def get_credentials_json() -> str:
             )
             with open(file_path, "r", encoding="utf-8") as file:
                 credentials_json = file.read()
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             raise FileNotFoundError(
-                "Couldn't find the google credentials file. Please set the GOOGLE_APPLICATION_CREDENTIALS environment variable or place the credentials file at ~/.config/gcloud/application_default_credentials.json"
+                f"Couldn't find the google credentials file. Please set the GOOGLE_APPLICATION_CREDENTIALS environment variable or place the credentials file at ~/.config/gcloud/application_default_credentials.json. Error: {str(e)}"
             )
     return credentials_json
 
@@ -98,7 +100,7 @@ def get_service_account_project_id() -> str:
     "get project id associated with service account"
     try:
         default_credentials = json.loads(get_credentials_json())
-        project_id = default_credentials["project_id"]
+        project_id = default_credentials["quota_project_id"]
         return project_id
     except FileNotFoundError as e:
         gcp_project_env = os.getenv("GCP_PROJECT")
@@ -106,16 +108,17 @@ def get_service_account_project_id() -> str:
             return gcp_project_env
         else:
             ValueError(
-                f"Coudn't figure out the service account's project id. You can specify it usign the GCP_PROJECT environment variable. Error: {str(e)}"
+                f"Couldn't figure out the service account's project id. You can specify it usign the GCP_PROJECT environment variable. Error: {str(e)}"
             )
+    except KeyError as e:
+        raise ValueError(
+            f"Couldn't figure out the service account's project id. Key: {str(e)} doesn't exist in the credentials file."
+        )
     except Exception as e:
         raise ValueError(
-            f"Coudn't figure out the service account's project id. Error: {str(e)}"
+            f"Couldn't figure out the service account's project id. Error: {str(e)}"
         )
-    finally:
-        raise FileNotFoundError(
-            "Couldn't find the google credentials file. Please set the GOOGLE_APPLICATION_CREDENTIALS environment variable or place the credentials file at ~/.config/gcloud/application_default_credentials.json"
-        )
+    raise ValueError(f"Couldn't figure out the service account's project id.")
 
 
 async def resolve_request_controllers(
