@@ -125,10 +125,9 @@ resources:
           title: .name
           properties:
             description: .description
-            originalKey: .originalKey
-            visibility: .visibility | ascii_upcase
-            selectionMode: .selectionMode | ascii_upcase
+            visibility: if .visibility then .visibility | ascii_upcase else null end
+            selectionMode: if .selectionMode then .selectionMode | ascii_upcase else null end
             disabled: .disabled
           relations:
-            subPortfolios: .subViews | map(select((.qualifier | IN("VW", "SVW")))) | .[].key
-            referencedBy: .referencedBy | map(select((.qualifier | IN("VW", "SVW")))) | .[].key
+            subPortfolios: .subViews | map(select((.qualifier | IN("VW", "SVW"))) | .key)
+            referencedBy: .referencedBy | map(select((.qualifier | IN("VW", "SVW"))) | .key)

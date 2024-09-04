@@ -252,10 +252,6 @@
           "type": "string",
           "title": "Description"
         },
-        "originalKey": {
-          "type": "string",
-          "title": "Original Key"
-        },
         "visibility": {
           "type": "string",
           "title": "Visibility",
