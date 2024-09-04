@@ -290,6 +290,11 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 if remaining_attempts < 1:
                     self._log_error(request, error)
                     raise
+            except httpx.ReadTimeout as e:
+                error = e
+                if remaining_attempts < 1:
+                    self._log_error(request, error)
+                    raise
             except httpx.TimeoutException as e:
                 error = e
                 if remaining_attempts < 1:
