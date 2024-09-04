@@ -41,34 +41,31 @@ async def setup_application() -> None:
         return
     octopus_client = await init_client()
     async for spaces in octopus_client.get_all_spaces():
-        for space in spaces:
-            async for subscriptions in octopus_client.get_webhook_subscriptions(
-                space.get("Id")
-            ):
+        space_tasks = [
+            (space.get("Id"), octopus_client.get_webhook_subscriptions(space.get("Id")))
+            for space in spaces
+            if space.get("Id")
+        ]
+
+        for space_id, task in space_tasks:
+            async for subscriptions in task:
+                logger.warning(f"Received {subscriptions} for space {space_id}")
                 existing_webhook_uris = {
                     subscription.get("EventNotificationSubscription", {}).get(
                         "WebhookURI"
                     )
                     for subscription in subscriptions
                 }
-                existing_webhook_names = [
-                    subscription.get("Name", "") for subscription in subscriptions
-                ]
                 webhook_uri = f"{app_host}/integration/webhook"
                 if webhook_uri in existing_webhook_uris:
-                    logger.info(f"Webhook already exists with URI: {webhook_uri}")
-                elif any(
-                    name.startswith("Port Subscription -")
-                    for name in existing_webhook_names
-                ):
                     logger.info(
-                        "Webhook already exists with name starting with 'Port Subscription -'"
+                        f"Webhook already exists with URI: {webhook_uri} for space {space_id}"
                     )
                 else:
-                    await octopus_client.create_webhook_subscription(
-                        app_host, space.get("Id")
+                    await octopus_client.create_webhook_subscription(app_host, space_id)
+                    logger.info(
+                        f"Webhook created with URI: {webhook_uri} for space {space_id}"
                     )
-                    logger.info(f"Webhook created with URI: {webhook_uri}")
 
 
 @ocean.on_resync()
@@ -80,6 +77,7 @@ async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         tasks = [
             octopus_client.get_paginated_resources(kind, path_parameter=space["Id"])
             for space in spaces
+            if space["Id"]
         ]
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
@@ -98,6 +96,7 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle the webhook request from Octopus Deploy.
     """
+    logger.warning(f"Received webhook event: {data}")
     payload = data.get("Payload", {}).get("Event", {})
     related_document_ids = payload.get("RelatedDocumentIds", [])
     event_category = payload.get("Category", "")
@@ -115,6 +114,9 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
             logger.info(f"Received webhook event with ID: {resource_id}")
             resource_prefix = resource_id.split("-")[0].lower()
             if resource_prefix in TRACKED_EVENTS:
+                if resource_prefix == ObjectKind.SPACE:
+                    await client.get_single_space(space_id)
+                    return {"ok": True}
                 kind = ObjectKind(resource_prefix.rstrip("s"))
                 try:
                     resource_data = await client.get_single_resource(

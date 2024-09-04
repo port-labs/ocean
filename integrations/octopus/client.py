@@ -87,6 +87,10 @@ class OctopusClient:
         """Get a single resource by kind and ID."""
         return await self._send_api_request(f"{space_id}/{resource_kind}/{resource_id}")
 
+    async def get_single_space(self, space_id: str) -> dict[str, Any]:
+        """Get a single space by ID."""
+        return await self._send_api_request(f"{ObjectKind.SPACE}s/{space_id}")
+
     @cache_iterator_result()
     async def get_all_spaces(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all spaces in the Octopus instance."""
@@ -104,7 +108,7 @@ class OctopusClient:
                 "WebhookTimeout": WEBHOOK_TIMEOUT,
             },
             "IsDisabled": False,
-            "Name": f"Port Subscription - {space_id}",
+            "Name": f"Port Subscription - {app_host}",
             "SpaceId": space_id,
         }
         logger.info(
