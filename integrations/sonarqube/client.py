@@ -43,6 +43,7 @@ class SonarQubeClient:
         self.is_onpremise = is_onpremise
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
+        self.metrics: list[str] = []
 
     @property
     def api_auth_params(self) -> dict[str, Any]:
