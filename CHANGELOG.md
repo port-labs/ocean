@@ -12,7 +12,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Bug Fixes
 
 - Avoid raising exception when receiving ReadTimeout on batch upsert entities
-- Increased timeout to handle long heavy upsert request from Port
+- Increased httpx client's timeout to handle long requests
 
 
 ## 0.10.7 (2024-08-28)
