@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.51 (2024-09-04)
+
+
+### Improvements
+
+- Improved user experience when using GCP Quotas- Added validation and used environmental variables in order to get the information the integration needs to get the project + quota of that project.
+
+
 ## 0.1.50 (2024-09-01)
 
 
