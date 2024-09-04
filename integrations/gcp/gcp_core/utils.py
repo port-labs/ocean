@@ -107,7 +107,7 @@ def get_service_account_project_id() -> str:
         if isinstance(gcp_project_env, str):
             return gcp_project_env
         else:
-            ValueError(
+            raise ValueError(
                 f"Couldn't figure out the service account's project id. You can specify it usign the GCP_PROJECT environment variable. Error: {str(e)}"
             )
     except KeyError as e:
