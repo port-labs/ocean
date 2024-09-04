@@ -614,6 +614,23 @@ protobuf = ">=3.20.2,<4.21.0 || >4.21.0,<4.21.1 || >4.21.1,<4.21.2 || >4.21.2,<4
 libcst = ["libcst (>=0.3.10)"]
 
 [[package]]
+name = "google-cloud-quotas"
+version = "0.1.10"
+description = "Google Cloud Quotas API client library"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "google_cloud_quotas-0.1.10-py3-none-any.whl", hash = "sha256:9d39bf10c35580967ef4da08daf46390a7f48c7bcd0bfde8acaee6f6c599a6c5"},
+    {file = "google_cloud_quotas-0.1.10.tar.gz", hash = "sha256:f56ed8a7a373e720381afc8780ab7ac065b5f11ef70a1cfa93f838c21b5cddfa"},
+]
+
+[package.dependencies]
+google-api-core = {version = ">=1.34.1,<2.0.dev0 || >=2.11.dev0,<3.0.0dev", extras = ["grpc"]}
+google-auth = ">=2.14.1,<2.24.0 || >2.24.0,<2.25.0 || >2.25.0,<3.0.0dev"
+proto-plus = ">=1.22.3,<2.0.0dev"
+protobuf = ">=3.20.2,<4.21.0 || >4.21.0,<4.21.1 || >4.21.1,<4.21.2 || >4.21.2,<4.21.3 || >4.21.3,<4.21.4 || >4.21.4,<4.21.5 || >4.21.5,<6.0.0dev"
+
+[[package]]
 name = "google-cloud-resource-manager"
 version = "1.12.5"
 description = "Google Cloud Resource Manager API client library"
@@ -1174,13 +1191,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "port-ocean"
-version = "0.10.7"
+version = "0.10.8"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "port_ocean-0.10.7-py3-none-any.whl", hash = "sha256:573f8a6b6ff45a06c1acdb3af40a6be36ea6600be3d78727768dd20ccb286b78"},
-    {file = "port_ocean-0.10.7.tar.gz", hash = "sha256:443589fdbcad88adb9f746d6bd3dbad9d03e39a466de05a36a575aee2dfc5198"},
+    {file = "port_ocean-0.10.8-py3-none-any.whl", hash = "sha256:47e0fe09af5d789dbec378310e9ceb5635c01e5d30638ab9d5a3df1c9d422508"},
+    {file = "port_ocean-0.10.8.tar.gz", hash = "sha256:24ebc6a8db0db41d2f1ecb0cb47ad4cc8d662e415696b503e6ae7561bb3caafc"},
 ]
 
 [package.dependencies]
@@ -1686,13 +1703,13 @@ files = [
 
 [[package]]
 name = "setuptools"
-version = "74.0.0"
+version = "74.1.1"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "setuptools-74.0.0-py3-none-any.whl", hash = "sha256:0274581a0037b638b9fc1c6883cc71c0210865aaa76073f7882376b641b84e8f"},
-    {file = "setuptools-74.0.0.tar.gz", hash = "sha256:a85e96b8be2b906f3e3e789adec6a9323abf79758ecfa3065bd740d81158b11e"},
+    {file = "setuptools-74.1.1-py3-none-any.whl", hash = "sha256:fc91b5f89e392ef5b77fe143b17e32f65d3024744fba66dc3afe07201684d766"},
+    {file = "setuptools-74.1.1.tar.gz", hash = "sha256:2353af060c06388be1cecbf5953dcdb1f38362f87a2356c480b6b4d5fcfc8847"},
 ]
 
 [package.extras]
@@ -2169,4 +2186,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "39f1351334f3de1f696bc72b6833db03e061571c27a360ab8955cf8c9896d8fd"
+content-hash = "838d8e517c5203d156f89cf384f58550be0929a85ec3861cc878bea692af5805"
