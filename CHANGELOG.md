@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.8 (2024-09-04)
+
+### Bug Fixes
+
+- Avoid raising exception when receiving ReadTimeout on batch upsert entities
+- Increased both internal port client and third party client timeout to handle long requests
+
+
 ## 0.10.7 (2024-08-28)
 
 ### Improvements
