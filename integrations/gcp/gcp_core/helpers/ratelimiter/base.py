@@ -121,9 +121,7 @@ class GCPResourceRateLimiter(GCPResourceQuota):
         logger.info(
             f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {quota} for rate limiting."
         )
-        return AsyncLimiter(
-            max_rate=quota * _PERCENTAGE_OF_QUOTA, time_period=self.time_period
-        )
+        return AsyncLimiter(max_rate=quota, time_period=self.time_period)
 
     @cache_coroutine_result()
     async def register(self, container_id: str, *arg: Optional[Any]) -> AsyncLimiter:
