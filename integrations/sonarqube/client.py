@@ -473,7 +473,9 @@ class SonarQubeClient:
             yield analysis_data
 
     async def _get_all_portfolios(self) -> list[dict[str, Any]]:
-        logger.info(f"Fetching all root portfolios in organization: {self.organization_id}")
+        logger.info(
+            f"Fetching all root portfolios in organization: {self.organization_id}"
+        )
         response = await self.send_api_request(endpoint=Endpoints.PORTFOLIOS)
         return response.get("views", [])
 
@@ -485,9 +487,7 @@ class SonarQubeClient:
         )
         return response
 
-    def _extract_subportfolios(
-        self, portfolio: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    def _extract_subportfolios(self, portfolio: dict[str, Any]) -> list[dict[str, Any]]:
         logger.info(f"Fetching subportfolios for: {portfolio['key']}")
         subportfolios = portfolio.get("subViews", []) or []
         all_portfolios = []
@@ -505,7 +505,10 @@ class SonarQubeClient:
         try:
             portfolio_keys = [portfolio["key"] for portfolio in portfolios]
             portfolios_data = await asyncio.gather(
-                *[self.get_portfolio_details(portfolio_key) for portfolio_key in portfolio_keys]
+                *[
+                    self.get_portfolio_details(portfolio_key)
+                    for portfolio_key in portfolio_keys
+                ]
             )
             for portfolio_data in portfolios_data:
                 yield [portfolio_data]
