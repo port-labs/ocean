@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional, TYPE_CHECKING, final
 
 from aiolimiter import AsyncLimiter
-from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest  # type: ignore
+from google.cloud.cloudquotas_v1 import CloudQuotasAsyncClient, GetQuotaInfoRequest
 from google.api_core.exceptions import GoogleAPICallError
 from loguru import logger
 from enum import Enum
