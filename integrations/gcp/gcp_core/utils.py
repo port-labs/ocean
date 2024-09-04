@@ -5,6 +5,7 @@ import typing
 from collections.abc import MutableSequence
 from typing import Any, TypedDict, Tuple
 
+from loguru import logger
 import proto  # type: ignore
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
@@ -124,21 +125,37 @@ def get_service_account_project_id() -> str:
 async def resolve_request_controllers(
     kind: str,
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
-    service_account_project_id = get_service_account_project_id()
+    try:
+        service_account_project_id = get_service_account_project_id()
 
-    if kind == AssetTypesWithSpecialHandling.TOPIC:
-        topic_rate_limiter = await pubsub_administrator_per_minute_per_project.limiter(
+        if kind == AssetTypesWithSpecialHandling.TOPIC:
+            topic_rate_limiter = (
+                await pubsub_administrator_per_minute_per_project.limiter(
+                    service_account_project_id
+                )
+            )
+            topic_semaphore = (
+                await pubsub_administrator_per_minute_per_project.semaphore(
+                    service_account_project_id
+                )
+            )
+            return (topic_rate_limiter, topic_semaphore)
+
+        asset_rate_limiter = await search_all_resources_qpm_per_project.limiter(
             service_account_project_id
         )
-        topic_semaphore = await pubsub_administrator_per_minute_per_project.semaphore(
+        asset_semaphore = await search_all_resources_qpm_per_project.semaphore(
             service_account_project_id
         )
-        return (topic_rate_limiter, topic_semaphore)
-
-    asset_rate_limiter = await search_all_resources_qpm_per_project.limiter(
-        service_account_project_id
-    )
-    asset_semaphore = await search_all_resources_qpm_per_project.semaphore(
-        service_account_project_id
-    )
-    return (asset_rate_limiter, asset_semaphore)
+        return (asset_rate_limiter, asset_semaphore)
+    except Exception as e:
+        logger.warning(
+            f"Failed to compute quota dynamically due to error. Will use default values. Error: {str(e)}"
+        )
+        default_rate_limiter = (
+            await search_all_resources_qpm_per_project.default_rate_limiter()
+        )
+        default_semaphore = (
+            await search_all_resources_qpm_per_project.default_semaphore()
+        )
+        return (default_rate_limiter, default_semaphore)

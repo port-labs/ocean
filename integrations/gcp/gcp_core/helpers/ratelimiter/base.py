@@ -116,6 +116,15 @@ class GCPResourceRateLimiter(GCPResourceQuota):
 
     time_period: float = _DEFAULT_RATE_LIMIT_TIME_PERIOD
 
+    async def default_rate_limiter(self) -> AsyncLimiter:
+        quota = int(max(round(self._default_quota * _PERCENTAGE_OF_QUOTA, 1), 1))
+        logger.info(
+            f"The Integration will utilize {_PERCENTAGE_OF_QUOTA * 100}% of the quota, which equates to {quota} for rate limiting."
+        )
+        return AsyncLimiter(
+            max_rate=quota * _PERCENTAGE_OF_QUOTA, time_period=self.time_period
+        )
+
     @cache_coroutine_result()
     async def register(self, container_id: str, *arg: Optional[Any]) -> AsyncLimiter:
         quota = await self._get_quota(container_id, *arg)
@@ -146,6 +155,12 @@ class ResourceBoundedSemaphore(GCPResourceRateLimiter):
     """
 
     default_maximum_limit: int = MAXIMUM_CONCURRENT_REQUESTS
+
+    async def default_semaphore(self) -> asyncio.BoundedSemaphore:
+        logger.info(
+            f"The integration will process {self.default_maximum_limit} at a time based on the default maximum limit."
+        )
+        return asyncio.BoundedSemaphore(self.default_maximum_limit)
 
     @cache_coroutine_result()
     async def semaphore(
