@@ -78,7 +78,7 @@ def get_current_resource_config() -> (
 
 def get_credentials_json() -> str:
     credentials_json = ""
-    if ocean.integration_config["encoded_adc_configuration"]:
+    if ocean.integration_config.get("encoded_adc_configuration"):
         b64_credentials = ocean.integration_config["encoded_adc_configuration"]
         credentials_json = base64.b64decode(b64_credentials).decode("utf-8")
     else:
@@ -91,7 +91,7 @@ def get_credentials_json() -> str:
                 credentials_json = file.read()
         except FileNotFoundError as e:
             raise FileNotFoundError(
-                f"Couldn't find the google credentials file. Please set the GOOGLE_APPLICATION_CREDENTIALS environment variable or place the credentials file at ~/.config/gcloud/application_default_credentials.json. Error: {str(e)}"
+                f"Couldn't find the google credentials file. Please set the GOOGLE_APPLICATION_CREDENTIALS environment variable properly. Error: {str(e)}"
             )
     return credentials_json
 
