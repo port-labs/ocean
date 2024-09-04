@@ -118,7 +118,7 @@ def get_service_account_project_id() -> str:
         raise ValueError(
             f"Couldn't figure out the service account's project id. Error: {str(e)}"
         )
-    raise ValueError(f"Couldn't figure out the service account's project id.")
+    raise ValueError("Couldn't figure out the service account's project id.")
 
 
 async def resolve_request_controllers(
