@@ -1,6 +1,5 @@
 from typing import Any
 from unittest.mock import MagicMock
-from gitlab.v4.objects import ProjectFile
 from gitlab_integration.gitlab_service import GitlabService
 
 
