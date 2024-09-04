@@ -9,10 +9,7 @@
     "disabled": null
   },
   "relations": {
-    "subPortfolios": [
-      "GetPort_SelfService_Second",
-      "Python"
-    ],
+    "subPortfolios": ["GetPort_SelfService_Second", "Python"],
     "referencedBy": []
   }
 }

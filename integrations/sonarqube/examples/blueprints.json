@@ -15,10 +15,7 @@
       "visibility": {
         "type": "string",
         "title": "Visibility",
-        "enum": [
-          "PUBLIC",
-          "PRIVATE"
-        ],
+        "enum": ["PUBLIC", "PRIVATE"],
         "enumColors": {
           "PUBLIC": "green",
           "PRIVATE": "lightGray"
@@ -27,11 +24,7 @@
       "selectionMode": {
         "type": "string",
         "title": "Selection Mode",
-        "enum": [
-          "AUTO",
-          "MANUAL",
-          "NONE"
-        ],
+        "enum": ["AUTO", "MANUAL", "NONE"],
         "enumColors": {
           "AUTO": "blue",
           "MANUAL": "green",

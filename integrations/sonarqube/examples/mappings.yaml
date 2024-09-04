@@ -3,7 +3,7 @@ deleteDependentEntities: true
 resources:
   - kind: portfolios
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
