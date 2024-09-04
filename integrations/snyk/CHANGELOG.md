@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Allowed users to provide multiple organization IDs to existing organizationId in spec.yaml file
+- Allowed users to provide multiple organization IDs to the integration using the existing `organizationId` param in the spec.yaml file
 
 
 ## 0.1.84 (2024-09-04)
