@@ -161,7 +161,8 @@ class AzureDevopsClient(HTTPBaseClient):
                 work_items = await self._fetch_work_items_in_batches(
                     project["id"], work_item_ids
                 )
-                logger.info(f"Received {len(work_items)} work items")
+                logger.debug(f"Received {len(work_items)} work items")
+
                 # Call the private method to add __projectId to each work item
                 work_items = self._add_project_details_to_work_items(
                     work_items, project
