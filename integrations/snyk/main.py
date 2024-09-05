@@ -35,10 +35,9 @@ def generate_signature(payload: bytes, secret: str) -> str:
     return f"sha256={hmac_obj.hexdigest()}"
 
 
-
 def init_client() -> SnykClient:
     def parse_list(value: str) -> list[str]:
-        return [item.strip() for item in value.split(',')] if value else None
+        return [item.strip() for item in value.split(",")] if value else None
 
     return SnykClient(
         ocean.integration_config["token"],
@@ -48,6 +47,7 @@ def init_client() -> SnykClient:
         parse_list(ocean.integration_config.get("groups", "")),
         ocean.integration_config.get("webhook_secret"),
     )
+
 
 async def process_project_issues(
     semaphore: asyncio.Semaphore, project: dict[str, Any]
