@@ -28,8 +28,8 @@ class SnykClient:
         token: str,
         api_url: str,
         app_host: str | None,
-        organization_ids: str | None,
-        group_ids: str | None,
+        organization_ids: list[str, Any] | None,
+        group_ids: list[str, Any] | None,
         webhook_secret: str | None,
     ):
         self.token = token
@@ -408,13 +408,9 @@ class SnykClient:
         all_organizations = await self.get_all_organizations()
 
         if self.organization_ids:
-            organizations = [
-                organization_id.strip()
-                for organization_id in self.organization_ids.split(",")
-            ]
             logger.info(f"Specified organization ID(s): {self.organization_ids}")
             matching_organization = [
-                org for org in all_organizations if org["id"] in organizations
+                org for org in all_organizations if org["id"] in self.organization_ids
             ]
             logger.info(
                 f"Fetched {len(matching_organization)} organizations for the given organization ID(s)."
@@ -428,16 +424,13 @@ class SnykClient:
                 )
                 return []
         elif self.group_ids:
-            groups = self.group_ids.split(",")
-
             logger.info(
-                f"Found {len(groups)} groups to filter. Group IDs: {str(groups)}. Getting all organizations associated with these groups"
+                f"Found {len(self.group_ids)} groups to filter. Group IDs: {str(self.group_ids)}. Getting all organizations associated with these groups"
             )
-
             matching_organizations_in_groups = [
                 org
                 for org in all_organizations
-                if org.get("attributes") and org["attributes"].get("group_id") in groups
+                if org.get("attributes") and org["attributes"].get("group_id") in self.group_ids
             ]
 
             logger.info(

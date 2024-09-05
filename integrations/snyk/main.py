@@ -36,13 +36,15 @@ def generate_signature(payload: bytes, secret: str) -> str:
 
 
 def init_client() -> SnykClient:
+    config = ocean.integration_config
+    parse_ids = lambda key: [id_.strip() for id_ in config.get(key, "").split(",")] if config.get(key) else None
     return SnykClient(
-        ocean.integration_config["token"],
-        ocean.integration_config["api_url"],
-        ocean.integration_config.get("app_host"),
-        ocean.integration_config.get("organization_id"),
-        ocean.integration_config.get("groups"),
-        ocean.integration_config.get("webhook_secret"),
+        config["token"],
+        config["api_url"],
+        config.get("app_host"),
+        parse_ids("organization_id"),
+        parse_ids("groups"),
+        config.get("webhook_secret"),
     )
 
 
