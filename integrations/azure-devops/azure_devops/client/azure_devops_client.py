@@ -163,7 +163,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 logger.info(f"Received {len(work_items)} work items")
                 # Call the private method to add __projectId to each work item
-                work_items = self._add_project_id_to_work_items(work_items, project["id"], project)
+                work_items = self._add_project_id_to_work_items(
+                    work_items, project["id"], project
+                )
                 yield work_items
 
     async def _fetch_work_item_ids(self, project_id: str) -> list[int]:
