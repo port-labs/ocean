@@ -129,5 +129,5 @@ resources:
             selectionMode: if .selectionMode then .selectionMode | ascii_upcase else null end
             disabled: .disabled
           relations:
-            subPortfolios: .subViews | map(select((.qualifier | IN("VW", "SVW"))) | .key)
-            referencedBy: .referencedBy | map(select((.qualifier | IN("VW", "SVW"))) | .key)
+            subPortfolios: .subViews | map(select(.qualifier as $qualifier | ["VW", "SVW"] | contains([$qualifier])) | .key)
+            referencedBy: .referencedBy | map(select(.qualifier as $qualifier | ["VW", "SVW"] | contains([$qualifier])) | .key)
