@@ -35,15 +35,22 @@ def generate_signature(payload: bytes, secret: str) -> str:
     return f"sha256={hmac_obj.hexdigest()}"
 
 
+def parse_ids(key: str, config: dict[str, Any]) -> list[str] | None:
+    return (
+        [id_.strip() for id_ in config.get(key, "").split(",")]
+        if config.get(key)
+        else None
+    )
+
+
 def init_client() -> SnykClient:
     config = ocean.integration_config
-    parse_ids = lambda key: [id_.strip() for id_ in config.get(key, "").split(",")] if config.get(key) else None
     return SnykClient(
         config["token"],
         config["api_url"],
         config.get("app_host"),
-        parse_ids("organization_id"),
-        parse_ids("groups"),
+        parse_ids("organization_id", config),
+        parse_ids("groups", config),
         config.get("webhook_secret"),
     )
 

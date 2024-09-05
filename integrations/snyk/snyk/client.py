@@ -28,8 +28,8 @@ class SnykClient:
         token: str,
         api_url: str,
         app_host: str | None,
-        organization_ids: list[str, Any] | None,
-        group_ids: list[str, Any] | None,
+        organization_ids: list[str] | None,
+        group_ids: list[str] | None,
         webhook_secret: str | None,
     ):
         self.token = token
@@ -430,7 +430,8 @@ class SnykClient:
             matching_organizations_in_groups = [
                 org
                 for org in all_organizations
-                if org.get("attributes") and org["attributes"].get("group_id") in self.group_ids
+                if org.get("attributes")
+                and org["attributes"].get("group_id") in self.group_ids
             ]
 
             logger.info(
