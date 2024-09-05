@@ -177,7 +177,9 @@ class AzureDevopsClient(HTTPBaseClient):
         :return: A list of work item IDs.
         """
         config = typing.cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
-        wiql_query = f"SELECT [Id] from WorkItems WHERE [System.AreaPath] = '{project['name']}'"
+        wiql_query = (
+            f"SELECT [Id] from WorkItems WHERE [System.AreaPath] = '{project['name']}'"
+        )
 
         if config.selector.wiql:
             # Append the user-provided wiql to the WHERE clause
@@ -187,7 +189,9 @@ class AzureDevopsClient(HTTPBaseClient):
         wiql_url = (
             f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
         )
-        logger.info(f"Fetching work item IDs for project {project['name']} using WIQL query {wiql_query}")
+        logger.info(
+            f"Fetching work item IDs for project {project['name']} using WIQL query {wiql_query}"
+        )
         wiql_response = await self.send_request(
             "POST",
             wiql_url,
