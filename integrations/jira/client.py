@@ -117,9 +117,11 @@ class JiraClient:
             yield projects["values"]
 
     async def _get_issues_from_sprint(
-        self, params: dict[str, str], sprint_state: SprintState
+        self, params: dict[str, str], sprint_state: SprintState | None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        sprint_params = {"state": sprint_state}
+        sprint_params = {}
+        if sprint_state:
+            sprint_params = {"state": sprint_state}
         async for sprints in self.get_all_sprints(sprint_params):
             for sprint in sprints:
                 async for issues in self._make_paginated_request(
@@ -147,7 +149,7 @@ class JiraClient:
         self,
         source: Literal["sprint", "all"],
         params: dict[str, Any] = {},
-        sprintState: SprintState = "active",
+        sprintState: SprintState | None = "active",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Running syncing for issues from source {}".format(source))
 
@@ -156,6 +158,7 @@ class JiraClient:
                 yield issues
             return
 
+        params.pop("state", None)
         async for issues in self._get_issues_from_org(params):
             yield issues
 

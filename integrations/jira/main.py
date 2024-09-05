@@ -55,7 +55,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
     config = typing.cast(JiraSprintResourceConfig, event.resource_config)
-    params = {"state": config.selector.state}
+    params = {}
+    if config.selector.state:
+        params["state"] = config.selector.state
+        logger.info(f"Found state filter: {config.selector.state}")
     async for sprints in client.get_all_sprints(params):
         logger.info(f"Received sprint batch with {len(sprints)} sprints")
         yield sprints
@@ -66,11 +69,16 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
     config = typing.cast(JiraIssueResourceConfig, event.resource_config)
     params = {}
+    # JQL filter only applies to the issues themselves, not the sprints
+    # if source is set to "sprint", it is redundant to have a JQL filter
+    # that does any filtering based on the state of the sprint
     if config.selector.jql:
         params["jql"] = config.selector.jql
         logger.info(f"Found JQL filter: {config.selector.jql}")
 
-    async for issues in client.get_all_issues(config.selector.source, params):
+    async for issues in client.get_all_issues(
+        config.selector.source, params, config.selector.sprintState
+    ):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 

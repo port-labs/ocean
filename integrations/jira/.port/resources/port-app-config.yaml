@@ -20,7 +20,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id | tostring
+          identifier: .name + "-" + (.id | tostring) | gsub("[^A-Za-z0-9@_.:\\\\/=-]"; "-")
           title: .name
           blueprint: '"jiraSprint"'
           properties:
@@ -55,7 +55,7 @@ resources:
             updated: .fields.updated
             resolutionDate: .fields.resolutiondate
           relations:
-            sprint: if .fields.sprint.id then .fields.sprint.id | tostring else '' end
+            sprint: if .fields.sprint.id then .fields.sprint.name + "-" + (.fields.sprint.id | tostring) | gsub("[^A-Za-z0-9@_.:\\\\/=-]"; "-") else '' end
             project: .fields.project.key
             parentIssue: .fields.parent.key
             subtasks: .fields.subtasks | map(.key)

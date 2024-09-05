@@ -17,21 +17,20 @@ class JiraIssueSelector(Selector):
         description="Jira Query Language (JQL) query to filter issues",
     )
     source: Literal["sprint", "all"] = Field(
-        default="sprint",
+        default="all",
         description="Where issues are sourced from",
     )
     # when resyncing issues, there is no way to retrieve the config
     # set for the `sprint` kind, so we need to duplicate the state
     # field. This is redundant, but necessary.
-    state: SprintState = Field(
-        alias="sprintState",
+    sprintState: SprintState | None = Field(
         default="active",
         description="State of the sprint",
     )
 
 
 class JiraSprintSelector(Selector):
-    state: SprintState = Field(
+    state: SprintState | None = Field(
         default="active",
         description="State of the sprint",
     )
