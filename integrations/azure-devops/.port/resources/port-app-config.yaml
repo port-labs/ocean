@@ -75,4 +75,4 @@ resources:
             createdDate: .fields."System.CreatedDate"
             changedDate: .fields."System.ChangedDate"
           relations:
-            project: .__projectId
+            project: .__projectId | gsub(" "; "")
