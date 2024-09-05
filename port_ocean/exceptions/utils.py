@@ -7,7 +7,3 @@ class SignalHandlerNotInitialized(OceanAbortException):
 
 class SignalHandlerAlreadyInitialized(OceanAbortException):
     pass
-
-
-class NoAsyncTasksFound(OceanAbortException):
-    pass
