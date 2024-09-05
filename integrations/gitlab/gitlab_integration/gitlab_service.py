@@ -603,12 +603,21 @@ class GitlabService:
         return include_bot_members or not member.username.__contains__("bot")
 
     async def get_all_group_members(
-        self, group: Group
+        self, group: Group, include_inherited: bool = False
     ) -> typing.AsyncIterator[List[GroupMember]]:
+        """
+        Fetches all members of a group
+        :param group: Group object
+        :param include_inherited: Whether to include members inherited through ancestor groups
+        :return: List of GroupMember objects
+        """
         try:
             logger.info(f"Fetching all members of group {group.name}")
+            fetch_func = (
+                group.members_all.list if include_inherited else group.members.list
+            )
             async for members_batch in AsyncFetcher.fetch_batch(
-                fetch_func=group.members.list,
+                fetch_func=fetch_func,
                 validation_func=self.should_run_for_members,
                 pagination="offset",
                 order_by="id",
@@ -633,7 +642,9 @@ class GitlabService:
         cached_member_ids = event.attributes.setdefault(
             MEMBERS_CACHE_KEY, {}
         ).setdefault(self.gitlab_client.private_token, [])
-        async for members_batch in self.get_all_group_members(group):
+        async for members_batch in self.get_all_group_members(
+            group, include_inherited=True
+        ):
             unsynced_members = [
                 member for member in members_batch if member.id not in cached_member_ids
             ]

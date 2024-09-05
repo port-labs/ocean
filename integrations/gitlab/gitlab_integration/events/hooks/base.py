@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Dict
 from loguru import logger
 from gitlab.v4.objects import Project, Group
 from gitlab_integration.gitlab_service import GitlabService
@@ -61,9 +61,12 @@ class GroupHandler(HookHandler):
     ) -> None:
         pass
 
-    async def _register_group(self, gitlab_group: Group) -> None:
+    async def _register_group(self, kind: str, gitlab_group: Dict[str, Any]) -> None:
         if self.gitlab_service.should_run_for_group(gitlab_group):
-            await ocean.register_raw(
-                ObjectKind.GROUP,
-                [await self.gitlab_service.enrich_group_with_members(gitlab_group)],
-            )
+            await ocean.register_raw(kind, [gitlab_group])
+
+    async def _register_group_with_members(
+        self, kind: str, gitlab_group: Group
+    ) -> None:
+        gitlab_group = await self.gitlab_service.enrich_group_with_members(gitlab_group)
+        await self._register_group(kind, gitlab_group)

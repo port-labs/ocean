@@ -17,8 +17,15 @@ class Groups(GroupHandler):
     ) -> None:
         logger.info(f"Handling {body['event_name']} for group {body['group_id']}")
         if gitlab_group:
-            await self._register_group(gitlab_group)
+            await self._register_group(
+                ObjectKind.GROUP,
+                gitlab_group.asdict(),
+            )
+            await self._register_group_with_members(
+                gitlab_group, ObjectKind.GROUPWITHMEMBERS
+            )
         elif body["event_name"] in ("subgroup_destroy", "group_destroy"):
             await ocean.unregister_raw(ObjectKind.GROUP, [body])
+            await ocean.unregister_raw(ObjectKind.GROUPWITHMEMBERS, [body])
         else:
             logger.warning(f"Group {body['group_id']} was filtered. Skipping ...")
