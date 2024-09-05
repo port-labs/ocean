@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Replaced StopAsyncIteration with custom error (NoAsyncTasksFound) to properly propergate errors in cases where empty tasks are sent to the stream_async_iterators_tasks function
+- Replaced StopAsyncIteration with a return statement to ignore prevent errors in cases where empty tasks are sent to the stream_async_iterators_tasks function
 
 
 ## 0.10.8 (2024-09-04)
