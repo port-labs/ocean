@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed bugs reported in default mappings in port-app-config.yaml
+- Updated Azure DevOps mapping to handle special characters, fixed project ID references, added work-item logging, and enriched work-item with project data.
 
 
 ## 0.1.62 (2024-09-04)
