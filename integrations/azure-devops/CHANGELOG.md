@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated the work item query langauge to fetch works items per project using System.AreaPath instead of all projects in the current implementation (0.1.64)
+- Bumped ocean version to ^0.10.9 (#1)
 
 
 ## 0.1.63 (2024-09-05)
