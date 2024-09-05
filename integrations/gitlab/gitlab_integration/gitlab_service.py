@@ -441,15 +441,18 @@ class GitlabService:
             order_by="id",
             sort="asc",
         ):
-            projects: List[Project] = typing.cast(List[Project], projects_batch)
-            logger.info(
-                f"Queried {len(projects)} projects {[project.path_with_namespace for project in projects]}"
-            )
-            cached_projects = event.attributes[PROJECTS_CACHE_KEY][
-                self.gitlab_client.private_token
-            ]
-            cached_projects.update({project.id: project for project in projects})
-            yield projects
+            if projects_batch:
+                projects: List[Project] = typing.cast(List[Project], projects_batch)
+                logger.info(
+                    f"Queried {len(projects)} projects {[project.path_with_namespace for project in projects]}"
+                )
+                cached_projects = event.attributes[PROJECTS_CACHE_KEY][
+                    self.gitlab_client.private_token
+                ]
+                cached_projects.update({project.id: project for project in projects})
+                yield projects
+            else:
+                logger.info("No valid projects found for the token in the current page")
 
     @classmethod
     async def async_project_language_wrapper(cls, project: Project) -> dict[str, Any]:
