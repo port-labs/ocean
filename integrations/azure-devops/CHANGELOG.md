@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.63 (2024-09-05)
+
+
+### Bug Fixes
+
+- Updated Azure DevOps mapping to handle special characters, fixed project ID references, added work-item logging, and enriched work-item with project data.
+
+
 ## 0.1.62 (2024-09-04)
 
 

@@ -66,7 +66,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 logger.info("Adding default team to projects")
                 tasks = [self.get_single_project(project["id"]) for project in projects]
                 projects = await asyncio.gather(*tasks)
-
             yield projects
 
     @cache_iterator_result()
@@ -155,15 +154,19 @@ class AzureDevopsClient(HTTPBaseClient):
             for project in projects:
                 # 1. Execute WIQL query to get work item IDs
                 work_item_ids = await self._fetch_work_item_ids(project["id"])
-
+                logger.info(
+                    f"Found {len(work_item_ids)} work item IDs for project {project['name']}"
+                )
                 # 2. Fetch work items using the IDs (in batches if needed)
                 work_items = await self._fetch_work_items_in_batches(
                     project["id"], work_item_ids
                 )
+                logger.debug(f"Received {len(work_items)} work items")
 
                 # Call the private method to add __projectId to each work item
-                self._add_project_id_to_work_items(work_items, project["id"])
-
+                work_items = self._add_project_details_to_work_items(
+                    work_items, project
+                )
                 yield work_items
 
     async def _fetch_work_item_ids(self, project_id: str) -> list[int]:
@@ -185,6 +188,7 @@ class AzureDevopsClient(HTTPBaseClient):
         wiql_url = (
             f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/wiql"
         )
+        logger.info(f"Fetching work item IDs for project {project_id}")
         wiql_response = await self.send_request(
             "POST",
             wiql_url,
@@ -218,11 +222,12 @@ class AzureDevopsClient(HTTPBaseClient):
             )
             work_items_response.raise_for_status()
             work_items.extend(work_items_response.json()["value"])
+
         return work_items
 
-    def _add_project_id_to_work_items(
-        self, work_items: list[dict[str, Any]], project_id: str
-    ) -> None:
+    def _add_project_details_to_work_items(
+        self, work_items: list[dict[str, Any]], project: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Adds the project ID to each work item in the list.
 
@@ -230,7 +235,9 @@ class AzureDevopsClient(HTTPBaseClient):
         :param project_id: The project ID to add to each work item.
         """
         for work_item in work_items:
-            work_item["__projectId"] = project_id
+            work_item["__projectId"] = project["id"]
+            work_item["__project"] = project
+        return work_items
 
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any]:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
