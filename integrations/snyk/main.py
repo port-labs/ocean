@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import hmac
-from typing import Any, cast
+from typing import Any, cast, Optional
 from enum import StrEnum
 from fastapi import Request
 from loguru import logger
@@ -36,7 +36,7 @@ def generate_signature(payload: bytes, secret: str) -> str:
 
 
 def init_client() -> SnykClient:
-    def parse_list(value: str) -> list[str]:
+    def parse_list(value: str) -> Optional[list[str]]:
         return [item.strip() for item in value.split(",")] if value else None
 
     return SnykClient(
