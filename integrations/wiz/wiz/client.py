@@ -150,7 +150,9 @@ class WizClient:
             page_num += 1
 
     async def get_issues(
-        self, page_size: int = PAGE_SIZE
+        self,
+        status_list: list[str],
+        page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.ISSUES):
             logger.info("Picking Wiz issues from cache")
@@ -160,6 +162,7 @@ class WizClient:
         variables: dict[str, Any] = {
             "first": page_size,
             "orderBy": {"direction": "DESC", "field": "CREATED_AT"},
+            "filterBy": {"status": status_list} if status_list else {},
         }
 
         async for issues in self._get_paginated_resources(
@@ -167,6 +170,14 @@ class WizClient:
         ):
             event.attributes.setdefault(CacheKeys.ISSUES, []).extend(issues)
             yield issues
+
+    async def get_cached_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if cache := event.attributes.get(CacheKeys.ISSUES):
+            logger.info("Retrieving Wiz issues from cache")
+            yield cache
+        else:
+            logger.info("No cached Wiz issues found")
+            yield []
 
     async def get_projects(
         self, page_size: int = PAGE_SIZE
