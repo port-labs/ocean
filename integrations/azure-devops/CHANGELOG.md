@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.65 (2024-09-05)
+
+
+### Improvements
+
+- Updated the work item query langauge to fetch works items per project using System.AreaPath instead of all projects in the current implementation (0.1.65)
+
+
 ## 0.1.64 (2024-09-05)
 
 
