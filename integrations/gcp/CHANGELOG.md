@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.53 (2024-09-06)
+
+
+### Bug Fixes
+
+- Fixed a bug where the service account's  project_id or quota_project_id could not be retrieved correctly, leading to failure in identifying the associated GCP quota project.
+
+
 ## 0.1.52 (2024-09-04)
 
 
