@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.66 (2024-09-06)
+
+
+### Improvements
+
+- Updated the query for fetching work items such that no more than 20,000 work items can be returned per project using the `$top` API query param (0.1.66)
+
+
 ## 0.1.65 (2024-09-05)
 
 
