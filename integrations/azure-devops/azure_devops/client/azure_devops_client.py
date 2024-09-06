@@ -21,6 +21,7 @@ WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 # Maximum number of work item IDs allowed in a single API request
 # (based on Azure DevOps API limitations) https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1&tabs=HTTP
 MAX_WORK_ITEMS_PER_REQUEST = 200
+MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 20000
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -195,7 +196,10 @@ class AzureDevopsClient(HTTPBaseClient):
         wiql_response = await self.send_request(
             "POST",
             wiql_url,
-            params={"api-version": "7.1-preview.2"},
+            params={
+                "api-version": "7.1-preview.2",
+                "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
+            },
             data=json.dumps({"query": wiql_query}),
             headers={"Content-Type": "application/json"},
         )
