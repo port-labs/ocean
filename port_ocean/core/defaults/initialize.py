@@ -64,7 +64,7 @@ async def _initialize_required_integration_settings(
         )
         if not integration:
             logger.info(
-                "Integration does not exist, Creating new integration with default default mapping"
+                "Integration does not exist, Creating new integration with default mapping"
             )
             integration = await port_client.create_integration(
                 integration_config.integration.type,

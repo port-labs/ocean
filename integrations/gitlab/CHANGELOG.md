@@ -7,6 +7,57 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.118 (2024-09-05)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.9 (#1)
+
+
+0.1.117 (2024-09-05)
+====================
+
+### Bugfixes
+
+- Fixed case the project should be collected from the token but not from the repos specification (#1)
+- Added log for empty pages of projects and didn't return them (#1)
+
+0.1.116 (2024-09-04)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.8 (#1)
+
+
+0.1.114 (2024-08-29)
+====================
+
+### Improvements
+
+- Improved Resync performance for file-kind: Now will search if the project has a file-base name for the searched file-kind, and only after the metadata object gets filtered as relevant, we pull the file kind. (#1)
+- Improved Resync stability using an aiolimiter to make sure calls to the Gitlab API aren't getting rate-limited, In a way that's not blocking the event loop (as Gitlab's way of handling a rate-limit is a time.sleep, which blocks the entire event loop)
+- Improved verbosity for the resync, as more logs and pagination were taken place.
+- Improved Real-time mechanism - now paginating through a file instead of waiting for Gitlab's api to return the entire repository tree.
+
+
+0.1.115 (2024-09-01)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.7 (#1)
+
+
+0.1.114 (2024-08-30)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.5 (#1)
+
+
 0.1.113 (2024-08-28)
 ====================
 
@@ -58,7 +109,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 0.1.107 (2024-08-19)
 ====================
 
-### Bug Fixes 
+### Bug Fixes
 
 - Fixed merge requests and issue resync methods to use an async method of listing root groups to avoid blocking the event loop
 
@@ -93,7 +144,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Added support for exporting files 
+- Added support for exporting files
 
 
 0.1.102 (2024-08-13)
@@ -577,7 +628,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Updated templates to have description in scorecard rules and pie charts (#1) 
+- Updated templates to have description in scorecard rules and pie charts (#1)
 
 
 ## 0.1.42 (2024-01-01)
