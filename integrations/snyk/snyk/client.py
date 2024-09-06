@@ -28,14 +28,14 @@ class SnykClient:
         token: str,
         api_url: str,
         app_host: str | None,
-        organization_id: str | None,
-        group_ids: str | None,
+        organization_ids: list[str] | None,
+        group_ids: list[str] | None,
         webhook_secret: str | None,
     ):
         self.token = token
         self.api_url = f"{api_url}/v1"
         self.app_host = app_host
-        self.organization_id = organization_id
+        self.organization_ids = organization_ids
         self.group_ids = group_ids
         self.rest_api_url = f"{api_url}/rest"
         self.webhook_secret = webhook_secret
@@ -407,32 +407,31 @@ class SnykClient:
 
         all_organizations = await self.get_all_organizations()
 
-        if self.organization_id:
-            logger.info(f"Specified organization ID: {self.organization_id}")
+        if self.organization_ids:
+            logger.info(f"Specified organization ID(s): {self.organization_ids}")
             matching_organization = [
-                org for org in all_organizations if org["id"] == self.organization_id
+                org for org in all_organizations if org["id"] in self.organization_ids
             ]
-
+            logger.info(
+                f"Fetched {len(matching_organization)} organizations for the given organization ID(s)."
+            )
             if matching_organization:
                 event.attributes[CacheKeys.GROUP] = matching_organization
                 return matching_organization
             else:
                 logger.warning(
-                    f"Specified organization ID '{self.organization_id}' not found in the fetched organizations."
+                    f"Specified organization ID(s) '{self.organization_ids}' not found in the fetched organizations."
                 )
                 return []
-
         elif self.group_ids:
-            groups = self.group_ids.split(",")
-
             logger.info(
-                f"Found {len(groups)} groups to filter. Group IDs: {str(groups)}. Getting all organizations associated with these groups"
+                f"Found {len(self.group_ids)} groups to filter. Group IDs: {str(self.group_ids)}. Getting all organizations associated with these groups"
             )
-
             matching_organizations_in_groups = [
                 org
                 for org in all_organizations
-                if org.get("attributes") and org["attributes"].get("group_id") in groups
+                if org.get("attributes")
+                and org["attributes"].get("group_id") in self.group_ids
             ]
 
             logger.info(
