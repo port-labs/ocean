@@ -153,7 +153,7 @@ class AzureDevopsClient(HTTPBaseClient):
         async for projects in self.generate_projects():
             for project in projects:
                 # 1. Execute WIQL query to get work item IDs
-                work_item_ids = await self._fetch_work_item_ids(project["id"])
+                work_item_ids = await self._fetch_work_item_ids(project)
                 logger.info(
                     f"Found {len(work_item_ids)} work item IDs for project {project['name']}"
                 )
@@ -169,7 +169,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 yield work_items
 
-    async def _fetch_work_item_ids(self, project_id: str) -> list[int]:
+    async def _fetch_work_item_ids(self, project: dict[str, Any]) -> list[int]:
         """
         Executes a WIQL query to fetch work item IDs for a given project.
 
@@ -177,18 +177,21 @@ class AzureDevopsClient(HTTPBaseClient):
         :return: A list of work item IDs.
         """
         config = typing.cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
-
-        wiql_query = "SELECT [Id] from WorkItems"
+        wiql_query = (
+            f"SELECT [Id] from WorkItems WHERE [System.AreaPath] = '{project['name']}'"
+        )
 
         if config.selector.wiql:
             # Append the user-provided wiql to the WHERE clause
-            wiql_query += f" WHERE {config.selector.wiql}"
+            wiql_query += f" AND {config.selector.wiql}"
             logger.info(f"Found and appended WIQL filter: {config.selector.wiql}")
 
         wiql_url = (
-            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/wiql"
+            f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
         )
-        logger.info(f"Fetching work item IDs for project {project_id}")
+        logger.info(
+            f"Fetching work item IDs for project {project['name']} using WIQL query {wiql_query}"
+        )
         wiql_response = await self.send_request(
             "POST",
             wiql_url,
