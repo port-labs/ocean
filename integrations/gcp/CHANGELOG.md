@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed a bug where the service account's  project_id or quota_project_id could not be retrieved correctly, leading to failure in identifying the associated GCP quota project.
+- Added an alternative key `project_id` for retrieving the quota project id, preventing failure in identifying the associated GCP quota project when `quota_project_id` isn't present in configuration.
 
 
 ## 0.1.52 (2024-09-04)
