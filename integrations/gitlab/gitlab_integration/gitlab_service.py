@@ -30,6 +30,7 @@ from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
+GROUPS_CACHE_KEY = "__cache_all_groups"
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
 GITLAB_SEARCH_RATE_LIMIT = 100
 
@@ -404,6 +405,14 @@ class GitlabService:
         def is_root_group(group: Group) -> bool:
             return group.parent_id is None
 
+        cached_groups = event.attributes.setdefault(GROUPS_CACHE_KEY, {}).setdefault(
+            self.gitlab_client.private_token, {}
+        )
+
+        if cached_groups:
+            yield cached_groups.values()
+            return
+
         async for groups_batch in AsyncFetcher.fetch_batch(
             fetch_func=self.gitlab_client.groups.list,
             validation_func=is_root_group,
@@ -411,11 +420,19 @@ class GitlabService:
             order_by="id",
             sort="asc",
         ):
-            groups: List[Group] = typing.cast(List[Group], groups_batch)
-            logger.info(
-                f"Queried {len(groups)} root groups {[group.path for group in groups]}"
-            )
-            yield groups
+            if groups:
+                groups: List[Group] = typing.cast(List[Group], groups_batch)
+                logger.info(
+                    f"Queried {len(groups)} root groups {[group.path for group in groups]}"
+                )
+
+                cached_groups = event.attributes[GROUPS_CACHE_KEY][
+                    self.gitlab_client.private_token
+                ]
+                cached_groups.update({group.id: group for group in groups})
+                yield groups
+            else:
+                logger.info("No valid groups found for the token in the current page")
 
     async def get_all_projects(self) -> typing.AsyncIterator[List[Project]]:
         logger.info("fetching all projects for the token")

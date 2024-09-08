@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.119 (2024-09-08)
+====================
+
+### Improvements
+
+- Added caching to groups to enhance performance (#1)
+
+
 0.1.118 (2024-09-05)
 ====================
 
