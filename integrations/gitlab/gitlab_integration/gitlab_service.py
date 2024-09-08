@@ -420,7 +420,7 @@ class GitlabService:
             order_by="id",
             sort="asc",
         ):
-            if groups:
+            if groups_batch:
                 groups: List[Group] = typing.cast(List[Group], groups_batch)
                 logger.info(
                     f"Queried {len(groups)} root groups {[group.path for group in groups]}"
