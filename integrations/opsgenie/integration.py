@@ -12,7 +12,8 @@ from port_ocean.core.integrations.base import BaseIntegration
 
 class APIQueryParams(BaseModel):
     created_at: str | None = Field(
-        alias="createdAt", description="The date and time the alert or incident was created"
+        alias="createdAt",
+        description="The date and time the alert or incident was created",
     )
     last_occurred_at: str | None = Field(
         alias="lastOccurredAt",
@@ -26,15 +27,11 @@ class APIQueryParams(BaseModel):
     status: Literal["open", "resolved", "closed"] | None = Field(
         description="The status of the alert"
     )
-    is_seen: bool | None = Field(
-        description="Whether the alert has been seen"
-    )
+    is_seen: bool | None = Field(description="Whether the alert has been seen")
     acknowledged: bool | None = Field(
         description="Whether the alert has been acknowledged"
     )
-    snoozed: bool | None = Field(
-        description="Whether the alert has been snoozed"
-    )
+    snoozed: bool | None = Field(description="Whether the alert has been snoozed")
     priority: Literal["P1", "P2", "P3", "P4", "P5"] | None = Field(
         description="The priority of the alert"
     )
@@ -60,7 +57,7 @@ class APIQueryParams(BaseModel):
         return {"query": " AND ".join(params)}
 
     class Config:
-        allow_population_by_field_name = True # This allows fields in a model to be populated either by their alias or by their field name
+        allow_population_by_field_name = True  # This allows fields in a model to be populated either by their alias or by their field name
 
 
 class ScheduleAPIQueryParams(BaseModel):
@@ -75,17 +72,20 @@ class ScheduleAPIQueryParams(BaseModel):
 
         return value
 
+
 class AlertAndIncidentSelector(Selector):
     api_query_params: APIQueryParams | None = Field(
         alias="apiQueryParams",
         description="The query parameters to filter alerts or incidents",
     )
 
+
 class ScheduleSelector(Selector):
     api_query_params: ScheduleAPIQueryParams | None = Field(
         alias="apiQueryParams",
         description="The query parameters to filter schedules",
     )
+
 
 class AlertAndIncidentResourceConfig(ResourceConfig):
     kind: Literal["alert", "incident"]
