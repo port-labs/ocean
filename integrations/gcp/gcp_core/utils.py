@@ -106,7 +106,7 @@ def get_service_account_project_id() -> str:
         )
 
         if not project_id:
-            raise KeyError("project id")
+            raise KeyError("project_id or quota_project_id")
 
         return project_id
     except FileNotFoundError as e:
