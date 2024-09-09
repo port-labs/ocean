@@ -1,5 +1,6 @@
 import sys
 from inspect import getmembers
+from pathlib import Path
 from typing import Dict, List, Set, Tuple, Union
 
 from yaml import safe_load
@@ -8,13 +9,17 @@ from port_ocean.bootstrap import create_default_app
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import RAW_RESULT, RESYNC_RESULT
 from port_ocean.ocean import Ocean
-from port_ocean.utils.misc import load_module
+from port_ocean.utils.misc import get_spec_file, load_module
 
 
 def get_integration_ocean_app(integration_path: str) -> Ocean:
+    spec_file = get_spec_file(Path(integration_path))
+
+    config_factory = None if not spec_file else spec_file.get("configurations", [])
+
     default_app = create_default_app(
         integration_path,
-        None,
+        config_factory,
         {
             "port": {
                 "client_id": "bla",
