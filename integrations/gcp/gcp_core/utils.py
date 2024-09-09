@@ -101,12 +101,12 @@ def get_service_account_project_id() -> str:
     "get project id associated with service account"
     try:
         default_credentials = json.loads(get_credentials_json())
-        project_id = default_credentials.get("project_id_") or default_credentials.get(
-            "quota_project_id_"
+        project_id = default_credentials.get("project_id") or default_credentials.get(
+            "quota_project_id"
         )
 
         if not project_id:
-            raise KeyError("project_id or quota_project_id")
+            raise KeyError("project id")
 
         return project_id
     except FileNotFoundError as e:
@@ -125,6 +125,7 @@ def get_service_account_project_id() -> str:
         raise ValueError(
             f"Couldn't figure out the service account's project id. Error: {str(e)}"
         )
+    raise ValueError("Couldn't figure out the service account's project id.")
 
 
 async def resolve_request_controllers(
