@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.0 (2024-09-02)
+## 0.1.77 (2024-09-05)
 
 
 ### Improvements
 
-- Improved on the performance on the integration by removing extra API calls and adding logs for verbosity (0.2.0)
+- Bumped ocean version to ^0.10.9 (#1)
+
+
+## 0.1.76 (2024-09-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.8 (#1)
 
 
 ## 0.1.75 (2024-09-01)
