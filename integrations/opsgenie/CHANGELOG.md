@@ -12,10 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added new kinds for `team` and `schedule`
+- Added new kinds for `team`, `schedule` and `schedule-oncall`
 - Added support for filtering data from OpsGenie API to fetch only required data
 - Introduced logs to facilitate easier debugging of integration issues
-- Optimized oncall data retrieval by querying only unique resources, reducing redundant API calls
 
 ### Removals
 
