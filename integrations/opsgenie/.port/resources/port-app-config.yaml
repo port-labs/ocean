@@ -47,7 +47,6 @@ resources:
             description: .description
             url: .links.web
             tags: .tags
-            oncallUsers: .__oncalls.onCallRecipients
           relations:
             ownerTeam: .teamId
   - kind: alert
@@ -98,3 +97,14 @@ resources:
             description: .description
           relations:
             services: .impactedServices
+  - kind: schedule-oncall
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .ownerTeam.id
+          title: .ownerTeam.name
+          blueprint: '"opsGenieTeam"'
+          properties:
+            oncallUsers: .__currentOncalls.onCallRecipients

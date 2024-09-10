@@ -17,6 +17,14 @@
           "description": "URL to the service",
           "format": "url",
           "icon": "DefaultProperty"
+        },
+        "oncallUsers": {
+          "type": "array",
+          "title": "Current Oncalls",
+          "items": {
+            "type": "string",
+            "format": "user"
+          }
         }
       },
       "required": []
@@ -104,21 +112,16 @@
           },
           "title": "Tags",
           "icon": "DefaultProperty"
-        },
-        "oncallUsers": {
-          "icon": "TwoUsers",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "user"
-          },
-          "title": "Oncall Users",
-          "description": "Who is on call for this service"
         }
       },
       "required": []
     },
-    "mirrorProperties": {},
+    "mirrorProperties": {
+      "oncallUsers": {
+        "title": "Current Oncalls",
+        "path": "ownerTeam.oncallUsers"
+      }
+    },
     "calculationProperties": {
     },
     "aggregationProperties": {

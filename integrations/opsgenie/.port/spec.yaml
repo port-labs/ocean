@@ -10,6 +10,7 @@ features:
       - kind: incident
       - kind: schedule
       - kind: team
+      - kind: schedule-on-call
 configurations:
   - name: apiToken
     required: true

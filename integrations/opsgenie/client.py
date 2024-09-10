@@ -3,7 +3,6 @@ from typing import Any, AsyncGenerator, Optional
 import httpx
 from loguru import logger
 
-from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 from utils import ObjectKind, RESOURCE_API_VERSIONS
@@ -73,38 +72,9 @@ class OpsGenieClient:
         alert_data = (await self._get_single_resource(url))["data"]
         return alert_data
 
-    async def get_oncall_user(self, schedule_identifier: str) -> dict[str, Any]:
-        logger.debug(f"Fetching on-call user for schedule {schedule_identifier}")
-        cache_key = f"{ObjectKind.SCHEDULE}-USER-{schedule_identifier}"
-
-        if cache := event.attributes.get(cache_key):
-            logger.debug(f"Returning on-call user {schedule_identifier} from cache")
-            return cache
+    async def get_oncall_users(self, schedule_identifier: str) -> dict[str, Any]:
+        logger.debug(f"Fetching on-call users for schedule {schedule_identifier}")
 
         api_version = await self.get_resource_api_version(ObjectKind.SCHEDULE)
         url = f"{self.api_url}/{api_version}/schedules/{schedule_identifier}/on-calls?flat=true"
-        oncall_user = (await self._get_single_resource(url))["data"]
-        event.attributes[cache_key] = oncall_user
-        logger.debug(f"Fetched and cached on-call user {schedule_identifier}")
-        return oncall_user
-
-    async def get_schedules_by_teams(
-        self, team_ids: list[str]
-    ) -> dict[str, dict[str, Any]]:
-        if not team_ids:
-            return {}
-
-        logger.debug(f"Fetching schedules for teams {team_ids}")
-        schedules = {}
-        unique_schedule_ids = set()
-
-        async for schedule_batch in self.get_paginated_resources(ObjectKind.SCHEDULE):
-            for schedule in schedule_batch:
-                team_id = schedule["ownerTeam"]["id"]
-                if team_id in team_ids:
-                    schedule_id = schedule["id"]
-                    if schedule_id not in unique_schedule_ids:
-                        schedules[schedule_id] = schedule
-                        unique_schedule_ids.add(schedule_id)
-
-        return schedules
+        return (await self._get_single_resource(url))["data"]
