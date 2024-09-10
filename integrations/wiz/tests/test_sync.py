@@ -1,73 +1,105 @@
 import os
-from typing import Any, Generator
-from unittest.mock import AsyncMock, patch
+from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
-from port_ocean.tests.helpers import get_raw_result_on_integration_sync_kinds
-from port_ocean.context.ocean import PortOceanContext, Ocean
+
+from wiz.client import WizClient
+import main
 
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
-FAKE_CACHED_ISSUES = [
-    {"id": "ISSUE-1", "title": "Test Issue 1", "status": "OPEN"},
-    {"id": "ISSUE-2", "title": "Test Issue 2", "status": "IN_PROGRESS"},
-]
+FAKE_ISSUE = {
+    "id": "ISSUE-1",
+    "status": "OPEN",
+    "severity": "HIGH",
+    "createdAt": "2023-01-01T00:00:00Z",
+    "updatedAt": "2023-01-02T00:00:00Z",
+    "projects": [{"id": "PROJECT-1", "name": "Test Project"}],
+    "sourceRule": {
+        "id": "CONTROL-1",
+        "name": "Test Control",
+        "controlDescription": "Test Description",
+    },
+}
 
-
-@pytest.fixture(autouse=True)
-def setup_port_ocean() -> Generator[None, None, None]:
-    ocean = Ocean()
-    PortOceanContext.set(ocean)
-    yield
-    PortOceanContext._context = None
-
-
-@pytest.mark.asyncio
-async def test_get_cached_issues(monkeypatch: Any) -> None:
-    # Mock the event.attributes
-    mock_event = AsyncMock()
-    mock_event.attributes = {"ISSUES": FAKE_CACHED_ISSUES}
-
-    # Patch the event object in the main module
-    with patch("main.event", mock_event):
-        results = await get_raw_result_on_integration_sync_kinds(INTEGRATION_PATH)
-
-    assert len(results) > 0
-    assert "wiz-issue" in results
-
-    issue_results = results["wiz-issue"]
-
-    assert len(issue_results) > 0
-    first_result = issue_results[0]
-    assert isinstance(first_result, list)
-    assert len(first_result) == 2
-    cached_issues, new_issues = first_result
-
-    assert len(cached_issues) == len(FAKE_CACHED_ISSUES)
-    assert len(new_issues) == 0
-
-    # Verify that the cached issues are returned
-    for i, issue in enumerate(cached_issues):
-        assert issue["id"] == FAKE_CACHED_ISSUES[i]["id"]
-        assert issue["title"] == FAKE_CACHED_ISSUES[i]["title"]
-        assert issue["status"] == FAKE_CACHED_ISSUES[i]["status"]
-
+FAKE_PROJECT = {
+    "id": "PROJECT-1",
+    "name": "Test Project",
+    "businessUnit": "IT",
+    "description": "Test Project Description",
+}
 
 @pytest.mark.asyncio
-async def test_get_cached_issues_empty_cache(monkeypatch: Any) -> None:
-    # Mock the event.attributes with an empty cache
-    mock_event = AsyncMock()
-    mock_event.attributes = {}
+async def test_resync_issues(monkeypatch: Any) -> None:
+    mock_client = AsyncMock(spec=WizClient)
+    mock_client.get_issues.return_value = AsyncMock(return_value=[[FAKE_ISSUE]])
 
-    # Patch the event object in the main module
-    with patch("main.event", mock_event):
-        results = await get_raw_result_on_integration_sync_kinds(INTEGRATION_PATH)
+    monkeypatch.setattr(main, "init_client", lambda: mock_client)
+    monkeypatch.setattr(main, "event", AsyncMock(resource_config=AsyncMock(selector=AsyncMock(status_list=["OPEN"]))))
 
-    assert len(results) > 0
-    assert "wiz-issue" in results
+    result = [issues async for issues in await main.resync_issues("issue")]
 
-    issue_results = results["wiz-issue"]
+    assert len(result) == 1
+    assert len(result[0]) == 1
+    assert result[0][0]["id"] == FAKE_ISSUE["id"]
 
-    assert len(issue_results) > 0
-    assert len(issue_results[0][0]) == 0
-    assert len(issue_results[0][1]) == 0
+@pytest.mark.asyncio
+async def test_resync_projects(monkeypatch: Any) -> None:
+    mock_client = AsyncMock(spec=WizClient)
+    mock_client.get_projects.return_value = AsyncMock(return_value=[[FAKE_PROJECT]])
+
+    monkeypatch.setattr(main, "init_client", lambda: mock_client)
+
+    result = [projects async for projects in await main.resync_projects("project")]
+
+    assert len(result) == 1
+    assert len(result[0]) == 1
+    assert result[0][0]["id"] == FAKE_PROJECT["id"]
+
+@pytest.mark.asyncio
+async def test_resync_controls(monkeypatch: Any) -> None:
+    mock_client = AsyncMock(spec=WizClient)
+    mock_client.get_cached_issues.return_value = AsyncMock(return_value=[[FAKE_ISSUE]])
+
+    monkeypatch.setattr(main, "init_client", lambda: mock_client)
+
+    result = [controls async for controls in await main.resync_controls("control")]
+
+    assert len(result) == 1
+    assert len(result[0]) == 1
+    assert result[0][0]["id"] == FAKE_ISSUE["sourceRule"]["id"]
+
+@pytest.mark.asyncio
+async def test_resync_service_tickets(monkeypatch: Any) -> None:
+    fake_issue_with_ticket = FAKE_ISSUE.copy()
+    fake_issue_with_ticket["serviceTickets"] = [{"externalId": "TICKET-1", "name": "Test Ticket", "url": "http://example.com"}]
+
+    mock_client = AsyncMock(spec=WizClient)
+    mock_client.get_cached_issues.return_value = AsyncMock(return_value=[[fake_issue_with_ticket]])
+
+    monkeypatch.setattr(main, "init_client", lambda: mock_client)
+
+    result = [tickets async for tickets in await main.resync_service_tickets("serviceTicket")]
+
+    assert len(result) == 1
+    assert len(result[0]) == 1
+    assert result[0][0]["externalId"] == "TICKET-1"
+
+@pytest.mark.asyncio
+async def test_handle_webhook_request(monkeypatch: Any) -> None:
+    mock_client = AsyncMock(spec=WizClient)
+    mock_client.get_single_issue.return_value = FAKE_ISSUE
+
+    monkeypatch.setattr(main, "init_client", lambda: mock_client)
+    monkeypatch.setattr(main, "ocean", AsyncMock())
+
+    fake_token = AsyncMock()
+    fake_token.credentials = "test_token"
+
+    monkeypatch.setattr(main, "ocean", AsyncMock(integration_config={"wiz_webhook_verification_token": "test_token"}))
+
+    result = await main.handle_webhook_request({"issue": {"id": "ISSUE-1"}}, fake_token)
+
+    assert result == {"ok": True}
+    main.ocean.register_raw.assert_called_once_with(main.ObjectKind.ISSUE, [FAKE_ISSUE])
