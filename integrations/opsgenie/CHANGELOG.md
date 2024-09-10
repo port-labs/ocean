@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for filtering data from OpsGenie API to fetch only required data
 - Introduced logs to facilitate easier debugging of integration issues
 
-### Removals
+### Breaking Changes
 
 - Removed extra API calls for fetching impacted services, improving performance with existing incident-service relations
 - Removed extra API calls for relating alerts to incidents, using JQ for better performance and accuracy
