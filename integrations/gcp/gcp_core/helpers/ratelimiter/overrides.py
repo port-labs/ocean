@@ -5,7 +5,7 @@ from gcp_core.helpers.ratelimiter.base import (
 
 
 class CloudAssetAPI(ResourceBoundedSemaphore):
-    service = "asset.googleapis.com"
+    service = "cloudasset.googleapis.com"
 
 
 class PubSubAPI(ResourceBoundedSemaphore):
