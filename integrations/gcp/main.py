@@ -6,19 +6,17 @@ import typing
 from fastapi import Request, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gcp_core.errors import (
     AssetHasNoProjectAncestorError,
     GotFeedCreatedSuccessfullyMessageError,
-    ResourceNotFoundError,
 )
 from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
 from gcp_core.overrides import GCPCloudResourceSelector
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
-    feed_event_to_resource,
+    get_single_project,
     list_all_topics_per_project,
     search_all_folders,
     search_all_organizations,
@@ -26,6 +24,7 @@ from gcp_core.search.resource_searches import (
     search_all_resources,
 )
 from gcp_core.utils import (
+    EXTRA_PROJECT_FIELD,
     AssetTypesWithSpecialHandling,
     get_current_resource_config,
     get_credentials_json,
@@ -164,32 +163,28 @@ async def feed_events_callback(request: Request) -> Response:
             asset_type=asset_type, asset_name=asset_name, asset_project=asset_project
         ):
             logger.info("Got Real-Time event")
-            resource = await feed_event_to_resource(
-                asset_type=asset_type, project_id=asset_project, asset_name=asset_name
-            )
             if asset_data.get("deleted") is True:
-                logger.info("Registering a deleted resource")
-                await ocean.unregister_raw(asset_type, [resource])
+                logger.info(
+                    f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
+                )
+                asset_resource_data = asset_data["priorAsset"]["resource"]["data"]
+                asset_resource_data[EXTRA_PROJECT_FIELD] = await get_single_project(
+                    asset_project
+                )
+                await ocean.unregister_raw(asset_type, [asset_resource_data])
             else:
-                logger.info("Registering a change in the data")
-                await ocean.register_raw(asset_type, [resource])
+                asset_resource_data = asset_data["asset"]["resource"]["data"]
+                asset_resource_data[EXTRA_PROJECT_FIELD] = await get_single_project(
+                    asset_project
+                )
+                logger.info(
+                    f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
+                )
+                await ocean.register_raw(asset_type, [asset_resource_data])
     except AssetHasNoProjectAncestorError:
         logger.exception(
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
         )
-    except ResourceNotFoundError:
-        logger.warning(
-            f"Didn't find any {asset_type} resource named: {asset_name}. Deleting ocean entity."
-        )
-        await ocean.unregister(
-            [
-                Entity(
-                    blueprint=asset_type,
-                    identifier=asset_name,
-                )
-            ]
-        )
-        return Response(status_code=http.HTTPStatus.NOT_FOUND)
     except GotFeedCreatedSuccessfullyMessageError:
         logger.info("Assets Feed created successfully")
     except Exception:
