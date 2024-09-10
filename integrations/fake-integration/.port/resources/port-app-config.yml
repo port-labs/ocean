@@ -1,0 +1,30 @@
+resources:
+  - kind: fake-department
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"fake-department"'
+          properties:
+            name: .name
+            id: .id
+  - kind: fake-person
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"fake-person"'
+          properties:
+            name: .name
+            email: .email
+            status: .status
+            age: .age
+            department: .department.name
+          relations:
+            department: .department.id
