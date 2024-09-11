@@ -7,12 +7,13 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 from integration import SprintState
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
-REQUEST_TIMEOUT = 60
+REQUEST_TIMEOUT = 120
 
 
 CREATE_UPDATE_WEBHOOK_EVENTS = [
@@ -121,17 +122,32 @@ class JiraClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         sprint_params = {}
         if sprint_state:
-            sprint_params = {"state": sprint_state}
+            sprint_params["state"] = sprint_state
         async for sprints in self.get_all_sprints(sprint_params):
-            for sprint in sprints:
-                async for issues in self._make_paginated_request(
-                    f"{self.agile_url}/sprint/{sprint['id']}/issue",
-                    params=params,
-                    is_last_function=lambda response: response["startAt"]
-                    + response["maxResults"]
-                    >= response["total"],
-                ):
-                    yield issues["issues"]
+            issues_set = stream_async_iterators_tasks(
+                *[
+                    self._make_paginated_request(
+                        f"{self.agile_url}/sprint/{sprint['id']}/issue",
+                        params=params,
+                        is_last_function=lambda response: response["startAt"]
+                        + response["maxResults"]
+                        >= response["total"],
+                    )
+                    for sprint in sprints
+                ]
+            )
+
+            async for issues in issues_set:
+                yield issues["issues"]
+            # for sprint in sprints:
+            #     async for issues in self._make_paginated_request(
+            #         f"{self.agile_url}/sprint/{sprint['id']}/issue",
+            #         params=params,
+            #         is_last_function=lambda response: response["startAt"]
+            #         + response["maxResults"]
+            #         >= response["total"],
+            #     ):
+            #         yield issues["issues"]
 
     async def _get_issues_from_org(
         self, params: dict[str, str]
@@ -176,9 +192,14 @@ class JiraClient:
         self, params: dict[str, str]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self.get_all_boards():
-            for board in boards:
-                async for sprints in self._get_sprints_from_board(board["id"], params):
-                    yield sprints
+            sprint_set = stream_async_iterators_tasks(
+                *[
+                    self._get_sprints_from_board(board["id"], params)
+                    for board in boards
+                ]
+            )
+            async for sprints in sprint_set:
+                yield sprints
 
     @cache_iterator_result()
     async def get_all_boards(self) -> AsyncGenerator[list[dict[str, Any]], None]:
