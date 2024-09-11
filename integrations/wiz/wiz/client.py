@@ -171,14 +171,6 @@ class WizClient:
             event.attributes.setdefault(CacheKeys.ISSUES, []).extend(issues)
             yield issues
 
-    async def get_cached_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        if cache := event.attributes.get(CacheKeys.ISSUES):
-            logger.info("Retrieving Wiz issues from cache")
-            yield cache
-        else:
-            logger.info("No cached Wiz issues found")
-            yield []
-
     async def get_projects(
         self, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
