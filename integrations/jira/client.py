@@ -6,8 +6,8 @@ from httpx import BasicAuth, Timeout
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
-from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.cache import cache_iterator_result
 
 from integration import SprintState
 
@@ -139,15 +139,6 @@ class JiraClient:
 
             async for issues in issues_set:
                 yield issues["issues"]
-            # for sprint in sprints:
-            #     async for issues in self._make_paginated_request(
-            #         f"{self.agile_url}/sprint/{sprint['id']}/issue",
-            #         params=params,
-            #         is_last_function=lambda response: response["startAt"]
-            #         + response["maxResults"]
-            #         >= response["total"],
-            #     ):
-            #         yield issues["issues"]
 
     async def _get_issues_from_org(
         self, params: dict[str, str]
@@ -193,10 +184,7 @@ class JiraClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self.get_all_boards():
             sprint_set = stream_async_iterators_tasks(
-                *[
-                    self._get_sprints_from_board(board["id"], params)
-                    for board in boards
-                ]
+                *[self._get_sprints_from_board(board["id"], params) for board in boards]
             )
             async for sprints in sprint_set:
                 yield sprints
