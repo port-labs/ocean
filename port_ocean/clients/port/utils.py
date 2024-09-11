@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 # The max_keepalive_connections can't be too high, as it will cause the application to run out of available connections.
 PORT_HTTP_MAX_CONNECTIONS_LIMIT = 200
 PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS = 50
-PORT_HTTP_TIMEOUT = 10.0
+PORT_HTTP_TIMEOUT = 60.0
 
 PORT_HTTPX_TIMEOUT = httpx.Timeout(PORT_HTTP_TIMEOUT)
 PORT_HTTPX_LIMITS = httpx.Limits(

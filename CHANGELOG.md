@@ -7,6 +7,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.9 (2024-09-05)
+
+### Bug Fixes
+
+- Replaced StopAsyncIteration with a return statement to ignore prevent errors in cases where empty tasks are sent to the stream_async_iterators_tasks function
+
+
+## 0.10.8 (2024-09-04)
+
+### Bug Fixes
+
+- Avoid raising exception when receiving ReadTimeout on batch upsert entities
+- Increased both internal port client and third party client timeout to handle long requests
+
+
 ## 0.10.7 (2024-08-28)
 
 ### Improvements

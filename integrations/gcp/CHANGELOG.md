@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.54 (2024-09-06)
+
+
+### Bug Fixes
+
+- Added an alternative key `project_id` for retrieving the quota project id, preventing failure in identifying the associated GCP quota project when `quota_project_id` isn't present in configuration.
+- Fixed bug causing failure in retrieving cloud asset quota from GCP.
+
+
+## 0.1.53 (2024-09-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.9 (#1)
+
+
+## 0.1.52 (2024-09-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.8 (#1)
+
+
+## 0.1.51 (2024-09-04)
+
+
+### Improvements
+
+- Improved user experience when using GCP Quotas- Added validation and used environmental variables in order to get the information the integration needs to get the project + quota of that project.
+
+
 ## 0.1.50 (2024-09-01)
 
 

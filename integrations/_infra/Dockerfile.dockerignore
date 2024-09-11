@@ -90,5 +90,5 @@
 
 **/*.md
 **/.ruff_cache
-**/cahangelog
+**/changelog
 **/tests
