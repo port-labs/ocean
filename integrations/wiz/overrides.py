@@ -1,3 +1,5 @@
+import typing
+
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     PortAppConfig,
@@ -15,6 +17,7 @@ class IssueSelector(Selector):
 
 
 class IssueResourceConfig(ResourceConfig):
+    kind: typing.Literal["issue"]
     selector: IssueSelector
 
 

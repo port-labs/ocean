@@ -151,7 +151,7 @@ class WizClient:
 
     async def get_issues(
         self,
-        status_list: list[str],
+        status_list: list[str] = ["OPEN", "IN_PROGRESS"],
         page_size: int = PAGE_SIZE,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if cache := event.attributes.get(CacheKeys.ISSUES):
