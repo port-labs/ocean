@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from google.pubsub_v1.types import pubsub
+from google.cloud.resourcemanager_v3.types import Project
 
 
 async def mock_subscription_pages(
@@ -74,3 +75,62 @@ async def test_get_single_subscription(
 
     # Assert
     assert actual_subscription == expected_subscription
+
+
+@patch(
+    "port_ocean.context.ocean.PortOceanContext.integration_config",
+    return_value={"search_all_resources_per_minute_quota": 100},
+)
+@patch(
+    "google.pubsub_v1.services.publisher.PublisherAsyncClient.get_topic",
+    return_value=pubsub.Topic({"name": "topic_name"}),
+)
+@patch(
+    "google.cloud.resourcemanager_v3.ProjectsAsyncClient.get_project",
+    return_value=Project({"name": "project_name"}),
+)
+async def test_feed_to_resource(
+    integration_config: Any, get_topic_mock: Any, get_project_mock: Any
+) -> None:
+    # Arrange
+    from gcp_core.search.resource_searches import feed_event_to_resource
+
+    mock_asset_name = "projects/project_name/topics/topic_name"
+    mock_asset_type = "pubsub.googleapis.com/Topic"
+    mock_asset_project_name = "project_name"
+    mock_asset_data = {
+        "asset": {
+            "name": mock_asset_name,
+            "asset_type": mock_asset_type,
+        },
+        "event": "google.cloud.audit.log.v1.written",
+        "project": "project_name",
+    }
+
+    expected_resource = {
+        "__project": {
+            "display_name": "",
+            "etag": "",
+            "labels": {},
+            "name": "project_name",
+            "parent": "",
+            "project_id": "",
+            "state": 0,
+        },
+        "kms_key_name": "",
+        "labels": {},
+        "name": "topic_name",
+        "satisfies_pzs": False,
+        "state": 0,
+    }
+
+    # Act
+    actual_resource = await feed_event_to_resource(
+        asset_type=mock_asset_type,
+        asset_name=mock_asset_name,
+        project_id=mock_asset_project_name,
+        asset_data=mock_asset_data,
+    )
+
+    # Assert
+    assert actual_resource == expected_resource
