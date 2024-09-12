@@ -49,7 +49,6 @@ async def setup_application() -> None:
 
         for space_id, task in space_tasks:
             async for subscriptions in task:
-                logger.warning(f"Received {subscriptions} for space {space_id}")
                 existing_webhook_uris = {
                     subscription.get("EventNotificationSubscription", {}).get(
                         "WebhookURI"
@@ -96,7 +95,7 @@ async def handle_webhook_request(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Handle the webhook request from Octopus Deploy.
     """
-    logger.warning(f"Received webhook event: {data}")
+    logger.debug(f"Received webhook event: {data}")
     payload = data.get("Payload", {}).get("Event", {})
     related_document_ids = payload.get("RelatedDocumentIds", [])
     event_category = payload.get("Category", "")
