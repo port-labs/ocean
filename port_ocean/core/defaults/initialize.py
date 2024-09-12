@@ -157,17 +157,20 @@ async def _create_resources(
 
     except httpx.HTTPStatusError as err:
         logger.error(f"Failed to create resources: {err.response.text}. continuing...")
-        raise AbortDefaultCreationError(created_blueprints_identifiers, [err], [])
+        raise AbortDefaultCreationError(created_blueprints_identifiers, [err])
     try:
         created_actions, actions_errors = await gather_and_split_errors_from_results(
-            (port_client.create_action(action) for action in defaults.actions)
+            (
+                port_client.create_action(action, should_log=False)
+                for action in defaults.actions
+            )
         )
 
         created_scorecards, scorecards_errors = (
             await gather_and_split_errors_from_results(
                 (
                     port_client.create_scorecard(
-                        blueprint_scorecards["blueprint"], action
+                        blueprint_scorecards["blueprint"], action, should_log=False
                     )
                     for blueprint_scorecards in defaults.scorecards
                     for action in blueprint_scorecards["data"]
@@ -176,7 +179,7 @@ async def _create_resources(
         )
 
         created_pages, pages_errors = await gather_and_split_errors_from_results(
-            (port_client.create_page(page) for page in defaults.pages)
+            (port_client.create_page(page, should_log=False) for page in defaults.pages)
         )
 
         errors = actions_errors + scorecards_errors + pages_errors
@@ -225,19 +228,6 @@ async def _initialize_defaults(
                 for identifier in e.blueprints_to_rollback
             )
         )
-        if e.pages_to_rollback:
-            logger.warning(
-                f"Failed to create resources. Rolling back pages : {e.pages_to_rollback}"
-            )
-            await asyncio.gather(
-                *(
-                    port_client.delete_page(
-                        identifier,
-                    )
-                    for identifier in e.pages_to_rollback
-                )
-            )
-
         raise ExceptionGroup(str(e), e.errors)
 
 
