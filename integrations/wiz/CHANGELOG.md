@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.57 (2024-09-12)
+
+### Improvements
+
+- Filter issues by status and increase limit to 50k
+
 ## 0.1.56 (2024-09-05)
 
 ### Improvements
