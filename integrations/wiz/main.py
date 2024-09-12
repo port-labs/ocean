@@ -29,49 +29,37 @@ def init_client() -> WizClient:
     )
 
 
-@ocean.on_resync(ObjectKind.PROJECT)
-async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+@ocean.on_resync()
+async def resync_objects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     wiz_client = init_client()
 
-    async for projects in wiz_client.get_projects():
-        logger.info(f"Received {len(projects)} projects")
-        yield projects
+    if kind == ObjectKind.PROJECT:
+        async for projects in wiz_client.get_projects():
+            logger.info(f"Received {len(projects)} projects")
+            yield projects
 
+    elif kind in {ObjectKind.ISSUE, ObjectKind.CONTROL, ObjectKind.SERVICE_TICKET}:
+        status_list = typing.cast(
+            IssueResourceConfig, event.resource_config
+        ).selector.status_list
 
-@ocean.on_resync(ObjectKind.ISSUE)
-async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    wiz_client = init_client()
+        logger.info(f"Resyncing {kind.lower()} with status list: {status_list}")
 
-    status_list = typing.cast(
-        IssueResourceConfig, event.resource_config
-    ).selector.status_list
-
-    logger.info(f"Resyncing issues with status list: {status_list}")
-
-    async for issues in wiz_client.get_issues(status_list):
-        yield issues
-
-
-@ocean.on_resync(ObjectKind.CONTROL)
-async def resync_controls(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    wiz_client = init_client()
-
-    async for _issues in wiz_client.get_issues():
-        yield [
-            issue["sourceRule"]
-            for issue in _issues
-            if issue.get("sourceRule") is not None
-        ]
-
-
-@ocean.on_resync(ObjectKind.SERVICE_TICKET)
-async def resync_service_tickets(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    wiz_client = init_client()
-
-    async for _issues in wiz_client.get_issues():
-        yield [
-            ticket for issue in _issues for ticket in issue.get("serviceTickets", [])
-        ]
+        async for _issues in wiz_client.get_issues(status_list):
+            if kind == ObjectKind.ISSUE:
+                yield _issues
+            elif kind == ObjectKind.CONTROL:
+                yield [
+                    issue["sourceRule"]
+                    for issue in _issues
+                    if issue.get("sourceRule") is not None
+                ]
+            elif kind == ObjectKind.SERVICE_TICKET:
+                yield [
+                    ticket
+                    for issue in _issues
+                    for ticket in issue.get("serviceTickets", [])
+                ]
 
 
 @ocean.router.post("/webhook")

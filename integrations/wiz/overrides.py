@@ -17,7 +17,6 @@ class IssueSelector(Selector):
 
 
 class IssueResourceConfig(ResourceConfig):
-    kind: typing.Literal["issue"]
     selector: IssueSelector
 
 
