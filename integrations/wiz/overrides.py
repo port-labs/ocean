@@ -1,5 +1,3 @@
-import typing
-
 from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     PortAppConfig,
