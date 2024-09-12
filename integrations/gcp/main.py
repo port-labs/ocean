@@ -173,12 +173,14 @@ async def feed_events_callback(request: Request) -> Response:
     """
     request_json = await request.json()
     try:
-        logger.info("Got Real-Time event")
         asset_data = await parse_asset_data(request_json["message"]["data"])
         asset_type = asset_data["asset"]["assetType"]
         asset_name = asset_data["asset"]["name"]
         asset_project = get_project_name_from_ancestors(
             asset_data["asset"]["ancestors"]
+        )
+        logger.info(
+            f"Got Real-Time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
         )
         asset_resource_data = await feed_event_to_resource(
             asset_type, asset_name, asset_project, asset_data
