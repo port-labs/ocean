@@ -17,7 +17,6 @@ from gcp_core.overrides import GCPCloudResourceSelector
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
     feed_event_to_resource,
-    get_single_project,
     list_all_subscriptions_per_project,
     list_all_topics_per_project,
     search_all_folders,
@@ -26,7 +25,6 @@ from gcp_core.search.resource_searches import (
     search_all_resources,
 )
 from gcp_core.utils import (
-    EXTRA_PROJECT_FIELD,
     AssetTypesWithSpecialHandling,
     get_current_resource_config,
     get_credentials_json,
