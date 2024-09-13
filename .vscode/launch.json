@@ -87,6 +87,17 @@
       "python": "${workspaceFolder}/integrations/test-integration/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/gitlab_v1",
+      "envFile": "${workspaceFolder}/integrations/gitlab_v1/.env",
+      "justMyCode": true,
+      "name": "Run gitlab_v1 integration",
+      "program": "${workspaceFolder}/integrations/gitlab_v1/debug.py",
+      "python": "${workspaceFolder}/integrations/gitlab_v1/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }
