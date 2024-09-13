@@ -40,7 +40,7 @@
       "relations": {}
     },
     {
-      "identifier": "project",
+      "identifier": "gitlabProject",
       "title": "Project",
       "icon": "Microservice",
       "schema": {
