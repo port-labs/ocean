@@ -99,6 +99,10 @@ lint:
 	$(ACTIVATE) && \
 	$(call run_checks,.)
 
+lint/fix:
+	$(ACTIVATE) && \
+	black .
+
 # Development commands
 build:
 	$(ACTIVATE) && poetry build
