@@ -70,7 +70,6 @@ class GitlabService:
                 return hook
         return None
 
-
     def _delete_group_webhook(self, group: RESTObject, hook_id: int) -> None:
         logger.info(f"Deleting webhook with id {hook_id} in group {group.get_id()}")
         try:
