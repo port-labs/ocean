@@ -70,11 +70,6 @@ class GitlabService:
                 return hook
         return None
 
-    def _does_webhook_exist_for_group(self, group: RESTObject) -> bool:
-        for hook in group.hooks.list(iterator=True):
-            if hook.url == f"{self.app_host}/integration/hook/{group.get_id()}":
-                return True
-        return False
 
     def _delete_group_webhook(self, group: RESTObject, hook_id: int) -> None:
         logger.info(f"Deleting webhook with id {hook_id} in group {group.get_id()}")
