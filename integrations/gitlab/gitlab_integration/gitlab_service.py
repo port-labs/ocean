@@ -72,7 +72,6 @@ class GitlabService:
 
     def _does_webhook_exist_for_group(self, group: RESTObject) -> bool:
         for hook in group.hooks.list(iterator=True):
-            logger.warning(f"hook: {hook}")
             if hook.url == f"{self.app_host}/integration/hook/{group.get_id()}":
                 return True
         return False
