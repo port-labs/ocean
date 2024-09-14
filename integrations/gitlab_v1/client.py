@@ -1,8 +1,7 @@
-from typing import Any, Optional, List
+from typing import Any, Optional, List, AsyncGenerator
 from loguru import logger
 from port_ocean.utils import http_async_client
-from httpx import HTTPStatusError, Timeout
-
+from httpx import HTTPStatusError
 
 PAGE_SIZE = 100
 CLIENT_TIMEOUT = 60
@@ -11,10 +10,9 @@ class GitlabHandler:
     def __init__(self, private_token: str):
         self.api_url = "https://gitlab.com/api/v4/"
         self.auth_header = {"PRIVATE-TOKEN": private_token}
-        self.client: AsyncClient = http_async_client
-        self.client.timeout = Timeout(CLIENT_TIMEOUT)
+        self.client = http_async_client
+        self.client.timeout = CLIENT_TIMEOUT
         self.client.headers.update(self.auth_header)
-
 
     async def _send_api_request(
         self,
@@ -40,27 +38,26 @@ class GitlabHandler:
             )
             raise
 
-
-
     async def get_paginated_resources(
         self,
         resource: str,
         params: Optional[dict[str, Any]] = None,
-    ) -> List[dict[str, Any]]:
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Fetch all paginated data from the GitLab API."""
         if params is None:
             params = {}
         params["per_page"] = PAGE_SIZE
         params["page"] = 1
-        all_items = []
+
         while True:
             response = await self._send_api_request(resource, params=params)
-            all_items.extend(response)
-            if 'next' not in response:
-                break
-            params["page"] += 1
-        return all_items
+            for item in response:
+                yield item
 
+            if 'X-Next-Page' not in response.headers or not response.headers['X-Next-Page']:
+                break
+
+            # params["page"] = int(response.headers['X-Next-Page'])
 
     async def get_single_resource(
         self, resource_kind: str, resource_id: str
@@ -68,11 +65,10 @@ class GitlabHandler:
         """Get a single resource by kind and ID."""
         return await self._send_api_request(f"{resource_kind}/{resource_id}")
 
-
-    async def fetch_groups(self) -> List[dict]:
-        groups = await self.get_paginated_resources("groups")
-        return [
-            {
+    async def fetch_groups(self) -> AsyncGenerator[dict, None]:
+        """Fetch GitLab groups using an async generator."""
+        async for group in self.get_paginated_resources("groups"):
+            yield {
                 "identifier": group["id"],
                 "title": group["name"],
                 "blueprint": "gitlabGroup",
@@ -81,14 +77,12 @@ class GitlabHandler:
                     "url": group["web_url"],
                     "description": group.get("description", "")
                 }
-            } for group in groups
-        ]
+            }
 
-
-    async def fetch_projects(self) -> List[dict]:
-        projects = await self.get_paginated_resources("projects")
-        return [
-            {
+    async def fetch_projects(self) -> AsyncGenerator[dict, None]:
+        """Fetch GitLab projects using an async generator."""
+        async for project in self.get_paginated_resources("projects"):
+            yield {
                 "identifier": project["id"],
                 "title": project["name"],
                 "blueprint": "gitlabProject",
@@ -106,14 +100,12 @@ class GitlabHandler:
                         "blueprint": "gitlabGroup"
                     }
                 }
-            } for project in projects
-        ]
+            }
 
-
-    async def fetch_merge_requests(self) -> List[dict]:
-        merge_requests = await self.get_paginated_resources("merge_requests")
-        return [
-            {
+    async def fetch_merge_requests(self) -> AsyncGenerator[dict, None]:
+        """Fetch GitLab merge requests using an async generator."""
+        async for mr in self.get_paginated_resources("merge_requests"):
+            yield {
                 "identifier": mr["id"],
                 "title": mr["title"],
                 "blueprint": "gitlabMergeRequest",
@@ -132,14 +124,12 @@ class GitlabHandler:
                         "blueprint": "project"
                     }
                 }
-            } for mr in merge_requests
-        ]
+            }
 
-
-    async def fetch_issues(self) -> List[dict]:
-        issues = await self.get_paginated_resources("issues")
-        return [
-            {
+    async def fetch_issues(self) -> AsyncGenerator[dict, None]:
+        """Fetch GitLab issues using an async generator."""
+        async for issue in self.get_paginated_resources("issues"):
+            yield {
                 "identifier": issue["id"],
                 "title": issue["title"],
                 "blueprint": "gitlabIssue",
@@ -159,5 +149,4 @@ class GitlabHandler:
                         "blueprint": "project"
                     }
                 }
-            } for issue in issues
-        ]
+            }
