@@ -2,16 +2,36 @@ import asyncio
 import httpx
 from httpx import Timeout
 from loguru import logger
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, Dict
 from port_ocean.utils import http_async_client
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
 
 REQUEST_TIMEOUT: int = 60
+CREATE_UPDATE_WEBHOOK_EVENTS: list[str] = [
+    "open",
+    "reopen",
+    "update",
+    "approved",
+    "unapproved",
+    "approval",
+    "unapproval",
+]
+DELETE_WEBHOOK_EVENTS: list[str] = ["close", "merge"]
+WEBHOOK_EVENTS_TO_TRACK: dict[str, bool] = {
+    "issues_events": True,
+    "merge_requests_events": True,
+}
+WEBHOOK_NAME: str = "Port-Ocean-Events-Webhook"
 
 class GitlabClient:
     def __init__(self, gitlab_host: str, gitlab_token: str) -> None:
-        self.gitlab_host = gitlab_host
+        self.gitlab_host = f"{gitlab_host}/api/v4"
+        self.projects_url = f"{self.gitlab_host}/projects"
+        self.merge_requests_url = f"{self.gitlab_host}/merge_requests"
+        self.issues_url = f"{self.gitlab_host}/issues"
+        self.groups_url = f"{self.gitlab_host}/groups"
+
         self.gitlab_token = gitlab_token
         self.client = http_async_client
         self.authorization_header = {"Authorization": f"Bearer {gitlab_token}"}
@@ -91,3 +111,39 @@ class GitlabClient:
 
         logger.info("Finished paginated request")
         return
+
+    @cache_iterator_result()
+    async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self._make_paginated_request(self.projects_url):
+            # fetch all project languages concurrently
+            projects = await asyncio.gather(
+                *[self._enrich_project_with_language(project) for project in projects]
+            )
+
+            # fetch all project groups concurrently
+            projects = await asyncio.gather(
+                *[self._enrich_project_with_group(project) for project in projects]
+            )
+
+            yield projects
+
+    async def _get_project_languages(self, project_id: int):
+        url = f"{self.projects_url}/{project_id}/languages"
+        languages = await self._make_request(url)
+        return ", ".join(languages.keys())
+
+    async def _enrich_project_with_language(self, project: dict[str, Any]) -> dict[str, Any]:
+        languages = await self._get_project_languages(project["id"])
+        project["__languages"] = languages
+        return project
+
+
+    async def _get_project_group(self, project_id: int) -> dict[str, Any]:
+        url = f"{self.projects_url}/{project_id}/groups"
+        group = await self._make_request(url)
+        return group
+
+    async def _enrich_project_with_group(self, project: dict[str, Any]) -> dict[str, Any]:
+        group = await self._get_project_group(project["id"])
+        project["__group"] = group
+        return project
