@@ -1,10 +1,16 @@
-from typing import Any, Optional, List, AsyncGenerator
+import asyncio
+from typing import Any, Optional, List, AsyncGenerator, Dict
 from loguru import logger
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError
 
+
 PAGE_SIZE = 10
+RECORD_lIMIT = 5
 CLIENT_TIMEOUT = 60
+MAX_CONCURRENT_REQUESTS = 5  # Maximum concurrent requests
+RATE_LIMIT_DELAY = 1  # Delay in seconds between requests
+
 
 class GitlabHandler:
     def __init__(self, private_token: str):
@@ -13,58 +19,81 @@ class GitlabHandler:
         self.client = http_async_client
         self.client.timeout = CLIENT_TIMEOUT
         self.client.headers.update(self.auth_header)
+        self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
 
     async def _send_api_request(
         self,
         endpoint: str,
-        params: Optional[dict[str, Any]] = None,
-        json_data: Optional[dict[str, Any]] = None,
+        params: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
         method: str = "GET",
     ) -> Any:
-        """Send a request to the GitLab API."""
+        """Send a request to the GitLab API"""
         url = f"{self.api_url}{endpoint}"
-        try:
-            response = await self.client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-            )
-            response.raise_for_status()
-            return response.json()
-        except HTTPStatusError as e:
-            logger.error(
-                f"HTTP error for URL: {url} - Status code: {e.response.status_code} - Response: {e.response.text}"
-            )
-            raise
+        async with self.semaphore:  # Limit concurrent requests
+            try:
+                logger.debug(f"Sending {method} request to {url} with params={params} and json={json_data}")
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                )
+                response.raise_for_status()
+                logger.debug(f"Received response from {url}: {response.status_code}")
+                return response.json()
+            except HTTPStatusError as e:
+                logger.error(
+                    f"HTTP error for URL: {url} - Status code: {e.response.status_code} - Response: {e.response.text}"
+                )
+                raise
+            finally:
+                await asyncio.sleep(RATE_LIMIT_DELAY)  # Delay between requests
 
     async def get_paginated_resources(
-        self,
-        resource: str,
-        params: Optional[dict[str, Any]] = None,
-    ) -> AsyncGenerator[dict[str, Any], None]:
-        """Fetch all paginated data from the GitLab API."""
+            self,
+            resource: str,
+            params: Optional[Dict[str, Any]] = None,
+            record_limit: int = RECORD_LIMIT
+            ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Fetch paginated data from GitLab API"""
         if params is None:
             params = {}
-        params["per_page"] = PAGE_SIZE
-        params["page"] = 1
+            params["per_page"] = PAGE_SIZE
+            params["page"] = 1
+            total_fetched = 0
 
-
-        while True:
+        while total_fetched < record_limit:
+            logger.debug(f"Fetching page {params['page']} for resource '{resource}'")
             response = await self._send_api_request(resource, params=params)
+            if not isinstance(response, list):
+                logger.error(f"Expected a list response for resource '{resource}', got {type(response)}")
+                break
+
             for item in response:
                 yield item
 
+                total_fetched += 1
+                if total_fetched >= record_limit:
+                    break
+
+                if len(response) < PAGE_SIZE or total_fetched >= record_limit:
+                    logger.debug(f"No more pages to fetch for resource '{resource}', or limit reached.")
+                    break  # Stop if we've fetched enough records or no more pages
+            params["page"] += 1  # Move to the next page
 
     async def get_single_resource(
         self, resource_kind: str, resource_id: str
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Get a single resource by kind and ID."""
         return await self._send_api_request(f"{resource_kind}/{resource_id}")
 
-    async def fetch_groups(self) -> AsyncGenerator[dict, None]:
+
+    async def fetch_groups(self) -> AsyncGenerator[Dict[str, Any], None]:
         """Fetch GitLab groups using an async generator."""
         async for group in self.get_paginated_resources("groups"):
+
             yield {
                 "identifier": group["id"],
                 "title": group["name"],
@@ -76,7 +105,8 @@ class GitlabHandler:
                 }
             }
 
-    async def fetch_projects(self) -> AsyncGenerator[dict, None]:
+
+    async def fetch_projects(self) -> AsyncGenerator[Dict[str, Any], None]:
         """Fetch GitLab projects using an async generator."""
         async for project in self.get_paginated_resources("projects"):
             yield {
@@ -99,7 +129,8 @@ class GitlabHandler:
                 }
             }
 
-    async def fetch_merge_requests(self) -> AsyncGenerator[dict, None]:
+
+    async def fetch_merge_requests(self) -> AsyncGenerator[Dict[str, Any], None]:
         """Fetch GitLab merge requests using an async generator."""
         async for mr in self.get_paginated_resources("merge_requests"):
             yield {
@@ -123,7 +154,8 @@ class GitlabHandler:
                 }
             }
 
-    async def fetch_issues(self) -> AsyncGenerator[dict, None]:
+
+    async def fetch_issues(self) -> AsyncGenerator[Dict[str, Any], None]:
         """Fetch GitLab issues using an async generator."""
         async for issue in self.get_paginated_resources("issues"):
             yield {
