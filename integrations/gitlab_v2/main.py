@@ -16,17 +16,20 @@ class ResourceKind(StrEnum):
     MERGE_REQUEST = "merge_request"
     ISSUE = "issue"
 
+
 # Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting musah_gitlab integration")
     await bootstrap_client()
 
+
 def initialize_client() -> GitlabClient:
     return GitlabClient(
         ocean.integration_config["gitlab_host"],
         ocean.integration_config["gitlab_access_token"],
     )
+
 
 async def bootstrap_client() -> None:
     app_host = ocean.integration_config.get("app_host")
@@ -39,6 +42,7 @@ async def bootstrap_client() -> None:
     gitlab_client = initialize_client()
 
     await gitlab_client.create_webhooks(app_host)
+
 
 def extract_merge_request_payload(data: dict[str, Any]) -> dict[str, Any]:
     logger.info(f"Extracting merge request for project: {data['project']['id']}")
@@ -55,6 +59,7 @@ def extract_merge_request_payload(data: dict[str, Any]) -> dict[str, Any]:
         "reviewers": data["reviewers"][0]["name"],
         "__project": data["project"],
     }
+
 
 def extract_issue_payload(data: dict[str, Any]) -> dict[str, Any]:
     logger.info(f"Extracting issue for project: {data['project']['id']}")
@@ -73,10 +78,11 @@ def extract_issue_payload(data: dict[str, Any]) -> dict[str, Any]:
         "__project": data["project"],
     }
 
+
 async def handle_webhook_event(
-    webhook_event: str,
-    object_attributes_action: str,
-    data: dict[str, Any],
+        webhook_event: str,
+        object_attributes_action: str,
+        data: dict[str, Any],
 ) -> Optional[dict[str, Any]]:
     ocean_action = None
     if object_attributes_action in DELETE_WEBHOOK_EVENTS:
@@ -102,6 +108,7 @@ async def handle_webhook_event(
     logger.info(f"Webhook event '{webhook_event}' processed successfully.")
     return {"ok": True}
 
+
 @ocean.on_resync(ResourceKind.PROJECT)
 async def resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
@@ -113,12 +120,14 @@ async def resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects = [project for project in projects if project.get("__group")]
         yield projects
 
+
 @ocean.on_resync(ResourceKind.GROUP)
 async def resync_group(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
     async for groups in client.get_groups():
         logger.info(f"Received {kind} batch with {len(groups)} groups")
         yield groups
+
 
 @ocean.on_resync(ResourceKind.MERGE_REQUEST)
 async def resync_merge_request(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -128,6 +137,7 @@ async def resync_merge_request(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             f"Received {kind} batch with {len(merge_requests)} merge requests"
         )
         yield merge_requests
+
 
 @ocean.on_resync(ResourceKind.ISSUE)
 async def resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:

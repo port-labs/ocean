@@ -240,11 +240,6 @@ class GitlabClient:
         languages = await self._make_request(url)
         return ", ".join(languages.keys())
 
-    async def _enrich_project_with_language(self, project: dict[str, Any]) -> dict[str, Any]:
-        languages = await self._get_project_languages(project["id"])
-        project["__languages"] = languages
-        return project
-
     async def _get_project_group(self, project_id: int) -> dict[str, Any]:
         url = f"{self.projects_url}/{project_id}/groups"
         group = await self._make_request(url)
@@ -256,6 +251,11 @@ class GitlabClient:
 
     async def _get_merge_request_project(self, project_id: int) -> dict[str, Any]:
         project = await self.get_project(project_id)
+        return project
+
+    async def _enrich_project_with_language(self, project: dict[str, Any]) -> dict[str, Any]:
+        languages = await self._get_project_languages(project["id"])
+        project["__languages"] = languages
         return project
 
     async def _enrich_project_with_group(self, project: dict[str, Any]) -> dict[str, Any]:
