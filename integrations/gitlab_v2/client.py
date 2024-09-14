@@ -135,7 +135,7 @@ class GitlabClient:
 
             yield projects
 
-    async def get_project(self, project_id: int):
+    async def get_project(self, project_id: int) -> dict[str, Any]:
         project = await self._make_request(f"{self.projects_url}/{project_id}")
         return project
 
@@ -230,12 +230,12 @@ class GitlabClient:
                 f"Failed to create webhook for project {project['path_with_namespace']}: {e}"
             )
 
-    async def _get_project_hooks(self, project_id: int):
+    async def _get_project_hooks(self, project_id: int) -> dict[str, Any]:
         url = f"{self.projects_url}/{project_id}/hooks"
         hooks = await self._make_request(url)
         return hooks
 
-    async def _get_project_languages(self, project_id: int):
+    async def _get_project_languages(self, project_id: int) -> str:
         url = f"{self.projects_url}/{project_id}/languages"
         languages = await self._make_request(url)
         return ", ".join(languages.keys())
@@ -250,11 +250,11 @@ class GitlabClient:
         group = await self._make_request(url)
         return group
 
-    async def _get_issue_project(self, project_id: int):
+    async def _get_issue_project(self, project_id: int) -> dict[str, Any]:
         project = await self.get_project(project_id)
         return project
 
-    async def _get_merge_request_project(self, project_id: int):
+    async def _get_merge_request_project(self, project_id: int) -> dict[str, Any]:
         project = await self.get_project(project_id)
         return project
 
@@ -263,17 +263,17 @@ class GitlabClient:
         project["__group"] = group
         return project
 
-    async def _enrich_issues_with_project(self, issue: dict[str, Any]):
+    async def _enrich_issues_with_project(self, issue: dict[str, Any]) -> dict[str, Any]:
         project = await self._get_issue_project(issue["project_id"])
         issue["__project"] = project
         return issue
 
-    async def _enrich_merge_request_with_project(self, merge_request: dict[str, Any]):
+    async def _enrich_merge_request_with_project(self, merge_request: dict[str, Any]) -> dict[str, Any]:
         project = await self._get_merge_request_project(merge_request["project_id"])
         merge_request["__project"] = project
         return merge_request
 
-    async def _enrich_project_with_hooks(self, project: dict[str, Any]):
+    async def _enrich_project_with_hooks(self, project: dict[str, Any]) -> dict[str, Any]:
         hooks = await self._get_project_hooks(project["id"])
         project["__hooks"] = hooks
         return project
