@@ -1,41 +1,97 @@
-from typing import Any, List, Dict, Callable, AsyncGenerator
+from enum import StrEnum
+from typing import Any, Dict, List, Callable, AsyncGenerator
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from client import GitlabHandler
 from loguru import logger
 
 
-async def fetch_items(fetch_method: Callable[[], AsyncGenerator[Dict[str, Any], None]]) -> List[Dict[str, Any]]:
-    return [item async for item in fetch_method()]
+# Define ObjectKind for GitLab
+class ObjectKind(StrEnum):
+    GROUP = "gitlabGroup"
+    PROJECT = "gitlabProject"
+    MERGE_REQUEST = "gitlabMergeRequest"
+    ISSUE = "gitlabIssue"
 
 
-@ocean.on_resync()
-async def on_resync(kind: str) -> List[Dict[str, Any]]:
+async def fetch_resource(fetch_method: Callable[[], AsyncGenerator[Dict[str, Any], None]]) -> List[Dict[str, Any]]:
+    """Fetch resources using the provided fetch method."""
+    items = []
+    try:
+        async for item in fetch_method():
+            logger.info(f"Received item: {item}")
+            items.append(item)
+    except Exception as e:
+        logger.error(f"Error fetching resources: {str(e)}")
+    return items
+
+@ocean.on_resync(ObjectKind.GROUP)
+async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resynchronization for GitLab groups."""
+    if kind != ObjectKind.GROUP:
+        logger.warning(f"Unexpected kind {kind} for on_resync_groups")
+        return []
+
     if not hasattr(ocean, 'gitlab_handler'):
         logger.error("GitLab handler not initialized. Please check on_start function.")
         return []
 
-    resource_map = {
-        "gitlabGroup": ocean.gitlab_handler.fetch_groups,
-        "gitlabProject": ocean.gitlab_handler.fetch_projects,
-        "gitlabMergeRequest": ocean.gitlab_handler.fetch_merge_requests,
-        "gitlabIssue": ocean.gitlab_handler.fetch_issues,
-    }
+    fetch_method = ocean.gitlab_handler.fetch_groups
+    items = await fetch_resource(fetch_method)
+    return items
 
-    fetch_method = resource_map.get(kind)
-    if not fetch_method:
-        logger.warning(f"Unknown resource kind: {kind}")
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resynchronization for GitLab projects."""
+    if kind != ObjectKind.PROJECT:
+        logger.warning(f"Unexpected kind {kind} for on_resync_projects")
         return []
 
-
-    try:
-        return await fetch_items(fetch_method)
-    except Exception as e:
-        logger.error(f"Error fetching {kind}: {str(e)}")
+    if not hasattr(ocean, 'gitlab_handler'):
+        logger.error("GitLab handler not initialized. Please check on_start function.")
         return []
+
+    fetch_method = ocean.gitlab_handler.fetch_projects
+    items = await fetch_resource(fetch_method)
+    return items
+
+
+@ocean.on_resync(ObjectKind.MERGE_REQUEST)
+async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resynchronization for GitLab merge requests."""
+    if kind != ObjectKind.MERGE_REQUEST:
+        logger.warning(f"Unexpected kind {kind} for on_resync_merge_requests")
+        return []
+
+    if not hasattr(ocean, 'gitlab_handler'):
+        logger.error("GitLab handler not initialized. Please check on_start function.")
+        return []
+
+    fetch_method = ocean.gitlab_handler.fetch_merge_requests
+    items = await fetch_resource(fetch_method)
+    return items
+
+
+@ocean.on_resync(ObjectKind.ISSUE)
+async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Handle resynchronization for GitLab issues."""
+    if kind != ObjectKind.ISSUE:
+        logger.warning(f"Unexpected kind {kind} for on_resync_issues")
+        return []
+
+    if not hasattr(ocean, 'gitlab_handler'):
+        logger.error("GitLab handler not initialized. Please check on_start function.")
+        return []
+
+    fetch_method = ocean.gitlab_handler.fetch_issues
+    items = await fetch_resource(fetch_method)
+    return items
 
 
 @ocean.on_start()
 async def on_start() -> None:
+    """Initialize the GitLab handler."""
     private_token = ocean.integration_config.get('token')
     if not private_token:
         logger.error("GitLab Token not provided in configuration")
