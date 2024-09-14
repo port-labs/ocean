@@ -40,7 +40,7 @@ async def on_start() -> None:
 
 
     if not private_token:
-        logger.error("GitLab private token not provided in configuration")
+        logger.error("GitLab Token not provided in configuration")
         return
 
     try:
