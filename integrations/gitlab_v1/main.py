@@ -11,22 +11,32 @@ gitlab_handler: GitlabHandler = None
 @ocean.on_resync()
 async def on_resync(kind: str) -> List[Dict[str, Any]]:
     global gitlab_handler
+
     if not gitlab_handler:
         print("GitLab handler not initialized. Please check on_start function.")
         return []
 
+    results = []
+    try:
+        if kind == "gitlabGroup":
+            async for group in gitlab_handler.fetch_groups():
+                results.append(group)
+        elif kind == "gitlabProject":
+            async for project in gitlab_handler.fetch_projects():
+                results.append(project)
+        elif kind == "gitlabMergeRequest":
+            async for mr in gitlab_handler.fetch_merge_requests():
+                results.append(mr)
+        elif kind == "gitlabIssue":
+            async for issue in gitlab_handler.fetch_issues():
+                results.append(issue)
+        else:
+            logger.warning(f"Unknown kind: {kind}")
+    except Exception as e:
+        logger.error(f"Error fetching {kind}: {str(e)}")
 
-    if kind == "gitlabGroup":
-        return await gitlab_handler.fetch_groups()
-    elif kind == "gitlabProject":
-        return await gitlab_handler.fetch_projects()
-    elif kind == "gitlabMergeRequest":
-        return await gitlab_handler.fetch_merge_requests()
-    elif kind == "gitlabIssue":
-        return await gitlab_handler.fetch_issues()
 
-    print(f"Unknown kind: {kind}")
-    return []
+    return results
 
 
 @ocean.on_start()
