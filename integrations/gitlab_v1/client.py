@@ -3,7 +3,7 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError
 
-PAGE_SIZE = 100
+PAGE_SIZE = 10
 CLIENT_TIMEOUT = 60
 
 class GitlabHandler:
@@ -49,15 +49,12 @@ class GitlabHandler:
         params["per_page"] = PAGE_SIZE
         params["page"] = 1
 
+
         while True:
             response = await self._send_api_request(resource, params=params)
             for item in response:
                 yield item
 
-            if 'X-Next-Page' not in response.headers or not response.headers['X-Next-Page']:
-                break
-
-            # params["page"] = int(response.headers['X-Next-Page'])
 
     async def get_single_resource(
         self, resource_kind: str, resource_id: str
