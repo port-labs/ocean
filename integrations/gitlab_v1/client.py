@@ -1,12 +1,11 @@
 import asyncio
-from typing import Any, Optional, List, AsyncGenerator, Dict
+from typing import Any, Optional, AsyncGenerator, Dict
 from loguru import logger
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError
 
 
 PAGE_SIZE = 10
-RECORD_lIMIT = 5
 CLIENT_TIMEOUT = 60
 MAX_CONCURRENT_REQUESTS = 5  # Maximum concurrent requests
 RATE_LIMIT_DELAY = 1  # Delay in seconds between requests
@@ -48,40 +47,49 @@ class GitlabHandler:
                     f"HTTP error for URL: {url} - Status code: {e.response.status_code} - Response: {e.response.text}"
                 )
                 raise
+            except asyncio.TimeoutError:
+                logger.error(f"Request to {url} timed out.")
+                raise
             finally:
                 await asyncio.sleep(RATE_LIMIT_DELAY)  # Delay between requests
 
+
     async def get_paginated_resources(
-            self,
-            resource: str,
-            params: Optional[Dict[str, Any]] = None,
-            record_limit: int = RECORD_LIMIT
-            ) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch paginated data from GitLab API"""
+        self,
+        resource: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Fetch paginated data from GitLab API, without record limit."""
         if params is None:
             params = {}
-            params["per_page"] = PAGE_SIZE
-            params["page"] = 1
-            total_fetched = 0
+        params["per_page"] = PAGE_SIZE
+        params["page"] = 1
 
-        while total_fetched < record_limit:
+
+        while True:
             logger.debug(f"Fetching page {params['page']} for resource '{resource}'")
             response = await self._send_api_request(resource, params=params)
             if not isinstance(response, list):
                 logger.error(f"Expected a list response for resource '{resource}', got {type(response)}")
                 break
 
+
+            if len(response) == 0:
+                logger.debug(f"No more records to fetch for resource '{resource}'.")
+                break
+
+
             for item in response:
                 yield item
 
-                total_fetched += 1
-                if total_fetched >= record_limit:
-                    break
 
-                if len(response) < PAGE_SIZE or total_fetched >= record_limit:
-                    logger.debug(f"No more pages to fetch for resource '{resource}', or limit reached.")
-                    break  # Stop if we've fetched enough records or no more pages
+            if len(response) < PAGE_SIZE:
+                logger.debug(f"Last page reached for resource '{resource}', no more data.")
+                break
+
+
             params["page"] += 1  # Move to the next page
+
 
     async def get_single_resource(
         self, resource_kind: str, resource_id: str
