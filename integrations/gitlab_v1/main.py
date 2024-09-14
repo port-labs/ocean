@@ -1,56 +1,50 @@
-from typing import Any
-
+from typing import Any, List, Dict
 from port_ocean.context.ocean import ocean
+from client import GitlabHandler
+from loguru import logger
 
 
-# Required
-# Listen to the resync event of all the kinds specified in the mapping inside port.
-# Called each time with a different kind that should be returned from the source system.
+
+gitlab_handler: GitlabHandler = None
+
+
 @ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all data from the source system
-    # 2. Return a list of dictionaries with the raw data of the state to run the core logic of the framework for
-    # Example:
-    # if kind == "project":
-    #     return [{"some_project_key": "someProjectValue", ...}]
-    # if kind == "issues":
-    #     return [{"some_issue_key": "someIssueValue", ...}]
+async def on_resync(kind: str) -> List[Dict[str, Any]]:
+    global gitlab_handler
+    if not gitlab_handler:
+        print("GitLab handler not initialized. Please check on_start function.")
+        return []
 
-    # Initial stub to show complete flow, replace this with your own logic
-    if kind == "gitlab_v1-example-kind":
-        return [
-            {
-                "my_custom_id": f"id_{x}",
-                "my_custom_text": f"very long text with {x} in it",
-                "my_special_score": x * 32 % 3,
-                "my_component": f"component-{x}",
-                "my_service": f"service-{x %2}",
-                "my_enum": "VALID" if x % 2 == 0 else "FAILED",
-            }
-            for x in range(25)
-        ]
 
+    if kind == "gitlabGroup":
+        return await gitlab_handler.fetch_groups()
+    elif kind == "gitlabProject":
+        return await gitlab_handler.fetch_projects()
+    elif kind == "gitlabMergeRequest":
+        return await gitlab_handler.fetch_merge_requests()
+    elif kind == "gitlabIssue":
+        return await gitlab_handler.fetch_issues()
+
+    print(f"Unknown kind: {kind}")
     return []
 
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
-
-
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting gitlab_v1 integration")
+    global gitlab_handler
+
+        # Initialize GitLab handler
+    private_token = ocean.integration_config['token']
+
+    logger.error(ocean.integration_config)
+
+
+    if not private_token:
+        logger.error("GitLab private token not provided in configuration")
+        return
+
+    try:
+        gitlab_handler = GitlabHandler(private_token)
+        logger.info("GitLab integration started and handler initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize GitLab handler: {str(e)}")
