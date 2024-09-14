@@ -85,7 +85,7 @@ class GitlabClient:
         return hook["url"] == url
 
     async def _make_paginated_request(
-            self, url: str, params: Optional[dict[str, Any]] = None
+            self, url: str, params: Optional[dict[str, Any]] = {}
     ) -> AsyncGenerator[dict[str, list[dict[str, Any]]], None]:
         params = {**self._default_paginated_req_params(), **params}
         while True:
@@ -141,7 +141,7 @@ class GitlabClient:
 
     @cache_iterator_result()
     async def get_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for groups in self._make_paginated_request(self.group_url):
+        async for groups in self._make_paginated_request(self.groups_url):
             yield groups
 
     async def get_merge_requests(self) -> AsyncGenerator[list[dict[str, Any]], None]:
