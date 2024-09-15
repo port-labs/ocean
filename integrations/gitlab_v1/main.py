@@ -36,7 +36,8 @@ async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.error("GitLab handler not initialized. Please check on_start function.")
         return []
 
-    fetch_method = ocean.gitlab_handler.fetch_groups
+
+    fetch_method = lambda: ocean.gitlab_handler.fetch_resources(ObjectKind.GROUP)
     items = await fetch_resource(fetch_method)
     return items
 
@@ -52,7 +53,8 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.error("GitLab handler not initialized. Please check on_start function.")
         return []
 
-    fetch_method = ocean.gitlab_handler.fetch_projects
+
+    fetch_method = lambda: ocean.gitlab_handler.fetch_resources(ObjectKind.PROJECT)
     items = await fetch_resource(fetch_method)
     return items
 
@@ -68,7 +70,8 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.error("GitLab handler not initialized. Please check on_start function.")
         return []
 
-    fetch_method = ocean.gitlab_handler.fetch_merge_requests
+
+    fetch_method = lambda: ocean.gitlab_handler.fetch_resources(ObjectKind.MERGE_REQUEST)
     items = await fetch_resource(fetch_method)
     return items
 
@@ -84,7 +87,8 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.error("GitLab handler not initialized. Please check on_start function.")
         return []
 
-    fetch_method = ocean.gitlab_handler.fetch_issues
+
+    fetch_method = lambda: ocean.gitlab_handler.fetch_resources(ObjectKind.ISSUE)
     items = await fetch_resource(fetch_method)
     return items
 
