@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.56 (2024-09-15)
+
+
+### Improvements
+
+- Extracted the subscription from the asset inventory and added specific fetching via the GCP's SubscriberAPI.
+- Changed realtime's default non-specific behavior to rely on the asset's data in the feed.
+
+
+## 0.1.55 (2024-09-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.10 (#1)
+
+
+## 0.1.54 (2024-09-06)
+
+
+### Bug Fixes
+
+- Added an alternative key `project_id` for retrieving the quota project id, preventing failure in identifying the associated GCP quota project when `quota_project_id` isn't present in configuration.
+- Fixed bug causing failure in retrieving cloud asset quota from GCP.
+
+
 ## 0.1.53 (2024-09-05)
 
 

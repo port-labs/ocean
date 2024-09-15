@@ -60,6 +60,7 @@ def parse_protobuf_messages(
 
 class AssetTypesWithSpecialHandling(enum.StrEnum):
     TOPIC = "pubsub.googleapis.com/Topic"
+    SUBSCRIPTION = "pubsub.googleapis.com/Subscription"
     PROJECT = "cloudresourcemanager.googleapis.com/Project"
     ORGANIZATION = "cloudresourcemanager.googleapis.com/Organization"
     FOLDER = "cloudresourcemanager.googleapis.com/Folder"
@@ -101,7 +102,13 @@ def get_service_account_project_id() -> str:
     "get project id associated with service account"
     try:
         default_credentials = json.loads(get_credentials_json())
-        project_id = default_credentials["quota_project_id"]
+        project_id = default_credentials.get("project_id") or default_credentials.get(
+            "quota_project_id"
+        )
+
+        if not project_id:
+            raise KeyError("project_id or quota_project_id")
+
         return project_id
     except FileNotFoundError as e:
         gcp_project_env = os.getenv("GCP_PROJECT")
@@ -109,7 +116,7 @@ def get_service_account_project_id() -> str:
             return gcp_project_env
         else:
             raise ValueError(
-                f"Couldn't figure out the service account's project id. You can specify it usign the GCP_PROJECT environment variable. Error: {str(e)}"
+                f"Couldn't figure out the service account's project id. You can specify it using the GCP_PROJECT environment variable. Error: {str(e)}"
             )
     except KeyError as e:
         raise ValueError(
@@ -122,32 +129,34 @@ def get_service_account_project_id() -> str:
     raise ValueError("Couldn't figure out the service account's project id.")
 
 
-async def resolve_request_controllers(
-    kind: str,
+async def get_quotas_for_project(
+    project_id: str, kind: str
 ) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
     try:
-        service_account_project_id = get_service_account_project_id()
-
-        if kind == AssetTypesWithSpecialHandling.TOPIC:
-            topic_rate_limiter = (
-                await pubsub_administrator_per_minute_per_project.limiter(
-                    service_account_project_id
+        match kind:
+            case (
+                AssetTypesWithSpecialHandling.TOPIC
+                | AssetTypesWithSpecialHandling.SUBSCRIPTION
+            ):
+                topic_rate_limiter = (
+                    await pubsub_administrator_per_minute_per_project.limiter(
+                        project_id
+                    )
                 )
-            )
-            topic_semaphore = (
-                await pubsub_administrator_per_minute_per_project.semaphore(
-                    service_account_project_id
+                topic_semaphore = (
+                    await pubsub_administrator_per_minute_per_project.semaphore(
+                        project_id
+                    )
                 )
-            )
-            return (topic_rate_limiter, topic_semaphore)
-
-        asset_rate_limiter = await search_all_resources_qpm_per_project.limiter(
-            service_account_project_id
-        )
-        asset_semaphore = await search_all_resources_qpm_per_project.semaphore(
-            service_account_project_id
-        )
-        return (asset_rate_limiter, asset_semaphore)
+                return (topic_rate_limiter, topic_semaphore)
+            case _:
+                asset_rate_limiter = await search_all_resources_qpm_per_project.limiter(
+                    project_id
+                )
+                asset_semaphore = await search_all_resources_qpm_per_project.semaphore(
+                    project_id
+                )
+                return (asset_rate_limiter, asset_semaphore)
     except Exception as e:
         logger.warning(
             f"Failed to compute quota dynamically due to error. Will use default values. Error: {str(e)}"
@@ -159,3 +168,10 @@ async def resolve_request_controllers(
             await search_all_resources_qpm_per_project.default_semaphore()
         )
         return (default_rate_limiter, default_semaphore)
+
+
+async def resolve_request_controllers(
+    kind: str,
+) -> Tuple["AsyncLimiter", "BoundedSemaphore"]:
+    service_account_project_id = get_service_account_project_id()
+    return await get_quotas_for_project(service_account_project_id, kind)
