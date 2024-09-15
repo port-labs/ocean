@@ -1,5 +1,5 @@
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from google.pubsub_v1.types import pubsub
@@ -18,7 +18,8 @@ async def mock_subscription_pages(
     return_value={"search_all_resources_per_minute_quota": 100},
 )
 @patch("gcp_core.search.paginated_query.paginated_query", new=mock_subscription_pages)
-async def test_list_all_subscriptions_per_project(integration_config: Any) -> None:
+@patch("google.pubsub_v1.services.subscriber.SubscriberAsyncClient", new=AsyncMock)
+async def test_list_all_subscriptions_per_project(integration_config_mock: Any) -> None:
     # Arrange
     from gcp_core.search.resource_searches import list_all_subscriptions_per_project
 
@@ -44,14 +45,20 @@ async def test_list_all_subscriptions_per_project(integration_config: Any) -> No
     "port_ocean.context.ocean.PortOceanContext.integration_config",
     return_value={"search_all_resources_per_minute_quota": 100},
 )
-@patch(
-    "google.pubsub_v1.services.subscriber.SubscriberAsyncClient.get_subscription",
-    return_value=pubsub.Subscription({"name": "subscription_name"}),
-)
 async def test_get_single_subscription(
-    integration_config: Any, subscription_mock: Any
+    integration_config: Any, monkeypatch: Any
 ) -> None:
     # Arrange
+    subscriber_async_client_mock = AsyncMock
+    monkeypatch.setattr(
+        "google.pubsub_v1.services.subscriber.SubscriberAsyncClient",
+        subscriber_async_client_mock,
+    )
+    subscriber_async_client_mock.get_subscription = AsyncMock()
+    subscriber_async_client_mock.get_subscription.return_value = pubsub.Subscription(
+        {"name": "subscription_name"}
+    )
+
     from gcp_core.search.resource_searches import get_single_subscription
 
     expected_subscription = {
@@ -81,18 +88,31 @@ async def test_get_single_subscription(
     "port_ocean.context.ocean.PortOceanContext.integration_config",
     return_value={"search_all_resources_per_minute_quota": 100},
 )
-@patch(
-    "google.pubsub_v1.services.publisher.PublisherAsyncClient.get_topic",
-    return_value=pubsub.Topic({"name": "topic_name"}),
-)
-@patch(
-    "google.cloud.resourcemanager_v3.ProjectsAsyncClient.get_project",
-    return_value=Project({"name": "project_name"}),
-)
-async def test_feed_to_resource(
-    integration_config: Any, get_topic_mock: Any, get_project_mock: Any
-) -> None:
+async def test_feed_to_resource(integration_config: Any, monkeypatch: Any) -> None:
     # Arrange
+
+    ## Mock project client
+    projects_async_client_mock = AsyncMock
+    monkeypatch.setattr(
+        "google.cloud.resourcemanager_v3.ProjectsAsyncClient",
+        projects_async_client_mock,
+    )
+    projects_async_client_mock.get_project = AsyncMock()
+    projects_async_client_mock.get_project.return_value = Project(
+        {"name": "project_name"}
+    )
+
+    ## Mock publisher client
+    publisher_async_client_mock = AsyncMock
+    monkeypatch.setattr(
+        "google.pubsub_v1.services.publisher.PublisherAsyncClient",
+        publisher_async_client_mock,
+    )
+    publisher_async_client_mock.get_topic = AsyncMock()
+    publisher_async_client_mock.get_topic.return_value = pubsub.Topic(
+        {"name": "topic_name"}
+    )
+
     from gcp_core.search.resource_searches import feed_event_to_resource
 
     mock_asset_name = "projects/project_name/topics/topic_name"
