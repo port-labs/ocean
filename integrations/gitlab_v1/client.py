@@ -3,7 +3,8 @@ from typing import Any, Optional, AsyncGenerator, Dict
 from loguru import logger
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Response
-from gitlab_rate_limiter import GitLabRateLimiter
+from helpers.gitlab_rate_limiter import GitLabRateLimiter
+from helpers.mapper_factory import MapperFactory
 from datetime import datetime, timezone
 
 PAGE_SIZE = 100
@@ -17,6 +18,7 @@ class GitlabHandler:
         self.client.timeout = CLIENT_TIMEOUT
         self.client.headers.update(self.auth_header)
         self.rate_limiter = GitLabRateLimiter()
+        self.mapper_factory = MapperFactory()
         self.retries = 3
         self.base_delay = 1
 
@@ -107,88 +109,16 @@ class GitlabHandler:
         """Get a single resource by kind and ID."""
         return await self._send_api_request(f"{resource_kind}/{resource_id}")
 
-    async def fetch_groups(self) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch GitLab groups for the authorized user."""
-        async for group in self.get_paginated_resources("groups", params={"min_access_level": 30, "owned": True}):
-            yield {
-                "identifier": group["id"],
-                "title": group["name"],
-                "blueprint": "gitlabGroup",
-                "properties": {
-                    "visibility": group["visibility"],
-                    "url": group["web_url"],
-                    "description": group.get("description", "")
-                }
-            }
+    async def fetch_resources(self, resource_type: str) -> AsyncGenerator[Dict[str, Any], None]:
+        """Fetch GitLab resources of the specified type."""
+        try:
+            mapper = self.mapper_factory.get_mapper(resource_type)
+        except ValueError as e:
+            logger.error(f"Error fetching resources: {str(e)}")
+            return
 
-    async def fetch_projects(self) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch GitLab projects for the authorized user."""
-        async for project in self.get_paginated_resources("projects", params={"membership": True}):
-            yield {
-                "identifier": project["id"],
-                "title": project["name"],
-                "blueprint": "gitlabProject",
-                "properties": {
-                    "url": project["web_url"],
-                    "description": project.get("description", ""),
-                    "language": project.get("language", ""),
-                    "namespace": project["namespace"]["full_path"],
-                    "fullPath": project["path_with_namespace"],
-                    "defaultBranch": project.get("default_branch", "")
-                },
-                "relations": {
-                    "group": {
-                        "target": project["namespace"]["id"],
-                        "blueprint": "gitlabGroup"
-                    }
-                }
-            }
 
-    async def fetch_merge_requests(self) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch GitLab merge requests for the authorized user."""
-        async for mr in self.get_paginated_resources("merge_requests", params={"scope": "all"}):
-            yield {
-                "identifier": mr["id"],
-                "title": mr["title"],
-                "blueprint": "gitlabMergeRequest",
-                "properties": {
-                    "creator": mr["author"]["username"],
-                    "status": mr["state"],
-                    "createdAt": mr["created_at"],
-                    "updatedAt": mr.get("updated_at", ""),
-                    "mergedAt": mr.get("merged_at", ""),
-                    "link": mr["web_url"],
-                    "reviewers": [reviewer["username"] for reviewer in mr.get("reviewers", [])]
-                },
-                "relations": {
-                    "service": {
-                        "target": mr["project_id"],
-                        "blueprint": "project"
-                    }
-                }
-            }
+        params = mapper.get_query_params()
 
-    async def fetch_issues(self) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch GitLab issues for the authorized user."""
-        async for issue in self.get_paginated_resources("issues", params={"scope": "all"}):
-            yield {
-                "identifier": issue["id"],
-                "title": issue["title"],
-                "blueprint": "gitlabIssue",
-                "properties": {
-                    "link": issue["web_url"],
-                    "description": issue.get("description", ""),
-                    "createdAt": issue["created_at"],
-                    "closedAt": issue.get("closed_at", ""),
-                    "updatedAt": issue.get("updated_at", ""),
-                    "creator": issue["author"]["username"],
-                    "status": issue["state"],
-                    "labels": issue.get("labels", [])
-                },
-                "relations": {
-                    "service": {
-                        "target": issue["project_id"],
-                        "blueprint": "project"
-                    }
-                }
-            }
+        async for item in self.get_paginated_resources(mapper.endpoint, params=params):
+            yield mapper.map(item)
