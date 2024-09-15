@@ -69,6 +69,6 @@ def is_resource_supported(
 
 def unsupported_kind_response(
     kind: str, available_resync_kinds: list[str]
-) -> tuple[RESYNC_RESULT, list[RAW_RESULT | Exception]]:
+) -> tuple[RESYNC_RESULT, list[Exception]]:
     logger.error(f"Kind {kind} is not supported in this integration")
     return [], [KindNotImplementedException(kind, available_resync_kinds)]
