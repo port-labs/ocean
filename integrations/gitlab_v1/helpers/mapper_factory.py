@@ -19,7 +19,8 @@ class GroupMapper(BaseMapper):
         return {
             "min_access_level": 50,
             "order_by": "name",
-            "sort": "asc"
+            "sort": "asc",
+            "owned": True
         }
 
     def map(self, group):
@@ -45,9 +46,7 @@ class ProjectMapper(BaseMapper):
 
     def get_query_params(self):
         return {
-            "membership": True,
-            "order_by": "name",
-            "sort": "asc"
+            "owned" : True,
         }
 
     def map(self, project):
@@ -82,7 +81,7 @@ class MergeRequestMapper(BaseMapper):
 
     def get_query_params(self):
         return {
-            "scope": "all",
+            "scope": "created_by_me",
             "order_by": "created_at",
             "sort": "desc"
         }
@@ -114,7 +113,7 @@ class IssueMapper(BaseMapper):
 
     def get_query_params(self):
         return {
-            "scope": "all",
+            "scope": "created_by_me",
             "order_by": "created_at",
             "sort": "desc"
         }
