@@ -146,31 +146,29 @@ class GitlabClient:
         async for merge_requests in self._make_paginated_request(
             self.merge_requests_url
         ):
-            merge_requests = await asyncio.gather(
+            merge_requests_with_projects = await asyncio.gather(
                 *[
                     self._enrich_merge_request_with_project(merge_request)
                     for merge_request in merge_requests
                 ]
             )
 
-            yield merge_requests
+            yield merge_requests_with_projects
 
     async def get_merge_request(
         self, project_id: int, merge_request_id: int
     ) -> dict[str, Any]:
-        merge_request = await self._make_request(
+        return await self._make_request(
             url=f"{self.projects_url}/{project_id}/merge_requests/{merge_request_id}"
         )
 
-        return merge_request
-
     async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for issues in self._make_paginated_request(self.issues_url):
-            issues = await asyncio.gather(
+            issues_with_projects = await asyncio.gather(
                 *[self._enrich_issues_with_project(issue) for issue in issues]
             )
 
-            yield issues
+            yield issues_with_projects
 
     async def _create_project_hook(self, app_host: str) -> None:
         gitlab_project_webhook_host = f"{app_host}/integration/webhook"

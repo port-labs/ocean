@@ -11,10 +11,10 @@ def extract_merge_request_payload(data: dict[str, Any]) -> dict[str, Any]:
         "author": {
             "name": data["user"]["name"],
         },
-        "status": data["object_attributes"]["state"],
-        "createdAt": data["object_attributes"]["created_at"],
-        "updatedAt": data["object_attributes"]["updated_at"],
-        "link": data["object_attributes"]["source"]["web_url"],
+        "state": data["object_attributes"]["state"],
+        "created_at": data["object_attributes"]["created_at"],
+        "updated_at": data["object_attributes"]["updated_at"],
+        "web_url": data["object_attributes"]["source"]["web_url"],
         "reviewers": data["reviewers"][0]["name"],
         "__project": data["project"],
     }

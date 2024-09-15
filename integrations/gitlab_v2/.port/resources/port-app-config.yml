@@ -47,8 +47,8 @@ resources:
           properties:
             creator: .author.name
             status: .state
-            createdAt: .created_at
-            updatedAt: .updated_at
+            createdAt: if .created_at | contains("UTC") then (.created_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.created_at) end
+            updatedAt: if .updated_at | contains("UTC") then (.updated_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.updated_at) end
             mergedAt: .merged_at
             link: .web_url
             reviewers: .reviewers[] | .username
