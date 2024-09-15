@@ -1,4 +1,5 @@
-from typing import Any
+from collections.abc import AsyncGenerator
+from typing import Any, Callable
 
 from loguru import logger
 

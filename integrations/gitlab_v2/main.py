@@ -12,6 +12,10 @@ from integration import GitlabProjectResourceConfig
 from utils import extract_issue_payload, extract_merge_request_payload
 
 
+class InvalidTokenException(Exception):
+    ...
+
+
 class ResourceKind(StrEnum):
     GROUP = "group"
     PROJECT = "project"
@@ -28,33 +32,50 @@ class WebHookEventType(StrEnum):
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting musah_gitlab integration")
-    await bootstrap_client()
+    tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
+
+    # Check if tokens is a list and filter valid tokens (strings only)
+    if isinstance(tokens, list):
+        tokens_are_valid = filter(lambda token: isinstance(token, str), tokens)
+
+        # Ensure all tokens are valid strings
+        if not all(tokens_are_valid):
+            raise InvalidTokenException("Invalid access tokens, ensure all tokens are valid strings")
+    else:
+        raise InvalidTokenException("Invalid access tokens, confirm you passed in a list of tokens")
+
+    return await bootstrap_client()
 
 
-def initialize_client() -> GitlabClient:
+def initialize_client(gitlab_access_token: str) -> GitlabClient:
     return GitlabClient(
         ocean.integration_config["gitlab_host"],
-        ocean.integration_config["gitlab_access_token"],
+        gitlab_access_token,
     )
 
 
 async def bootstrap_client() -> None:
-    app_host = ocean.integration_config.get("app_host")
+    app_host = ocean.integration_config["app_host"]
+    tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
     if not app_host:
         logger.warning(
             "No app host provided, skipping webhook creation. "
             "Without setting up the webhook, the integration will not export live changes from Gitlab"
         )
         return
-    gitlab_client = initialize_client()
 
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
+
+    gitlab_client = initialize_client(tokens[0])
     await gitlab_client.create_webhooks(app_host)
 
 
 async def handle_webhook_event(
-    webhook_event: str,
-    object_attributes_action: str,
-    data: dict[str, Any],
+        webhook_event: str,
+        object_attributes_action: str,
+        data: dict[str, Any],
 ) -> dict[str, Any]:
     ocean_action = None
     if object_attributes_action in DELETE_WEBHOOK_EVENTS:
@@ -94,35 +115,43 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
 @ocean.on_resync(ResourceKind.PROJECT)
 async def resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_client()
-    config = typing.cast(GitlabProjectResourceConfig, event.resource_config)
+    tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
+    for token in tokens:
+        client = initialize_client(token)
+        config = typing.cast(GitlabProjectResourceConfig, event.resource_config)
 
-    async for projects in client.get_projects():
-        logger.info(f"Received {kind} batch with {len(projects)} projects")
-        if config.selector.onlyGrouped:
-            projects = [project for project in projects if project.get("__group")]
-        yield projects
+        async for projects in client.get_projects():
+            logger.info(f"Received {kind} batch with {len(projects)} projects")
+            if config.selector.onlyGrouped:
+                projects = [project for project in projects if project.get("__group")]
+            yield projects
 
 
 @ocean.on_resync(ResourceKind.GROUP)
 async def resync_group(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_client()
-    async for groups in client.get_groups():
-        logger.info(f"Received {kind} batch with {len(groups)} groups")
-        yield groups
+    tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
+    for token in tokens:
+        client = initialize_client(token)
+        async for groups in client.get_groups():
+            logger.info(f"Received {kind} batch with {len(groups)} groups")
+            yield groups
 
 
 @ocean.on_resync(ResourceKind.MERGE_REQUEST)
 async def resync_merge_request(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_client()
-    async for merge_requests in client.get_merge_requests():
-        logger.info(f"Received {kind} batch with {len(merge_requests)} merge requests")
-        yield merge_requests
+    tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
+    for token in tokens:
+        client = initialize_client(token)
+        async for merge_requests in client.get_merge_requests():
+            logger.info(f"Received {kind} batch with {len(merge_requests)} merge requests")
+            yield merge_requests
 
 
 @ocean.on_resync(ResourceKind.ISSUE)
 async def resync_issue(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_client()
-    async for issues in client.get_issues():
-        logger.info(f"Received {kind} batch with {len(issues)} issues")
-        yield issues
+    tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
+    for token in tokens:
+        client = initialize_client(token)
+        async for issues in client.get_issues():
+            logger.info(f"Received {kind} batch with {len(issues)} issues")
+            yield issues

@@ -11,9 +11,9 @@ features:
       - kind: issue
 
 configurations:
-  - name: gitlabAccessToken
+  - name: gitlabAccessTokens
     required: true
-    type: string
+    type: object
     sensitive: true
     description: 'Gitlab access token. See the <a target="_blank" href="https://docs.gitlab.com/ee/user/profile/personal_access_tokens.html">Gitlab Documentation</a>'
   - name: appHost
