@@ -39,7 +39,7 @@ class BaseEntitiesStateApplier(BaseHandler):
         """Delete the specified entity differences from the state.
 
         Args:
-            entities_ref_diff (EntityDiff): The differences to be deleted.
+            entities_ref_diff (EntityRefDiff): The differences to be deleted.
             user_agent (UserAgentType): The user agent responsible for the deletion.
         """
         pass
@@ -66,6 +66,6 @@ class BaseEntitiesStateApplier(BaseHandler):
         """Delete the specified entities from the state.
 
         Args:
-            entities (list[Entity]): The entities to be deleted.
+            entities (list[EntityRef]): The entities to be deleted.
             user_agent_type (UserAgentType): The user agent responsible for the deletion.
         """
