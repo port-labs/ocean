@@ -15,3 +15,7 @@ configurations:
     sensitive: true
   - name: gitlabUrl
     type: url
+  - name: webhookSecret
+    type: string
+  - name: webhookUrl
+    type: string

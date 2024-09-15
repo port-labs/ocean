@@ -14,3 +14,5 @@ integration:
   config:
     token: "{{ from env GITLAB_TOKEN }}"
     gitlabUrl: "https://gitlab.com"
+    webhookUrl: "{{ from env WEBHOOK_URL }}"
+    webhookSecret: "{{ from env WEBHOOK_SECRET }}"
