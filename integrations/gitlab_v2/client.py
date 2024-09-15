@@ -1,10 +1,11 @@
 import asyncio
+from typing import Any, AsyncGenerator
+
 import httpx
 from httpx import Timeout
 from loguru import logger
-from typing import Any, AsyncGenerator
-from port_ocean.utils import http_async_client
 from port_ocean.context.ocean import ocean
+from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
 
 REQUEST_TIMEOUT: int = 60
@@ -38,13 +39,13 @@ class GitlabClient:
         self.client.timeout = Timeout(REQUEST_TIMEOUT)
 
     async def _make_request(
-            self,
-            url: str,
-            method: str = "GET",
-            query_params: dict[str, Any] | None = None,
-            json_data: dict[str, Any] | None = None,
-            headers: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+        self,
+        url: str,
+        method: str = "GET",
+        query_params: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
+    ) -> Any:
         logger.info(f"Sending request to GitLab API: {method} {url}")
         try:
             response = await self.client.request(
@@ -70,7 +71,7 @@ class GitlabClient:
 
     @staticmethod
     def _default_paginated_req_params(
-            page: int = 1, per_page: int = 50, owned: bool = True
+        page: int = 1, per_page: int = 50, owned: bool = True
     ) -> dict[str, Any]:
         return {
             "page": page,
@@ -79,8 +80,8 @@ class GitlabClient:
         }
 
     async def _make_paginated_request(
-            self, url: str, params: dict[str, Any] = {}
-    ) -> AsyncGenerator[dict[str, Any], None]:
+        self, url: str, params: dict[str, Any] = {}
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params = {**self._default_paginated_req_params(), **params}
         next_page = True
 
@@ -119,16 +120,19 @@ class GitlabClient:
     async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self._make_paginated_request(self.projects_url):
             # fetch all project languages concurrently
-            projects = await asyncio.gather(
+            projects_with_languages = await asyncio.gather(
                 *[self._enrich_project_with_language(project) for project in projects]
             )
 
             # fetch all project groups concurrently
-            projects = await asyncio.gather(
-                *[self._enrich_project_with_group(project) for project in projects]
+            projects_with_groups = await asyncio.gather(
+                *[
+                    self._enrich_project_with_group(project)
+                    for project in projects_with_languages
+                ]
             )
 
-            yield projects
+            yield projects_with_groups
 
     async def get_project(self, project_id: int) -> dict[str, Any]:
         return await self._make_request(f"{self.projects_url}/{project_id}")
@@ -140,7 +144,7 @@ class GitlabClient:
 
     async def get_merge_requests(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for merge_requests in self._make_paginated_request(
-                self.merge_requests_url
+            self.merge_requests_url
         ):
             merge_requests = await asyncio.gather(
                 *[
@@ -152,7 +156,7 @@ class GitlabClient:
             yield merge_requests
 
     async def get_merge_request(
-            self, project_id: int, merge_request_id: int
+        self, project_id: int, merge_request_id: int
     ) -> dict[str, Any]:
         merge_request = await self._make_request(
             url=f"{self.projects_url}/{project_id}/merge_requests/{merge_request_id}"
@@ -180,7 +184,7 @@ class GitlabClient:
             )
 
     async def _process_project_hooks(
-            self, project: dict[str, Any], webhook_host: str
+        self, project: dict[str, Any], webhook_host: str
     ) -> None:
         try:
             hooks = await self._get_project_hooks(project["id"])
@@ -194,11 +198,9 @@ class GitlabClient:
             )
 
     async def _create_or_skip_project_hook(
-            self, project: dict[str, Any], hooks: list[dict[str, Any]], webhook_host: str
+        self, project: dict[str, Any], hooks: list[dict[str, Any]], webhook_host: str
     ) -> None:
-        if any(
-                hook["url"] == webhook_host for hook in hooks
-        ):
+        if any(hook["url"] == webhook_host for hook in hooks):
             logger.info(
                 f"Skipping hook creation for project {project['path_with_namespace']}"
             )
@@ -224,7 +226,7 @@ class GitlabClient:
                 f"Failed to create webhook for project {project['path_with_namespace']}: {e}"
             )
 
-    async def _get_project_hooks(self, project_id: int) -> dict[str, Any]:
+    async def _get_project_hooks(self, project_id: int) -> list[dict[str, Any]]:
         url = f"{self.projects_url}/{project_id}/hooks"
 
         return await self._make_request(url)
@@ -245,27 +247,37 @@ class GitlabClient:
     async def _get_merge_request_project(self, project_id: int) -> dict[str, Any]:
         return await self.get_project(project_id)
 
-    async def _enrich_project_with_language(self, project: dict[str, Any]) -> dict[str, Any]:
+    async def _enrich_project_with_language(
+        self, project: dict[str, Any]
+    ) -> dict[str, Any]:
         languages = await self._get_project_languages(project["id"])
         project["__languages"] = languages
         return project
 
-    async def _enrich_project_with_group(self, project: dict[str, Any]) -> dict[str, Any]:
+    async def _enrich_project_with_group(
+        self, project: dict[str, Any]
+    ) -> dict[str, Any]:
         group = await self._get_project_group(project["id"])
         project["__group"] = group
         return project
 
-    async def _enrich_issues_with_project(self, issue: dict[str, Any]) -> dict[str, Any]:
+    async def _enrich_issues_with_project(
+        self, issue: dict[str, Any]
+    ) -> dict[str, Any]:
         project = await self._get_issue_project(issue["project_id"])
         issue["__project"] = project
         return issue
 
-    async def _enrich_merge_request_with_project(self, merge_request: dict[str, Any]) -> dict[str, Any]:
+    async def _enrich_merge_request_with_project(
+        self, merge_request: dict[str, Any]
+    ) -> dict[str, Any]:
         project = await self._get_merge_request_project(merge_request["project_id"])
         merge_request["__project"] = project
         return merge_request
 
-    async def _enrich_project_with_hooks(self, project: dict[str, Any]) -> dict[str, Any]:
+    async def _enrich_project_with_hooks(
+        self, project: dict[str, Any]
+    ) -> dict[str, Any]:
         hooks = await self._get_project_hooks(project["id"])
         project["__hooks"] = hooks
         return project

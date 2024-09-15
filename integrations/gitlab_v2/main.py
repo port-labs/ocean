@@ -3,13 +3,13 @@ from enum import StrEnum
 from typing import Any
 
 from loguru import logger
-
-from client import GitlabClient, DELETE_WEBHOOK_EVENTS, CREATE_UPDATE_WEBHOOK_EVENTS
-from integration import GitlabProjectResourceConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from utils import extract_merge_request_payload, extract_issue_payload
+
+from client import CREATE_UPDATE_WEBHOOK_EVENTS, DELETE_WEBHOOK_EVENTS, GitlabClient
+from integration import GitlabProjectResourceConfig
+from utils import extract_issue_payload, extract_merge_request_payload
 
 
 class ResourceKind(StrEnum):
@@ -52,10 +52,10 @@ async def bootstrap_client() -> None:
 
 
 async def handle_webhook_event(
-        webhook_event: str,
-        object_attributes_action: str,
-        data: dict[str, Any],
-) -> dict[str, Any] | None:
+    webhook_event: str,
+    object_attributes_action: str,
+    data: dict[str, Any],
+) -> dict[str, Any]:
     ocean_action = None
     if object_attributes_action in DELETE_WEBHOOK_EVENTS:
         ocean_action = ocean.unregister_raw
@@ -116,9 +116,7 @@ async def resync_group(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_merge_request(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
     async for merge_requests in client.get_merge_requests():
-        logger.info(
-            f"Received {kind} batch with {len(merge_requests)} merge requests"
-        )
+        logger.info(f"Received {kind} batch with {len(merge_requests)} merge requests")
         yield merge_requests
 
 

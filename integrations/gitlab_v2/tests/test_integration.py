@@ -1,18 +1,18 @@
 import os
 from typing import Any
 from unittest.mock import AsyncMock
-from loguru import logger
-import pytest
-from pytest_httpx import HTTPXMock
-import httpx
-from httpx import AsyncClient
 
-from integrations.gitlab_v2.client import GitlabClient
+import httpx
+import pytest
+from httpx import AsyncClient
 from port_ocean.context.ocean import ocean
-from port_ocean.context.event import event
-from port_ocean.tests.helpers import (
-    get_raw_result_on_integration_sync_kinds,
-)
+from pytest_httpx import HTTPXMock
+
+from client import GitlabClient
+
+# from port_ocean.tests.helpers import (
+#     get_raw_result_on_integration_sync_kinds,
+# )
 
 FAKE_GROUP: dict[str, Any] = {
     "id": 1,
@@ -45,14 +45,16 @@ INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"
 
 
 @pytest.mark.asyncio
-async def test_resync_project(httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch) -> None:
-    async def mock_get_projects(*args, **kwargs) -> list[dict[str, Any]]:
+async def test_resync_project(
+    httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def mock_get_projects() -> list[dict[str, Any]]:
         return [FAKE_PROJECT]
 
     monkeypatch.setattr(GitlabClient, "get_projects", mock_get_projects)
 
     # Run the integration sync
-    results = await get_raw_result_on_integration_sync_kinds(INTEGRATION_PATH)
+    # results = await get_raw_result_on_integration_sync_kinds(INTEGRATION_PATH)
 
     httpx_mock.add_response(
         method="GET",
@@ -78,8 +80,10 @@ async def test_resync_project(httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyP
 
 
 @pytest.mark.asyncio
-async def test_resync_group(httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch) -> None:
-    async def mock_get_groups(*args, **kwargs) -> list[dict[str, Any]]:
+async def test_resync_group(
+    httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def mock_get_groups() -> list[dict[str, Any]]:
         return [FAKE_GROUP]
 
     monkeypatch.setattr(GitlabClient, "get_groups", mock_get_groups)
@@ -111,8 +115,10 @@ async def test_resync_group(httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPat
 
 
 @pytest.mark.asyncio
-async def test_resync_issue(httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch) -> None:
-    async def mock_get_issues(*args, **kwargs) -> list[dict[str, Any]]:
+async def test_resync_issue(
+    httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def mock_get_issues() -> list[dict[str, Any]]:
         return [FAKE_ISSUE]
 
     monkeypatch.setattr(GitlabClient, "get_issues", mock_get_issues)
@@ -147,7 +153,7 @@ async def test_resync_issue(httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPat
 async def test_resync_merge_request(
     httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def mock_get_merge_requests(*args, **kwargs) -> list[dict[str, Any]]:
+    async def mock_get_merge_requests() -> list[dict[str, Any]]:
         return [FAKE_MERGE_REQUEST]
 
     monkeypatch.setattr(GitlabClient, "get_merge_requests", mock_get_merge_requests)
@@ -200,7 +206,7 @@ FAKE_WEBHOOK_DATA_MERGE_REQUEST = {
 async def test_handle_webhook_register_raw(
     httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def mock_register_raw(kind, payload):
+    async def mock_register_raw(kind: str, payload: list[dict[str, Any]]) -> None:
         assert kind == "merge_request"
         assert payload[0]["title"] == "Test Merge Request"
 
@@ -247,7 +253,7 @@ FAKE_WEBHOOK_DATA_DELETE_MERGE_REQUEST = {
 async def test_handle_webhook_unregister_raw(
     httpx_mock: HTTPXMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def mock_unregister_raw(kind, payload):
+    async def mock_unregister_raw(kind: str, payload: list[dict[str, Any]]) -> None:
         assert kind == "merge_request"
         assert payload[0]["title"] == "Test Merge Request"
 

@@ -1,5 +1,7 @@
 from typing import Any
+
 from loguru import logger
+
 
 def extract_merge_request_payload(data: dict[str, Any]) -> dict[str, Any]:
     logger.info(f"Extracting merge request for project: {data['project']['id']}")
@@ -16,6 +18,7 @@ def extract_merge_request_payload(data: dict[str, Any]) -> dict[str, Any]:
         "reviewers": data["reviewers"][0]["name"],
         "__project": data["project"],
     }
+
 
 def extract_issue_payload(data: dict[str, Any]) -> dict[str, Any]:
     logger.info(f"Extracting issue for project: {data['project']['id']}")
