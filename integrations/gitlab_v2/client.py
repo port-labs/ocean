@@ -2,7 +2,7 @@ import asyncio
 import httpx
 from httpx import Timeout
 from loguru import logger
-from typing import Any, AsyncGenerator, Optional, Dict
+from typing import Any, AsyncGenerator
 from port_ocean.utils import http_async_client
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
@@ -27,25 +27,23 @@ WEBHOOK_NAME: str = "Port-Ocean-Events-Webhook"
 
 class GitlabClient:
     def __init__(self, gitlab_host: str, gitlab_token: str) -> None:
-        self.gitlab_host = f"{gitlab_host}/api/v4"
-        self.projects_url = f"{self.gitlab_host}/projects"
-        self.merge_requests_url = f"{self.gitlab_host}/merge_requests"
-        self.issues_url = f"{self.gitlab_host}/issues"
-        self.groups_url = f"{self.gitlab_host}/groups"
+        self.projects_url = f"{gitlab_host}/api/v4/projects"
+        self.merge_requests_url = f"{gitlab_host}/api/v4/merge_requests"
+        self.issues_url = f"{gitlab_host}/api/v4/issues"
+        self.groups_url = f"{gitlab_host}/api/v4/groups"
 
         self.gitlab_token = gitlab_token
         self.client = http_async_client
-        self.authorization_header = {"Authorization": f"Bearer {gitlab_token}"}
-        self.client.headers.update(self.authorization_header)
+        self.client.headers.update({"Authorization": f"Bearer {gitlab_token}"})
         self.client.timeout = Timeout(REQUEST_TIMEOUT)
 
     async def _make_request(
             self,
             url: str,
             method: str = "GET",
-            query_params: Optional[dict[str, Any]] = None,
-            json_data: Optional[dict[str, Any]] = None,
-            headers: Optional[dict[str, Any]] = None,
+            query_params: dict[str, Any] | None = None,
+            json_data: dict[str, Any] | None = None,
+            headers: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         logger.info(f"Sending request to GitLab API: {method} {url}")
         try:
@@ -80,15 +78,13 @@ class GitlabClient:
             "owned": owned,
         }
 
-    @staticmethod
-    def _does_webhook_exist_for_project(self, hook: dict[str, Any], url: str) -> bool:
-        return hook["url"] == url
-
     async def _make_paginated_request(
-            self, url: str, params: Optional[dict[str, Any]] = {}
-    ) -> AsyncGenerator[dict[str, list[dict[str, Any]]], None]:
+            self, url: str, params: dict[str, Any] = {}
+    ) -> AsyncGenerator[dict[str, Any], None]:
         params = {**self._default_paginated_req_params(), **params}
-        while True:
+        next_page = True
+
+        while next_page:
             logger.info(f"Making paginated request to {url} with params: {params}")
             try:
                 response = await self.client.get(url, params=params)
@@ -115,7 +111,6 @@ class GitlabClient:
                 raise
 
         logger.info("Finished paginated request")
-        return
 
     async def create_webhooks(self, app_host: str) -> None:
         await self._create_project_hook(app_host)
@@ -136,8 +131,7 @@ class GitlabClient:
             yield projects
 
     async def get_project(self, project_id: int) -> dict[str, Any]:
-        project = await self._make_request(f"{self.projects_url}/{project_id}")
-        return project
+        return await self._make_request(f"{self.projects_url}/{project_id}")
 
     @cache_iterator_result()
     async def get_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -203,7 +197,7 @@ class GitlabClient:
             self, project: dict[str, Any], hooks: list[dict[str, Any]], webhook_host: str
     ) -> None:
         if any(
-                self._does_webhook_exist_for_project(hook, webhook_host) for hook in hooks
+                hook["url"] == webhook_host for hook in hooks
         ):
             logger.info(
                 f"Skipping hook creation for project {project['path_with_namespace']}"
@@ -232,8 +226,8 @@ class GitlabClient:
 
     async def _get_project_hooks(self, project_id: int) -> dict[str, Any]:
         url = f"{self.projects_url}/{project_id}/hooks"
-        hooks = await self._make_request(url)
-        return hooks
+
+        return await self._make_request(url)
 
     async def _get_project_languages(self, project_id: int) -> str:
         url = f"{self.projects_url}/{project_id}/languages"
@@ -242,16 +236,14 @@ class GitlabClient:
 
     async def _get_project_group(self, project_id: int) -> dict[str, Any]:
         url = f"{self.projects_url}/{project_id}/groups"
-        group = await self._make_request(url)
-        return group
+
+        return await self._make_request(url)
 
     async def _get_issue_project(self, project_id: int) -> dict[str, Any]:
-        project = await self.get_project(project_id)
-        return project
+        return await self.get_project(project_id)
 
     async def _get_merge_request_project(self, project_id: int) -> dict[str, Any]:
-        project = await self.get_project(project_id)
-        return project
+        return await self.get_project(project_id)
 
     async def _enrich_project_with_language(self, project: dict[str, Any]) -> dict[str, Any]:
         languages = await self._get_project_languages(project["id"])

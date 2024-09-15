@@ -1,6 +1,7 @@
 import typing
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
+
 from loguru import logger
 
 from client import GitlabClient, DELETE_WEBHOOK_EVENTS, CREATE_UPDATE_WEBHOOK_EVENTS
@@ -8,11 +9,17 @@ from integration import GitlabProjectResourceConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from utils import extract_merge_request_payload, extract_issue_payload
 
 
 class ResourceKind(StrEnum):
     GROUP = "group"
     PROJECT = "project"
+    MERGE_REQUEST = "merge_request"
+    ISSUE = "issue"
+
+
+class WebHookEventType(StrEnum):
     MERGE_REQUEST = "merge_request"
     ISSUE = "issue"
 
@@ -44,46 +51,11 @@ async def bootstrap_client() -> None:
     await gitlab_client.create_webhooks(app_host)
 
 
-def extract_merge_request_payload(data: dict[str, Any]) -> dict[str, Any]:
-    logger.info(f"Extracting merge request for project: {data['project']['id']}")
-    return {
-        "id": data["object_attributes"]["id"],
-        "title": data["object_attributes"]["title"],
-        "author": {
-            "name": data["user"]["name"],
-        },
-        "status": data["object_attributes"]["state"],
-        "createdAt": data["object_attributes"]["created_at"],
-        "updatedAt": data["object_attributes"]["updated_at"],
-        "link": data["object_attributes"]["source"]["web_url"],
-        "reviewers": data["reviewers"][0]["name"],
-        "__project": data["project"],
-    }
-
-
-def extract_issue_payload(data: dict[str, Any]) -> dict[str, Any]:
-    logger.info(f"Extracting issue for project: {data['project']['id']}")
-    return {
-        "id": data["object_attributes"]["id"],
-        "title": data["object_attributes"]["title"],
-        "link": data["object_attributes"]["url"],
-        "description": data["object_attributes"]["description"],
-        "createdAt": data["object_attributes"]["created_at"],
-        "updatedAt": data["object_attributes"]["updated_at"],
-        "creator": {
-            "name": data["user"]["name"],
-        },
-        "status": data["object_attributes"]["state"],
-        "labels": [label["title"] for label in data["object_attributes"]["labels"]],
-        "__project": data["project"],
-    }
-
-
 async def handle_webhook_event(
         webhook_event: str,
         object_attributes_action: str,
         data: dict[str, Any],
-) -> Optional[dict[str, Any]]:
+) -> dict[str, Any] | None:
     ocean_action = None
     if object_attributes_action in DELETE_WEBHOOK_EVENTS:
         ocean_action = ocean.unregister_raw
@@ -94,12 +66,12 @@ async def handle_webhook_event(
         logger.info(f"Webhook event '{webhook_event}' not recognized.")
         return {"ok": True}
 
-    payload = None
-    if webhook_event == "merge_request":
+    if webhook_event == WebHookEventType.MERGE_REQUEST:
         payload = extract_merge_request_payload(data)
         await ocean_action(ResourceKind.MERGE_REQUEST, [payload])
-    elif webhook_event == "issue":
+    elif webhook_event == WebHookEventType.ISSUE:
         payload = extract_issue_payload(data)
+        logger.info(f"Upserting issue with payload: {payload}")
         await ocean_action(ResourceKind.ISSUE, [payload])
     else:
         logger.info(f"Unhandled webhook event type: {webhook_event}")
@@ -107,6 +79,17 @@ async def handle_webhook_event(
 
     logger.info(f"Webhook event '{webhook_event}' processed successfully.")
     return {"ok": True}
+
+
+@ocean.router.post("/webhook")
+async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+    webhook_event = data.get("event_type", "")
+    object_attributes_action = data.get("object_attributes", {}).get("action", "")
+    logger.info(
+        f"Received webhook event: {webhook_event} with action: {object_attributes_action}"
+    )
+
+    return await handle_webhook_event(webhook_event, object_attributes_action, data)
 
 
 @ocean.on_resync(ResourceKind.PROJECT)

@@ -51,7 +51,7 @@ resources:
             updatedAt: .updated_at
             mergedAt: .merged_at
             link: .web_url
-            reviewers: '.reviewers[] | .username'
+            reviewers: .reviewers[] | .username
           relations:
             service: .__project.id | tostring
 
@@ -67,9 +67,9 @@ resources:
           properties:
             link: .web_url
             description: .description
-            createdAt: .created_at
+            createdAt: if .created_at | contains("UTC") then (.created_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.created_at) end
             closedAt: .closed_at
-            updatedAt: .updated_at
+            updatedAt: if .updated_at | contains("UTC") then (.updated_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.updated_at) end
             creator: .author.name
             status: .state
             labels: .labels
