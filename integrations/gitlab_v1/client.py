@@ -6,7 +6,6 @@ from httpx import HTTPStatusError, Response
 from gitlab_rate_limiter import GitLabRateLimiter
 from datetime import datetime, timezone
 
-
 PAGE_SIZE = 100
 CLIENT_TIMEOUT = 60
 
@@ -20,7 +19,6 @@ class GitlabHandler:
         self.rate_limiter = GitLabRateLimiter()
         self.retries = 3
         self.base_delay = 1
-
 
     async def _send_api_request(
         self,
@@ -40,13 +38,16 @@ class GitlabHandler:
                     url,
                     params=params,
                     json=json_data
-                    )
+                )
                 response.raise_for_status()
                 logger.debug(f"Received response from {url}: {response.status_code}")
                 self._update_rate_limit(response)
                 return response.json()
             except HTTPStatusError as e:
-                if e.response.status_code == 429:
+                if e.response.status_code == 401:
+                    logger.error(f"Unauthorized access to {url}. Please check your GitLab token.")
+                    raise
+                elif e.response.status_code == 429:
                     retry_after = int(e.response.headers.get('Retry-After', str(self.base_delay * (2 ** attempt))))
                     logger.warning(f"Rate limit exceeded. Retrying after {retry_after} seconds.")
                     await asyncio.sleep(retry_after)
@@ -57,10 +58,8 @@ class GitlabHandler:
                 logger.error(f"Request to {url} timed out.")
                 raise
 
-
         logger.error(f"Max retries ({self.retries}) exceeded for {url}")
         raise Exception("Max retries exceeded")
-
 
     def _update_rate_limit(self, response: Response):
         headers = response.headers
@@ -72,7 +71,6 @@ class GitlabHandler:
 
         logger.info(f"Rate limit: {remaining}/{limit} requests remaining. Resets at {reset_time}")
 
-
     async def get_paginated_resources(
         self,
         resource: str,
@@ -82,8 +80,6 @@ class GitlabHandler:
         params["per_page"] = PAGE_SIZE
         params["page"] = 1
 
-
-
         while True:
             logger.debug(f"Fetching page {params['page']} for resource '{resource}'")
             response = await self._send_api_request(resource, params=params)
@@ -91,7 +87,6 @@ class GitlabHandler:
             if not isinstance(response, list):
                 logger.error(f"Expected a list response for resource '{resource}', got {type(response)}")
                 break
-
 
             if not response:
                 logger.debug(f"No more records to fetch for resource '{resource}'.")
@@ -104,11 +99,7 @@ class GitlabHandler:
                 logger.debug(f"Last page reached for resource '{resource}', no more data.")
                 break
 
-
             params["page"] += 1
-
-
-
 
     async def get_single_resource(
         self, resource_kind: str, resource_id: str
@@ -116,11 +107,9 @@ class GitlabHandler:
         """Get a single resource by kind and ID."""
         return await self._send_api_request(f"{resource_kind}/{resource_id}")
 
-
     async def fetch_groups(self) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch GitLab groups using an async generator."""
-        async for group in self.get_paginated_resources("groups", params={"owned": False}):
-
+        """Fetch GitLab groups for the authorized user."""
+        async for group in self.get_paginated_resources("groups", params={"min_access_level": 30, "owned": True}):
             yield {
                 "identifier": group["id"],
                 "title": group["name"],
@@ -132,10 +121,9 @@ class GitlabHandler:
                 }
             }
 
-
     async def fetch_projects(self) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch GitLab projects using an async generator."""
-        async for project in self.get_paginated_resources("projects", params={"owned": True}):
+        """Fetch GitLab projects for the authorized user."""
+        async for project in self.get_paginated_resources("projects", params={"membership": True}):
             yield {
                 "identifier": project["id"],
                 "title": project["name"],
@@ -156,10 +144,9 @@ class GitlabHandler:
                 }
             }
 
-
     async def fetch_merge_requests(self) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch GitLab merge requests using an async generator."""
-        async for mr in self.get_paginated_resources("merge_requests"):
+        """Fetch GitLab merge requests for the authorized user."""
+        async for mr in self.get_paginated_resources("merge_requests", params={"scope": "all"}):
             yield {
                 "identifier": mr["id"],
                 "title": mr["title"],
@@ -181,10 +168,9 @@ class GitlabHandler:
                 }
             }
 
-
     async def fetch_issues(self) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch GitLab issues using an async generator."""
-        async for issue in self.get_paginated_resources("issues"):
+        """Fetch GitLab issues for the authorized user."""
+        async for issue in self.get_paginated_resources("issues", params={"scope": "all"}):
             yield {
                 "identifier": issue["id"],
                 "title": issue["title"],
