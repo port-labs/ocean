@@ -61,14 +61,14 @@ async def test_resync_project(
         url="https://gitlab.com/api/v4/projects",
         json=[FAKE_PROJECT],
         status_code=200,
-        match_headers={"Authorization": "Bearer glpat-Wxf9AYDXK4VGFt1kkvyv"},
+        match_headers={"Authorization": "Bearer secret-token"},
     )
 
     async with httpx.AsyncClient() as client:
         response = (
             await client.get(
                 "https://gitlab.com/api/v4/projects",
-                headers={"Authorization": "Bearer glpat-Wxf9AYDXK4VGFt1kkvyv"},
+                headers={"Authorization": "Bearer secret-token"},
             )
         ).json()
 
@@ -96,14 +96,14 @@ async def test_resync_group(
         url="https://gitlab.com/api/v4/groups",
         json=[FAKE_GROUP],
         status_code=200,
-        match_headers={"Authorization": "Bearer glpat-Wxf9AYDXK4VGFt1kkvyv"},
+        match_headers={"Authorization": "Bearer secret-token"},
     )
 
     async with httpx.AsyncClient() as client:
         response = (
             await client.get(
                 "https://gitlab.com/api/v4/groups",
-                headers={"Authorization": "Bearer glpat-Wxf9AYDXK4VGFt1kkvyv"},
+                headers={"Authorization": "Bearer secret-token"},
             )
         ).json()
 
@@ -131,14 +131,14 @@ async def test_resync_issue(
         url="https://gitlab.com/api/v4/issues",
         json=[FAKE_ISSUE],
         status_code=200,
-        match_headers={"Authorization": "Bearer glpat-Wxf9AYDXK4VGFt1kkvyv"},
+        match_headers={"Authorization": "Bearer secret-token"},
     )
 
     async with httpx.AsyncClient() as client:
         response = (
             await client.get(
                 "https://gitlab.com/api/v4/issues",
-                headers={"Authorization": "Bearer glpat-Wxf9AYDXK4VGFt1kkvyv"},
+                headers={"Authorization": "Bearer secret-token"},
             )
         ).json()
 
@@ -166,14 +166,14 @@ async def test_resync_merge_request(
         url="https://gitlab.com/api/v4/merge_requests",
         json=[FAKE_MERGE_REQUEST],
         status_code=200,
-        match_headers={"Authorization": "Bearer glpat-Wxf9AYDXK4VGFt1kkvyv"},
+        match_headers={"Authorization": "Bearer secret-token"},
     )
 
     async with httpx.AsyncClient() as client:
         response = (
             await client.get(
                 "https://gitlab.com/api/v4/merge_requests",
-                headers={"Authorization": "Bearer glpat-Wxf9AYDXK4VGFt1kkvyv"},
+                headers={"Authorization": "Bearer secret-token"},
             )
         ).json()
 
