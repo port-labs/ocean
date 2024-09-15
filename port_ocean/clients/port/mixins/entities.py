@@ -117,17 +117,17 @@ class EntityClientMixin:
 
     async def delete_entity(
         self,
-        entity: EntityRef,
+        entity_ref: EntityRef,
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
     ) -> None:
         async with self.semaphore:
             logger.info(
-                f"Delete entity: {entity.identifier} of blueprint: {entity.blueprint}"
+                f"Delete entity: {entity_ref.identifier} of blueprint: {entity_ref.blueprint}"
             )
             response = await self.client.delete(
-                f"{self.auth.api_url}/blueprints/{entity.blueprint}/entities/{quote_plus(entity.identifier)}",
+                f"{self.auth.api_url}/blueprints/{entity_ref.blueprint}/entities/{quote_plus(entity_ref.identifier)}",
                 headers=await self.auth.headers(user_agent_type),
                 params={
                     "delete_dependents": str(
@@ -139,14 +139,14 @@ class EntityClientMixin:
             if response.is_error:
                 if response.status_code == 404:
                     logger.info(
-                        f"Failed to delete entity: {entity.identifier} of blueprint: {entity.blueprint},"
+                        f"Failed to delete entity: {entity_ref.identifier} of blueprint: {entity_ref.blueprint},"
                         f" as it was already deleted from port"
                     )
                     return
                 logger.error(
                     f"Error deleting "
-                    f"entity: {entity.identifier} of "
-                    f"blueprint: {entity.blueprint}"
+                    f"entity: {entity_ref.identifier} of "
+                    f"blueprint: {entity_ref.blueprint}"
                 )
 
             handle_status_code(response, should_raise)
@@ -218,9 +218,9 @@ class EntityClientMixin:
         handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
 
-    async def search_batch_entities(
-        self, user_agent_type: UserAgentType, entities_to_search: list[Entity]
-    ) -> list[Entity]:
+    def _generate_search_query(
+        self, entities_to_search: list[Entity]
+    ) -> dict[str, Any]:
         search_rules = []
         for entity in entities_to_search:
             search_rules.append(
@@ -240,41 +240,23 @@ class EntityClientMixin:
                     ],
                 }
             )
+        return {
+            "combinator": "and",
+            "rules": [{"combinator": "or", "rules": search_rules}],
+        }
 
+    async def search_batch_entities(
+        self, user_agent_type: UserAgentType, entities_to_search: list[Entity]
+    ) -> list[Entity]:
         return await self.search_entities(
             user_agent_type,
-            {
-                "combinator": "and",
-                "rules": [{"combinator": "or", "rules": search_rules}],
-            },
+            self._generate_search_query(entities_to_search),
         )
 
     async def search_batch_entities_refs(
         self, user_agent_type: UserAgentType, entities_to_search: list[Entity]
     ) -> list[EntityRef]:
-        search_rules = []
-        for entity in entities_to_search:
-            search_rules.append(
-                {
-                    "combinator": "and",
-                    "rules": [
-                        {
-                            "property": "$identifier",
-                            "operator": "=",
-                            "value": entity.identifier,
-                        },
-                        {
-                            "property": "$blueprint",
-                            "operator": "=",
-                            "value": entity.blueprint,
-                        },
-                    ],
-                }
-            )
         return await self.search_entities_refs(
             user_agent_type,
-            {
-                "combinator": "and",
-                "rules": [{"combinator": "or", "rules": search_rules}],
-            },
+            self._generate_search_query(entities_to_search),
         )
