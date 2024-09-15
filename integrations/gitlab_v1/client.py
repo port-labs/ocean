@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Optional, AsyncGenerator, Dict
+from typing import Any, Optional, AsyncGenerator, Dict, List
 from loguru import logger
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Response
@@ -122,3 +122,52 @@ class GitlabHandler:
 
         async for item in self.get_paginated_resources(mapper.endpoint, params=params):
             yield mapper.map(item)
+
+    async def create_webhook(self, project_id: str, webhook_url: str, webhook_token: str, events: List[str]) -> Dict[str, Any]:
+        """Create a webhook for a specific project."""
+        endpoint = f"projects/{project_id}/hooks"
+        data = {
+            "url": webhook_url,
+            "token": webhook_token,
+            "push_events": "push" in events,
+            "issues_events": "issues" in events,
+            "merge_requests_events": "merge_requests" in events,
+            # Add more event types as needed
+        }
+        return await self._send_api_request(endpoint, method="POST", json_data=data)
+
+
+    async def list_webhooks(self, project_id: str) -> List[Dict[str, Any]]:
+        """List all webhooks for a specific project."""
+        endpoint = f"projects/{project_id}/hooks"
+        return await self._send_api_request(endpoint)
+
+
+    async def update_webhook(self, project_id: str, webhook_id: int, webhook_url: str, webhook_token: str, events: List[str]) -> Dict[str, Any]:
+        """Update an existing webhook for a specific project."""
+        endpoint = f"projects/{project_id}/hooks/{webhook_id}"
+        data = {
+            "url": webhook_url,
+            "token": webhook_token,
+            "push_events": "push" in events,
+            "issues_events": "issues" in events,
+            "merge_requests_events": "merge_requests" in events,
+        }
+        return await self._send_api_request(endpoint, method="PUT", json_data=data)
+
+
+    async def setup_webhooks(self, webhook_url: str, webhook_token: str, events: List[str]) -> None:
+        """Set up webhooks for all accessible projects."""
+        async for project in self.get_paginated_resources("projects", params={"owned" : True}):
+            project_id = project["id"]
+            try:
+                existing_webhooks = await self.list_webhooks(project_id)
+                webhook_exists = any(hook["url"] == webhook_url for hook in existing_webhooks)
+
+                if not webhook_exists:
+                    await self.create_webhook(project_id, webhook_url, webhook_token, events)
+                    logger.info(f"Created webhook for project {project_id}")
+                else:
+                    logger.info(f"Webhook already exists for project {project_id}")
+            except Exception as e:
+                logger.error(f"Failed to set up webhook for project {project_id}: {str(e)}")
