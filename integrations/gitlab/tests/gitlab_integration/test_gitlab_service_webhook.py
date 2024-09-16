@@ -3,6 +3,40 @@ from typing import Any
 from gitlab_integration.gitlab_service import GitlabService
 
 
+def test_get_webhook_for_group_found(mocked_gitlab_service: GitlabService) -> None:
+    # Arrange
+    mock_group = MagicMock()
+    mock_group.get_id.return_value = 456
+    mock_webhook_url = "http://example.com/integration/hook/456"
+    mock_hook = MagicMock()
+    mock_hook.url = mock_webhook_url
+    mock_hook.id = 984
+    mock_group.hooks.list.return_value = [mock_hook]
+
+    # Act
+    result = mocked_gitlab_service._get_webhook_for_group(mock_group)
+
+    # Assert
+    assert result == mock_hook
+    mock_group.hooks.list.assert_called_once_with(iterator=True)
+
+
+def test_get_webhook_for_group_not_found(mocked_gitlab_service: GitlabService) -> None:
+    # Arrange
+    mock_group = MagicMock()
+    mock_group.get_id.return_value = 789
+    mock_hook = MagicMock()
+    mock_hook.url = "http://example.com/other/hook"
+    mock_group.hooks.list.return_value = [mock_hook]
+
+    # Act
+    result = mocked_gitlab_service._get_webhook_for_group(mock_group)
+
+    # Assert
+    assert result is None
+    mock_group.hooks.list.assert_called_once_with(iterator=True)
+
+
 def test_create_webhook_when_webhook_exists_but_disabled(
     mocked_gitlab_service: GitlabService, monkeypatch: Any
 ):
@@ -103,7 +137,7 @@ def test_delete_webhook(mocked_gitlab_service: GitlabService, monkeypatch: Any):
 
     # Mock the group hooks.list method to return a webhook
     mock_hook = MagicMock()
-    mock_hook.url = "http://example.com/integration/hook/17"
+    mock_hook.url = "http://example.com/integration/hook/456"
     mock_hook.id = 17
     mock_group.hooks.list.return_value = [mock_hook]
 
