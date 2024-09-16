@@ -37,7 +37,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod install/local-core lint run test clean
+.SILENT: install install/prod install/local-core lint lint/fix run test clean
 
 install:
 	$(call deactivate_virtualenv) && \
@@ -55,6 +55,11 @@ install/prod:
 lint:
 	$(ACTIVATE) && \
 	$(call run_checks,.)
+
+lint/fix:
+	$(ACTIVATE) && \
+	black .
+	ruff check --fix .
 
 run:
 	$(ACTIVATE) && ocean sail
