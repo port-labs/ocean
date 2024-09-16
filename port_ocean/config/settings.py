@@ -5,6 +5,8 @@ from pydantic.class_validators import root_validator, validator
 from pydantic.env_settings import InitSettingsSource, EnvSettingsSource, BaseSettings
 from pydantic.fields import Field
 from pydantic.main import BaseModel
+import re
+from loguru import logger
 
 from port_ocean.config.base import BaseOceanSettings, BaseOceanModel
 from port_ocean.core.event_listener import EventListenerSettingsType
@@ -40,6 +42,24 @@ class PortSettings(BaseOceanModel, extra=Extra.allow):
     client_secret: str = Field(..., sensitive=True)
     base_url: AnyHttpUrl = parse_obj_as(AnyHttpUrl, "https://api.getport.io")
     port_app_config_cache_ttl: int = 60
+
+    # Regex pattern for allowed base URLs including localhost and host.docker.internal
+    @validator("base_url")
+    def validate_base_url(cls, url: AnyHttpUrl) -> AnyHttpUrl:
+        # Check if the URL matches the allowed pattern
+        allowed_pattern = re.compile(
+            r"^https:\/\/api(\.[a-z0-9-]+)?\.getport\.io$|"  # Matches https://api.*.getport.io
+            r"^http:\/\/localhost(:\d+)?$|"  # Matches http://localhost or localhost with port
+            r"^http:\/\/host\.docker\.internal?(:\d+)?$"  # Matches http://host.docker.internal or with port
+        )
+        logger.debug(f"Validating port base_url: {url}")
+        if not allowed_pattern.match(str(url)):
+            raise ValueError(
+                f"Invalid base_url: {url}. "
+                "Must match the pattern https://api*.getport.io. "
+                "For EU region, use https://api.getport.io. For US region, use https://api.us.getport.io."
+            )
+        return url
 
 
 class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
