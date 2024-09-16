@@ -1,0 +1,65 @@
+resources:
+  - kind: group
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"gitlabGroup"'
+          properties:
+            visibility: .visibility
+            url: .web_url
+            description: .description
+
+  - kind: merge-request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"gitlabMergeRequest"'
+          properties:
+            creator: .author.name
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            link: .web_url
+
+  - kind: issues
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"gitlabIssue"'
+          properties:
+            link: .web_url
+            description: .description
+            createdAt: .created_at
+            updatedAt: .updated_at
+            closedAt: .closed_at
+            creator: .author.name
+            status: .state
+  
+  - kind: projects
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"project"'
+          properties:
+            url: .web_url
+            description: .description
+            language: .language
+            namespace: .namespace
+            fullPath: .full_path
+            defaultBranch: .default_branch

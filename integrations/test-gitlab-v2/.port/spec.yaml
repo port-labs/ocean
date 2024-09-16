@@ -1,0 +1,16 @@
+description: test-gitLab-v2 integration for Port Ocean
+icon: GitLab  # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Under Development  # Should be one of the available sections in Port
+    resources:
+      - kind: group
+      - kind: projects
+      - kind: issues
+      - kind: merge-request
+configurations:
+  - name: "{{ from env OCEAN__INTEGRATION__CONFIG__GITLAB_TOKEN }}"
+    type: string
+    sensitive: true
+  - name: someApplicationUrl
+    type: url

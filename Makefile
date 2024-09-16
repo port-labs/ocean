@@ -3,7 +3,7 @@ ACTIVATE := . .venv/bin/activate
 define run_checks
 	exit_code=0; \
 	cd $1; \
-	poetry check || exit_code=$$?;\
+	poetry check || exit_code=$$?;\ 
 	mypy . --exclude '/\.venv/' || exit_code=$$?; \
 	ruff check . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
@@ -15,7 +15,6 @@ define run_checks
 	fi; \
 	exit $$exit_code
 endef
-
 
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
@@ -43,9 +42,6 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all lint build run new test test/watch clean bump/integrations bump/single-integration execute/all
-
-
 # Install dependencies
 install:
 	$(call deactivate_virtualenv) && \
@@ -65,7 +61,6 @@ test/all: test
 			cd ../..; \
 		fi; \
 	done;
-
 
 execute/all:
 	# run script for all integrations (${SCRIPT_TO_RUN})
@@ -107,6 +102,11 @@ run: lint
 	$(ACTIVATE) && poetry run ocean sail ./integrations/example
 
 new:
+	@if [ ! -d .venv ]; then \
+		echo "Creating virtual environment..."; \
+		poetry env use python3.11; \
+		poetry install; \
+	fi; \
 	$(ACTIVATE) && poetry run ocean new ./integrations --public
 
 test:
