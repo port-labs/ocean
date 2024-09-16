@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.11 (2024-09-16)
+
+### Improvements
+
+- Add validation for Port's `base_url` in the integration configuration to ensure it is a valid port URL
+
+
 ## 0.10.10 (2024-09-12)
 
 ### Bug Fixes
