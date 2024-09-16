@@ -86,7 +86,6 @@ class GitlabService:
             for event in self.all_events_in_webhook
         }
 
-        
         logger.info(
             f"Creating webhook for {group.get_id()} with events: {[event for event in webhook_events if webhook_events[event]]}"
         )

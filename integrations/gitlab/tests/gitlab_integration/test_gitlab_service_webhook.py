@@ -20,9 +20,13 @@ def test_create_webhook_when_webhook_exists_but_disabled(
 
     # Mock the methods for deleting and creating webhooks
     mock_delete_webhook = MagicMock()
-    monkeypatch.setattr(mocked_gitlab_service, "_delete_group_webhook", mock_delete_webhook)
+    monkeypatch.setattr(
+        mocked_gitlab_service, "_delete_group_webhook", mock_delete_webhook
+    )
     mock_create_webhook = MagicMock()
-    monkeypatch.setattr(mocked_gitlab_service, "_create_group_webhook", mock_create_webhook)
+    monkeypatch.setattr(
+        mocked_gitlab_service, "_create_group_webhook", mock_create_webhook
+    )
 
     # Act
     webhook_id = mocked_gitlab_service.create_webhook(
@@ -31,8 +35,12 @@ def test_create_webhook_when_webhook_exists_but_disabled(
 
     # Assert
     assert webhook_id == "456"
-    mock_delete_webhook.assert_called_once_with(mock_group, mock_hook.id)  # Ensure delete method is called
-    mock_create_webhook.assert_called_once_with(mock_group, ["push", "merge_request"])  # Ensure create method is called with correct arguments
+    mock_delete_webhook.assert_called_once_with(
+        mock_group, mock_hook.id
+    )  # Ensure delete method is called
+    mock_create_webhook.assert_called_once_with(
+        mock_group, ["push", "merge_request"]
+    )  # Ensure create method is called with correct arguments
 
 
 def test_create_webhook_when_webhook_exists_and_enabled(
@@ -52,7 +60,9 @@ def test_create_webhook_when_webhook_exists_and_enabled(
 
     # Mock the method for creating webhooks
     mock_create_webhook = MagicMock()
-    monkeypatch.setattr(mocked_gitlab_service, "_create_group_webhook", mock_create_webhook)
+    monkeypatch.setattr(
+        mocked_gitlab_service, "_create_group_webhook", mock_create_webhook
+    )
 
     # Act
     webhook_id = mocked_gitlab_service.create_webhook(
@@ -85,9 +95,7 @@ def test_create_webhook_when_no_webhook_exists(
     mock_group.hooks.create.assert_called_once()  # A new webhook should be created
 
 
-def test_delete_webhook(
-    mocked_gitlab_service: GitlabService, monkeypatch: Any
-):
+def test_delete_webhook(mocked_gitlab_service: GitlabService, monkeypatch: Any):
     # Arrange
     mock_group = MagicMock()
     mock_group.get_id.return_value = 456
@@ -103,5 +111,6 @@ def test_delete_webhook(
     mocked_gitlab_service._delete_group_webhook(mock_group, mock_hook.id)
 
     # Assert
-    mock_group.hooks.delete.assert_called_once_with(mock_hook.id)  # Ensure the webhook is deleted
-
+    mock_group.hooks.delete.assert_called_once_with(
+        mock_hook.id
+    )  # Ensure the webhook is deleted
