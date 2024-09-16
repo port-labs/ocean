@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gitlab_v2"
-version = "0.1.0-beta"
+version = "0.0.1"
 description = "Port Ocean Integration for Gitlab V2"
 authors = ["Musah Musah <aliyumusahmusah@gmail.com>"]
 
