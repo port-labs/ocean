@@ -4,6 +4,8 @@ from typing import Any, AsyncGenerator
 import httpx
 from httpx import Timeout
 from loguru import logger
+
+from rate_limiter import GitLabRateLimiter
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
@@ -37,6 +39,7 @@ class GitlabClient:
         self.client = http_async_client
         self.client.headers.update({"Authorization": f"Bearer {gitlab_token}"})
         self.client.timeout = Timeout(REQUEST_TIMEOUT)
+        self.rate_limiter = GitLabRateLimiter()
 
     async def _make_request(
         self,
@@ -48,6 +51,9 @@ class GitlabClient:
     ) -> Any:
         logger.info(f"Sending request to GitLab API: {method} {url}")
         try:
+            # Apply rate limiting before making the request
+            await self.rate_limiter.wait_for_slot()
+
             response = await self.client.request(
                 method=method,
                 url=url,
@@ -56,6 +62,9 @@ class GitlabClient:
                 headers=headers,
             )
             response.raise_for_status()
+
+            # Update rate limits based on the response
+            self.rate_limiter.update_limits(response.headers)
 
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -88,11 +97,17 @@ class GitlabClient:
         while next_page:
             logger.info(f"Making paginated request to {url} with params: {params}")
             try:
+                # Apply rate limiting before making each paginated request
+                await self.rate_limiter.wait_for_slot()
+
                 response = await self.client.get(url, params=params)
                 response.raise_for_status()
                 response_data = response.json()
 
                 yield response_data
+
+                # Update rate limits based on the response
+                self.rate_limiter.update_limits(response.headers)
 
                 # Check if there's a next page
                 next_page = response.headers.get("X-Next-Page")
