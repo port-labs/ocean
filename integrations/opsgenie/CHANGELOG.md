@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.1 (2024-09-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.10 (#1)
+
+
+## 0.2.0 (2024-09-09)
+
+
+### Improvements
+
+- Added new kinds for `team`, `schedule` and `schedule-oncall`
+- Added support for filtering data from OpsGenie API to fetch only required data
+- Introduced logs to facilitate easier debugging of integration issues
+
+### Breaking Changes
+
+- Removed extra API calls for fetching impacted services, improving performance with existing incident-service relations
+- Removed extra API calls for relating alerts to incidents, using JQ for better performance and accuracy
+- Changed `OpsGenieService` blueprint by removing team properties and making it a relation to team blueprint
+
+
+## 0.1.77 (2024-09-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.9 (#1)
+
+
+## 0.1.76 (2024-09-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.8 (#1)
+
+
+## 0.1.75 (2024-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.7 (#1)
+
+
+## 0.1.74 (2024-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.5 (#1)
+
+
 ## 0.1.73 (2024-08-28)
 
 
