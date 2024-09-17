@@ -98,4 +98,6 @@ class PushHook(ProjectHandler):
                 )
                 await ocean.register_raw(ObjectKind.PROJECT, [enriched_project])
             else:
-                logger.info(f"Skipping file {file} as it does not match the spec_path pattern {spec_path}")
+                logger.info(
+                    f"Skipping file {file} as it does not match the spec_path pattern {spec_path}"
+                )
