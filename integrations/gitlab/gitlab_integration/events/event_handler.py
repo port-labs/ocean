@@ -71,7 +71,7 @@ class EventHandler(BaseEventHandler):
         )
 
         if not observers:
-            logger.debug(
+            logger.info(
                 f"event: {event_id} has no matching handler. the handlers available are for events: {self._observers.keys()}"
             )
 
