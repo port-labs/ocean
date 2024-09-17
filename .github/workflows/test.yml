@@ -89,3 +89,4 @@ jobs:
           report_paths: '**/junit/test-results-**/*.xml'
           include_passed: true
           require_tests: true
+          fail_on_failure: true
