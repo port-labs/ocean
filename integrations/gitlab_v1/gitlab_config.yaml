@@ -1,0 +1,40 @@
+# GitLab Integration Configuration
+# This file configures the behavior of the GitLab integration,
+# specifying parameters for fetching data from various GitLab resources
+# such as groups, projects, merge requests, and issues.
+
+groups:
+  params:
+    owned: true
+  additional_data:
+    # - projects
+    # - members
+
+
+projects:
+  params:
+    owned: true
+  additional_data:
+    - languages
+
+
+merge_requests:
+  params:
+    owned: true
+    state: all
+    order_by: updated_at
+    sort: desc
+  additional_data:
+    # - approvals
+
+
+issues:
+  params:
+    owned: true
+    state: all
+    order_by: created_at
+    sort: desc
+  additional_data:
+    # - notes
+    # - assignees
+    # - labels

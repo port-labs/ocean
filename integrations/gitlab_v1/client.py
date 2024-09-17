@@ -4,23 +4,32 @@ from loguru import logger
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Response
 from helpers.gitlab_rate_limiter import GitLabRateLimiter
-from helpers.mapper_factory import MapperFactory
+import yaml
 from datetime import datetime, timezone
+
+
 
 PAGE_SIZE = 100
 CLIENT_TIMEOUT = 60
 
+
 class GitlabHandler:
-    def __init__(self, private_token: str, base_url: str = "https://gitlab.com/api/v4/"):
+    def __init__(self, private_token: str, config_file: str, base_url: str = "https://gitlab.com/api/v4/"):
         self.base_url = base_url
         self.auth_header = {"PRIVATE-TOKEN": private_token}
         self.client = http_async_client
         self.client.timeout = CLIENT_TIMEOUT
         self.client.headers.update(self.auth_header)
         self.rate_limiter = GitLabRateLimiter()
-        self.mapper_factory = MapperFactory()
         self.retries = 3
         self.base_delay = 1
+        self.config = self.load_config(config_file)
+
+
+    def load_config(self, config_file: str) -> Dict[str, Any]:
+        with open(config_file, 'r') as file:
+            return yaml.safe_load(file)
+
 
     async def _send_api_request(
         self,
@@ -30,6 +39,7 @@ class GitlabHandler:
         method: str = "GET",
     ) -> Any:
         url = f"{self.base_url}{endpoint}"
+
 
         for attempt in range(self.retries):
             await self.rate_limiter.acquire()
@@ -60,6 +70,7 @@ class GitlabHandler:
                 logger.error(f"Request to {url} timed out.")
                 raise
 
+
         logger.error(f"Max retries ({self.retries}) exceeded for {url}")
         raise Exception("Max retries exceeded")
 
@@ -73,34 +84,74 @@ class GitlabHandler:
 
         logger.info(f"Rate limit: {remaining}/{limit} requests remaining. Resets at {reset_time}")
 
+
+    async def _fetch_additional_data(self, resource: str, item: Dict[str, Any]) -> Dict[str, Any]:
+        additional_data = self.config.get(resource, {}).get('additional_data', [])
+        additional_tasks = []
+
+
+        for data_type in additional_data:
+            additional_endpoint = f"{resource}/{item['id']}/{data_type}"
+            additional_tasks.append(self._send_api_request(additional_endpoint))
+
+
+        additional_results = await asyncio.gather(*additional_tasks, return_exceptions=True)
+
+
+        for data_type, result in zip(additional_data, additional_results):
+            if isinstance(result, Exception):
+                logger.error(f"Failed to fetch additional data '{data_type}' for item {item['id']}: {str(result)}")
+            else:
+                item[data_type] = result
+
+
+        return item
+
+
     async def get_paginated_resources(
         self,
         resource: str,
         params: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        params = params or {}
+        params = self.config.get(resource, {}).get('params', {})
+        # params = params or {}
+
         params["per_page"] = PAGE_SIZE
         params["page"] = 1
+
 
         while True:
             logger.debug(f"Fetching page {params['page']} for resource '{resource}'")
             response = await self._send_api_request(resource, params=params)
 
+
             if not isinstance(response, list):
                 logger.error(f"Expected a list response for resource '{resource}', got {type(response)}")
                 break
+
 
             if not response:
                 logger.debug(f"No more records to fetch for resource '{resource}'.")
                 break
 
-            yield response
+
+            # Fetch additional data concurrently for all items on the page
+            enhanced_items = await asyncio.gather(
+                *[self._fetch_additional_data(resource, item) for item in response]
+            )
+
+
+            for item in enhanced_items:
+                yield item
+
 
             if len(response) < PAGE_SIZE:
                 logger.debug(f"Last page reached for resource '{resource}', no more data.")
                 break
 
+
             params["page"] += 1
+
 
     async def get_single_resource(
         self, resource_kind: str, resource_id: str
@@ -108,19 +159,6 @@ class GitlabHandler:
         """Get a single resource by kind and ID."""
         return await self._send_api_request(f"{resource_kind}/{resource_id}")
 
-    async def fetch_resources(self, resource_type: str) -> AsyncGenerator[Dict[str, Any], None]:
-        """Fetch GitLab resources of the specified type."""
-        try:
-            mapper = self.mapper_factory.get_mapper(resource_type)
-        except ValueError as e:
-            logger.error(f"Error fetching resources: {str(e)}")
-            return
-
-
-        params = mapper.get_query_params()
-
-        async for item in self.get_paginated_resources(mapper.endpoint, params=params):
-            yield mapper.map(item)
 
     async def create_webhook(self, project_id: str, webhook_url: str, webhook_token: str, events: List[str]) -> Dict[str, Any]:
         """Create a webhook for a specific project."""
@@ -152,7 +190,6 @@ class GitlabHandler:
             "merge_requests_events": "merge_requests" in events,
         }
         return await self._send_api_request(endpoint, method="PUT", json_data=data)
-
 
     async def setup_webhooks(self, webhook_url: str, webhook_token: str, events: List[str]) -> None:
         """Set up webhooks for all accessible projects."""
