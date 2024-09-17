@@ -19,32 +19,31 @@ class ObjectKind(StrEnum):
     ISSUE = "gitlabIssue"
 
 
-async def fetch_resource(fetch_method: Callable[[], AsyncGenerator[Dict[str, Any], None]]) -> List[Dict[str, Any]]:
+async def fetch_resources(kind: ObjectKind) -> AsyncGenerator[Dict[str, Any], None]:
     """Fetch resources using the provided fetch method."""
-    items = []
+
     try:
-        async for item in fetch_method():
-            logger.info(f"Received item: {item}")
-            items.append(item)
+        async for item in ocean.gitlab_handler.fetch_resources(kind):
+            logger.info(f"Received {kind} item: {item.get('id', 'Unknown ID')}")
+            yield item
     except Exception as e:
-        logger.error(f"Error fetching resources: {str(e)}")
-    return items
+        logger.error(f"Error fetching {kind} resources: {str(e)}")
+
 
 @ocean.on_resync(ObjectKind.GROUP)
 async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resynchronization for GitLab groups."""
     if kind != ObjectKind.GROUP:
         logger.warning(f"Unexpected kind {kind} for on_resync_groups")
-        return []
+        return
 
     if not hasattr(ocean, 'gitlab_handler'):
         logger.error("GitLab handler not initialized. Please check on_start function.")
-        return []
+        return
 
 
-    fetch_method = lambda: ocean.gitlab_handler.fetch_resources(ObjectKind.GROUP)
-    items = await fetch_resource(fetch_method)
-    return items
+    async for item in fetch_resources(ObjectKind.GROUP):
+        yield item
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -52,16 +51,15 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resynchronization for GitLab projects."""
     if kind != ObjectKind.PROJECT:
         logger.warning(f"Unexpected kind {kind} for on_resync_projects")
-        return []
+        return
 
     if not hasattr(ocean, 'gitlab_handler'):
         logger.error("GitLab handler not initialized. Please check on_start function.")
-        return []
+        return
 
 
-    fetch_method = lambda: ocean.gitlab_handler.fetch_resources(ObjectKind.PROJECT)
-    items = await fetch_resource(fetch_method)
-    return items
+    async for item in fetch_resources(ObjectKind.PROJECT):
+        yield item
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
@@ -69,16 +67,15 @@ async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resynchronization for GitLab merge requests."""
     if kind != ObjectKind.MERGE_REQUEST:
         logger.warning(f"Unexpected kind {kind} for on_resync_merge_requests")
-        return []
+        return
 
     if not hasattr(ocean, 'gitlab_handler'):
         logger.error("GitLab handler not initialized. Please check on_start function.")
-        return []
+        return
 
 
-    fetch_method = lambda: ocean.gitlab_handler.fetch_resources(ObjectKind.MERGE_REQUEST)
-    items = await fetch_resource(fetch_method)
-    return items
+    async for item in fetch_resources(ObjectKind.MERGE_REQUEST):
+        yield item
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
@@ -86,16 +83,14 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Handle resynchronization for GitLab issues."""
     if kind != ObjectKind.ISSUE:
         logger.warning(f"Unexpected kind {kind} for on_resync_issues")
-        return []
+        return
 
     if not hasattr(ocean, 'gitlab_handler'):
         logger.error("GitLab handler not initialized. Please check on_start function.")
-        return []
+        return
 
-
-    fetch_method = lambda: ocean.gitlab_handler.fetch_resources(ObjectKind.ISSUE)
-    items = await fetch_resource(fetch_method)
-    return items
+    async for item in fetch_resources(ObjectKind.ISSUE):
+        yield item
 
 
 @ocean.on_start()
