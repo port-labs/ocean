@@ -1,11 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel
 from pydantic.fields import Field
 
 
-Runtime = Literal["OnPrem", "Saas"]
+class Runtime(Enum):
+    Saas = "Saas"
+    OnPrem = "OnPrem"
 
 
 class Entity(BaseModel):
@@ -15,6 +18,10 @@ class Entity(BaseModel):
     team: str | None | list[Any] = []
     properties: dict[str, Any] = {}
     relations: dict[str, Any] = {}
+
+    @property
+    def is_using_search_identifier(self) -> bool:
+        return isinstance(self.identifier, dict)
 
 
 class BlueprintRelation(BaseModel):

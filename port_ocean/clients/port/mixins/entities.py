@@ -29,7 +29,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> Entity:
+    ) -> Entity | None:
         validation_only = request_options["validation_only"]
         async with self.semaphore:
             logger.debug(
@@ -58,11 +58,31 @@ class EntityClientMixin:
             )
         handle_status_code(response, should_raise)
         result = response.json()
-        result_entity = Entity.parse_obj(result)
-        # Set the results of the search relation and identifier to the entity
-        entity.identifier = result_entity.identifier or entity.identifier
-        entity.relations = result_entity.relations or entity.relations
-        return entity
+
+        result_entity = (
+            Entity.parse_obj(result["entity"]) if result.get("entity") else entity
+        )
+
+        # Happens when upsert fails and search identifier is defined.
+        # We return None to ignore the entity later in the delete process
+        if result_entity.is_using_search_identifier:
+            return None
+
+        # In order to save memory we'll keep only the identifier, blueprint and relations of the
+        # upserted entity result for later calculations
+        reduced_entity = Entity(
+            identifier=result_entity.identifier, blueprint=result_entity.blueprint
+        )
+
+        # Turning dict typed relations (raw search relations) is required
+        # for us to be able to successfully calculate the participation related entities
+        # and ignore the ones that don't as they weren't upserted
+        reduced_entity.relations = {
+            key: None if isinstance(relation, dict) else relation
+            for key, relation in result_entity.relations.items()
+        }
+
+        return reduced_entity
 
     async def batch_upsert_entities(
         self,
@@ -81,7 +101,7 @@ class EntityClientMixin:
                 )
                 for entity in entities
             ),
-            return_exceptions=should_raise,
+            return_exceptions=True,
         )
         entity_results = [
             entity for entity in modified_entities_results if isinstance(entity, Entity)

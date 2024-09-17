@@ -1,6 +1,9 @@
+import asyncio
+import re
 import datetime
 import http
 import json
+import time
 from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -13,6 +16,17 @@ from port_ocean.utils.queue_utils import process_in_queue
 
 MAX_PAGE_SIZE = 100
 MAX_CONCURRENT_REQUESTS = 2
+
+MAXIMUM_CONCURRENT_REQUESTS_METRICS = 20
+MAXIMUM_CONCURRENT_REQUESTS_DEFAULT = 1
+MINIMUM_LIMIT_REMAINING = 1
+DEFAULT_SLEEP_TIME = 0.1
+FETCH_WINDOW_TIME_IN_MINUTES = 10
+
+SERVICE_KEY = "__service"
+QUERY_ID_KEY = "__query_id"
+QUERY_KEY = "__query"
+ENV_KEY = "__env"
 
 
 def embed_credentials_in_url(url: str, username: str, token: str) -> str:
@@ -62,6 +76,17 @@ class DatadogClient:
 
         self.http_client = http_async_client
 
+        # These are created to limit the concurrent requests we are making to specific routes.
+        # The limits provided to each semaphore were pre-determined by the headers sent for each one of the routes.
+        # For more information about Datadog's rate limits, please read this: https://docs.datadoghq.com/api/latest/rate-limits/
+        self._default_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_DEFAULT)
+        self._metrics_semaphore = asyncio.Semaphore(MAXIMUM_CONCURRENT_REQUESTS_METRICS)
+
+    @property
+    def datadog_web_url(self) -> str:
+        """Replaces 'api' with 'app' in Datadog URLs."""
+        return re.sub(r"https://api\.", "https://app.", self.api_url)
+
     @property
     async def auth_headers(self) -> dict[str, Any]:
         return {
@@ -88,6 +113,50 @@ class DatadogClient:
         )
         response.raise_for_status()
         return response.json()
+
+    async def _fetch_with_rate_limit_handling(
+        self,
+        url: str,
+        params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+        method: str = "GET",
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> Any:
+        if semaphore is None:
+            semaphore = self._default_semaphore
+
+        while True:
+            async with semaphore:
+                response = await self.http_client.request(
+                    url=url,
+                    method=method,
+                    headers=await self.auth_headers,
+                    params=params,
+                    json=json_data,
+                )
+            try:
+                rate_limit_remaining = int(
+                    response.headers.get("X-RateLimit-Remaining", 0)
+                )
+                if rate_limit_remaining <= MINIMUM_LIMIT_REMAINING:
+                    datadog_wait_time_in_seconds = int(
+                        response.headers.get("X-RateLimit-Reset")
+                    )
+                    wait_time = max(datadog_wait_time_in_seconds, DEFAULT_SLEEP_TIME)
+
+                    logger.info(
+                        f"Approaching rate limit. Waiting for {wait_time} seconds before retrying. "
+                        f"URL: {url}, Remaining: {rate_limit_remaining} "
+                    )
+                    await asyncio.sleep(wait_time)
+            except KeyError as e:
+                logger.warning(
+                    f"Rate limit headers not found in response: {str(e)} for url {url}"
+                )
+            except Exception as e:
+                logger.error(f"Error while making request to url: {url} - {str(e)}")
+                raise
+            return response.json()
 
     async def get_hosts(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         start = 0
@@ -232,6 +301,174 @@ class DatadogClient:
                 f"Failed to fetch SLO history for {slo_id}: {err}, {err.response.text}, for the given timeframe {readable_from_ts}, {readable_to_ts} in time range of {timeframe} days"
             )
             return {}
+
+    async def get_tags(self) -> dict[str, Any]:
+        url = f"{self.api_url}/api/v1/tags/hosts"
+        result = await self._send_api_request(url)
+
+        tags = result.get("tags")
+        return tags
+
+    def _create_query_with_values(
+        self, metric_query: str, variable_values: dict[str, str]
+    ) -> str:
+        """
+        Creates a Datadog query by substituting template variables with their values.
+
+        Args:
+            metric_query (str): The original query string containing template variables (e.g., "avg:container.cpu.usage{$service}").
+            variable_values (dict): A dictionary mapping variable names to their values (e.g., {"service": "svc_name", "env": "prod"}).
+
+        Returns:
+            str: The modified query with variables replaced by their values.
+        """
+        logger.debug(f"Creating query with values: {metric_query} | {variable_values}")
+        for variable_name, value in variable_values.items():
+            metric_query = metric_query.replace(
+                f"${variable_name}", f"{variable_name}:{value}"
+            )
+        return metric_query
+
+    async def get_single_service(self, service_id: str) -> dict[str, Any]:
+        url = f"{self.api_url}/api/v2/services/definitions/{service_id}"
+        return await self._send_api_request(url)
+
+    async def get_metric_metadata(self, metric: str) -> dict[str, Any] | None:
+        url = f"{self.api_url}/api/v1/metrics/{metric}"
+        return await self._send_api_request(url)
+
+    def get_env_tags(self, tags: dict[str, Any], tag_name: str = "env") -> list[str]:
+        """
+        Extracts environment names from the provided data structure.
+
+        Args:
+            data (dict): A dictionary containing tag information, potentially nested.
+
+        Returns:
+            list: A list of environment names (e.g., ['prod', 'staging']).
+        """
+        return [tag.split(":")[1] for tag in tags.keys() if tag.startswith(tag_name)]
+
+    async def _fetch_metrics_for_services(
+        self,
+        query: str,
+        envs_to_fetch: list[str],
+        services: list[dict[str, Any]],
+        timeframe: int,
+        env_tag: str = "env",
+        service_tag: str = "service",
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Helper function to fetch metrics for a list of services and provided environments."""
+        logger.info(
+            f"Fetching metrics for {len(services)} services and {len(envs_to_fetch)} environments. "
+            f"env_tag: {env_tag}, service_tag: {service_tag}"
+        )
+
+        for service in services:
+            service_id = service["attributes"]["schema"]["dd-service"]
+
+            # Create tasks for concurrent fetching
+            tasks = []
+            for env_to_fetch in envs_to_fetch:
+                params = {service_tag: service_id, env_tag: env_to_fetch}
+                query_with_values = self._create_query_with_values(
+                    f"{query}{{{service_tag}:{service_id}, {env_tag}:{env_to_fetch}}}",
+                    params,
+                )
+
+                end_time = int(time.time())
+                start_time = end_time - (timeframe * 60)
+
+                url = f"{self.api_url}/api/v1/query?from={start_time}&to={end_time}&query={query_with_values}"
+
+                # Create a task for each fetch operation
+                task = asyncio.create_task(
+                    self._fetch_with_rate_limit_handling(
+                        url, semaphore=self._metrics_semaphore
+                    )
+                )
+                tasks.append(task)
+
+            # Gather results concurrently
+            results = await asyncio.gather(*tasks)
+
+            # Process and yield results
+            metrics = []
+            for result, env_to_fetch in zip(results, envs_to_fetch):
+                # Update result with metadata
+                result.update(
+                    {
+                        SERVICE_KEY: service_id,
+                        QUERY_ID_KEY: f"{query}/{service_tag}:{service_id}/{env_tag}:{env_to_fetch}",
+                        QUERY_KEY: query,
+                        ENV_KEY: env_to_fetch,
+                    }
+                )
+                metrics.append(result)
+
+            yield metrics
+
+    async def get_metrics(
+        self,
+        metric_query: str,
+        env_tag: str = "env",
+        env_value: str = "*",
+        service_tag: str = "service",
+        service_value: str = "*",
+        time_window_in_minutes: int = 60,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Fetches metrics for specified services and environment.
+
+        Args:
+            metric_query (str): The Datadog metric to fetch (e.g., "avg:container.cpu.usage").
+            env_tag (str): The tag name for environment.
+            env_value (str): The environment value to filter by, or "*" for all environments.
+            service_tag (str): The tag name for service.
+            service_value (str): The service value to filter by, or "*" for all services.
+            timeframe (int): Time window in minutes for fetching metrics.
+
+        Yields:
+            AsyncGenerator[list[dict[str, Any]], None]: Each individual metric as it's fetched.
+        """
+        logger.info(
+            f"Fetching metrics for query: {metric_query} | env_tag: {env_tag}, env_value: {env_value} | service_tag: {service_tag}, service_value: {service_value}"
+        )
+
+        envs_to_fetch = (
+            [env_value]
+            if env_value != "*"
+            else self.get_env_tags(await self.get_tags(), env_tag)
+        )
+        if not envs_to_fetch:
+            logger.warning(
+                f"No environments found, can't fetch metrics for metric {metric_query}"
+            )
+            return
+
+        if service_value == "*":
+            async for service_list in self.get_services():
+                async for metrics in self._fetch_metrics_for_services(
+                    metric_query,
+                    envs_to_fetch,
+                    service_list,
+                    time_window_in_minutes,
+                    env_tag,
+                    service_tag,
+                ):
+                    yield metrics
+        else:
+            result = await self.get_single_service(service_value)
+            service_details: dict[str, Any] = result["data"]
+            async for metrics in self._fetch_metrics_for_services(
+                metric_query,
+                envs_to_fetch,
+                [service_details],
+                time_window_in_minutes,
+                env_tag,
+                service_tag,
+            ):
+                yield metrics
 
     async def get_single_monitor(self, monitor_id: str) -> dict[str, Any] | None:
         if not monitor_id:

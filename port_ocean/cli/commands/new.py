@@ -1,10 +1,48 @@
 # -*- coding: utf-8 -*-
 
 import click
+import json
 from cookiecutter.main import cookiecutter  # type: ignore
+import os
 
 from port_ocean.cli.commands.main import cli_start, print_logo, console
 from port_ocean.cli.utils import cli_root_path
+
+
+def symlink_makefile(result: str, name: str) -> None:
+    infra_make_file = os.path.join(
+        os.path.dirname(result), "../integrations/_infra/Makefile"
+    )
+    target_link_make_file = os.path.join(
+        os.path.dirname(result), f"../integrations/{name}/Makefile"
+    )
+
+    os.link(infra_make_file, target_link_make_file)
+
+
+def add_vscode_configuration(result: str, name: str) -> None:
+    vscode_entry_root_path = "${workspaceFolder}/integrations/" + name
+    new_vscode_entry = {
+        "console": "integratedTerminal",
+        "cwd": vscode_entry_root_path,
+        "envFile": f"{vscode_entry_root_path}/.env",
+        "justMyCode": True,
+        "name": f"Run {name} integration",
+        "program": f"{vscode_entry_root_path}/debug.py",
+        "python": f"{vscode_entry_root_path}/.venv/bin/python",
+        "request": "launch",
+        "type": "debugpy",
+    }
+
+    vs_code_json_path = os.path.join(os.path.dirname(result), "../.vscode/launch.json")
+    if not os.path.exists(vs_code_json_path):
+        return
+    vs_code_json = json.load(open(vs_code_json_path, "r"))
+    vs_code_json["configurations"].append(new_vscode_entry)
+
+    with open(vs_code_json_path, "w") as vs_code_json_file:
+        json.dump(vs_code_json, vs_code_json_file, indent=2)
+        vs_code_json_file.write("\n")
 
 
 @cli_start.command()
@@ -37,6 +75,10 @@ def new(path: str, is_private_integration: bool) -> None:
     )
     name = result.split("/")[-1]
 
+    if not is_private_integration:
+        add_vscode_configuration(result, name)
+        symlink_makefile(result, name)
+
     console.print(
         "\n🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!",
         style="bold",
@@ -47,10 +89,14 @@ def new(path: str, is_private_integration: bool) -> None:
         f"▶️ [bold][blue]cd {path}/{name} && make install && . .venv/bin/activate[/blue][/bold]\n"
     )
     console.print(
+        f"⚓️ Copy example env file: Run [bold][blue]cp {path}/{name}.env.example {path}/{name}/.env [/blue][/bold] and set your port credentials in the created file.\n"
+    )
+    console.print(
         "⚓️ Set sail with [blue]Ocean[/blue]: Run [bold][blue]ocean sail[/blue] <path_to_integration>[/bold] to run the project using Ocean.\n"
         f"▶️ [bold][blue]ocean sail {path}/{name}[/blue][/bold] \n"
     )
-    console.print(
-        "⚓️ Smooth sailing with [blue]Make[/blue]: Alternatively, you can run [bold][blue]make run[/blue][/bold] to launch your project using Make. \n"
-        f"▶️ [bold][blue]make run {path}/{name}[/blue][/bold]"
-    )
+    if not is_private_integration:
+        console.print(
+            "⚓️ Smooth sailing with [blue]Make[/blue]: Alternatively, you can run [bold][blue]make run[/blue][/bold] to launch your project using Make. \n"
+            f"▶️ [bold][blue]make run {path}/{name}[/blue][/bold]"
+        )

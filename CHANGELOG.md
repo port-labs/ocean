@@ -7,6 +7,102 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.11 (2024-09-17)
+
+### Improvements
+
+- Add smoke test with a live integration to validate core changes
+
+## 0.10.10 (2024-09-12)
+
+### Bug Fixes
+
+- Fixed failing on initialization of the integration when one of the actions exists in port
+
+### Improvements
+
+- Added fix lint command to the makefile as well as the pre-commit hook
+
+
+## 0.10.9 (2024-09-05)
+
+### Bug Fixes
+
+- Replaced StopAsyncIteration with a return statement to ignore prevent errors in cases where empty tasks are sent to the stream_async_iterators_tasks function
+
+
+## 0.10.8 (2024-09-04)
+
+### Bug Fixes
+
+- Avoid raising exception when receiving ReadTimeout on batch upsert entities
+- Increased both internal port client and third party client timeout to handle long requests
+
+
+## 0.10.7 (2024-08-28)
+
+### Improvements
+
+- Add search identifier support (Allow to run a search query to find the identifier of the entity as part of the mapping)
+
+
+## 0.10.6 (2024-08-31)
+
+### Bug Fixes
+
+- Fixed error log when looking for existence of integration on initialization
+
+
+## 0.10.5 (2024-08-27)
+
+### Improvements
+
+- Test support and helpers
+
+
+## 0.10.4 (2024-08-28)
+
+### Bug Fixes
+
+- Fixed upsert entity failure when saving modified data for search relations calculations
+
+
+## 0.10.3 (2024-08-28)
+
+### Bug Fixes
+
+- Bugfix Semaphores get fail when moving to the next scheduled resync when syncing a large number of entities, using a single event loop for all threads
+
+
+## 0.10.2 (2024-08-26)
+
+### Bug Fixes
+
+- Reverted last bugfix
+
+
+## 0.10.1 (2024-08-26)
+
+### Bug Fixes
+
+- Fixed unhashable type: 'dict' error when trying to delete entities with search identifier/relations
+
+
+## 0.10.0 (2024-08-19)
+
+### Improvements
+
+- Add support for reporting the integration resync state to expose more information about the integration state in the portal
+- Fix kafka listener never ending resync loop due to resyncState updates
+
+
+## 0.9.14 (2024-08-19)
+
+### Bug Fixes
+
+- Fixed an issue causing the cli to fail in a directory with no pyproject.toml in it
+
+
 ## 0.9.13 (2024-08-13)
 
 ### Improvements
@@ -112,7 +208,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Safely get changelogDestination key instead of accessing it directly 
+- Safely get changelogDestination key instead of accessing it directly
 
 
 ## 0.9.0 (2024-06-19)
@@ -573,7 +669,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Fixed kafka consumer to poll messages asynchronously, to avoid max poll timeout when running long resyncs (PORT-5160)
 - Fixed a bug where the expiration of a Port token is not properly handled (PORT-5161)
-- Fixed a bug where the `retry_every` didn't count failed runs as repetitions (PORT-5161) 
+- Fixed a bug where the `retry_every` didn't count failed runs as repetitions (PORT-5161)
 
 ## 0.4.2 (2023-11-04)
 
@@ -603,7 +699,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Fixed the `initialize-port-resources` option in `ocean sail` to not be a flag.
 - Changed default of `initialize-port-resources` to `true`.
-- Catch all exceptions in the resync of ONCE event listener,to make sure the application will exit gracefully 
+- Catch all exceptions in the resync of ONCE event listener,to make sure the application will exit gracefully
 
 
 ## 0.4.0 (2023-10-31)
