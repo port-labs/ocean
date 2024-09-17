@@ -28,8 +28,10 @@ resources:
             createdAt: .created_at
             updatedAt: .updated_at
             link: .web_url
+          relations:
+            service: '.web_url | split("/") | .[3] + "/" + .[4]'
 
-  - kind: issues
+  - kind: issue
     selector:
       query: 'true'
     port:
@@ -46,8 +48,10 @@ resources:
             closedAt: .closed_at
             creator: .author.name
             status: .state
+          relations:
+            service: '.web_url | split("/") | .[3] + "/" + .[4]'
   
-  - kind: projects
+  - kind: project
     selector:
       query: 'true'
     port:
@@ -63,3 +67,5 @@ resources:
             namespace: .namespace
             fullPath: .full_path
             defaultBranch: .default_branch
+          relations:
+            group: .namespace.path

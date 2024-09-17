@@ -1,117 +1,99 @@
-import os
-from port_ocean.context.ocean import ocean
-from gitlab_resync.group import resync_group
-from gitlab_resync.merge_request import resync_merge_requests
-from gitlab_resync.issues import resync_issues
-from gitlab_resync.projects import resync_projects
-from gitlab.webhooks import handle_gitlab_webhook
-from aiohttp import web
-import aiohttp
+import typing
+from typing import Any
 from loguru import logger
-from dotenv import load_dotenv
+from client import GitLabClient
+from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
-# Load environment variables from .env file
-load_dotenv()
 
-# Retrieve config from environment variables
-integration_config = {
-    "client_id": os.getenv("OCEAN__PORT__CLIENT_ID"),
-    "client_secret": os.getenv("OCEAN__PORT__CLIENT_SECRET"),
-    "base_url": os.getenv("OCEAN__PORT__BASE__URL"),
-    "event_listener": os.getenv("OCEAN__EVENT__LISTENER"),
-    "integration_identifier": os.getenv("OCEAN__INTEGRATION_IDENTIFIER"),
-    "gitlab_token": os.getenv("GITLAB_TOKEN"),
-    "gitlab_api_url": os.getenv("GITLAB_API_URL"),
-    "rate_limit_max_retries": int(os.getenv("RATE_LIMIT_MAX_RETRIES", 5)),
-    "webhook_url": os.getenv("WEBHOOK_URL"),
-    "gitlab_project_id": os.getenv("GITLAB_PROJECT_ID")  # Ensure this is set in .env
-}
+class ObjectKind:
+    GROUP = "group"
+    MERGE_REQUEST = "merge-request"
+    ISSUE = "issue"
+    PROJECT = "project"
 
-# Function to set up webhook
-async def setup_gitlab_webhook() -> None:
-    gitlab_url = integration_config.get("gitlab_api_url")
-    webhook_url = integration_config.get("webhook_url")
-    project_id = integration_config.get("gitlab_project_id")
 
-    # Check for valid GitLab project ID and webhook URL
-    if not webhook_url:
-        logger.warning("No webhook URL provided, skipping webhook creation.")
-        return
-    
-    if not project_id:
-        logger.error("No GitLab project ID provided, skipping webhook creation.")
-        return
+def init_gitlab_client() -> GitLabClient:
+    """Initialize GitLab client with configuration values."""
+    return GitLabClient(
+        ocean.integration_config["gitlab_api_url"],
+        ocean.integration_config["gitlab_token"]
+    )
 
-    logger.info(f"Setting up GitLab webhook for project ID: {project_id}")
-    logger.info(f"Webhook URL: {webhook_url}")
 
-    async with aiohttp.ClientSession() as session:
-        # Register webhook in GitLab
-        webhook_data = {
-            "url": webhook_url,
-            "push_events": True,
-            "merge_requests_events": True,
-            "issues_events": True
-        }
-        headers = {"PRIVATE-TOKEN": integration_config["gitlab_token"]}
-        async with session.post(f"{gitlab_url}/projects/{project_id}/hooks", json=webhook_data, headers=headers) as resp:
-            if resp.status == 201:
-                logger.info("Webhook created successfully.")
-            else:
-                error_details = await resp.text()  # Get the response body for debugging
-                logger.error(f"Failed to create webhook. Status: {resp.status}, Details: {error_details}")
+@ocean.on_resync(ObjectKind.GROUP)
+async def resync_group_handler(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    gitlab_client = init_gitlab_client()
 
-# Webhook handling for GitLab events
-async def handle_webhook(request) -> web.Response:
-    logger.info("Request to /webhook started")  # Log when request starts
-    data = await request.json()
-    logger.info(f"Received webhook data: {data}")  # Log incoming webhook data
-    try:
-        await handle_gitlab_webhook(request)  # Pass the entire request for custom handling
-        logger.info("Request to /webhook ended")  # Log when request ends
-        return web.Response(status=200, text="Webhook received")
-    except Exception as e:
-        logger.error(f"Webhook handling error: {str(e)}")
-        return web.Response(status=500, text=str(e))
+    async for groups in gitlab_client.get_groups():
+        logger.info(f"Received batch with {len(groups)} groups")
+        yield groups
 
-# Resync handler for group
-@ocean.on_resync('group')
-async def resync_group_handler(kind: str):
-    return await resync_group(kind)
 
-# Resync handler for merge request
-@ocean.on_resync('merge-request')
-async def resync_merge_request_handler(kind: str):
-    return await resync_merge_requests(kind)
+@ocean.on_resync(ObjectKind.MERGE_REQUEST)
+async def resync_merge_request_handler(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    gitlab_client = init_gitlab_client()
 
-# Resync handler for issues
-@ocean.on_resync('issues')
-async def resync_issues_handler(kind: str):
-    return await resync_issues(kind)
+    async for merge_requests in gitlab_client.get_merge_requests():
+        logger.info(f"Received batch with {len(merge_requests)} merge requests")
+        yield merge_requests
 
-# Resync handler for projects
-@ocean.on_resync('projects')
-async def resync_projects_handler(kind: str):
-    return await resync_projects(kind)
 
-# Optional: Listen to the start event of the integration
+@ocean.on_resync(ObjectKind.ISSUE)
+async def resync_issue_handler(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    gitlab_client = init_gitlab_client()
+
+    async for issues in gitlab_client.get_issues():
+        logger.info(f"Received batch with {len(issues)} issues")
+        yield issues
+
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def resync_project_handler(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    gitlab_client = init_gitlab_client()
+
+    async for projects in gitlab_client.get_projects():
+        logger.info(f"Received batch with {len(projects)} projects")
+        yield projects
+
+
+@ocean.router.post("/webhook")
+async def handle_webhook(data: dict[str, Any]) -> dict[str, Any]:
+    """Handle incoming webhook events."""
+    logger.info(f"Received event type {data['object_kind']} - Event ID: {data['object_attributes']['id']}")
+
+    gitlab_client = init_gitlab_client()
+
+    if data["object_kind"] == "merge_request":
+        merge_request = await gitlab_client.get_single_merge_request(data["object_attributes"]["id"])
+        if merge_request:
+            logger.info(f"Updating merge request with ID {merge_request['id']}")
+            await ocean.register_raw(ObjectKind.MERGE_REQUEST, [merge_request])
+
+    elif data["object_kind"] == "issue":
+        issue = await gitlab_client.get_single_issue(data["object_attributes"]["id"])
+        if issue:
+            logger.info(f"Updating issue with ID {issue['id']}")
+            await ocean.register_raw(ObjectKind.ISSUE, [issue])
+
+    return {"ok": True}
+
+
 @ocean.on_start()
 async def on_start() -> None:
-    logger.info("Starting GitLab integration...")
-    
-    # Set up webhook during the integration start
-    await setup_gitlab_webhook()
+    """Setup GitLab webhook on integration start."""
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
 
-    logger.info("GitLab integration started.")
+    app_host = ocean.integration_config.get("app_host")
+    webhook_token = ocean.integration_config.get("gitlab_token")
+    project_id = ocean.integration_config.get("project_id")
 
-# Main entry point to run the aiohttp app for webhook handling
-def start_webhook_listener():
-    app = web.Application()
-    app.router.add_post("/webhook", handle_webhook)  # Register the route for webhooks
-    logger.info("Webhook route '/webhook' has been registered.")  # Log route registration
+    if app_host and webhook_token and project_id:
+        gitlab_client = init_gitlab_client()
+        await gitlab_client.setup_webhook(app_host, webhook_token)
+    else:
+        logger.warning("Missing app_host, gitlab_token, or project_id, skipping webhook setup.")
 
-    web.run_app(app, host="0.0.0.0", port=8000)  # Ensure port matches your configuration
-
-# Uncomment the following line to run the server
-# if __name__ == '__main__':
-#     start_webhook_listener()

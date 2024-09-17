@@ -1,16 +1,39 @@
-description: test-gitLab-v2 integration for Port Ocean
-icon: GitLab  # Should be one of the available icons in Port
+type: gitlab
+description: GitLab integration for Port Ocean
+icon: GitLab
 features:
   - type: exporter
-    section: Under Development  # Should be one of the available sections in Port
+    section: Under Development
     resources:
       - kind: group
-      - kind: projects
-      - kind: issues
+      - kind: project
+      - kind: issue
       - kind: merge-request
 configurations:
-  - name: "{{ from env OCEAN__INTEGRATION__CONFIG__GITLAB_TOKEN }}"
-    type: string
-    sensitive: true
-  - name: someApplicationUrl
+  - name: gitlabApiUrl
+    description: The base URL for GitLab API (e.g., https://gitlab.com/api/v4).
     type: url
+    required: true
+    default: "https://gitlab.com/api/v4"
+  - name: gitlabToken
+    description: GitLab API token. To generate a personal access token, refer to the GitLab documentation.
+    type: string
+    required: true
+    sensitive: true
+  - name: rateLimitMaxRetries
+    description: Maximum number of retries in case of rate limiting.
+    type: integer
+    required: false
+    default: 5
+  - name: webhookUrl
+    description: URL for webhook endpoint.
+    type: url
+    required: false
+  - name: gitlabProjectId
+    description: GitLab Project ID for specific project-related operations.
+    type: integer
+    required: false
+  - name: appHost
+    type: url
+    required: false
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in the 3rd party service"
