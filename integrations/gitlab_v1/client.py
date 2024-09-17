@@ -94,8 +94,7 @@ class GitlabHandler:
                 logger.debug(f"No more records to fetch for resource '{resource}'.")
                 break
 
-            for item in response:
-                yield item
+            yield response
 
             if len(response) < PAGE_SIZE:
                 logger.debug(f"Last page reached for resource '{resource}', no more data.")
@@ -132,7 +131,6 @@ class GitlabHandler:
             "push_events": "push" in events,
             "issues_events": "issues" in events,
             "merge_requests_events": "merge_requests" in events,
-            # Add more event types as needed
         }
         return await self._send_api_request(endpoint, method="POST", json_data=data)
 
@@ -158,16 +156,26 @@ class GitlabHandler:
 
     async def setup_webhooks(self, webhook_url: str, webhook_token: str, events: List[str]) -> None:
         """Set up webhooks for all accessible projects."""
-        async for project in self.get_paginated_resources("projects", params={"owned" : True}):
-            project_id = project["id"]
-            try:
-                existing_webhooks = await self.list_webhooks(project_id)
-                webhook_exists = any(hook["url"] == webhook_url for hook in existing_webhooks)
+        async for page in self.get_paginated_resources("projects", params={"owned": True}):
+            for project in page:
+                if not isinstance(project, dict) or "id" not in project:
+                    logger.error(f"Invalid project structure: {project}")
+                    continue
 
-                if not webhook_exists:
-                    await self.create_webhook(project_id, webhook_url, webhook_token, events)
-                    logger.info(f"Created webhook for project {project_id}")
-                else:
-                    logger.info(f"Webhook already exists for project {project_id}")
-            except Exception as e:
-                logger.error(f"Failed to set up webhook for project {project_id}: {str(e)}")
+                project_id = str(project["id"])
+                logger.info(f"Processing project: {project_id}")
+
+                try:
+                    existing_webhooks = await self.list_webhooks(project_id)
+                    webhook_exists = any(
+                        isinstance(hook, dict) and hook.get("url") == webhook_url
+                        for hook in existing_webhooks
+                    )
+
+                    if not webhook_exists:
+                        await self.create_webhook(project_id, webhook_url, webhook_token, events)
+                        logger.info(f"Created webhook for project {project_id}")
+                    else:
+                        logger.info(f"Webhook already exists for project {project_id}")
+                except Exception as e:
+                    logger.error(f"Failed to set up webhook for project {project_id}: {str(e)}")
