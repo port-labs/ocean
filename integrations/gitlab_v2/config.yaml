@@ -1,0 +1,5 @@
+initializePortResources: true
+scheduledResyncInterval: 1440 # 60 minutes X 24 hours = 1 day
+integration:
+  config:
+    gitlabResourcesConfig: '{"projects": {"params": {"owned": true}, "data_to_enrich": ["languages", "groups", "hooks"]}}'

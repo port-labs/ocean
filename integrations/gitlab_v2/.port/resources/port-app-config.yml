@@ -53,7 +53,7 @@ resources:
             link: .web_url
             reviewers: .reviewers[] | .username
           relations:
-            service: .__project.id | tostring
+            service: .__projectId | tostring
 
   - kind: issue
     selector:
@@ -74,4 +74,4 @@ resources:
             status: .state
             labels: .labels
           relations:
-            service: .__project.id | tostring
+            service: .__projectId | tostring
