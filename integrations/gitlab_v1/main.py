@@ -140,12 +140,6 @@ gitlab_integration = GitLabIntegration()
 
 @ocean.router.post("/webhook/gitlab")
 async def gitlab_webhook(request: Request):
-    if not WEBHOOK_SECRET:
-        raise HTTPException(status_code=400, detail="Webhook secret not configured")
-
-    gitlab_token = request.headers.get("X-Gitlab-Token")
-    if not gitlab_token or gitlab_token != WEBHOOK_SECRET:
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     payload = await request.json()
     event_type = payload.get("object_kind")
@@ -179,10 +173,3 @@ async def on_start() -> None:
         await gitlab_integration.initialize()
     except Exception as e:
         logger.error(f"Failed to initialize GitLab integration: {str(e)}")
-
-
-
-
-
-
-        
