@@ -10,12 +10,15 @@ class GitLabRateLimiter:
         self.time_window = time_window
         self.request_timestamps = []
         self.lock = asyncio.Lock()
+        self.semaphore = asyncio.Semaphore(max_requests)
+        self.last_reset_time = time.time()
 
 
     async def acquire(self):
         async with self.lock:
             now = time.time()
             self.request_timestamps = [ts for ts in self.request_timestamps if now - ts <= self.time_window]
+
 
             if len(self.request_timestamps) >= self.max_requests:
                 sleep_time = self.request_timestamps[0] + self.time_window - now
@@ -24,6 +27,11 @@ class GitLabRateLimiter:
                     await asyncio.sleep(sleep_time)
 
             self.request_timestamps.append(now)
+
+
+        # Acquire semaphore to limit concurrent requests
+        async with self.semaphore:
+            pass
 
 
     def update_limits(self, headers: Dict[str, str]):
