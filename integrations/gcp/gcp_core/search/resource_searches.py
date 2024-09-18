@@ -11,6 +11,7 @@ from google.cloud.resourcemanager_v3 import (
     ProjectsAsyncClient,
 )
 from google.pubsub_v1.services.publisher import PublisherAsyncClient
+from google.pubsub_v1.services.subscriber import SubscriberAsyncClient
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
@@ -137,6 +138,44 @@ async def list_all_topics_per_project(
             logger.info(f"Successfully listed all topics within project {project_name}")
 
 
+async def list_all_subscriptions_per_project(
+    project: dict[str, Any], **kwargs: Any
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """
+    This lists all Topics under a certain project.
+    The Subscriptions are handled specifically due to lacks of data in the asset itself within the asset inventory.
+    The listing is being done via the PublisherAsyncClient, ignoring state in assets inventory
+    """
+    async with SubscriberAsyncClient() as async_subscriber_client:
+        project_name = project["name"]
+        logger.info(
+            f"Searching all {AssetTypesWithSpecialHandling.SUBSCRIPTION}'s in project {project_name}"
+        )
+        try:
+            async for subscriptions in paginated_query(
+                async_subscriber_client,
+                "list_subscriptions",
+                {"project": project_name},
+                lambda response: parse_protobuf_messages(response.subscriptions),
+                kwargs.get("rate_limiter"),
+            ):
+                for subscription in subscriptions:
+                    subscription[EXTRA_PROJECT_FIELD] = project
+                yield subscriptions
+        except PermissionDenied:
+            logger.error(
+                f"Service account doesn't have permissions to list subscriptions from project {project_name}"
+            )
+        except NotFound:
+            logger.info(
+                f"Couldn't perform list_subscriptions on project {project_name} since it's deleted."
+            )
+        else:
+            logger.info(
+                f"Successfully listed all subscriptions within project {project_name}"
+            )
+
+
 @cache_iterator_result()
 async def search_all_projects() -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching projects")
@@ -214,6 +253,19 @@ async def get_single_topic(project_id: str, topic_id: str) -> RAW_ITEM:
         )
 
 
+async def get_single_subscription(project_id: str, subscription_id: str) -> RAW_ITEM:
+    """
+    Subscriptions are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
+    Here the SubscriberAsyncClient is used, ignoring state in assets inventory
+    """
+    async with SubscriberAsyncClient() as async_subscriber_client:
+        return parse_protobuf_message(
+            await async_subscriber_client.get_subscription(
+                subscription=subscription_id, timeout=DEFAULT_REQUEST_TIMEOUT
+            )
+        )
+
+
 async def search_single_resource(
     project: dict[str, Any], asset_kind: str, asset_name: str
 ) -> RAW_ITEM:
@@ -235,25 +287,35 @@ async def search_single_resource(
 
 
 async def feed_event_to_resource(
-    asset_type: str, asset_name: str, project_id: str
+    asset_type: str, asset_name: str, project_id: str, asset_data: dict[str, Any]
 ) -> RAW_ITEM:
     resource = None
-    match asset_type:
-        case AssetTypesWithSpecialHandling.TOPIC:
-            topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
-            resource = await get_single_topic(project_id, topic_name)
-            resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id)
-        case AssetTypesWithSpecialHandling.FOLDER:
-            folder_id = asset_name.replace("//cloudresourcemanager.googleapis.com/", "")
-            resource = await get_single_folder(folder_id)
-        case AssetTypesWithSpecialHandling.ORGANIZATION:
-            organization_id = asset_name.replace(
-                "//cloudresourcemanager.googleapis.com/", ""
-            )
-            resource = await get_single_organization(organization_id)
-        case AssetTypesWithSpecialHandling.PROJECT:
-            resource = await get_single_project(project_id)
-        case _:
-            project = await get_single_project(project_id)
-            resource = await search_single_resource(project, asset_type, asset_name)
+    if asset_data.get("deleted") is True:
+        resource = asset_data["priorAsset"]["resource"]["data"]
+        resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id)
+    else:
+        match asset_type:
+            case AssetTypesWithSpecialHandling.TOPIC:
+                topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
+                resource = await get_single_topic(project_id, topic_name)
+                resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id)
+            case AssetTypesWithSpecialHandling.SUBSCRIPTION:
+                topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
+                resource = await get_single_subscription(project_id, topic_name)
+                resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id)
+            case AssetTypesWithSpecialHandling.FOLDER:
+                folder_id = asset_name.replace(
+                    "//cloudresourcemanager.googleapis.com/", ""
+                )
+                resource = await get_single_folder(folder_id)
+            case AssetTypesWithSpecialHandling.ORGANIZATION:
+                organization_id = asset_name.replace(
+                    "//cloudresourcemanager.googleapis.com/", ""
+                )
+                resource = await get_single_organization(organization_id)
+            case AssetTypesWithSpecialHandling.PROJECT:
+                resource = await get_single_project(project_id)
+            case _:
+                resource = asset_data["asset"]["resource"]["data"]
+                resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id)
     return resource
