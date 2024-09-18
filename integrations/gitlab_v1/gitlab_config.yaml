@@ -16,14 +16,15 @@ projects:
 
 merge_requests:
   params:
-    scope: 'created_by_me'
+    scope: 'all'
+    owned: true
   additional_data:
     # - approvals
 
 
 issues:
   params:
-    scope: 'created_by_me'
+   scope: 'all'
   additional_data:
     # - notes
     # - assignees
