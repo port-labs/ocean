@@ -5,7 +5,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id
+          identifier: .id|tostring
           title: .name
           blueprint: '"gitlabGroup"'
           properties:
@@ -20,7 +20,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id
+          identifier: .id| tostring
           title: .name
           blueprint: '"gitlabProject"'
           properties:
@@ -32,7 +32,7 @@ resources:
             fullPath: .full_path
             defaultBranch: .default_branch
         relations:
-          group: .namespace.id
+          group: .namespace.id|tostring
 
 
   - kind: gitlabMergeRequest
@@ -41,7 +41,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id
+          identifier: .id|tostring
           title: .title
           blueprint: '"gitlabMergeRequest"'
           properties:
@@ -53,7 +53,7 @@ resources:
             link: .web_url
             reviewers: '.reviewers[] | .username'
         relations:
-          project: .namespace.id
+          project: .namespace.id|tostring
 
 
   - kind: gitlabIssue
@@ -62,7 +62,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id
+          identifier: .id|tostring
           title: .title
           blueprint: '"gitlabIssue"'
           properties:
@@ -75,4 +75,4 @@ resources:
             status: .state
             labels: '.labels[]'
         relations:
-          project: .namespace.id
+          project: .namespace.id|tostring
