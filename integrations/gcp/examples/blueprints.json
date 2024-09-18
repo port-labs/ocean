@@ -1,0 +1,51 @@
+{
+  "identifier": "googleCloudSubscription",
+  "description": "This blueprint represents a Google Cloud Subscription",
+  "title": "Google Cloud Subscription",
+  "icon": "GoogleCloud",
+  "schema": {
+    "properties": {
+      "pushConfig": {
+        "type": "object",
+        "title": "Push Configuration",
+        "description": "The ingestion configuration for this subscription"
+      },
+      "ackDeadlineSeconds": {
+        "type": "number",
+        "title": "Ack Deadline Seconds",
+        "description": "The maximum time after receiving a message that the subscriber should acknowledge the message"
+      },
+      "labels": {
+        "type": "object",
+        "title": "Labels",
+        "description": "A set of key/value label pairs to assign to this subscription"
+      },
+      "retainAckedMessages": {
+        "type": "boolean",
+        "title": "Retain Acked Messages",
+        "description": "Indicates whether to retain acknowledged messages"
+      },
+      "messageRetentionDuration": {
+        "type": "boolean",
+        "title": "Message Retention Duration",
+        "description": "How long to retain unacknowledged messages in the subscription's backlog"
+      },
+      "filter": {
+        "type": "string",
+        "title": "Filter",
+        "description": "A filter expression that determines which messages should be delivered to the subscriber"
+      }
+    },
+    "required": []
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "relations": {
+    "project": {
+      "target": "gcpProject",
+      "title": "Project",
+      "required": true,
+      "many": false
+    }
+  }
+}
