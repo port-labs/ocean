@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.40 (2024-09-18)
+
+
+### Improvements
+
+- Improved support for parralel fetching of aws account resources
+
+
 ## 0.2.39 (2024-09-12)
 
 
