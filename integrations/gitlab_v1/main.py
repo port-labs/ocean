@@ -31,119 +31,105 @@ ENDPOINT_MAPPING = {
 }
 
 
-# Initialize the GitLab client
-async def init_client():
-    """
-    Initialize the GitLab client.
-    Fetches the private token and creates an instance of GitlabHandler.
-    """
-    private_token = ocean.integration_config.get('token')
-    if not private_token:
-        logger.error("GitLab Token not provided in configuration")
-        return
+class GitLabIntegration:
+    def __init__(self):
+        self.gitlab_handler = None
+        self.webhook_handler = None
 
 
-    try:
-        ocean.gitlab_handler = GitlabHandler(private_token, CONFIG_FILE_PATH)
-        logger.info("GitLab handler initialized")
-    except Exception as e:
-        logger.error(f"Failed to initialize GitLab handler: {str(e)}")
+    async def initialize(self):
+        private_token = ocean.integration_config.get('token')
+        if not private_token:
+            raise ValueError("GitLab Token not provided in configuration")
 
 
-# Set up webhooks for GitLab events
-async def setup_webhooks(webhook_handler: WebhookHandler):
-    """
-    Set up webhooks for GitLab events.
-    Registers the webhook URL and secret.
-    """
-    events = ["push", "merge_requests", "issues"]
+        self.gitlab_handler = GitlabHandler(private_token, CONFIG_FILE_PATH)
+        self.webhook_handler = WebhookHandler(self.gitlab_handler)
+        logger.info("GitLab integration initialized")
 
 
-    if not WEBHOOK_SECRET:
-        logger.error("Webhook secret not provided in configuration")
-        return
+        await self.setup_webhooks()
 
 
-    try:
-        await webhook_handler.setup_webhooks(WEBHOOK_URL, WEBHOOK_SECRET, events)
-        logger.info("Webhooks set up successfully")
-    except Exception as e:
-        logger.error(f"Failed to set up webhooks: {str(e)}")
+    async def setup_webhooks(self):
+        events = ["push", "merge_requests", "issues"]
 
 
-# Fetch resources using GitlabHandler's get_paginated_resources method
-async def resync_resources(kind: ObjectKind) -> AsyncGenerator[Dict[str, Any], None]:
-    """
-    Fetch resources of a specific ObjectKind using pagination.
-    """
-    if not hasattr(ocean, 'gitlab_handler'):
-        logger.error("GitLab handler not initialized. Please check on_start function.")
-        return
+        if not WEBHOOK_SECRET:
+            raise ValueError("Webhook secret not provided in configuration")
 
 
-    endpoint = ENDPOINT_MAPPING.get(kind)
-    if not endpoint:
-        logger.error(f"Invalid ObjectKind: {kind}")
-        return
+        try:
+            await self.webhook_handler.setup_group_webhooks(WEBHOOK_URL, WEBHOOK_SECRET, events)
+            logger.info("Webhooks set up successfully")
+        except Exception as e:
+            logger.error(f"Failed to set up webhooks: {str(e)}")
+            raise
 
 
-    try:
-        async for item in ocean.gitlab_handler.get_paginated_resources(endpoint):
-            logger.info(f"Received {kind} resource")
-            yield item
-    except Exception as e:
-        logger.error(f"Error fetching {kind} resources: {str(e)}")
+    async def resync_resources(self, kind: ObjectKind) -> AsyncGenerator[Dict[str, Any], None]:
+        endpoint = ENDPOINT_MAPPING.get(kind)
+        if not endpoint:
+            raise ValueError(f"Invalid ObjectKind: {kind}")
 
 
-# Resync functions for GitLab groups, projects, merge requests, and issues
-@ocean.on_resync(ObjectKind.GROUP)
-async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for item in resync_resources(ObjectKind.GROUP):
-        yield item
+        try:
+            async for item in self.gitlab_handler.get_paginated_resources(endpoint):
+                logger.info(f"Received {kind} resource")
+                yield item
+        except Exception as e:
+            logger.error(f"Error fetching {kind} resources: {str(e)}")
+            raise
 
 
-@ocean.on_resync(ObjectKind.PROJECT)
-async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for item in resync_resources(ObjectKind.PROJECT):
-        yield item
+    async def handle_webhook_event(self, event_type: str, payload: Dict[str, Any]):
+        handlers = {
+            "push": self.handle_push_event,
+            "merge_request": self.handle_merge_request_event,
+            "issue": self.handle_issue_event
+        }
+        handler = handlers.get(event_type)
+        if handler:
+            await handler(payload)
+        else:
+            logger.warning(f"Unhandled event type: {event_type}")
 
 
-@ocean.on_resync(ObjectKind.MERGE_REQUEST)
-async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for item in resync_resources(ObjectKind.MERGE_REQUEST):
-        yield item
+    async def handle_push_event(self, payload: Dict[str, Any]):
+        project_id = payload.get("project", {}).get("id")
+        if project_id:
+            project = await self.gitlab_handler.get_single_resource("projects", str(project_id))
+            await ocean.register_raw(ObjectKind.PROJECT, project)
+            logger.info(f"Updated project {project_id} in Port")
 
 
-@ocean.on_resync(ObjectKind.ISSUE)
-async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for item in resync_resources(ObjectKind.ISSUE):
-        yield item
+    async def handle_merge_request_event(self, payload: Dict[str, Any]):
+        mr_id = payload.get("object_attributes", {}).get("id")
+        project_id = payload.get("project", {}).get("id")
+        if mr_id and project_id:
+            mr = await self.gitlab_handler.get_single_resource(f"projects/{project_id}/merge_requests", str(mr_id))
+            await ocean.register_raw(ObjectKind.MERGE_REQUEST, mr)
+            logger.info(f"Updated merge request {mr_id} in Port")
 
 
-# Initialization of the GitLab handler and webhook setup
-@ocean.on_start()
-async def on_start() -> None:
-    """
-    On startup, initialize the GitLab client and set up webhooks if the handler is available.
-    """
-    await init_client()
-    if ocean.gitlab_handler:
-        webhook_handler = WebhookHandler(ocean.gitlab_handler)
-        await setup_webhooks(webhook_handler)
+    async def handle_issue_event(self, payload: Dict[str, Any]):
+        issue_id = payload.get("object_attributes", {}).get("id")
+        project_id = payload.get("project", {}).get("id")
+        if issue_id and project_id:
+            issue = await self.gitlab_handler.get_single_resource(f"projects/{project_id}/issues", str(issue_id))
+            await ocean.register_raw(ObjectKind.ISSUE, issue)
+            logger.info(f"Updated issue {issue_id} in Port")
 
 
-# Handle incoming GitLab webhook events
+gitlab_integration = GitLabIntegration()
+
+
 @ocean.router.post("/webhook/gitlab")
 async def gitlab_webhook(request: Request):
-    """
-    Handle incoming GitLab webhook events.
-    Verifies the webhook signature and routes the event to the appropriate handler.
-    """
     if not WEBHOOK_SECRET:
         raise HTTPException(status_code=400, detail="Webhook secret not configured")
 
 
-    # Verify the webhook signature
     gitlab_token = request.headers.get("X-Gitlab-Token")
     if not gitlab_token or gitlab_token != WEBHOOK_SECRET:
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
@@ -153,55 +139,37 @@ async def gitlab_webhook(request: Request):
     event_type = payload.get("object_kind")
 
 
-    # Route to event-specific handlers
-    handlers = {
-        "push": handle_push_event,
-        "merge_request": handle_merge_request_event,
-        "issue": handle_issue_event
-    }
-
-
-    handler = handlers.get(event_type)
-    if handler:
-        await handler(payload)
-    else:
-        logger.warning(f"Unhandled event type: {event_type}")
-
-
+    await gitlab_integration.handle_webhook_event(event_type, payload)
     return {"status": "success"}
 
 
-# Event-specific handlers for push, merge request, and issue events
-async def handle_push_event(payload: Dict[str, Any]):
-    """
-    Handle push events and update the project in Port.
-    """
-    project_id = payload.get("project", {}).get("id")
-    if project_id:
-        project = await ocean.gitlab_handler.get_single_resource("projects", str(project_id))
-        await ocean.register_raw(ObjectKind.PROJECT, project)
-        logger.info(f"Updated project {project_id} in Port")
+@ocean.on_resync(ObjectKind.GROUP)
+async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for item in gitlab_integration.resync_resources(ObjectKind.GROUP):
+        yield item
 
 
-async def handle_merge_request_event(payload: Dict[str, Any]):
-    """
-    Handle merge request events and update the merge request in Port.
-    """
-    mr_id = payload.get("object_attributes", {}).get("id")
-    project_id = payload.get("project", {}).get("id")
-    if mr_id and project_id:
-        mr = await ocean.gitlab_handler.get_single_resource(f"projects/{project_id}/merge_requests", str(mr_id))
-        await ocean.register_raw(ObjectKind.MERGE_REQUEST, mr)
-        logger.info(f"Updated merge request {mr_id} in Port")
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for item in gitlab_integration.resync_resources(ObjectKind.PROJECT):
+        yield item
 
 
-async def handle_issue_event(payload: Dict[str, Any]):
-    """
-    Handle issue events and update the issue in Port.
-    """
-    issue_id = payload.get("object_attributes", {}).get("id")
-    project_id = payload.get("project", {}).get("id")
-    if issue_id and project_id:
-        issue = await ocean.gitlab_handler.get_single_resource(f"projects/{project_id}/issues", str(issue_id))
-        await ocean.register_raw(ObjectKind.ISSUE, issue)
-        logger.info(f"Updated issue {issue_id} in Port")
+@ocean.on_resync(ObjectKind.MERGE_REQUEST)
+async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for item in gitlab_integration.resync_resources(ObjectKind.MERGE_REQUEST):
+        yield item
+
+
+@ocean.on_resync(ObjectKind.ISSUE)
+async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for item in gitlab_integration.resync_resources(ObjectKind.ISSUE):
+        yield item
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    try:
+        await gitlab_integration.initialize()
+    except Exception as e:
+        logger.error(f"Failed to initialize GitLab integration: {str(e)}")
