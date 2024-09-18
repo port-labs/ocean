@@ -177,11 +177,14 @@ class GitlabService:
                     if files_with_content:
                         yield files_with_content
 
-    def _get_entities_from_git(
-        self, project: Project, file_name: str, sha: str, ref: str
+    async def _get_entities_from_git(
+        self, project: Project, file_path: str | List[str], sha: str, ref: str
     ) -> List[Entity]:
         try:
-            file_content = project.files.get(file_path=file_name, ref=sha)
+            file_content = await AsyncFetcher.fetch_single(
+                project.files.get, file_path, sha
+            )
+
             entities = yaml.safe_load(file_content.decode())
             raw_entities = [
                 Entity(**entity_data)
@@ -190,29 +193,27 @@ class GitlabService:
                 )
             ]
             return [
-                generate_entity_from_port_yaml(entity_data, project, ref)
+                await generate_entity_from_port_yaml(entity_data, project, ref)
                 for entity_data in raw_entities
             ]
         except ParserError as exec:
             logger.error(
-                f"Failed to parse gitops entities from gitlab project {project.path_with_namespace},z file {file_name}."
+                f"Failed to parse gitops entities from gitlab project {project.path_with_namespace},z file {file_path}."
                 f"\n {exec}"
             )
         except Exception:
             logger.error(
-                f"Failed to get gitops entities from gitlab project {project.path_with_namespace}, file {file_name}"
+                f"Failed to get gitops entities from gitlab project {project.path_with_namespace}, file {file_path}"
             )
         return []
 
     async def _get_entities_by_commit(
         self, project: Project, spec: str | List["str"], commit: str, ref: str
     ) -> List[Entity]:
-        spec_paths = await self.get_all_file_paths(project, spec, commit)
-        return [
-            entity
-            for path in spec_paths
-            for entity in self._get_entities_from_git(project, path, commit, ref)
-        ]
+        logger.info(
+            f"Getting entities for project {project.path_with_namespace} in path {spec} at commit {commit} and ref {ref}"
+        )
+        return await self._get_entities_from_git(project, spec, commit, ref)
 
     def should_run_for_path(self, path: str) -> bool:
         return any(does_pattern_apply(mapping, path) for mapping in self.group_mapping)
