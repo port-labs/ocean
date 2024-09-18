@@ -1,11 +1,12 @@
 import asyncio
-from typing import Any, Optional, AsyncGenerator, Dict, List
+from typing import Any, Optional, AsyncGenerator, Dict
 from loguru import logger
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Response
 from helpers.gitlab_rate_limiter import GitLabRateLimiter
 import yaml
 from datetime import datetime, timezone
+
 
 
 
@@ -82,30 +83,32 @@ class GitlabHandler:
         limit = int(headers.get('RateLimit-Limit', '0'))
         reset_time = datetime.fromtimestamp(int(headers.get('RateLimit-Reset', '0')), tz=timezone.utc)
 
-        logger.info(f"Rate limit: {remaining}/{limit} requests remaining. Resets at {reset_time}")
-
-
     async def _fetch_additional_data(self, resource: str, item: Dict[str, Any]) -> Dict[str, Any]:
-        additional_data = self.config.get(resource, {}).get('additional_data', [])
-        additional_tasks = []
+       additional_data = self.config.get(resource, {}).get('additional_data', [])
 
 
-        for data_type in additional_data:
-            additional_endpoint = f"{resource}/{item['id']}/{data_type}"
-            additional_tasks.append(self._send_api_request(additional_endpoint))
+       # If additional_data is empty, return the item without adding anything
+       if not additional_data:
+           return item
 
 
-        additional_results = await asyncio.gather(*additional_tasks, return_exceptions=True)
+       additional_tasks = []
+       for data_type in additional_data:
+           additional_endpoint = f"{resource}/{item['id']}/{data_type}"
+           additional_tasks.append(self._send_api_request(additional_endpoint))
 
 
-        for data_type, result in zip(additional_data, additional_results):
-            if isinstance(result, Exception):
-                logger.error(f"Failed to fetch additional data '{data_type}' for item {item['id']}: {str(result)}")
-            else:
-                item[data_type] = result
+       additional_results = await asyncio.gather(*additional_tasks, return_exceptions=True)
 
 
-        return item
+       for data_type, result in zip(additional_data, additional_results):
+           if isinstance(result, Exception):
+               logger.error(f"Failed to fetch additional data '{data_type}' for item {item['id']}: {str(result)}")
+           else:
+               item[data_type] = result
+
+
+       return item
 
 
     async def get_paginated_resources(
@@ -113,9 +116,8 @@ class GitlabHandler:
         resource: str,
         params: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        params = self.config.get(resource, {}).get('params', {})
-        # params = params or {}
-
+        params = params or {}
+        params.update(self.config.get(resource, {}).get('params', {}))
         params["per_page"] = PAGE_SIZE
         params["page"] = 1
 
@@ -140,7 +142,9 @@ class GitlabHandler:
                 *[self._fetch_additional_data(resource, item) for item in response]
             )
 
+
             yield enhanced_items
+
 
             if len(response) < PAGE_SIZE:
                 logger.debug(f"Last page reached for resource '{resource}', no more data.")
