@@ -4,10 +4,10 @@ features:
   - type: exporter
     section: Under Development  # Should be one of the available sections in Port
     resources:
-      - kind: gitlabGroup
-      - kind: gitlabProject
-      - kind: gitlabMergeRequest
-      - kind: gitlabIssue
+      - kind: group
+      - kind: project
+      - kind: merge_request
+      - kind: issue
 configurations:
   - name: gitlabToken
     description: The personal access token for the GitLab account. You can generate this token by navigating to 'Settings > Access Tokens' in your GitLab profile. This token is used to authenticate API requests and must be kept secure.

@@ -1,7 +1,7 @@
-deleteDependentEntities: false
-createMissingRelatedEntities: false
+deleteDependentEntities: true
+createMissingRelatedEntities: true
 resources:
-  - kind: gitlabGroup
+  - kind: group
     selector:
       query: 'true'
     port:
@@ -16,7 +16,7 @@ resources:
             description: .description
 
 
-  - kind: gitlabProject
+  - kind: project
     selector:
       query: 'true'
     port:
@@ -37,7 +37,7 @@ resources:
           group: .namespace.id|tostring
 
 
-  - kind: gitlabMergeRequest
+  - kind: merge_request
     selector:
       query: 'true'
     port:
@@ -58,7 +58,7 @@ resources:
           project: .namespace.id|tostring
 
 
-  - kind: gitlabIssue
+  - kind: issue
     selector:
       query: 'true'
     port:
