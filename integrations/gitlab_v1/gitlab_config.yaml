@@ -1,0 +1,31 @@
+groups:
+  params:
+    scope: 'all'
+    owned: true
+  additional_data:
+    # - projects
+    # - members
+
+
+projects:
+  params:
+    owned: true
+  additional_data:
+    - languages
+
+
+merge_requests:
+  params:
+    scope: 'all'
+    owned: true
+  additional_data:
+    # - approvals
+
+
+issues:
+  params:
+   scope: 'all'
+  additional_data:
+    # - notes
+    # - assignees
+    # - labels
