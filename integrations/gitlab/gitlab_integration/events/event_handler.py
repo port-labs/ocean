@@ -28,11 +28,16 @@ class BaseEventHandler(ABC):
         logger.info(f"Started {self.__class__.__name__} worker")
         while True:
             event_ctx, event_id, body = await self.webhook_tasks_queue.get()
+            logger.debug(f"Retrieved event: {event_id} from Queue, notifying observers")
             try:
                 async with event_context(
                     "gitlab_http_event_async_worker", parent_override=event_ctx
                 ):
                     await self._notify(event_id, body)
+            except Exception as e:
+                logger.error(
+                    f"Error notifying observers for event: {event_id}, error: {e}"
+                )
             finally:
                 self.webhook_tasks_queue.task_done()
 
@@ -44,6 +49,7 @@ class BaseEventHandler(ABC):
         pass
 
     async def notify(self, event_id: str, body: dict[str, Any]) -> None:
+        logger.debug(f"Received event: {event_id}, putting it in Queue for processing")
         await self.webhook_tasks_queue.put(
             (
                 deepcopy(current_event_context),
