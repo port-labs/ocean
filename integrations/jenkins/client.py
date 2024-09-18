@@ -53,7 +53,7 @@ class JenkinsClient:
         stages = response.json()["stages"]
         return stages
 
-    async def get_job_builds(self, job_url: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_job_builds(self, job_url: str) -> AsyncGenerator[Any, None]:
         job_details = await self.get_single_resource(job_url)
         if job_details.get("buildable"):
             yield job_details.get("builds")
@@ -63,7 +63,9 @@ class JenkinsClient:
             builds = [build for job in _jobs for build in job.get("builds", [])]
             yield builds
 
-    async def get_stages(self, job_url: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_stages(
+        self, job_url: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for builds in self.get_job_builds(job_url):
             stages: list[dict[str, Any]] = []
             for build in builds:
@@ -74,8 +76,9 @@ class JenkinsClient:
                     stages.extend(build_stages)
                     yield build_stages
                 except Exception as e:
-                    logger.error(f"Failed to get stages for build {build_url}: {e.args[0]}")
-
+                    logger.error(
+                        f"Failed to get stages for build {build_url}: {e.args[0]}"
+                    )
 
     async def fetch_resources(
         self, resource: str, parent_job: Optional[dict[str, Any]] = None
@@ -152,12 +155,12 @@ class JenkinsClient:
         Build: job/JobName/34/
         """
         # Ensure resource_url ends with a slash
-        if not resource_url.endswith('/'):
-            resource_url += '/'
-        
+        if not resource_url.endswith("/"):
+            resource_url += "/"
+
         # Construct the full URL using urljoin
         fetch_url = urljoin(self.jenkins_base_url, f"{resource_url}api/json")
-        
+
         response = await self.client.get(fetch_url)
         response.raise_for_status()
         return response.json()
