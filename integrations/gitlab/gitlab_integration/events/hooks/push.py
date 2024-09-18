@@ -16,7 +16,7 @@ from port_ocean.context.ocean import ocean
 
 
 class FileAction(StrEnum):
-    DELETED = "deleted"
+    REMOVED = "removed"
     ADDED = "added"
     MODIFIED = "modified"
 
@@ -40,18 +40,18 @@ class PushHook(ProjectHandler):
         added_files = [
             added_file
             for commit in body.get("commits", [])
-            for added_file in commit.get("added", [])
+            for added_file in commit.get(FileAction.ADDED, [])
         ]
         modified_files = [
             modified_file
             for commit in body.get("commits", [])
-            for modified_file in commit.get("modified", [])
+            for modified_file in commit.get(FileAction.MODIFIED, [])
         ]
 
         removed_files = [
             removed_file
             for commit in body.get("commits", [])
-            for removed_file in commit.get("removed", [])
+            for removed_file in commit.get(FileAction.REMOVED, [])
         ]
 
         config: GitlabPortAppConfig = typing.cast(
@@ -72,7 +72,7 @@ class PushHook(ProjectHandler):
                 commit_before,
                 "",
                 branch,
-                FileAction.DELETED,
+                FileAction.REMOVED,
             )
             await self._process_files(
                 gitlab_project,
@@ -127,49 +127,47 @@ class PushHook(ProjectHandler):
         for file in files:
             try:
                 if does_pattern_apply(spec_path, file):
-                    logger.info(
-                        f"Found file {file} in spec_path {spec_path} pattern, processing its entity diff"
-                    )
 
-                    if file_action == FileAction.DELETED:
-                        entities_before = (
-                            await self.gitlab_service._get_entities_by_commit(
-                                gitlab_project, file, commit_before, branch
+                    match file_action:
+                        case FileAction.REMOVED:
+                            entities_before = (
+                                await self.gitlab_service._get_entities_by_commit(
+                                    gitlab_project, file, commit_before, branch
+                                )
                             )
-                        )
-                        await ocean.update_diff(
-                            {"before": entities_before, "after": []},
-                            UserAgentType.gitops,
-                        )
+                            await ocean.update_diff(
+                                {"before": entities_before, "after": []},
+                                UserAgentType.gitops,
+                            )
 
-                    elif file_action == FileAction.ADDED:
-                        entities_after = (
-                            await self.gitlab_service._get_entities_by_commit(
-                                gitlab_project, file, commit_after, branch
+                        case FileAction.ADDED:
+                            entities_after = (
+                                await self.gitlab_service._get_entities_by_commit(
+                                    gitlab_project, file, commit_after, branch
+                                )
                             )
-                        )
-                        await ocean.update_diff(
-                            {"before": [], "after": entities_after},
-                            UserAgentType.gitops,
-                        )
+                            await ocean.update_diff(
+                                {"before": [], "after": entities_after},
+                                UserAgentType.gitops,
+                            )
 
-                    elif file_action == FileAction.MODIFIED:
-                        entities_before = (
-                            await self.gitlab_service._get_entities_by_commit(
-                                gitlab_project, file, commit_before, branch
+                        case FileAction.MODIFIED:
+                            entities_before = (
+                                await self.gitlab_service._get_entities_by_commit(
+                                    gitlab_project, file, commit_before, branch
+                                )
                             )
-                        )
-                        entities_after = (
-                            await self.gitlab_service._get_entities_by_commit(
-                                gitlab_project, file, commit_after, branch
+                            entities_after = (
+                                await self.gitlab_service._get_entities_by_commit(
+                                    gitlab_project, file, commit_after, branch
+                                )
                             )
-                        )
-                        await ocean.update_diff(
-                            {"before": entities_before, "after": entities_after},
-                            UserAgentType.gitops,
-                        )
+                            await ocean.update_diff(
+                                {"before": entities_before, "after": entities_after},
+                                UserAgentType.gitops,
+                            )
                 else:
-                    logger.info(
+                    logger.debug(
                         f"Skipping file {file} as it does not match the spec_path pattern {spec_path}"
                     )
             except Exception as e:
