@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.121 (2024-09-18)
+====================
+
+### Improvements
+
+- Added log for when file kind's project iteration found a relevant project, and for when the batch entirely isn't relevant
+
+
 0.1.120 (2024-09-17)
 ====================
 
