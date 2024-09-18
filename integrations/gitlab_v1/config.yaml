@@ -12,7 +12,7 @@ integration:
   # The type of the integration.
   type: "Gitlab"
   config:
-    token: "{{ from env GITLAB_TOKEN }}"
+    gitlabToken: "{{ from env GITLAB_TOKEN }}"
     gitlabUrl: "https://gitlab.com"
     webhookUrl: "{{ from env WEBHOOK_URL }}"
     webhookSecret: "{{ from env WEBHOOK_SECRET }}"

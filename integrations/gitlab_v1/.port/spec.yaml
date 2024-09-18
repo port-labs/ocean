@@ -9,8 +9,8 @@ features:
       - kind: gitlabMergeRequest
       - kind: gitlabIssue
 configurations:
-  - name: token
-    # required: true
+  - name: gitlabToken
+    required: true
     type: string
     sensitive: true
   - name: gitlabUrl

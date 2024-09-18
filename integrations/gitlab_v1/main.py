@@ -35,7 +35,7 @@ class GitLabIntegration:
 
 
     async def initialize(self):
-        private_token = ocean.integration_config.get('token')
+        private_token = ocean.integration_config.get('gitlab_token')
         logger.info(private_token)
         if not private_token:
             raise ValueError("GitLab Token not provided in configuration")
