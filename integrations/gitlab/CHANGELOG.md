@@ -7,11 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.1.120 (2024-09-13)
+0.1.121 (2024-09-18)
 ====================
 
 ### Improvements
 
+- Updated the webhook creation logic to recreate hooks for urls that are disabled by GitLab (0.1.121)
+
+
+0.1.120 (2024-09-17)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.11
 - Updated the webhook creation logic to recreate hooks for urls that are disabled by GitLab (0.1.120)
 
 
