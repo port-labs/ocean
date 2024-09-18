@@ -123,11 +123,19 @@ class PushHook(ProjectHandler):
         logger.info(
             f"Processing {file_action} files {files} for project {gitlab_project.path_with_namespace}"
         )
+        matching_files = [file for file in files if does_pattern_apply(spec_path, file)]
 
-        for file in files:
-            try:
-                if does_pattern_apply(spec_path, file):
+        if not matching_files:
+            logger.info("No matching files found for mapping")
+            logger.debug(f"Files {files} didn't match {spec_path} patten")
+            return
+        else:
+            logger.info(
+                f"While processing {file_action} Found {len(matching_files)} that matches {spec_path}, matching files: {matching_files}"
+            )
 
+            for file in matching_files:
+                try:
                     match file_action:
                         case FileAction.REMOVED:
                             entities_before = (
@@ -166,11 +174,11 @@ class PushHook(ProjectHandler):
                                 {"before": entities_before, "after": entities_after},
                                 UserAgentType.gitops,
                             )
-                else:
-                    logger.debug(
-                        f"Skipping file {file} as it does not match the spec_path pattern {spec_path}"
+                except Exception as e:
+                    logger.error(
+                        f"Error processing file {file} in action {file_action}: {str(e)}"
                     )
-            except Exception as e:
-                logger.error(
-                    f"Error processing file {file} in action {file_action}: {str(e)}"
-                )
+            skipped_files = set(files) - set(matching_files)
+            logger.debug(
+                f"Skipped {len(skipped_files)} files as they didn't match {spec_path} Skipped files: {skipped_files}"
+            )
