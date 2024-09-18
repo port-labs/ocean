@@ -1,10 +1,14 @@
-from typing import Any
+from typing import Any, cast
 from loguru import logger
 from enum import StrEnum
 
 from client import JenkinsClient
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
+
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from overrides import JenkinStagesResourceConfig
 
 
 class ObjectKind(StrEnum):
@@ -64,7 +68,12 @@ async def on_resync_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     stages_count = 0
     max_stages = 10000
 
-    async for stages in jenkins_client.get_stages():
+    stages_selector = cast(JenkinStagesResourceConfig, event.resource_config)
+    job_url = stages_selector.selector.job_url
+
+    logger.info(f"Syncing stages for job {job_url}")
+
+    async for stages in jenkins_client.get_stages(job_url):
         logger.info(f"Received batch with {len(stages)} stages")
         if stages_count + len(stages) > max_stages:
             stages = stages[: max_stages - stages_count]
