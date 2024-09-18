@@ -4,18 +4,25 @@ features:
   - type: exporter
     section: Under Development  # Should be one of the available sections in Port
     resources:
-      - kind: gitlabGroup
-      - kind: gitlabProject
-      - kind: gitlabMergeRequest
-      - kind: gitlabIssue
+      - kind: group
+      - kind: project
+      - kind: merge_request
+      - kind: issue
 configurations:
   - name: gitlabToken
+    description: The personal access token for the GitLab account. You can generate this token by navigating to 'Settings > Access Tokens' in your GitLab profile. This token is used to authenticate API requests and must be kept secure.
     required: true
     type: string
     sensitive: true
   - name: gitlabUrl
+    description: The base URL of the GitLab instance you want to connect to. This is typically in the format of 'https://gitlab.example.com'.
     type: url
   - name: webhookSecret
+    description: The secret token used to validate incoming webhooks from GitLab. This token is provided during the creation of a webhook in 'Settings > Webhooks' and is used to ensure that webhook events come from a trusted source.
     type: string
   - name: webhookUrl
+    description: The URL endpoint where the webhook events will be sent. This is the address GitLab will use to send webhook payloads.
+    type: string
+  - name: appHost
+    description: The base URL or IP address where your application is hosted. This will be used by GitLab and other services to communicate with your application.
     type: string

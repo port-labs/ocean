@@ -10,7 +10,7 @@ repos:
       - id: check-merge-conflict
       - id: check-executables-have-shebangs
       - id: check-symlinks
-      # - id: detect-aws-credentials
+      - id: detect-aws-credentials
   - repo: local
     hooks:
       - id: fix lint
