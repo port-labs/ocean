@@ -7,10 +7,12 @@ from helpers.webhook_handler import WebhookHandler
 from loguru import logger
 from fastapi import Request, HTTPException
 import asyncio
+import secrets
 
 CONFIG_FILE_PATH = ocean.integration_config.get('GITLAB_CONFIG_FILE', 'gitlab_config.yaml')
 WEBHOOK_SECRET = ocean.integration_config.get('webhook_secret')
-WEBHOOK_URL = ocean.integration_config.get('webhook_url')
+SECRET_LENGTH=32
+WEBHOOK_URL = ocean.integration_config.get('app_host')
 
 class ObjectKind(StrEnum):
     GROUP = "gitlabGroup"
@@ -58,12 +60,12 @@ class GitLabIntegration:
     async def setup_webhooks(self):
         events = ["push", "merge_requests", "issues"]
 
-        if not WEBHOOK_SECRET:
-            raise ValueError("Webhook secret not provided in configuration")
+        webhook_secret = WEBHOOK_SECRET or secrets.token_hex(SECRET_LENGTH)
+        logger.info("Using generated webhook secret" if WEBHOOK_SECRET is None else "Using provided webhook secret")
 
         setup_tasks = []
         for webhook_handler in self.webhook_handlers:
-            task = asyncio.create_task(webhook_handler.setup_group_webhooks(WEBHOOK_URL, WEBHOOK_SECRET, events))
+            task = asyncio.create_task(webhook_handler.setup_group_webhooks(WEBHOOK_URL, webhook_secret, events))
             setup_tasks.append(task)
 
         try:
