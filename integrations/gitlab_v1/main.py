@@ -8,13 +8,11 @@ from loguru import logger
 from fastapi import Request, HTTPException
 
 
-# Configuration settings
 CONFIG_FILE_PATH = ocean.integration_config.get('GITLAB_CONFIG_FILE', 'gitlab_config.yaml')
 WEBHOOK_SECRET = ocean.integration_config.get('webhook_secret')
 WEBHOOK_URL = ocean.integration_config.get('webhook_url')
 
 
-# Define ObjectKind for GitLab
 class ObjectKind(StrEnum):
     GROUP = "gitlabGroup"
     PROJECT = "gitlabProject"
@@ -22,7 +20,6 @@ class ObjectKind(StrEnum):
     ISSUE = "gitlabIssue"
 
 
-# Map ObjectKind to GitLab API endpoints
 ENDPOINT_MAPPING = {
     ObjectKind.GROUP: "groups",
     ObjectKind.PROJECT: "projects",
@@ -39,6 +36,7 @@ class GitLabIntegration:
 
     async def initialize(self):
         private_token = ocean.integration_config.get('token')
+        logger.info(private_token)
         if not private_token:
             raise ValueError("GitLab Token not provided in configuration")
 
