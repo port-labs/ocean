@@ -67,12 +67,17 @@ class GitLabClient:
         }
         await self._request("POST", endpoint, json=payload)
 
-    async def _paginated_request(self, method: str, endpoint: str, **kwargs) -> AsyncIterator[List[Dict[str, Any]]]:
+    async def _paginated_request(self, method: str, endpoint: str, per_page: int = 100, **kwargs) -> AsyncIterator[List[Dict[str, Any]]]:
         """Helper function to handle paginated requests."""
         page = 1
         while True:
-            response = await self._request(method, f"{endpoint}?page={page}", **kwargs)
+            response = await self._request(method, f"{endpoint}?page={page}&per_page={per_page}", **kwargs)
             if not response:
-                break
+                break 
+
             yield response
+
+            if len(response) < per_page:
+                break
+
             page += 1

@@ -79,17 +79,6 @@
     },
     {
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/integrations/test-integration",
-      "envFile": "${workspaceFolder}/integrations/test-integration/.env",
-      "justMyCode": true,
-      "name": "Run test-integration integration",
-      "program": "${workspaceFolder}/integrations/test-integration/debug.py",
-      "python": "${workspaceFolder}/integrations/test-integration/.venv/bin/python",
-      "request": "launch",
-      "type": "debugpy"
-    },
-    {
-      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/test-gitlab-v2",
       "envFile": "${workspaceFolder}/integrations/test-gitlab-v2/.env",
       "justMyCode": true,
