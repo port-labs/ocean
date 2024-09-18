@@ -1,3 +1,5 @@
+deleteDependentEntities: false
+createMissingRelatedEntities: false
 resources:
   - kind: gitlabGroup
     selector:
