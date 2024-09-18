@@ -13,6 +13,7 @@ resources:
             url: .web_url
             description: .description
 
+
   - kind: gitlabProject
     selector:
       query: 'true'
@@ -23,13 +24,15 @@ resources:
           title: .name
           blueprint: '"gitlabProject"'
           properties:
-            validity: .validity
-            url: .projectUrl
+            url: .web_url
+            readme: .readme
+            description: .description
+            language: .__languages | to_entries | max_by(.value) | .key
+            namespace: .namespace
+            fullPath: .full_path
+            defaultBranch: .default_branch
         relations:
-          group:
-            target:
-              identifier: .namespace.id
-              blueprint: '"gitlabGroup"'
+          group: .namespace.id
 
 
   - kind: gitlabMergeRequest
@@ -50,10 +53,7 @@ resources:
             link: .web_url
             reviewers: '.reviewers[] | .username'
         relations:
-          service:
-            target:
-              identifier: .project_id
-              blueprint: '"project"'
+          project: .namespace.id
 
 
   - kind: gitlabIssue
@@ -75,7 +75,4 @@ resources:
             status: .state
             labels: '.labels[]'
         relations:
-          service:
-            target:
-              identifier: .project_id
-              blueprint: '"project"'
+          project: .namespace.id
