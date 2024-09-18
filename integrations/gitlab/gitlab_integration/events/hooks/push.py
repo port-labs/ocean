@@ -1,5 +1,6 @@
 import typing
 from typing import Any
+from enum import StrEnum
 
 from loguru import logger
 from gitlab.v4.objects import Project
@@ -14,14 +15,24 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
 
+class FileAction(StrEnum):
+    DELETED = "deleted"
+    ADDED = "added"
+    MODIFIED = "modified"
+
+
 class PushHook(ProjectHandler):
     events = ["Push Hook"]
     system_events = ["push"]
 
     async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
-        before, after, ref = body.get("before"), body.get("after"), body.get("ref")
+        commit_before, commit_after, ref = (
+            body.get("before"),
+            body.get("after"),
+            body.get("ref"),
+        )
 
-        if before is None or after is None or ref is None:
+        if commit_before is None or commit_after is None or ref is None:
             raise ValueError(
                 "Invalid push hook. Missing one or more of the required fields (before, after, ref)"
             )
@@ -37,7 +48,11 @@ class PushHook(ProjectHandler):
             for modified_file in commit.get("modified", [])
         ]
 
-        changed_files = list(set(added_files + modified_files))
+        removed_files = [
+            removed_file
+            for commit in body.get("commits", [])
+            for removed_file in commit.get("removed", [])
+        ]
 
         config: GitlabPortAppConfig = typing.cast(
             GitlabPortAppConfig, event.port_app_config
@@ -49,9 +64,43 @@ class PushHook(ProjectHandler):
             spec_path = config.spec_path
             if not isinstance(spec_path, list):
                 spec_path = [spec_path]
-            await self._process_changed_files(
-                gitlab_project, changed_files, spec_path, before, after, branch
+
+            await self._process_files(
+                gitlab_project,
+                removed_files,
+                spec_path,
+                commit_before,
+                "",
+                branch,
+                FileAction.DELETED,
             )
+            await self._process_files(
+                gitlab_project,
+                added_files,
+                spec_path,
+                "",
+                commit_after,
+                branch,
+                FileAction.ADDED,
+            )
+            await self._process_files(
+                gitlab_project,
+                modified_files,
+                spec_path,
+                commit_before,
+                commit_after,
+                branch,
+                FileAction.MODIFIED,
+            )
+
+            # update information regarding the project as well
+            logger.info(
+                f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
+            )
+            enriched_project = await self.gitlab_service.enrich_project_with_extras(
+                gitlab_project
+            )
+            await ocean.register_raw(ObjectKind.PROJECT, [enriched_project])
 
         else:
             logger.debug(
@@ -59,45 +108,71 @@ class PushHook(ProjectHandler):
                 f"does not match the branch {branch}"
             )
 
-    async def _process_changed_files(
+    async def _process_files(
         self,
         gitlab_project: Project,
-        changed_files: list[str],
+        files: list[str],
         spec_path: list[str],
-        before: str,
-        after: str,
+        commit_before: str,
+        commit_after: str,
         branch: str,
+        file_action: FileAction,
     ) -> None:
+        if not files:
+            return
         logger.info(
-            f"Processing changed files {changed_files} for project {gitlab_project.path_with_namespace}"
+            f"Processing {file_action} files {files} for project {gitlab_project.path_with_namespace}"
         )
 
-        for file in changed_files:
-            if does_pattern_apply(spec_path, file):
-                logger.info(
-                    f"Found file {file} in spec_path {spec_path} pattern, processing its entity diff"
-                )
-
-                entities_before, entities_after = (
-                    await self.gitlab_service.get_entities_diff(
-                        gitlab_project, file, before, after, branch
+        for file in files:
+            try:
+                if does_pattern_apply(spec_path, file):
+                    logger.info(
+                        f"Found file {file} in spec_path {spec_path} pattern, processing its entity diff"
                     )
-                )
 
-                # update the entities diff found in the `config.spec_path` file the user configured
-                await ocean.update_diff(
-                    {"before": entities_before, "after": entities_after},
-                    UserAgentType.gitops,
-                )
-                # update information regarding the project as well
-                logger.info(
-                    f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
-                )
-                enriched_project = await self.gitlab_service.enrich_project_with_extras(
-                    gitlab_project
-                )
-                await ocean.register_raw(ObjectKind.PROJECT, [enriched_project])
-            else:
-                logger.info(
-                    f"Skipping file {file} as it does not match the spec_path pattern {spec_path}"
+                    if file_action == FileAction.DELETED:
+                        entities_before = (
+                            await self.gitlab_service._get_entities_by_commit(
+                                gitlab_project, file, commit_before, branch
+                            )
+                        )
+                        await ocean.update_diff(
+                            {"before": entities_before, "after": []},
+                            UserAgentType.gitops,
+                        )
+
+                    elif file_action == FileAction.ADDED:
+                        entities_after = (
+                            await self.gitlab_service._get_entities_by_commit(
+                                gitlab_project, file, commit_after, branch
+                            )
+                        )
+                        await ocean.update_diff(
+                            {"before": [], "after": entities_after},
+                            UserAgentType.gitops,
+                        )
+
+                    elif file_action == FileAction.MODIFIED:
+                        entities_before = (
+                            await self.gitlab_service._get_entities_by_commit(
+                                gitlab_project, file, commit_before, branch
+                            )
+                        )
+                        entities_after = (
+                            await self.gitlab_service._get_entities_by_commit(
+                                gitlab_project, file, commit_after, branch
+                            )
+                        )
+                        await ocean.update_diff(
+                            {"before": entities_before, "after": entities_after},
+                            UserAgentType.gitops,
+                        )
+                else:
+                    logger.info(
+                        f"Skipping file {file} as it does not match the spec_path pattern {spec_path}"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Error processing file {file} in action {file_action}: {str(e)}"
                 )

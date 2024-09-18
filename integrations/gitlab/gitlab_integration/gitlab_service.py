@@ -199,7 +199,9 @@ class GitlabService:
     async def _get_entities_by_commit(
         self, project: Project, spec: str | List["str"], commit: str, ref: str
     ) -> List[Entity]:
-
+        logger.info(
+            f"Getting entities for project {project.path_with_namespace} in path {spec} at commit {commit} and ref {ref}"
+        )
         return await self._get_entities_from_git(project, spec, commit, ref)
 
     def should_run_for_path(self, path: str) -> bool:
