@@ -136,7 +136,7 @@ class SonarQubeClient:
             )
             if (
                 e.response.status_code == 400
-                and query_params.get("ps",0) > PAGE_SIZE
+                and query_params.get("ps", 0) > PAGE_SIZE
                 and endpoint in [Endpoints.ONPREM_ISSUES, Endpoints.SAAS_ISSUES]
             ):
                 logger.error(
