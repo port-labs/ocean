@@ -20,6 +20,7 @@ class Kind(StrEnum):
     PROJECT = "project"
     WORK_ITEM = "work-item"
     BOARD = "board"
+    COLUMN = "column"
 
 
 PULL_REQUEST_SEARCH_CRITERIA: list[dict[str, Any]] = [

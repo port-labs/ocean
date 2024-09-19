@@ -111,11 +111,19 @@ async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield work_items
 
 
+@ocean.on_resync(Kind.COLUMN)
+async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for columns in azure_devops_client.get_columns():
+        logger.info(f"Resyncing {len(columns)} columns")
+        yield columns
+
+
 @ocean.on_resync(Kind.BOARD)
 async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for boards in azure_devops_client.get_boards_in_organization():
-        logger.info(f"Resyncing {len(boards)} work items")
+        logger.info(f"Resyncing {len(boards)} boards")
         yield boards
 
 

@@ -64,12 +64,9 @@ resources:
           title: .name
           blueprint: '"board"'
           properties:
-            name: .name
-            type: .type
-            columns: .columns | map(.name)
             link: .url
           relations:
-            project: .project.id | gsub(" "; "")
+            project: .__project.id | gsub(" "; "")
   - kind: work-item
     selector:
       query: 'true'
@@ -92,4 +89,15 @@ resources:
             changedDate: .fields."System.ChangedDate"
           relations:
             project: .__projectId | gsub(" "; "")
-            board: .fields."System.BoardId" | gsub(" "; "")
+            column: .__project.id + .fields."System.BoardColumn" | gsub(" "; "")
+  - kind: column
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .__project.id+.name | gsub(" "; "")
+          title: .name
+          blueprint: '"column"'
+          relations:
+            board: .__board_id | gsub(" "; "")
