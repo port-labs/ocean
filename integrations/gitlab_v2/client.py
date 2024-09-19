@@ -85,10 +85,9 @@ class GitlabClient:
             "owned": owned,
         }
 
-    async def get_paginated_resources(self, kind: str, params: dict[str, Any] | None = {}) -> AsyncGenerator[
+    async def get_paginated_resources(self, kind: str, kind_configs: dict[str, Any] = {}) -> AsyncGenerator[
         list[dict[str, Any]], None]:
         """Fetch paginated data from the Gitlab Deploy API."""
-        kind_configs = ocean.integration_config.get("gitlab_resources_config", {}).get(kind, {})
         params = {**self._default_paginated_req_params(), **kind_configs.get("params", {})}
 
         next_page = True
@@ -98,9 +97,10 @@ class GitlabClient:
             url = f"{self.gitlab_host}/{kind}"
             response = await self._make_request(url=url, query_params=params)
 
-            if kind_configs.get("data_to_enrich"):
+            data_to_enrich = kind_configs.get("data_to_enrich")
+            if data_to_enrich:
                 response = await asyncio.gather(
-                    *[self._enrich_resource_kind(kind, data) for data in response]
+                    *[self._enrich_resource_kind(kind, data, data_to_enrich) for data in response]
                 )
 
             yield response
@@ -119,8 +119,7 @@ class GitlabClient:
         """Get a single resource by kind and ID."""
         return await self._make_request(f"{self.gitlab_host}/{resource_kind}/{resource_id}")
 
-    async def _enrich_resource_kind(self, kind: str, resource_data: dict[str, Any]) -> dict[str, Any]:
-        data_to_enrich = ocean.integration_config["gitlab_resources_config"].get(kind, {}).get("data_to_enrich")
+    async def _enrich_resource_kind(self, kind: str, resource_data: dict[str, Any], data_to_enrich: list[str]) -> dict[str, Any]:
         for data in data_to_enrich:
             response = await self._make_request(url=f"{self.gitlab_host}/{kind}/{int(resource_data['id'])}/{data}")
             resource_data[f"__{data}"] = response

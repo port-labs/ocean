@@ -202,8 +202,9 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    kind_configs = ocean.integration_config.get("gitlab_resources_config", {}).get(kind, {})
     for token_index, token in enumerate(token_manager.get_tokens()):
         gitlab_client = initialize_client(token)
-        async for resource_batch in gitlab_client.get_paginated_resources(f"{kind}s"):
+        async for resource_batch in gitlab_client.get_paginated_resources(f"{kind}s", kind_configs):
             logger.info(f"Received batch of {len(resource_batch)} {kind}s with token {token_index}")
             yield resource_batch
