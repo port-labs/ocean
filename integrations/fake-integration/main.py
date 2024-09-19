@@ -14,7 +14,7 @@ async def resync_department(kind: str) -> List[Dict[Any, Any]]:
 
 
 @ocean.on_resync("fake-person")
-async def resync_puns(kind: str) -> List[Dict[Any, Any]]:
+async def resync_persons(kind: str) -> List[Dict[Any, Any]]:
     tasks = []
     for department in FAKE_DEPARTMENTS:
         tasks.append(get_fake_persons(department))

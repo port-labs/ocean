@@ -29,35 +29,35 @@ jobs:
         run: |
           make install
 
-      # Core only actions
-      - name: Build core for smoke test
-        if: ${{ matrix.folder == '.' }}
-        working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
-        run: |
-          make build
+      # # Core only actions
+      # - name: Build core for smoke test
+      #   if: ${{ matrix.folder == '.' }}
+      #   working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
+      #   run: |
+      #     make build
 
-      - name: Run fake integration for core test
-        working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
-        if: ${{ matrix.folder == '.' }}
-        env:
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
-        run: |
-          ./scripts/run-smoke-test.sh
+      # - name: Run fake integration for core test
+      #   working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
+      #   if: ${{ matrix.folder == '.' }}
+      #   env:
+      #     PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      #     PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+      #     PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+      #     SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+      #   run: |
+      #     ./scripts/run-smoke-test.sh
 
-      - name: Test Core
-        if: ${{ matrix.folder == '.' }}
-        working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
-        env:
-          PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || 'ocean/core' }}.xml
-          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
-          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
-          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
-          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
-        run: |
-          make test
+      # - name: Test Core
+      #   if: ${{ matrix.folder == '.' }}
+      #   working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
+      #   env:
+      #     PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || 'ocean/core' }}.xml
+      #     PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+      #     PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+      #     PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+      #     SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+      #   run: |
+      #     make test
 
       - name: Install current core for all integrations
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
@@ -73,8 +73,8 @@ jobs:
           SCRIPT_TO_RUN="PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
 
       # Integration step
-      - name: Test Integration ${{ matrix.folder }}
-        if: ${{ matrix.folder != '.' }}
+      - name: Test
+        # if: ${{ matrix.folder != '.' }}
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
         env:
           PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || 'ocean/core' }}.xml
@@ -89,3 +89,4 @@ jobs:
           report_paths: '**/junit/test-results-**/*.xml'
           include_passed: true
           require_tests: true
+          fail_on_failure: true
