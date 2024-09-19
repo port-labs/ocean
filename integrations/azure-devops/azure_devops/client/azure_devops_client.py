@@ -258,6 +258,27 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_data = response.json()
         return repository_data
 
+    async def _enrich_board(self, boards: list[dict[str, Any]], project_id: str) -> list[dict[str, Any]]:
+        for board in boards:
+            board_id = board["id"]
+            board_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/work/boards/{board_id}"
+            response = await self.send_request("GET", board_url)
+            board_data = response.json()
+            board.update(board_data)
+        logger.info(f"Found {boards} for project {project_id}")
+        return boards
+
+    async def _get_board(self, project_id: str) -> list[dict[str, Any]]:
+        get_boards_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/work/boards"
+        response = await self.send_request("GET", get_boards_url)
+        board_data = response.json().get("value", [])
+        return await self._enrich_board(board_data, project_id)
+
+    async def get_boards_in_organization(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                yield [{**board, "__project": project} for board in (await self._get_board(project["id"]))]
+
     async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:
         headers = {"Content-Type": "application/json"}
         try:

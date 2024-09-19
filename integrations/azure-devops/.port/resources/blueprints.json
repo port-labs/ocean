@@ -199,6 +199,40 @@
         "target": "project",
         "required": true,
         "many": false
+      },
+      "board": {
+        "title": "Board",
+        "target": "board",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "board",
+    "title": "Board",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to the board in Azure DevOps"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "project",
+        "required": true,
+        "many": false
       }
     }
   }

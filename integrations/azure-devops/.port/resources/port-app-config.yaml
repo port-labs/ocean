@@ -54,6 +54,22 @@ resources:
           blueprint: '"service"'
           properties:
             workItemLinking: .isEnabled and .isBlocking
+  - kind: board
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | gsub(" "; "")
+          title: .name
+          blueprint: '"board"'
+          properties:
+            name: .name
+            type: .type
+            columns: .columns | map(.name)
+            link: .url
+          relations:
+            project: .project.id | gsub(" "; "")
   - kind: work-item
     selector:
       query: 'true'
@@ -76,3 +92,4 @@ resources:
             changedDate: .fields."System.ChangedDate"
           relations:
             project: .__projectId | gsub(" "; "")
+            board: .fields."System.BoardId" | gsub(" "; "")
