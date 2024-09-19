@@ -112,7 +112,7 @@ async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 @ocean.on_resync(Kind.COLUMN)
-async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_columns(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
     async for columns in azure_devops_client.get_columns():
         logger.info(f"Resyncing {len(columns)} columns")
