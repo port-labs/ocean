@@ -20,11 +20,6 @@ class ResourceKind(StrEnum):
     ISSUE = "issue"
 
 
-class WebHookEventType(StrEnum):
-    MERGE_REQUEST = "merge_request"
-    ISSUE = "issue"
-
-
 @ocean.on_start()
 async def on_start() -> None:
     logger.info(f"Starting musah_gitlab integration")
