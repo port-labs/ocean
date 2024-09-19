@@ -20,6 +20,11 @@ class ResourceKind(StrEnum):
     ISSUE = "issue"
 
 
+class WebHookEventType(StrEnum):
+    MERGE_REQUEST = "merge_request"
+    ISSUE = "issue"
+
+
 @ocean.on_start()
 async def on_start() -> None:
     logger.info(f"Starting musah_gitlab integration")
@@ -27,33 +32,56 @@ async def on_start() -> None:
         logger.info("Skipping webhook creation because the event listener is ONCE")
         return
 
-    tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
-    validate_tokens(tokens)
+    return await setup_application()
+
+
+# Centralized Token Manager
+class TokenManager:
+    def __init__(self) -> None:
+        self._tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
+        self.validate_tokens()
+
+    def get_token(self, index: int = 0) -> str:
+        if index >= len(self._tokens):
+            raise InvalidTokenException("Requested token index is out of range")
+        return self._tokens[index]
+
+    def get_tokens(self) -> list[str]:
+        """Public method to access tokens"""
+        return self._tokens
+
+    def validate_tokens(self) -> None:
+        if not isinstance(self._tokens, list):
+            raise InvalidTokenException("Invalid access tokens, confirm you passed in a list of tokens")
+
+        # Filter valid tokens (strings only) and ensure all are valid
+        tokens_are_valid = filter(lambda token: isinstance(token, str), self._tokens)
+        if not all(tokens_are_valid):
+            raise InvalidTokenException("Invalid access tokens, ensure all tokens are valid strings")
+
+token_manager = TokenManager()
+
+@ocean.on_start()
+async def on_start() -> None:
+    logger.info(f"Starting musah_gitlab integration")
+    if ocean.event_listener_type == "ONCE":
+        logger.info("Skipping webhook creation because the event listener is ONCE")
+        return
 
     return await setup_application()
 
 
-# Token validation helper function
-def validate_tokens(tokens: list[Any]) -> None:
-    if not isinstance(tokens, list):
-        raise InvalidTokenException("Invalid access tokens, confirm you passed in a list of tokens")
+def initialize_client(gitlab_access_token: str = None) -> GitlabClient:
+    token = gitlab_access_token or token_manager.get_token(0)  # Default to first token
 
-    # Filter valid tokens (strings only) and ensure all are valid
-    tokens_are_valid = filter(lambda token: isinstance(token, str), tokens)
-    if not all(tokens_are_valid):
-        raise InvalidTokenException("Invalid access tokens, ensure all tokens are valid strings")
-
-
-def initialize_client(gitlab_access_token: str) -> GitlabClient:
     return GitlabClient(
         ocean.integration_config["gitlab_host"],
-        gitlab_access_token,
+        token,
     )
 
 
 async def setup_application() -> None:
     app_host = ocean.integration_config["app_host"]
-    tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
     if not app_host:
         logger.warning(
             "No app host provided, skipping webhook creation. "
@@ -61,7 +89,7 @@ async def setup_application() -> None:
         )
         return
 
-    gitlab_client = initialize_client(tokens[0])
+    gitlab_client = initialize_client()
     webhook_uri = f"{app_host}/integration/webhook"
 
     await create_webhooks_for_projects(gitlab_client, webhook_uri)
@@ -108,8 +136,7 @@ async def handle_webhook_event(
         object_attributes_action: str,
         data: dict[str, Any],
 ) -> dict[str, Any]:
-    ocean_action = None
-    git_client = initialize_client(ocean.integration_config["gitlab_access_tokens"]["tokens"][0])
+    git_client = initialize_client()
     ocean_action = determine_ocean_action(object_attributes_action)
 
     if not ocean_action:
@@ -180,9 +207,8 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
-    for token in tokens:
+    for token_index, token in enumerate(token_manager.get_tokens()):
         gitlab_client = initialize_client(token)
         async for resource_batch in gitlab_client.get_paginated_resources(f"{kind}s"):
-            logger.info(f"Received length  {len(resource_batch)} of {kind}s ")
+            logger.info(f"Received batch of {len(resource_batch)} {kind}s with token {token_index}")
             yield resource_batch

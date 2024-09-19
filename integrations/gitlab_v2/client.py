@@ -8,7 +8,6 @@ from loguru import logger
 from rate_limiter import GitLabRateLimiter
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
-from port_ocean.utils.cache import cache_iterator_result
 
 REQUEST_TIMEOUT: int = 60
 CREATE_UPDATE_WEBHOOK_EVENTS: list[str] = [
@@ -46,7 +45,6 @@ class GitlabClient:
             query_params: dict[str, Any] | None = None,
             json_data: dict[str, Any] | None = None,
             headers: dict[str, Any] | None = None,
-            return_with_headers: bool = False,
     ) -> Any:
         logger.info(f"Sending request to GitLab API: {method} {url}")
         try:
