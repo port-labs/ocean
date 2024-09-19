@@ -134,9 +134,13 @@ class SonarQubeClient:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
-            if e.response.status_code == 400:
+            if (
+                e.response.status_code == 400
+                and query_params["ps"] > PAGE_SIZE
+                and endpoint in [Endpoints.ONPREM_ISSUES, Endpoints.SAAS_ISSUES]
+            ):
                 logger.error(
-                    f"Page size too large: {query_params['ps']}. Returning accumulated resources and skipping"
+                    "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Consider using apiFilters in the config mapping to narrow the scope of your search. Returning accumulated issues and skipping further results."
                 )
                 return all_resources
 
