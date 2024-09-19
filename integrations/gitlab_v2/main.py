@@ -202,7 +202,10 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    kind_configs = ocean.integration_config.get("gitlab_resources_config", {}).get(kind, {})
+    kind_configs = ocean.integration_config.get("gitlab_resources_config", {}).get(f"{kind}s", {})
+    if not kind_configs:
+        logger.info(f"Resync initiated for '{kind}', but no additional enrichment configurations were found. Proceeding with the default resync process.")
+
     for token_index, token in enumerate(token_manager.get_tokens()):
         gitlab_client = initialize_client(token)
         async for resource_batch in gitlab_client.get_paginated_resources(f"{kind}s", kind_configs):
