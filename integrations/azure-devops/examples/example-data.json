@@ -1,23 +1,24 @@
-deleteDependentEntities: true
-createMissingRelatedEntities: true
-resources:
-  - kind: board
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .id | gsub(" "; "")
-          title: .name
-          blueprint: '"board"'
-          properties:
-            link: .url
-          relations:
-            project: .__project.id | gsub(" "; "")
-
-
-#Example of a board object from Azure DevOps
-{
+[
+  {
+  "id": "71e60866-7aac-43f2-8aeb-8fed5c66c192",
+  "name": "To Do",
+  "itemLimit": 0,
+  "stateMappings": {
+    "Epic": "To Do"
+  },
+  "columnType": "incoming",
+  "__board_id": "15392e3f-8617-4df6-bd27-2871a44eb92b",
+  "__project": {
+    "id": "6f84ea1f-e939-477f-8992-4145cb37ed35",
+    "name": "terraform-azure-resource",
+    "url": "[REDACTED]/_apis/projects/6f84ea1f-e939-477f-8992-4145cb37ed35",
+    "state": "wellFormed",
+    "revision": 12,
+    "visibility": "private",
+    "lastUpdateTime": "2024-01-08T12:07:57.667Z"
+  }
+},
+  {
   "id": "11dd908f-62c0-411a-99fa-958fb4651764",
   "url": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/11dd908f-62c0-411a-99fa-958fb4651764",
   "name": "Issues",
@@ -124,16 +125,4 @@ resources:
     "lastUpdateTime": "2024-01-08T12:07:57.667Z"
   }
 }
-
-#Example of expected output
-{
-    "identifier": "11dd908f-62c0-411a-99fa-958fb4651764",
-    "title": "Issues",
-    "blueprint": "board",
-    "properties": {
-      "link": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/11dd908f-62c0-411a-99fa-958fb4651764"
-    },
-    "relations": {
-      "project": "6f84ea1f-e939-477f-8992-4145cb37ed35"
-    }
-}
+]
