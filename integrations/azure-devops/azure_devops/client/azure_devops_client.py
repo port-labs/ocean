@@ -258,7 +258,7 @@ class AzureDevopsClient(HTTPBaseClient):
         repository_data = response.json()
         return repository_data
 
-    async def get_columns(self) -> list[dict[str, Any]]:
+    async def get_columns(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for boards in self.get_boards_in_organization():
             for board in boards:
                 yield [
