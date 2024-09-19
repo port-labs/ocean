@@ -51,14 +51,29 @@ class WebhookHandler:
 
 
             # Create new webhook
+
             webhook_data = {
-                'url': webhook_url,
-                'token': webhook_secret,
-                'push_events': 'push' in events,
-                'issues_events': 'issues' in events,
-                'merge_requests_events': 'merge_requests' in events,
-                'enable_ssl_verification': True
+            'url': webhook_url,
+            'token': webhook_secret,
+            'push_events': 'push' in events,
+            'tag_push_events': 'tag_push' in events,
+            'issues_events': 'issue' in events,
+            'note_events': 'note' in events,
+            'merge_requests_events': 'merge_request' in events,
+            'wiki_page_events': 'wiki_page' in events,
+            'pipeline_events': 'pipeline' in events,
+            'job_events': 'job' in events,
+            'deployment_events': 'deployment' in events,
+            'feature_flag_events': 'feature_flag' in events,
+            'releases_events': 'release' in events,
+            'project_token_events': 'project_token' in events,
+            'group_token_events': 'group_token' in events,
+            'enable_ssl_verification': True
             }
+
+
+
+
 
 
             response = await self.gitlab_handler._send_api_request(f"groups/{group_id}/hooks", method="POST", json_data=webhook_data)
