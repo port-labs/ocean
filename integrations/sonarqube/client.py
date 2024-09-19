@@ -501,7 +501,6 @@ class SonarQubeClient:
         logger.info(f"Fetching all portfolios in organization: {self.organization_id}")
         portfolios = await self._get_all_portfolios()
 
-        # for portfolio in portfolios:
         try:
             portfolio_keys = [portfolio["key"] for portfolio in portfolios]
             portfolios_data = await asyncio.gather(
