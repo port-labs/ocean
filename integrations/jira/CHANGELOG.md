@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.88 (2024-09-19)
+
+
+### Features
+
+- Added support for sprints and ingesting issues by sprints (0.1.88)
+
+### Improvements
+
+- Changed issue priority from id to name (0.1.88)
+
+
 ## 0.1.87 (2024-09-17)
 
 
