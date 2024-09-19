@@ -28,12 +28,12 @@ resources:
             url: .web_url
             readme: .readme_url
             description: .description
-            language: .__languages
+            language: .__languages | join(", ")
             namespace: .namespace.name
             fullPath: .namespace.full_path
             defaultBranch: .default_branch
           relations:
-            group: .__group[0].id | tostring
+            group: .__groups[0].id | tostring
 
   - kind: merge_request
     selector:
@@ -45,7 +45,7 @@ resources:
           title: .title
           blueprint: '"gitlabMergeRequest"'
           properties:
-            creator: .author.name
+            creator: .author.username
             status: .state
             createdAt: if .created_at | contains("UTC") then (.created_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.created_at) end
             updatedAt: if .updated_at | contains("UTC") then (.updated_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.updated_at) end
@@ -53,7 +53,7 @@ resources:
             link: .web_url
             reviewers: .reviewers[] | .username
           relations:
-            service: .__projectId | tostring
+            service: .project_id | tostring
 
   - kind: issue
     selector:
@@ -74,4 +74,4 @@ resources:
             status: .state
             labels: .labels
           relations:
-            service: .__projectId | tostring
+            service: .project_id | tostring

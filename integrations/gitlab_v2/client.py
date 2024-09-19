@@ -22,6 +22,7 @@ CREATE_UPDATE_WEBHOOK_EVENTS: list[str] = [
 ]
 DELETE_WEBHOOK_EVENTS: list[str] = ["close", "merge"]
 WEBHOOK_EVENTS_TO_TRACK: dict[str, bool] = {
+    "push_events": True,
     "issues_events": True,
     "merge_requests_events": True,
 }
@@ -96,8 +97,6 @@ class GitlabClient:
 
         while next_page:
             logger.info(f"Making paginated request for {kind} with params: {params}")
-            # Apply rate limiting before making each paginated request
-            await self.rate_limiter.wait_for_slot()
             url = f"{self.gitlab_host}/{kind}"
             response = await self._make_request(url=url, query_params=params)
 
@@ -108,9 +107,6 @@ class GitlabClient:
 
             yield response
 
-            # Update rate limits based on the response
-            # self.rate_limiter.update_limits(response.headers)
-
             if len(response) < PER_PAGE:
                 logger.debug(f"Last page reached for resource '{kind}', no more data.")
                 break
@@ -119,14 +115,17 @@ class GitlabClient:
 
         logger.info("Finished paginated request")
 
+    async def get_single_resource(
+            self, resource_kind: str, resource_id: str
+    ) -> dict[str, Any]:
+        """Get a single resource by kind and ID."""
+        return await self._make_request(f"{self.gitlab_host}/{resource_kind}/{resource_id}")
+
     async def _enrich_resource_kind(self, kind: str, resource_data: dict[str, Any]) -> dict[str, Any]:
         data_to_enrich = ocean.integration_config["gitlab_resources_config"].get(kind, {}).get("data_to_enrich")
         for data in data_to_enrich:
             response = await self._make_request(url=f"{self.gitlab_host}/{kind}/{int(resource_data['id'])}/{data}")
-            if data == "languages":
-                resource_data[f"__{data}"] = ", ".join(response.keys())
-            else:
-                resource_data[f"__{data}"] = response
+            resource_data[f"__{data}"] = response
 
         return resource_data
 

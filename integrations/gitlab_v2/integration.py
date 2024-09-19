@@ -11,9 +11,12 @@ from pydantic import Field
 
 
 class GitlabProjectSelector(Selector):
-    onlyGrouped: bool = Field(
-        default=True, description="Retrieve only grouped projects"
+    only_grouped: bool = Field(
+        default=True, description="Retrieve only grouped projects", alias="onlyGrouped"
     )
+    enrich_languages: bool = Field(
+        default=True, description="Retrieve only grouped projects", alias="enrichLanguages"
+    ),
 
 
 class GitlabProjectResourceConfig(ResourceConfig):
