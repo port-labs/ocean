@@ -1,0 +1,48 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: column
+    selector:
+      query: 'true'
+      port:
+        entity:
+          mappings:
+            identifier: .__project.id+.name | gsub(" "; "")
+            title: .name
+            blueprint: '"column"'
+            relations:
+              board: .__board_id | gsub(" "; "")
+
+
+#Example of a column object from Azure DevOps
+{
+  "id": "71e60866-7aac-43f2-8aeb-8fed5c66c192",
+  "name": "To Do",
+  "itemLimit": 0,
+  "stateMappings": {
+    "Epic": "To Do"
+  },
+  "columnType": "incoming",
+  "__board_id": "15392e3f-8617-4df6-bd27-2871a44eb92b",
+  "__project": {
+    "id": "6f84ea1f-e939-477f-8992-4145cb37ed35",
+    "name": "terraform-azure-resource",
+    "url": "[REDACTED]/_apis/projects/6f84ea1f-e939-477f-8992-4145cb37ed35",
+    "state": "wellFormed",
+    "revision": 12,
+    "visibility": "private",
+    "lastUpdateTime": "2024-01-08T12:07:57.667Z"
+  }
+}
+
+
+#Expected output
+{
+    "identifier": "6f84ea1f-e939-477f-8992-4145cb37ed35ToDo",
+    "title": "To Do",
+    "blueprint": "column",
+    "relations": {
+      "board": "15392e3f-8617-4df6-bd27-2871a44eb92b"
+    }
+  }
+}
