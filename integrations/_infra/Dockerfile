@@ -4,6 +4,8 @@ ARG BUILD_CONTEXT
 ARG INTEGRATION_VERSION
 
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
+# Used to ensure that new integrations will be public, see https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility
+LABEL org.opencontainers.image.source https://github.com/port-labs/ocean
 
 ENV LIBRDKAFKA_VERSION 1.9.2
 

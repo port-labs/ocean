@@ -1,0 +1,21 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: pubsub.googleapis.com/Subscription
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .name
+          title: '.name | split("/") | last'
+          blueprint: '"googleCloudSubscription"'
+          properties:
+            pushConfig: .pushConfig
+            ackDeadlineSeconds: .ackDeadlineSeconds
+            labels: .labels
+            retainAckedMessages: .retainAckedMessages
+            messageRetentionDuration: .messageRetentionDuration
+            filter: .filter
+          relations:
+            project: .__project.name
