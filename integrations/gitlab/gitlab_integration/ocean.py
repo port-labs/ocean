@@ -21,6 +21,7 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.log.sensetive import sensitive_log_filter
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not export live changes from the gitlab"
 PROJECT_RESYNC_BATCH_SIZE = 10
@@ -31,7 +32,7 @@ async def handle_webhook_request(group_id: str, request: Request) -> dict[str, A
     event_id = f"{request.headers.get('X-Gitlab-Event')}:{group_id}"
     with logger.contextualize(event_id=event_id):
         try:
-            logger.debug(f"Received webhook event {event_id} from Gitlab")
+            logger.info(f"Received webhook event {event_id} from Gitlab")
             body = await request.json()
             await event_handler.notify(event_id, body)
             return {"ok": True}
@@ -49,7 +50,7 @@ async def handle_system_webhook_request(request: Request) -> dict[str, Any]:
         # some system hooks have event_type instead of event_name in the body, such as merge_request events
         event_name: str = str(body.get("event_name") or body.get("event_type"))
         with logger.contextualize(event_name=event_name):
-            logger.debug(f"Received system webhook event {event_name} from Gitlab")
+            logger.info(f"Received system webhook event {event_name} from Gitlab")
             await system_event_handler.notify(event_name, body)
 
         return {"ok": True}
@@ -178,13 +179,24 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.warning("No path provided in the selector, skipping fetching files")
             return
 
-        async for projects_batch in service.get_all_projects():
-            for project in projects_batch:
-                if service.should_process_project(project, selector.files.repos):
-                    async for files_batch in service.get_all_files_in_project(
-                        project, selector.files.path
-                    ):
-                        yield files_batch
+        async for projects in service.get_all_projects():
+            projects_batch_iter = iter(projects)
+            projects_processed_in_full_batch = 0
+            while projects_batch := tuple(
+                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+            ):
+                projects_processed_in_full_batch += len(projects_batch)
+                logger.info(
+                    f"Processing projects files for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
+                )
+                tasks = [
+                    service.search_files_in_project(project, selector.files.path)
+                    for project in projects_batch
+                    if service.should_process_project(project, selector.files.repos)
+                ]
+                if tasks:
+                    async for batch in stream_async_iterators_tasks(*tasks):
+                        yield batch
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)

@@ -9,6 +9,17 @@ from port_ocean.cli.commands.main import cli_start, print_logo, console
 from port_ocean.cli.utils import cli_root_path
 
 
+def symlink_makefile(result: str, name: str) -> None:
+    infra_make_file = os.path.join(
+        os.path.dirname(result), "../integrations/_infra/Makefile"
+    )
+    target_link_make_file = os.path.join(
+        os.path.dirname(result), f"../integrations/{name}/Makefile"
+    )
+
+    os.link(infra_make_file, target_link_make_file)
+
+
 def add_vscode_configuration(result: str, name: str) -> None:
     vscode_entry_root_path = "${workspaceFolder}/integrations/" + name
     new_vscode_entry = {
@@ -66,6 +77,7 @@ def new(path: str, is_private_integration: bool) -> None:
 
     if not is_private_integration:
         add_vscode_configuration(result, name)
+        symlink_makefile(result, name)
 
     console.print(
         "\n🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!",
