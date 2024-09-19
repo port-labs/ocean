@@ -3,7 +3,6 @@ from enum import StrEnum
 from typing import Any
 from loguru import logger
 
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -20,15 +19,6 @@ class ResourceKind(StrEnum):
     MERGE_REQUEST = "merge_request"
     ISSUE = "issue"
 
-class WebHookEventType(StrEnum):
-    MERGE_REQUEST = "merge_request"
-    ISSUE = "issue"
-
-EVENT_TYPE_MAPPING = {
-    WebHookEventType.MERGE_REQUEST: "merge_requests",
-    WebHookEventType.ISSUE: "issues"
-}
-
 
 @ocean.on_start()
 async def on_start() -> None:
@@ -38,17 +28,20 @@ async def on_start() -> None:
         return
 
     tokens = ocean.integration_config["gitlab_access_tokens"]["tokens"]
-    # Check if tokens is a list and filter valid tokens (strings only)
-    if isinstance(tokens, list):
-        tokens_are_valid = filter(lambda token: isinstance(token, str), tokens)
-
-        # Ensure all tokens are valid strings
-        if not all(tokens_are_valid):
-            raise InvalidTokenException("Invalid access tokens, ensure all tokens are valid strings")
-    else:
-        raise InvalidTokenException("Invalid access tokens, confirm you passed in a list of tokens")
+    validate_tokens(tokens)
 
     return await setup_application()
+
+
+# Token validation helper function
+def validate_tokens(tokens: list[Any]) -> None:
+    if not isinstance(tokens, list):
+        raise InvalidTokenException("Invalid access tokens, confirm you passed in a list of tokens")
+
+    # Filter valid tokens (strings only) and ensure all are valid
+    tokens_are_valid = filter(lambda token: isinstance(token, str), tokens)
+    if not all(tokens_are_valid):
+        raise InvalidTokenException("Invalid access tokens, ensure all tokens are valid strings")
 
 
 def initialize_client(gitlab_access_token: str) -> GitlabClient:
@@ -71,19 +64,43 @@ async def setup_application() -> None:
     gitlab_client = initialize_client(tokens[0])
     webhook_uri = f"{app_host}/integration/webhook"
 
+    await create_webhooks_for_projects(gitlab_client, webhook_uri)
+    await create_webhooks_for_groups(gitlab_client, webhook_uri)
+
+async def create_webhooks_for_groups(gitlab_client: GitlabClient, webhook_uri: str) -> None:
+    async for groups in gitlab_client.get_paginated_resources(f"{ResourceKind.GROUP}s"):
+        for group in groups:
+            if not webhook_exists_for_group(group, webhook_uri):
+                await gitlab_client.create_group_webhook(webhook_uri, group)
+                logger.info(f"Created webhook for group {group['id']}")
+            else:
+                logger.info(f"Webhook already exists for group {group['id']}")
+
+
+def webhook_exists_for_group(project: dict[str, Any], webhook_uri: str) -> bool:
+    hooks = project.get("__hooks", [])
+    return any(
+        isinstance(hook, dict) and hook.get("url") == webhook_uri
+        for hook in hooks
+    )
+
+
+async def create_webhooks_for_projects(gitlab_client: GitlabClient, webhook_uri: str) -> None:
     async for projects in gitlab_client.get_paginated_resources(f"{ResourceKind.PROJECT}s"):
         for project in projects:
-            hooks = project.get("__hooks", [])
-            webhook_exists = any(
-                isinstance(hook, dict) and hook.get("url") == webhook_uri
-                for hook in hooks
-            )
-
-            if not webhook_exists:
+            if not webhook_exists_for_project(project, webhook_uri):
                 await gitlab_client.create_project_webhook(webhook_uri, project)
                 logger.info(f"Created webhook for project {project['id']}")
             else:
                 logger.info(f"Webhook already exists for project {project['id']}")
+
+
+def webhook_exists_for_project(project: dict[str, Any], webhook_uri: str) -> bool:
+    hooks = project.get("__hooks", [])
+    return any(
+        isinstance(hook, dict) and hook.get("url") == webhook_uri
+        for hook in hooks
+    )
 
 
 async def handle_webhook_event(
@@ -93,10 +110,7 @@ async def handle_webhook_event(
 ) -> dict[str, Any]:
     ocean_action = None
     git_client = initialize_client(ocean.integration_config["gitlab_access_tokens"]["tokens"][0])
-    if object_attributes_action in DELETE_WEBHOOK_EVENTS:
-        ocean_action = ocean.unregister_raw
-    elif object_attributes_action in CREATE_UPDATE_WEBHOOK_EVENTS:
-        ocean_action = ocean.register_raw
+    ocean_action = determine_ocean_action(object_attributes_action)
 
     if not ocean_action:
         logger.info(f"Webhook event '{webhook_event}' not recognized.")
@@ -112,7 +126,8 @@ async def handle_webhook_event(
     # Call the appropriate event handler function based on the webhook_event
     handler = event_handlers.get(webhook_event)
     if handler:
-        await handler(git_client, ocean_action, data)
+        project_id = data.get("project", {}).get("id")
+        await handler(project_id, git_client, ocean_action, data)
     else:
         logger.info(f"Unhandled webhook event type: {webhook_event}")
         return {"ok": True}
@@ -121,29 +136,36 @@ async def handle_webhook_event(
     return {"ok": True}
 
 
-async def handle_push_event(git_client, ocean_action, data: dict[str, Any]) -> None:
+def determine_ocean_action(object_attributes_action: str) -> typing.Callable | None:
+    if object_attributes_action in DELETE_WEBHOOK_EVENTS:
+        return ocean.unregister_raw
+    elif object_attributes_action in CREATE_UPDATE_WEBHOOK_EVENTS:
+        return ocean.register_raw
+    return None
+
+
+async def handle_push_event(project_id, git_client, ocean_action, data: dict[str, Any]) -> None:
     """Handles push webhook event."""
-    project_id = data.get("project", {}).get("id")
     project = await git_client.get_single_resource("projects", str(project_id))
     logger.info(f"Upserting project with payload: {data}")
     await ocean_action(ResourceKind.PROJECT, [project])
 
-async def handle_merge_request_event(git_client, ocean_action, data: dict[str, Any]) -> None:
+
+async def handle_merge_request_event(project_id, git_client, ocean_action, data: dict[str, Any]) -> None:
     """Handles merge request webhook event."""
-    project_id = data.get("project", {}).get("id")
     mr_iid = data.get("object_attributes", {}).get("iid")
     mr = await git_client.get_single_resource(f"projects/{project_id}/merge_requests", str(mr_iid))
     logger.info(f"Upserting merge request with payload: {data}")
     await ocean_action(ResourceKind.MERGE_REQUEST, [mr])
 
 
-async def handle_issue_event(git_client, ocean_action, data: dict[str, Any]) -> None:
+async def handle_issue_event(project_id, git_client, ocean_action, data: dict[str, Any]) -> None:
     """Handles issue webhook event."""
-    project_id = data.get("project", {}).get("id")
     issue_iid = data.get("object_attributes", {}).get("iid")
     issue = await git_client.get_single_resource(f"projects/{project_id}/issues", str(issue_iid))
     logger.info(f"Upserting issue with payload: {issue}")
     await ocean_action(ResourceKind.ISSUE, [issue])
+
 
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:

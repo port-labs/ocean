@@ -152,3 +152,26 @@ class GitlabClient:
                 f"Failed to create webhook for project {project['path_with_namespace']}: {e}"
             )
 
+    async def create_group_webhook(
+            self, webhook_host: str, group: dict[str, Any]
+    ) -> None:
+        payload: dict[str, Any] = {
+            "id": group["id"],
+            "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
+            "url": webhook_host,
+            **WEBHOOK_EVENTS_TO_TRACK,
+        }
+
+        try:
+            logger.info(f"Creating hook for group {group['name']}")
+            await self._make_request(
+                url=f"{self.gitlab_host}/groups/{group['id']}/hooks",
+                method="POST",
+                json_data=payload,
+            )
+            logger.info(f"Created hook for group {group['name']}")
+        except Exception as e:
+            logger.error(
+                f"Failed to create webhook for group {group['path_with_namespace']}: {e}"
+            )
+
