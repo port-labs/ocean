@@ -19,7 +19,7 @@ class ResourceKind(StrEnum):
     MERGE_REQUEST = "merge_request"
     ISSUE = "issue"
 
-RESOURCE_MAPPING = {
+RESOURCE_ENDPOINT_MAPPING = {
     ResourceKind.GROUP: "groups",
     ResourceKind.PROJECT: "projects",
     ResourceKind.MERGE_REQUEST: "merge_requests",
@@ -208,7 +208,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
 @ocean.on_resync()
 async def resync_resources(kind: ResourceKind) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    resource = RESOURCE_MAPPING.get(kind)
+    resource = RESOURCE_ENDPOINT_MAPPING.get(kind)
     kind_configs = ocean.integration_config.get("gitlab_resources_config", {}).get(resource, {})
     if not kind_configs:
         logger.info(f"Resync initiated for '{kind}', but no additional enrichment configurations were found. Proceeding with the default resync process.")
