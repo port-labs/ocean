@@ -10,8 +10,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class ObjectKind:
     GROUP = "group"
     MERGE_REQUEST = "merge-request"
-    ISSUE = "issue"
-    PROJECT = "project"
+    ISSUE = "issues"
+    PROJECT = "projects"
 
 
 def init_gitlab_client() -> GitLabClient:
@@ -89,11 +89,51 @@ async def on_start() -> None:
 
     app_host = ocean.integration_config.get("app_host")
     webhook_token = ocean.integration_config.get("gitlab_token")
-    project_id = ocean.integration_config.get("project_id")
 
-    if app_host and webhook_token and project_id:
+    if app_host and webhook_token:
         gitlab_client = init_gitlab_client()
-        await gitlab_client.setup_webhook(app_host, webhook_token)
-    else:
-        logger.warning("Missing app_host, gitlab_token, or project_id, skipping webhook setup.")
 
+        # Set up group-level webhook
+        await setup_group_webhooks(gitlab_client, app_host, webhook_token)
+
+        # Set up project-level webhooks for all projects in the group
+        await setup_project_webhooks(gitlab_client, app_host, webhook_token)
+
+    else:
+        logger.warning("Missing app_host or gitlab_token, skipping webhook setup.")
+
+
+async def setup_group_webhooks(gitlab_client: GitLabClient, app_host: str, webhook_token: str) -> None:
+    """Setup GitLab webhooks for all groups."""
+    async for groups in gitlab_client.get_groups():
+        for group in groups:
+            group_id = group["id"]
+            logger.info(f"Setting up webhook for group {group['name']} (ID: {group_id})")
+            endpoint = f"groups/{group_id}/hooks"
+            webhook_url = f"{app_host}/webhook"
+            payload = {
+                "url": webhook_url,
+                "token": webhook_token,
+                "push_events": True,
+                "merge_requests_events": True,
+                "issues_events": True,
+            }
+            await gitlab_client._request("POST", endpoint, json=payload)
+
+
+async def setup_project_webhooks(gitlab_client: GitLabClient, app_host: str, webhook_token: str) -> None:
+    """Setup GitLab webhooks for all projects."""
+    async for projects in gitlab_client.get_projects():
+        for project in projects:
+            project_id = project["id"]
+            logger.info(f"Setting up webhook for project {project['name']} (ID: {project_id})")
+            endpoint = f"projects/{project_id}/hooks"
+            webhook_url = f"{app_host}/webhook"
+            payload = {
+                "url": webhook_url,
+                "token": webhook_token,
+                "push_events": True,
+                "merge_requests_events": True,
+                "issues_events": True,
+            }
+            await gitlab_client._request("POST", endpoint, json=payload)
