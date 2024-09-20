@@ -51,7 +51,7 @@ async def test_get_stages(
     ]
 
     # Create a JenkinsClient instance
-    with patch("integrations.jenkins.client.http_async_client", new=mock_ocean_client):
+    with patch("client.http_async_client", new=mock_ocean_client):
         client = JenkinsClient("http://jenkins.example.com", "user", "token")
 
     # Mock the necessary methods
@@ -123,7 +123,7 @@ async def test_get_stages_nested_jobs(
     ]
 
     # Create a JenkinsClient instance
-    with patch("integrations.jenkins.client.http_async_client", new=mock_ocean_client):
+    with patch("client.http_async_client", new=mock_ocean_client):
         client = JenkinsClient("http://jenkins.example.com", "user", "token")
 
     # Mock the necessary methods
