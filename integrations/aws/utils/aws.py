@@ -1,33 +1,32 @@
 from typing import Any, AsyncIterator, Optional, Union
 
 import aioboto3
-from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 
-from aws.session_manager import SessionManager
+from aws.session_manager import SessionManager, ASSUME_ROLE_DURATION_SECONDS
 from aws.aws_credentials import AwsCredentials
+
+from aiocache import cached, Cache  # type: ignore
 
 _session_manager: SessionManager = SessionManager()
 
+CACHE_DURATION_SECONDS = (
+    0.80 * ASSUME_ROLE_DURATION_SECONDS
+)  # Refresh role credentials after exhausting 80% of the session duration
 
-async def update_available_access_credentials() -> None:
+
+@cached(ttl=CACHE_DURATION_SECONDS, cache=Cache.MEMORY)
+async def update_available_access_credentials() -> bool:
     """
     Fetches the AWS account IDs that the current IAM role can access.
     and saves them up to use as sessions
 
     :return: List of AWS account IDs.
     """
-    CACHE_KEY = "CREDENTIALS_CACHE"
-
-    if CACHE_KEY in event.attributes:
-        return
-
-    logger.info("Updating AWS credentials")
     await _session_manager.reset()
-    # makes this run once per resync
-    event.attributes[CACHE_KEY] = True
+    # makes this run once per DurationSeconds
+    return True
 
 
 def describe_accessible_accounts() -> list[dict[str, Any]]:
