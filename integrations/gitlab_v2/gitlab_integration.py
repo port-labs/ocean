@@ -14,7 +14,7 @@ class ResourceKind(StrEnum):
     ISSUE = "issue"
 
 
-WEBHOOK_URL = f"{ocean.integration_config.get('app_host')}/integrations/webhook"
+WEBHOOK_URL = f"{ocean.integration_config.get('app_host')}/integration/webhook"
 RESOURCE_ENDPOINT_MAPPING = {
     ResourceKind.GROUP: "groups",
     ResourceKind.PROJECT: "projects",
@@ -71,6 +71,15 @@ class GitLabIntegration:
             return ocean.register_raw
         return None
 
+    @staticmethod
+    async def _fetch_resources(handler: GitlabClient, endpoint: str, kind_configs: Any):
+        try:
+            async for item in handler.get_paginated_resources(endpoint, kind_configs):
+                logger.info(f"Received resource from a handler")
+                yield item
+        except Exception as e:
+            logger.error(f"Error fetching resources: {str(e)}")
+
     async def initialize(self):
         self._validate_configuration()
 
@@ -107,20 +116,14 @@ class GitLabIntegration:
     async def resync_resources(self, kind: ResourceKind, kind_configs: Any) -> AsyncGenerator[Dict[str, Any], None]:
         endpoint = RESOURCE_ENDPOINT_MAPPING.get(kind)
         if not endpoint:
+            logger.error(f"Invalid ObjectKind provided: {kind}")
             raise ValueError(f"Invalid ObjectKind: {kind}")
 
+        logger.info(f"Resyncing resources for kind: {kind} with configs: {kind_configs}")
         for gitlab_handler in self.gitlab_handlers:
+            logger.info(f"Fetching resources for {kind} using handler: {gitlab_handler}")
             async for item in self._fetch_resources(gitlab_handler, endpoint, kind_configs):
                 yield item
-
-    @staticmethod
-    async def _fetch_resources(handler: GitlabClient, endpoint: str, kind_configs: Any):
-        try:
-            async for item in handler.get_paginated_resources(endpoint, kind_configs):
-                logger.info(f"Received resource from a handler")
-                yield item
-        except Exception as e:
-            logger.error(f"Error fetching resources: {str(e)}")
 
     def _register_event_handlers(self) -> Dict[str, Callable]:
         return {
