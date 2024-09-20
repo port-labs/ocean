@@ -150,7 +150,7 @@ def setup_system_listeners(gitlab_clients: list[GitlabService]) -> None:
         system_event_handler.add_client(gitlab_service)
 
 
-def create_webhooks_by_client(
+async def create_webhooks_by_client(
     gitlab_host: str,
     app_host: str,
     token: str,
@@ -160,7 +160,7 @@ def create_webhooks_by_client(
     gitlab_client = Gitlab(gitlab_host, token)
     gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
 
-    groups_for_webhooks = gitlab_service.get_filtered_groups_for_webhooks(
+    groups_for_webhooks = await gitlab_service.get_filtered_groups_for_webhooks(
         list(groups_hooks_events_override.keys())
         if groups_hooks_events_override
         else None
@@ -168,8 +168,12 @@ def create_webhooks_by_client(
 
     webhooks_ids: list[str] = []
 
+    all_groups = []
+    async for groups_batch in gitlab_service.get_all_groups():
+        all_groups.extend(groups_batch)
+
     for group in groups_for_webhooks:
-        webhook_id = gitlab_service.create_webhook(
+        webhook_id = await gitlab_service.create_webhook(
             group,
             (
                 groups_hooks_events_override.get(
@@ -186,7 +190,7 @@ def create_webhooks_by_client(
     return gitlab_service, webhooks_ids
 
 
-def setup_application(
+async def setup_application(
     token_mapping: dict[str, list[str]],
     gitlab_host: str,
     app_host: str,
@@ -196,6 +200,7 @@ def setup_application(
     validate_token_mapping(token_mapping)
 
     if use_system_hook:
+        logger.info("Using system hook")
         validate_use_system_hook(token_mapping)
         token, group_mapping = list(token_mapping.items())[0]
         gitlab_client = Gitlab(gitlab_host, token)
@@ -203,6 +208,7 @@ def setup_application(
         setup_system_listeners([gitlab_service])
 
     else:
+        logger.info("Using group hooks")
         validate_hooks_override_config(
             token_mapping, token_group_override_hooks_mapping
         )
@@ -212,7 +218,7 @@ def setup_application(
         for token, group_mapping in token_mapping.items():
             if not token_group_override_hooks_mapping:
                 client_to_webhooks.append(
-                    create_webhooks_by_client(
+                    await create_webhooks_by_client(
                         gitlab_host,
                         app_host,
                         token,
@@ -221,12 +227,13 @@ def setup_application(
                     )
                 )
             else:
+                logger.info("Using token group hooks override mapping")
                 groups = token_group_override_hooks_mapping.tokens.get(
                     token, WebhookTokenConfig(groups=[])
                 ).groups
                 if groups:
                     client_to_webhooks.append(
-                        create_webhooks_by_client(
+                        await create_webhooks_by_client(
                             gitlab_host,
                             app_host,
                             token,

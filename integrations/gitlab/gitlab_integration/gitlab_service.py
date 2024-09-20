@@ -51,10 +51,10 @@ class GitlabService:
     ]
 
     def __init__(
-        self,
-        gitlab_client: Gitlab,
-        app_host: str,
-        group_mapping: List[str],
+            self,
+            gitlab_client: Gitlab,
+            app_host: str,
+            group_mapping: List[str],
     ):
         self.gitlab_client = gitlab_client
         self.app_host = app_host
@@ -79,7 +79,7 @@ class GitlabService:
             logger.error(f"Failed to delete webhook for {group.get_id()} error={e}")
 
     def _create_group_webhook(
-        self, group: RESTObject, events: list[str] | None
+            self, group: RESTObject, events: list[str] | None
     ) -> None:
         webhook_events = {
             event: event in (events if events else self.all_events_in_webhook)
@@ -103,17 +103,17 @@ class GitlabService:
             logger.error(f"Failed to create webhook for {group.get_id()} error={e}")
 
     def _get_changed_files_between_commits(
-        self, project_id: int, head: str
+            self, project_id: int, head: str
     ) -> Union[GitlabList, list[dict[str, Any]]]:
         project = self.gitlab_client.projects.get(project_id)
         return project.commits.get(head).diff()
 
     async def get_all_file_paths(
-        self,
-        project: Project,
-        path: str | List[str],
-        commit_sha: str,
-        return_files_only: bool = False,
+            self,
+            project: Project,
+            path: str | List[str],
+            commit_sha: str,
+            return_files_only: bool = False,
     ) -> list[str]:
         """
         This function iterates through repository tree pages and returns all files in the repository that match the path pattern.
@@ -140,13 +140,13 @@ class GitlabService:
             file["path"]
             for file in files
             if (not return_files_only or file["type"] == "blob")
-            and does_pattern_apply(path, file["path"] or "")
+               and does_pattern_apply(path, file["path"] or "")
         ]
 
     async def search_files_in_project(
-        self,
-        project: Project,
-        path: str | List[str],
+            self,
+            project: Project,
+            path: str | List[str],
     ) -> AsyncIterator[list[dict[str, Any]]]:
         paths = [path] if not isinstance(path, list) else path
         for path in paths:
@@ -156,10 +156,10 @@ class GitlabService:
                     f"Searching project {project.path_with_namespace} for file pattern {file_pattern}"
                 )
                 async for files in AsyncFetcher.fetch_batch(
-                    project.search,
-                    scope="blobs",
-                    search=f"filename:{file_pattern}",
-                    retry_transient_errors=True,
+                        project.search,
+                        scope="blobs",
+                        search=f"filename:{file_pattern}",
+                        retry_transient_errors=True,
                 ):
                     logger.info(
                         f"Found {len(files)} files in project {project.path_with_namespace} with file pattern {file_pattern}, filtering all that don't match path pattern {path}"
@@ -178,7 +178,7 @@ class GitlabService:
                         yield files_with_content
 
     async def _get_entities_from_git(
-        self, project: Project, file_path: str | List[str], sha: str, ref: str
+            self, project: Project, file_path: str | List[str], sha: str, ref: str
     ) -> List[Entity]:
         try:
             file_content = await AsyncFetcher.fetch_single(
@@ -208,7 +208,7 @@ class GitlabService:
         return []
 
     async def _get_entities_by_commit(
-        self, project: Project, spec: str | List["str"], commit: str, ref: str
+            self, project: Project, spec: str | List["str"], commit: str, ref: str
     ) -> List[Entity]:
         logger.info(
             f"Getting entities for project {project.path_with_namespace} in path {spec} at commit {commit} and ref {ref}"
@@ -221,15 +221,18 @@ class GitlabService:
     def should_run_for_group(self, group: Group) -> bool:
         return self.should_run_for_path(group.full_path)
 
+    def is_root_group(self, group: Group) -> bool:
+        return group.parent_id is None
+
     def should_run_for_project(
-        self,
-        project: Project,
+            self,
+            project: Project,
     ) -> bool:
         return self.should_run_for_path(project.path_with_namespace)
 
     def should_run_for_merge_request(
-        self,
-        merge_request: typing.Union[MergeRequest, GroupMergeRequest],
+            self,
+            merge_request: typing.Union[MergeRequest, GroupMergeRequest],
     ) -> bool:
         project_path = merge_request.references.get("full").rstrip(
             merge_request.references.get("short")
@@ -237,8 +240,8 @@ class GitlabService:
         return self.should_run_for_path(project_path)
 
     def should_run_for_issue(
-        self,
-        issue: Issue,
+            self,
+            issue: Issue,
     ) -> bool:
         project_path = issue.references.get("full").rstrip(
             issue.references.get("short")
@@ -246,7 +249,7 @@ class GitlabService:
         return self.should_run_for_path(project_path)
 
     def should_process_project(
-        self, project: Project, repos: Optional[List[str]]
+            self, project: Project, repos: Optional[List[str]]
     ) -> bool:
         # If `repos` selector is None or empty, we process all projects
         if not repos:
@@ -270,15 +273,15 @@ class GitlabService:
             ],
         )
 
-    def get_filtered_groups_for_webhooks(
-        self,
-        groups_hooks_override_list: list[str] | None,
+    async def get_filtered_groups_for_webhooks(
+            self,
+            groups_hooks_override_list: list[str] | None,
     ) -> List[Group]:
         groups_for_webhooks = []
         if groups_hooks_override_list is not None:
             if groups_hooks_override_list:
                 logger.info(
-                    "Getting all the specified groups in the mapping for a token to create their webhooks"
+                    f"Getting all the specified groups in the mapping for a token to create their webhooks for: {groups_hooks_override_list}"
                 )
                 groups_for_webhooks = self.filter_groups_by_paths(
                     groups_hooks_override_list
@@ -288,9 +291,9 @@ class GitlabService:
                     group_path
                     for group_path in groups_hooks_override_list
                     if group_path
-                    not in [
-                        group.attributes["full_path"] for group in groups_for_webhooks
-                    ]
+                       not in [
+                           group.attributes["full_path"] for group in groups_for_webhooks
+                       ]
                 ]
 
                 if groups_paths_not_found:
@@ -302,7 +305,10 @@ class GitlabService:
                     )
         else:
             logger.info("Getting all the root groups to create their webhooks")
-            root_groups = self.get_root_groups()
+            root_groups = []
+            async for groups_batch in self.get_all_root_groups():
+                root_groups.extend(groups_batch)
+
             groups_for_webhooks = [
                 group
                 for group in root_groups
@@ -316,12 +322,11 @@ class GitlabService:
 
         return groups_for_webhooks
 
-    def create_webhook(self, group: Group, events: list[str] | None) -> str | None:
+    async def create_webhook(self, group: Group, events: list[str] | None) -> str | None:
         logger.info(f"Creating webhook for the group: {group.attributes['full_path']}")
 
         webhook_id = None
         group_id = group.get_id()
-
         if group_id is None:
             logger.info(f"Group {group.attributes['full_path']} has no id. skipping...")
         else:
@@ -407,11 +412,11 @@ class GitlabService:
     async def get_all_groups(self) -> typing.AsyncIterator[List[Group]]:
         logger.info("fetching all groups for the token")
         async for groups_batch in AsyncFetcher.fetch_batch(
-            fetch_func=self.gitlab_client.groups.list,
-            validation_func=self.should_run_for_group,
-            pagination="offset",
-            order_by="id",
-            sort="asc",
+                fetch_func=self.gitlab_client.groups.list,
+                validation_func=self.should_run_for_group,
+                pagination="offset",
+                order_by="id",
+                sort="asc",
         ):
             groups: List[Group] = typing.cast(List[Group], groups_batch)
             logger.info(
@@ -426,11 +431,11 @@ class GitlabService:
             return group.parent_id is None
 
         async for groups_batch in AsyncFetcher.fetch_batch(
-            fetch_func=self.gitlab_client.groups.list,
-            validation_func=is_root_group,
-            pagination="offset",
-            order_by="id",
-            sort="asc",
+                fetch_func=self.gitlab_client.groups.list,
+                validation_func=is_root_group,
+                pagination="offset",
+                order_by="id",
+                sort="asc",
         ):
             groups: List[Group] = typing.cast(List[Group], groups_batch)
             logger.info(
@@ -453,14 +458,14 @@ class GitlabService:
             return
 
         async for projects_batch in AsyncFetcher.fetch_batch(
-            fetch_func=self.gitlab_client.projects.list,
-            validation_func=self.should_run_for_project,
-            include_subgroups=True,
-            owned=port_app_config.filter_owned_projects,
-            visibility=port_app_config.project_visibility_filter,
-            pagination="offset",
-            order_by="id",
-            sort="asc",
+                fetch_func=self.gitlab_client.projects.list,
+                validation_func=self.should_run_for_project,
+                include_subgroups=True,
+                owned=port_app_config.filter_owned_projects,
+                visibility=port_app_config.project_visibility_filter,
+                pagination="offset",
+                order_by="id",
+                sort="asc",
         ):
             if projects_batch:
                 projects: List[Project] = typing.cast(List[Project], projects_batch)
@@ -504,25 +509,25 @@ class GitlabService:
 
     @staticmethod
     def validate_file_is_directory(
-        file: Union[RESTObject, dict[str, Any], Project]
+            file: Union[RESTObject, dict[str, Any], Project]
     ) -> bool:
         if isinstance(file, dict):
             return file["type"] == "tree"
         return False
 
     async def get_all_folders_in_project_path(
-        self, project: Project, folder_selector
+            self, project: Project, folder_selector
     ) -> typing.AsyncIterator[List[dict[str, Any]]]:
         branch = folder_selector.branch or project.default_branch
         try:
             async for repository_tree_batch in AsyncFetcher.fetch_batch(
-                fetch_func=project.repository_tree,
-                validation_func=self.validate_file_is_directory,
-                path=folder_selector.path,
-                ref=branch,
-                pagination="keyset",
-                order_by="id",
-                sort="asc",
+                    fetch_func=project.repository_tree,
+                    validation_func=self.validate_file_is_directory,
+                    path=folder_selector.path,
+                    ref=branch,
+                    pagination="keyset",
+                    order_by="id",
+                    sort="asc",
             ):
                 repository_tree_files: List[dict[str, Any]] = typing.cast(
                     List[dict[str, Any]], repository_tree_batch
@@ -547,18 +552,18 @@ class GitlabService:
             return
 
     async def get_all_jobs(
-        self, project: Project
+            self, project: Project
     ) -> typing.AsyncIterator[List[ProjectPipelineJob]]:
         def should_run_for_job(_: Union[RESTObject, dict[str, Any], Project]) -> bool:
             return True
 
         logger.info(f"fetching jobs for project {project.path_with_namespace}")
         async for pipeline_jobs_batch in AsyncFetcher.fetch_batch(
-            fetch_func=project.jobs.list,
-            validation_func=should_run_for_job,
-            pagination="offset",
-            order_by="id",
-            sort="asc",
+                fetch_func=project.jobs.list,
+                validation_func=should_run_for_job,
+                pagination="offset",
+                order_by="id",
+                sort="asc",
         ):
             pipeline_jobs = typing.cast(List[ProjectPipelineJob], pipeline_jobs_batch)
 
@@ -568,13 +573,13 @@ class GitlabService:
             yield pipeline_jobs
 
     async def get_all_pipelines(
-        self, project: Project
+            self, project: Project
     ) -> typing.AsyncIterator[List[ProjectPipeline]]:
         from_time = datetime.now() - timedelta(days=14)
         created_after = from_time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
         def should_run_for_pipeline(
-            _: Union[RESTObject, dict[str, Any], Project]
+                _: Union[RESTObject, dict[str, Any], Project]
         ) -> bool:
             return True
 
@@ -582,12 +587,12 @@ class GitlabService:
             f"Fetching pipelines for project {project.path_with_namespace} created after {created_after}"
         )
         async for pipelines_batch in AsyncFetcher.fetch_batch(
-            fetch_func=project.pipelines.list,
-            validation_func=should_run_for_pipeline,
-            pagination="offset",
-            order_by="id",
-            sort="asc",
-            created_after=created_after,
+                fetch_func=project.pipelines.list,
+                validation_func=should_run_for_pipeline,
+                pagination="offset",
+                order_by="id",
+                sort="asc",
+                created_after=created_after,
         ):
             pipelines = typing.cast(List[ProjectPipeline], pipelines_batch)
             logger.info(
@@ -596,15 +601,15 @@ class GitlabService:
             yield pipelines
 
     async def get_opened_merge_requests(
-        self, group: Group
+            self, group: Group
     ) -> typing.AsyncIterator[List[MergeRequest]]:
         async for merge_request_batch in AsyncFetcher.fetch_batch(
-            fetch_func=group.mergerequests.list,
-            validation_func=self.should_run_for_merge_request,
-            pagination="offset",
-            order_by="created_at",
-            sort="desc",
-            state="opened",
+                fetch_func=group.mergerequests.list,
+                validation_func=self.should_run_for_merge_request,
+                pagination="offset",
+                order_by="created_at",
+                sort="desc",
+                state="opened",
         ):
             merge_requests: List[MergeRequest] = typing.cast(
                 List[MergeRequest], merge_request_batch
@@ -612,16 +617,16 @@ class GitlabService:
             yield merge_requests
 
     async def get_closed_merge_requests(
-        self, group: Group, updated_after: datetime
+            self, group: Group, updated_after: datetime
     ) -> typing.AsyncIterator[List[MergeRequest]]:
         async for merge_request_batch in AsyncFetcher.fetch_batch(
-            fetch_func=group.mergerequests.list,
-            validation_func=self.should_run_for_merge_request,
-            pagination="offset",
-            order_by="created_at",
-            sort="desc",
-            state=["closed", "locked", "merged"],
-            updated_after=updated_after.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                fetch_func=group.mergerequests.list,
+                validation_func=self.should_run_for_merge_request,
+                pagination="offset",
+                order_by="created_at",
+                sort="desc",
+                state=["closed", "locked", "merged"],
+                updated_after=updated_after.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         ):
             merge_requests: List[MergeRequest] = typing.cast(
                 List[MergeRequest], merge_request_batch
@@ -630,22 +635,22 @@ class GitlabService:
 
     async def get_all_issues(self, group: Group) -> typing.AsyncIterator[List[Issue]]:
         async for issues_batch in AsyncFetcher.fetch_batch(
-            fetch_func=group.issues.list,
-            validation_func=self.should_run_for_issue,
-            pagination="offset",
-            order_by="created_at",
-            sort="desc",
+                fetch_func=group.issues.list,
+                validation_func=self.should_run_for_issue,
+                pagination="offset",
+                order_by="created_at",
+                sort="desc",
         ):
             issues: List[Issue] = typing.cast(List[Issue], issues_batch)
             yield issues
 
     async def get_entities_diff(
-        self,
-        project: Project,
-        spec_path: str | List[str],
-        before: str,
-        after: str,
-        ref: str,
+            self,
+            project: Project,
+            spec_path: str | List[str],
+            before: str,
+            after: str,
+            ref: str,
     ) -> Tuple[List[Entity], List[Entity]]:
         logger.info(
             f'Getting entities diff for project {project.path_with_namespace}, in path "{spec_path}", before {before},'
@@ -666,7 +671,7 @@ class GitlabService:
         return entities_before, entities_after
 
     def _parse_file_content(
-        self, file: ProjectFile
+            self, file: ProjectFile
     ) -> Union[str, dict[str, Any], list[Any]] | None:
         """
         Process a file from a project. If the file is a JSON or YAML, it will be parsed, otherwise the raw content will be returned
@@ -690,7 +695,7 @@ class GitlabService:
                 return file.decode().decode("utf-8")
 
     async def get_and_parse_single_file(
-        self, project: Project, file_path: str, branch: str
+            self, project: Project, file_path: str, branch: str
     ) -> dict[str, Any] | None:
         try:
             logger.info(
