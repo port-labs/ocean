@@ -6,25 +6,9 @@ from httpx import Timeout
 from loguru import logger
 
 from rate_limiter import GitLabRateLimiter
-from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
 REQUEST_TIMEOUT: int = 60
-CREATE_UPDATE_WEBHOOK_EVENTS: list[str] = [
-    "open",
-    "reopen",
-    "update",
-    "approved",
-    "unapproved",
-    "approval",
-    "unapproval",
-]
-DELETE_WEBHOOK_EVENTS: list[str] = ["close", "merge"]
-WEBHOOK_EVENTS_TO_TRACK: dict[str, bool] = {
-    "push_events": True,
-    "issues_events": True,
-    "merge_requests_events": True,
-}
 WEBHOOK_NAME: str = "Port-Ocean-Events-Webhook"
 PER_PAGE = 50
 
@@ -38,7 +22,7 @@ class GitlabClient:
         self.client.timeout = Timeout(REQUEST_TIMEOUT)
         self.rate_limiter = GitLabRateLimiter()
 
-    async def _make_request(
+    async def make_request(
             self,
             url: str,
             method: str = "GET",
@@ -95,7 +79,7 @@ class GitlabClient:
         while next_page:
             logger.info(f"Making paginated request for {kind} with params: {params}")
             url = f"{self.gitlab_host}/{kind}"
-            response = await self._make_request(url=url, query_params=params)
+            response = await self.make_request(url=url, query_params=params)
 
             data_to_enrich = kind_configs.get("data_to_enrich")
             if data_to_enrich:
@@ -117,58 +101,12 @@ class GitlabClient:
             self, resource_kind: str, resource_id: str
     ) -> dict[str, Any]:
         """Get a single resource by kind and ID."""
-        return await self._make_request(f"{self.gitlab_host}/{resource_kind}/{resource_id}")
+        return await self.make_request(f"{self.gitlab_host}/{resource_kind}/{resource_id}")
 
     async def _enrich_resource_kind(self, kind: str, resource_data: dict[str, Any], data_to_enrich: list[str]) -> dict[str, Any]:
         for data in data_to_enrich:
-            response = await self._make_request(url=f"{self.gitlab_host}/{kind}/{int(resource_data['id'])}/{data}")
+            response = await self.make_request(url=f"{self.gitlab_host}/{kind}/{int(resource_data['id'])}/{data}")
             resource_data[f"__{data}"] = response
 
         return resource_data
-
-    async def create_project_webhook(
-            self, webhook_host: str, project: dict[str, Any]
-    ) -> None:
-        payload: dict[str, Any] = {
-            "id": project["id"],
-            "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
-            "url": webhook_host,
-            **WEBHOOK_EVENTS_TO_TRACK,
-        }
-
-        try:
-            logger.info(f"Creating hook for project {project['path_with_namespace']}")
-            await self._make_request(
-                url=f"{self.gitlab_host}/projects/{project['id']}/hooks",
-                method="POST",
-                json_data=payload,
-            )
-            logger.info(f"Created hook for project {project['path_with_namespace']}")
-        except Exception as e:
-            logger.error(
-                f"Failed to create webhook for project {project['path_with_namespace']}: {e}"
-            )
-
-    async def create_group_webhook(
-            self, webhook_host: str, group: dict[str, Any]
-    ) -> None:
-        payload: dict[str, Any] = {
-            "id": group["id"],
-            "name": f"{ocean.config.integration.identifier}-{WEBHOOK_NAME}",
-            "url": webhook_host,
-            **WEBHOOK_EVENTS_TO_TRACK,
-        }
-
-        try:
-            logger.info(f"Creating hook for group {group['name']}")
-            await self._make_request(
-                url=f"{self.gitlab_host}/groups/{group['id']}/hooks",
-                method="POST",
-                json_data=payload,
-            )
-            logger.info(f"Created hook for group {group['name']}")
-        except Exception as e:
-            logger.error(
-                f"Failed to create webhook for group {group['path_with_namespace']}: {e}"
-            )
 

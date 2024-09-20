@@ -33,7 +33,7 @@ resources:
             fullPath: .namespace.full_path
             defaultBranch: .default_branch
           relations:
-            group: .__groups[0].id | tostring
+            group: if .__groups[0].id == null then "" else .__groups[0].id|tostring end
 
   - kind: merge_request
     selector:
