@@ -28,6 +28,7 @@ class ObjectKind(StrEnum):
 
 
 def init_client() -> JenkinsClient:
+    logger.info(f"Initializing JenkinsClient {ocean.integration_config}")
     return JenkinsClient(
         ocean.integration_config["jenkins_host"],
         ocean.integration_config["jenkins_user"],
