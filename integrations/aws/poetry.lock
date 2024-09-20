@@ -41,6 +41,22 @@ awscli = ["awscli (>=1.32.41,<1.32.70)"]
 boto3 = ["boto3 (>=1.34.41,<1.34.70)"]
 
 [[package]]
+name = "aiocache"
+version = "0.12.2"
+description = "multi backend asyncio cache"
+optional = false
+python-versions = "*"
+files = [
+    {file = "aiocache-0.12.2-py2.py3-none-any.whl", hash = "sha256:9b6fa30634ab0bfc3ecc44928a91ff07c6ea16d27d55469636b296ebc6eb5918"},
+    {file = "aiocache-0.12.2.tar.gz", hash = "sha256:b41c9a145b050a5dcbae1599f847db6dd445193b1f3bd172d8e0fe0cb9e96684"},
+]
+
+[package.extras]
+memcached = ["aiomcache (>=0.5.2)"]
+msgpack = ["msgpack (>=0.5.5)"]
+redis = ["redis (>=4.2.0)"]
+
+[[package]]
 name = "aiohappyeyeballs"
 version = "2.4.0"
 description = "Happy Eyeballs for asyncio"
@@ -4126,4 +4142,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "5d0ba3e33ce2bc726ef91ef5ea333a27a4a5eec0c9c0b58fb015bb82e8e26e83"
+content-hash = "b82f7a2e65063dbf1f5f5478e209da26697f582fbf09bb136370b6ac0e56bcab"
