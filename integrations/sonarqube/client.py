@@ -102,13 +102,12 @@ class SonarQubeClient:
 
         query_params = query_params or {}
         query_params["ps"] = PAGE_SIZE
+        all_resources = []  # List to hold all fetched resources
 
         try:
             logger.debug(
                 f"Sending API request to {method} {endpoint} with query params: {query_params}"
             )
-
-            all_resources = []  # List to hold all fetched resources
 
             while True:
                 response = await self.http_client.request(
@@ -135,6 +134,19 @@ class SonarQubeClient:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
+            if (
+                e.response.status_code == 400
+                and query_params.get("ps", 0) > PAGE_SIZE
+                and endpoint in [Endpoints.ONPREM_ISSUES, Endpoints.SAAS_ISSUES]
+            ):
+                logger.error(
+                    "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Consider using apiFilters in the config mapping to narrow the scope of your search. Returning accumulated issues and skipping further results."
+                )
+                return all_resources
+
+            if e.response.status_code == 404:
+                logger.error(f"Resource not found: {e.response.text}")
+                return all_resources
             raise
         except httpx.HTTPError as e:
             logger.error(f"HTTP occurred while fetching paginated data: {e}")
