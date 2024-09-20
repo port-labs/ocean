@@ -18,28 +18,35 @@ async def gitlab_webhook(request: Request):
     await gitlab_integration.handle_webhook_event(event_type, payload)
     return {"status": "success"}
 
+@ocean.on_resync()
+async def on_resync_globals(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for item in gitlab_integration.resync_resources(kind):
+        yield item
+
 
 @ocean.on_resync(ObjectKind.GROUP)
 async def on_resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for item in gitlab_integration.resync_resources(ObjectKind.GROUP):
+    async for item in gitlab_integration.resync_resources(kind):
         yield item
+
+
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for item in gitlab_integration.resync_resources(ObjectKind.PROJECT):
+    async for item in gitlab_integration.resync_resources(kind):
         yield item
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
 async def on_resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for item in gitlab_integration.resync_resources(ObjectKind.MERGE_REQUEST):
+    async for item in gitlab_integration.resync_resources(kind):
         yield item
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for item in gitlab_integration.resync_resources(ObjectKind.ISSUE):
+    async for item in gitlab_integration.resync_resources(kind):
         yield item
 
 
