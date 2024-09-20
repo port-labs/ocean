@@ -144,7 +144,7 @@ class GitLabIntegration:
     async def handle_webhook_event(self, event_type: str, object_attributes_action: str, payload: Dict[str, Any]):
         handler = self.event_handlers.get(event_type)
         if handler:
-            await handler(payload, object_attributes_action)
+            await handler(object_attributes_action, payload)
         else:
             logger.warning(f"Unhandled event type: {event_type}")
 
