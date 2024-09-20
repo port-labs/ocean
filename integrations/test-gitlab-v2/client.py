@@ -1,3 +1,4 @@
+import asyncio
 import httpx
 from typing import List, Dict, Any, AsyncIterator
 from loguru import logger
@@ -14,9 +15,25 @@ class GitLabClient:
         url = f"{self.base_url}/{endpoint}"
         logger.info(f"Making {method} request to {url}")
         async with httpx.AsyncClient() as client:
-            response = await client.request(method, url, headers=self.headers, timeout=60, **kwargs)
-            logger.info(f"Response received from {url} with status code {response.status_code}")
-            response.raise_for_status()  # Raise error for non-2xx status
+            try:
+                response = await client.request(method, url, headers=self.headers, timeout=60, **kwargs)
+                logger.info(f"Response received from {url} with status code {response.status_code}")
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 403:
+                    logger.error(f"Permission denied for endpoint: {url}")
+                elif exc.response.status_code == 404:
+                    logger.error(f"Resource not found: {url}")
+                else:
+                    logger.error(f"Error occurred during request: {exc}")
+                return {}
+            
+            # Handle rate limiting
+            if 'RateLimit-Remaining' in response.headers and int(response.headers['RateLimit-Remaining']) == 0:
+                reset_time = int(response.headers.get('RateLimit-Reset', 60))
+                logger.warning(f"Rate limit exceeded, sleeping for {reset_time} seconds")
+                await asyncio.sleep(reset_time)
+
             return response.json()
 
     async def get_groups(self) -> AsyncIterator[List[Dict[str, Any]]]:
@@ -44,10 +61,11 @@ class GitLabClient:
             yield page
 
     async def get_projects(self) -> AsyncIterator[List[Dict[str, Any]]]:
-        """Fetch projects from GitLab."""
+        """Fetch projects from GitLab that belong to the access token's owner."""
         endpoint = "projects"
-        logger.info("Fetching projects from GitLab")
-        async for page in self._paginated_request("GET", endpoint):
+        params = {"owned": "true"}  # Use params to pass query parameters
+        logger.info("Fetching projects owned by the authenticated user from GitLab")
+        async for page in self._paginated_request("GET", endpoint, params=params):
             logger.info(f"Fetched page with {len(page)} projects")
             yield page
 
@@ -73,8 +91,19 @@ class GitLabClient:
         if not project_id:
             logger.warning("Missing project_id, skipping webhook setup.")
             return
+
+        # List existing webhooks and check for duplication
         endpoint = f"projects/{project_id}/hooks"
+        logger.info(f"Checking for existing webhooks for project {project_id}")
+        existing_hooks = await self._request("GET", endpoint)
+
         webhook_url = f"{app_host}/webhook"
+        for hook in existing_hooks:
+            if hook.get("url") == webhook_url:
+                logger.info(f"Webhook already exists for {webhook_url}. Skipping creation.")
+                return
+
+        # Set up a new webhook if none exists
         payload = {
             "url": webhook_url,
             "token": webhook_token,

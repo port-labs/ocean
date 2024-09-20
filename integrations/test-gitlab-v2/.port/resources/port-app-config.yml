@@ -12,6 +12,26 @@ resources:
             visibility: .visibility
             url: .web_url
             description: .description
+          relations: {}
+
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .path_with_namespace | gsub(" "; "")
+          title: .name
+          blueprint: '"project"'
+          properties:
+            url: .web_url
+            description: .description
+            language: .language
+            namespace: .namespace
+            fullPath: .path_with_namespace
+            defaultBranch: .default_branch
+          relations:
+            group: .namespace.path
 
   - kind: merge-request
     selector:
@@ -27,7 +47,9 @@ resources:
             status: .state
             createdAt: .created_at
             updatedAt: .updated_at
+            mergedAt: .merged_at
             link: .web_url
+            reviewers: .reviewers | map(.name)
           relations:
             service: '.web_url | split("/") | .[3] + "/" + .[4]'
 
@@ -48,24 +70,6 @@ resources:
             closedAt: .closed_at
             creator: .author.name
             status: .state
+            labels: .labels | map(.name)
           relations:
             service: '.web_url | split("/") | .[3] + "/" + .[4]'
-  
-  - kind: project
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: .path_with_namespace | gsub(" "; "")
-          title: .name
-          blueprint: '"project"'
-          properties:
-            url: .web_url
-            description: .description
-            language: .language
-            namespace: .namespace
-            fullPath: .full_path
-            defaultBranch: .default_branch
-          relations:
-            group: .namespace.path
