@@ -264,10 +264,13 @@ class AzureDevopsClient(HTTPBaseClient):
                 yield [
                     {
                         **column,
-                        "__board_id": board.get("id"),
-                        "__project": board.get("__project"),
+                        "__board": board,
+                        "__stateType": stateType,
+                        "__stateName": stateName,
                     }
                     for column in board.get("columns", [])
+                    if column.get("stateMappings")
+                    for stateType, stateName in column.get("stateMappings").items()
                 ]
 
     async def _enrich_board(

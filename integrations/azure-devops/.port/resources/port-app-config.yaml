@@ -89,15 +89,17 @@ resources:
             changedDate: .fields."System.ChangedDate"
           relations:
             project: .__projectId | gsub(" "; "")
-            column: .__project.id + .fields."System.BoardColumn" | gsub(" "; "")
+            column: >-
+              .fields."System.WorkItemType"+"-"+.fields."System.BoardColumn"+"-"+.__project.id
+              | gsub(" "; "")
   - kind: column
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .__project.id+.name | gsub(" "; "")
+          identifier: .__stateType+"-"+.name+"-"+.__board.__project.id | gsub(" "; "")
           title: .name
           blueprint: '"column"'
           relations:
-            board: .__board_id | gsub(" "; "")
+            board: .__board.id | gsub(" "; "")
