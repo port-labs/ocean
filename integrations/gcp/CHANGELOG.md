@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.57 (2024-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.11
+
+
+## 0.1.56 (2024-09-15)
+
+
+### Improvements
+
+- Extracted the subscription from the asset inventory and added specific fetching via the GCP's SubscriberAPI.
+- Changed realtime's default non-specific behavior to rely on the asset's data in the feed.
+
+
+## 0.1.55 (2024-09-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.10 (#1)
+
+
 ## 0.1.54 (2024-09-06)
 
 

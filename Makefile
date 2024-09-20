@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all lint build run new test test/watch clean bump/integrations bump/single-integration execute/all
+.SILENT: install install/all test/all lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all
 
 
 # Install dependencies
@@ -98,6 +98,11 @@ install/all: install
 lint:
 	$(ACTIVATE) && \
 	$(call run_checks,.)
+
+lint/fix:
+	$(ACTIVATE) && \
+	black .
+	ruff check --fix .
 
 # Development commands
 build:
