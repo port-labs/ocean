@@ -2,6 +2,7 @@ import typing
 from typing import Any, AsyncGenerator
 
 from httpx import Timeout, BasicAuth
+import httpx
 from jira.overrides import JiraResourceConfig
 from loguru import logger
 
@@ -25,6 +26,14 @@ WEBHOOK_EVENTS = [
     "project_restored_archived",
 ]
 
+class BearerAuth(httpx.Auth):
+    def __init__(self, token: str):
+        self.token = token
+
+    def auth_flow(self, request):
+        request.headers["Authorization"] = f"Bearer {self.token}"
+        yield request
+
 
 class JiraClient:
     def __init__(self, jira_url: str, jira_email: str, jira_token: str) -> None:
@@ -33,7 +42,12 @@ class JiraClient:
         self.jira_email = jira_email
         self.jira_token = jira_token
 
-        self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
+        # If the Jira URL is directing to api.atlassian.com, we use OAuth2 Bearer Auth
+        if "api.atlassian.com" in self.jira_url:
+            self.jira_api_auth = BearerAuth(self.jira_token)
+        else:
+            self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
+
 
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
@@ -50,6 +64,9 @@ class JiraClient:
             "maxResults": maxResults,
             "startAt": startAt,
         }
+    
+    def bearer_auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
 
     async def _get_paginated_projects(self, params: dict[str, Any]) -> dict[str, Any]:
         project_response = await self.client.get(
