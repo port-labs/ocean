@@ -12,6 +12,7 @@ jobs:
     needs: detect-changes
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 5
       matrix:
         folder: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
     steps:

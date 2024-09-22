@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.detect-changes.outputs.integrations != '[]' }}
     strategy:
+      max-parallel: 5
       matrix:
         folder: ${{ fromJson(needs.detect-changes.outputs.integrations) }}
     steps:
