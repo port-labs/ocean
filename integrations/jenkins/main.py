@@ -80,7 +80,7 @@ async def on_resync_stages(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             stages = stages[: max_stages - stages_count]
             yield stages
             logger.warning(
-                f"Reached the maximum limit of {max_stages} stages. Stopping the sync."
+                f"Reached the maximum limit of {max_stages} stages. Skipping the remaining stages."
             )
             return
         stages_count += len(stages)
