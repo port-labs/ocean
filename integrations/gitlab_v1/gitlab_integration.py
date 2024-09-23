@@ -1,6 +1,6 @@
 import yaml
 from enum import StrEnum
-from typing import Any, Dict, AsyncGenerator
+from typing import Any, Dict, AsyncGenerator, List
 from port_ocean.context.ocean import ocean
 from client import GitlabHandler
 from helpers.webhook_handler import WebhookHandler
@@ -32,27 +32,21 @@ ENDPOINT_MAPPING = {
 
 class GitLabIntegration:
     def __init__(self):
-        self.gitlab_handlers = []
-        self.webhook_handlers = []
+        self.gitlab_handlers: List[GitlabHandler] = []
+        self.webhook_handlers: List[WebhookHandler] = []
         self.config = self.load_config()
 
 
-    def load_config(self):
+    @staticmethod
+    def load_config():
         with open(CONFIG_FILE_PATH, 'r') as config_file:
             return yaml.safe_load(config_file)
 
 
     async def initialize(self):
-        gitlab_tokens = ocean.integration_config.get('gitlab_token', [])
+        gitlab_tokens = self._parse_gitlab_tokens()
         if not gitlab_tokens:
             raise ValueError("No GitLab Tokens provided in configuration")
-
-
-        if isinstance(gitlab_tokens, str):
-            gitlab_tokens = [gitlab_tokens]
-
-
-        gitlab_tokens = [token for token in gitlab_tokens if token]
 
 
         logger.info(f"Initializing with {len(gitlab_tokens)} tokens")
@@ -66,13 +60,19 @@ class GitLabIntegration:
 
 
         logger.info(f"GitLab integration initialized with {len(self.gitlab_handlers)} handlers")
-
-
         await self.setup_webhooks()
 
 
+    def _parse_gitlab_tokens(self) -> List[str]:
+        gitlab_tokens_string = ocean.integration_config.get('gitlab_token', '')
+        logger.info(f"Retrieved tokens string: {gitlab_tokens_string}")
+        gitlab_tokens = [token.strip() for token in gitlab_tokens_string.split(',') if token.strip()]
+        logger.info(f"Parsed tokens: {gitlab_tokens}")
+        return gitlab_tokens
+
+
     async def setup_webhooks(self):
-        events = self.get_webhook_events()
+        events = self.config.get('events', [])
         logger.info(f"Setting up webhooks with events: {events}")
 
 
@@ -80,10 +80,10 @@ class GitLabIntegration:
         logger.info("Using generated webhook secret" if WEBHOOK_SECRET is None else "Using provided webhook secret")
 
 
-        setup_tasks = []
-        for webhook_handler in self.webhook_handlers:
-            task = asyncio.create_task(webhook_handler.setup_group_webhooks(WEBHOOK_URL, webhook_secret, events))
-            setup_tasks.append(task)
+        setup_tasks = [
+            webhook_handler.setup_group_webhooks(WEBHOOK_URL, webhook_secret, events)
+            for webhook_handler in self.webhook_handlers
+        ]
 
 
         try:
@@ -92,10 +92,6 @@ class GitLabIntegration:
         except Exception as e:
             logger.error(f"Failed to set up webhooks: {str(e)}")
             raise
-
-
-    def get_webhook_events(self):
-        return self.config.get('events', [])
 
 
     async def resync_resources(self, kind: ObjectKind) -> AsyncGenerator[Dict[str, Any], None]:
@@ -114,181 +110,61 @@ class GitLabIntegration:
 
 
     async def handle_webhook_event(self, event_type: str, payload: Dict[str, Any]):
-        handlers = {
-            "push": self.handle_push_event,
-            "tag_push": self.handle_tag_push_event,
-            "issue": self.handle_issue_event,
-            "note": self.handle_note_event,
-            "merge_request": self.handle_merge_request_event,
-            "wiki_page": self.handle_wiki_page_event,
-            "pipeline": self.handle_pipeline_event,
-            "job": self.handle_job_event,
-            "deployment": self.handle_deployment_event,
-            "feature_flag": self.handle_feature_flag_event,
-            "release": self.handle_release_event,
-            "project_token": self.handle_project_token_event,
-            "group_token": self.handle_group_token_event,
-        }
-        handler = handlers.get(event_type)
+        handler = self.event_handlers.get(event_type)
         if handler:
             await handler(payload)
         else:
             logger.warning(f"Unhandled event type: {event_type}")
 
 
-    async def handle_push_event(self, payload: Dict[str, Any]):
+    event_handlers = {
+        "push": lambda self, payload: self._update_project(payload),
+        "tag_push": lambda self, payload: self._update_project(payload),
+        "issue": lambda self, payload: self._update_issue(payload),
+        "merge_request": lambda self, payload: self._update_merge_request(payload),
+        "wiki_page": lambda self, payload: self._update_project(payload),
+        "pipeline": lambda self, payload: self._update_project(payload),
+        "job": lambda self, payload: self._update_project(payload),
+        "deployment": lambda self, payload: self._update_project(payload),
+        "feature_flag": lambda self, payload: self._update_project(payload),
+        "release": lambda self, payload: self._update_project(payload),
+        "project_token": lambda self, payload: self._update_project(payload),
+        "group_token": lambda self, payload: self._update_group(payload),
+    }
+
+
+    async def _update_project(self, payload: Dict[str, Any]):
         project_id = payload.get("project", {}).get("id")
         if project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    project = await gitlab_handler.get_single_resource("projects", str(project_id))
-                    await ocean.register_raw(ObjectKind.PROJECT, project)
-                    logger.info(f"Updated project {project_id} in Port")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update project {project_id}: {str(e)}")
+            await self._update_resource("projects", str(project_id), ObjectKind.PROJECT)
 
 
-    async def handle_tag_push_event(self, payload: Dict[str, Any]):
-        project_id = payload.get("project", {}).get("id")
-        if project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    project = await gitlab_handler.get_single_resource("projects", str(project_id))
-                    await ocean.register_raw(ObjectKind.PROJECT, project)
-                    logger.info(f"Updated project {project_id} in Port after tag push")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update project {project_id} after tag push: {str(e)}")
-
-
-    async def handle_issue_event(self, payload: Dict[str, Any]):
+    async def _update_issue(self, payload: Dict[str, Any]):
         issue_id = payload.get("object_attributes", {}).get("id")
         project_id = payload.get("project", {}).get("id")
         if issue_id and project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    issue = await gitlab_handler.get_single_resource(f"projects/{project_id}/issues", str(issue_id))
-                    await ocean.register_raw(ObjectKind.ISSUE, issue)
-                    logger.info(f"Updated issue {issue_id} in Port")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update issue {issue_id}: {str(e)}")
+            await self._update_resource(f"projects/{project_id}/issues", str(issue_id), ObjectKind.ISSUE)
 
 
-    async def handle_merge_request_event(self, payload: Dict[str, Any]):
+    async def _update_merge_request(self, payload: Dict[str, Any]):
         mr_id = payload.get("object_attributes", {}).get("id")
         project_id = payload.get("project", {}).get("id")
         if mr_id and project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    mr = await gitlab_handler.get_single_resource(f"projects/{project_id}/merge_requests", str(mr_id))
-                    await ocean.register_raw(ObjectKind.MERGE_REQUEST, mr)
-                    logger.info(f"Updated merge request {mr_id} in Port")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update merge request {mr_id}: {str(e)}")
+            await self._update_resource(f"projects/{project_id}/merge_requests", str(mr_id), ObjectKind.MERGE_REQUEST)
 
 
-    async def handle_wiki_page_event(self, payload: Dict[str, Any]):
-        project_id = payload.get("project", {}).get("id")
-        if project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    project = await gitlab_handler.get_single_resource("projects", str(project_id))
-                    await ocean.register_raw(ObjectKind.PROJECT, project)
-                    logger.info(f"Updated project {project_id} in Port after wiki page event")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update project {project_id} after wiki page event: {str(e)}")
-
-
-    async def handle_pipeline_event(self, payload: Dict[str, Any]):
-        project_id = payload.get("project", {}).get("id")
-        if project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    project = await gitlab_handler.get_single_resource("projects", str(project_id))
-                    await ocean.register_raw(ObjectKind.PROJECT, project)
-                    logger.info(f"Updated project {project_id} in Port after pipeline event")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update project {project_id} after pipeline event: {str(e)}")
-
-
-    async def handle_job_event(self, payload: Dict[str, Any]):
-        project_id = payload.get("project", {}).get("id")
-        if project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    project = await gitlab_handler.get_single_resource("projects", str(project_id))
-                    await ocean.register_raw(ObjectKind.PROJECT, project)
-                    logger.info(f"Updated project {project_id} in Port after job event")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update project {project_id} after job event: {str(e)}")
-
-
-    async def handle_deployment_event(self, payload: Dict[str, Any]):
-        project_id = payload.get("project", {}).get("id")
-        if project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    project = await gitlab_handler.get_single_resource("projects", str(project_id))
-                    await ocean.register_raw(ObjectKind.PROJECT, project)
-                    logger.info(f"Updated project {project_id} in Port after deployment event")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update project {project_id} after deployment event: {str(e)}")
-
-
-    async def handle_feature_flag_event(self, payload: Dict[str, Any]):
-        project_id = payload.get("project", {}).get("id")
-        if project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    project = await gitlab_handler.get_single_resource("projects", str(project_id))
-                    await ocean.register_raw(ObjectKind.PROJECT, project)
-                    logger.info(f"Updated project {project_id} in Port after feature flag event")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update project {project_id} after feature flag event: {str(e)}")
-
-
-    async def handle_release_event(self, payload: Dict[str, Any]):
-        project_id = payload.get("project", {}).get("id")
-        if project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    project = await gitlab_handler.get_single_resource("projects", str(project_id))
-                    await ocean.register_raw(ObjectKind.PROJECT, project)
-                    logger.info(f"Updated project {project_id} in Port after release event")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update project {project_id} after release event: {str(e)}")
-
-
-    async def handle_project_token_event(self, payload: Dict[str, Any]):
-        project_id = payload.get("project", {}).get("id")
-        if project_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    project = await gitlab_handler.get_single_resource("projects", str(project_id))
-                    await ocean.register_raw(ObjectKind.PROJECT, project)
-                    logger.info(f"Updated project {project_id} in Port after project token event")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update project {project_id} after project token event: {str(e)}")
-
-
-    async def handle_group_token_event(self, payload: Dict[str, Any]):
+    async def _update_group(self, payload: Dict[str, Any]):
         group_id = payload.get("group", {}).get("id")
         if group_id:
-            for gitlab_handler in self.gitlab_handlers:
-                try:
-                    group = await gitlab_handler.get_single_resource("groups", str(group_id))
-                    await ocean.register_raw(ObjectKind.GROUP, group)
-                    logger.info(f"Updated group {group_id} in Port after group token event")
-                    break
-                except Exception as e:
-                    logger.error(f"Failed to update group {group_id} after group token event: {str(e)}")
+            await self._update_resource("groups", str(group_id), ObjectKind.GROUP)
+
+
+    async def _update_resource(self, endpoint: str, resource_id: str, kind: ObjectKind):
+        for gitlab_handler in self.gitlab_handlers:
+            try:
+                resource = await gitlab_handler.get_single_resource(endpoint, resource_id)
+                await ocean.register_raw(kind, resource)
+                logger.info(f"Updated {kind} {resource_id} in Port")
+                break
+            except Exception as e:
+                logger.error(f"Failed to update {kind} {resource_id}: {str(e)}")
