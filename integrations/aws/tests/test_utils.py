@@ -9,19 +9,19 @@ class MockException(Exception):
 
 def test_access_denied_exception_with_response() -> None:
     e = MockException(response={"Error": {"Code": "AccessDenied"}})
-    assert is_access_denied_exception(e) is True
+    assert is_access_denied_exception(e)
 
 
 def test_access_denied_exception_without_response() -> None:
     e = MockException(response=None)
-    assert is_access_denied_exception(e) is False
+    assert not is_access_denied_exception(e)
 
 
 def test_access_denied_exception_with_other_error() -> None:
     e = MockException(response={"Error": {"Code": "SomeOtherError"}})
-    assert is_access_denied_exception(e) is False
+    assert not is_access_denied_exception(e)
 
 
 def test_access_denied_exception_no_response_attribute() -> None:
     e = Exception("Test exception")
-    assert is_access_denied_exception(e) is False
+    assert not is_access_denied_exception(e)
