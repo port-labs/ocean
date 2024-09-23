@@ -62,10 +62,10 @@ async def test_get_stages(
 
     with (
         patch.object(
-            client, "get_job_builds", side_effect=mock_get_job_builds
+            client, "_get_job_builds", side_effect=mock_get_job_builds
         ) as mock_get_job_builds,
         patch.object(
-            client, "get_build_stages", new_callable=AsyncMock
+            client, "_get_build_stages", new_callable=AsyncMock
         ) as mock_get_build_stages,
     ):
 
@@ -163,7 +163,7 @@ async def test_get_stages_nested_jobs(
             client, "fetch_resources", side_effect=mock_fetch_resources
         ) as mock_fetch_resources,
         patch.object(
-            client, "get_build_stages", new_callable=AsyncMock
+            client, "_get_build_stages", new_callable=AsyncMock
         ) as mock_get_build_stages,
     ):
 
