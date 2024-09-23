@@ -47,13 +47,13 @@ class JenkinsClient:
             event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
             yield builds
 
-    async def get_build_stages(self, build_url: str) -> list[dict[str, Any]]:
+    async def _get_build_stages(self, build_url: str) -> list[dict[str, Any]]:
         response = await self.client.get(f"{build_url}/wfapi/describe")
         response.raise_for_status()
         stages = response.json()["stages"]
         return stages
 
-    async def get_job_builds(self, job_url: str) -> AsyncGenerator[Any, None]:
+    async def _get_job_builds(self, job_url: str) -> AsyncGenerator[Any, None]:
         job_details = await self.get_single_resource(job_url)
         if job_details.get("buildable"):
             yield job_details.get("builds")
@@ -66,13 +66,13 @@ class JenkinsClient:
     async def get_stages(
         self, job_url: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for builds in self.get_job_builds(job_url):
+        async for builds in self._get_job_builds(job_url):
             stages: list[dict[str, Any]] = []
             for build in builds:
                 build_url = build["url"]
                 try:
                     logger.info(f"Getting stages for build {build_url}")
-                    build_stages = await self.get_build_stages(build_url)
+                    build_stages = await self._get_build_stages(build_url)
                     stages.extend(build_stages)
                     yield build_stages
                 except Exception as e:
