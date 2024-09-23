@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added the `stage` kind to the integration to bring stages information about Jenkins builds
 
+## 0.1.59 (2024-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.12
+
+
 ## 0.1.58 (2024-09-17)
 
 
