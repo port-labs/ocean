@@ -41,18 +41,16 @@ class GitLabIntegration:
         with open(CONFIG_FILE_PATH, 'r') as config_file:
             return yaml.safe_load(config_file)
 
-
     async def initialize(self):
-        gitlab_tokens = ocean.integration_config.get('gitlab_token', [])
+        gitlab_tokens_string = ocean.integration_config.get('gitlab_token', '')
+        logger.info(f"Retrieved tokens string: {gitlab_tokens_string}")
+
+        gitlab_tokens = [token.strip() for token in gitlab_tokens_string.split(',') if token.strip()]
+        logger.info(f"Parsed tokens: {gitlab_tokens}")
+
+
         if not gitlab_tokens:
             raise ValueError("No GitLab Tokens provided in configuration")
-
-
-        if isinstance(gitlab_tokens, str):
-            gitlab_tokens = [gitlab_tokens]
-
-
-        gitlab_tokens = [token for token in gitlab_tokens if token]
 
 
         logger.info(f"Initializing with {len(gitlab_tokens)} tokens")
