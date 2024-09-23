@@ -50,7 +50,7 @@ class JenkinsClient:
     async def get_build_stages(self, build_url: str) -> list[dict[str, Any]]:
         response = await self.client.get(f"{build_url}/wfapi/describe")
         response.raise_for_status()
-        stages = response.json()["stages"]
+        stages = response.json().get("stages", [])
         return stages
 
     async def get_job_builds(self, job_url: str) -> AsyncGenerator[Any, None]:
