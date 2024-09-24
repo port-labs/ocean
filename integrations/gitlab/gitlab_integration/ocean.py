@@ -91,7 +91,7 @@ async def on_start() -> None:
         )
 
     try:
-        setup_application(
+        await setup_application(
             integration_config["token_mapping"],
             integration_config["gitlab_host"],
             integration_config["app_host"],
@@ -102,10 +102,7 @@ async def on_start() -> None:
         await event_handler.start_event_processor()
         await system_event_handler.start_event_processor()
     except Exception as e:
-        logger.warning(
-            f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}",
-            stack_info=True,
-        )
+        logger.exception(f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}")
 
 
 @ocean.on_resync(ObjectKind.GROUP)

@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 from typing import Any
 from gitlab_integration.gitlab_service import GitlabService
 
