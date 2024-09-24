@@ -66,7 +66,7 @@ class GitlabService:
     async def _get_webhook_for_group(self, group: RESTObject) -> RESTObject | None:
         webhook_url = f"{self.app_host}/integration/hook/{group.get_id()}"
         async for hook_batch in AsyncFetcher.fetch_batch(
-            group.hooks.list, page_size=10
+            group.hooks.list
         ):
             for hook in hook_batch:
                 if hook.url == webhook_url:
