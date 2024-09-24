@@ -25,7 +25,7 @@ def is_access_denied_exception(e: Exception) -> bool:
         "UnauthorizedOperation",
     ]
 
-    if hasattr(e, "response"):
+    if hasattr(e, "response") and e.response is not None:
         error_code = e.response.get("Error", {}).get("Code")
         return error_code in access_denied_error_codes
 
