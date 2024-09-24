@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.124 (2024-09-24)
+====================
+
+### Improvements
+
+- Added more logs and implemented the webhook creation in async (0.1.124)
+
+
 0.1.123 (2024-09-22)
 ====================
 
