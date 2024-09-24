@@ -10,7 +10,6 @@ from aws.aws_credentials import AwsCredentials
 from aiocache import cached, Cache  # type: ignore
 from asyncio import Lock
 
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 _session_manager: SessionManager = SessionManager()
@@ -79,7 +78,7 @@ async def get_sessions(
 
     async def handle_account(
         credentials: AwsCredentials,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    ) -> AsyncIterator[aioboto3.Session]:
         if use_default_region:
             default_region = get_default_region_from_credentials(credentials)
             yield await credentials.create_session(default_region)

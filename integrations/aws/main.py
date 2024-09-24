@@ -8,7 +8,6 @@ from pydantic import BaseModel
 
 from aws.aws_credentials import AwsCredentials
 from port_ocean.core.models import Entity
-from port_ocean.core.utils import zip_and_sum
 
 from utils.resources import (
     is_global_resource,
