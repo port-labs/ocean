@@ -64,11 +64,15 @@ class GitlabService:
             GITLAB_SEARCH_RATE_LIMIT * 0.95, 60
         )
 
+    async def get_group_hooks(self, group: RESTObject) -> AsyncIterator[List[Hook]]:
+        async for hooks_batch in AsyncFetcher.fetch_batch(group.hooks.list):
+            hooks = typing.cast(List[Hook], hooks_batch)
+            yield hooks
+
     async def _get_webhook_for_group(self, group: RESTObject) -> RESTObject | None:
         webhook_url = f"{self.app_host}/integration/hook/{group.get_id()}"
-        async for hook_batch in AsyncFetcher.fetch_batch(group.hooks.list):
-            typed_hooks = typing.cast(List[Hook], hook_batch)
-            for hook in typed_hooks:
+        async for hook_batch in self.get_group_hooks(group):
+            for hook in hook_batch:
                 if hook.url == webhook_url:
                     return hook
         return None

@@ -27,6 +27,15 @@ NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not e
 PROJECT_RESYNC_BATCH_SIZE = 10
 
 
+async def start_processors() -> None:
+    """Helper function to start the event processors."""
+    try:
+        await event_handler.start_event_processor()
+        await system_event_handler.start_event_processor()
+    except Exception as e:
+        logger.exception(f"Failed to start event processors: {e}")
+
+
 @ocean.router.post("/hook/{group_id}")
 async def handle_webhook_request(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f"{request.headers.get('X-Gitlab-Event')}:{group_id}"
@@ -79,8 +88,9 @@ async def on_start() -> None:
 
     if not integration_config.get("app_host"):
         logger.warning(
-            f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
+            f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}. Starting the event processors"
         )
+        await start_processors()
         return
 
     token_webhook_mapping: WebhookMappingConfig | None = None
@@ -98,11 +108,10 @@ async def on_start() -> None:
             integration_config["use_system_hook"],
             token_webhook_mapping,
         )
-
-        await event_handler.start_event_processor()
-        await system_event_handler.start_event_processor()
     except Exception as e:
         logger.exception(f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}")
+
+    await start_processors()  # Ensure event processors are started regardless of webhook setup
 
 
 @ocean.on_resync(ObjectKind.GROUP)
