@@ -155,7 +155,7 @@ class SessionManager:
         try:
             account_role = await sts_client.assume_role(
                 RoleArn=f'arn:aws:iam::{account["Id"]}:role/{self._get_account_read_role_name()}',
-                RoleSessionName="AssumeRoleSession",
+                RoleSessionName="OceanMemberAssumeRoleSession",
                 DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
             )
             raw_credentials = account_role["Credentials"]
