@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.10.12 (2024-09-19)
+
+### Bug Fixes
+
+- Fixed updating state of resync when the resync is being cancelled by a new resync event
+
+## 0.10.11 (2024-09-17)
+
+### Improvements
+
+- Add smoke test with a live integration to validate core changes
+
 ## 0.10.10 (2024-09-12)
 
 ### Bug Fixes

@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.2.42 (2024-09-24)
+
+### Bug Fixes
+
+- Fixes an issue where `is_access_denied_exception` could raise an `AttributeError` if `e.response` is `None`.
+
+## 0.2.41 (2024-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.12
+
+
+## 0.2.40 (2024-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.11
+
 
 ## 0.2.40 (2024-09-18)
 

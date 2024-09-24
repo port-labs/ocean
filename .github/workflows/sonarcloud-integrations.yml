@@ -39,6 +39,7 @@ jobs:
     needs: pre-run
     if: ${{ needs.pre-run.outputs.count_changed_integrations > 0 }}
     strategy:
+      max-parallel: 5
       matrix: ${{ fromJson(needs.pre-run.outputs.changed_integrations) }}
     runs-on: ubuntu-latest
     steps:
