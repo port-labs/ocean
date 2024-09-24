@@ -19,6 +19,7 @@ from gitlab.v4.objects import (
     ProjectFile,
     ProjectPipeline,
     ProjectPipelineJob,
+    Hook,
 )
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
@@ -65,10 +66,9 @@ class GitlabService:
 
     async def _get_webhook_for_group(self, group: RESTObject) -> RESTObject | None:
         webhook_url = f"{self.app_host}/integration/hook/{group.get_id()}"
-        async for hook_batch in AsyncFetcher.fetch_batch(
-            group.hooks.list
-        ):
-            for hook in hook_batch:
+        async for hook_batch in AsyncFetcher.fetch_batch(group.hooks.list):
+            typed_hooks = typing.cast(List[Hook], hook_batch)
+            for hook in typed_hooks:
                 if hook.url == webhook_url:
                     return hook
         return None
@@ -258,10 +258,11 @@ class GitlabService:
         return project.name in repos
 
     async def get_root_groups(self) -> List[Group]:
-        groups = []
+        groups: list[RESTObject] = []
         async for groups_batch in AsyncFetcher.fetch_batch(
             self.gitlab_client.groups.list
         ):
+            groups_batch = typing.cast(List[RESTObject], groups_batch)
             groups.extend(groups_batch)
 
         return typing.cast(
@@ -269,10 +270,12 @@ class GitlabService:
         )
 
     async def filter_groups_by_paths(self, groups_full_paths: list[str]) -> List[Group]:
-        groups = []
+        groups: list[RESTObject] = []
+
         async for groups_batch in AsyncFetcher.fetch_batch(
             self.gitlab_client.groups.list
         ):
+            groups_batch = typing.cast(List[RESTObject], groups_batch)
             groups.extend(groups_batch)
 
         return typing.cast(
