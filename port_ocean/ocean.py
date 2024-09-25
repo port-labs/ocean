@@ -82,6 +82,10 @@ class Ocean:
             try:
                 await self.integration.sync_raw_all()
                 await self.resync_state_updater.update_after_resync()
+            except asyncio.CancelledError:
+                logger.warning(
+                    "resync was cancelled by the scheduled resync, skipping state update"
+                )
             except Exception as e:
                 await self.resync_state_updater.update_after_resync(
                     IntegrationStateStatus.Failed

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.96 (2024-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.12
+
+
+## 0.1.95 (2024-09-19)
+
+
+### Bug Fixes
+
+- Added handling for 400 and 404 HTTP errors to allow the integration to continue processing other requests instead of crashing (0.1.95)
+
+
 ## 0.1.94 (2024-09-17)
 
 

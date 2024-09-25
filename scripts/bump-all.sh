@@ -3,7 +3,7 @@
 SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd -P "${SCRIPT_BASE}/../" && pwd)"
 CURRENT_DIR=$(pwd)
-VERSION="^$(cd "${ROOT_DIR}" && source ./.venv/bin/activate && poetry version --short)"
+VERSION="^${1:-$(poetry search port-ocean | grep port-ocean | sed 's/.*(\(.*\))/\1/')}"
 
 echo "Going to bump ocean core to version ${VERSION} for all integrations"
 
