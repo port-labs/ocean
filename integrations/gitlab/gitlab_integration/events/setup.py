@@ -115,7 +115,7 @@ def validate_hooks_override_config(
     validate_groups_hooks_events(groups_paths)
 
 
-def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
+def setup_listeners(gitlab_service: GitlabService, group_id: str) -> None:
     handlers = [
         PushHook(gitlab_service),
         MergeRequest(gitlab_service),
@@ -127,9 +127,9 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
     ]
     for handler in handlers:
         logger.info(
-            f"Setting up listeners for webhook {webhook_id} for group mapping {gitlab_service.group_mapping}"
+            f"Setting up listeners {handler.events} for group {group_id} for group mapping {gitlab_service.group_mapping}"
         )
-        event_ids = [f"{event_name}:{webhook_id}" for event_name in handler.events]
+        event_ids = [f"{event_name}:{group_id}" for event_name in handler.events]
         event_handler.on(event_ids, handler.on_hook)
 
 
@@ -144,6 +144,7 @@ def setup_system_listeners(gitlab_clients: list[GitlabService]) -> None:
         ProjectFiles,
     ]
     for handler in handlers:
+        logger.info(f"Setting up system listeners {handler.system_events}")
         system_event_handler.on(handler)
 
     for gitlab_service in gitlab_clients:
@@ -166,10 +167,10 @@ async def create_webhooks_by_client(
         else None
     )
 
-    webhooks_ids: list[str] = []
+    groups_ids_with_webhooks: list[str] = []
 
     for group in groups_for_webhooks:
-        webhook_id = await gitlab_service.create_webhook(
+        group_id = await gitlab_service.create_webhook(
             group,
             (
                 groups_hooks_events_override.get(
@@ -180,10 +181,10 @@ async def create_webhooks_by_client(
             ),
         )
 
-        if webhook_id:
-            webhooks_ids.append(webhook_id)
+        if group_id:
+            groups_ids_with_webhooks.append(group_id)
 
-    return gitlab_service, webhooks_ids
+    return gitlab_service, groups_ids_with_webhooks
 
 
 async def setup_application(
@@ -209,34 +210,37 @@ async def setup_application(
             token_mapping, token_group_override_hooks_mapping
         )
 
-        client_to_webhooks: list[tuple[GitlabService, list[str]]] = []
+        client_to_group_ids_with_webhooks: list[tuple[GitlabService, list[str]]] = []
 
         for token, group_mapping in token_mapping.items():
-            if not token_group_override_hooks_mapping:
-                client_to_webhooks.append(
-                    await create_webhooks_by_client(
-                        gitlab_host,
-                        app_host,
-                        token,
-                        None,
-                        group_mapping,
-                    )
-                )
-            else:
-                groups = token_group_override_hooks_mapping.tokens.get(
-                    token, WebhookTokenConfig(groups=[])
-                ).groups
-                if groups:
-                    client_to_webhooks.append(
+            try:
+                if not token_group_override_hooks_mapping:
+                    client_to_group_ids_with_webhooks.append(
                         await create_webhooks_by_client(
                             gitlab_host,
                             app_host,
                             token,
-                            groups,
+                            None,
                             group_mapping,
                         )
                     )
+                else:
+                    groups = token_group_override_hooks_mapping.tokens.get(
+                        token, WebhookTokenConfig(groups=[])
+                    ).groups
+                    if groups:
+                        client_to_group_ids_with_webhooks.append(
+                            await create_webhooks_by_client(
+                                gitlab_host,
+                                app_host,
+                                token,
+                                groups,
+                                group_mapping,
+                            )
+                        )
+            except Exception as e:
+                logger.exception(f"Failed to create webhooks for group mapping {group_mapping}, error: {e}")
 
-        for client, webhook_ids in client_to_webhooks:
-            for webhook_id in webhook_ids:
-                setup_listeners(client, webhook_id)
+        for client, group_ids in client_to_group_ids_with_webhooks:
+            for group_id in group_ids:
+                setup_listeners(client, group_id)

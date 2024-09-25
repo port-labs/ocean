@@ -30,6 +30,7 @@ PROJECT_RESYNC_BATCH_SIZE = 10
 async def start_processors() -> None:
     """Helper function to start the event processors."""
     try:
+        logger.info("Starting event processors")
         await event_handler.start_event_processor()
         await system_event_handler.start_event_processor()
     except Exception as e:
@@ -90,7 +91,10 @@ async def on_start() -> None:
         logger.warning(
             f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}. Starting the event processors"
         )
-        await start_processors()
+        try:
+            await start_processors()
+        except Exception as e:
+            logger.exception(f"Failed to start event processors: {e}. {NO_WEBHOOK_WARNING}")
         return
 
     token_webhook_mapping: WebhookMappingConfig | None = None
@@ -110,8 +114,10 @@ async def on_start() -> None:
         )
     except Exception as e:
         logger.exception(f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}")
-
-    await start_processors()  # Ensure event processors are started regardless of webhook setup
+    try:
+        await start_processors()  # Ensure event processors are started regardless of webhook setup
+    except Exception as e:
+        logger.exception(f"Failed to start event processors: {e}. {NO_WEBHOOK_WARNING}")
 
 
 @ocean.on_resync(ObjectKind.GROUP)
@@ -133,7 +139,7 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
             while projects_batch := tuple(
-                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+                    islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
@@ -163,7 +169,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 for project in projects_batch:
                     if project.name in folder_selector.repos:
                         async for (
-                            folders_batch
+                                folders_batch
                         ) in service.get_all_folders_in_project_path(
                             project, folder_selector
                         ):
@@ -189,7 +195,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
             while projects_batch := tuple(
-                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+                    islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
@@ -213,13 +219,13 @@ async def resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for groups_batch in service.get_all_root_groups():
             for group in groups_batch:
                 async for merge_request_batch in service.get_opened_merge_requests(
-                    group
+                        group
                 ):
                     yield [
                         merge_request.asdict() for merge_request in merge_request_batch
                     ]
                 async for merge_request_batch in service.get_closed_merge_requests(
-                    group, updated_after
+                        group, updated_after
                 ):
                     yield [
                         merge_request.asdict() for merge_request in merge_request_batch

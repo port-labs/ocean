@@ -94,7 +94,7 @@ class GitlabService:
         }
 
         logger.info(
-            f"Creating webhook for {group.get_id()} with events: {[event for event in webhook_events if webhook_events[event]]}"
+            f"Creating webhook for group {group.get_id()} with events: {[event for event in webhook_events if webhook_events[event]]}"
         )
         try:
             resp = await AsyncFetcher.fetch_single(
@@ -105,10 +105,10 @@ class GitlabService:
                 },
             )
             logger.info(
-                f"Created webhook for {group.get_id()}, id={resp.id}, url={resp.url}"
+                f"Created webhook for group {group.get_id()}, webhook id={resp.id}, url={resp.url}"
             )
         except Exception as e:
-            logger.error(f"Failed to create webhook for {group.get_id()} error={e}")
+            logger.exception(f"Failed to create webhook for group {group.get_id()} error={e}")
 
     def _get_changed_files_between_commits(
         self, project_id: int, head: str
@@ -264,7 +264,8 @@ class GitlabService:
     async def get_root_groups(self) -> List[Group]:
         groups: list[RESTObject] = []
         async for groups_batch in AsyncFetcher.fetch_batch(
-            self.gitlab_client.groups.list
+            self.gitlab_client.groups.list,
+            retry_transient_errors=True
         ):
             groups_batch = typing.cast(List[RESTObject], groups_batch)
             groups.extend(groups_batch)
@@ -277,7 +278,8 @@ class GitlabService:
         groups: list[RESTObject] = []
 
         async for groups_batch in AsyncFetcher.fetch_batch(
-            self.gitlab_client.groups.list
+            self.gitlab_client.groups.list,
+            retry_transient_errors=True
         ):
             groups_batch = typing.cast(List[RESTObject], groups_batch)
             groups.extend(groups_batch)
@@ -342,11 +344,11 @@ class GitlabService:
     ) -> str | None:
         logger.info(f"Creating webhook for the group: {group.attributes['full_path']}")
 
-        webhook_id = None
         group_id = group.get_id()
 
         if group_id is None:
             logger.info(f"Group {group.attributes['full_path']} has no id. skipping...")
+            return None
         else:
             hook = await self._get_webhook_for_group(group)
             if hook:
@@ -361,9 +363,8 @@ class GitlabService:
                     logger.info(f"Webhook re-created for group {group.get_id()}")
             else:
                 await self._create_group_webhook(group, events)
-            webhook_id = str(group_id)
 
-        return webhook_id
+        return str(group_id)
 
     def create_system_hook(self) -> None:
         logger.info("Checking if system hook already exists")
