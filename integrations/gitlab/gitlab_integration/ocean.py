@@ -208,9 +208,13 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     for project in projects_batch
                     if service.should_process_project(project, selector.files.repos)
                 ]
+
                 if tasks:
+                    logger.info(f"Found {len(tasks)} relevant projects in batch")
                     async for batch in stream_async_iterators_tasks(*tasks):
                         yield batch
+                else:
+                    logger.info("No relevant projects were found in batch, skipping it")
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
