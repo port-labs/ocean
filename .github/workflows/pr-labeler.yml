@@ -4,11 +4,46 @@ on:
   - pull_request_target
 
 jobs:
-  triage:
+  labeler:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/labeler@v5
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Create dynamic labeler configuration
+        env:
+          yamlfile: .github/labeler.yml
+        run: |
+          find integrations -mindepth 1 -maxdepth 1 -type d | grep -v '/\.' | awk -F'/' '{print $NF}' | jq -R -s -c 'split("\n")[:-1]' > integrations.json
+          echo "Integrations:"
+          cat integrations.json
+          touch ${{ env.yamlfile }}
+          echo "Add dynamic integration labels to ${{ env.yamlfile }}"
+          jq -r '.[]' integrations.json | while read integration; do
+            label="${integration//\//-}"
+            if [ "${#label}" -gt 63 ]; then
+                echo "Label is longer than 63 characters: $label"
+                label="${label:0:63}"
+                echo "Trimmed label to 63 characters: $label"
+            fi
+
+            echo "- $integration -> $label"
+
+            cat >> ${{ env.yamlfile }} << EOF
+          $label:
+            - changed-files:
+              - any-glob-to-any-file: 'integrations/$integration/**'
+          EOF
+          done
+
+          echo "Output file"
+          cat ${{ env.yamlfile }}
+
+      - name: Apply labels
+        uses: actions/labeler@v5
         with:
+          sync-labels: true
+          config-path: .github/labeler.yml
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
 
   size-label:
