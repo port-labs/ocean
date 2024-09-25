@@ -69,17 +69,14 @@ class EventHandler(BaseEventHandler):
             self._observers[event].append(observer)
 
     async def _notify(self, event_id: str, body: dict[str, Any]) -> None:
-        observers = asyncio.gather(
-            *(
-                observer(event_id, body)
-                for observer in self._observers.get(event_id, [])
-            )
-        )
-
-        if not observers:
+        observers_list = self._observers.get(event_id, [])
+        if not observers_list:
             logger.info(
                 f"event: {event_id} has no matching handler. the handlers available are for events: {self._observers.keys()}"
             )
+            return
+
+        await asyncio.gather(*(observer(event_id, body) for observer in observers_list))
 
 
 class SystemEventHandler(BaseEventHandler):
