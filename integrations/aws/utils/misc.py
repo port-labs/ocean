@@ -1,6 +1,11 @@
 import enum
 
 from port_ocean.context.event import event
+import asyncio
+
+
+MAX_CONCURRENT_TASKS = 50
+semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TASKS)
 
 
 class CustomProperties(enum.StrEnum):

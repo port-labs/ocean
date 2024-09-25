@@ -1,32 +1,36 @@
+import unittest
 from unittest.mock import AsyncMock, patch
-import asyncio
+from typing import AsyncGenerator, Any
 from utils.aws import update_available_access_credentials
-from typing import Any
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
-@patch("aws.session_manager.SessionManager.reset", new_callable=AsyncMock)
-async def test_update_available_access_credentials(mock_reset: Any) -> None:
-    """
-    Test to ensure that thundering herd problem is avoided and multiple
-    concurrent calls only trigger one session reset.
-    """
+class TestUpdateAvailableAccessCredentials(unittest.IsolatedAsyncioTestCase):
+    """Test cases to simulate and handle the thundering herd problem in AWS credentials reset."""
 
-    result = await update_available_access_credentials()
-    mock_reset.assert_called_once()
-    assert result
+    @staticmethod
+    async def _run_update_access_iterator_result() -> AsyncGenerator[bool, None]:
+        result = await update_available_access_credentials()
+        yield result
 
-    result_1 = await update_available_access_credentials()
-    assert result_1 is True
-    mock_reset.assert_called_once()  # No additional calls should be made
+    @staticmethod
+    async def _create_iterator_tasks(func: Any, count: int) -> Any:
+        """Helper to create async tasks."""
+        return [func() for _ in range(count)]
 
-    # Thundering herd test
-    mock_reset.reset_mock()
-    mock_reset.return_value = asyncio.sleep(0.1)
+    @patch("utils.aws._session_manager.reset", new_callable=AsyncMock)
+    @patch("utils.aws.lock", new_callable=AsyncMock)
+    async def test_multiple_task_execution(
+        self, mock_lock: Any, mock_reset: Any
+    ) -> None:
+        tasks = await self._create_iterator_tasks(
+            self._run_update_access_iterator_result, 10
+        )
+        async for result in stream_async_iterators_tasks(*tasks):
+            self.assertTrue(result)
 
-    await asyncio.gather(
-        update_available_access_credentials(),
-        update_available_access_credentials(),
-        update_available_access_credentials(),
-    )
+        # Assert that the reset method was awaited exactly once (i.e., no thundering herd)
+        mock_reset.assert_awaited_once()
 
-    mock_reset.assert_called_once()
+        mock_lock.__aenter__.assert_awaited_once()
+        mock_lock.__aexit__.assert_awaited_once()

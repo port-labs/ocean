@@ -11,6 +11,7 @@ from aiocache import cached, Cache  # type: ignore
 from asyncio import Lock
 
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from utils.misc import semaphore
 
 _session_manager: SessionManager = SessionManager()
 
@@ -19,9 +20,10 @@ CACHE_DURATION_SECONDS = (
 )  # Refresh role credentials after exhausting 80% of the session duration
 
 lock = Lock()
+cached_decorator = cached(ttl=CACHE_DURATION_SECONDS, cache=Cache.MEMORY)
 
 
-@cached(ttl=CACHE_DURATION_SECONDS, cache=Cache.MEMORY)
+@cached_decorator
 async def update_available_access_credentials() -> bool:
     """
     Fetches the AWS account IDs that the current IAM role can access.
@@ -62,19 +64,23 @@ async def get_sessions(
     """
     Gets boto3 sessions for the AWS regions
     """
-    await update_available_access_credentials()
 
-    if custom_account_id:
-        credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
-        if use_default_region:
-            default_region = get_default_region_from_credentials(credentials)
-            yield await credentials.create_session(default_region)
-        elif custom_region:
-            yield await credentials.create_session(custom_region)
-        else:
-            async for session in credentials.create_session_for_each_region():
-                yield session
-        return
+    async with semaphore:  # limit the number of concurrent tasks
+        await update_available_access_credentials()
+
+        if custom_account_id:
+            credentials = _session_manager.find_credentials_by_account_id(
+                custom_account_id
+            )
+            if use_default_region:
+                default_region = get_default_region_from_credentials(credentials)
+                yield await credentials.create_session(default_region)
+            elif custom_region:
+                yield await credentials.create_session(custom_region)
+            else:
+                async for session in credentials.create_session_for_each_region():
+                    yield session
+            return
 
     async def handle_account(
         credentials: AwsCredentials,

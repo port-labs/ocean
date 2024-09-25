@@ -34,11 +34,9 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
     is_server_error,
+    semaphore,
 )
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-import asyncio
-
-MAX_CONCURRENT_TASKS = 50
 
 
 async def _handle_global_resource_resync(
@@ -69,38 +67,41 @@ async def _handle_global_resource_resync(
                     raise e
 
 
+async def resync_resources_for_account(
+    credentials: AwsCredentials, kind: str
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Function to handle fetching resources for a single account."""
+
+    async with semaphore:  # limit the number of concurrent tasks
+        errors, regions = [], []
+
+        if is_global_resource(kind):
+            async for batch in _handle_global_resource_resync(kind, credentials):
+                yield batch
+        else:
+            async for session in credentials.create_session_for_each_region():
+                try:
+                    async for batch in resync_cloudcontrol(kind, session):
+                        yield batch
+                except Exception as exc:
+                    regions.append(session.region_name)
+                    errors.append(exc)
+                    continue
+        if errors:
+            message = f"Failed to fetch {kind} for these regions {regions} with {len(errors)} errors in account {credentials.account_id}"
+            raise ExceptionGroup(message, errors)
+
+
 @ocean.on_resync()
 async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(ResourceKindsWithSpecialHandling):
         return
 
     await update_available_access_credentials()
-    is_global = is_global_resource(kind)
-    semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TASKS)
-
-    async def handle_account(
-        credentials: AwsCredentials,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        """Function to handle fetching resources for a single account."""
-        async with semaphore:
-            errors, regions = [], []
-            if is_global:
-                async for batch in _handle_global_resource_resync(kind, credentials):
-                    yield batch
-            else:
-                async for session in credentials.create_session_for_each_region():
-                    try:
-                        async for batch in resync_cloudcontrol(kind, session):
-                            yield batch
-                    except Exception as exc:
-                        regions.append(session.region_name)
-                        errors.append(exc)
-                        continue
-            if errors:
-                message = f"Failed to fetch {kind} for these regions {regions} with {len(errors)} errors in account {credentials.account_id}"
-                raise ExceptionGroup(message, errors)
-
-    tasks = [handle_account(credentials) async for credentials in get_accounts()]
+    tasks = [
+        resync_resources_for_account(credentials, kind)
+        async for credentials in get_accounts()
+    ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
