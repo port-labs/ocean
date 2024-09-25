@@ -1,14 +1,11 @@
-import unittest
-from unittest.mock import AsyncMock, patch, MagicMock
-from starlette.requests import Request
+from unittest.mock import AsyncMock, patch
 import asyncio
 from utils.aws import update_available_access_credentials
+from typing import Any
 
 
-
-@patch('aws.session_manager.SessionManager.reset', new_callable=AsyncMock)
-@patch('utils.aws.lock', new_callable=AsyncMock)
-async def test_update_available_access_credentials(mock_lock, mock_reset):
+@patch("aws.session_manager.SessionManager.reset", new_callable=AsyncMock)
+async def test_update_available_access_credentials(mock_reset: Any) -> None:
     """
     Test to ensure that thundering herd problem is avoided and multiple
     concurrent calls only trigger one session reset.
@@ -29,7 +26,7 @@ async def test_update_available_access_credentials(mock_lock, mock_reset):
     await asyncio.gather(
         update_available_access_credentials(),
         update_available_access_credentials(),
-        update_available_access_credentials()
+        update_available_access_credentials(),
     )
 
     mock_reset.assert_called_once()
