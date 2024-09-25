@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Create new project for integrations
     strategy:
+      max-parallel: 5
       matrix: ${{ fromJson(needs.pre-run.outputs.changed_integrations) }}
     steps:
       - name: Create integration variable
