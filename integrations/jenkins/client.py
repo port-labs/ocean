@@ -43,7 +43,7 @@ class JenkinsClient:
 
         async for _jobs in self.fetch_resources(ResourceKey.BUILDS):
             builds = [build for job in _jobs for build in job.get("builds", [])]
-            logger.info(f"Builds received {builds}")
+            logger.debug(f"Builds received {builds}")
             event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
             yield builds
 
@@ -95,7 +95,7 @@ class JenkinsClient:
 
             job_response = await self.client.get(f"{base_url}/api/json", params=params)
             job_response.raise_for_status()
-            logger.info(f"Fetched {job_response.json()}")
+            logger.debug(f"Fetched {job_response.json()}")
             jobs = job_response.json().get("jobs", [])
             logger.info(f"Fetched {len(jobs)} jobs")
 
