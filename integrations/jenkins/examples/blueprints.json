@@ -1,0 +1,60 @@
+[
+    {
+        "identifier": "jenkinsStage",
+        "description": "This blueprint represents a stage in a Jenkins build",
+        "title": "Jenkins Stage",
+        "icon": "Jenkins",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "title": "Stage Status",
+                    "enum": [
+                        "SUCCESS",
+                        "FAILURE",
+                        "UNSTABLE",
+                        "ABORTED",
+                        "IN_PROGRESS",
+                        "NOT_BUILT",
+                        "PAUSED_PENDING_INPUT"
+                    ],
+                    "enumColors": {
+                        "SUCCESS": "green",
+                        "FAILURE": "red",
+                        "UNSTABLE": "yellow",
+                        "ABORTED": "darkGray",
+                        "IN_PROGRESS": "blue",
+                        "NOT_BUILT": "lightGray",
+                        "PAUSED_PENDING_INPUT": "orange"
+                    }
+                },
+                "startTimeMillis": {
+                    "type": "number",
+                    "title": "Start Time (ms)",
+                    "description": "Timestamp in milliseconds when the stage started"
+                },
+                "durationMillis": {
+                    "type": "number",
+                    "title": "Duration (ms)",
+                    "description": "Duration of the stage in milliseconds"
+                },
+                "stageUrl": {
+                    "type": "string",
+                    "title": "Stage URL",
+                    "description": "URL to the stage"
+                }
+            },
+            "required": []
+        },
+        "mirrorProperties": {},
+        "calculationProperties": {},
+        "relations": {
+            "parentBuild": {
+                "title": "Jenkins Build",
+                "target": "jenkinsBuild",
+                "required": true,
+                "many": false
+            }
+        }
+    }
+]

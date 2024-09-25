@@ -45,19 +45,3 @@ resources:
           properties:
             url: .user.absoluteUrl
             lastUpdateTime: if .lastChange then (.lastChange/1000) else now end | strftime("%Y-%m-%dT%H:%M:%SZ")
-  - kind: stage
-    selector:
-      query: 'true'
-    port:
-      entity:
-        mappings:
-          identifier: '._links.self.href  | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("%252F"; "-") | gsub("/"; "-")'
-          title: .name
-          blueprint: '"jenkinsStage"'
-          properties:
-            status: .status
-            startTimeMillis: .startTimeMillis
-            durationMillis: .durationMillis
-            stageUrl: env.OCEAN__INTEGRATION__CONFIG__JENKINS_HOST  + ._links.self.href
-          relations:
-            parentBuild: '._links.self.href | sub("/execution/node/[0-9]+/wfapi/describe$"; "") | sub("^.*?/"; "") | gsub("%20"; "-") | gsub("%252F"; "-") | gsub("/"; "-")'
