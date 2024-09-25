@@ -1,11 +1,10 @@
 import asyncio
-import functools
 from asyncio import Task
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Optional
 
-import pyjq as jq  # type: ignore
+import jq  # type: ignore
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -52,8 +51,8 @@ class JQEntityProcessor(BaseEntityProcessor):
         try:
             loop = asyncio.get_event_loop()
             compiled_pattern = self._compile(pattern)
-            first_value_callable = functools.partial(compiled_pattern.first, data)
-            return await loop.run_in_executor(None, first_value_callable)
+            func = compiled_pattern.input_value(data)
+            return await loop.run_in_executor(None, func.first)
         except Exception as exc:
             logger.debug(
                 f"Failed to search for pattern {pattern} in data {data}, {exc}"
@@ -62,10 +61,15 @@ class JQEntityProcessor(BaseEntityProcessor):
 
     async def _search_as_bool(self, data: dict[str, Any], pattern: str) -> bool:
         loop = asyncio.get_event_loop()
+        start_time = loop.time()
         compiled_pattern = self._compile(pattern)
-        first_value_callable = functools.partial(compiled_pattern.first, data)
-        value = await loop.run_in_executor(None, first_value_callable)
-
+        func = compiled_pattern.input_value(data)
+        compile_time = loop.time() - start_time
+        value = await loop.run_in_executor(None, func.first)
+        execute_time = loop.time() - start_time - compile_time
+        logger.debug(
+            f"Search for pattern {execute_time:.2f} seconds, compile time {compile_time:.2f} seconds"
+        )
         if isinstance(value, bool):
             return value
 
