@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -10,21 +11,21 @@ from port_ocean.core.ocean_types import CalculationResult
 
 
 @pytest.fixture
-def processor(monkeypatch):
+def processor(monkeypatch: Any) -> JQEntityProcessor:
     mock_context = AsyncMock()
     monkeypatch.setattr(PortOceanContext, "app", mock_context)
     return JQEntityProcessor(mock_context)
 
 
 @pytest.mark.asyncio
-async def test_compile(processor):
+async def test_compile(processor: JQEntityProcessor) -> None:
     pattern = ".foo"
     compiled = processor._compile(pattern)
     assert compiled is not None
 
 
 @pytest.mark.asyncio
-async def test_search(processor):
+async def test_search(processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     pattern = ".foo"
     result = await processor._search(data, pattern)
@@ -32,7 +33,7 @@ async def test_search(processor):
 
 
 @pytest.mark.asyncio
-async def test_search_as_bool(processor):
+async def test_search_as_bool(processor: JQEntityProcessor) -> None:
     data = {"foo": True}
     pattern = ".foo"
     result = await processor._search_as_bool(data, pattern)
@@ -40,7 +41,7 @@ async def test_search_as_bool(processor):
 
 
 @pytest.mark.asyncio
-async def test_search_as_object(processor):
+async def test_search_as_object(processor: JQEntityProcessor) -> None:
     data = {"foo": {"bar": "baz"}}
     obj = {"foo": ".foo.bar"}
     result = await processor._search_as_object(data, obj)
@@ -48,7 +49,7 @@ async def test_search_as_object(processor):
 
 
 @pytest.mark.asyncio
-async def test_get_mapped_entity(processor):
+async def test_get_mapped_entity(processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     raw_entity_mappings = {"foo": ".foo"}
     selector_query = '.foo == "bar"'
@@ -60,7 +61,7 @@ async def test_get_mapped_entity(processor):
 
 
 @pytest.mark.asyncio
-async def test_calculate_entity(processor):
+async def test_calculate_entity(processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     raw_entity_mappings = {"foo": ".foo"}
     selector_query = '.foo == "bar"'
@@ -74,7 +75,7 @@ async def test_calculate_entity(processor):
 
 
 @pytest.mark.asyncio
-async def test_parse_items(processor):
+async def test_parse_items(processor: JQEntityProcessor) -> None:
     mapping = Mock()
     mapping.port.entity.mappings.dict.return_value = {
         "identifier": ".foo",
