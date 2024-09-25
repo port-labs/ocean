@@ -94,7 +94,9 @@ async def on_start() -> None:
         try:
             await start_processors()
         except Exception as e:
-            logger.exception(f"Failed to start event processors: {e}. {NO_WEBHOOK_WARNING}")
+            logger.exception(
+                f"Failed to start event processors: {e}. {NO_WEBHOOK_WARNING}"
+            )
         return
 
     token_webhook_mapping: WebhookMappingConfig | None = None
@@ -139,7 +141,7 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
             while projects_batch := tuple(
-                    islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
@@ -169,7 +171,7 @@ async def resync_folders(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 for project in projects_batch:
                     if project.name in folder_selector.repos:
                         async for (
-                                folders_batch
+                            folders_batch
                         ) in service.get_all_folders_in_project_path(
                             project, folder_selector
                         ):
@@ -195,7 +197,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
             while projects_batch := tuple(
-                    islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
@@ -219,13 +221,13 @@ async def resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for groups_batch in service.get_all_root_groups():
             for group in groups_batch:
                 async for merge_request_batch in service.get_opened_merge_requests(
-                        group
+                    group
                 ):
                     yield [
                         merge_request.asdict() for merge_request in merge_request_batch
                     ]
                 async for merge_request_batch in service.get_closed_merge_requests(
-                        group, updated_after
+                    group, updated_after
                 ):
                     yield [
                         merge_request.asdict() for merge_request in merge_request_batch

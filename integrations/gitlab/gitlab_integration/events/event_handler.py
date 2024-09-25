@@ -20,9 +20,9 @@ Observer = Callable[[str, dict[str, Any]], Awaitable[Any]]
 
 class BaseEventHandler(ABC):
     def __init__(self) -> None:
-        self.webhook_tasks_queue: Queue[tuple[EventContext, str, dict[str, Any]]] = (
-            Queue()
-        )
+        self.webhook_tasks_queue: Queue[
+            tuple[EventContext, str, dict[str, Any]]
+        ] = Queue()
 
     async def _start_event_processor(self) -> None:
         logger.info(f"Started {self.__class__.__name__} worker")

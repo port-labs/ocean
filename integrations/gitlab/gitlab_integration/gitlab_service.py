@@ -71,11 +71,15 @@ class GitlabService:
 
     async def _get_webhook_for_group(self, group: RESTObject) -> RESTObject | None:
         webhook_url = f"{self.app_host}/integration/hook/{group.get_id()}"
-        logger.info(f"Getting webhook for group {group.get_id()} with url {webhook_url}")
+        logger.info(
+            f"Getting webhook for group {group.get_id()} with url {webhook_url}"
+        )
         async for hook_batch in self.get_group_hooks(group):
             for hook in hook_batch:
                 if hook.url == webhook_url:
-                    logger.info(f"Found webhook for group {group.get_id()} with id {hook.id} and url {hook.url}")
+                    logger.info(
+                        f"Found webhook for group {group.get_id()} with id {hook.id} and url {hook.url}"
+                    )
                     return hook
         return None
 
@@ -110,7 +114,9 @@ class GitlabService:
                 f"Created webhook for group {group.get_id()}, webhook id={resp.id}, url={resp.url}"
             )
         except Exception as e:
-            logger.exception(f"Failed to create webhook for group {group.get_id()} error={e}")
+            logger.exception(
+                f"Failed to create webhook for group {group.get_id()} error={e}"
+            )
 
     def _get_changed_files_between_commits(
         self, project_id: int, head: str
@@ -266,8 +272,7 @@ class GitlabService:
     async def get_root_groups(self) -> List[Group]:
         groups: list[RESTObject] = []
         async for groups_batch in AsyncFetcher.fetch_batch(
-            self.gitlab_client.groups.list,
-            retry_transient_errors=True
+            self.gitlab_client.groups.list, retry_transient_errors=True
         ):
             groups_batch = typing.cast(List[RESTObject], groups_batch)
             groups.extend(groups_batch)
@@ -280,8 +285,7 @@ class GitlabService:
         groups: list[RESTObject] = []
 
         async for groups_batch in AsyncFetcher.fetch_batch(
-            self.gitlab_client.groups.list,
-            retry_transient_errors=True
+            self.gitlab_client.groups.list, retry_transient_errors=True
         ):
             groups_batch = typing.cast(List[RESTObject], groups_batch)
             groups.extend(groups_batch)

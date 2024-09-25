@@ -105,10 +105,10 @@ def validate_hooks_override_config(
     validate_hooks_tokens_are_in_token_mapping(
         token_mapping, token_group_override_hooks_mapping
     )
-    groups_paths: dict[str, WebhookGroupConfig] = (
-        extract_all_groups_from_token_group_override_mapping(
-            token_group_override_hooks_mapping
-        )
+    groups_paths: dict[
+        str, WebhookGroupConfig
+    ] = extract_all_groups_from_token_group_override_mapping(
+        token_group_override_hooks_mapping
     )
 
     validate_unique_groups_paths(groups_paths)
@@ -239,7 +239,9 @@ async def setup_application(
                             )
                         )
             except Exception as e:
-                logger.exception(f"Failed to create webhooks for group mapping {group_mapping}, error: {e}")
+                logger.exception(
+                    f"Failed to create webhooks for group mapping {group_mapping}, error: {e}"
+                )
 
         for client, group_ids in client_to_group_ids_with_webhooks:
             for group_id in group_ids:
