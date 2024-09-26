@@ -456,7 +456,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                         creation_results.append(await task)
             except asyncio.CancelledError as e:
-                logger.warning("Resync aborted successfully")
+                logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
+                raise
             else:
                 if not did_fetched_current_state:
                     logger.warning(
@@ -489,3 +490,4 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         {"before": entities_at_port, "after": flat_created_entities},
                         user_agent_type,
                     )
+                    logger.info("Resync finished successfully")

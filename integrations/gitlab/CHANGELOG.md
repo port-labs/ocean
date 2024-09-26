@@ -6,6 +6,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+0.1.125 (2024-09-25)
+====================
+
+### Improvements
+
+- Added log for when file kind's project iteration found a relevant project, and for when the batch entirely isn't relevant
+
+
+0.1.124 (2024-09-24)
+====================
+
+### Improvements
+
+- Added more logs and implemented the webhook creation in async (0.1.124)
+
+
+0.1.123 (2024-09-22)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.12
+
+
+0.1.122 (2024-09-17)
+====================
+
+### Improvements
+
+- Updated the webhook creation logic to recreate hooks for urls that are disabled by GitLab (0.1.122)
+
+
+0.1.121 (2024-09-17)
+====================
+
+### Improvements
+
+- Improved on the way the integration handles GitOps push events by using only files that have been changed in the push even rather than fetching the entire repository tree (0.1.121)
+
 
 0.1.120 (2024-09-17)
 ====================
