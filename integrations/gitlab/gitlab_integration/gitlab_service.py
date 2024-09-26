@@ -19,6 +19,7 @@ from gitlab.v4.objects import (
     ProjectFile,
     ProjectPipeline,
     ProjectPipelineJob,
+    Hook,
 )
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import generate_entity_from_port_yaml
@@ -63,13 +64,34 @@ class GitlabService:
             GITLAB_SEARCH_RATE_LIMIT * 0.95, 60
         )
 
-    def _does_webhook_exist_for_group(self, group: RESTObject) -> bool:
-        for hook in group.hooks.list(iterator=True):
-            if hook.url == f"{self.app_host}/integration/hook/{group.get_id()}":
-                return True
-        return False
+    async def get_group_hooks(self, group: RESTObject) -> AsyncIterator[List[Hook]]:
+        async for hooks_batch in AsyncFetcher.fetch_batch(group.hooks.list):
+            hooks = typing.cast(List[Hook], hooks_batch)
+            yield hooks
 
-    def _create_group_webhook(
+    async def _get_webhook_for_group(self, group: RESTObject) -> RESTObject | None:
+        webhook_url = f"{self.app_host}/integration/hook/{group.get_id()}"
+        logger.info(
+            f"Getting webhook for group {group.get_id()} with url {webhook_url}"
+        )
+        async for hook_batch in self.get_group_hooks(group):
+            for hook in hook_batch:
+                if hook.url == webhook_url:
+                    logger.info(
+                        f"Found webhook for group {group.get_id()} with id {hook.id} and url {hook.url}"
+                    )
+                    return hook
+        return None
+
+    async def _delete_group_webhook(self, group: RESTObject, hook_id: int) -> None:
+        logger.info(f"Deleting webhook with id {hook_id} in group {group.get_id()}")
+        try:
+            await AsyncFetcher.fetch_single(group.hooks.delete, hook_id)
+            logger.info(f"Deleted webhook for {group.get_id()}")
+        except Exception as e:
+            logger.error(f"Failed to delete webhook for {group.get_id()} error={e}")
+
+    async def _create_group_webhook(
         self, group: RESTObject, events: list[str] | None
     ) -> None:
         webhook_events = {
@@ -78,18 +100,23 @@ class GitlabService:
         }
 
         logger.info(
-            f"Creating webhook for {group.get_id()} with events: {[event for event in webhook_events if webhook_events[event]]}"
+            f"Creating webhook for group {group.get_id()} with events: {[event for event in webhook_events if webhook_events[event]]}"
         )
-
-        resp = group.hooks.create(
-            {
-                "url": f"{self.app_host}/integration/hook/{group.get_id()}",
-                **webhook_events,
-            }
-        )
-        logger.info(
-            f"Created webhook for {group.get_id()}, id={resp.id}, url={resp.url}"
-        )
+        try:
+            resp = await AsyncFetcher.fetch_single(
+                group.hooks.create,
+                {
+                    "url": f"{self.app_host}/integration/hook/{group.get_id()}",
+                    **webhook_events,
+                },
+            )
+            logger.info(
+                f"Created webhook for group {group.get_id()}, webhook id={resp.id}, url={resp.url}"
+            )
+        except Exception as e:
+            logger.exception(
+                f"Failed to create webhook for group {group.get_id()} error={e}"
+            )
 
     def _get_changed_files_between_commits(
         self, project_id: int, head: str
@@ -166,11 +193,14 @@ class GitlabService:
                     if files_with_content:
                         yield files_with_content
 
-    def _get_entities_from_git(
-        self, project: Project, file_name: str, sha: str, ref: str
+    async def _get_entities_from_git(
+        self, project: Project, file_path: str | List[str], sha: str, ref: str
     ) -> List[Entity]:
         try:
-            file_content = project.files.get(file_path=file_name, ref=sha)
+            file_content = await AsyncFetcher.fetch_single(
+                project.files.get, file_path, sha
+            )
+
             entities = yaml.safe_load(file_content.decode())
             raw_entities = [
                 Entity(**entity_data)
@@ -179,29 +209,27 @@ class GitlabService:
                 )
             ]
             return [
-                generate_entity_from_port_yaml(entity_data, project, ref)
+                await generate_entity_from_port_yaml(entity_data, project, ref)
                 for entity_data in raw_entities
             ]
         except ParserError as exec:
             logger.error(
-                f"Failed to parse gitops entities from gitlab project {project.path_with_namespace},z file {file_name}."
+                f"Failed to parse gitops entities from gitlab project {project.path_with_namespace},z file {file_path}."
                 f"\n {exec}"
             )
         except Exception:
             logger.error(
-                f"Failed to get gitops entities from gitlab project {project.path_with_namespace}, file {file_name}"
+                f"Failed to get gitops entities from gitlab project {project.path_with_namespace}, file {file_path}"
             )
         return []
 
     async def _get_entities_by_commit(
         self, project: Project, spec: str | List["str"], commit: str, ref: str
     ) -> List[Entity]:
-        spec_paths = await self.get_all_file_paths(project, spec, commit)
-        return [
-            entity
-            for path in spec_paths
-            for entity in self._get_entities_from_git(project, path, commit, ref)
-        ]
+        logger.info(
+            f"Getting entities for project {project.path_with_namespace} in path {spec} at commit {commit} and ref {ref}"
+        )
+        return await self._get_entities_from_git(project, spec, commit, ref)
 
     def should_run_for_path(self, path: str) -> bool:
         return any(does_pattern_apply(mapping, path) for mapping in self.group_mapping)
@@ -241,14 +269,27 @@ class GitlabService:
             return True
         return project.name in repos
 
-    def get_root_groups(self) -> List[Group]:
-        groups = self.gitlab_client.groups.list(iterator=True)
+    async def get_root_groups(self) -> List[Group]:
+        groups: list[RESTObject] = []
+        async for groups_batch in AsyncFetcher.fetch_batch(
+            self.gitlab_client.groups.list, retry_transient_errors=True
+        ):
+            groups_batch = typing.cast(List[RESTObject], groups_batch)
+            groups.extend(groups_batch)
+
         return typing.cast(
             List[Group], [group for group in groups if group.parent_id is None]
         )
 
-    def filter_groups_by_paths(self, groups_full_paths: list[str]) -> List[Group]:
-        groups = self.gitlab_client.groups.list(get_all=True)
+    async def filter_groups_by_paths(self, groups_full_paths: list[str]) -> List[Group]:
+        groups: list[RESTObject] = []
+
+        async for groups_batch in AsyncFetcher.fetch_batch(
+            self.gitlab_client.groups.list, retry_transient_errors=True
+        ):
+            groups_batch = typing.cast(List[RESTObject], groups_batch)
+            groups.extend(groups_batch)
+
         return typing.cast(
             List[Group],
             [
@@ -258,7 +299,7 @@ class GitlabService:
             ],
         )
 
-    def get_filtered_groups_for_webhooks(
+    async def get_filtered_groups_for_webhooks(
         self,
         groups_hooks_override_list: list[str] | None,
     ) -> List[Group]:
@@ -266,9 +307,9 @@ class GitlabService:
         if groups_hooks_override_list is not None:
             if groups_hooks_override_list:
                 logger.info(
-                    "Getting all the specified groups in the mapping for a token to create their webhooks"
+                    f"Getting all the specified groups in the mapping for a token to create their webhooks for: {groups_hooks_override_list}"
                 )
-                groups_for_webhooks = self.filter_groups_by_paths(
+                groups_for_webhooks = await self.filter_groups_by_paths(
                     groups_hooks_override_list
                 )
 
@@ -290,7 +331,7 @@ class GitlabService:
                     )
         else:
             logger.info("Getting all the root groups to create their webhooks")
-            root_groups = self.get_root_groups()
+            root_groups = await self.get_root_groups()
             groups_for_webhooks = [
                 group
                 for group in root_groups
@@ -304,22 +345,32 @@ class GitlabService:
 
         return groups_for_webhooks
 
-    def create_webhook(self, group: Group, events: list[str] | None) -> str | None:
+    async def create_webhook(
+        self, group: Group, events: list[str] | None
+    ) -> str | None:
         logger.info(f"Creating webhook for the group: {group.attributes['full_path']}")
 
-        webhook_id = None
         group_id = group.get_id()
 
         if group_id is None:
             logger.info(f"Group {group.attributes['full_path']} has no id. skipping...")
+            return None
         else:
-            if self._does_webhook_exist_for_group(group):
+            hook = await self._get_webhook_for_group(group)
+            if hook:
                 logger.info(f"Webhook already exists for group {group.get_id()}")
-            else:
-                self._create_group_webhook(group, events)
-            webhook_id = str(group_id)
 
-        return webhook_id
+                if hook.alert_status == "disabled":
+                    logger.info(
+                        f"Webhook exists for group {group.get_id()} but is disabled, deleting and re-creating..."
+                    )
+                    await self._delete_group_webhook(group, hook.id)
+                    await self._create_group_webhook(group, events)
+                    logger.info(f"Webhook re-created for group {group.get_id()}")
+            else:
+                await self._create_group_webhook(group, events)
+
+        return str(group_id)
 
     def create_system_hook(self) -> None:
         logger.info("Checking if system hook already exists")
