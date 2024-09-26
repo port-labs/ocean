@@ -97,7 +97,7 @@ class SessionManager:
             try:
                 organizations_client = await sts_client.assume_role(
                     RoleArn=organization_role_arn,
-                    RoleSessionName="AssumeRoleSession",
+                    RoleSessionName="OceanOrgAssumeRoleSession",
                     DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
                 )
 
