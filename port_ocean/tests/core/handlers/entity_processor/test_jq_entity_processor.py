@@ -19,14 +19,14 @@ def mocked_processor(monkeypatch: Any) -> JQEntityProcessor:
 
 
 @pytest.mark.asyncio
-async def test_compile(mocked_processor) -> None:
+async def test_compile(mocked_processor: JQEntityProcessor) -> None:
     pattern = ".foo"
     compiled = mocked_processor._compile(pattern)
     assert compiled is not None
 
 
 @pytest.mark.asyncio
-async def test_search(mocked_processor) -> None:
+async def test_search(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     pattern = ".foo"
     result = await mocked_processor._search(data, pattern)
@@ -34,7 +34,7 @@ async def test_search(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_as_bool(mocked_processor) -> None:
+async def test_search_as_bool(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": True}
     pattern = ".foo"
     result = await mocked_processor._search_as_bool(data, pattern)
@@ -42,7 +42,7 @@ async def test_search_as_bool(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_as_object(mocked_processor) -> None:
+async def test_search_as_object(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": {"bar": "baz"}}
     obj = {"foo": ".foo.bar"}
     result = await mocked_processor._search_as_object(data, obj)
@@ -50,7 +50,7 @@ async def test_search_as_object(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_mapped_entity(mocked_processor) -> None:
+async def test_get_mapped_entity(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     raw_entity_mappings = {"foo": ".foo"}
     selector_query = '.foo == "bar"'
@@ -62,7 +62,7 @@ async def test_get_mapped_entity(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_calculate_entity(mocked_processor) -> None:
+async def test_calculate_entity(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     raw_entity_mappings = {"foo": ".foo"}
     selector_query = '.foo == "bar"'
@@ -76,7 +76,7 @@ async def test_calculate_entity(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_parse_items(mocked_processor) -> None:
+async def test_parse_items(mocked_processor: JQEntityProcessor) -> None:
     mapping = Mock()
     mapping.port.entity.mappings.dict.return_value = {
         "identifier": ".foo",
@@ -94,7 +94,7 @@ async def test_parse_items(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_in_operator(mocked_processor) -> None:
+async def test_in_operator(mocked_processor: JQEntityProcessor) -> None:
     data = {
         "key": "GetPort_SelfService",
         "name": "GetPort SelfService",
@@ -180,7 +180,7 @@ async def test_in_operator(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_failure_of_jq_expression(mocked_processor) -> None:
+async def test_failure_of_jq_expression(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     pattern = ".foo."
     result = await mocked_processor._search(data, pattern)
@@ -188,7 +188,7 @@ async def test_failure_of_jq_expression(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_as_object_failure(mocked_processor) -> None:
+async def test_search_as_object_failure(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": {"bar": "baz"}}
     obj = {"foo": ".foo.bar."}
     result = await mocked_processor._search_as_object(data, obj)
@@ -196,7 +196,7 @@ async def test_search_as_object_failure(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_as_bool_failure(mocked_processor) -> None:
+async def test_search_as_bool_failure(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     pattern = ".foo"
     with pytest.raises(
@@ -208,7 +208,7 @@ async def test_search_as_bool_failure(mocked_processor) -> None:
 
 # test amount of time taken to search for a pattern for 100 raw entities
 @pytest.mark.asyncio
-async def test_search_performance_10000(mocked_processor) -> None:
+async def test_search_performance_10000(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     pattern = ".foo"
     for _ in range(10000):
@@ -217,7 +217,9 @@ async def test_search_performance_10000(mocked_processor) -> None:
 
 
 @pytest.mark.asyncio
-async def test_parse_items_performance_10000(mocked_processor) -> None:
+async def test_parse_items_performance_10000(
+    mocked_processor: JQEntityProcessor,
+) -> None:
     mapping = Mock()
     mapping.port.entity.mappings.dict.return_value = {
         "identifier": ".foo",
