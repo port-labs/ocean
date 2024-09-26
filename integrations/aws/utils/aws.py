@@ -56,8 +56,10 @@ async def get_accounts() -> AsyncIterator[AwsCredentials]:
 
 
 async def session_factory(
-    credentials, custom_region: Optional[str], use_default_region: Optional[bool]
-) -> AsyncIterator[str]:
+    credentials: AwsCredentials,
+    custom_region: Optional[str],
+    use_default_region: Optional[bool],
+) -> AsyncIterator[aioboto3.Session]:
 
     if use_default_region:
         default_region = get_default_region_from_credentials(credentials)
