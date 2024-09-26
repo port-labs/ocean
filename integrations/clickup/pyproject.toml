@@ -6,7 +6,7 @@ authors = ["Iyanuoluwa Adebayo <ioluwadunsinadebayo@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {extras = ["cli"], version = "^0.10.11"}
+port_ocean = {extras = ["cli"], version = "^0.10.12"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
