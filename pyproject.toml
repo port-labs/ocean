@@ -175,3 +175,5 @@ exclude = '''
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-vv -n auto --ignore-glob='./integrations/*' ./port_ocean/tests"
+durations = 0
+colors = "yes"

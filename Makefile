@@ -115,7 +115,7 @@ new:
 	$(ACTIVATE) && poetry run ocean new ./integrations --public
 
 test:
-	$(ACTIVATE) && pytest --durations=10 --color=yes
+	$(ACTIVATE) && pytest
 
 test/watch:
 	$(ACTIVATE) && \
