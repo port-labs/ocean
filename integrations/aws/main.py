@@ -34,7 +34,9 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
     is_server_error,
+    semaphore,
 )
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 
 async def _handle_global_resource_resync(
@@ -65,14 +67,15 @@ async def _handle_global_resource_resync(
                     raise e
 
 
-@ocean.on_resync()
-async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    if kind in iter(ResourceKindsWithSpecialHandling):
-        return
-    await update_available_access_credentials()
-    is_global = is_global_resource(kind)
-    async for credentials in get_accounts():
-        if is_global:
+async def resync_resources_for_account(
+    credentials: AwsCredentials, kind: str
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    """Function to handle fetching resources for a single account."""
+
+    async with semaphore:  # limit the number of concurrent tasks
+        errors, regions = [], []
+
+        if is_global_resource(kind):
             async for batch in _handle_global_resource_resync(kind, credentials):
                 yield batch
         else:
@@ -80,8 +83,28 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 try:
                     async for batch in resync_cloudcontrol(kind, session):
                         yield batch
-                except Exception:
+                except Exception as exc:
+                    regions.append(session.region_name)
+                    errors.append(exc)
                     continue
+        if errors:
+            message = f"Failed to fetch {kind} for these regions {regions} with {len(errors)} errors in account {credentials.account_id}"
+            raise ExceptionGroup(message, errors)
+
+
+@ocean.on_resync()
+async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind in iter(ResourceKindsWithSpecialHandling):
+        return
+
+    await update_available_access_credentials()
+    tasks = [
+        resync_resources_for_account(credentials, kind)
+        async for credentials in get_accounts()
+    ]
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
+            yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACCOUNT)
@@ -94,53 +117,70 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
-    async for session in get_sessions():
-        async for batch in resync_custom_kind(
+
+    tasks = [
+        resync_custom_kind(
             kind,
             session,
             "elasticache",
             "describe_cache_clusters",
             "CacheClusters",
             "Marker",
-        ):
+        )
+        async for session in get_sessions()
+    ]
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELBV2_LOAD_BALANCER)
 async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
-    async for session in get_sessions():
-        async for batch in resync_custom_kind(
+
+    tasks = [
+        resync_custom_kind(
             kind,
             session,
             "elbv2",
             "describe_load_balancers",
             "LoadBalancers",
             "Marker",
-        ):
+        )
+        async for session in get_sessions()
+    ]
+
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ACM_CERTIFICATE)
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
-    async for session in get_sessions():
-        async for batch in resync_custom_kind(
+
+    tasks = [
+        resync_custom_kind(
             kind,
             session,
             "acm",
             "list_certificates",
             "CertificateSummaryList",
             "NextToken",
-        ):
+        )
+        async for session in get_sessions()
+    ]
+
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
-    async for session in get_sessions():
-        async for batch in resync_custom_kind(
+    tasks = [
+        resync_custom_kind(
             kind,
             session,
             "ec2",
@@ -148,22 +188,31 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             "Images",
             "NextToken",
             {"Owners": ["self"]},
-        ):
+        )
+        async for session in get_sessions()
+    ]
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
-    async for session in get_sessions():
-        async for batch in resync_custom_kind(
+    tasks = [
+        resync_custom_kind(
             kind,
             session,
             "cloudformation",
             "describe_stacks",
             "Stacks",
             "NextToken",
-        ):
+        )
+        async for session in get_sessions()
+    ]
+
+    if tasks:
+        async for batch in stream_async_iterators_tasks(*tasks):
             yield batch
 
 
