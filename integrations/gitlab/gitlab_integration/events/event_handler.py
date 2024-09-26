@@ -20,9 +20,9 @@ Observer = Callable[[str, dict[str, Any]], Awaitable[Any]]
 
 class BaseEventHandler(ABC):
     def __init__(self) -> None:
-        self.webhook_tasks_queue: Queue[tuple[EventContext, str, dict[str, Any]]] = (
-            Queue()
-        )
+        self.webhook_tasks_queue: Queue[
+            tuple[EventContext, str, dict[str, Any]]
+        ] = Queue()
 
     async def _start_event_processor(self) -> None:
         logger.info(f"Started {self.__class__.__name__} worker")
@@ -39,6 +39,7 @@ class BaseEventHandler(ABC):
                     f"Error notifying observers for event: {event_id}, error: {e}"
                 )
             finally:
+                logger.info("Processed event")
                 self.webhook_tasks_queue.task_done()
 
     async def start_event_processor(self) -> None:
@@ -49,7 +50,10 @@ class BaseEventHandler(ABC):
         pass
 
     async def notify(self, event_id: str, body: dict[str, Any]) -> None:
-        logger.debug(f"Received event: {event_id}, putting it in Queue for processing")
+        logger.debug(
+            f"Received event: {event_id}, putting it in Queue for processing",
+            event_context=current_event_context.id,
+        )
         await self.webhook_tasks_queue.put(
             (
                 deepcopy(current_event_context),
@@ -75,8 +79,14 @@ class EventHandler(BaseEventHandler):
                 f"event: {event_id} has no matching handler. the handlers available are for events: {self._observers.keys()}"
             )
             return
-
-        await asyncio.gather(*(observer(event_id, body) for observer in observers_list))
+        for observer in observers_list:
+            if asyncio.iscoroutinefunction(observer):
+                logger.debug(
+                    f"Notifying observer: {observer.__name__}, event: {event_id}"
+                )
+                asyncio.create_task(observer(event_id, body))  # type: ignore
+            else:
+                logger.error(f"Observer {observer} is not a coroutine function")
 
 
 class SystemEventHandler(BaseEventHandler):
