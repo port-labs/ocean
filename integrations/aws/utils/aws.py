@@ -20,10 +20,9 @@ CACHE_DURATION_SECONDS = (
 )  # Refresh role credentials after exhausting 80% of the session duration
 
 lock = Lock()
-cached_decorator = cached(ttl=CACHE_DURATION_SECONDS, cache=Cache.MEMORY)
 
 
-@cached_decorator
+@cached(ttl=CACHE_DURATION_SECONDS, cache=Cache.MEMORY)
 async def update_available_access_credentials() -> bool:
     """
     Fetches the AWS account IDs that the current IAM role can access.
@@ -56,48 +55,47 @@ async def get_accounts() -> AsyncIterator[AwsCredentials]:
         yield credentials
 
 
+async def session_factory(
+    credentials, custom_region: Optional[str], use_default_region: Optional[bool]
+) -> AsyncIterator[str]:
+
+    if use_default_region:
+        default_region = get_default_region_from_credentials(credentials)
+        yield await credentials.create_session(default_region)
+    elif custom_region:
+        yield await credentials.create_session(custom_region)
+    else:
+        async for session in credentials.create_session_for_each_region():
+            yield session
+
+
 async def get_sessions(
     custom_account_id: Optional[str] = None,
     custom_region: Optional[str] = None,
     use_default_region: Optional[bool] = None,
 ) -> AsyncIterator[aioboto3.Session]:
     """
-    Gets boto3 sessions for the AWS regions
+    Gets boto3 sessions for the AWS regions.
     """
+    await update_available_access_credentials()
 
-    async with semaphore:  # limit the number of concurrent tasks
-        await update_available_access_credentials()
-
+    async with semaphore:
         if custom_account_id:
             credentials = _session_manager.find_credentials_by_account_id(
                 custom_account_id
             )
-            if use_default_region:
-                default_region = get_default_region_from_credentials(credentials)
-                yield await credentials.create_session(default_region)
-            elif custom_region:
-                yield await credentials.create_session(custom_region)
-            else:
-                async for session in credentials.create_session_for_each_region():
-                    yield session
-            return
-
-    async def handle_account(
-        credentials: AwsCredentials,
-    ) -> AsyncIterator[aioboto3.Session]:
-        if use_default_region:
-            default_region = get_default_region_from_credentials(credentials)
-            yield await credentials.create_session(default_region)
-        elif custom_region:
-            yield await credentials.create_session(custom_region)
-        else:
-            async for session in credentials.create_session_for_each_region():
+            async for session in session_factory(
+                credentials, custom_region, use_default_region
+            ):
                 yield session
-
-    tasks = [handle_account(credentials) async for credentials in get_accounts()]
-    if tasks:
-        async for batch in stream_async_iterators_tasks(*tasks):
-            yield batch
+        else:
+            tasks = [
+                session_factory(credentials, custom_region, use_default_region)
+                async for credentials in get_accounts()
+            ]
+            if tasks:
+                async for batch in stream_async_iterators_tasks(*tasks):
+                    yield batch
 
 
 def validate_request(request: Request) -> tuple[bool, str]:
