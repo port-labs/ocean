@@ -39,10 +39,8 @@ class TestUpdateAvailableAccessCredentials(unittest.IsolatedAsyncioTestCase):
         mock_lock.__aexit__.assert_awaited_once()
 
 
-# Mock SessionManager and related dependencies
 class TestAwsSessions(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        # Mock for SessionManager
         self.session_manager_mock: AsyncMock = patch(
             "utils.aws._session_manager", autospec=SessionManager
         ).start()
