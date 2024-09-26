@@ -27,6 +27,16 @@ NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not e
 PROJECT_RESYNC_BATCH_SIZE = 10
 
 
+async def start_processors() -> None:
+    """Helper function to start the event processors."""
+    try:
+        logger.info("Starting event processors")
+        await event_handler.start_event_processor()
+        await system_event_handler.start_event_processor()
+    except Exception as e:
+        logger.exception(f"Failed to start event processors: {e}")
+
+
 @ocean.router.post("/hook/{group_id}")
 async def handle_webhook_request(group_id: str, request: Request) -> dict[str, Any]:
     event_id = f"{request.headers.get('X-Gitlab-Event')}:{group_id}"
@@ -79,8 +89,14 @@ async def on_start() -> None:
 
     if not integration_config.get("app_host"):
         logger.warning(
-            f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
+            f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}. Starting the event processors"
         )
+        try:
+            await start_processors()
+        except Exception as e:
+            logger.exception(
+                f"Failed to start event processors: {e}. {NO_WEBHOOK_WARNING}"
+            )
         return
 
     token_webhook_mapping: WebhookMappingConfig | None = None
@@ -91,21 +107,19 @@ async def on_start() -> None:
         )
 
     try:
-        setup_application(
+        await setup_application(
             integration_config["token_mapping"],
             integration_config["gitlab_host"],
             integration_config["app_host"],
             integration_config["use_system_hook"],
             token_webhook_mapping,
         )
-
-        await event_handler.start_event_processor()
-        await system_event_handler.start_event_processor()
     except Exception as e:
-        logger.warning(
-            f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}",
-            stack_info=True,
-        )
+        logger.exception(f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}")
+    try:
+        await start_processors()  # Ensure event processors are started regardless of webhook setup
+    except Exception as e:
+        logger.exception(f"Failed to start event processors: {e}. {NO_WEBHOOK_WARNING}")
 
 
 @ocean.on_resync(ObjectKind.GROUP)
@@ -194,9 +208,13 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     for project in projects_batch
                     if service.should_process_project(project, selector.files.repos)
                 ]
+
                 if tasks:
+                    logger.info(f"Found {len(tasks)} relevant projects in batch")
                     async for batch in stream_async_iterators_tasks(*tasks):
                         yield batch
+                else:
+                    logger.info("No relevant projects were found in batch, skipping it")
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
