@@ -1,6 +1,6 @@
 import asyncio
 import base64
-from typing import Any, AsyncGenerator, Optional, cast
+from typing import Any, AsyncGenerator, Generator, Optional, cast
 
 import httpx
 from loguru import logger
@@ -12,6 +12,25 @@ from integration import (
     SonarQubeIssueResourceConfig,
     SonarQubeProjectResourceConfig,
 )
+
+
+def turn_sequence_to_chunks(
+    sequence: list[str], chunk_size: int
+) -> Generator[list[str], None, None]:
+    if chunk_size >= len(sequence):
+        yield sequence
+        return
+    start, end = 0, chunk_size
+
+    while start <= len(sequence) and sequence[start:end]:
+        yield sequence[start:end]
+        start += chunk_size
+        end += chunk_size
+
+    return
+
+
+MAX_PORTFOLIO_REQUESTS = 20
 
 
 class Endpoints:
@@ -479,7 +498,7 @@ class SonarQubeClient:
         response = await self.send_api_request(endpoint=Endpoints.PORTFOLIOS)
         return response.get("views", [])
 
-    async def get_portfolio_details(self, portfolio_key: str) -> dict[str, Any]:
+    async def _get_portfolio_details(self, portfolio_key: str) -> dict[str, Any]:
         logger.info(f"Fetching portfolio details for: {portfolio_key}")
         response = await self.send_api_request(
             endpoint=Endpoints.PORTFOLIO_DETAILS,
@@ -500,20 +519,23 @@ class SonarQubeClient:
     async def get_all_portfolios(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info(f"Fetching all portfolios in organization: {self.organization_id}")
         portfolios = await self._get_all_portfolios()
+        portfolio_keys_chunks = turn_sequence_to_chunks(
+            [portfolio["key"] for portfolio in portfolios], MAX_PORTFOLIO_REQUESTS
+        )
 
-        try:
-            portfolio_keys = [portfolio["key"] for portfolio in portfolios]
-            portfolios_data = await asyncio.gather(
-                *[
-                    self.get_portfolio_details(portfolio_key)
-                    for portfolio_key in portfolio_keys
-                ]
-            )
-            for portfolio_data in portfolios_data:
-                yield [portfolio_data]
-                yield self._extract_subportfolios(portfolio_data)
-        except (httpx.HTTPStatusError, httpx.HTTPError) as e:
-            logger.error(f"Error occurred while fetching portfolio details: {e}")
+        for portfolio_keys in portfolio_keys_chunks:
+            try:
+                portfolios_data = await asyncio.gather(
+                    *[
+                        self._get_portfolio_details(portfolio_key)
+                        for portfolio_key in portfolio_keys
+                    ]
+                )
+                for portfolio_data in portfolios_data:
+                    yield [portfolio_data]
+                    yield self._extract_subportfolios(portfolio_data)
+            except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+                logger.error(f"Error occurred while fetching portfolio details: {e}")
 
     def sanity_check(self) -> None:
         try:
