@@ -11,21 +11,19 @@ from port_ocean.core.ocean_types import CalculationResult
 from port_ocean.exceptions.core import EntityProcessorException
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def mocked_processor(monkeypatch: Any) -> JQEntityProcessor:
     mock_context = AsyncMock()
     monkeypatch.setattr(PortOceanContext, "app", mock_context)
     return JQEntityProcessor(mock_context)
 
 
-@pytest.mark.asyncio
 async def test_compile(mocked_processor: JQEntityProcessor) -> None:
     pattern = ".foo"
     compiled = mocked_processor._compile(pattern)
     assert compiled is not None
 
 
-@pytest.mark.asyncio
 async def test_search(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     pattern = ".foo"
@@ -33,7 +31,6 @@ async def test_search(mocked_processor: JQEntityProcessor) -> None:
     assert result == "bar"
 
 
-@pytest.mark.asyncio
 async def test_search_as_bool(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": True}
     pattern = ".foo"
@@ -41,7 +38,6 @@ async def test_search_as_bool(mocked_processor: JQEntityProcessor) -> None:
     assert result is True
 
 
-@pytest.mark.asyncio
 async def test_search_as_object(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": {"bar": "baz"}}
     obj = {"foo": ".foo.bar"}
@@ -49,7 +45,6 @@ async def test_search_as_object(mocked_processor: JQEntityProcessor) -> None:
     assert result == {"foo": "baz"}
 
 
-@pytest.mark.asyncio
 async def test_get_mapped_entity(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     raw_entity_mappings = {"foo": ".foo"}
@@ -61,7 +56,6 @@ async def test_get_mapped_entity(mocked_processor: JQEntityProcessor) -> None:
     assert result.did_entity_pass_selector is True
 
 
-@pytest.mark.asyncio
 async def test_calculate_entity(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     raw_entity_mappings = {"foo": ".foo"}
@@ -75,7 +69,6 @@ async def test_calculate_entity(mocked_processor: JQEntityProcessor) -> None:
     assert not errors
 
 
-@pytest.mark.asyncio
 async def test_parse_items(mocked_processor: JQEntityProcessor) -> None:
     mapping = Mock()
     mapping.port.entity.mappings.dict.return_value = {
@@ -93,7 +86,6 @@ async def test_parse_items(mocked_processor: JQEntityProcessor) -> None:
     assert not result.errors
 
 
-@pytest.mark.asyncio
 async def test_in_operator(mocked_processor: JQEntityProcessor) -> None:
     data = {
         "key": "GetPort_SelfService",
@@ -179,7 +171,6 @@ async def test_in_operator(mocked_processor: JQEntityProcessor) -> None:
     assert result == ["GetPort_SelfService_Second", "Python"]
 
 
-@pytest.mark.asyncio
 async def test_failure_of_jq_expression(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     pattern = ".foo."
@@ -187,7 +178,6 @@ async def test_failure_of_jq_expression(mocked_processor: JQEntityProcessor) -> 
     assert result is None
 
 
-@pytest.mark.asyncio
 async def test_search_as_object_failure(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": {"bar": "baz"}}
     obj = {"foo": ".foo.bar."}
@@ -195,7 +185,6 @@ async def test_search_as_object_failure(mocked_processor: JQEntityProcessor) -> 
     assert result == {"foo": None}
 
 
-@pytest.mark.asyncio
 async def test_search_as_bool_failure(mocked_processor: JQEntityProcessor) -> None:
     data = {"foo": "bar"}
     pattern = ".foo"
@@ -206,9 +195,10 @@ async def test_search_as_bool_failure(mocked_processor: JQEntityProcessor) -> No
         await mocked_processor._search_as_bool(data, pattern)
 
 
-# test amount of time taken to search for a pattern for 100 raw entities
-@pytest.mark.asyncio
 async def test_search_performance_10000(mocked_processor: JQEntityProcessor) -> None:
+    """
+    This test is to check the performance of the search method when called 10000 times.
+    """
     data = {"foo": "bar"}
     pattern = ".foo"
     for _ in range(10000):
@@ -216,10 +206,12 @@ async def test_search_performance_10000(mocked_processor: JQEntityProcessor) -> 
         assert result == "bar"
 
 
-@pytest.mark.asyncio
 async def test_parse_items_performance_10000(
     mocked_processor: JQEntityProcessor,
 ) -> None:
+    """
+    This test is to check the performance of the parse_items method when called 10000 times.
+    """
     mapping = Mock()
     mapping.port.entity.mappings.dict.return_value = {
         "identifier": ".foo",
