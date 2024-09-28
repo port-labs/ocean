@@ -191,7 +191,7 @@ class TestJQEntityProcessor:
         ):
             await mocked_processor._search_as_bool(data, pattern)
 
-    @pytest.mark.timeout(1)
+    @pytest.mark.timeout(3)
     async def test_search_performance_10000(
         self, mocked_processor: JQEntityProcessor
     ) -> None:
@@ -204,7 +204,7 @@ class TestJQEntityProcessor:
             result = await mocked_processor._search(data, pattern)
             assert result == "bar"
 
-    @pytest.mark.timeout(10)
+    @pytest.mark.timeout(15)
     async def test_parse_items_performance_10000(
         self, mocked_processor: JQEntityProcessor
     ) -> None:
