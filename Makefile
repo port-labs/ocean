@@ -118,7 +118,7 @@ test:
 	$(ACTIVATE) && pytest
 
 test/smoke:
-	$(ACTIVATE) && pytest -k 'test_valid_fake_departements or test_valid_fake_persons'
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=${SMOKE_TEST_SUFFIX:-default_value} pytest -m smoke
 
 test/watch:
 	$(ACTIVATE) && \
