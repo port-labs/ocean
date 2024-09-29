@@ -7,4 +7,4 @@ MEMRAY_OUTPUT_FILE=/var/memray/output.bin
 
 rm -f $MEMRAY_OUTPUT_FILE
 
-memray run --trace-python-allocators -o $MEMRAY_OUTPUT_FILE debug.py
+memray run --aggregate --trace-python-allocators -o $MEMRAY_OUTPUT_FILE debug.py
