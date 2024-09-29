@@ -33,6 +33,12 @@ jobs:
         run: |
           make build
 
+      - name: Unit Test Core
+        env:
+          PYTEST_ADDOPTS: --junitxml=junit/unit-test-results-ocean/core.xml
+        run: |
+          make test
+
       - name: Run fake integration for core test
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
@@ -42,15 +48,15 @@ jobs:
         run: |
           ./scripts/run-smoke-test.sh
 
-      - name: Unit and Smoke Test Core
+      - name: Smoke Test Core
         env:
-          PYTEST_ADDOPTS: --junitxml=junit/test-results-ocean/core.xml
+          PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
           PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
         run: |
-          make test
+          make test/smoke
 
       - name: Install current core for all integrations
         run: |
@@ -66,7 +72,7 @@ jobs:
         uses: mikepenz/action-junit-report@v4
         if: ${{ always() }}
         with:
-          report_paths: '**/junit/test-results-**/*.xml'
+          report_paths: '**/junit/**-test-results-**/*.xml'
           include_passed: true
           require_tests: true
           fail_on_failure: true

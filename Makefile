@@ -117,6 +117,9 @@ new:
 test:
 	$(ACTIVATE) && pytest
 
+test/smoke:
+	$(ACTIVATE) && pytest -k 'test_valid_fake_departements or test_valid_fake_persons'
+
 test/watch:
 	$(ACTIVATE) && \
 		pytest \
