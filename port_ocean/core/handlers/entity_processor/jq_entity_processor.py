@@ -68,7 +68,10 @@ class JQEntityProcessor(BaseEntityProcessor):
         value = await loop.run_in_executor(None, func.first)
         execute_time = loop.time() - start_time - compile_time
         logger.debug(
-            f"Search for pattern {execute_time:.2f} seconds, compile time {compile_time:.2f} seconds"
+            f"Search for pattern {execute_time:.2f} seconds, compile time {compile_time:.2f} seconds",
+            pattern=pattern,
+            compile_time=compile_time,
+            execute_time=execute_time,
         )
         if isinstance(value, bool):
             return value

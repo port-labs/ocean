@@ -180,6 +180,14 @@ class TestJQEntityProcessor:
         result = await mocked_processor._search_as_object(data, obj)
         assert result == {"foo": None}
 
+    async def test_double_quotes_in_jq_expression(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"foo": "bar"}
+        pattern = '"shalom"'
+        result = await mocked_processor._search(data, pattern)
+        assert result == "shalom"
+
     async def test_search_as_bool_failure(
         self, mocked_processor: JQEntityProcessor
     ) -> None:
