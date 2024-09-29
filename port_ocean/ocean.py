@@ -96,7 +96,8 @@ class Ocean:
         loop = asyncio.get_event_loop()
         if interval is not None:
             logger.info(
-                f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)"
+                f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)",
+                scheduled_interval=interval,
             )
             repeated_function = repeat_every(
                 seconds=interval * 60,
