@@ -33,12 +33,6 @@ jobs:
         run: |
           make build
 
-      - name: Unit Test Core
-        env:
-          PYTEST_ADDOPTS: --junitxml=junit/test-results-ocean/core.xml
-        run: |
-          make test
-
       - name: Run fake integration for core test
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
@@ -48,7 +42,7 @@ jobs:
         run: |
           ./scripts/run-smoke-test.sh
 
-      - name: Smoke Test Core
+      - name: Unit and Smoke Test Core
         env:
           PYTEST_ADDOPTS: --junitxml=junit/test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
