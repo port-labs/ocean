@@ -118,7 +118,7 @@ test:
 	$(ACTIVATE) && pytest
 
 test/smoke:
-	$(ACTIVATE) && SMOKE_TEST_SUFFIX=${SMOKE_TEST_SUFFIX:-default_value} pytest -m smoke
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} pytest -m smoke
 
 test/watch:
 	$(ACTIVATE) && \
