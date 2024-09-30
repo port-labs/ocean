@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.90 (2024-09-30)
+
+
+### Bug Fixes
+
+- Updated the way we handle http errors by returning an object instead of raising the exception which causes the app to fail the entire resync event (0.1.90)
+
+
 ## 0.1.89 (2024-09-29)
 
 
