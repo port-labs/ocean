@@ -7,6 +7,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.11.0 (2024-09-29)
+
+### Improvements
+
+- Replace pyjq with jq.py to bump jq version from 1.5.2 to 1.7.1
+
 ## 0.10.12 (2024-09-19)
 
 ### Bug Fixes
