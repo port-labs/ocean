@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all
+.SILENT: install install/all test/all test/smoke clean/smoke lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all
 
 
 # Install dependencies
@@ -115,10 +115,13 @@ new:
 	$(ACTIVATE) && poetry run ocean new ./integrations --public
 
 test:
-	$(ACTIVATE) && pytest
+	$(ACTIVATE) && pytest -m 'not smoke'
 
 test/smoke:
 	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} pytest -m smoke
+
+clean/smoke:
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./scripts/clean-smoke-test.py
 
 test/watch:
 	$(ACTIVATE) && \

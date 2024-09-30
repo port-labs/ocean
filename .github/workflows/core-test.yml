@@ -29,15 +29,15 @@ jobs:
         run: |
           make install
 
-      - name: Build core for smoke test
-        run: |
-          make build
-
       - name: Unit Test Core
         env:
           PYTEST_ADDOPTS: --junitxml=junit/unit-test-results-ocean/core.xml
         run: |
           make test
+
+      - name: Build core for smoke test
+        run: |
+          make build
 
       - name: Run fake integration for core test
         env:
@@ -49,6 +49,16 @@ jobs:
           ./scripts/run-smoke-test.sh
 
       - name: Smoke Test Core
+        env:
+          PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+        run: |
+          make test/smoke
+
+      - name: Cleanup Smoke Test
         env:
           PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
