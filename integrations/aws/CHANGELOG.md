@@ -7,6 +7,111 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.43 (2024-09-18)
+
+
+### Improvements
+
+- Improved support for parralel fetching of aws account resources
+- Fixed ExpiredTokenException by replacing event-based caching with a time-dependent caching mechanism. The new approach reassumes the role and refreshes session credentials when 80% of the session duration has been used, ensuring credentials are refreshed before expiry.
+
+
+## 0.2.42 (2024-09-24)
+
+
+### Bug Fixes
+
+- Fixes an issue where `is_access_denied_exception` could raise an `AttributeError` if `e.response` is `None`.
+
+
+## 0.2.41 (2024-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.12
+
+
+## 0.2.40 (2024-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.11
+
+
+## 0.2.39 (2024-09-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.10 (#1)
+
+
+## 0.2.38 (2024-09-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.9 (#1)
+
+
+## 0.2.37 (2024-09-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.8 (#1)
+
+
+## 0.2.36 (2024-09-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.7 (#1)
+
+
+## 0.2.35 (2024-08-30)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.5 (#1)
+
+
+## 0.2.34 (2024-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.4 (#1)
+
+
+## 0.2.33 (2024-08-28)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.3 (#1)
+
+
+## 0.2.32 (2024-08-28)
+
+
+### Improvements
+
+- Fix typo in integrations/aws/integration.py
+
+
+## 0.2.31 (2024-08-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.2 (#1)
+
+
 ## 0.2.30 (2024-08-26)
 
 

@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
       - name: Get all changed integrations
         id: changed-integrations
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@v45
         with:
           json: true
           dir_names: true
@@ -39,6 +39,7 @@ jobs:
     needs: pre-run
     if: ${{ needs.pre-run.outputs.count_changed_integrations > 0 }}
     strategy:
+      max-parallel: 5
       matrix: ${{ fromJson(needs.pre-run.outputs.changed_integrations) }}
     runs-on: ubuntu-latest
     steps:

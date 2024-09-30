@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
       - name: Get all changed integrations
         id: changed-integrations
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@v45
         with:
           json: true
           dir_names: true
@@ -42,6 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Create new project for integrations
     strategy:
+      max-parallel: 5
       matrix: ${{ fromJson(needs.pre-run.outputs.changed_integrations) }}
     steps:
       - name: Create integration variable
