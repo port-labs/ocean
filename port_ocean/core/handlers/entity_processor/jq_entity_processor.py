@@ -87,7 +87,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         )
         if isinstance(value, bool):
             return value
-        raise EntityProcessorException(f"Expected boolean, got {type(value)}")
+        raise EntityProcessorException(
+            f"Expected boolean value, got value:{value} of type: {type(value)} instead"
+        )
 
     async def _search_as_object(
         self, data: dict[str, Any], obj: dict[str, Any]

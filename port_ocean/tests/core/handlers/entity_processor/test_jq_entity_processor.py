@@ -195,7 +195,7 @@ class TestJQEntityProcessor:
         pattern = ".foo"
         with pytest.raises(
             EntityProcessorException,
-            match="Expected boolean value, got <class 'str'> instead",
+            match="Expected boolean value, got value:bar of type: <class 'str'> instead",
         ):
             await mocked_processor._search_as_bool(data, pattern)
 
@@ -207,6 +207,10 @@ class TestJQEntityProcessor:
                 '.parameters[] | select(.name == "parameter_name") | .value',
                 "parameter_value",
             ),
+            (
+                '.parameters[] | select(.name == "another_parameter") | .value',
+                "another_value",
+            ),
         ],
     )
     async def test_search_fails_on_stop_iteration(
@@ -215,6 +219,8 @@ class TestJQEntityProcessor:
         data = {
             "parameters": [
                 {"name": "parameter_name", "value": "parameter_value"},
+                {"name": "another_parameter", "value": "another_value"},
+                {"name": "another_parameter", "value": "another_value2"},
             ]
         }
         result = await mocked_processor._search(data, pattern)
