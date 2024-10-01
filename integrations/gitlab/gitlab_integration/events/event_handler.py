@@ -39,7 +39,9 @@ class BaseEventHandler(ABC):
                     f"Error notifying observers for event: {event_id}, error: {e}"
                 )
             finally:
-                logger.info("Processed event", event_id=event_id, event_context=event_ctx.id)
+                logger.info(
+                    "Processed event", event_id=event_id, event_context=event_ctx.id
+                )
                 self.webhook_tasks_queue.task_done()
 
     async def start_event_processor(self) -> None:
