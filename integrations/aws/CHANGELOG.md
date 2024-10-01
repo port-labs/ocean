@@ -6,11 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.2.45 (2024-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.1
+
+
+## 0.2.44 (2024-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.11.0
+
+
+## 0.2.43 (2024-09-18)
+
+
+### Improvements
+
+- Improved support for parralel fetching of aws account resources
+- Fixed ExpiredTokenException by replacing event-based caching with a time-dependent caching mechanism. The new approach reassumes the role and refreshes session credentials when 80% of the session duration has been used, ensuring credentials are refreshed before expiry.
+
+
 ## 0.2.42 (2024-09-24)
+
 
 ### Bug Fixes
 
 - Fixes an issue where `is_access_denied_exception` could raise an `AttributeError` if `e.response` is `None`.
+
 
 ## 0.2.41 (2024-09-22)
 

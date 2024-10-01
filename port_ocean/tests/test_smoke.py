@@ -4,7 +4,10 @@ import pytest
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
-from port_ocean.tests.helpers.fixtures import SmokeTestDetails
+from port_ocean.tests.helpers.smoke_test import SmokeTestDetails
+
+
+pytestmark = pytest.mark.smoke
 
 
 @pytest.mark.skipif(
