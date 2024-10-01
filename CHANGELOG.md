@@ -14,7 +14,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed a bug when running jq with iterator that caused the integration to crash
 - Reverted image to `python:3.11-slim-buster` to fix the issue with the alpine image
 
-## 0.12.0 (2024-10-1)
+## 0.12.0 (2024-10-01)
 
 ### Improvements
 
