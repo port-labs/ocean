@@ -8,7 +8,6 @@ authors = ["Mor Paz <mor@getport.io>"]
 python = "^3.11"
 port_ocean = {version = "0.12.0", extras = ["cli"]}
 httpx = "^0.27.0"
-memray = "^1.14.0"
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
