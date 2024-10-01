@@ -57,7 +57,7 @@ RUN apk add --no-cache \
     && apk add --no-cache alpine-sdk "librdkafka@edgecommunity>=${LIBRDKAFKA_VERSION}" "librdkafka-dev@edgecommunity>=${LIBRDKAFKA_VERSION}" \
     && test -e /usr/local/share/ca-certificates/cert.crt && update-ca-certificates || true
 
-COPY --from=builder /usr/local/lib/libjemalloc.so.2 /usr/local/lib/
+COPY --from=base /usr/local/lib/libjemalloc.so.2 /usr/local/lib/
 
 WORKDIR /app
 
