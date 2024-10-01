@@ -226,6 +226,14 @@ class TestJQEntityProcessor:
         result = await mocked_processor._search(data, pattern)
         assert result == expected
 
+    async def test_return_a_list_of_values(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        data = {"parameters": ["parameter_value", "another_value", "another_value2"]}
+        pattern = ".parameters"
+        result = await mocked_processor._search(data, pattern)
+        assert result == ["parameter_value", "another_value", "another_value2"]
+
     @pytest.mark.timeout(3)
     async def test_search_performance_10000(
         self, mocked_processor: JQEntityProcessor
