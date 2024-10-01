@@ -16,6 +16,7 @@ RUN apk add --no-cache \
     automake \
     libtool \
     curl \
+    jemalloc \
     # librdkafka-dev \
     libffi-dev \
         # Install community librdkafka-dev since the default in alpine is older
@@ -24,12 +25,6 @@ RUN apk add --no-cache \
         && apk add --no-cache alpine-sdk "librdkafka@edgecommunity>=${LIBRDKAFKA_VERSION}" "librdkafka-dev@edgecommunity>=${LIBRDKAFKA_VERSION}" \
         && curl -sSL https://install.python-poetry.org | python3 - \
         && /root/.local/bin/poetry config virtualenvs.in-project true
-
-RUN wget -O - https://github.com/jemalloc/jemalloc/releases/download/5.2.1/jemalloc-5.2.1.tar.bz2 | tar -xj && \
-    cd jemalloc-5.2.1 && \
-    ./configure && \
-    make && \
-    make install
 
 WORKDIR /app
 
@@ -57,7 +52,7 @@ RUN apk add --no-cache \
     && apk add --no-cache alpine-sdk "librdkafka@edgecommunity>=${LIBRDKAFKA_VERSION}" "librdkafka-dev@edgecommunity>=${LIBRDKAFKA_VERSION}" \
     && test -e /usr/local/share/ca-certificates/cert.crt && update-ca-certificates || true
 
-COPY --from=base /usr/local/lib/libjemalloc.so.2 /usr/local/lib/
+COPY --from=base /usr/lib/libjemalloc.so.2 /usr/local/lib/
 
 WORKDIR /app
 
