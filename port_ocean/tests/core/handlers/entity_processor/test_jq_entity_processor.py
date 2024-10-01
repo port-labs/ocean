@@ -199,6 +199,27 @@ class TestJQEntityProcessor:
         ):
             await mocked_processor._search_as_bool(data, pattern)
 
+    @pytest.mark.parametrize(
+        "pattern, expected",
+        [
+            ('.parameters[] | select(.name == "not_exists") | .value', None),
+            (
+                '.parameters[] | select(.name == "parameter_name") | .value',
+                "parameter_value",
+            ),
+        ],
+    )
+    async def test_search_fails_on_stop_iteration(
+        self, mocked_processor: JQEntityProcessor, pattern: str, expected: Any
+    ) -> None:
+        data = {
+            "parameters": [
+                {"name": "parameter_name", "value": "parameter_value"},
+            ]
+        }
+        result = await mocked_processor._search(data, pattern)
+        assert result == expected
+
     @pytest.mark.timeout(3)
     async def test_search_performance_10000(
         self, mocked_processor: JQEntityProcessor
