@@ -50,7 +50,10 @@ RUN apk add --no-cache \
     && echo "@edge http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
     && echo "@edgecommunity http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
     && apk add --no-cache alpine-sdk "librdkafka@edgecommunity>=${LIBRDKAFKA_VERSION}" "librdkafka-dev@edgecommunity>=${LIBRDKAFKA_VERSION}" \
-    && test -e /usr/local/share/ca-certificates/cert.crt && update-ca-certificates || true
+    && test -e /usr/local/share/ca-certificates/cert.crt && update-ca-certificates || true \
+    && apk add google-perftools \
+    && apk add libjemalloc1
+
 
 WORKDIR /app
 
