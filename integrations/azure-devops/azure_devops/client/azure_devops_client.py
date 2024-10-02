@@ -291,7 +291,7 @@ class AzureDevopsClient(HTTPBaseClient):
         response = await self.send_request("GET", get_boards_url)
         board_data = response.json().get("value", [])
         logger.info(f"Found {len(board_data)} boards for project {project_id}")
-        return await self._enrich_board(board_data, project_id)
+        return await self._enrich_boards(board_data, project_id)
 
     @cache_iterator_result()
     async def get_boards_in_organization(
@@ -301,7 +301,7 @@ class AzureDevopsClient(HTTPBaseClient):
             yield [
                 {**board, "__project": project}
                 for project in projects
-                for board in await self._get_board(project["id"])
+                for board in await self._get_boards(project["id"])
             ]
 
     async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:
