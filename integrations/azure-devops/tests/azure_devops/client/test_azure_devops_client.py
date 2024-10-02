@@ -183,10 +183,6 @@ def mock_event_context() -> Generator[MagicMock, None, None]:
     mock_event._deadline = 999999999.0
     mock_event._aborted = False
 
-    mock_event.resource_config = MagicMock()
-    mock_event.resource_config.selector = MagicMock()
-    mock_event.resource_config.selector.wiql = MagicMock()
-
     with patch("port_ocean.context.event.event", mock_event):
         yield mock_event
 
@@ -573,13 +569,10 @@ async def test_create_subscription() -> None:
         id=None,
         eventType="git.push",
         publisherId="tfs",
-        resourceVersion="1.0",
         consumerId="webHooks",
         consumerActionId="httpRequest",
-        scope="organization",
         status="enabled",
-        url="https://example.com/webhook",
-        description="Test subscription",
+        consumerInputs={"url": "https://example.com/webhook"},
     )
 
     # MOCK
@@ -608,13 +601,10 @@ async def test_delete_subscription() -> None:
         id="subscription123",
         publisherId="tfs",
         eventType="git.push",
-        resourceVersion="1.0",
         consumerId="webHooks",
         consumerActionId="httpRequest",
-        scope="organization",
         status="enabled",
-        url="https://example.com/webhook",
-        description="Test subscription",
+        consumerInputs={"url": "https://example.com/webhook"},
     )
 
     # MOCK
