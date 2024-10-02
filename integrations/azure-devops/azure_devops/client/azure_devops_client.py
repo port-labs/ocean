@@ -284,7 +284,7 @@ class AzureDevopsClient(HTTPBaseClient):
             board.update(response.json())
         return boards
 
-    async def _get_board(self, project_id: str) -> list[dict[str, Any]]:
+    async def _get_boards(self, project_id: str) -> list[dict[str, Any]]:
         get_boards_url = (
             f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/work/boards"
         )
