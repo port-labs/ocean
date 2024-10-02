@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
+from typing import Any, AsyncGenerator, Dict, Generator, List, Optional
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from azure_devops.client.azure_devops_client import AzureDevopsClient
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -7,7 +8,6 @@ from port_ocean.context.event import EventContext, event_context
 from httpx import Response
 from azure_devops.webhooks.webhook_event import WebhookEvent
 
-# Example configuration for the tests
 MOCK_ORG_URL = "https://your_organization_url.com"
 MOCK_PERSONAL_ACCESS_TOKEN = "personal_access_token"
 MOCK_PROJECT_ID = "12345"
@@ -21,14 +21,8 @@ EXPECTED_BOARDS = [
         "id": MOCK_BOARD_ID,
         "name": MOCK_BOARD_NAME,
         "columns": [
-            {
-                "name": "To Do",
-                "stateMappings": {"Bug": "New"},
-            },
-            {
-                "name": "Doing",
-                "stateMappings": {"Bug": "Active"},
-            },
+            {"name": "To Do", "stateMappings": {"Bug": "New"}},
+            {"name": "Doing", "stateMappings": {"Bug": "Active"}},
         ],
     }
 ]
@@ -160,16 +154,14 @@ MOCK_BRANCH_NAME = "main"
 MOCK_COMMIT_ID = "abc123"
 
 
-async def async_generator(items):
+async def async_generator(items: List[Any]) -> AsyncGenerator[Any, None]:
     for item in items:
-        yield items
+        yield item
 
 
-# Mock the Ocean application and initialize the context
 @pytest.fixture(autouse=True)
-def mock_ocean_context():
+def mock_ocean_context() -> None:
     try:
-        # Mock Ocean and its required attributes
         mock_ocean_app = MagicMock()
         mock_ocean_app.config.integration.config = {
             "organization_url": MOCK_ORG_URL,
@@ -177,66 +169,60 @@ def mock_ocean_context():
         }
         mock_ocean_app.integration_router = MagicMock()
         mock_ocean_app.port_client = MagicMock()
-        # Initialize the ocean context with the mock Ocean object
         initialize_port_ocean_context(mock_ocean_app)
     except PortOceanContextAlreadyInitializedError:
         pass
 
 
-# Mock event context to simulate event handling
 @pytest.fixture
-def mock_event_context():
-    # Create a mock EventContext with attributes
+def mock_event_context() -> Generator[MagicMock, None, None]:
     mock_event = MagicMock(spec=EventContext)
     mock_event.event_type = "test_event"
     mock_event.trigger_type = "manual"
     mock_event.attributes = {}
-    # Explicitly set _deadline as a float
-    mock_event._deadline = (
-        999999999.0  # Large float value to represent a distant timeout
-    )
+    mock_event._deadline = 999999999.0
     mock_event._aborted = False
-
     mock_event.resource_config = MagicMock()
     mock_event.resource_config.selector = MagicMock()
     mock_event.resource_config.selector.wiql = MagicMock()
-
-    # Patch the `event` LocalProxy
-    with patch("port_ocean.context.event.event", mock_event):
+    with patch("azure_devops.client.azure_devops_client.event", mock_event):
         yield mock_event
 
 
 @pytest.fixture
-def mock_azure_client():
-    """Fixture to create a mock AzureDevopsClient."""
+def mock_azure_client() -> AzureDevopsClient:
     return AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
 
 @pytest.mark.asyncio
-async def test_get_single_project():
-    # Mock the send_request method to return a successful response
+async def test_get_single_project() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    # Mock
     with patch.object(client, "send_request") as mock_send_request:
         mock_send_request.return_value = Response(
             status_code=200, json=EXPECTED_PROJECT
         )
 
-        # Call the function and assert the response
+        # Act
         project_id = MOCK_PROJECT_ID
         project = await client.get_single_project(project_id)
 
+        # Assert
         assert project == EXPECTED_PROJECT
         mock_send_request.assert_called_once_with(
-            "GET",
-            f"{MOCK_ORG_URL}/_apis/projects/{project_id}",
+            "GET", f"{MOCK_ORG_URL}/_apis/projects/{project_id}"
         )
 
 
 @pytest.mark.asyncio
-async def test_generate_projects(mock_event_context):
+async def test_generate_projects(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
-    async def mock_get_paginated_by_top_and_continuation_token(*args, **kwargs):
+    # Mock
+    async def mock_get_paginated_by_top_and_continuation_token(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [EXPECTED_PROJECTS[0]]
         yield [EXPECTED_PROJECTS[1]]
 
@@ -246,18 +232,23 @@ async def test_generate_projects(mock_event_context):
         side_effect=mock_get_paginated_by_top_and_continuation_token,
     ):
         async with event_context("test_event"):
-            projects = []
+            # Act
+            projects: List[Dict[str, Any]] = []
             async for project_batch in client.generate_projects():
                 projects.extend(project_batch)
 
+            # Assert
             assert projects == EXPECTED_PROJECTS
 
 
 @pytest.mark.asyncio
-async def test_generate_teams(mock_event_context):
+async def test_generate_teams(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
-    async def mock_get_paginated_by_top_and_skip(*args, **kwargs):
+    # Mock
+    async def mock_get_paginated_by_top_and_skip(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [EXPECTED_TEAMS[0]]
         yield [EXPECTED_TEAMS[1]]
 
@@ -267,21 +258,26 @@ async def test_generate_teams(mock_event_context):
         side_effect=mock_get_paginated_by_top_and_skip,
     ):
         async with event_context("test_event"):
-            teams = []
+            # Act
+            teams: List[Dict[str, Any]] = []
             async for team_batch in client.generate_teams():
                 teams.extend(team_batch)
 
+            # Assert
             assert teams == EXPECTED_TEAMS
 
 
 @pytest.mark.asyncio
-async def test_generate_members():
+async def test_generate_members() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
-    async def mock_generate_teams():
-        yield [{"id": "team1", "name": "Team One", "projectId": "proj1"}]
+    # Mock
+    async def mock_generate_teams() -> AsyncGenerator[Dict[str, Any], None]:
+        yield {"id": "team1", "name": "Team One", "projectId": "proj1"}
 
-    async def mock_get_paginated_by_top_and_skip(url, **kwargs):
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "members" in url:
             yield [
                 {"id": "member1", "name": "Member One"},
@@ -296,87 +292,94 @@ async def test_generate_members():
             "_get_paginated_by_top_and_skip",
             side_effect=mock_get_paginated_by_top_and_skip,
         ):
-            members = []
+            # Act
+            members: List[Dict[str, Any]] = []
             async for member_batch in client.generate_members():
                 for member in member_batch:
                     member["__teamId"] = "team1"
                 members.extend(member_batch)
 
+            # Assert
             assert members == EXPECTED_MEMBERS
 
 
 @pytest.mark.asyncio
-async def test_generate_repositories(mock_event_context):
+async def test_generate_repositories(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
-    async def mock_generate_projects():
-        yield [{"id": "proj1", "name": "Project One"}]
+    # Mock
+    async def mock_generate_projects() -> AsyncGenerator[Dict[str, Any], None]:
+        yield {"id": "proj1", "name": "Project One"}
 
-    async with event_context("test_event"):
-        with patch.object(
-            client, "generate_projects", side_effect=mock_generate_projects
-        ):
-            with patch.object(client, "send_request") as mock_send_request:
-                mock_send_request.return_value = Response(
-                    status_code=200,
-                    json={"value": EXPECTED_REPOSITORIES},
-                )
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(client, "send_request") as mock_send_request:
+            mock_send_request.return_value = Response(
+                status_code=200, json={"value": EXPECTED_REPOSITORIES}
+            )
 
-                repositories = []
+            async with event_context("test_event"):
+                # Act
+                repositories: List[Dict[str, Any]] = []
                 async for repo_batch in client.generate_repositories(
                     include_disabled_repositories=False
                 ):
                     repositories.extend(repo_batch)
 
+                # Assert
                 assert repositories == EXPECTED_REPOSITORIES
 
 
 @pytest.mark.asyncio
-async def test_generate_pull_requests(mock_event_context):
+async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
-    async def mock_generate_repositories(*args, **kwargs):
-        yield [
-            {
-                "id": "repo1",
-                "name": "Repository One",
-                "project": {"id": "proj1", "name": "Project One"},
-            }
-        ]
+    # Mock
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        yield {
+            "id": "repo1",
+            "name": "Repository One",
+            "project": {"id": "proj1", "name": "Project One"},
+        }
 
-    async def mock_get_paginated_by_top_and_skip(url, additional_params=None, **kwargs):
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, additional_params: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "pullrequests" in url:
             yield EXPECTED_PULL_REQUESTS
         else:
             yield []
 
-    async with event_context("test_event") as evt:
-        # Set resource_config if needed
-        evt.resource_config = mock_event_context.resource_config
-
+    with patch.object(
+        client, "generate_repositories", side_effect=mock_generate_repositories
+    ):
         with patch.object(
-            client, "generate_repositories", side_effect=mock_generate_repositories
+            client,
+            "_get_paginated_by_top_and_skip",
+            side_effect=mock_get_paginated_by_top_and_skip,
         ):
-            with patch.object(
-                client,
-                "_get_paginated_by_top_and_skip",
-                side_effect=mock_get_paginated_by_top_and_skip,
-            ):
-                pull_requests = []
+            async with event_context("test_event"):
+                # Act
+                pull_requests: List[Dict[str, Any]] = []
                 async for pr_batch in client.generate_pull_requests():
                     pull_requests.extend(pr_batch)
 
+                # Assert
                 assert pull_requests == EXPECTED_PULL_REQUESTS
 
 
 @pytest.mark.asyncio
-async def test_generate_pipelines():
+async def test_generate_pipelines() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
-    async def mock_generate_projects():
-        yield [{"id": "proj1", "name": "Project One"}]
+    # Mock
+    async def mock_generate_projects() -> AsyncGenerator[Dict[str, Any], None]:
+        yield {"id": "proj1", "name": "Project One"}
 
-    async def mock_get_paginated_by_top_and_continuation_token(url, **kwargs):
+    async def mock_get_paginated_by_top_and_continuation_token(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [
             {"id": "pipeline1", "name": "Pipeline One"},
             {"id": "pipeline2", "name": "Pipeline Two"},
@@ -388,28 +391,31 @@ async def test_generate_pipelines():
             "_get_paginated_by_top_and_continuation_token",
             side_effect=mock_get_paginated_by_top_and_continuation_token,
         ):
-            pipelines = []
+            # Act
+            pipelines: List[Dict[str, Any]] = []
             async for pipeline_batch in client.generate_pipelines():
                 for pipeline in pipeline_batch:
                     pipeline["__projectId"] = "proj1"
                 pipelines.extend(pipeline_batch)
 
+            # Assert
             assert pipelines == EXPECTED_PIPELINES
 
 
 @pytest.mark.asyncio
-async def test_generate_repository_policies():
+async def test_generate_repository_policies() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
-    async def mock_generate_repositories(*args, **kwargs):
-        yield [
-            {
-                "id": "repo1",
-                "name": "Repository One",
-                "project": {"id": "proj1", "name": "Project One"},
-                "defaultBranch": "refs/heads/main",
-            }
-        ]
+    # Mock
+    async def mock_generate_repositories(
+        *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        yield {
+            "id": "repo1",
+            "name": "Repository One",
+            "project": {"id": "proj1", "name": "Project One"},
+            "defaultBranch": "refs/heads/main",
+        }
 
     with patch.object(
         client, "generate_repositories", side_effect=mock_generate_repositories
@@ -425,181 +431,192 @@ async def test_generate_repository_policies():
                 },
             )
 
-            policies = []
+            # Act
+            policies: List[Dict[str, Any]] = []
             async for policy_batch in client.generate_repository_policies():
                 for policy in policy_batch:
                     policy["__repository"] = {"id": "repo1"}
                 policies.extend(policy_batch)
 
+            # Assert
             assert policies == EXPECTED_POLICIES
 
 
 @pytest.mark.asyncio
-async def test_get_pull_request():
+async def test_get_pull_request() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    # Mock
     with patch.object(client, "send_request") as mock_send_request:
         mock_send_request.return_value = Response(
             status_code=200, json=EXPECTED_PULL_REQUEST
         )
 
+        # Act
         pull_request_id = "pr123"
         pull_request = await client.get_pull_request(pull_request_id)
 
+        # Assert
         assert pull_request == EXPECTED_PULL_REQUEST
         mock_send_request.assert_called_once_with(
-            "GET",
-            f"{MOCK_ORG_URL}/_apis/git/pullrequests/{pull_request_id}",
+            "GET", f"{MOCK_ORG_URL}/_apis/git/pullrequests/{pull_request_id}"
         )
 
 
 @pytest.mark.asyncio
-async def test_get_repository():
+async def test_get_repository() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    # Mock
     with patch.object(client, "send_request") as mock_send_request:
         mock_send_request.return_value = Response(
             status_code=200, json=EXPECTED_REPOSITORY
         )
 
+        # Act
         repository_id = "repo123"
         repository = await client.get_repository(repository_id)
 
+        # Assert
         assert repository == EXPECTED_REPOSITORY
         mock_send_request.assert_called_once_with(
-            "GET",
-            f"{MOCK_ORG_URL}/_apis/git/repositories/{repository_id}",
+            "GET", f"{MOCK_ORG_URL}/_apis/git/repositories/{repository_id}"
         )
 
 
 @pytest.mark.asyncio
-async def test_get_columns():
+async def test_get_columns() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
-    async def mock_get_boards_in_organization():
-        yield EXPECTED_BOARDS
+    # Mock
+    async def mock_get_boards_in_organization() -> AsyncGenerator[Dict[str, Any], None]:
+        yield EXPECTED_BOARDS[0]
 
     with patch.object(
         client,
         "get_boards_in_organization",
         side_effect=mock_get_boards_in_organization,
     ):
-        columns = []
+        # Act
+        columns: List[Dict[str, Any]] = []
         async for column_batch in client.get_columns():
             columns.extend(column_batch)
 
+        # Assert
         assert columns == EXPECTED_COLUMNS
 
 
 @pytest.mark.asyncio
-async def test_get_boards_in_organization(mock_event_context):
+async def test_get_boards_in_organization(mock_event_context: MagicMock) -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
-    async def mock_generate_projects():
-        yield [{"id": "proj1", "name": "Project One"}]
+    # Mock
+    async def mock_generate_projects() -> AsyncGenerator[Dict[str, Any], None]:
+        yield {"id": "proj1", "name": "Project One"}
 
-    async def mock_get_boards(project_id):
+    async def mock_get_boards(project_id: str) -> List[Dict[str, Any]]:
         return [
             {"id": "board1", "name": "Board One"},
             {"id": "board2", "name": "Board Two"},
         ]
 
-    async with event_context("test_event"):
-        with patch.object(
-            client, "generate_projects", side_effect=mock_generate_projects
-        ):
-            with patch.object(client, "_get_boards", side_effect=mock_get_boards):
-                boards = []
+    with patch.object(client, "generate_projects", side_effect=mock_generate_projects):
+        with patch.object(client, "_get_boards", side_effect=mock_get_boards):
+            async with event_context("test_event"):
+                # Act
+                boards: List[Dict[str, Any]] = []
                 async for board_batch in client.get_boards_in_organization():
                     boards.extend(board_batch)
 
+                # Assert
                 assert boards == EXPECTED_BOARDS_IN_ORG
 
 
 @pytest.mark.asyncio
-async def test_generate_subscriptions_webhook_events():
+async def test_generate_subscriptions_webhook_events() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
 
+    # Mock
     with patch.object(client, "send_request") as mock_send_request:
         mock_send_request.return_value = Response(
-            status_code=200,
-            json={"value": EXPECTED_WEBHOOK_EVENTS},
+            status_code=200, json={"value": EXPECTED_WEBHOOK_EVENTS}
         )
 
+        # Act
         events = await client.generate_subscriptions_webhook_events()
+
+        # Assert
         assert [event.dict() for event in events] == EXPECTED_WEBHOOK_EVENTS
 
 
 @pytest.mark.asyncio
-async def test_create_subscription():
+async def test_create_subscription() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
-    webhook_event = WebhookEvent(
-        id=None,
-        eventType="git.push",
-        publisherId="tfs",
-        resourceVersion="1.0",
-        consumerId="webHooks",
-        consumerActionId="httpRequest",
-        scope="organization",
-        status="enabled",
-        url="https://example.com/webhook",
-        description="Test subscription",
-    )
+    webhook_event = {
+        "eventType": "git.push",
+        "publisherId": "tfs",
+        "consumerId": "webHooks",
+        "consumerActionId": "httpRequest",
+        "consumerInputs": {"url": "https://example.com/webhook"},
+        "publisherInputs": {"branch": "main"},
+        "status": "enabled",
+    }
 
+    # Mock
     with patch.object(client, "send_request") as mock_send_request:
         mock_send_request.return_value = Response(
             status_code=200, json=EXPECTED_SUBSCRIPTION_CREATION_RESPONSE
         )
 
+        # Act
         await client.create_subscription(webhook_event)
 
+        # Assert
         mock_send_request.assert_called_once_with(
             "POST",
             f"{MOCK_ORG_URL}/_apis/hooks/subscriptions",
             params={"api-version": "7.1-preview.1"},
             headers={"Content-Type": "application/json"},
-            data=webhook_event.json(),
+            data=webhook_event,
         )
 
 
 @pytest.mark.asyncio
-async def test_delete_subscription():
+async def test_delete_subscription() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
-    webhook_event = WebhookEvent(
-        id="subscription123",
-        publisherId="tfs",
-        eventType="git.push",
-        resourceVersion="1.0",
-        consumerId="webHooks",
-        consumerActionId="httpRequest",
-        scope="organization",
-        status="enabled",
-        url="https://example.com/webhook",
-        description="Test subscription",
-    )
+    subscription_id = "subscription123"
 
+    # Mock
     with patch.object(client, "send_request") as mock_send_request:
         mock_send_request.return_value = Response(status_code=204)
 
-        await client.delete_subscription(webhook_event)
+        # Act
+        await client.delete_subscription(subscription_id)
 
-    mock_send_request.assert_called_once_with(
-        "DELETE",
-        f"{MOCK_ORG_URL}/_apis/hooks/subscriptions/{webhook_event.id}",
-        headers={"Content-Type": "application/json"},
-        params={"api-version": "7.1-preview.1"},
-    )
+        # Assert
+        mock_send_request.assert_called_once_with(
+            "DELETE",
+            f"{MOCK_ORG_URL}/_apis/hooks/subscriptions/{subscription_id}",
+            headers={"Content-Type": "application/json"},
+            params={"api-version": "7.1-preview.1"},
+        )
 
 
 @pytest.mark.asyncio
-async def test_get_file_by_branch():
+async def test_get_file_by_branch() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    # Mock
     with patch.object(client, "send_request") as mock_send_request:
         mock_response = Response(status_code=200, content=MOCK_FILE_CONTENT)
         mock_send_request.return_value = mock_response
 
+        # Act
         file_content = await client.get_file_by_branch(
             MOCK_FILE_PATH, MOCK_REPOSITORY_ID, MOCK_BRANCH_NAME
         )
 
+        # Assert
         assert file_content == MOCK_FILE_CONTENT
         mock_send_request.assert_called_once_with(
             method="GET",
@@ -613,16 +630,20 @@ async def test_get_file_by_branch():
 
 
 @pytest.mark.asyncio
-async def test_get_file_by_commit():
+async def test_get_file_by_commit() -> None:
     client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    # Mock
     with patch.object(client, "send_request") as mock_send_request:
         mock_response = Response(status_code=200, content=MOCK_FILE_CONTENT)
         mock_send_request.return_value = mock_response
 
+        # Act
         file_content = await client.get_file_by_commit(
             MOCK_FILE_PATH, MOCK_REPOSITORY_ID, MOCK_COMMIT_ID
         )
 
+        # Assert
         assert file_content == MOCK_FILE_CONTENT
         mock_send_request.assert_called_once_with(
             method="GET",
