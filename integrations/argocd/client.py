@@ -52,7 +52,7 @@ class ArgocdClient:
             logger.error(
                 f"Encountered an HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
-            raise 
+            raise
         except httpx.HTTPError as e:
             logger.error(
                 f"Encountered an HTTP error {e} while sending a request to {method} {url} with query_params: {query_params}"
