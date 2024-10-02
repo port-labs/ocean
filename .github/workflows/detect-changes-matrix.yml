@@ -41,6 +41,7 @@ jobs:
             integrations:
               - 'integrations/**'
               - '!integrations/**/*.md'
+              - '!integrations/_infra/*'
 
       - name: Set integrations and all matrix
         id: set-all-matrix

@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.128 (2024-10-02)
+====================
+
+### Improvements
+
+- Improved real time event handling and added more verbosity on event handling
+
+
+0.1.127 (2024-10-01)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.1
+
+
 0.1.126 (2024-09-29)
 ====================
 
