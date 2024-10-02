@@ -40,7 +40,9 @@ class BaseEventHandler(ABC):
                 )
             finally:
                 logger.info(
-                    "Processed event", event_id=event_id, event_context=event_ctx.id
+                    f"Processed event {event_id}",
+                    event_id=event_id,
+                    event_context=event_ctx.id,
                 )
                 self.webhook_tasks_queue.task_done()
 
@@ -83,12 +85,13 @@ class EventHandler(BaseEventHandler):
             return
         for observer in observers_list:
             if asyncio.iscoroutinefunction(observer):
+                handler = observer.__self__.__class__.__name__  # type: ignore
                 logger.debug(
-                    f"Notifying observer: {observer.__name__}, event: {event_id}"
+                    f"Notifying observer: {handler}, for event: {event_id}",
+                    event_id=event_id,
+                    handler=handler,
                 )
                 asyncio.create_task(observer(event_id, body))  # type: ignore
-            else:
-                logger.error(f"Observer {observer} is not a coroutine function")
 
 
 class SystemEventHandler(BaseEventHandler):
