@@ -12,7 +12,7 @@ ENV LIBRDKAFKA_VERSION 1.9.2
 WORKDIR /app
 
 RUN apt update && \
-    apt install -y wget make g++ libssl-dev autoconf automake libtool curl librdkafka-dev jemalloc google-perftools && \
+    apt install -y wget make g++ libssl-dev autoconf automake libtool curl librdkafka-dev google-perftools libjemalloc-dev && \
     apt-get clean
 
 COPY ./integrations/_infra/init.sh /app/init.sh
