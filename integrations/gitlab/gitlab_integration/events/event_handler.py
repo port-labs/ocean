@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from abc import abstractmethod, ABC
 from asyncio import Queue
 from collections import defaultdict
@@ -85,12 +86,13 @@ class EventHandler(BaseEventHandler):
             return
         for observer in observers_list:
             if asyncio.iscoroutinefunction(observer):
-                handler = observer.__self__.__class__.__name__  # type: ignore
-                logger.debug(
-                    f"Notifying observer: {handler}, for event: {event_id}",
-                    event_id=event_id,
-                    handler=handler,
-                )
+                if inspect.ismethod(observer):
+                    handler = observer.__self__.__class__.__name__
+                    logger.debug(
+                        f"Notifying observer: {handler}, for event: {event_id}",
+                        event_id=event_id,
+                        handler=handler,
+                    )
                 asyncio.create_task(observer(event_id, body))  # type: ignore
 
 
