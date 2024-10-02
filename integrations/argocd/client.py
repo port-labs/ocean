@@ -52,12 +52,12 @@ class ArgocdClient:
             logger.error(
                 f"Encountered an HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
-            return {}
+            raise 
         except httpx.HTTPError as e:
             logger.error(
                 f"Encountered an HTTP error {e} while sending a request to {method} {url} with query_params: {query_params}"
             )
-            return {}
+            raise
 
     async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
         url = f"{self.api_url}/{resource_kind}s"
@@ -66,7 +66,7 @@ class ArgocdClient:
             return response_data["items"]
         except Exception as e:
             logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
-            return []
+            raise e
 
     async def get_application_by_name(self, name: str) -> dict[str, Any]:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{name}"
