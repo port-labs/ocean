@@ -273,7 +273,7 @@ class AzureDevopsClient(HTTPBaseClient):
                     for stateType, stateName in column.get("stateMappings").items()
                 ]
 
-    async def _enrich_board(
+    async def _enrich_boards(
         self, boards: list[dict[str, Any]], project_id: str
     ) -> list[dict[str, Any]]:
         for board in boards:
