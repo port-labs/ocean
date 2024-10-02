@@ -353,8 +353,7 @@ async def test_generate_pull_requests(mock_event_context: MagicMock) -> None:
         else:
             yield []
 
-    async with event_context("test_event") as evt:
-        evt.resource_config = mock_event_context.resource_config
+    async with event_context("test_event"):
 
         with patch.object(
             client, "generate_repositories", side_effect=mock_generate_repositories
