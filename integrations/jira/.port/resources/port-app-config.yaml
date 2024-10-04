@@ -14,27 +14,10 @@ resources:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
             totalIssues: .insight.totalIssueCount
 
-  - kind: sprint
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .name + "-" + (.id | tostring) | gsub("[^A-Za-z0-9@_.:\\\\/=-]"; "-")
-          title: .name
-          blueprint: '"jiraSprint"'
-          properties:
-            url: .self
-            state: .state
-            startDate: .startDate
-            endDate: .endDate
-
   - kind: issue
     selector:
       query: "true"
       jql: "(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)"
-      source: "sprint"
-      sprintState: "active"
     port:
       entity:
         mappings:
@@ -55,7 +38,6 @@ resources:
             updated: .fields.updated
             resolutionDate: .fields.resolutiondate
           relations:
-            sprint: if .fields.sprint.id then .fields.sprint.name + "-" + (.fields.sprint.id | tostring) | gsub("[^A-Za-z0-9@_.:\\\\/=-]"; "-") else "" end
             project: .fields.project.key
             parentIssue: .fields.parent.key
             subtasks: .fields.subtasks | map(.key)
