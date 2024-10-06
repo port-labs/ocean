@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.46 (2024-10-06)
+
+
+### Improvements
+
+- Removed iterative calls to the cache for tracking expiry, reducing the likelihood of a thundering herd problem.
+- Enhanced semaphore implementation to properly limit concurrency across tasks, rather than within tasks, improving performance and resource utilization.
+
+
 ## 0.2.45 (2024-10-01)
 
 
