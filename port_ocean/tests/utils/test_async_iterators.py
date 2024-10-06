@@ -1,6 +1,6 @@
 from typing import Any, AsyncGenerator
 import asyncio
-from utils.async_iterators import semaphore_async_iterator
+from port_ocean.utils.async_iterators import semaphore_async_iterator
 import pytest
 
 
