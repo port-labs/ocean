@@ -55,7 +55,7 @@ async def test_semaphore_async_iterator() -> None:
         async with lock:
             concurrent_tasks -= 1
 
-    async def consume_iterator(async_iterator) -> None:
+    async def consume_iterator(async_iterator: Any) -> None:
         async for _ in async_iterator:
             pass
 
