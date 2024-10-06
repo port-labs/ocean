@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import sys
-import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from logging.handlers import MemoryHandler
 from typing import Any
@@ -65,18 +65,19 @@ class HTTPMemoryHandler(MemoryHandler):
         if self.ocean is None or not self.buffer:
             return
 
-        def _wrap_event_loop(_ocean: Ocean, logs_to_send: list[dict[str, Any]]) -> None:
-            loop = asyncio.new_event_loop()
-            loop.run_until_complete(self.send_logs(_ocean, logs_to_send))
-            loop.close()
-
         self.acquire()
         logs = list(self._serialized_buffer)
         if logs:
             self.buffer.clear()
             self._serialized_buffer.clear()
             self.last_flush_time = time.time()
-            threading.Thread(target=_wrap_event_loop, args=(self.ocean, logs)).start()
+            loop = asyncio.new_event_loop()
+            with ThreadPoolExecutor() as executor:
+                executor.submit(
+                    lambda: asyncio.run_coroutine_threadsafe(
+                        self.send_logs(self.ocean, logs), loop
+                    )
+                )
         self.release()
 
     async def send_logs(
