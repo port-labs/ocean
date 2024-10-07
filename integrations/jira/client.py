@@ -7,7 +7,6 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
-
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 REQUEST_TIMEOUT = 120
@@ -102,7 +101,6 @@ class JiraClient:
         self,
         params: dict[str, Any] = {},
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-
         async for issues in self._make_paginated_request(
             f"{self.detail_base_url}/search",
             params=params,

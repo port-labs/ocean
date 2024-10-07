@@ -53,8 +53,15 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
-    config = typing.cast(JiraIssueResourceConfig, event.resource_config)
-    async for issues in client.get_all_issues(config):
+    config = typing.cast(JiraIssueResourceConfig, event.resource_config).selector
+    params = {}
+    if config.jql:
+        params["jql"] = config.jql
+
+    if config.fields:
+        params["fields"] = config.fields
+
+    async for issues in client.get_all_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 
