@@ -67,7 +67,7 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             errors.append(e)
 
     # If there were errors and we are not ignoring server errors, raise a general exception
-    if errors and not argocd_client.ignore_server_errors:
+    if errors and not argocd_client.ignore_server_error:
         raise Exception(f"Errors occurred during managed resource ingestion: {errors}")
 
 
