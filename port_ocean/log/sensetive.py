@@ -21,7 +21,7 @@ secret_patterns = {
     "GitHub": r"[g|G][i|I][t|T][h|H][u|U][b|B].*['|\"][0-9a-zA-Z]{35,40}['|\"]",
     "Google Cloud Platform API Key": r"AIza[0-9A-Za-z\\-_]{35}",
     "Google Cloud Platform OAuth": r"[0-9]+-[0-9A-Za-z_]{32}\\.apps\\.googleusercontent\\.com",
-    "Google (GCP) Service-account": r'"type": "service_account"',
+    "Google (GCP) Service-account": f'"type":{" "}"service_account"',
     "Google OAuth Access Token": r"ya29\\.[0-9A-Za-z\\-_]+",
     "Connection String": r"[a-zA-Z]+:\/\/[^/\s]+:[^/\s]+@[^/\s]+\/[^/\s]+",
 }

@@ -23,3 +23,8 @@ configurations:
     type: string
     required: true
     description: The URL of the ArgoCD server. For example, https://argocd.example.com. Found in the URL field of your browser when you launch your ArgoCD instance
+  - name: ignoreServerErrors
+    type: boolean
+    required: false
+    description: Ignore server errors when fetching data from ArgoCD
+    default: false

@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.90 (2024-09-30)
+## 0.1.91 (2024-10-07)
 
 
 ### Bug Fixes
 
-- Updated the way we handle http errors by returning an object instead of raising the exception which causes the app to fail the entire resync event (0.1.90)
+- Updated the way we handle http errors by allowing users to specify how they want to handle ArgoCD server error using the `ignoreServerErrors` flag (0.1.91)
+
+
+## 0.1.90 (2024-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.1
 
 
 ## 0.1.89 (2024-09-29)
