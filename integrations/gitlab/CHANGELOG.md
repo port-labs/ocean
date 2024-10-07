@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+0.1.129 (2024-10-02)
+====================
+
+### Bug Fixes
+
+- Removed keyset pagination parameters from the listing of repository tree so the application can paginate data using the standard page index and page size parameters in the AsyncFetcher.fetch_batch (0.1.129)
+
+
+0.1.128 (2024-10-02)
+====================
+
+### Improvements
+
+- Improved real time event handling and added more verbosity on event handling
+
+
+0.1.127 (2024-10-01)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.1
+
+
+0.1.126 (2024-09-29)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.11.0
+
+
 0.1.125 (2024-09-25)
 ====================
 

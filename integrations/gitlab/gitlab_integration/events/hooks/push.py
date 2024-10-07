@@ -26,6 +26,9 @@ class PushHook(ProjectHandler):
     system_events = ["push"]
 
     async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
+        logger.debug(
+            f"Handling push hook for project {gitlab_project.path_with_namespace}, ref: {body.get('ref')}, commit_id: {body.get('after')}"
+        )
         commit_before, commit_after, ref = (
             body.get("before"),
             body.get("after"),
