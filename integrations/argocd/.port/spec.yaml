@@ -26,5 +26,5 @@ configurations:
   - name: ignoreServerError
     type: boolean
     required: false
-    description: Whether to ignore server errors when fetching data from ArgoCD. If set to true, the exporter will continue to fetch data and ingest entities in Port without failing the resync event even if the ArgoCD server returns an error. If set to false, the exporter will stop fetching data and fail the resync event if the ArgoCD server returns an error. Default is false.
+    description: Whether to ignore server errors when fetching data from ArgoCD. If set to true, the exporter will continue to fetch data and ingest entities in Port without failing the resync event even if the ArgoCD server returns an error. If set to false, the exporter will stop fetching data and fail the resync event when the ArgoCD server returns an error. Default is false.
     default: false
