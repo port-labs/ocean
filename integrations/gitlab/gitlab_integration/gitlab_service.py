@@ -550,9 +550,6 @@ class GitlabService:
                 validation_func=self.validate_file_is_directory,
                 path=folder_selector.path,
                 ref=branch,
-                pagination="keyset",
-                order_by="id",
-                sort="asc",
             ):
                 repository_tree_files: List[dict[str, Any]] = typing.cast(
                     List[dict[str, Any]], repository_tree_batch
