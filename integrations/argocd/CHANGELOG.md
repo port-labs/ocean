@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Updated the way we handle http errors by allowing users to specify how they want to handle ArgoCD server error using the `ignoreServerError` flag (0.1.91)
+- Updated the error handling mechanims by allowing users to specify how they want to handle ArgoCD server error using the `ignoreServerError` flag (0.1.91)
 
 
 ## 0.1.90 (2024-10-01)
