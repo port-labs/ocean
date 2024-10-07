@@ -9,7 +9,7 @@ def init_client() -> ArgocdClient:
     return ArgocdClient(
         ocean.integration_config["token"],
         ocean.integration_config["server_url"],
-        ocean.integration_config["ignore_server_errors"],
+        ocean.integration_config["ignore_server_error"],
     )
 
 

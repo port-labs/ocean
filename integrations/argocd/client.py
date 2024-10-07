@@ -23,10 +23,10 @@ DEPRECATION_WARNING = "Please use the get_resources method with the application 
 
 
 class ArgocdClient:
-    def __init__(self, token: str, server_url: str, ignore_server_errors: bool):
+    def __init__(self, token: str, server_url: str, ignore_server_error: bool):
         self.token = token
         self.api_url = f"{server_url}/api/v1"
-        self.ignore_server_errors = ignore_server_errors
+        self.ignore_server_error = ignore_server_error
         self.api_auth_header = {"Authorization": f"Bearer {self.token}"}
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
@@ -53,14 +53,14 @@ class ArgocdClient:
             logger.error(
                 f"Encountered an HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
-            if self.ignore_server_errors:
+            if self.ignore_server_error:
                 return {}
             raise e
         except httpx.HTTPError as e:
             logger.error(
                 f"Encountered an HTTP error {e} while sending a request to {method} {url} with query_params: {query_params}"
             )
-            if self.ignore_server_errors:
+            if self.ignore_server_error:
                 return {}
             raise e
 
@@ -71,7 +71,7 @@ class ArgocdClient:
             return response_data["items"]
         except Exception as e:
             logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
-            if self.ignore_server_errors:
+            if self.ignore_server_error:
                 return []
             raise e
 
