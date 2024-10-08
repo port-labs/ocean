@@ -1,6 +1,6 @@
 import asyncio
 from abc import abstractmethod
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from typing import TypedDict, Callable, Any, Awaitable
 
 from pydantic import Extra
@@ -70,7 +70,7 @@ class BaseEventListener:
         await self._before_resync()
         try:
             loop = asyncio.get_event_loop()
-            with ThreadPoolExecutor() as executor:
+            with ProcessPoolExecutor() as executor:
                 e = executor.submit(
                     lambda: asyncio.run_coroutine_threadsafe(
                         self.events["on_resync"](resync_args), loop

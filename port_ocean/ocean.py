@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Callable, Any, Dict, AsyncIterator, Type
 
@@ -93,7 +93,7 @@ class Ocean:
                 raise e
 
         def pool_executor_wrapper(event_loop) -> None:
-            with ThreadPoolExecutor() as executor:
+            with ProcessPoolExecutor() as executor:
                 e = executor.submit(lambda: asyncio.run_coroutine_threadsafe(
                     execute_resync_all(), event_loop
                 ))

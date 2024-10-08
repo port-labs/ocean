@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from logging.handlers import MemoryHandler
 from typing import Any
@@ -72,7 +72,7 @@ class HTTPMemoryHandler(MemoryHandler):
             self._serialized_buffer.clear()
             self.last_flush_time = time.time()
             loop = asyncio.new_event_loop()
-            with ThreadPoolExecutor() as executor:
+            with ProcessPoolExecutor() as executor:
                 executor.submit(
                     lambda: asyncio.run_coroutine_threadsafe(
                         self.send_logs(self.ocean, logs), loop
