@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added ignore issue default action
+- Bumped ocean version to ^0.12.2
+
 
 ## 0.1.91 (2024-10-01)
 
