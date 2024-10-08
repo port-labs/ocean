@@ -34,10 +34,12 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
     is_server_error,
-    semaphore_async_iterator,
     semaphore,
 )
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+    semaphore_async_iterator,
+)
 import functools
 
 
