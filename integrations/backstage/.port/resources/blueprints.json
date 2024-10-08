@@ -1,0 +1,17 @@
+[
+  {
+    "identifier": "backstageEntity",
+    "title": "Backstage Entity",
+    "icon": "Blueprint",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        }
+      },
+      "required": ["name"]
+    },
+    "relations": {}
+  }
+]

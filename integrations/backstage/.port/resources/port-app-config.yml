@@ -1,0 +1,12 @@
+resources:
+  - kind: backstage-entity
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"backstageEntity"'
+          properties:
+            name: .name
