@@ -2,7 +2,7 @@
   {
     "identifier": "backstageEntity",
     "title": "Backstage Entity",
-    "icon": "Blueprint",
+    "icon": "Backstage",
     "schema": {
       "properties": {
         "name": {

@@ -5,8 +5,8 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id
-          title: .name
+          identifier: .metadata.name
+          title: .metadata.title // .metadata.name
           blueprint: '"backstageEntity"'
           properties:
-            name: .name
+            name: .metadata.name

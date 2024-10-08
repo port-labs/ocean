@@ -25,7 +25,6 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield entities
 
 
-
 @ocean.on_start()
 async def on_start() -> None:
     logger.info("Starting backstage integration")
