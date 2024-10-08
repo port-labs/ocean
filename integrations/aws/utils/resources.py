@@ -14,7 +14,7 @@ from utils.misc import (
 from utils.aws import get_sessions
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from utils.aws import _session_manager, update_available_access_credentials
+from utils.aws import _session_manager
 from utils.overrides import AWSResourceConfig
 from botocore.config import Config as Boto3Config
 
@@ -127,7 +127,7 @@ async def resync_custom_kind(
     next_token = None
     if not describe_method_params:
         describe_method_params = {}
-    while await update_available_access_credentials():
+    while True:
         async with session.client(service_name) as client:
             try:
                 params: dict[str, Any] = describe_method_params
@@ -172,7 +172,7 @@ async def resync_cloudcontrol(
     account_id = await _session_manager.find_account_id_by_session(session)
     logger.info(f"Resyncing {kind} in account {account_id} in region {region}")
     next_token = None
-    while await update_available_access_credentials():
+    while True:
         async with session.client("cloudcontrol") as cloudcontrol:
             try:
                 params = {

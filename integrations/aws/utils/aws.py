@@ -11,7 +11,6 @@ from aiocache import cached, Cache  # type: ignore
 from asyncio import Lock
 
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
-from utils.misc import semaphore
 
 _session_manager: SessionManager = SessionManager()
 
@@ -81,23 +80,20 @@ async def get_sessions(
     """
     await update_available_access_credentials()
 
-    async with semaphore:
-        if custom_account_id:
-            credentials = _session_manager.find_credentials_by_account_id(
-                custom_account_id
-            )
-            async for session in session_factory(
-                credentials, custom_region, use_default_region
-            ):
-                yield session
-        else:
-            tasks = [
-                session_factory(credentials, custom_region, use_default_region)
-                async for credentials in get_accounts()
-            ]
-            if tasks:
-                async for batch in stream_async_iterators_tasks(*tasks):
-                    yield batch
+    if custom_account_id:
+        credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
+        async for session in session_factory(
+            credentials, custom_region, use_default_region
+        ):
+            yield session
+    else:
+        tasks = [
+            session_factory(credentials, custom_region, use_default_region)
+            async for credentials in get_accounts()
+        ]
+        if tasks:
+            async for batch in stream_async_iterators_tasks(*tasks):
+                yield batch
 
 
 def validate_request(request: Request) -> tuple[bool, str]:
