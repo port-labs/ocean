@@ -1,0 +1,92 @@
+[
+  {
+    "identifier": "ignore_snyk_issue",
+    "title": "Ignore Snyk Issue",
+    "icon": "Snyk",
+    "description": "",
+    "trigger": {
+      "type": "self-service",
+      "operation": "DAY-2",
+      "userInputs": {
+        "properties": {
+          "reasonType": {
+            "type": "string",
+            "title": "Reason Type",
+            "enum": [
+              "wont-fix",
+              "not-vulnerable",
+              "temporary-ignore"
+            ],
+            "enumColors": {
+              "wont-fix": "lightGray",
+              "not-vulnerable": "lightGray",
+              "temporary-ignore": "lightGray"
+            }
+          },
+          "ignoreReason": {
+            "type": "string",
+            "title": "Ignore Reason"
+          },
+          "expiration": {
+            "type": "string",
+            "enum": [
+              "Does not expire",
+              "Custom expiration date"
+            ],
+            "visible": {
+              "jqQuery": ".form.reasonType == \"not-vulnerable\" or .form.reasonType == \"temporary-ignore\""
+            },
+            "title": "Expiration"
+          },
+          "expirationDate": {
+            "type": "string",
+            "enum": [
+              "30 days",
+              "60 days",
+              "90 days"
+            ],
+            "visible": {
+              "jqQuery": ".form.expiration == \"Custom expiration date\""
+            },
+            "title": "Expiration Date"
+          }
+        },
+        "required": [
+          "reasonType"
+        ],
+        "order": []
+      },
+      "blueprintIdentifier": "snykVulnerability"
+    },
+    "invocationMethod": {
+      "type": "WEBHOOK",
+      "url": "https://api.snyk.io/v1/org/{{ .secrets[\"snyk-org-id\"] }}/project/{{ .entity.relations.project }}/ignore/{{ .entity.properties.vulnerabilityId }}",
+      "agent": false,
+      "synchronized": true,
+      "method": "POST",
+      "headers": {
+        "RUN_ID": "{{ .run.id }}",
+        "orgId": "{{ .secrets[\"snyk-org-id\"] }}",
+        "issueId": "{{ .entity.properties.vulnerabilityId }}",
+        "projectId": "{{ .entity.relations.project }}",
+        "Authorization": "token {{ .secrets[\"snyk-token\"] }}",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "ignorePath": "",
+        "reason": "{{ .inputs.ignoreReason }}",
+        "reasonType": "{{ .inputs.reasonType }}",
+        "ignoredBy": {
+          "name": "text",
+          "email": "text",
+          "id": "text"
+        },
+        "disregardIfFixable": false,
+        "expires": "{{ (( .inputs.expirationDate | sub(\" days\"; \"\") | tonumber) * 24 * 60 * 60 | now + . | strftime(\"%Y-%m-%dT%H:%M:%S%z\")) }}",
+        "created": "text"
+      }
+    },
+    "requiredApproval": false,
+    "publish": true
+  }
+]

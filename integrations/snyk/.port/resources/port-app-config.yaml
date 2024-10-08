@@ -65,5 +65,7 @@ resources:
             publicationTime: .attributes.created_at
             status: .attributes.status
             type: .attributes.type
+            ignored: .attributes.ignored
+            vulnerabilityId: .attributes.key
           relations:
             project: .relationships.scan_item.data.id
