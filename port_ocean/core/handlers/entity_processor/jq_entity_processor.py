@@ -1,11 +1,10 @@
 import asyncio
-import functools
 from asyncio import Task
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Optional
 
-import pyjq as jq  # type: ignore
+import jq  # type: ignore
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -48,29 +47,48 @@ class JQEntityProcessor(BaseEntityProcessor):
             pattern = "def env: {}; {} as $ENV | " + pattern
         return jq.compile(pattern)
 
+    @staticmethod
+    def _stop_iterator_handler(func: Any) -> Any:
+        """
+        Wrap the function to handle StopIteration exceptions.
+        Prevents StopIteration from stopping the thread and skipping further queue processing.
+        """
+
+        def inner() -> Any:
+            try:
+                return func()
+            except StopIteration:
+                return None
+
+        return inner
+
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
             loop = asyncio.get_event_loop()
             compiled_pattern = self._compile(pattern)
-            first_value_callable = functools.partial(compiled_pattern.first, data)
-            return await loop.run_in_executor(None, first_value_callable)
+            func = compiled_pattern.input_value(data)
+            return await loop.run_in_executor(
+                None, self._stop_iterator_handler(func.first)
+            )
         except Exception as exc:
             logger.debug(
-                f"Failed to search for pattern {pattern} in data {data}, {exc}"
+                f"Search failed for pattern '{pattern}' in data: {data}, Error: {exc}"
             )
             return None
 
     async def _search_as_bool(self, data: dict[str, Any], pattern: str) -> bool:
         loop = asyncio.get_event_loop()
-        compiled_pattern = self._compile(pattern)
-        first_value_callable = functools.partial(compiled_pattern.first, data)
-        value = await loop.run_in_executor(None, first_value_callable)
 
+        compiled_pattern = self._compile(pattern)
+        func = compiled_pattern.input_value(data)
+
+        value = await loop.run_in_executor(
+            None, self._stop_iterator_handler(func.first)
+        )
         if isinstance(value, bool):
             return value
-
         raise EntityProcessorException(
-            f"Expected boolean value, got {type(value)} instead"
+            f"Expected boolean value, got value:{value} of type: {type(value)} instead"
         )
 
     async def _search_as_object(
