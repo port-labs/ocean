@@ -42,6 +42,8 @@ if [[ $? != 0 ]]; then
 fi
 TAR_FILE=$(basename "${TAR_FULL_PATH}")
 
+FAKE_INTEGRATION_VERSION=$(grep -E '^version = ".*"' "${ROOT_DIR}/integrations/fake-integration/pyproject.toml" | cut -d'"' -f2)
+
 echo "Found release ${TAR_FILE}, triggering fake integration with ID: '${INTEGRATION_IDENTIFIER}'"
 
 # NOTE: Runs the fake integration with the modified blueprints and install the current core for a single sync
@@ -56,5 +58,5 @@ docker run --rm -i \
     -e OCEAN__INTEGRATION__TYPE="smoke-test" \
     -e OCEAN__INTEGRATION__IDENTIFIER="${INTEGRATION_IDENTIFIER}" \
     --name=ZOMG-TEST \
-    ghcr.io/port-labs/port-ocean-fake-integration:0.1.1-dev \
+    "ghcr.io/port-labs/port-ocean-fake-integration:${FAKE_INTEGRATION_VERSION}" \
     -c "pip install --root-user-action=ignore /opt/dist/${TAR_FILE}[cli] && ocean sail -O"

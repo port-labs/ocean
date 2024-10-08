@@ -1,0 +1,136 @@
+name: Scan docker images
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        type: choice
+        description: Image/s to scan
+        # This is a bit annoying, there's no real way to display the integrations dynamically in a dropdown for the action dispatcher
+        options:
+          - all
+          - aws
+          - azure-devops
+          - dynatrace
+          - fake-integration
+          - gcp
+          - jenkins
+          - kafka
+          - launchdarkly
+          - newrelic
+          - opencost
+          - pagerduty
+          - servicenow
+          - sonarqube
+          - terraform-cloud
+          - argocd
+          - azure
+          - datadog
+          - firehydrant
+          - gitlab
+          - jira
+          - kubecost
+          - linear
+          - octopus
+          - opsgenie
+          - sentry
+          - snyk
+          - statuspage
+          - wiz
+
+jobs:
+  detect-images:
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.set-images.outputs.images }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Determine which image to scan
+        id: set-images
+        run: |
+          PROJECTS=$(ls --color=never ./integrations | grep -Ev '_infra')
+          if [[ "${{ inputs.image }}" != "all" ]]; then
+            PROJECTS="${{ inputs.image }}"
+          fi
+          IMAGES_WITH_VERSIONS=()
+          for PROJECT in ${PROJECTS}; do
+              if [[ ! -f ./integrations/"${PROJECT}"/pyproject.toml ]]; then
+                  continue
+              fi
+              VERSION=$(cat ./integrations/"${PROJECT}"/pyproject.toml | grep -E '^version = "(.*)"$' | awk -F ' ' '{print $3};' | sed 's/"//g')
+              if [[ -n ${VERSION} ]]; then
+                  IMAGES_WITH_VERSIONS+=( "${PROJECT}:${VERSION}" )
+              fi
+          done
+          IMAGES=$(echo "${IMAGES_WITH_VERSIONS[@]}" | jq -R -s -c  'split(" ") | map(select(length > 0))')
+          echo "Images to scan: ${IMAGES}"
+          echo "images=${IMAGES}" >> $GITHUB_OUTPUT
+  scan-images:
+    needs: detect-images
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 2
+      matrix:
+        image: ${{ fromJson(needs.detect-images.outputs.images) }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract version and image tag
+        id: enrich-version
+        run: |
+          INTEGRATION=$(echo "${{ matrix.image }}" | awk -F ':' '{print $1};')
+          VERSION=$(echo "${{ matrix.image }}" | awk -F ':' '{print $2};')
+          IDENTIFIER="${INTEGRATION}-${VERSION}-${{ github.sha }}"
+          IMAGE_FULL_TAG="port-ocean-security-tests-${INTEGRATION}:${VERSON}${{ github.sha }}"
+          echo "integration=${INTEGRATION}" >> ${GITHUB_OUTPUT}
+          echo "version=${VERSION}" >> ${GITHUB_OUTPUT}
+          echo "identifier=${IDENTIFIER}" >> ${GITHUB_OUTPUT}
+          echo "image_tag=${IMAGE_FULL_TAG}" >> ${GITHUB_OUTPUT}
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./integrations/_infra/Dockerfile
+          platforms: linux/amd64
+          push: false
+          tags: ${{ steps.enrich-version.outputs.image_tag }}
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_CONTEXT=./integrations/${{ steps.enrich-version.outputs.integration }}
+            INTEGRATION_VERSION=${{ steps.enrich-version.outputs.version }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ steps.enrich-version.outputs.image_tag }}
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          output: trivy-${{ steps.enrich-version.outputs.integration }}.txt
+
+      - name: Publish Trivy Output to Summary
+        run: |
+          if [[ -s trivy-${{ steps.enrich-version.outputs.integration }}.txt ]]; then
+            {
+              echo "### Security Output"
+              echo "<details><summary>Click to expand</summary>"
+              echo ""
+              echo '```terraform'
+              cat trivy-${{ steps.enrich-version.outputs.integration }}.txt
+              echo '```'
+              echo "</details>"
+            } >> $GITHUB_STEP_SUMMARY
+          fi

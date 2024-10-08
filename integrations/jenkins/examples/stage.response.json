@@ -1,0 +1,15 @@
+{
+  "_links": {
+    "self": {
+      "href": "/job/Phalbert/job/salesdash/job/master/227/execution/node/17/wfapi/describe"
+    }
+  },
+  "id": "17",
+  "name": "Declarative: Post Actions",
+  "execNode": "",
+  "status": "SUCCESS",
+  "startTimeMillis": 1717073271079,
+  "durationMillis": 51,
+  "pauseDurationMillis": 0,
+  "__fullUrl": "http://localhost:8080/job/Phalbert/job/salesdash/job/master/227/execution/node/17/wfapi/describe"
+}

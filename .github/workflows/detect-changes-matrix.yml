@@ -4,39 +4,54 @@ on:
     outputs:
       matrix:
         value: ${{ jobs.detect-changes.outputs.matrix }}
+        description: "Matrix of changed integrations / Ocean Core per git commit changes"
+      integrations:
         description: "Matrix of changed integrations per git commit changes"
+        value: ${{ jobs.detect-changes.outputs.integrations }}
+      core:
+        value: ${{ jobs.detect-changes.outputs.core }}
+        description: "Determine if any core changes per git commit changes"
 
 jobs:
   detect-changes:
     name: Detect changes
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      matrix: ${{ steps.set-all-matrix.outputs.matrix }}
+      integrations: ${{ steps.set-all-matrix.outputs.integrations }}
+      core: ${{ steps.set-all-matrix.outputs.core }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
       - name: Get list of changed files
         id: changed-files
-        uses: tj-actions/changed-files@v44.5.7
-      - name: Set matrix
-        id: set-matrix
+        uses: tj-actions/changed-files@v45
+        with:
+          dir_names: true
+          json: true
+          dir_names_max_depth: 2
+          escape_json: false
+          files_yaml: |
+            core:
+              - '!integrations/**'
+              - '!scripts/*'
+              - '!scripts/*'
+              - '!./*.md'
+            integrations:
+              - 'integrations/**'
+              - '!integrations/**/*.md'
+              - '!integrations/_infra/*'
+
+      - name: Set integrations and all matrix
+        id: set-all-matrix
         run: |
-          folders_to_ignore="integrations/*/LICENSE.md|integrations/*/README.md|integrations/*/CONTRIBUTING.md|integrations/*/CHANGELOG.md"
-          changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" \
-              | tr ' ' '\n' | grep '^integrations/' | grep -v '^($folders_to_ignore)' \
-              | egrep -v '_infra' \
-              | cut -d'/' -f2 | sort | uniq)
-          if [ -z "$changed_folders" ]; then
-            changed_folders=""
-          fi
-
-          folders_to_ignore="integrations/|scripts/|assets/|docs/|LICENSE.md|README.md|CONTRIBUTING.md|CHANGELOG.md"
-          other_changes=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v '^($folders_to_ignore)' | wc -l)
-          if [ "$other_changes" -ne 0 ]; then
-            # Add the root directory to the matrix if there are changes outside the integrations folder
-            changed_folders=$(echo -e "$changed_folders\n.")
-          fi
-
-          matrix=$(echo "$changed_folders" | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          INTEGRATIONS=$(node -e 'integrations=${{ steps.changed-files.outputs.integrations_all_changed_files }};console.log(JSON.stringify(integrations.map(integration => integration.split("/")[1])))')
+          HAS_CORE=${{ steps.changed-files.outputs.core_all_changed_files != '[]' }}
+          echo "Core changes : ${HAS_CORE}"
+          MATRIX=$(node -e "integrations=${INTEGRATIONS}; hasCore=${HAS_CORE}; console.log(JSON.stringify(hasCore ? integrations.concat(['.']) : integrations))")
+          echo "Integration changes : ${INTEGRATIONS}"
+          echo "All changes : ${MATRIX}"
+          echo "core=${HAS_CORE}" >> $GITHUB_OUTPUT
+          echo "integrations=${INTEGRATIONS}" >> $GITHUB_OUTPUT
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT

@@ -47,6 +47,7 @@ jobs:
       contents: read
     needs: [prepare-matrix]
     strategy:
+      max-parallel: 5
       matrix:
         integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     steps:
