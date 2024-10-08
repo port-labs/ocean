@@ -7,12 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.95 (2024-09-19)
+## 0.1.100 (2024-10-08)
 
 
 ### Features
 
 - Added support for portfolios (0.1.91)
+
+
+## 0.1.99 (2024-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.2
+
+
+## 0.1.98 (2024-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.1
+
+
+## 0.1.97 (2024-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.11.0
+
+
+## 0.1.96 (2024-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.12
+
+
+## 0.1.95 (2024-09-19)
+
+
+### Bug Fixes
+
+- Added handling for 400 and 404 HTTP errors to allow the integration to continue processing other requests instead of crashing (0.1.95)
 
 
 ## 0.1.94 (2024-09-17)

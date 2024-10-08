@@ -1,6 +1,11 @@
 import enum
 
 from port_ocean.context.event import event
+import asyncio
+
+
+MAX_CONCURRENT_TASKS = 50
+semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TASKS)
 
 
 class CustomProperties(enum.StrEnum):
@@ -25,7 +30,7 @@ def is_access_denied_exception(e: Exception) -> bool:
         "UnauthorizedOperation",
     ]
 
-    if hasattr(e, "response"):
+    if hasattr(e, "response") and e.response is not None:
         error_code = e.response.get("Error", {}).get("Code")
         return error_code in access_denied_error_codes
 

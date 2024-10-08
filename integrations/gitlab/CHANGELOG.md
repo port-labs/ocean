@@ -7,6 +7,70 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.130 (2024-10-08)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.2
+
+
+0.1.129 (2024-10-02)
+====================
+
+### Bug Fixes
+
+- Removed keyset pagination parameters from the listing of repository tree so the application can paginate data using the standard page index and page size parameters in the AsyncFetcher.fetch_batch (0.1.129)
+
+
+0.1.128 (2024-10-02)
+====================
+
+### Improvements
+
+- Improved real time event handling and added more verbosity on event handling
+
+
+0.1.127 (2024-10-01)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.1
+
+
+0.1.126 (2024-09-29)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.11.0
+
+
+0.1.125 (2024-09-25)
+====================
+
+### Improvements
+
+- Added log for when file kind's project iteration found a relevant project, and for when the batch entirely isn't relevant
+
+
+0.1.124 (2024-09-24)
+====================
+
+### Improvements
+
+- Added more logs and implemented the webhook creation in async (0.1.124)
+
+
+0.1.123 (2024-09-22)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.12
+
+
 0.1.122 (2024-09-17)
 ====================
 

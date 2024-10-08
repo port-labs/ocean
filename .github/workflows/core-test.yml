@@ -1,0 +1,88 @@
+name: 🌊 Ocean Core Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    uses: ./.github/workflows/detect-changes-matrix.yml
+  test:
+    name: 🌊 Ocean Core Tests
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: ${{ needs.detect-changes.outputs.core == 'true' }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install poetry
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: |
+          make install
+
+      - name: Unit Test Core
+        env:
+          PYTEST_ADDOPTS: --junitxml=junit/unit-test-results-ocean/core.xml
+        run: |
+          make test
+
+      - name: Build core for smoke test
+        run: |
+          make build
+
+      - name: Run fake integration for core test
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+        run: |
+          ./scripts/run-smoke-test.sh
+
+      - name: Smoke Test Core
+        env:
+          PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+        run: |
+          make test/smoke
+
+      - name: Cleanup Smoke Test
+        env:
+          PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+        run: |
+          make test/smoke
+
+      - name: Install current core for all integrations
+        run: |
+          echo "Installing local core for all integrations"
+          SCRIPT_TO_RUN='make install/local-core' make execute/all
+
+      - name: Test all integrations with current core
+        run: |
+          echo "Testing all integrations with local core"
+          SCRIPT_TO_RUN="PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v4
+        if: ${{ always() }}
+        with:
+          report_paths: '**/junit/**-test-results-**/*.xml'
+          include_passed: true
+          require_tests: true
+          fail_on_failure: true

@@ -1,6 +1,6 @@
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import httpx
 
 from loguru import logger
@@ -14,6 +14,7 @@ PAGE_SIZE = 50
 class ResourceKey(StrEnum):
     JOBS = "jobs"
     BUILDS = "builds"
+    STAGES = "stages"
 
 
 class JenkinsClient:
@@ -42,8 +43,42 @@ class JenkinsClient:
 
         async for _jobs in self.fetch_resources(ResourceKey.BUILDS):
             builds = [build for job in _jobs for build in job.get("builds", [])]
+            logger.debug(f"Builds received {builds}")
             event.attributes.setdefault(ResourceKey.BUILDS, []).extend(builds)
             yield builds
+
+    async def _get_build_stages(self, build_url: str) -> list[dict[str, Any]]:
+        response = await self.client.get(f"{build_url}/wfapi/describe")
+        response.raise_for_status()
+        stages = response.json().get("stages", [])
+        return stages
+
+    async def _get_job_builds(self, job_url: str) -> AsyncGenerator[Any, None]:
+        job_details = await self.get_single_resource(job_url)
+        if job_details.get("buildable"):
+            yield job_details.get("builds")
+
+        job = {"url": job_url}
+        async for _jobs in self.fetch_resources(ResourceKey.BUILDS, job):
+            builds = [build for job in _jobs for build in job.get("builds", [])]
+            yield builds
+
+    async def get_stages(
+        self, job_url: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for builds in self._get_job_builds(job_url):
+            stages: list[dict[str, Any]] = []
+            for build in builds:
+                build_url = build["url"]
+                try:
+                    logger.info(f"Getting stages for build {build_url}")
+                    build_stages = await self._get_build_stages(build_url)
+                    stages.extend(build_stages)
+                    yield build_stages
+                except Exception as e:
+                    logger.error(
+                        f"Failed to get stages for build {build_url}: {e.args[0]}"
+                    )
 
     async def fetch_resources(
         self, resource: str, parent_job: Optional[dict[str, Any]] = None
@@ -56,10 +91,13 @@ class JenkinsClient:
         while True:
             params = self._build_api_params(resource, page_size, page)
             base_url = self._build_base_url(parent_job)
+            logger.info(f"Fetching {resource} from {base_url} with params {params}")
 
             job_response = await self.client.get(f"{base_url}/api/json", params=params)
             job_response.raise_for_status()
-            jobs = job_response.json()["jobs"]
+            logger.debug(f"Fetched {job_response.json()}")
+            jobs = job_response.json().get("jobs", [])
+            logger.info(f"Fetched {len(jobs)} jobs")
 
             if not jobs:
                 break
@@ -116,9 +154,14 @@ class JenkinsClient:
         Job: job/JobName/
         Build: job/JobName/34/
         """
-        response = await self.client.get(
-            f"{self.jenkins_base_url}/{resource_url}api/json"
-        )
+        # Ensure resource_url ends with a slash
+        if not resource_url.endswith("/"):
+            resource_url += "/"
+
+        # Construct the full URL using urljoin
+        fetch_url = urljoin(self.jenkins_base_url, f"{resource_url}api/json")
+
+        response = await self.client.get(fetch_url)
         response.raise_for_status()
         return response.json()
 
