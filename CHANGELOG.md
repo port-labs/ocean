@@ -7,7 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-## 0.12.12 (2024-10-06)
+## 0.12.3 (2024-10-09)
+
+### Improvements
+
+- Updated docker base image to improve security vulnerabilities
+
+
+## 0.12.2 (2024-10-06)
 
 ### Improvements
 

@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.91 (2024-10-07)
+# 0.1.93 (2024-10-09)
 
 
 ### Bug Fixes
 
-- Updated the error handling mechanims by allowing users to specify how they want to handle ArgoCD server error using the `ignoreServerError` flag (0.1.91)
+- Updated the error handling mechanims by allowing users to specify how they want to handle ArgoCD server error using the `ignoreServerError` flag (0.1.93)
+
+
+## 0.1.92 (2024-10-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.3
+
+
+## 0.1.91 (2024-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.2
 
 
 ## 0.1.90 (2024-10-01)
