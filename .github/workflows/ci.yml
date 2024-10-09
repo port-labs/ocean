@@ -128,4 +128,5 @@ jobs:
 
       - name: Verify Built Image
         run: |
-          docker run --platform ${{ matrix.platform }} --rm --entrypoint bash ${{ steps.prepare_tags.outputs.tags }} -c 'ocean version'
+          SINGLE_TAG=$(echo "${{ steps.prepare_tags.outputs.tags }}" | awk -F ',' '{print $1};' )
+          docker run --platform ${{ matrix.platform }} --rm --entrypoint bash "${SINGLE_TAG}" -c 'ocean version'
