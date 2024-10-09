@@ -77,13 +77,13 @@
         "reason": "{{ .inputs.ignoreReason }}",
         "reasonType": "{{ .inputs.reasonType }}",
         "ignoredBy": {
-          "name": "text",
-          "email": "text",
-          "id": "text"
+          "name": "{{ .trigger.by.user.firstName }}",
+          "email": "{{ .trigger.by.user.email }}",
+          "id": "{{ .trigger.by.user.id }}"
         },
         "disregardIfFixable": false,
         "expires": "{{ (( .inputs.expirationDate | sub(\" days\"; \"\") | tonumber) * 24 * 60 * 60 | now + . | strftime(\"%Y-%m-%dT%H:%M:%S%z\")) }}",
-        "created": "text"
+        "created": "{{ .trigger.at }}"
       }
     },
     "requiredApproval": false,

@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added ignore issue default action
+- Added a default Port self service action to allow users to ignore snyk vulnerabilities
 
 
 ## 0.1.92 (2024-10-08)
