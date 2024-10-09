@@ -10,7 +10,6 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 class ObjectKind(StrEnum):
     COMPONENT = "component"
-    TEMPLATE = "template"
     API = "api"
     GROUP = "group"
     USER = "user"

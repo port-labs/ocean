@@ -10,15 +10,6 @@ resources:
           blueprint: '"component"'
           properties:
             name: .metadata.name
-  - kind: template
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .metadata.name
-          title: .metadata.title // .metadata.name
-          blueprint: '"template"'
   - kind: API
     selector:
       query: "true"
