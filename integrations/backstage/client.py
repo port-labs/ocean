@@ -24,8 +24,8 @@ class BackstageClient:
         return f"{self.backstage_host}/{BackstageClient.BASE_ENDPOINT}"
 
     async def _get_paginated_entities(
-       self, page_size: int, end_cursor: Optional[str] = None) -> Any:
-        params = {"limit": page_size}
+       self, page_size: int, kind: str, end_cursor: Optional[str] = None) -> Any:
+        params = {"limit": page_size, "filter": f"kind={kind}"}
         if end_cursor:
             params["cursor"] = end_cursor
         response = await self.client.get(self.entities_query_endpoint, params=params)
@@ -42,13 +42,13 @@ class BackstageClient:
             "entities": entities
         }
 
-    async def get_entities(self, end_cursor: Optional[str] = None):
-       return await self._get_paginated_entities(PAGE_SIZE, end_cursor)
+    async def get_entities_by_kind(self, kind: str, end_cursor: Optional[str] = None):
+       return await self._get_paginated_entities(PAGE_SIZE, kind, end_cursor)
 
-    async def get_all_entities(self):
+    async def get_all_entities_by_kind(self, kind: str):
         end_cursor = None
         while True:
-            response = await self.get_entities(end_cursor)
+            response = await self.get_entities_by_kind(kind, end_cursor)
             yield response["entities"]
 
             end_cursor = response["next_cursor"]

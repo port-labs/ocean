@@ -1,5 +1,5 @@
 resources:
-  - kind: backstage-entity
+  - kind: component
     selector:
       query: "true"
     port:
@@ -7,6 +7,69 @@ resources:
         mappings:
           identifier: .metadata.name
           title: .metadata.title // .metadata.name
-          blueprint: '"backstageEntity"'
+          blueprint: '"component"'
           properties:
             name: .metadata.name
+  - kind: template
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.title // .metadata.name
+          blueprint: '"template"'
+  - kind: API
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.title // .metadata.name
+          blueprint: '"api"'
+  - kind: group
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.title // .metadata.name
+          blueprint: '"group"'
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.title // .metadata.name
+          blueprint: '"user"'
+  - kind: resource
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.title // .metadata.name
+          blueprint: '"resource"'
+  - kind: system
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.title // .metadata.name
+          blueprint: '"system"'
+  - kind: domain
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .metadata.name
+          title: .metadata.title // .metadata.name
+          blueprint: '"domain"'

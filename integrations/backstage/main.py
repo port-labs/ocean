@@ -9,7 +9,15 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 
 class ObjectKind(StrEnum):
-   ENTITY = "backstage-entity"
+    COMPONENT = "component"
+    TEMPLATE = "template"
+    API = "api"
+    GROUP = "group"
+    USER = "user"
+    SYSTEM = "system"
+    DOMAIN = "domain"
+    RESOURCE = "resource"
+
 
 def init_client() -> BackstageClient:
     return BackstageClient(
@@ -17,11 +25,11 @@ def init_client() -> BackstageClient:
         backstage_token=ocean.integration_config["backstage_token"]
     )
 
-@ocean.on_resync(ObjectKind.ENTITY)
+@ocean.on_resync()
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = init_client()
-    async for entities in client.get_all_entities():
-        logger.info(f"Got some entities: {len(entities)}")
+    async for entities in client.get_all_entities_by_kind(kind):
+        logger.info(f"Got some entities: {len(entities)}, kind: {kind}")
         yield entities
 
 
