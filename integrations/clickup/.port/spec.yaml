@@ -1,0 +1,35 @@
+type: clickup
+description: ClickUp integration for Port Ocean
+icon: Clickup
+features:
+  - type: exporter
+    section: Project Management
+    resources:
+      - kind: task
+      - kind: project
+      - kind: space
+      - kind: team
+configurations:
+  - name: clickupPersonalToken
+    description: The ClickUp personal token used for authentication. To create a personal token, see the <a href="https://clickup.com/api/developer-portal/authentication#personal-token" target="_blank">ClickUp documentation</a>
+    required: true
+    type: string
+    sensitive: true
+  - name: clickupBaseUrl
+    description: The Clickup Base URL. Defaults to <a href="https://api.clickup.com" target="_blank">https://api.clickup.com</a> when not specified
+    type: url
+    required: false
+    default: https://api.clickup.com
+  - name: includeArchivedProjects
+    description: This is to filter archived projects. If set to true, archived projects will be included in the export. If set to false, archived projects will be excluded from the export. Default is false.
+    type: boolean
+    required: false
+    default: false
+  - name: appHost
+    required: false
+    type: url
+    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Clickup
+  - name: workspaceIds
+    description: A comma-separated list of workspace ids to filter. Integration will import all workspaces on the credentials if not provided. To find your workspace ids, see the <a href="https://clickup.com/api/developer-portal/explore/#find-workspaces" target="_blank">ClickUp documentation</a>
+    required: false
+    type: string
