@@ -7,6 +7,43 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.12.3 (2024-10-09)
+
+### Improvements
+
+- Updated docker base image to improve security vulnerabilities
+
+
+## 0.12.2 (2024-10-06)
+
+### Improvements
+
+- Added a util `semaphore_async_iterator` to enable seamless control over concurrent executions.
+
+
+## 0.12.1 (2024-10-02)
+
+### Bug Fixes
+
+- Fixed a bug when running jq with iterator that caused the integration to crash
+- Reverted image to `python:3.11-slim-buster` to fix the issue with the alpine image
+
+## 0.12.0 (2024-10-01)
+
+### Improvements
+
+- Replace `python:3.11-slim-bookworm` with `python:3.11-alpine` to reduce dependencies and fix vulnerabilities
+
+### Bug Fixes
+
+- Fixed smoke tests to run concurrently and clean up after themselves
+
+## 0.11.0 (2024-09-29)
+
+### Improvements
+
+- Replace pyjq with jq.py to bump jq version from 1.5.2 to 1.7.1
+
 ## 0.10.12 (2024-09-19)
 
 ### Bug Fixes
