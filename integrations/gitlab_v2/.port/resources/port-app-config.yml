@@ -1,0 +1,77 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: group
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"gitlabGroup"'
+          properties:
+            visibility: .visibility
+            url: .web_url
+            description: .description
+
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .name
+          blueprint: '"project"'
+          properties:
+            url: .web_url
+            readme: .readme_url
+            description: .description
+            language: .__languages | join(", ")
+            namespace: .namespace.name
+            fullPath: .namespace.full_path
+            defaultBranch: .default_branch
+          relations:
+            group: if .__groups[0].id == null then "" else .__groups[0].id|tostring end
+
+  - kind: merge_request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"gitlabMergeRequest"'
+          properties:
+            creator: .author.username
+            status: .state
+            createdAt: if .created_at | contains("UTC") then (.created_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.created_at) end
+            updatedAt: if .updated_at | contains("UTC") then (.updated_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.updated_at) end
+            mergedAt: .merged_at
+            link: .web_url
+            reviewers: .reviewers[] | .username
+          relations:
+            service: .project_id | tostring
+
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"gitlabIssue"'
+          properties:
+            link: .web_url
+            description: .description
+            createdAt: if .created_at | contains("UTC") then (.created_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.created_at) end
+            closedAt: .closed_at
+            updatedAt: if .updated_at | contains("UTC") then (.updated_at | sub(" UTC"; "") | strptime("%Y-%m-%d %H:%M:%S") | mktime | todateiso8601) else (.updated_at) end
+            creator: .author.name
+            status: .state
+            labels: .labels
+          relations:
+            service: .project_id | tostring
