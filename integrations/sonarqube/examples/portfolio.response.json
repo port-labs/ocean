@@ -1,0 +1,79 @@
+{
+  "key": "GetPort_SelfService",
+  "name": "GetPort SelfService",
+  "desc": "Test",
+  "qualifier": "VW",
+  "visibility": "public",
+  "selectionMode": "NONE",
+  "subViews": [
+    {
+      "key": "GetPort_SelfService_Second",
+      "name": "GetPort SelfService Second",
+      "qualifier": "SVW",
+      "selectionMode": "NONE",
+      "subViews": [
+        {
+          "key": "GetPort_SelfService_Third",
+          "name": "GetPort SelfService Third",
+          "qualifier": "SVW",
+          "selectionMode": "NONE",
+          "subViews": [],
+          "referencedBy": []
+        },
+        {
+          "key": "Port_Test",
+          "name": "Port Test",
+          "qualifier": "SVW",
+          "selectionMode": "NONE",
+          "subViews": [],
+          "referencedBy": []
+        }
+      ],
+      "referencedBy": []
+    },
+    {
+      "key": "Python",
+      "name": "Python",
+      "qualifier": "SVW",
+      "selectionMode": "NONE",
+      "subViews": [
+        {
+          "key": "Time",
+          "name": "Time",
+          "qualifier": "SVW",
+          "selectionMode": "NONE",
+          "subViews": [
+            {
+              "key": "port_ayodeji",
+              "name": "port-ayodeji",
+              "qualifier": "SVW",
+              "selectionMode": "NONE",
+              "subViews": [
+                {
+                  "key": "port_ayodeji:REferenced",
+                  "name": "REferenced",
+                  "qualifier": "VW",
+                  "visibility": "public",
+                  "originalKey": "REferenced"
+                }
+              ],
+              "referencedBy": []
+            }
+          ],
+          "referencedBy": []
+        }
+      ],
+      "referencedBy": []
+    },
+    {
+      "key": "GetPort_SelfService:Authentication_Application",
+      "name": "Authentication Application",
+      "desc": "For auth services",
+      "qualifier": "APP",
+      "visibility": "private",
+      "selectedBranches": ["main"],
+      "originalKey": "Authentication_Application"
+    }
+  ],
+  "referencedBy": []
+}

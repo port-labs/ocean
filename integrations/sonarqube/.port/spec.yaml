@@ -10,6 +10,7 @@ features:
       - kind: onprem_analysis
       - kind: issues
       - kind: analysis
+      - kind: portfolios
 configurations:
   - name: sonarApiToken
     required: true

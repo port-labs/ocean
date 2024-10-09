@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.100 (2024-10-08)
+
+
+### Features
+
+- Added support for portfolios (0.1.91)
+
+
 ## 0.1.99 (2024-10-08)
 
 

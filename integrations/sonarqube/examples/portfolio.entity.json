@@ -1,0 +1,15 @@
+{
+  "identifier": "GetPort_SelfService",
+  "title": "GetPort SelfService",
+  "blueprint": "sonarQubePortfolio",
+  "properties": {
+    "description": null,
+    "visibility": "PUBLIC",
+    "selectionMode": "NONE",
+    "disabled": null
+  },
+  "relations": {
+    "subPortfolios": ["GetPort_SelfService_Second", "Python"],
+    "referencedBy": []
+  }
+}
