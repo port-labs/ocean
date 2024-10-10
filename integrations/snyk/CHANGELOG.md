@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.93 (2024-10-08)
+## 0.1.93 (2024-10-09)
 
 
 ### Improvements
 
-- Added a default Port self service action to allow users to ignore snyk vulnerabilities
+- Bumped ocean version to ^0.12.3
 
 
 ## 0.1.92 (2024-10-08)
