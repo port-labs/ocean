@@ -5,62 +5,119 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .metadata.name
+          identifier: .metadata.identifier
           title: .metadata.title // .metadata.name
           blueprint: '"component"'
           properties:
-            name: .metadata.name
+            type: .spec.type
+            lifecycle: .spec.lifecycle
+            language: .spec.language
+            description: .metadata.description
+            labels: .metadata.labels
+            annotations: .metadata.annotations
+            links: .metadata.links
+            tags: .metadata.tags
+          relations:
+            owningUser: .relations[] | select(.type == "ownedBy" and (.targetRef | startswith("user:"))) | .targetRef
+            owningGroup: .relations[] | select(.type == "ownedBy" and (.targetRef | startswith("group:"))) | .targetRef
   - kind: API
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: .metadata.name
+          identifier: .metadata.identifier
           title: .metadata.title // .metadata.name
           blueprint: '"api"'
+          properties:
+            type: .spec.type
+            lifecycle: .spec.lifecycle
+            definition: .spec.definition | tostring
+            definitionOpenAPI: if .spec.type == "open-api" then .spec.definition else null end
+            definitionAsyncAPI: if .spec.type == "async-api" then .spec.definition else null end
+            definitionGRPC: if .spec.type == "grpc" then .spec.definition else null end
+            definitionGraphQL: if .spec.type == "graphql" then .spec.definition else null end
+            description: .metadata.description
+            labels: .metadata.labels
+            annotations: .metadata.annotations
+            links: .metadata.links
+            tags: .metadata.tags
   - kind: group
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: .metadata.name
+          identifier: .metadata.identifier
           title: .metadata.title // .metadata.name
           blueprint: '"group"'
+          properties:
+            description: .metadata.description
+            type: .metadata.type
+            email: .metadata.email
+            labels: .metadata.labels
+            annotations: .metadata.annotations
+            links: .metadata.links
+            tags: .metadata.tags
   - kind: user
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: .metadata.name
+          identifier: .metadata.identifier
           title: .metadata.title // .metadata.name
           blueprint: '"user"'
+          properties:
+            email: .metadata.email
+            description: .metadata.description
+            labels: .metadata.labels
+            annotations: .metadata.annotations
+            links: .metadata.links
+            tags: .metadata.tags
   - kind: resource
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: .metadata.name
+          identifier: .metadata.identifier
           title: .metadata.title // .metadata.name
           blueprint: '"resource"'
+          properties:
+            type: .spec.type
+            description: .metadata.description
+            labels: .metadata.labels
+            annotations: .metadata.annotations
+            links: .metadata.links
+            tags: .metadata.tags
   - kind: system
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: .metadata.name
+          identifier: .metadata.identifier
           title: .metadata.title // .metadata.name
           blueprint: '"system"'
+          properties:
+            description: .metadata.description
+            labels: .metadata.labels
+            annotations: .metadata.annotations
+            links: .metadata.links
+            tags: .metadata.tags
   - kind: domain
     selector:
       query: "true"
     port:
       entity:
         mappings:
-          identifier: .metadata.name
+          identifier: .metadata.identifier
           title: .metadata.title // .metadata.name
           blueprint: '"domain"'
+          properties:
+            description: .metadata.description
+            labels: .metadata.labels
+            annotations: .metadata.annotations
+            links: .metadata.links
+            tags: .metadata.tags

@@ -206,7 +206,7 @@
   },
   {
     "identifier": "api",
-    "title": "API",
+    "title": "api",
     "icon": "ApiDoc",
     "schema": {
       "properties": {
@@ -217,6 +217,10 @@
         "lifecycle": {
           "title": "Lifecycle",
           "type": "string"
+        },
+        "definition": {
+          "type": "string",
+          "title": "API Definition"
         },
         "definitionOpenAPI": {
           "type": "object",
@@ -429,13 +433,13 @@
       },
       "providesApis": {
         "title": "Provides APIs",
-        "target": "API",
+        "target": "api",
         "many": true,
         "required": false
       },
       "consumesApis": {
         "title": "Consumes APIs",
-        "target": "API",
+        "target": "api",
         "many": true,
         "required": false
       },

@@ -22,6 +22,13 @@ class BackstageClient:
     @property
     def entities_query_endpoint(self) -> str:
         return f"{self.backstage_host}/{BackstageClient.BASE_ENDPOINT}"
+    
+    def _add_identifier(self, entity: Any) -> Any:
+        name = entity["metadata"]["name"]
+        namespace = entity["metadata"]["namespace"] or "default"
+        kind = entity["kind"]
+        entity["metadata"]["identifier"] = f"{kind}:{namespace}/{name}".lower()
+        return entity
 
     async def _get_paginated_entities(
        self, page_size: int, kind: str, end_cursor: Optional[str] = None) -> Any:
@@ -39,7 +46,7 @@ class BackstageClient:
         return {
             "next_cursor": next_cursor,
             "total": total,
-            "entities": entities
+            "entities": [self._add_identifier(entity) for entity in entities]
         }
 
     async def get_entities_by_kind(self, kind: str, end_cursor: Optional[str] = None):
