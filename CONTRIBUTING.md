@@ -32,7 +32,7 @@ Apart from contributing to the framework itself, you can also contribute by addi
 
 3. **Testing and Documentation**: Thoroughly test the integration to ensure its reliability and functionality. Additionally, document the integration by providing usage instructions, configuration details, and any specific considerations users should be aware of.
 
-4. **Integration Submission**: Finally, submit your integration code and documentation to the framework's repository for review. Collaborate with other contributors to address feedback and make any necessary improvements.
+4. **Integration Submission**: Finally, submit your integration code and documentation to the framework's repository for review. Collaborate with other contributors to address feedback and make any necessary improvements. Ensure that the integration is submitted as a `beta` version. This allows for a period of testing and feedback, ensuring that any potential issues can be identified and addressed before the integration is released as GA.
 
 By contributing a new integration, you enable users of the framework to seamlessly integrate with additional data sources and services, expanding its versatility and usefulness.
 

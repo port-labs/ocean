@@ -9,17 +9,20 @@ features:
       - kind: job
       - kind: build
       - kind: user
+      - kind: stage
 configurations:
   - name: jenkinsHost
-    description: "The host of the Jenkins server"
+    description: The base URL of your Jenkins server. This should be the address you use to access the Jenkins dashboard in your browser (e.g., "https://your-jenkins-server.com").
     required: true
     type: url
   - name: jenkinsUser
+    description: The username of the Jenkins user account that has the necessary permissions to access job, build, and user information.
     required: true
     type: string
     sensitive: true
   - name: jenkinsToken
     required: true
+    description: The API token associated with the Jenkins user account. You can generate this token in your Jenkins user profile settings.
     type: string
     sensitive: true
 deploymentMethodOverride:

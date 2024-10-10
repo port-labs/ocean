@@ -15,10 +15,13 @@ configurations:
     required: true
     sensitive: true
     type: string
+    description: A valid LaunchDarkly API token with API version 20220603. To create a token, see the <a target="_blank" href=" https://docs.launchdarkly.com/home/account-security/api-access-tokens">Launchdarkly Documentation</a>.
   - name: launchdarklyHost
     required: false
     type: string
     default: https://app.launchdarkly.com
+    description: The url of your LaunchDarkly instance. For example https://app.launchdarkly.com. Found in the URL field of your browser when you launch your LaunchDarkly instance.
   - name: appHost
     type: url
     required: false
+    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for webhooks created in LaunchDarkly

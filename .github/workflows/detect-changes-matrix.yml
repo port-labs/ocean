@@ -1,0 +1,57 @@
+name: Detect Changes
+on:
+  workflow_call:
+    outputs:
+      matrix:
+        value: ${{ jobs.detect-changes.outputs.matrix }}
+        description: "Matrix of changed integrations / Ocean Core per git commit changes"
+      integrations:
+        description: "Matrix of changed integrations per git commit changes"
+        value: ${{ jobs.detect-changes.outputs.integrations }}
+      core:
+        value: ${{ jobs.detect-changes.outputs.core }}
+        description: "Determine if any core changes per git commit changes"
+
+jobs:
+  detect-changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-all-matrix.outputs.matrix }}
+      integrations: ${{ steps.set-all-matrix.outputs.integrations }}
+      core: ${{ steps.set-all-matrix.outputs.core }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Get list of changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          dir_names: true
+          json: true
+          dir_names_max_depth: 2
+          escape_json: false
+          files_yaml: |
+            core:
+              - '!integrations/**'
+              - '!scripts/*'
+              - '!scripts/*'
+              - '!./*.md'
+            integrations:
+              - 'integrations/**'
+              - '!integrations/**/*.md'
+              - '!integrations/_infra/*'
+
+      - name: Set integrations and all matrix
+        id: set-all-matrix
+        run: |
+          INTEGRATIONS=$(node -e 'integrations=${{ steps.changed-files.outputs.integrations_all_changed_files }};console.log(JSON.stringify(integrations.map(integration => integration.split("/")[1])))')
+          HAS_CORE=${{ steps.changed-files.outputs.core_all_changed_files != '[]' }}
+          echo "Core changes : ${HAS_CORE}"
+          MATRIX=$(node -e "integrations=${INTEGRATIONS}; hasCore=${HAS_CORE}; console.log(JSON.stringify(hasCore ? integrations.concat(['.']) : integrations))")
+          echo "Integration changes : ${INTEGRATIONS}"
+          echo "All changes : ${MATRIX}"
+          echo "core=${HAS_CORE}" >> $GITHUB_OUTPUT
+          echo "integrations=${INTEGRATIONS}" >> $GITHUB_OUTPUT
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT

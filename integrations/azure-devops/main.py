@@ -24,9 +24,12 @@ async def setup_webhooks() -> None:
         return
 
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    if ocean.integration_config.get("is_projects_limited", True):
+    if ocean.integration_config.get("is_projects_limited"):
         async for projects in azure_devops_client.generate_projects():
             for project in projects:
+                logger.info(
+                    f"Setting up webhook listeners for project {project['name']}"
+                )
                 await setup_listeners(
                     ocean.integration_config["app_host"],
                     azure_devops_client,
@@ -98,6 +101,14 @@ async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for policies in azure_devops_client.generate_repository_policies():
         logger.info(f"Resyncing repository {len(policies)} policies")
         yield policies
+
+
+@ocean.on_resync(Kind.WORK_ITEM)
+async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for work_items in azure_devops_client.generate_work_items():
+        logger.info(f"Resyncing {len(work_items)} work items")
+        yield work_items
 
 
 @ocean.router.post("/webhook")

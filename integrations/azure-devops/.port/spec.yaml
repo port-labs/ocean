@@ -8,20 +8,23 @@ features:
     section: Git Providers
 configurations:
   - name: organizationUrl
+    description: The URL of your Azure DevOps organization (e.g., "https://dev.azure.com/{your-organization}"). To find your organization URL, refer to the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http">Azure DevOps documentation</a>.
     required: true
     type: url
     sensitive: true
   - name: personalAccessToken
+    description: A personal access token (PAT) with read permissions for the resources you want to sync. To create a PAT, see the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops">Azure DevOps documentation</a>.
     required: true
     type: string
     sensitive: true
   - name: isProjectsLimited
+    description: Set to true if the personal access token's scope is limited to specific projects within your organization.
     required: false
     type: boolean
-    description: If the token is scoped to projects
+    default: true
   - name: appHost
     required: false
     type: url
-    description: The host of the Port Ocean app.
+    description: The URL of the Port Ocean app. This is required for real-time event processing, ensuring Port always reflects the latest state of your Azure DevOps resources.
 deploymentMethodOverride:
   - type: helm

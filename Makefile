@@ -5,7 +5,7 @@ define run_checks
 	cd $1; \
 	poetry check || exit_code=$$?;\
 	mypy . --exclude '/\.venv/' || exit_code=$$?; \
-	ruff . || exit_code=$$?; \
+	ruff check . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
 	yamllint . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
@@ -26,6 +26,10 @@ define install_poetry
 	fi
 endef
 
+define install_precommit
+	command pre-commit install
+endef
+
 define deactivate_virtualenv
     if [ -n "$$VIRTUAL_ENV" ]; then \
         unset VIRTUAL_ENV; \
@@ -39,15 +43,41 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all lint build run new test clean
+.SILENT: install install/all test/all test/smoke clean/smoke lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all
 
 
 # Install dependencies
 install:
 	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
-	poetry install --with dev --all-extras
+	poetry install --with dev --all-extras &&  \
+	$(ACTIVATE) && \
+	$(call install_precommit)
 
+test/all: test
+	$(ACTIVATE) && \
+	for dir in $(wildcard $(CURDIR)/integrations/*); do \
+		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
+		if [ $$count -ne 0 ]; then \
+			echo "Testing $$dir"; \
+		  	cd $$dir; \
+			$(MAKE) test || exit_code=$$?; \
+			cd ../..; \
+		fi; \
+	done;
+
+
+execute/all:
+	# run script for all integrations (${SCRIPT_TO_RUN})
+	for dir in $(wildcard $(CURDIR)/integrations/*); do \
+		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
+		if [ $$count -ne 0 ]; then \
+			echo "Running '${SCRIPT_TO_RUN}' $$dir"; \
+		  	cd $$dir; \
+			${SCRIPT_TO_RUN} || exit_code=$$?; \
+			cd ../..; \
+		fi; \
+	done;
 
 install/all: install
 	exit_code=0; \
@@ -69,8 +99,13 @@ lint:
 	$(ACTIVATE) && \
 	$(call run_checks,.)
 
+lint/fix:
+	$(ACTIVATE) && \
+	black .
+	ruff check --fix .
+
 # Development commands
-build: 
+build:
 	$(ACTIVATE) && poetry build
 
 run: lint
@@ -79,8 +114,20 @@ run: lint
 new:
 	$(ACTIVATE) && poetry run ocean new ./integrations --public
 
-test: lint
-	$(ACTIVATE) && pytest
+test:
+	$(ACTIVATE) && pytest -m 'not smoke'
+
+test/smoke:
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} pytest -m smoke
+
+clean/smoke:
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./scripts/clean-smoke-test.py
+
+test/watch:
+	$(ACTIVATE) && \
+		pytest \
+			--color=yes \
+			-f
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;
@@ -97,6 +144,10 @@ clean:
 	rm -rf docs/_build
 	rm -rf dist/
 
-# make bump/integrations VERSION=0.3.2 
+# make bump/integrations VERSION=0.3.2
 bump/integrations:
 	./scripts/bump-all.sh $(VERSION)
+
+# make bump/single-integration INTEGRATION=aws
+bump/single-integration:
+	./scripts/bump-single-integration.sh -i $(INTEGRATION)

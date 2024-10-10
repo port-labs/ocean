@@ -133,5 +133,59 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "newRelicServiceLevel",
+    "description": "This blueprint represents a New Relic Service Level",
+    "title": "New Relic Service Level",
+    "icon": "NewRelic",
+    "schema": {
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "targetThreshold": {
+          "icon": "DefaultProperty",
+          "title": "Target Threshold",
+          "type": "number"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdBy": {
+          "title": "Creator",
+          "type": "string",
+          "format": "user"
+        },
+        "sli": {
+          "type": "number",
+          "title": "SLI"
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "newRelicService": {
+        "title": "New Relic service",
+        "target": "newRelicService",
+        "required": false,
+        "many": false
+      }
+    }
   }
 ]

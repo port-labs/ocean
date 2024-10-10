@@ -110,7 +110,7 @@ class IntegrationClientMixin:
                 "logs": logs,
             },
         )
-        handle_status_code(response)
+        handle_status_code(response, should_log=False)
         logger.debug("Logs successfully ingested")
 
     async def ingest_integration_kind_examples(

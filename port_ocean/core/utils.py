@@ -35,12 +35,15 @@ def is_same_entity(first_entity: Entity, second_entity: Entity) -> bool:
 
 
 async def validate_integration_runtime(
-    port_client: PortClient, requested_runtime: Runtime
+    port_client: PortClient,
+    requested_runtime: Runtime,
 ) -> None:
     logger.debug("Validating integration runtime")
-    current_integration = await port_client.get_current_integration(should_raise=False)
+    current_integration = await port_client.get_current_integration(
+        should_raise=False, should_log=False
+    )
     current_runtime = current_integration.get("installationType", "OnPrem")
-    if current_integration and current_runtime != requested_runtime:
+    if current_integration and current_runtime != requested_runtime.value:
         raise IntegrationRuntimeException(
             f"Invalid Runtime! Requested to run existing {current_runtime} integration in {requested_runtime} runtime."
         )

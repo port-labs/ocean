@@ -7,7 +7,226 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.12.3 (2024-10-09)
+
+### Improvements
+
+- Updated docker base image to improve security vulnerabilities
+
+
+## 0.12.2 (2024-10-06)
+
+### Improvements
+
+- Added a util `semaphore_async_iterator` to enable seamless control over concurrent executions.
+
+
+## 0.12.1 (2024-10-02)
+
+### Bug Fixes
+
+- Fixed a bug when running jq with iterator that caused the integration to crash
+- Reverted image to `python:3.11-slim-buster` to fix the issue with the alpine image
+
+## 0.12.0 (2024-10-01)
+
+### Improvements
+
+- Replace `python:3.11-slim-bookworm` with `python:3.11-alpine` to reduce dependencies and fix vulnerabilities
+
+### Bug Fixes
+
+- Fixed smoke tests to run concurrently and clean up after themselves
+
+## 0.11.0 (2024-09-29)
+
+### Improvements
+
+- Replace pyjq with jq.py to bump jq version from 1.5.2 to 1.7.1
+
+## 0.10.12 (2024-09-19)
+
+### Bug Fixes
+
+- Fixed updating state of resync when the resync is being cancelled by a new resync event
+
+## 0.10.11 (2024-09-17)
+
+### Improvements
+
+- Add smoke test with a live integration to validate core changes
+
+## 0.10.10 (2024-09-12)
+
+### Bug Fixes
+
+- Fixed failing on initialization of the integration when one of the actions exists in port
+
+### Improvements
+
+- Added fix lint command to the makefile as well as the pre-commit hook
+
+
+## 0.10.9 (2024-09-05)
+
+### Bug Fixes
+
+- Replaced StopAsyncIteration with a return statement to ignore prevent errors in cases where empty tasks are sent to the stream_async_iterators_tasks function
+
+
+## 0.10.8 (2024-09-04)
+
+### Bug Fixes
+
+- Avoid raising exception when receiving ReadTimeout on batch upsert entities
+- Increased both internal port client and third party client timeout to handle long requests
+
+
+## 0.10.7 (2024-08-28)
+
+### Improvements
+
+- Add search identifier support (Allow to run a search query to find the identifier of the entity as part of the mapping)
+
+
+## 0.10.6 (2024-08-31)
+
+### Bug Fixes
+
+- Fixed error log when looking for existence of integration on initialization
+
+
+## 0.10.5 (2024-08-27)
+
+### Improvements
+
+- Test support and helpers
+
+
+## 0.10.4 (2024-08-28)
+
+### Bug Fixes
+
+- Fixed upsert entity failure when saving modified data for search relations calculations
+
+
+## 0.10.3 (2024-08-28)
+
+### Bug Fixes
+
+- Bugfix Semaphores get fail when moving to the next scheduled resync when syncing a large number of entities, using a single event loop for all threads
+
+
+## 0.10.2 (2024-08-26)
+
+### Bug Fixes
+
+- Reverted last bugfix
+
+
+## 0.10.1 (2024-08-26)
+
+### Bug Fixes
+
+- Fixed unhashable type: 'dict' error when trying to delete entities with search identifier/relations
+
+
+## 0.10.0 (2024-08-19)
+
+### Improvements
+
+- Add support for reporting the integration resync state to expose more information about the integration state in the portal
+- Fix kafka listener never ending resync loop due to resyncState updates
+
+
+## 0.9.14 (2024-08-19)
+
+### Bug Fixes
+
+- Fixed an issue causing the cli to fail in a directory with no pyproject.toml in it
+
+
+## 0.9.13 (2024-08-13)
+
+### Improvements
+
+- Changed action CREATE route to use new v2 option
+
+
+## 0.9.12 (2024-08-06)
+
+### Bug Fixes
+
+- Fixed resync issue when calculating the diff of entities failed due to search identifier in relation mapping
+
+
+## 0.9.11 (2024-08-05)
+
+
+### Bug Fixes
+
+- Not showing misleading error message if port state is empty
+
+## 0.9.10 (2024-08-04)
+
+
+### Bug Fixes
+
+- Fixed & Aligned scaffolding files
+
+
+## 0.9.9 (2024-08-04)
+
+
+### Bug Fixes
+
+- Fixed an issue where passing an object for OCEAN__INTEGRATION__CONFIG that holds an object might not be parsed correctly and cause validation error for invalid type (#1)
+
+
+## 0.9.8 (2024-08-01)
+
+
+### Bug Fixes
+
+- Fixed an issue where a `ValueError` was raised in `unregister_raw` method due to incorrect unpacking of results from asyncio.gather. The fix involved using zip to properly handle the output and ensure both entities and errors are processed correctly.
+
+
+## 0.9.7 (2024-07-31)
+
+
+### Bug Fixes
+
+- Fix vulnerabilities and bump versions of dependencies
+- Add python-dateutil to the core dependencies
+- Fix misspelling in the `bump-all.sh` script
+
+
+## 0.9.6 (2024-07-30)
+
+
+### Bug Fixes
+
+- Flush all remaining buffered logs when exiting application
+
+
+## 0.9.5 (2024-07-23)
+
+
+### Bug Fixes
+
+- Initialize missing _port_app_config
+
+
+## 0.9.4 (2024-07-09)
+
+
+### Bug Fixes
+
+- Handle non existing config mapping for cases where the integration was created by SAAS and the config mapping was not set
+
+
 ## 0.9.3 (2024-07-08)
+
 
 ### Improvements
 
@@ -15,6 +234,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Added log for when receiving invalid port app config mapping
 
 ## 0.9.2 (2024-07-05)
+
 
 ### Improvements
 
@@ -31,7 +251,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Safely get changelogDestination key instead of accessing it directly 
+- Safely get changelogDestination key instead of accessing it directly
 
 
 ## 0.9.0 (2024-06-19)
@@ -114,11 +334,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.23 (2024-05-30)
 
+
 ### Improvements
 
 - Updated the base image used in the Dockerfile that is created during integration scaffolding from `python:3.11-slim-buster` to `python:3.11-slim-bookworm`
 
 ## 0.5.22 (2024-05-29)
+
 
 ### Bug Fixes
 
@@ -126,6 +348,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## 0.5.21 (2024-05-26)
+
 
 ### Features
 
@@ -149,12 +372,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.19 (2024-05-16)
 
+
 ### Improvements
 
 - Added caching to port-app-config.yml retrieval from port api (only for live events)
 
 
 ## 0.5.18 (2024-05-12)
+
 
 ### Improvements
 
@@ -165,6 +390,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.17 (2024-05-01)
 
+
 ### Bug Fixes
 
 - Fixed an issue in creating a child event context from the parent context by removing an unnecessary line of code
@@ -173,12 +399,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.16 (2024-05-01)
 
+
 ### Features
 
 - Allowing override of parent event context in ocean's event context manager
 
 
 ## 0.5.15 (2024-04-30)
+
 
 ### Bug Fixes
 
@@ -187,6 +415,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.14 (2024-04-24)
 
+
 ### Improvements
 
 - Implemented real-time entity deletion exclusively for instances that haven't matched any selectors.
@@ -194,12 +423,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.13 (2024-04-17)
 
+
 ### Features
 
 - Delete entities that doesn't passed the selector on real time events
 
 
 ## 0.5.12 (2024-04-12)
+
 
 ### Features
 
@@ -221,6 +452,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.5.10 (2024-04-10)
 
+
 ### Bug Fixes
 
 - Fixed application settings to be loaded from the environment variables
@@ -231,6 +463,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## 0.5.9 (2024-03-30)
+
 
 ### Bug Fixes
 
@@ -364,6 +597,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.4.13 (2023-12-31)
 
+
 ### Features
 
 - Added capability to create pages as part of the integration setup (PORT-5689)
@@ -382,6 +616,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 
 ## 0.4.11 (2023-12-21)
+
 
 ### Improvements
 
@@ -468,6 +703,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.4.3 (2023-11-09)
 
+
 ### Features
 
 - Added `RetryTransport` as a helper for retrying requests that integrations can use (PORT-5161)
@@ -476,9 +712,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Fixed kafka consumer to poll messages asynchronously, to avoid max poll timeout when running long resyncs (PORT-5160)
 - Fixed a bug where the expiration of a Port token is not properly handled (PORT-5161)
-- Fixed a bug where the `retry_every` didn't count failed runs as repetitions (PORT-5161) 
+- Fixed a bug where the `retry_every` didn't count failed runs as repetitions (PORT-5161)
 
 ## 0.4.2 (2023-11-04)
+
 
 ### Features
 
@@ -500,14 +737,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.4.1 (2023-11-03)
 
+
 ### Bug Fixes
 
 - Fixed the `initialize-port-resources` option in `ocean sail` to not be a flag.
 - Changed default of `initialize-port-resources` to `true`.
-- Catch all exceptions in the resync of ONCE event listener,to make sure the application will exit gracefully 
+- Catch all exceptions in the resync of ONCE event listener,to make sure the application will exit gracefully
 
 
 ## 0.4.0 (2023-10-31)
+
 
 ### Features
 
@@ -516,6 +755,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.3.2 (2023-10-29)
 
+
 ### Improvements
 
 - createMissingRelatedEntities + deleteDependentEntities are now defaulted to true
@@ -523,11 +763,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.3.1 (2023-09-27)
 
+
 ### Bug Fixes
 
 - Fix missing user agent when apply default resources on initialization (PORT-4813)
 
 ## 0.3.0 (2023-09-06)
+
 
 ### Deprecations
 
@@ -553,9 +795,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.2.3 (2023-08-17)
 
+
 ### Features
 
 - Added the ability to create and clean the defaults of an integration using the following CLI commands: `ocean defaults dock` and `ocean defaults clean` (dock-clean-defaults)
+
 
 ### Improvements
 
@@ -570,17 +814,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.2.2 (2023-08-11)
 
+
 ### Bug Fixes
 
 - Fixed an issue causing the config yaml providers to not be parsed
 
 ## 0.2.1 (2023-08-09)
 
+
 ### Bug Fixes
 
 - Fixed an issue causing ocean to convert the integration config objects to camelized objects
 
 ## 0.2.0 (2023-08-09)
+
 
 ### Breaking Changes
 
@@ -602,11 +849,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## 0.1.3 (2023-08-02)
 
+
 ### Bug Fixes
 
 - Fixed an issue preventing the setup of an integration with config values passed exclusively as environment variables. This fix also enables the option to deploy an integration to AWS ECS using Terraform (PORT-4379)
 
 ## 0.1.2 (2023-07-27)
+
 
 ### Breaking Changes
 
@@ -627,6 +876,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed a crash when there are no resources in the port-app-config
 
 ## 0.1.1 (2023-07-26)
+
 
 ### Breaking Changes
 
@@ -649,6 +899,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed an issue with initializePortResources that caused failure for unknown file names on init (PORT-4343)
 
 ## 0.1.0 (2023-07-20)
+
 
 ### Features
 

@@ -111,6 +111,92 @@
       "project": {
         "title": "Project",
         "target": "project",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "workItem",
+    "title": "Work Item",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "icon": "AzureDevops",
+          "description": "The type of work item (e.g., Bug, Task, User Story)",
+          "enum": ["Issue", "Epic", "Task"],
+          "enumColors": {
+            "Issue": "green",
+            "Epic": "orange",
+            "Task": "blue"
+          }
+        },
+        "state": {
+          "title": "State",
+          "type": "string",
+          "icon": "AzureDevops",
+          "description": "The current state of the work item (e.g., New, Active, Closed)"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string",
+          "description": "The title of the work item"
+        },
+        "effort": {
+          "title": "Effort",
+          "type": "number",
+          "description": "The estimated effort for the work item"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "format": "markdown",
+          "description": "A detailed description of the work item"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to the work item in Azure DevOps"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who created the work item"
+        },
+        "changedBy": {
+          "title": "Changed By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who last changed the work item"
+        },
+        "createdDate": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the work item was created"
+        },
+        "changedDate": {
+          "title": "Changed Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the work item was last changed"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "project",
         "required": true,
         "many": false
       }

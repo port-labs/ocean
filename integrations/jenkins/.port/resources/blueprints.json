@@ -70,7 +70,7 @@
                         "SUCCESS": "green",
                         "FAILURE": "red",
                         "UNSTABLE": "yellow",
-                        "ABORTED": "gray"
+                        "ABORTED": "darkGray"
                     }
                 },
                 "buildUrl": {

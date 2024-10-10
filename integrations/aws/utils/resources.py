@@ -9,11 +9,12 @@ from port_ocean.context.event import event
 from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
+    is_access_denied_exception,
 )
 from utils.aws import get_sessions
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-from utils.aws import _session_manager
+from utils.aws import _session_manager, update_available_access_credentials
 from utils.overrides import AWSResourceConfig
 from botocore.config import Config as Boto3Config
 
@@ -126,40 +127,54 @@ async def resync_custom_kind(
     next_token = None
     if not describe_method_params:
         describe_method_params = {}
-    while True:
+    while await update_available_access_credentials():
         async with session.client(service_name) as client:
-            params: dict[str, Any] = describe_method_params
-            if next_token:
-                params[marker_param] = next_token
-            response = await getattr(client, describe_method)(**params)
-            next_token = response.get(marker_param)
-            if results := response.get(list_param, []):
-                yield [
-                    {
-                        CustomProperties.KIND: kind,
-                        CustomProperties.ACCOUNT_ID: account_id,
-                        CustomProperties.REGION: region,
-                        **fix_unserializable_date_properties(resource),
-                    }
-                    for resource in results
-                ]
+            try:
+                params: dict[str, Any] = describe_method_params
+                if next_token:
+                    params[marker_param] = next_token
+                response = await getattr(client, describe_method)(**params)
+                next_token = response.get(marker_param)
+                results = response.get(list_param, [])
+                logger.info(
+                    f"Fetched batch of {len(results)} from {kind} in region {region}"
+                )
+                if results:
+                    yield [
+                        {
+                            CustomProperties.KIND: kind,
+                            CustomProperties.ACCOUNT_ID: account_id,
+                            CustomProperties.REGION: region,
+                            **fix_unserializable_date_properties(resource),
+                        }
+                        for resource in results
+                    ]
 
-        if not next_token:
-            break
+                if not next_token:
+                    break
+            except client.exceptions.ClientError as e:
+                if is_access_denied_exception(e):
+                    logger.warning(
+                        f"Skipping resyncing {kind} in region {region} due to missing access permissions"
+                    )
+                    break
+                else:
+                    raise e
 
 
-async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    is_global = is_global_resource(kind)
+async def resync_cloudcontrol(
+    kind: str, session: aioboto3.Session
+) -> ASYNC_GENERATOR_RESYNC_TYPE:
     use_get_resource_api = typing.cast(
         AWSResourceConfig, event.resource_config
     ).selector.use_get_resource_api
-    async for session in get_sessions(None, None, is_global):
-        region = session.region_name
-        logger.info(f"Resyncing {kind} in region {region}")
-        account_id = await _session_manager.find_account_id_by_session(session)
-        next_token = None
-        while True:
-            async with session.client("cloudcontrol") as cloudcontrol:
+    region = session.region_name
+    account_id = await _session_manager.find_account_id_by_session(session)
+    logger.info(f"Resyncing {kind} in account {account_id} in region {region}")
+    next_token = None
+    while await update_available_access_credentials():
+        async with session.client("cloudcontrol") as cloudcontrol:
+            try:
                 params = {
                     "TypeName": kind,
                 }
@@ -205,7 +220,18 @@ async def resync_cloudcontrol(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     page_resources.append(
                         fix_unserializable_date_properties(serialized)
                     )
+                logger.info(
+                    f"Fetched batch of {len(page_resources)} from {kind} in region {region}"
+                )
                 yield page_resources
 
                 if not next_token:
                     break
+            except Exception as e:
+                if is_access_denied_exception(e):
+                    logger.warning(
+                        f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
+                    )
+                else:
+                    logger.warning(f"Error resyncing {kind} in region {region}, {e}")
+                raise e

@@ -29,7 +29,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> None:
+    ) -> Entity | None:
         validation_only = request_options["validation_only"]
         async with self.semaphore:
             logger.debug(
@@ -57,6 +57,32 @@ class EntityClientMixin:
                 f"blueprint: {entity.blueprint}"
             )
         handle_status_code(response, should_raise)
+        result = response.json()
+
+        result_entity = (
+            Entity.parse_obj(result["entity"]) if result.get("entity") else entity
+        )
+
+        # Happens when upsert fails and search identifier is defined.
+        # We return None to ignore the entity later in the delete process
+        if result_entity.is_using_search_identifier:
+            return None
+
+        # In order to save memory we'll keep only the identifier, blueprint and relations of the
+        # upserted entity result for later calculations
+        reduced_entity = Entity(
+            identifier=result_entity.identifier, blueprint=result_entity.blueprint
+        )
+
+        # Turning dict typed relations (raw search relations) is required
+        # for us to be able to successfully calculate the participation related entities
+        # and ignore the ones that don't as they weren't upserted
+        reduced_entity.relations = {
+            key: None if isinstance(relation, dict) else relation
+            for key, relation in result_entity.relations.items()
+        }
+
+        return reduced_entity
 
     async def batch_upsert_entities(
         self,
@@ -64,8 +90,8 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> None:
-        await asyncio.gather(
+    ) -> list[Entity]:
+        modified_entities_results = await asyncio.gather(
             *(
                 self.upsert_entity(
                     entity,
@@ -77,6 +103,17 @@ class EntityClientMixin:
             ),
             return_exceptions=True,
         )
+        entity_results = [
+            entity for entity in modified_entities_results if isinstance(entity, Entity)
+        ]
+        if not should_raise:
+            return entity_results
+
+        for entity_result in modified_entities_results:
+            if isinstance(entity_result, Exception):
+                raise entity_result
+
+        return entity_results
 
     async def delete_entity(
         self,

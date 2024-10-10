@@ -1,9 +1,29 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
 resources:
+  - kind: host
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogHost"'
+          identifier: .id | tostring
+          title: .aws_name // .host_name
+          properties:
+            up: .up
+            host_name: .host_name
+            platform: .meta.platform
+            is_muted: .is_muted
+            machine: .meta.machine
+            description: .description
+            sources: .sources
+            cpu_cores: .meta.cpuCores
+            agent_version: .meta.agent_version
+            tags: .tags_by_source
   - kind: monitor
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -21,7 +41,7 @@ resources:
             updatedAt: .modified
   - kind: service
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -40,7 +60,7 @@ resources:
               .contact]
   - kind: slo
     selector:
-      query: 'true'
+      query: "true"
     port:
       entity:
         mappings:
@@ -63,7 +83,7 @@ resources:
               unique | map(split(":")[1])
   - kind: sloHistory
     selector:
-      query: 'true'
+      query: "true"
       timeframe: 30
       period_of_time_in_years: 12
     port:
