@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.74 (2024-10-10)
+
+
+### Improvements
+
+
+- Added support for ingesting boards and columns
+
+
 ## 0.1.73 (2024-10-09)
 
 
