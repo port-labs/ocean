@@ -1,5 +1,7 @@
+from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from loguru import logger
+from port_ocean.utils.cache import cache_iterator_result
 from port_ocean.utils import http_async_client
 from httpx import HTTPStatusError, Timeout
 
@@ -8,6 +10,14 @@ WEBHOOK_TIMEOUT = "00:00:50"
 CLIENT_TIMEOUT = 60
 KINDS_WITH_LIMITATION = ["deployment"]
 MAX_ITEMS_LIMITATION = 100
+
+
+class ObjectKind(StrEnum):
+    SPACE = "space"
+    PROJECT = "project"
+    DEPLOYMENT = "deployment"
+    RELEASE = "release"
+    MACHINE = "machine"
 
 
 class OctopusClient:
@@ -47,15 +57,17 @@ class OctopusClient:
         self,
         kind: str,
         params: Optional[dict[str, Any]] = None,
+        path_parameter: Optional[str] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Fetch paginated data from the Octopus Deploy API."""
+        endpoint = f"{path_parameter}/{kind}s" if path_parameter else f"{kind}s"
         if params is None:
             params = {}
         params["skip"] = 0
         params["take"] = PAGE_SIZE
         page = 0
         while True:
-            response = await self._send_api_request(f"{kind}s", params=params)
+            response = await self._send_api_request(endpoint, params=params)
             items = response.get("Items", [])
             last_page = response.get("LastPageNumber", 0)
             yield items
@@ -70,14 +82,20 @@ class OctopusClient:
             page += 1
 
     async def get_single_resource(
-        self, resource_kind: str, resource_id: str
+        self, resource_kind: str, resource_id: str, space_id: str
     ) -> dict[str, Any]:
         """Get a single resource by kind and ID."""
-        return await self._send_api_request(f"{resource_kind}/{resource_id}")
+        return await self._send_api_request(f"{space_id}/{resource_kind}/{resource_id}")
 
-    async def _get_all_spaces(self) -> list[dict[str, Any]]:
+    async def get_single_space(self, space_id: str) -> dict[str, Any]:
+        """Get a single space by ID."""
+        return await self._send_api_request(f"{ObjectKind.SPACE}s/{space_id}")
+
+    @cache_iterator_result()
+    async def get_all_spaces(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get all spaces in the Octopus instance."""
-        return await self._send_api_request("spaces/all")
+        async for spaces in self.get_paginated_resources(ObjectKind.SPACE):
+            yield spaces
 
     async def _create_subscription(
         self, space_id: str, app_host: str
@@ -90,7 +108,7 @@ class OctopusClient:
                 "WebhookTimeout": WEBHOOK_TIMEOUT,
             },
             "IsDisabled": False,
-            "Name": f"Port Subscription - {space_id}",
+            "Name": f"Port Subscription - {app_host}",
             "SpaceId": space_id,
         }
         logger.info(
@@ -100,25 +118,28 @@ class OctopusClient:
             endpoint, json_data=subscription_data, method="POST"
         )
 
-    async def create_webhook_subscription(self, app_host: str) -> dict[str, Any]:
+    async def create_webhook_subscription(self, app_host: str, space_id: str) -> None:
         """Create a new subscription for all spaces."""
-        for space in await self._get_all_spaces():
-            try:
-                response = await self._create_subscription(space["Id"], app_host)
-                if response.get("Id"):
-                    logger.info(
-                        f"Subscription created for space '{space['Id']}' with ID {response['Id']}"
-                    )
-                else:
-                    logger.error(
-                        f"Failed to create subscription for space '{space['Id']}'"
-                    )
-            except Exception as e:
-                logger.error(f"Unexpected error for space '{space['Id']}': {str(e)}")
-        return {"ok": True}
+        try:
+            response = await self._create_subscription(space_id, app_host)
+            if response.get("Id"):
+                logger.info(
+                    f"Subscription created for space '{space_id}' with ID {response['Id']}"
+                )
+            else:
+                logger.error(f"Failed to create subscription for space '{space_id}'")
+        except Exception as e:
+            logger.error(f"Unexpected error for space '{space_id}': {str(e)}")
 
-    async def get_webhook_subscriptions(self) -> list[dict[str, Any]]:
+    async def get_webhook_subscriptions(
+        self,
+        space_id: str,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Get existing subscriptions."""
-        response = await self._send_api_request("subscriptions/all")
-        logger.info(f"Retrieved {len(response)} subscriptions.")
-        return response
+        async for subscriptions in self.get_paginated_resources(
+            "subscription", path_parameter=space_id
+        ):
+            logger.info(
+                f"Retrieved {len(subscriptions)} subscriptions for space {space_id}."
+            )
+            yield subscriptions
