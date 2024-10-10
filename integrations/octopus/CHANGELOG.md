@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated the integration to ingest resources from all spaces instead of the default space
+- Bumped ocean version to ^0.12.3
 
 
 # Port_Ocean 0.1.14-beta (2024-10-08)
