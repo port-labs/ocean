@@ -2,9 +2,15 @@ description: Backstage integration for Port Ocean
 icon: Backstage
 features:
   - type: exporter
-    section: Under Development # Should be one of the available sections in Port
+    section: Data Lakes
     resources:
-      - kind: backstage-entity
+      - kind: component
+      - kind: system
+      - kind: domain
+      - kind: resource
+      - kind: group
+      - kind: user
+      - kind: api
 configurations:
   - name: backstageToken
     required: true
