@@ -2005,4 +2005,4 @@ cli = ["click", "cookiecutter", "jinja2-time", "rich"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "d3f7f8a84034de575e00c8c5f467605c03cea701b84d43e209b6100c32b33c54"
+content-hash = "74497de21cd7986c3c1d376c051ef5881bd9a38715dc21645d7747c7c9c3d5e8"

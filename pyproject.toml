@@ -51,7 +51,7 @@ pyhumps = "^3.8.0"
 pydispatcher = "^2.0.7"
 tomli = "^2.0.1"
 aiostream = ">=0.5.2,<0.7.0"
-python-dateutil = "^2.9.0.post0"
+python-dateutil = "^2.9.0-post.0"
 
 # CLI
 click = { version = "^8.1.3", optional = true }
