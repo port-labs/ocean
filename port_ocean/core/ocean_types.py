@@ -1,6 +1,6 @@
 from typing import TypedDict, Any, AsyncIterator, Callable, Awaitable, NamedTuple
 
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, EntityRef
 
 RAW_ITEM = dict[Any, Any]
 RAW_RESULT = list[RAW_ITEM]
@@ -15,6 +15,11 @@ START_EVENT_LISTENER = Callable[[], Awaitable[None]]
 class RawEntityDiff(TypedDict):
     before: list[RAW_ITEM]
     after: list[RAW_ITEM]
+
+
+class EntityRefDiff(TypedDict):
+    before: list[EntityRef]
+    after: list[EntityRef]
 
 
 class EntityDiff(TypedDict):

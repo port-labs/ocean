@@ -6,14 +6,15 @@ from port_ocean.core.handlers.entities_state_applier.base import (
     BaseEntitiesStateApplier,
 )
 from port_ocean.core.handlers.entities_state_applier.port.get_related_entities import (
-    get_related_entities,
+    get_related_entities_refs,
 )
 from port_ocean.core.handlers.entities_state_applier.port.order_by_entities_dependencies import (
     order_by_entities_dependencies,
+    order_by_entities_ref_dependencies,
 )
-from port_ocean.core.models import Entity
-from port_ocean.core.ocean_types import EntityDiff
-from port_ocean.core.utils import is_same_entity, get_port_diff
+from port_ocean.core.models import Entity, EntityRef
+from port_ocean.core.ocean_types import EntityDiff, EntityRefDiff
+from port_ocean.core.utils import get_port_diff, get_port_ref_diff, is_same_entity
 
 
 class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
@@ -26,14 +27,14 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
 
     async def _safe_delete(
         self,
-        entities_to_delete: list[Entity],
-        entities_to_protect: list[Entity],
+        entities_to_delete: list[EntityRef],
+        entities_to_protect: list[EntityRef],
         user_agent_type: UserAgentType,
     ) -> None:
         if not entities_to_delete:
             return
 
-        related_entities = await get_related_entities(
+        related_entities_refs = await get_related_entities_refs(
             entities_to_protect, self.context.port_client
         )
 
@@ -41,7 +42,8 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
 
         for entity_to_delete in entities_to_delete:
             is_part_of_related = any(
-                is_same_entity(entity, entity_to_delete) for entity in related_entities
+                is_same_entity(entity, entity_to_delete)
+                for entity in related_entities_refs
             )
             is_part_of_created = any(
                 is_same_entity(entity, entity_to_delete)
@@ -66,21 +68,24 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         user_agent_type: UserAgentType,
     ) -> None:
         diff = get_port_diff(entities["before"], entities["after"])
-        kept_entities = diff.created + diff.modified
+        kept_entities: list[Entity] = diff.created + diff.modified
 
         logger.info(
             f"Updating entity diff (created: {len(diff.created)}, deleted: {len(diff.deleted)}, modified: {len(diff.modified)})"
         )
         modified_entities = await self.upsert(kept_entities, user_agent_type)
-
-        await self._safe_delete(diff.deleted, modified_entities, user_agent_type)
+        modified_entities_refs = [
+            EntityRef.from_entity(entity) for entity in modified_entities
+        ]
+        deleted_refs = [EntityRef.from_entity(entity) for entity in diff.deleted]
+        await self._safe_delete(deleted_refs, modified_entities_refs, user_agent_type)
 
     async def delete_diff(
         self,
-        entities: EntityDiff,
+        entities: EntityRefDiff,
         user_agent_type: UserAgentType,
     ) -> None:
-        diff = get_port_diff(entities["before"], entities["after"])
+        diff = get_port_ref_diff(entities["before"], entities["after"])
 
         if not diff.deleted:
             return
@@ -130,22 +135,24 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
         return modified_entities
 
     async def delete(
-        self, entities: list[Entity], user_agent_type: UserAgentType
+        self, entities_refs: list[EntityRef], user_agent_type: UserAgentType
     ) -> None:
-        logger.info(f"Deleting {len(entities)} entities")
+        logger.info(f"Deleting {len(entities_refs)} entities")
         if event.port_app_config.delete_dependent_entities:
             await self.context.port_client.batch_delete_entities(
-                entities,
+                entities_refs,
                 event.port_app_config.get_port_request_options(),
                 user_agent_type,
                 should_raise=False,
             )
         else:
-            ordered_deleted_entities = order_by_entities_dependencies(entities)
+            ordered_deleted_entities_refs = order_by_entities_ref_dependencies(
+                entities_refs
+            )
 
-            for entity in ordered_deleted_entities:
+            for entity_ref in ordered_deleted_entities_refs:
                 await self.context.port_client.delete_entity(
-                    entity,
+                    entity_ref,
                     event.port_app_config.get_port_request_options(),
                     user_agent_type,
                     should_raise=False,

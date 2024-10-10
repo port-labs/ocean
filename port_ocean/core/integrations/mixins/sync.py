@@ -3,7 +3,7 @@ from loguru import logger
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.ocean import ocean
 from port_ocean.core.integrations.mixins.handler import HandlerMixin
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, EntityRef
 from port_ocean.core.ocean_types import (
     EntityDiff,
 )
@@ -63,7 +63,7 @@ class SyncMixin(HandlerMixin):
         logger.info("Finished registering change")
 
     async def unregister(
-        self, entities: list[Entity], user_agent_type: UserAgentType
+        self, entities: list[EntityRef], user_agent_type: UserAgentType
     ) -> None:
         """Delete entities from Port.
 
@@ -95,13 +95,19 @@ class SyncMixin(HandlerMixin):
         Raises:
             IntegrationNotStartedException: If EntitiesStateApplier class is not initialized.
         """
-        entities_at_port = await ocean.port_client.search_entities(user_agent_type)
+        entities_ref_at_port = await ocean.port_client.search_entities_refs(
+            user_agent_type
+        )
 
         modified_entities = await self.entities_state_applier.upsert(
             entities, user_agent_type
         )
+        modified_entities_refs = [
+            EntityRef.from_entity(entity) for entity in modified_entities
+        ]
         await self.entities_state_applier.delete_diff(
-            {"before": entities_at_port, "after": modified_entities}, user_agent_type
+            {"before": entities_ref_at_port, "after": modified_entities_refs},
+            user_agent_type,
         )
 
         logger.info("Finished syncing change")

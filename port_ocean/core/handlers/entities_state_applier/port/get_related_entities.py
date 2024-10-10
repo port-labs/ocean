@@ -3,13 +3,13 @@ from collections import defaultdict
 from itertools import groupby
 
 from port_ocean.clients.port.client import PortClient
-from port_ocean.core.models import Entity
+from port_ocean.core.models import EntityRef
 
 
-async def get_related_entities(
-    entities: list[Entity], port_client: PortClient
-) -> list[Entity]:
-    entities_with_relations = [entity for entity in entities if entity.relations]
+async def get_related_entities_refs(
+    entity_refs: list[EntityRef], port_client: PortClient
+) -> list[EntityRef]:
+    entities_with_relations = [entity for entity in entity_refs if entity.relations]
     blueprint_identifier_to_entity = dict(
         groupby(
             entities_with_relations,
@@ -43,7 +43,7 @@ async def get_related_entities(
             )
 
     return [
-        Entity(identifier=relation, blueprint=blueprint)
+        EntityRef(identifier=relation, blueprint=blueprint)
         for blueprint, relations in blueprints_to_relations.items()
         # multiple entities can point to the same relation in the same blueprint, for performance reasons
         # we want to avoid fetching the same relation multiple times
