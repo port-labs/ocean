@@ -1,0 +1,66 @@
+[
+  {
+    "identifier": "jira_open_issue",
+    "title": "Create task",
+    "icon": "Jira",
+    "description": "Create a backlog task for a chosen project ",
+    "trigger": {
+      "type": "self-service",
+      "operation": "DAY-2",
+      "userInputs": {
+        "properties": {
+          "description": {
+            "icon": "DefaultProperty",
+            "type": "string",
+            "title": "Description",
+            "format": "markdown"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "description": "Summary of the Jira issue"
+          }
+        },
+        "required": [
+          "description",
+          "summary"
+        ],
+        "order": [
+          "summary",
+          "description"
+        ]
+      },
+      "blueprintIdentifier": "jiraProject"
+    },
+    "invocationMethod": {
+      "type": "WEBHOOK",
+      "url": "https://getport.atlassian.net/rest/api/2/issue",
+      "agent": false,
+      "synchronized": true,
+      "method": "POST",
+      "headers": {
+        "RUN_ID": "{{ .run.id }}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Basic {{.secrets.JiraEmail + ':' + .secrets.jiraToken |  @base64}}"
+      },
+      "body": {
+        "fields": {
+          "project": {
+            "key": "{{.entity.identifier}}"
+          },
+          "summary": "{{.inputs.summary}}",
+          "description": "{{.inputs.description}}",
+          "issuetype": {
+            "name": "Task"
+          },
+          "priority": {
+            "name": "Medium"
+          }
+        }
+      }
+    },
+    "requiredApproval": false,
+    "publish": true
+  }
+]
