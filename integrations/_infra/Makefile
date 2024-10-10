@@ -49,8 +49,8 @@ install/local-core: install
 	$(ACTIVATE) && pip install -e ../../
 
 install/prod:
-	$(call install_poetry) && \
 	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
+	$(call install_poetry) && \
 
 lint:
 	$(ACTIVATE) && \
