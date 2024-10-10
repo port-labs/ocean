@@ -1,0 +1,61 @@
+[
+  {
+    "identifier": "trigger_incident",
+    "title": "Trigger incident",
+    "icon": "pagerduty",
+    "description": "Trigger a page in PagerDuty that will alert the on-call to an issue",
+    "trigger": {
+      "type": "self-service",
+      "operation": "DAY-2",
+      "userInputs": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Title of the incident"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Description of the incident"
+          }
+        },
+        "required": [],
+        "order": [
+          "title"
+        ]
+      },
+      "blueprintIdentifier": "pagerdutyService"
+    },
+    "invocationMethod": {
+      "type": "WEBHOOK",
+      "url": "https://api.pagerduty.com/incidents",
+      "agent": false,
+      "synchronized": true,
+      "method": "POST",
+      "headers": {
+        "RUN_ID": "{{ .run.id }}",
+        "Authorization": "Token token={{ .secrets.PAGERDUTY_API_TOKEN }}",
+        "Accept": "application/vnd.pagerduty+json;version=2",
+        "Content-Type": "application/json",
+        "From": "{{ .trigger.by.user.email }}"
+      },
+      "body": {
+        "incident": {
+          "type": "incident",
+          "title": "{{ .inputs.title }}",
+          "service": {
+            "id": "{{ .entity.identifier }}",
+            "type": "service_reference"
+          },
+          "urgency": "high",
+          "body": {
+            "type": "incident_body",
+            "details": "{{ .inputs.description }}"
+          }
+        }
+      }
+    },
+    "requiredApproval": false
+  }
+]
