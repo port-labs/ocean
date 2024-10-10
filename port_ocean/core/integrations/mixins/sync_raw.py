@@ -3,6 +3,7 @@ import inspect
 import typing
 from typing import Callable, Awaitable, Any
 
+import httpx
 from loguru import logger
 
 from port_ocean.clients.port.types import UserAgentType
@@ -425,20 +426,20 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 use_cache=False
             )
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
-            # try:
-            #     did_fetched_current_state = True
-            #     entities_at_port = await ocean.port_client.search_entities(
-            #         user_agent_type
-            #     )
-            # except httpx.HTTPError as e:
-            #     logger.warning(
-            #         "Failed to fetch the current state of entities at Port. "
-            #         "Skipping delete phase due to unknown initial state. "
-            #         f"Error: {e}\n"
-            #         f"Response status code: {e.response.status_code if isinstance(e, httpx.HTTPStatusError) else None}\n"
-            #         f"Response content: {e.response.text if isinstance(e, httpx.HTTPStatusError) else None}\n"
-            #     )
-            #     did_fetched_current_state = False
+            try:
+                did_fetched_current_state = True
+                entities_at_port = await ocean.port_client.search_entities(
+                    user_agent_type
+                )
+            except httpx.HTTPError as e:
+                logger.warning(
+                    "Failed to fetch the current state of entities at Port. "
+                    "Skipping delete phase due to unknown initial state. "
+                    f"Error: {e}\n"
+                    f"Response status code: {e.response.status_code if isinstance(e, httpx.HTTPStatusError) else None}\n"
+                    f"Response content: {e.response.text if isinstance(e, httpx.HTTPStatusError) else None}\n"
+                )
+                did_fetched_current_state = False
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
@@ -457,36 +458,36 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise
-            # else:
-            #     if not did_fetched_current_state:
-            #         logger.warning(
-            #             "Due to an error before the resync, the previous state of entities at Port is unknown."
-            #             " Skipping delete phase due to unknown initial state."
-            #         )
-            #         return
-            #
-            #     logger.info("Starting resync diff calculation")
-            #     flat_created_entities, errors = zip_and_sum(creation_results) or [
-            #         [],
-            #         [],
-            #     ]
-            #
-            #     if errors:
-            #         message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
-            #         error_group = ExceptionGroup(
-            #             f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state",
-            #             errors,
-            #         )
-            #         if not silent:
-            #             raise error_group
-            #
-            #         logger.error(message, exc_info=error_group)
-            #     else:
-            #         logger.info(
-            #             f"Running resync diff calculation, number of entities at Port before resync: {len(entities_at_port)}, number of entities created during sync: {len(flat_created_entities)}"
-            #         )
-            #         await self.entities_state_applier.delete_diff(
-            #             {"before": entities_at_port, "after": flat_created_entities},
-            #             user_agent_type,
-            #         )
-            #         logger.info("Resync finished successfully")
+            else:
+                if not did_fetched_current_state:
+                    logger.warning(
+                        "Due to an error before the resync, the previous state of entities at Port is unknown."
+                        " Skipping delete phase due to unknown initial state."
+                    )
+                    return
+
+                logger.info("Starting resync diff calculation")
+                flat_created_entities, errors = zip_and_sum(creation_results) or [
+                    [],
+                    [],
+                ]
+
+                if errors:
+                    message = f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state"
+                    error_group = ExceptionGroup(
+                        f"Resync failed with {len(errors)}. Skipping delete phase due to incomplete state",
+                        errors,
+                    )
+                    if not silent:
+                        raise error_group
+
+                    logger.error(message, exc_info=error_group)
+                else:
+                    logger.info(
+                        f"Running resync diff calculation, number of entities at Port before resync: {len(entities_at_port)}, number of entities created during sync: {len(flat_created_entities)}"
+                    )
+                    await self.entities_state_applier.delete_diff(
+                        {"before": entities_at_port, "after": flat_created_entities},
+                        user_agent_type,
+                    )
+                    logger.info("Resync finished successfully")
