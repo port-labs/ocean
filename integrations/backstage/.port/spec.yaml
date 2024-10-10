@@ -1,5 +1,5 @@
 description: Backstage integration for Port Ocean
-icon: Backstage
+icon: cookiecutter
 features:
   - type: exporter
     section: Other
