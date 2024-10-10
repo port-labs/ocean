@@ -1,0 +1,460 @@
+[
+  {
+    "identifier": "user",
+    "title": "User",
+    "icon": "TwoUsers",
+    "schema": {
+      "properties": {
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email"
+        },
+        "description": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Description"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "format": "url",
+            "type": "string"
+          },
+          "title": "Links"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "group",
+    "title": "Group",
+    "icon": "TwoUsers",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email"
+        },
+        "description": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Description"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "format": "url",
+            "type": "string"
+          },
+          "title": "Links"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "parent": {
+        "title": "Parent",
+        "target": "group",
+        "required": false
+      },
+      "members": {
+        "title": "members",
+        "target": "user",
+        "many": true,
+        "required": false
+      }
+    }
+  },
+  {
+    "identifier": "domain",
+    "title": "Domain",
+    "icon": "TwoUsers",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Description"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "format": "url",
+            "type": "string"
+          },
+          "title": "Links"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "owningUser": {
+        "title": "Owning User",
+        "target": "user",
+        "required": false
+      },
+      "owningGroup": {
+        "title": "Owning Group",
+        "target": "group",
+        "required": false
+      }
+    }
+  },
+  {
+    "identifier": "system",
+    "title": "System",
+    "icon": "Server",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Description"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "format": "url",
+            "type": "string"
+          },
+          "title": "Links"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "owningUser": {
+        "title": "Owning User",
+        "target": "user",
+        "required": false
+      },
+      "owningGroup": {
+        "title": "Owning Group",
+        "target": "group",
+        "required": false
+      },
+      "domain": {
+        "title": "Domain",
+        "target": "domain",
+        "required": false
+      }
+    }
+  },
+  {
+    "identifier": "api",
+    "title": "api",
+    "icon": "ApiDoc",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "lifecycle": {
+          "title": "Lifecycle",
+          "type": "string"
+        },
+        "definition": {
+          "type": "string",
+          "title": "API Definition"
+        },
+        "definitionOpenAPI": {
+          "type": "object",
+          "title": "OpenAPI Definition",
+          "spec": "open-api"
+        },
+        "definitionAsyncAPI": {
+          "type": "object",
+          "title": "AsyncAPI Definition",
+          "spec": "async-api"
+        },
+        "definitionGRPC": {
+          "type": "string",
+          "title": "gRPC Definition",
+          "format": "proto"
+        },
+        "definitionGraphQL": {
+          "type": "string",
+          "title": "GraphQL Definition"
+        },
+        "description": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Description"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "format": "url",
+            "type": "string"
+          },
+          "title": "Links"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "owningUser": {
+        "title": "Owning User",
+        "target": "user",
+        "required": false
+      },
+      "owningGroup": {
+        "title": "Owning Group",
+        "target": "group",
+        "required": false
+      },
+      "system": {
+        "title": "System",
+        "target": "system",
+        "required": false
+      }
+    }
+  },
+  {
+    "identifier": "resource",
+    "title": "Resource",
+    "icon": "Server",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Description"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "format": "url",
+            "type": "string"
+          },
+          "title": "Links"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "dependsOnResource": {
+        "title": "Depends On Resource",
+        "target": "resource",
+        "required": false,
+        "many": true
+      },
+      "dependsOnComponent": {
+        "title": "Depends On Component",
+        "target": "component",
+        "required": false,
+        "many": true
+      },
+      "system": {
+        "title": "System",
+        "target": "system",
+        "required": false,
+        "many": false
+      },
+      "owningGroup": {
+        "title": "Owning Group",
+        "target": "group",
+        "required": false,
+        "many": false
+      },
+      "owningUser": {
+        "title": "Owning User",
+        "target": "user",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "component",
+    "title": "Component",
+    "icon": "Cloud",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "lifecycle": {
+          "title": "Lifecycle",
+          "type": "string"
+        },
+        "language": {
+          "type": "string",
+          "title": "Language"
+        },
+        "description": {
+          "type": "string",
+          "format": "markdown",
+          "title": "Description"
+        },
+        "labels": {
+          "type": "object",
+          "title": "Labels"
+        },
+        "annotations": {
+          "type": "object",
+          "title": "Annotations"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "format": "url",
+            "type": "string"
+          },
+          "title": "Links"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "owningUser": {
+        "title": "Owning User",
+        "target": "user",
+        "required": false
+      },
+      "owningGroup": {
+        "title": "Owning Group",
+        "target": "group",
+        "required": false
+      },
+      "system": {
+        "title": "System",
+        "target": "system",
+        "required": false
+      },
+      "subcomponentOf": {
+        "title": "Subcomponent Of",
+        "target": "component",
+        "required": false
+      },
+      "providesApis": {
+        "title": "Provides APIs",
+        "target": "api",
+        "many": true,
+        "required": false
+      },
+      "consumesApis": {
+        "title": "Consumes APIs",
+        "target": "api",
+        "many": true,
+        "required": false
+      },
+      "dependsOnComponent": {
+        "title": "Depends On Component",
+        "target": "component",
+        "many": true,
+        "required": false
+      },
+      "dependsOnResource": {
+        "title": "Depends On Resource",
+        "target": "resource",
+        "many": true,
+        "required": false
+      }
+    }
+  }
+]

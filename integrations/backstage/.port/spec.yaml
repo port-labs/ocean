@@ -1,0 +1,20 @@
+description: Backstage integration for Port Ocean
+icon: cookiecutter
+features:
+  - type: exporter
+    section: Other
+    resources:
+      - kind: component
+      - kind: system
+      - kind: domain
+      - kind: resource
+      - kind: group
+      - kind: user
+      - kind: api
+configurations:
+  - name: backstageToken
+    required: true
+    type: string
+    sensitive: true
+  - name: backstageUrl
+    type: url
