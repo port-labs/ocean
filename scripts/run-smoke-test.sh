@@ -59,4 +59,4 @@ docker run --rm -i \
     -e OCEAN__INTEGRATION__IDENTIFIER="${INTEGRATION_IDENTIFIER}" \
     --name=ZOMG-TEST \
     "ghcr.io/port-labs/port-ocean-fake-integration:${FAKE_INTEGRATION_VERSION}" \
-    -c "pip install --root-user-action=ignore /opt/dist/${TAR_FILE}[cli] && ocean sail -O"
+    -c "source ./.venv/bin/activate && pip install --root-user-action=ignore /opt/dist/${TAR_FILE}[cli] && ocean sail -O"
