@@ -138,17 +138,20 @@ frozenlist = ">=1.1.0"
 
 [[package]]
 name = "aiostream"
-version = "0.5.2"
+version = "0.6.3"
 description = "Generator-based operators for asynchronous iteration"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "aiostream-0.5.2-py3-none-any.whl", hash = "sha256:054660370be9d37f6fe3ece3851009240416bd082e469fd90cc8673d3818cf71"},
-    {file = "aiostream-0.5.2.tar.gz", hash = "sha256:b71b519a2d66c38f0872403ab86417955b77352f08d9ad02ad46fc3926b389f4"},
+    {file = "aiostream-0.6.3-py3-none-any.whl", hash = "sha256:f455e6235d5e2ede25f8261425442f49db60602d5abb18522e780bb421b4f79e"},
+    {file = "aiostream-0.6.3.tar.gz", hash = "sha256:e2ad44e37f42008b7b14132239be787c103fd7ce5db6e1efab868ca18c66bd1d"},
 ]
 
 [package.dependencies]
 typing-extensions = "*"
+
+[package.extras]
+dev = ["pytest", "pytest-asyncio", "pytest-cov"]
 
 [[package]]
 name = "anyio"
@@ -2752,4 +2755,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "6b384977a621ab260c9d7c675f26bb8fa62f203c4c5e635aa392f593c0b4bdf7"
+content-hash = "6155be38c66429661359d7b40591e49472642fcd941b88ec229f27e344a40ea2"
