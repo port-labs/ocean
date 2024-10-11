@@ -109,6 +109,7 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -140,6 +141,7 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -165,6 +167,7 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -190,6 +193,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -214,6 +218,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -238,6 +243,7 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
