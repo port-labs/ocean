@@ -9,6 +9,7 @@ def init_client() -> ArgocdClient:
     return ArgocdClient(
         ocean.integration_config["token"],
         ocean.integration_config["server_url"],
+        ocean.integration_config["ignore_server_error"],
     )
 
 
@@ -43,20 +44,33 @@ async def on_managed_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     applications = await argocd_client.get_resources(
         resource_kind=ObjectKind.APPLICATION
     )
+    errors = []
     for application in applications:
-        managed_resources = await argocd_client.get_managed_resources(
-            application_name=application["metadata"]["name"]
+        try:
+            managed_resources = await argocd_client.get_managed_resources(
+                application_name=application["metadata"]["name"]
+            )
+            # TODO: Remove __applicationId in the future version
+            application_resource = [
+                {
+                    **managed_resource,
+                    "__application": application,
+                    "__applicationId": application["metadata"]["uid"],
+                }
+                for managed_resource in managed_resources
+            ]
+            yield application_resource
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch managed resources for application {application['metadata']['name']}: {e}"
+            )
+            errors.append(e)
+
+    # If there were errors and we are not ignoring server errors, raise a general exception
+    if errors and not argocd_client.ignore_server_error:
+        raise ExceptionGroup(
+            "Errors occurred during managed resource ingestion", errors
         )
-        # TODO: Remove __applicationId in the future version
-        application_resource = [
-            {
-                **managed_resource,
-                "__application": application,
-                "__applicationId": application["metadata"]["uid"],
-            }
-            for managed_resource in managed_resources
-        ]
-        yield application_resource
 
 
 @ocean.router.post("/webhook")
