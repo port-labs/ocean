@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from concurrent.futures import ProcessPoolExecutor
+import threading
 from contextlib import asynccontextmanager
 from typing import Callable, Any, Dict, AsyncIterator, Type
 
@@ -9,6 +9,8 @@ from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Scope, Receive, Send
 
+from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
+from port_ocean.core.models import Runtime
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
@@ -18,15 +20,13 @@ from port_ocean.context.ocean import (
     ocean,
     initialize_port_ocean_context,
 )
-from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.integrations.base import BaseIntegration
-from port_ocean.core.models import Runtime
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
-from port_ocean.utils.misc import IntegrationStateStatus
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
+from port_ocean.utils.misc import IntegrationStateStatus
 
 
 class Ocean:
@@ -92,13 +92,6 @@ class Ocean:
                 )
                 raise e
 
-        def pool_executor_wrapper(event_loop) -> None:
-            with ProcessPoolExecutor() as executor:
-                e = executor.submit(lambda: asyncio.run_coroutine_threadsafe(
-                    execute_resync_all(), event_loop
-                ))
-                signal_handler.register(e.cancel)
-
         interval = self.config.scheduled_resync_interval
         loop = asyncio.get_event_loop()
         if interval is not None:
@@ -110,7 +103,13 @@ class Ocean:
                 seconds=interval * 60,
                 # Not running the resync immediately because the event listener should run resync on startup
                 wait_first=True,
-            )(lambda _: pool_executor_wrapper(loop))
+            )(
+                lambda: threading.Thread(
+                    target=lambda: asyncio.run_coroutine_threadsafe(
+                        execute_resync_all(), loop
+                    )
+                ).start()
+            )
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
