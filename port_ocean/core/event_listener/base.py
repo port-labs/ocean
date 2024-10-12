@@ -1,14 +1,12 @@
-import asyncio
 from abc import abstractmethod
-from concurrent.futures import ProcessPoolExecutor
 from typing import TypedDict, Callable, Any, Awaitable
 
 from pydantic import Extra
 
 from port_ocean.config.base import BaseOceanModel
+from port_ocean.utils.signal import signal_handler
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.misc import IntegrationStateStatus
-from port_ocean.utils.signal import signal_handler
 
 
 class EventListenerEvents(TypedDict):
@@ -69,14 +67,7 @@ class BaseEventListener:
         """
         await self._before_resync()
         try:
-            loop = asyncio.get_event_loop()
-            with ProcessPoolExecutor() as executor:
-                e = executor.submit(
-                    lambda: asyncio.run_coroutine_threadsafe(
-                        self.events["on_resync"](resync_args), loop
-                    )
-                )
-                signal_handler.register(e.cancel)
+            await self.events["on_resync"](resync_args)
             await self._after_resync()
         except Exception as e:
             await self._on_resync_failure(e)
