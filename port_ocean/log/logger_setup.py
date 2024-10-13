@@ -15,8 +15,8 @@ from port_ocean.utils.signal import signal_handler
 def setup_logger(level: LogLevelType, enable_http_handler: bool) -> None:
     logger.remove()
     _stdout_loguru_handler(level)
-    if enable_http_handler:
-        _http_loguru_handler(level)
+    # if enable_http_handler:
+    #     _http_loguru_handler(level)
 
 
 def _stdout_loguru_handler(level: LogLevelType) -> None:

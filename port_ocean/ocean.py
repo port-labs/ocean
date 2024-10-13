@@ -9,8 +9,6 @@ from loguru import logger
 from pydantic import BaseModel
 from starlette.types import Scope, Receive, Send
 
-from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
-from port_ocean.core.models import Runtime
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
@@ -20,13 +18,14 @@ from port_ocean.context.ocean import (
     ocean,
     initialize_port_ocean_context,
 )
+from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.integrations.base import BaseIntegration
+from port_ocean.core.models import Runtime
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.utils.misc import IntegrationStateStatus
 
 
 class Ocean:
@@ -77,20 +76,20 @@ class Ocean:
         self,
     ) -> None:
         async def execute_resync_all() -> None:
-            await self.resync_state_updater.update_before_resync()
+            # await self.resync_state_updater.update_before_resync()
             logger.info("Starting a new scheduled resync")
             try:
                 await self.integration.sync_raw_all()
-                await self.resync_state_updater.update_after_resync()
+                # await self.resync_state_updater.update_after_resync()
             except asyncio.CancelledError:
                 logger.warning(
                     "resync was cancelled by the scheduled resync, skipping state update"
                 )
-            except Exception as e:
-                await self.resync_state_updater.update_after_resync(
-                    IntegrationStateStatus.Failed
-                )
-                raise e
+            # except Exception as e:
+            #     await self.resync_state_updater.update_after_resync(
+            #         IntegrationStateStatus.Failed
+            #     )
+            #     raise e
 
         interval = self.config.scheduled_resync_interval
         loop = asyncio.get_event_loop()
@@ -102,7 +101,7 @@ class Ocean:
             repeated_function = repeat_every(
                 seconds=interval * 60,
                 # Not running the resync immediately because the event listener should run resync on startup
-                wait_first=True,
+                wait_first=False,
             )(
                 lambda: threading.Thread(
                     target=lambda: asyncio.run_coroutine_threadsafe(

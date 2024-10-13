@@ -77,5 +77,6 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
             )
 
         logger.info("Initializing event listener")
-        event_listener = await self.event_listener_factory.create_event_listener()
-        await event_listener.start()
+        # event_listener = await self.event_listener_factory.create_event_listener()
+        # await event_listener.start()
+
