@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.108 (2024-10-10)
+
+
+### Improvements
+
+- Added a default Port self service action to allow users to trigger a pagerduty incident alert to on-call users about an issue
+
+
 ## 0.1.107 (2024-10-09)
 
 
