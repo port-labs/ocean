@@ -103,6 +103,14 @@
             "open": "red",
             "resolved": "green"
           }
+        },
+        "ignored": {
+          "type": "boolean",
+          "title": "Ignored"
+        },
+        "vulnerabilityId": {
+          "type": "string",
+          "title": "Vulnerability ID"
         }
       },
       "required": []
