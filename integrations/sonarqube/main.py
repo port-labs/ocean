@@ -1,10 +1,10 @@
 from typing import Any
-from loguru import logger
 
-from client import SonarQubeClient
+from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+from client import SonarQubeClient
 from integration import ObjectKind
 
 
@@ -48,6 +48,12 @@ async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if ocean.integration_config["sonar_is_on_premise"]:
         async for analyses_list in sonar_client.get_all_sonarqube_analyses():
             yield analyses_list
+
+
+@ocean.on_resync(ObjectKind.PORTFOLIOS)
+async def on_portfolio_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for portfolio_list in sonar_client.get_all_portfolios():
+        yield portfolio_list
 
 
 @ocean.router.post("/webhook")
