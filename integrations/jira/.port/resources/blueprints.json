@@ -110,13 +110,6 @@
       }
     },
     "relations": {
-      "sprint": {
-        "target": "jiraSprint",
-        "title": "Sprint",
-        "description": "The Jira sprint that contains this issue",
-        "required": false,
-        "many": false
-      },
       "project": {
         "target": "jiraProject",
         "title": "Project",

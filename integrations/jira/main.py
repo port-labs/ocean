@@ -45,7 +45,7 @@ async def setup_application() -> None:
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
 
-    async for projects in client.get_projects():
+    async for projects in client.get_all_projects():
         logger.info(f"Received project batch with {len(projects)} projects")
         yield projects
 

@@ -91,7 +91,7 @@ class JiraClient:
         logger.info("Finished paginated request")
         return
 
-    async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_all_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self._make_paginated_request(
             f"{self.detail_base_url}/project/search"
         ):

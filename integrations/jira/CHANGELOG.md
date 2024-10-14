@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for sprints and ingesting issues by sprints (0.1.93)
+- Added support for ingesting other fields apart from the default fields (0.1.93)
 
 ### Improvements
 
