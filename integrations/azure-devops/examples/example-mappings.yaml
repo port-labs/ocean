@@ -1,0 +1,27 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+resources:
+  - kind: board
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | gsub(" "; "")
+          title: .name
+          blueprint: '"board"'
+          properties:
+            link: .url
+          relations:
+            project: .__project.id | gsub(" "; "")
+  - kind: column
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .__stateType+"-"+.name+"-"+.__board.__project.id | gsub(" "; "")
+          title: .name
+          blueprint: '"column"'
+          relations:
+            board: .__board.id | gsub(" "; "")
