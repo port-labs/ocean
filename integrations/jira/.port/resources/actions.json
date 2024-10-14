@@ -42,7 +42,7 @@
         "RUN_ID": "{{ .run.id }}",
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": "Basic {{.secrets.JiraEmail + ':' + .secrets.jiraToken |  @base64}}"
+        "Authorization": "Basic {{.secrets.jira_email + ':' + .secrets.jira_token |  @base64}}"
       },
       "body": {
         "fields": {
