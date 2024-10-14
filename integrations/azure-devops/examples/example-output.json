@@ -1,0 +1,21 @@
+[
+  {
+    "identifier": "Epic-ToDo-6f84ea1f-e939-477f-8992-4145cb37ed35",
+    "title": "To Do",
+    "blueprint": "column",
+    "relations": {
+      "board": "15392e3f-8617-4df6-bd27-2871a44eb92b"
+    }
+  },
+  {
+    "identifier": "11dd908f-62c0-411a-99fa-958fb4651764",
+    "title": "Issues",
+    "blueprint": "board",
+    "properties": {
+      "link": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/11dd908f-62c0-411a-99fa-958fb4651764"
+    },
+    "relations": {
+      "project": "6f84ea1f-e939-477f-8992-4145cb37ed35"
+    }
+  }
+]
