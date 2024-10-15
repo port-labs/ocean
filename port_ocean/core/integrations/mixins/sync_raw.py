@@ -431,13 +431,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             #     entities_at_port = await ocean.port_client.search_entities(
             #         user_agent_type
             #     )
-            # except httpx.HTTPError as e:
+            # except aiohttp.ClientError as e:
             #     logger.warning(
             #         "Failed to fetch the current state of entities at Port. "
             #         "Skipping delete phase due to unknown initial state. "
             #         f"Error: {e}\n"
-            #         f"Response status code: {e.response.status_code if isinstance(e, httpx.HTTPStatusError) else None}\n"
-            #         f"Response content: {e.response.text if isinstance(e, httpx.HTTPStatusError) else None}\n"
+            #         f"Response status code: {e.status if isinstance(e, aiohttp.ClientResponseError) else None}\n"
+            #         f"Response content: {e.message if isinstance(e, aiohttp.ClientResponseError) else None}\n"
             #     )
             #     did_fetched_current_state = False
 

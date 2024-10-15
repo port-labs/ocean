@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Type, Any, TypedDict, Optional
 
-import httpx
+import aiohttp
 import yaml
 from pydantic import BaseModel, Field
 from starlette import status
@@ -39,8 +39,8 @@ async def is_integration_exists(port_client: PortClient) -> bool:
     try:
         await port_client.get_current_integration(should_log=False)
         return True
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code != status.HTTP_404_NOT_FOUND:
+    except aiohttp.ClientResponseError as e:
+        if e.status != status.HTTP_404_NOT_FOUND:
             raise e
 
     return False

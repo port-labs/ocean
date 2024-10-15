@@ -2,7 +2,7 @@ import asyncio
 from typing import Any
 from urllib.parse import quote_plus
 
-import httpx
+import aiohttp
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -15,7 +15,7 @@ from port_ocean.core.models import Entity
 
 
 class EntityClientMixin:
-    def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
+    def __init__(self, auth: PortAuthentication, client: aiohttp.ClientSession):
         self.auth = auth
         self.client = client
         # Semaphore is used to limit the number of concurrent requests to port, to avoid overloading it.
@@ -56,8 +56,8 @@ class EntityClientMixin:
                 f"entity: {entity.identifier} of "
                 f"blueprint: {entity.blueprint}"
             )
-        handle_status_code(response, should_raise)
-        result = response.json()
+        await handle_status_code(response, should_raise)
+        result = await response.json()
 
         result_entity = (
             Entity.parse_obj(result["entity"]) if result.get("entity") else entity
@@ -149,7 +149,7 @@ class EntityClientMixin:
                     f"blueprint: {entity.blueprint}"
                 )
 
-            handle_status_code(response, should_raise)
+            await handle_status_code(response, should_raise)
 
     async def batch_delete_entities(
         self,
@@ -204,11 +204,10 @@ class EntityClientMixin:
                 "exclude_calculated_properties": "true",
                 "include": ["blueprint", "identifier"],
             },
-            extensions={"retryable": True},
             timeout=30,
         )
-        handle_status_code(response)
-        return [Entity.parse_obj(result) for result in response.json()["entities"]]
+        await handle_status_code(response)
+        return [Entity.parse_obj(result) for result in (await response.json())["entities"]]
 
     async def search_batch_entities(
         self, user_agent_type: UserAgentType, entities_to_search: list[Entity]

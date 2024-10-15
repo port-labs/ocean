@@ -1,7 +1,7 @@
 import asyncio
 from typing import Type
 
-import httpx
+import aiohttp
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -66,6 +66,6 @@ async def _clean_defaults(
                     for migration_id in migration_ids
                 )
             )
-    except httpx.HTTPStatusError as e:
-        logger.error(f"Failed to delete blueprints: {e.response.text}.")
+    except aiohttp.ClientResponseError as e:
+        logger.error(f"Failed to delete blueprints: {e.message}.")
         raise e

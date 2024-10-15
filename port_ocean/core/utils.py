@@ -39,9 +39,10 @@ async def validate_integration_runtime(
     requested_runtime: Runtime,
 ) -> None:
     logger.debug("Validating integration runtime")
-    current_integration = await port_client.get_current_integration(
-        should_raise=False, should_log=False
-    )
+    async with port_client.client:
+        current_integration = await port_client.get_current_integration(
+            should_raise=False, should_log=False
+        )
     current_runtime = current_integration.get("installationType", "OnPrem")
     if current_integration and current_runtime != requested_runtime.value:
         raise IntegrationRuntimeException(

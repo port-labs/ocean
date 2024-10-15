@@ -1,7 +1,7 @@
 from typing import Any, TYPE_CHECKING, Optional, TypedDict
 from urllib.parse import quote_plus
 
-import httpx
+import aiohttp
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -22,7 +22,7 @@ class IntegrationClientMixin:
         integration_identifier: str,
         integration_version: str,
         auth: PortAuthentication,
-        client: httpx.AsyncClient,
+        client: aiohttp.ClientSession,
     ):
         self.integration_identifier = integration_identifier
         self.integration_version = integration_version
@@ -30,7 +30,7 @@ class IntegrationClientMixin:
         self.client = client
         self._log_attributes: LogAttributes | None = None
 
-    async def _get_current_integration(self) -> httpx.Response:
+    async def _get_current_integration(self) -> aiohttp.ClientResponse:
         logger.info(f"Fetching integration with id: {self.integration_identifier}")
         response = await self.client.get(
             f"{self.auth.api_url}/integration/{self.integration_identifier}",
@@ -42,8 +42,8 @@ class IntegrationClientMixin:
         self, should_raise: bool = True, should_log: bool = True
     ) -> dict[str, Any]:
         response = await self._get_current_integration()
-        handle_status_code(response, should_raise, should_log)
-        return response.json().get("integration", {})
+        await handle_status_code(response, should_raise, should_log)
+        return (await response.json()).get("integration", {})
 
     async def get_log_attributes(self) -> LogAttributes:
         if self._log_attributes is None:
@@ -71,8 +71,8 @@ class IntegrationClientMixin:
         response = await self.client.post(
             f"{self.auth.api_url}/integration", headers=headers, json=json
         )
-        handle_status_code(response)
-        return response.json()["integration"]
+        await handle_status_code(response)
+        return (await response.json())["integration"]
 
     async def patch_integration(
         self,
@@ -96,8 +96,8 @@ class IntegrationClientMixin:
             headers=headers,
             json=json,
         )
-        handle_status_code(response)
-        return response.json()["integration"]
+        await handle_status_code(response)
+        return (await response.json())["integration"]
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
@@ -110,7 +110,7 @@ class IntegrationClientMixin:
                 "logs": logs,
             },
         )
-        handle_status_code(response, should_log=False)
+        await handle_status_code(response, should_log=False)
         logger.debug("Logs successfully ingested")
 
     async def ingest_integration_kind_examples(
@@ -125,5 +125,5 @@ class IntegrationClientMixin:
                 "examples": sensitive_log_filter.mask_object(data, full_hide=True),
             },
         )
-        handle_status_code(response, should_log=should_log)
+        await handle_status_code(response, should_log=should_log)
         logger.debug(f"Examples for kind {kind} successfully ingested")

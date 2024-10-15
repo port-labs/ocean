@@ -1,6 +1,6 @@
 from typing import Any
 
-import httpx
+import aiohttp
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -10,7 +10,7 @@ from port_ocean.core.models import Blueprint
 
 
 class BlueprintClientMixin:
-    def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
+    def __init__(self, auth: PortAuthentication, client: aiohttp.ClientSession):
         self.auth = auth
         self.client = client
 
@@ -22,8 +22,8 @@ class BlueprintClientMixin:
             f"{self.auth.api_url}/blueprints/{identifier}",
             headers=await self.auth.headers(),
         )
-        handle_status_code(response, should_log=should_log)
-        return Blueprint.parse_obj(response.json()["blueprint"])
+        await handle_status_code(response, should_log=should_log)
+        return Blueprint.parse_obj((await response.json())["blueprint"])
 
     async def create_blueprint(
         self,
@@ -35,8 +35,8 @@ class BlueprintClientMixin:
         response = await self.client.post(
             f"{self.auth.api_url}/blueprints", headers=headers, json=raw_blueprint
         )
-        handle_status_code(response)
-        return response.json()["blueprint"]
+        await handle_status_code(response)
+        return (await response.json())["blueprint"]
 
     async def patch_blueprint(
         self,
@@ -51,7 +51,7 @@ class BlueprintClientMixin:
             headers=headers,
             json=raw_blueprint,
         )
-        handle_status_code(response)
+        await handle_status_code(response)
 
     async def delete_blueprint(
         self,
@@ -70,7 +70,7 @@ class BlueprintClientMixin:
                 f"{self.auth.api_url}/blueprints/{identifier}",
                 headers=headers,
             )
-            handle_status_code(response, should_raise)
+            await handle_status_code(response, should_raise)
             return None
         else:
             response = await self.client.delete(
@@ -78,8 +78,8 @@ class BlueprintClientMixin:
                 headers=await self.auth.headers(),
             )
 
-            handle_status_code(response, should_raise)
-            return response.json().get("migrationId", "")
+            await handle_status_code(response, should_raise)
+            return (await response.json()).get("migrationId", "")
 
     async def create_action(
         self, action: dict[str, Any], should_log: bool = True
@@ -91,7 +91,7 @@ class BlueprintClientMixin:
             headers=await self.auth.headers(),
         )
 
-        handle_status_code(response, should_log=should_log)
+        await handle_status_code(response, should_log=should_log)
 
     async def create_scorecard(
         self,
@@ -106,7 +106,7 @@ class BlueprintClientMixin:
             headers=await self.auth.headers(),
         )
 
-        handle_status_code(response, should_log=should_log)
+        await handle_status_code(response, should_log=should_log)
 
     async def create_page(
         self, page: dict[str, Any], should_log: bool = True
@@ -118,7 +118,7 @@ class BlueprintClientMixin:
             headers=await self.auth.headers(),
         )
 
-        handle_status_code(response, should_log=should_log)
+        await handle_status_code(response, should_log=should_log)
         return page
 
     async def delete_page(
@@ -132,4 +132,4 @@ class BlueprintClientMixin:
             headers=await self.auth.headers(),
         )
 
-        handle_status_code(response, should_raise)
+        await handle_status_code(response, should_raise)

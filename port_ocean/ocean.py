@@ -1,6 +1,5 @@
 import asyncio
 import sys
-import threading
 from contextlib import asynccontextmanager
 from typing import Callable, Any, Dict, AsyncIterator, Type
 
@@ -30,12 +29,12 @@ from port_ocean.version import __integration_version__
 
 class Ocean:
     def __init__(
-        self,
-        app: FastAPI | None = None,
-        integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
-        integration_router: APIRouter | None = None,
-        config_factory: Type[BaseModel] | None = None,
-        config_override: Dict[str, Any] | None = None,
+            self,
+            app: FastAPI | None = None,
+            integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
+            integration_router: APIRouter | None = None,
+            config_factory: Type[BaseModel] | None = None,
+            config_override: Dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()
@@ -73,7 +72,7 @@ class Ocean:
         return self.config.runtime == Runtime.Saas
 
     async def _setup_scheduled_resync(
-        self,
+            self,
     ) -> None:
         async def execute_resync_all() -> None:
             # await self.resync_state_updater.update_before_resync()
@@ -103,11 +102,7 @@ class Ocean:
                 # Not running the resync immediately because the event listener should run resync on startup
                 wait_first=False,
             )(
-                lambda: threading.Thread(
-                    target=lambda: asyncio.run_coroutine_threadsafe(
-                        execute_resync_all(), loop
-                    )
-                ).start()
+                execute_resync_all
             )
             await repeated_function()
 

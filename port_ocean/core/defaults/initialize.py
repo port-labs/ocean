@@ -1,7 +1,7 @@
 import asyncio
 from typing import Type, Any
 
-import httpx
+import aiohttp
 from loguru import logger
 
 from port_ocean.clients.port.client import PortClient
@@ -21,7 +21,7 @@ from port_ocean.exceptions.port_defaults import (
 
 
 def deconstruct_blueprints_to_creation_steps(
-    raw_blueprints: list[dict[str, Any]],
+        raw_blueprints: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], ...]:
     """
     Deconstructing the blueprint into stages so the api wont fail to create a blueprint if there is a conflict
@@ -53,9 +53,9 @@ def deconstruct_blueprints_to_creation_steps(
 
 
 async def _initialize_required_integration_settings(
-    port_client: PortClient,
-    default_mapping: PortAppConfig,
-    integration_config: IntegrationConfiguration,
+        port_client: PortClient,
+        default_mapping: PortAppConfig,
+        integration_config: IntegrationConfiguration,
 ) -> None:
     try:
         logger.info("Initializing integration at port")
@@ -80,8 +80,8 @@ async def _initialize_required_integration_settings(
                 integration_config.event_listener.to_request(),
                 port_app_config=default_mapping,
             )
-    except httpx.HTTPStatusError as err:
-        logger.error(f"Failed to apply default mapping: {err.response.text}.")
+    except aiohttp.ClientResponseError as err:
+        logger.error(f"Failed to apply default mapping: {err.message}.")
         raise err
 
     logger.info("Checking for diff in integration configuration")
@@ -89,9 +89,9 @@ async def _initialize_required_integration_settings(
         "changelog_destination"
     )
     if (
-        integration.get("changelogDestination") != changelog_destination
-        or integration.get("installationAppType") != integration_config.integration.type
-        or integration.get("version") != port_client.integration_version
+            integration.get("changelogDestination") != changelog_destination
+            or integration.get("installationAppType") != integration_config.integration.type
+            or integration.get("version") != port_client.integration_version
     ):
         await port_client.patch_integration(
             integration_config.integration.type, changelog_destination
@@ -99,8 +99,8 @@ async def _initialize_required_integration_settings(
 
 
 async def _create_resources(
-    port_client: PortClient,
-    defaults: Defaults,
+        port_client: PortClient,
+        defaults: Defaults,
 ) -> None:
     creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
         defaults.blueprints
@@ -133,9 +133,9 @@ async def _create_resources(
 
     if blueprint_errors:
         for error in blueprint_errors:
-            if isinstance(error, httpx.HTTPStatusError):
+            if isinstance(error, aiohttp.ClientResponseError):
                 logger.warning(
-                    f"Failed to create resources: {error.response.text}. Rolling back changes..."
+                    f"Failed to create resources: {error.message}. Rolling back changes..."
                 )
 
         raise AbortDefaultCreationError(
@@ -155,8 +155,8 @@ async def _create_resources(
                 )
             )
 
-    except httpx.HTTPStatusError as err:
-        logger.error(f"Failed to create resources: {err.response.text}. continuing...")
+    except aiohttp.ClientResponseError as err:
+        logger.error(f"Failed to create resources: {err.message}. continuing...")
         raise AbortDefaultCreationError(created_blueprints_identifiers, [err])
     try:
         created_actions, actions_errors = await gather_and_split_errors_from_results(
@@ -185,9 +185,9 @@ async def _create_resources(
         errors = actions_errors + scorecards_errors + pages_errors
         if errors:
             for error in errors:
-                if isinstance(error, httpx.HTTPStatusError):
+                if isinstance(error, aiohttp.ClientResponseError):
                     logger.warning(
-                        f"Failed to create resource: {error.response.text}. continuing..."
+                        f"Failed to create resource: {error.message}. continuing..."
                     )
 
     except Exception as err:
@@ -195,44 +195,45 @@ async def _create_resources(
 
 
 async def _initialize_defaults(
-    config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
+        config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     port_client = ocean.port_client
-    defaults = get_port_integration_defaults(config_class)
-    if not defaults:
-        logger.warning("No defaults found. Skipping initialization...")
-        return None
+    async with ocean.port_client.client:
+        defaults = get_port_integration_defaults(config_class)
+        if not defaults:
+            logger.warning("No defaults found. Skipping initialization...")
+            return None
 
-    if defaults.port_app_config:
-        await _initialize_required_integration_settings(
-            port_client, defaults.port_app_config, integration_config
-        )
-
-    if not integration_config.initialize_port_resources:
-        return
-
-    try:
-        logger.info("Found default resources, starting creation process")
-        await _create_resources(port_client, defaults)
-    except AbortDefaultCreationError as e:
-        logger.warning(
-            f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"
-        )
-        await asyncio.gather(
-            *(
-                port_client.delete_blueprint(
-                    identifier,
-                    should_raise=False,
-                    user_agent_type=UserAgentType.exporter,
-                )
-                for identifier in e.blueprints_to_rollback
+        if defaults.port_app_config:
+            await _initialize_required_integration_settings(
+                port_client, defaults.port_app_config, integration_config
             )
-        )
-        raise ExceptionGroup(str(e), e.errors)
+
+        if not integration_config.initialize_port_resources:
+            return
+
+        try:
+            logger.info("Found default resources, starting creation process")
+            await _create_resources(port_client, defaults)
+        except AbortDefaultCreationError as e:
+            logger.warning(
+                f"Failed to create resources. Rolling back blueprints : {e.blueprints_to_rollback}"
+            )
+            await asyncio.gather(
+                *(
+                    port_client.delete_blueprint(
+                        identifier,
+                        should_raise=False,
+                        user_agent_type=UserAgentType.exporter,
+                    )
+                    for identifier in e.blueprints_to_rollback
+                )
+            )
+            raise ExceptionGroup(str(e), e.errors)
 
 
 def initialize_defaults(
-    config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
+        config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     asyncio.new_event_loop().run_until_complete(
         _initialize_defaults(config_class, integration_config)

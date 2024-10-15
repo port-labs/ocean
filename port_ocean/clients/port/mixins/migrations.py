@@ -1,6 +1,6 @@
 import asyncio
 
-import httpx
+import aiohttp
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -9,7 +9,7 @@ from port_ocean.core.models import Migration
 
 
 class MigrationClientMixin:
-    def __init__(self, auth: PortAuthentication, client: httpx.AsyncClient):
+    def __init__(self, auth: PortAuthentication, client: aiohttp.ClientSession):
         self.auth = auth
         self.client = client
 
@@ -28,9 +28,9 @@ class MigrationClientMixin:
             headers=headers,
         )
 
-        handle_status_code(response, should_raise=True)
+        await handle_status_code(response, should_raise=True)
 
-        migration_status = response.json().get("migration", {}).get("status", None)
+        migration_status = (await response.json()).get("migration", {}).get("status", None)
         if (
             migration_status == "RUNNING"
             or migration_status == "INITIALIZING"
@@ -43,4 +43,4 @@ class MigrationClientMixin:
                 f"Migration with id: {migration_id} finished with status {migration_status}",
             )
 
-        return Migration.parse_obj(response.json()["migration"])
+        return Migration.parse_obj(await response.json()["migration"])

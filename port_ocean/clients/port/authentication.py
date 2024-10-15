@@ -1,6 +1,6 @@
 from typing import Any
 
-import httpx
+from aiohttp import ClientSession
 from loguru import logger
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -26,14 +26,14 @@ class TokenResponse(BaseModel):
 
 class PortAuthentication:
     def __init__(
-        self,
-        client: httpx.AsyncClient,
-        client_id: str,
-        client_secret: str,
-        api_url: str,
-        integration_identifier: str,
-        integration_type: str,
-        integration_version: str,
+            self,
+            client: ClientSession,
+            client_id: str,
+            client_secret: str,
+            api_url: str,
+            integration_identifier: str,
+            integration_type: str,
+            integration_version: str,
     ):
         self.client = client
         self.api_url = api_url
@@ -51,10 +51,9 @@ class PortAuthentication:
         response = await self.client.post(
             f"{self.api_url}/auth/access_token",
             json=credentials,
-            extensions={"retryable": True},
         )
-        handle_status_code(response)
-        return TokenResponse(**response.json())
+        await handle_status_code(response)
+        return TokenResponse(**(await response.json()))
 
     def user_agent(self, user_agent_type: UserAgentType | None = None) -> str:
         user_agent = f"port-ocean/{self.integration_type}/{self.integration_version}/{self.integration_identifier}"
@@ -64,7 +63,7 @@ class PortAuthentication:
         return user_agent
 
     async def headers(
-        self, user_agent_type: UserAgentType | None = None
+            self, user_agent_type: UserAgentType | None = None
     ) -> dict[Any, Any]:
         return {
             "Authorization": await self.token,

@@ -1,51 +1,29 @@
-import asyncio
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any
 
-import httpx
+from aiohttp import ClientResponse
 
-from port_ocean.helpers.retry import RetryTransport
-
-if TYPE_CHECKING:
-    from port_ocean.clients.port.client import PortClient
+from port_ocean.helpers.retry import RetryRequestClass
 
 
-class TokenRetryTransport(RetryTransport):
-    def __init__(self, port_client: "PortClient", **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self.port_client = port_client
+class TokenRetryRequestClass(RetryRequestClass):
+    async def _handle_unauthorized(self) -> None:
+        token = await self._session.port_client.auth.token
+        self.headers["Authorization"] = f"Bearer {token}"
 
-    async def _handle_unauthorized(self, response: httpx.Response) -> None:
-        token = await self.port_client.auth.token
-        response.headers["Authorization"] = f"Bearer {token}"
-
-    def is_token_error(self, response: httpx.Response) -> bool:
+    def is_token_error(self, response: ClientResponse) -> bool:
         return (
-            response.status_code == HTTPStatus.UNAUTHORIZED
-            and "/auth/access_token" not in str(response.request.url)
-            and self.port_client.auth.last_token_object is not None
-            and self.port_client.auth.last_token_object.expired
+                response.status == HTTPStatus.UNAUTHORIZED
+                and "/auth/access_token" not in str(self.url)
+                and self._session.port_client.auth.last_token_object is not None
+                and self._session.port_client.auth.last_token_object.expired
         )
 
-    async def _should_retry_async(self, response: httpx.Response) -> bool:
+    async def _should_retry_async(self, response: ClientResponse) -> bool:
         if self.is_token_error(response):
             if self._logger:
                 self._logger.info(
                     "Got unauthorized response, trying to refresh token before retrying"
                 )
-            await self._handle_unauthorized(response)
+            await self._handle_unauthorized()
             return True
         return await super()._should_retry_async(response)
-
-    def _should_retry(self, response: httpx.Response) -> bool:
-        if self.is_token_error(response):
-            if self._logger:
-                self._logger.info(
-                    "Got unauthorized response, trying to refresh token before retrying"
-                )
-            asyncio.get_running_loop().run_until_complete(
-                self._handle_unauthorized(response)
-            )
-
-            return True
-        return super()._should_retry(response)

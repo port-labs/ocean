@@ -3,8 +3,7 @@ from typing import Callable, Any
 from werkzeug.local import LocalProxy, LocalStack
 
 from port_ocean.exceptions.utils import (
-    SignalHandlerNotInitialized,
-    SignalHandlerAlreadyInitialized,
+    SignalHandlerAlreadyInitialized, SignalHandlerNotInitialized,
 )
 from port_ocean.utils.misc import generate_uuid
 

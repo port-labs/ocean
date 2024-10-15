@@ -1,3 +1,5 @@
+from typing import Any
+
 from loguru import logger
 
 from port_ocean.clients.port.authentication import PortAuthentication
@@ -13,7 +15,6 @@ from port_ocean.clients.port.utils import (
     get_internal_http_client,
 )
 from port_ocean.exceptions.clients import KafkaCredentialsNotFound
-from typing import Any
 
 
 class PortClient(
@@ -56,9 +57,9 @@ class PortClient(
         )
         if response.is_error:
             logger.error("Error getting kafka credentials")
-        handle_status_code(response)
+        await handle_status_code(response)
 
-        credentials = response.json().get("credentials")
+        credentials = (await response.json()).get("credentials")
 
         if credentials is None:
             raise KafkaCredentialsNotFound("No kafka credentials found")
@@ -72,10 +73,10 @@ class PortClient(
             f"{self.api_url}/organization", headers=await self.auth.headers()
         )
         if response.is_error:
-            logger.error(f"Error getting organization id, error: {response.text}")
-        handle_status_code(response)
+            logger.error(f"Error getting organization id, error: {await response.text()}")
+        await handle_status_code(response)
 
-        return response.json()["organization"]["id"]
+        return (await response.json())["organization"]["id"]
 
     async def update_integration_state(
         self, state: dict[str, Any], should_raise: bool = True, should_log: bool = True
@@ -87,8 +88,8 @@ class PortClient(
             headers=await self.auth.headers(),
             json=state,
         )
-        handle_status_code(response, should_raise, should_log)
+        await handle_status_code(response, should_raise, should_log)
         if response.is_success and should_log:
             logger.info("Integration resync state updated successfully")
 
-        return response.json().get("integration", {})
+        return (await response.json()).get("integration", {})

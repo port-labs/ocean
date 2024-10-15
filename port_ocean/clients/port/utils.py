@@ -1,11 +1,12 @@
+from asyncio import ensure_future
 from typing import TYPE_CHECKING
 
-import httpx
+import aiohttp
 from loguru import logger
 from werkzeug.local import LocalStack, LocalProxy
 
-from port_ocean.clients.port.retry_transport import TokenRetryTransport
-from port_ocean.helpers.async_client import OceanAsyncClient
+from port_ocean.helpers.retry import RetryRequestClass
+from port_ocean.utils.signal import signal_handler
 
 if TYPE_CHECKING:
     from port_ocean.clients.port.client import PortClient
@@ -20,33 +21,41 @@ PORT_HTTP_MAX_CONNECTIONS_LIMIT = 200
 PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS = 50
 PORT_HTTP_TIMEOUT = 60.0
 
-PORT_HTTPX_TIMEOUT = httpx.Timeout(PORT_HTTP_TIMEOUT)
-PORT_HTTPX_LIMITS = httpx.Limits(
-    max_connections=PORT_HTTP_MAX_CONNECTIONS_LIMIT,
-    max_keepalive_connections=PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS,
-)
+TIMEOUT = aiohttp.ClientTimeout(total=PORT_HTTP_TIMEOUT)
 
-_http_client: LocalStack[httpx.AsyncClient] = LocalStack()
+_http_client: LocalStack[aiohttp.ClientSession] = LocalStack()
 
 
-def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
+class PortRetryRequestClass(RetryRequestClass):
+    RETRYABLE_ROUTES = frozenset(["/auth/access_token", "/entities/search"])
+
+    def _is_retryable(self) -> bool:
+        return super()._is_retryable() or any([route in self.url.path for route in self.RETRYABLE_ROUTES])
+
+
+class OceanPortAsyncClient(aiohttp.ClientSession):
+    def __init__(self, port_client: "PortClient", *args,
+                 **kwargs):
+        self._port_client = port_client
+        super().__init__(*args, **kwargs)
+
+
+def _get_http_client_context(port_client: "PortClient") -> aiohttp.ClientSession:
     client = _http_client.top
     if client is None:
-        client = OceanAsyncClient(
-            TokenRetryTransport,
-            transport_kwargs={"port_client": port_client},
-            timeout=PORT_HTTPX_TIMEOUT,
-            limits=PORT_HTTPX_LIMITS,
-        )
+        AIOHTTP_CONNECTOR = aiohttp.TCPConnector(limit=PORT_HTTP_MAX_CONNECTIONS_LIMIT, force_close=True)
+        client = OceanPortAsyncClient(port_client, timeout=TIMEOUT, request_class=PortRetryRequestClass,
+                                      connector=AIOHTTP_CONNECTOR,
+                                      trust_env=True)
         _http_client.push(client)
-
+        signal_handler.register(lambda: ensure_future(client.close()))
     return client
 
 
-_port_internal_async_client: httpx.AsyncClient = None  # type: ignore
+_port_internal_async_client: aiohttp.ClientSession = None  # type: ignore
 
 
-def get_internal_http_client(port_client: "PortClient") -> httpx.AsyncClient:
+def get_internal_http_client(port_client: "PortClient") -> aiohttp.ClientSession:
     global _port_internal_async_client
     if _port_internal_async_client is None:
         _port_internal_async_client = LocalProxy(
@@ -56,12 +65,12 @@ def get_internal_http_client(port_client: "PortClient") -> httpx.AsyncClient:
     return _port_internal_async_client
 
 
-def handle_status_code(
-    response: httpx.Response, should_raise: bool = True, should_log: bool = True
+async def handle_status_code(
+        response: aiohttp.ClientResponse, should_raise: bool = True, should_log: bool = True
 ) -> None:
-    if should_log and response.is_error:
+    if should_log and not response.ok:
         logger.error(
-            f"Request failed with status code: {response.status_code}, Error: {response.text}"
+            f"Request failed with status code: {response.status}, Error: {await response.text()}"
         )
     if should_raise:
         response.raise_for_status()

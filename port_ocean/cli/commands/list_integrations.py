@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-import httpx
+import asyncio
+
+import aiohttp
 
 from port_ocean.cli.commands.main import cli_start, console
 
@@ -9,16 +11,17 @@ def list_git_folders(owner: str, repo_name: str, path: str) -> list[str]:
     api_url = f"https://api.github.com/repos/{owner}/{repo_name}/contents/{path}"
 
     # Send a GET request to the API
-    response = httpx.get(api_url)
+    response = asyncio.run(aiohttp.ClientSession().get(api_url))
 
     # Check if the request was successful
-    if response.is_error:
+    if not response.ok:
+        text = asyncio.run(response.text())
         console.print(
-            f"[bold red]Failed to list folders.[/bold red] Status Code: {response.status_code}, Error: {response.text}"
+            f"[bold red]Failed to list folders.[/bold red] Status Code: {response.status}, Error: {text}"
         )
         exit(1)
 
-    contents = response.json()
+    contents = await response.json()
     folders = [item["name"] for item in contents if item["type"] == "dir"]
     return folders
 

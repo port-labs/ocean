@@ -1,11 +1,11 @@
 from os import environ
 from typing import Tuple
+
 import pytest
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.tests.helpers.smoke_test import SmokeTestDetails
-
 
 pytestmark = pytest.mark.smoke
 
@@ -54,7 +54,7 @@ async def test_valid_fake_persons(
         headers=headers,
     )
 
-    fake_person_entities = fake_person_entities_result.json()["entities"]
+    fake_person_entities = (await fake_person_entities_result.json())["entities"]
     assert len(fake_person_entities)
 
     fake_departments_result = await port_client.client.get(
@@ -62,7 +62,7 @@ async def test_valid_fake_persons(
         headers=headers,
     )
 
-    departments = [x["identifier"] for x in fake_departments_result.json()["entities"]]
+    departments = [x["identifier"] for x in (await fake_departments_result.json())["entities"]]
 
     for department in departments:
         assert len(

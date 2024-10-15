@@ -5,13 +5,18 @@ from traceback import format_exception
 from typing import Callable, Coroutine, Any
 
 from loguru import logger
-from starlette.concurrency import run_in_threadpool
+
+from port_ocean.utils.signal import signal_handler
 
 NoArgsNoReturnFuncT = Callable[[], None]
 NoArgsNoReturnAsyncFuncT = Callable[[], Coroutine[Any, Any, None]]
 NoArgsNoReturnDecorator = Callable[
     [NoArgsNoReturnFuncT | NoArgsNoReturnAsyncFuncT], NoArgsNoReturnAsyncFuncT
 ]
+
+
+def run_in_threadpool(param):
+    pass
 
 
 def repeat_every(
@@ -63,7 +68,9 @@ def repeat_every(
                     repetitions += 1
                     try:
                         if is_coroutine:
-                            await func()  # type: ignore
+                            task = asyncio.create_task(func())
+                            signal_handler.register(lambda: task.cancel())
+                            ensure_future(task)
                         else:
                             await run_in_threadpool(func)
                     except Exception as exc:

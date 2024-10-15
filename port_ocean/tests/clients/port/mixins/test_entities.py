@@ -1,12 +1,11 @@
 from typing import Any
 from unittest.mock import MagicMock
 
+import aiohttp
 import pytest
 
 from port_ocean.clients.port.mixins.entities import EntityClientMixin
 from port_ocean.core.models import Entity
-from httpx import ReadTimeout
-
 
 errored_entity_identifier: str = "a"
 expected_result_entities = [
@@ -20,7 +19,7 @@ all_entities = [
 
 async def mock_upsert_entity(entity: Entity, *args: Any, **kwargs: Any) -> Entity:
     if entity.identifier == errored_entity_identifier:
-        raise ReadTimeout("")
+        raise aiohttp.ConnectionTimeoutError("")
     else:
         return entity
 
@@ -47,7 +46,7 @@ async def test_batch_upsert_entities_read_timeout_should_raise_false(
 async def test_batch_upsert_entities_read_timeout_should_raise_true(
     entity_client: EntityClientMixin,
 ) -> None:
-    with pytest.raises(ReadTimeout):
+    with pytest.raises(aiohttp.ConnectionTimeoutError):
         await entity_client.batch_upsert_entities(
             entities=all_entities, request_options=MagicMock(), should_raise=True
         )
