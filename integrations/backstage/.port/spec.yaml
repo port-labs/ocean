@@ -2,7 +2,7 @@ description: Backstage integration for Port Ocean
 icon: Backstage
 features:
   - type: exporter
-    section: Others
+    section: Other
     resources:
       - kind: component
       - kind: system

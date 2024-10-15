@@ -4,7 +4,7 @@
 
 ### Features
 
-- Changed category to others
+- Changed category to other
 
 
 ## 0.1.0-beta (2024-10-15)
