@@ -1,7 +1,7 @@
 import typing
 from typing import Any, AsyncGenerator
 
-from httpx import Timeout, BasicAuth
+from aiohttp import ClientTimeout, BasicAuth
 from loguru import logger
 
 from jira.overrides import JiraResourceConfig
@@ -39,8 +39,8 @@ class JiraClient:
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
         self.client = http_async_client
-        self.client.auth = self.jira_api_auth
-        self.client.timeout = Timeout(30)
+        self.client._default_auth = self.jira_api_auth
+        self.client._timeout = ClientTimeout(30)
 
     @staticmethod
     def _generate_base_req_params(
@@ -56,18 +56,18 @@ class JiraClient:
             f"{self.api_url}/project/search", params=params
         )
         project_response.raise_for_status()
-        return project_response.json()
+        return await project_response.json()
 
     async def _get_paginated_issues(self, params: dict[str, Any]) -> dict[str, Any]:
         issue_response = await self.client.get(f"{self.api_url}/search", params=params)
         issue_response.raise_for_status()
-        return issue_response.json()
+        return await issue_response.json()
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         webhook_check_response = await self.client.get(f"{self.webhooks_url}")
         webhook_check_response.raise_for_status()
-        webhook_check = webhook_check_response.json()
+        webhook_check = await webhook_check_response.json()
 
         for webhook in webhook_check:
             if webhook["url"] == webhook_target_app_host:
@@ -91,7 +91,7 @@ class JiraClient:
             f"{self.api_url}/project/{project_key}"
         )
         project_response.raise_for_status()
-        return project_response.json()
+        return await project_response.json()
 
     async def get_paginated_projects(
         self,
@@ -119,7 +119,7 @@ class JiraClient:
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         issue_response = await self.client.get(f"{self.api_url}/issue/{issue_key}")
         issue_response.raise_for_status()
-        return issue_response.json()
+        return await issue_response.json()
 
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
