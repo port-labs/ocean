@@ -39,7 +39,8 @@ jobs:
 
 
   build-integration:
-    runs-on: ubuntu-latest
+    # runs-on: ${{ matrix.platform == 'linux/arm64' && 'macos-13' || 'ubuntu-latest' }}
+    runs-on: 'ubuntu-latest'
     if: needs.prepare-matrix.outputs.matrix != '[]'
     outputs:
       is_dev_version: ${{ steps.prepare_tags.outputs.is_dev_version }}
@@ -56,6 +57,10 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+
+      # - name: Setup docker (missing on MacOS)
+      #   if: matrix.platform == 'linux/arm64'
+      #   uses: douglascamata/setup-docker-macos-action@v1-alpha
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -106,10 +111,17 @@ jobs:
         run: |
           echo "base_image=$(cat ${{ steps.prepare_tags.outputs.dockerfile_path }} | head -n 1 | awk -F '=' '{print $2}' )" >> $GITHUB_OUTPUT
 
-      - name: Cache Docker images
-        uses: ScribeMD/docker-cache@0.5.0
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          key: docker-${{ matrix.integration }}-${{ steps.get-docker-image.outputs.base_image }}-${{ matrix.platform }}
+          registry: ghcr.io
+          username: ${{ secrets.DOCKER_MACHINE_USER }}
+          password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+
+      # - name: Cache Docker images
+      #   uses: ScribeMD/docker-cache@0.5.0
+      #   with:
+      #     key: docker-${{ matrix.integration }}-${{ steps.get-docker-image.outputs.base_image }}-${{ matrix.platform }}
 
       - name: Build
         uses: docker/build-push-action@v6
@@ -119,8 +131,6 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: false
           load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           tags: ${{ steps.prepare_tags.outputs.tags }}
           build-args: |
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
