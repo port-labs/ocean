@@ -5,6 +5,7 @@ from traceback import format_exception
 from typing import Callable, Coroutine, Any
 
 from loguru import logger
+from starlette.concurrency import run_in_threadpool
 
 from port_ocean.utils.signal import signal_handler
 
@@ -13,10 +14,6 @@ NoArgsNoReturnAsyncFuncT = Callable[[], Coroutine[Any, Any, None]]
 NoArgsNoReturnDecorator = Callable[
     [NoArgsNoReturnFuncT | NoArgsNoReturnAsyncFuncT], NoArgsNoReturnAsyncFuncT
 ]
-
-
-def run_in_threadpool(param):
-    pass
 
 
 def repeat_every(
@@ -61,27 +58,26 @@ def repeat_every(
             async def loop() -> None:
                 nonlocal repetitions
 
-                # if wait_first:
-                #     await asyncio.sleep(seconds)
-                # count the repetition even if an exception is raised
-                repetitions += 1
-                try:
-                    if is_coroutine:
-                        task = asyncio.create_task(func())
-                        signal_handler.register(lambda: task.cancel())
-                        ensure_future(task)
-                    else:
-                        run_in_threadpool(func)
-                except Exception as exc:
-                    formatted_exception = "".join(
-                        format_exception(type(exc), exc, exc.__traceback__)
-                    )
-                    logger.error(formatted_exception)
-                    if raise_exceptions:
-                        raise exc
+                if wait_first:
                     await asyncio.sleep(seconds)
-                    if max_repetitions is None or repetitions < max_repetitions:
-                        asyncio.get_event_loop().call_later(seconds, loop)
+                while max_repetitions is None or repetitions < max_repetitions:
+                    # count the repetition even if an exception is raised
+                    repetitions += 1
+                    try:
+                        if is_coroutine:
+                            task = asyncio.create_task(func())
+                            signal_handler.register(lambda: task.cancel())
+                            ensure_future(task)
+                        else:
+                            await run_in_threadpool(func)
+                    except Exception as exc:
+                        formatted_exception = "".join(
+                            format_exception(type(exc), exc, exc.__traceback__)
+                        )
+                        logger.error(formatted_exception)
+                        if raise_exceptions:
+                            raise exc
+                        await asyncio.sleep(seconds)
 
             ensure_future(loop())
 
