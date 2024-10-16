@@ -1,3 +1,11 @@
+## 0.1.2-beta (2024-10-16)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.4
+
+
 # Changelog - Ocean - backstage
 
 ## 0.1.1-beta (2024-10-15)
