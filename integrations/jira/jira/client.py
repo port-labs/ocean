@@ -1,4 +1,5 @@
 import typing
+from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
 import aiohttp
@@ -38,8 +39,14 @@ class JiraClient:
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
-    def _create_session(self):
-        return aiohttp.ClientSession(auth=self.jira_api_auth, timeout=ClientTimeout(30))
+    @asynccontextmanager
+    async def _create_session(self):
+        try:
+            session = aiohttp.ClientSession(auth=self.jira_api_auth, timeout=ClientTimeout(30))
+            yield session
+        finally:
+            await session.close()
+
 
     @staticmethod
     def _generate_base_req_params(
@@ -55,14 +62,12 @@ class JiraClient:
             async with session.get(
                     f"{self.api_url}/project/search", params=params
             ) as project_response:
-                await session.close()
                 project_response.raise_for_status()
                 return await project_response.json()
 
     async def _get_paginated_issues(self, params: dict[str, Any]) -> dict[str, Any]:
         async with self._create_session() as session:
             async with session.get(f"{self.api_url}/search", params=params) as issue_response:
-                await session.close()
                 issue_response.raise_for_status()
                 return await issue_response.json()
 
@@ -70,7 +75,6 @@ class JiraClient:
         webhook_target_app_host = f"{app_host}/integration/webhook"
         async with self._create_session() as session:
             async with session.get(f"{self.webhooks_url}") as webhook_check_response:
-                await session.close()
                 webhook_check_response.raise_for_status()
                 webhook_check = await webhook_check_response.json()
 
@@ -87,7 +91,6 @@ class JiraClient:
 
         async with self._create_session() as session:
             async with session.post(f"{self.webhooks_url}", json=body) as webhook_create_response:
-                await session.close()
                 webhook_create_response.raise_for_status()
                 logger.info("Ocean real time reporting webhook created")
 
@@ -96,7 +99,6 @@ class JiraClient:
             async with session.get(
                     f"{self.api_url}/project/{project_key}"
             ) as project_response:
-                await session.close()
                 project_response.raise_for_status()
                 return await project_response.json()
 
@@ -126,7 +128,6 @@ class JiraClient:
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         async with self._create_session() as session:
             async with session.get(f"{self.api_url}/issue/{issue_key}") as issue_response:
-                await session.close()
                 issue_response.raise_for_status()
                 return await issue_response.json()
 
