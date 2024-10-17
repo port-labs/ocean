@@ -21,6 +21,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+factory-boy = "^3.3.1"
 
 [tool.towncrier]
 directory = "changelog"
