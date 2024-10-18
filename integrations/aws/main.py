@@ -36,7 +36,11 @@ from utils.misc import (
     is_server_error,
     semaphore,
 )
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+    semaphore_async_iterator,
+)
+import functools
 
 
 async def _handle_global_resource_resync(
@@ -71,25 +75,23 @@ async def resync_resources_for_account(
     credentials: AwsCredentials, kind: str
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Function to handle fetching resources for a single account."""
+    errors, regions = [], []
 
-    async with semaphore:  # limit the number of concurrent tasks
-        errors, regions = [], []
-
-        if is_global_resource(kind):
-            async for batch in _handle_global_resource_resync(kind, credentials):
-                yield batch
-        else:
-            async for session in credentials.create_session_for_each_region():
-                try:
-                    async for batch in resync_cloudcontrol(kind, session):
-                        yield batch
-                except Exception as exc:
-                    regions.append(session.region_name)
-                    errors.append(exc)
-                    continue
-        if errors:
-            message = f"Failed to fetch {kind} for these regions {regions} with {len(errors)} errors in account {credentials.account_id}"
-            raise ExceptionGroup(message, errors)
+    if is_global_resource(kind):
+        async for batch in _handle_global_resource_resync(kind, credentials):
+            yield batch
+    else:
+        async for session in credentials.create_session_for_each_region():
+            try:
+                async for batch in resync_cloudcontrol(kind, session):
+                    yield batch
+            except Exception as exc:
+                regions.append(session.region_name)
+                errors.append(exc)
+                continue
+    if errors:
+        message = f"Failed to fetch {kind} for these regions {regions} with {len(errors)} errors in account {credentials.account_id}"
+        raise ExceptionGroup(message, errors)
 
 
 @ocean.on_resync()
@@ -99,11 +101,15 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     await update_available_access_credentials()
     tasks = [
-        resync_resources_for_account(credentials, kind)
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(resync_resources_for_account, credentials, kind),
+        )
         async for credentials in get_accounts()
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -119,18 +125,23 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
 
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "elasticache",
-            "describe_cache_clusters",
-            "CacheClusters",
-            "Marker",
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "elasticache",
+                "describe_cache_clusters",
+                "CacheClusters",
+                "Marker",
+            ),
         )
         async for session in get_sessions()
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -139,19 +150,24 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
 
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "elbv2",
-            "describe_load_balancers",
-            "LoadBalancers",
-            "Marker",
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "elbv2",
+                "describe_load_balancers",
+                "LoadBalancers",
+                "Marker",
+            ),
         )
         async for session in get_sessions()
     ]
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -160,19 +176,24 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
 
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "acm",
-            "list_certificates",
-            "CertificateSummaryList",
-            "NextToken",
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "acm",
+                "list_certificates",
+                "CertificateSummaryList",
+                "NextToken",
+            ),
         )
         async for session in get_sessions()
     ]
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -180,19 +201,24 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "ec2",
-            "describe_images",
-            "Images",
-            "NextToken",
-            {"Owners": ["self"]},
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "ec2",
+                "describe_images",
+                "Images",
+                "NextToken",
+                {"Owners": ["self"]},
+            ),
         )
         async for session in get_sessions()
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -200,19 +226,24 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "cloudformation",
-            "describe_stacks",
-            "Stacks",
-            "NextToken",
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "cloudformation",
+                "describe_stacks",
+                "Stacks",
+                "NextToken",
+            ),
         )
         async for session in get_sessions()
     ]
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
