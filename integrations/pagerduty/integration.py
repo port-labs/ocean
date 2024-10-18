@@ -1,7 +1,4 @@
-from typing import Literal, Any
-
-from pydantic.fields import Field
-from pydantic.main import BaseModel
+from typing import Any, Literal
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -10,6 +7,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from pydantic.fields import Field
+from pydantic.main import BaseModel
 
 from clients.utils import (
     get_date_range_for_last_n_months,
