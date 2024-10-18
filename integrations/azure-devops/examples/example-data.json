@@ -1,0 +1,227 @@
+[
+  {
+    "id": "71e60866-7aac-43f2-8aeb-8fed5c66c192",
+    "name": "To Do",
+    "itemLimit": 0,
+    "stateMappings": {
+      "Epic": "To Do"
+    },
+    "columnType": "incoming",
+    "__board": {
+      "id": "15392e3f-8617-4df6-bd27-2871a44eb92b",
+      "url": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/15392e3f-8617-4df6-bd27-2871a44eb92b",
+      "name": "Epics",
+      "revision": 0,
+      "columns": [
+        {
+          "id": "71e60866-7aac-43f2-8aeb-8fed5c66c192",
+          "name": "To Do",
+          "itemLimit": 0,
+          "stateMappings": {
+            "Epic": "To Do"
+          },
+          "columnType": "incoming"
+        },
+        {
+          "id": "8c3f0cdc-74be-4a09-abc7-a88d06132d74",
+          "name": "Doing",
+          "itemLimit": 5,
+          "stateMappings": {
+            "Epic": "Doing"
+          },
+          "isSplit": false,
+          "description": "",
+          "columnType": "inProgress"
+        },
+        {
+          "id": "f71fbad1-3412-4a58-9784-f8404a6e83cb",
+          "name": "Done",
+          "itemLimit": 0,
+          "stateMappings": {
+            "Epic": "Done"
+          },
+          "columnType": "outgoing"
+        }
+      ],
+      "rows": [
+        {
+          "id": "00000000-0000-0000-0000-000000000000",
+          "name": null,
+          "color": null
+        }
+      ],
+      "isValid": true,
+      "allowedMappings": {
+        "Incoming": {
+          "Epic": [
+            "To Do"
+          ]
+        },
+        "InProgress": {
+          "Epic": [
+            "Doing",
+            "To Do"
+          ]
+        },
+        "Outgoing": {
+          "Epic": [
+            "Done"
+          ]
+        }
+      },
+      "canEdit": true,
+      "fields": {
+        "columnField": {
+          "referenceName": "WEF_C46436FC05DA4646816534AB33DDC48E_Kanban.Column",
+          "url": "[REDACTED]/_apis/wit/fields/WEF_C46436FC05DA4646816534AB33DDC48E_Kanban.Column"
+        },
+        "rowField": {
+          "referenceName": "WEF_C46436FC05DA4646816534AB33DDC48E_Kanban.Lane",
+          "url": "[REDACTED]/_apis/wit/fields/WEF_C46436FC05DA4646816534AB33DDC48E_Kanban.Lane"
+        },
+        "doneField": {
+          "referenceName": "WEF_C46436FC05DA4646816534AB33DDC48E_Kanban.Column.Done",
+          "url": "[REDACTED]/_apis/wit/fields/WEF_C46436FC05DA4646816534AB33DDC48E_Kanban.Column.Done"
+        }
+      },
+      "_links": {
+        "self": {
+          "href": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/15392e3f-8617-4df6-bd27-2871a44eb92b"
+        },
+        "project": {
+          "href": "[REDACTED]/_apis/projects/6f84ea1f-e939-477f-8992-4145cb37ed35"
+        },
+        "team": {
+          "href": "[REDACTED]/_apis/projects/6f84ea1f-e939-477f-8992-4145cb37ed35/teams/0a0ed690-62a9-4164-ba02-dc899a29c126"
+        },
+        "charts": {
+          "href": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/15392e3f-8617-4df6-bd27-2871a44eb92b/charts"
+        },
+        "columns": {
+          "href": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/15392e3f-8617-4df6-bd27-2871a44eb92b/columns"
+        },
+        "rows": {
+          "href": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/15392e3f-8617-4df6-bd27-2871a44eb92b/rows"
+        }
+      },
+      "__project": {
+        "id": "6f84ea1f-e939-477f-8992-4145cb37ed35",
+        "name": "terraform-azure-resource",
+        "url": "[REDACTED]/_apis/projects/6f84ea1f-e939-477f-8992-4145cb37ed35",
+        "state": "wellFormed",
+        "revision": 12,
+        "visibility": "private",
+        "lastUpdateTime": "2024-01-08T12:07:57.667Z"
+      }
+    },
+    "__stateType": "Epic",
+    "__stateName": "To Do"
+  },
+  {
+    "id": "11dd908f-62c0-411a-99fa-958fb4651764",
+    "url": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/11dd908f-62c0-411a-99fa-958fb4651764",
+    "name": "Issues",
+    "revision": 0,
+    "columns": [
+      {
+        "id": "7a8153e6-e163-498e-83da-43ef70c8966e",
+        "name": "To Do",
+        "itemLimit": 0,
+        "stateMappings": {
+          "Issue": "To Do"
+        },
+        "columnType": "incoming"
+      },
+      {
+        "id": "f142791e-7313-4c05-9e44-d109cd4b8717",
+        "name": "Doing",
+        "itemLimit": 5,
+        "stateMappings": {
+          "Issue": "Doing"
+        },
+        "isSplit": false,
+        "description": "",
+        "columnType": "inProgress"
+      },
+      {
+        "id": "c6ff6473-1670-4567-a499-cca3d5c45bd1",
+        "name": "Done",
+        "itemLimit": 0,
+        "stateMappings": {
+          "Issue": "Done"
+        },
+        "columnType": "outgoing"
+      }
+    ],
+    "rows": [
+      {
+        "id": "00000000-0000-0000-0000-000000000000",
+        "name": null,
+        "color": null
+      }
+    ],
+    "isValid": true,
+    "allowedMappings": {
+      "Incoming": {
+        "Issue": [
+          "To Do"
+        ]
+      },
+      "InProgress": {
+        "Issue": [
+          "Doing",
+          "To Do"
+        ]
+      },
+      "Outgoing": {
+        "Issue": [
+          "Done"
+        ]
+      }
+    },
+    "canEdit": true,
+    "fields": {
+      "columnField": {
+        "referenceName": "WEF_D68C9FE95E58442D9298E9272FF0054E_Kanban.Column",
+        "url": "[REDACTED]/_apis/wit/fields/WEF_D68C9FE95E58442D9298E9272FF0054E_Kanban.Column"
+      },
+      "rowField": {
+        "referenceName": "WEF_D68C9FE95E58442D9298E9272FF0054E_Kanban.Lane",
+        "url": "[REDACTED]/_apis/wit/fields/WEF_D68C9FE95E58442D9298E9272FF0054E_Kanban.Lane"
+      },
+      "doneField": {
+        "referenceName": "WEF_D68C9FE95E58442D9298E9272FF0054E_Kanban.Column.Done",
+        "url": "[REDACTED]/_apis/wit/fields/WEF_D68C9FE95E58442D9298E9272FF0054E_Kanban.Column.Done"
+      }
+    },
+    "_links": {
+      "self": {
+        "href": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/11dd908f-62c0-411a-99fa-958fb4651764"
+      },
+      "project": {
+        "href": "[REDACTED]/_apis/projects/6f84ea1f-e939-477f-8992-4145cb37ed35"
+      },
+      "team": {
+        "href": "[REDACTED]/_apis/projects/6f84ea1f-e939-477f-8992-4145cb37ed35/teams/0a0ed690-62a9-4164-ba02-dc899a29c126"
+      },
+      "charts": {
+        "href": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/11dd908f-62c0-411a-99fa-958fb4651764/charts"
+      },
+      "columns": {
+        "href": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/11dd908f-62c0-411a-99fa-958fb4651764/columns"
+      },
+      "rows": {
+        "href": "[REDACTED]/6f84ea1f-e939-477f-8992-4145cb37ed35/0a0ed690-62a9-4164-ba02-dc899a29c126/_apis/work/boards/11dd908f-62c0-411a-99fa-958fb4651764/rows"
+      }
+    },
+    "__project": {
+      "id": "6f84ea1f-e939-477f-8992-4145cb37ed35",
+      "name": "terraform-azure-resource",
+      "url": "[REDACTED]/_apis/projects/6f84ea1f-e939-477f-8992-4145cb37ed35",
+      "state": "wellFormed",
+      "revision": 12,
+      "visibility": "private",
+      "lastUpdateTime": "2024-01-08T12:07:57.667Z"
+    }
+  }
+]

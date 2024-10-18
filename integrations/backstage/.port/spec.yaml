@@ -1,0 +1,23 @@
+description: Backstage integration for Port Ocean
+icon: Backstage
+features:
+  - type: exporter
+    section: Other
+    resources:
+      - kind: component
+      - kind: system
+      - kind: domain
+      - kind: resource
+      - kind: group
+      - kind: user
+      - kind: api
+configurations:
+  - name: backstageToken
+    required: true
+    type: string
+    sensitive: true
+    description: The Backstage token used for authentication. For more information, see the <a href="https://backstage.io/docs/auth/service-to-service-auth/#static-tokens" target="_blank">Backstage documentation</a>.
+  - name: backstageUrl
+    required: true
+    type: url
+    description: The URL of the Backstage instance, including the port of the Backend API (usually 7007)
