@@ -1,4 +1,3 @@
-import asyncio
 from asyncio import gather
 from enum import StrEnum
 from typing import Any, List, Dict
@@ -19,7 +18,7 @@ class ObjectKind(StrEnum):
 
 
 SKIP_WEBHOOK_CREATION = False
-SEMAPHORE_LIMIT = 30
+CHUNK_SIZE = 10
 
 
 def init_terraform_client() -> TerraformClient:
@@ -40,51 +39,25 @@ def init_terraform_client() -> TerraformClient:
 async def enrich_state_versions_with_output_data(
     http_client: TerraformClient, state_versions: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
-        tasks = [
-            http_client.get_state_version_output(state_version["id"])
-            for state_version in state_versions
-        ]
+    async def get_output(state_version: dict[str, Any]) -> dict[str, Any]:
+        output = await http_client.get_state_version_output(state_version["id"])
+        return {**state_version, "__output": output}
 
-        output_batches = []
-        for completed_task in asyncio.as_completed(tasks):
-            output = await completed_task
-            output_batches.append(output)
+    enriched_versions = []
+    for chunk in [
+        state_versions[i : i + CHUNK_SIZE]
+        for i in range(0, len(state_versions), CHUNK_SIZE)
+    ]:
+        chunk_results = await gather(*[get_output(sv) for sv in chunk])
+        enriched_versions.extend(chunk_results)
 
-        enriched_state_versions = [
-            {**state_version, "__output": output}
-            for state_version, output in zip(state_versions, output_batches)
-        ]
-
-        return enriched_state_versions
+    return enriched_versions
 
 
 async def enrich_workspaces_with_tags(
     http_client: TerraformClient, workspaces: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     async def get_tags_for_workspace(workspace: dict[str, Any]) -> dict[str, Any]:
-        async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
-            try:
-                tags = []
-                async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
-                    tags.extend(tag_batch)
-                return {**workspace, "__tags": tags}
-            except Exception as e:
-                logger.warning(
-                    f"Failed to fetch tags for workspace {workspace['id']}: {e}"
-                )
-                return {**workspace, "__tags": []}
-
-    tasks = [get_tags_for_workspace(workspace) for workspace in workspaces]
-    enriched_workspaces = [await task for task in asyncio.as_completed(tasks)]
-
-    return enriched_workspaces
-
-
-async def enrich_workspace_with_tags(
-    http_client: TerraformClient, workspace: dict[str, Any]
-) -> dict[str, Any]:
-    async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
         try:
             tags = []
             async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
@@ -93,6 +66,28 @@ async def enrich_workspace_with_tags(
         except Exception as e:
             logger.warning(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
             return {**workspace, "__tags": []}
+
+    enriched_workspaces = []
+    for chunk in [
+        workspaces[i : i + CHUNK_SIZE] for i in range(0, len(workspaces), CHUNK_SIZE)
+    ]:
+        chunk_results = await gather(*[get_tags_for_workspace(w) for w in chunk])
+        enriched_workspaces.extend(chunk_results)
+
+    return enriched_workspaces
+
+
+async def enrich_workspace_with_tags(
+    http_client: TerraformClient, workspace: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        tags = []
+        async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
+            tags.extend(tag_batch)
+        return {**workspace, "__tags": tags}
+    except Exception as e:
+        logger.warning(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
+        return {**workspace, "__tags": []}
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION)
@@ -136,20 +131,19 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             )
         ]
 
-    async def fetch_runs_for_all_workspaces() -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for workspaces in terraform_client.get_paginated_workspaces():
-            logger.info(
-                f"Received {len(workspaces)} batch workspaces... fetching its associated {kind}"
-            )
+    async for workspaces in terraform_client.get_paginated_workspaces():
+        logger.info(
+            f"Received {len(workspaces)} batch workspaces... fetching its associated {kind}"
+        )
 
-            tasks = [fetch_runs_for_workspace(workspace) for workspace in workspaces]
-            for completed_task in asyncio.as_completed(tasks):
-                workspace_runs = await completed_task
+        for chunk in [
+            workspaces[i : i + CHUNK_SIZE]
+            for i in range(0, len(workspaces), CHUNK_SIZE)
+        ]:
+            chunk_results = await gather(*[fetch_runs_for_workspace(w) for w in chunk])
+            for workspace_runs in chunk_results:
                 for runs in workspace_runs:
                     yield runs
-
-    async for run_batch in fetch_runs_for_all_workspaces():
-        yield run_batch
 
 
 @ocean.on_resync(ObjectKind.STATE_VERSION)

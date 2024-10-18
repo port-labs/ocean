@@ -1,3 +1,5 @@
+import asyncio
+import time
 from typing import Any, AsyncGenerator, Optional
 from port_ocean.utils import http_async_client
 import httpx
@@ -23,6 +25,12 @@ class CacheKeys(StrEnum):
 PAGE_SIZE = 100
 
 
+# https://developer.hashicorp.com/terraform/cloud-docs/api-docs#rate-limiting
+RATE_LIMIT_PER_SECOND = 30
+RATE_LIMIT_BUFFER = 5  # Buffer to avoid hitting the exact limit
+MAX_CONCURRENT_REQUESTS = 10
+
+
 class TerraformClient:
     def __init__(self, terraform_base_url: str, auth_token: str) -> None:
         self.terraform_base_url = terraform_base_url
@@ -32,7 +40,30 @@ class TerraformClient:
         }
         self.api_url = f"{self.terraform_base_url}/api/v2"
         self.client = http_async_client
-        self.client.headers.update(self.base_headers)
+
+        self.rate_limit = RATE_LIMIT_PER_SECOND
+        self.rate_limit_remaining = RATE_LIMIT_PER_SECOND
+        self.rate_limit_reset: float = 0.0
+        self.last_request_time = time.time()
+        self.request_times: list[float] = []
+        self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+        self.rate_limit_lock = asyncio.Lock()
+
+    async def wait_for_rate_limit(self) -> None:
+        async with self.rate_limit_lock:
+            current_time = time.time()
+            self.request_times = [t for t in self.request_times if current_time - t < 1]
+
+            if len(self.request_times) >= RATE_LIMIT_PER_SECOND:
+                wait_time = 1 - (current_time - self.request_times[0])
+                if wait_time > 0:
+                    logger.info(
+                        f"Rate limit reached, waiting for {wait_time:.2f} seconds"
+                    )
+                    await asyncio.sleep(wait_time)
+                self.request_times = self.request_times[1:]
+
+            self.request_times.append(current_time)
 
     async def send_api_request(
         self,
@@ -41,32 +72,64 @@ class TerraformClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        logger.info(f"Requesting Terraform Cloud data for endpoint: {endpoint}")
-        try:
-            url = f"{self.api_url}/{endpoint}"
-            logger.info(
-                f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
-            )
-            response = await self.client.request(
-                method=method,
-                url=url,
-                params=query_params,
-                json=json_data,
-            )
-            response.raise_for_status()
+        async with self.semaphore:
+            await self.wait_for_rate_limit()
 
-            logger.info(f"Successfully retrieved data for endpoint: {endpoint}")
+            logger.info(f"Requesting Terraform Cloud data for endpoint: {endpoint}")
+            try:
+                url = f"{self.api_url}/{endpoint}"
+                logger.info(
+                    f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
+                )
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=query_params,
+                    json=json_data,
+                    headers=self.base_headers,
+                )
+                response.raise_for_status()
 
-            return response.json()
+                async with self.rate_limit_lock:
+                    self.rate_limit = int(
+                        response.headers.get("x-ratelimit-limit", RATE_LIMIT_PER_SECOND)
+                    )
+                    self.rate_limit_remaining = int(
+                        response.headers.get(
+                            "x-ratelimit-remaining", RATE_LIMIT_PER_SECOND
+                        )
+                    )
+                    self.rate_limit_reset = float(
+                        response.headers.get("x-ratelimit-reset", "0")
+                    )
 
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"HTTP error on {endpoint}: {e.response.status_code} - {e.response.text}"
-            )
-            raise
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error on {endpoint}: {str(e)}")
-            raise
+                logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
+                logger.debug(
+                    f"Rate limit: {self.rate_limit_remaining}/{self.rate_limit}"
+                )
+                logger.debug(f"Rate limit reset: {self.rate_limit_reset}")
+
+                return response.json()
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    retry_after = float(
+                        e.response.headers.get("x-ratelimit-reset", "1")
+                    )
+                    logger.warning(
+                        f"Rate limit exceeded. Waiting for {retry_after} seconds before retrying."
+                    )
+                    await asyncio.sleep(retry_after)
+                    return await self.send_api_request(
+                        endpoint, method, query_params, json_data
+                    )
+                logger.error(
+                    f"HTTP error on {endpoint}: {e.response.status_code} - {e.response.text}"
+                )
+                raise
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error on {endpoint}: {str(e)}")
+                raise
 
     async def get_paginated_resources(
         self, endpoint: str, params: Optional[dict[str, Any]] = None
