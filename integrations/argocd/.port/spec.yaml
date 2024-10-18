@@ -28,3 +28,8 @@ configurations:
     required: false
     description: Whether to ignore server errors when fetching data from ArgoCD. If set to true, the exporter will continue to fetch data and ingest entities in Port without failing the resync event even if the ArgoCD server returns an error. If set to false, the exporter will stop fetching data and fail the resync event when the ArgoCD server returns an error. Default is false.
     default: false
+  - name: allowInsecure
+    type: boolean
+    required: false
+    description: Whether to allow insecure connections to the ArgoCD server. If set to true, the exporter will allow insecure connections to the ArgoCD server. If set to false, the exporter will only allow secure connections to the ArgoCD server. Default is false.
+    default: false
