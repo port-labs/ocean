@@ -1,20 +1,21 @@
+import asyncio
 import typing
 from typing import Any
-import asyncio
 
 from loguru import logger
-
-from clients.pagerduty import PagerDutyClient
-from integration import ObjectKind, PagerdutyServiceResourceConfig
-from integration import (
-    PagerdutyIncidentResourceConfig,
-    PagerdutyScheduleResourceConfig,
-    PagerdutyOncallResourceConfig,
-    PagerdutyEscalationPolicyResourceConfig,
-)
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from clients.pagerduty import PagerDutyClient
+from integration import (
+    ObjectKind,
+    PagerdutyEscalationPolicyResourceConfig,
+    PagerdutyIncidentResourceConfig,
+    PagerdutyOncallResourceConfig,
+    PagerdutyScheduleResourceConfig,
+    PagerdutyServiceResourceConfig,
+)
 
 
 def initialize_client() -> PagerDutyClient:
