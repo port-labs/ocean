@@ -19,7 +19,7 @@
     "@docusaurus/plugin-client-redirects": "^3.0.1",
     "@docusaurus/plugin-content-blog": "^3.0.1",
     "@docusaurus/plugin-ideal-image": "^3.0.1",
-    "@docusaurus/preset-classic": "^3.0.1",
+    "@docusaurus/preset-classic": "^3.5.0",
     "@docusaurus/theme-common": "^3.0.1",
     "@docusaurus/theme-live-codeblock": "^3.0.1",
     "@easyops-cn/docusaurus-search-local": "^0.23.3",
