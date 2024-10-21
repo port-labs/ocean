@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added support for portfolios (0.1.101)
+- Added support for portfolios (0.1.102)
 
 
 ## 0.1.101 (2024-10-14)
