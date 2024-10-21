@@ -11,6 +11,9 @@ on:
       core:
         value: ${{ jobs.detect-changes.outputs.core }}
         description: "Determine if any core changes per git commit changes"
+      infra:
+        value: ${{ jobs.detect-changes.outputs.infra }}
+        description: "Determine if any changes to docker infra"
 
 jobs:
   detect-changes:
@@ -20,6 +23,7 @@ jobs:
       matrix: ${{ steps.set-all-matrix.outputs.matrix }}
       integrations: ${{ steps.set-all-matrix.outputs.integrations }}
       core: ${{ steps.set-all-matrix.outputs.core }}
+      infra: ${{ steps.set-all-matrix.outputs.infra}}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -42,6 +46,8 @@ jobs:
               - 'integrations/**'
               - '!integrations/**/*.md'
               - '!integrations/_infra/*'
+            infra:
+              - 'integrations/_infra/*'
 
       - name: Set integrations and all matrix
         id: set-all-matrix
@@ -50,8 +56,11 @@ jobs:
           HAS_CORE=${{ steps.changed-files.outputs.core_all_changed_files != '[]' }}
           echo "Core changes : ${HAS_CORE}"
           MATRIX=$(node -e "integrations=${INTEGRATIONS}; hasCore=${HAS_CORE}; console.log(JSON.stringify(hasCore ? integrations.concat(['.']) : integrations))")
+          HAS_INFRA=${{ steps.changed-files.outputs.infra_all_changed_files != '[]' }}
+          echo "Infra changes : ${HAS_INFRA}"
           echo "Integration changes : ${INTEGRATIONS}"
           echo "All changes : ${MATRIX}"
           echo "core=${HAS_CORE}" >> $GITHUB_OUTPUT
           echo "integrations=${INTEGRATIONS}" >> $GITHUB_OUTPUT
           echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+          echo "infra=${HAS_INFRA}" >> $GITHUB_OUTPUT
