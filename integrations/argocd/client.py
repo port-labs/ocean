@@ -124,7 +124,3 @@ class ArgocdClient:
         url = f"{self.api_url}/{ObjectKind.APPLICATION}s/{application_name}/managed-resources"
         managed_resources = (await self._send_api_request(url=url)).get("items", [])
         return managed_resources
-
-    async def close(self) -> None:
-        if self.allow_insecure:
-            await self.http_client.aclose()
