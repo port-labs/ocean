@@ -42,5 +42,10 @@ configurations:
         \"subgroup_events\",
         \"confidential_issues_events\"]"
     sensitive: true
+oauthConfiguration:
+  requiredSecrets:
+    - name: tokenMapping
+      value: '{(.oauthData.accessToken): ["**"]} | @json'
+      description: '"Token mapping for Gitlab OAuth2 integration"'
 deploymentMethodOverride:
   - type: helm
