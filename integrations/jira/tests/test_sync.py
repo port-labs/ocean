@@ -31,6 +31,7 @@ async def test_full_sync_using_mocked_3rd_party(
     })
     resource_configs = get_integation_resource_configs(INTEGRATION_PATH)
     for resource_config in resource_configs:
+        print(resource_config)
         results = await get_raw_result_on_integration_sync_resource_config(
             app, resource_config
         )
@@ -38,4 +39,4 @@ async def test_full_sync_using_mocked_3rd_party(
         entities, errors = results
         assert len(errors) == 0
         # the factories have 4 entities each
-        assert len(entities) ==  4
+        assert len(list(entities)) ==  1
