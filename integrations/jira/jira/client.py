@@ -1,3 +1,4 @@
+import asyncio
 import typing
 from typing import Any, AsyncGenerator
 
@@ -49,20 +50,24 @@ class JiraClient:
         }
 
     async def _get_paginated_projects(self, params: dict[str, Any]) -> dict[str, Any]:
-        project_response = self.client.get(
-            f"{self.api_url}/project/search", params=params
+        project_response = await asyncio.to_thread(
+            self.client.get, f"{self.api_url}/project/search", params=params
         )
         project_response.raise_for_status()
         return project_response.json()
 
     async def _get_paginated_issues(self, params: dict[str, Any]) -> dict[str, Any]:
-        issue_response = self.client.get(f"{self.api_url}/search", params=params)
+        issue_response = await asyncio.to_thread(
+            self.client.get, f"{self.api_url}/search", params=params
+        )
         issue_response.raise_for_status()
         return issue_response.json()
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
-        webhook_check_response = self.client.get(f"{self.webhooks_url}")
+        webhook_check_response = await asyncio.to_thread(
+            self.client.get, f"{self.webhooks_url}"
+        )
         webhook_check_response.raise_for_status()
         webhook_check = webhook_check_response.json()
 
@@ -77,15 +82,15 @@ class JiraClient:
             "events": WEBHOOK_EVENTS,
         }
 
-        webhook_create_response = self.client.post(
-            f"{self.webhooks_url}", json=body
+        webhook_create_response = await asyncio.to_thread(
+            self.client.post, f"{self.webhooks_url}", json=body
         )
         webhook_create_response.raise_for_status()
         logger.info("Ocean real time reporting webhook created")
 
     async def get_single_project(self, project_key: str) -> dict[str, Any]:
-        project_response = self.client.get(
-            f"{self.api_url}/project/{project_key}"
+        project_response = await asyncio.to_thread(
+            self.client.get, f"{self.api_url}/project/{project_key}"
         )
         project_response.raise_for_status()
         return project_response.json()
@@ -114,7 +119,9 @@ class JiraClient:
             params["startAt"] += PAGE_SIZE
 
     async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
-        issue_response = self.client.get(f"{self.api_url}/issue/{issue_key}")
+        issue_response = await asyncio.to_thread(
+            self.client.get, f"{self.api_url}/issue/{issue_key}"
+        )
         issue_response.raise_for_status()
         return issue_response.json()
 
