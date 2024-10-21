@@ -1,8 +1,5 @@
 from abc import abstractmethod
-from typing import Literal, Any, Union
-
-from pydantic.fields import Field
-from pydantic.main import BaseModel
+from typing import Any, Literal, Union
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -11,6 +8,8 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from port_ocean.core.integrations.base import BaseIntegration
+from pydantic.fields import Field
+from pydantic.main import BaseModel
 
 
 class ObjectKind:
@@ -19,6 +18,7 @@ class ObjectKind:
     ANALYSIS = "analysis"
     SASS_ANALYSIS = "saas_analysis"
     ONPREM_ANALYSIS = "onprem_analysis"
+    PORTFOLIOS = "portfolios"
 
 
 class SonarQubeComponentSearchFilter(BaseModel):
