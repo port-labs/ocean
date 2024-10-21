@@ -9,6 +9,11 @@ from jira.overrides import JiraResourceConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 
+import psutil
+import os
+import ctypes
+
+
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 
@@ -125,6 +130,47 @@ class JiraClient:
         issue_response.raise_for_status()
         return issue_response.json()
 
+    def print_process_info(self):
+        process = psutil.Process(os.getpid())
+        print(f"Open files: {len(process.open_files())}")
+        print(f"Active Connections: {len(process.connections())}")
+        print(f"Number of threads: {process.num_threads()}")
+        print(f"RSS: {process.memory_info().rss / 1024 ** 2} MB")
+        print(
+            f"Number of active coroutines: {len(asyncio.all_tasks(asyncio.get_event_loop()))}"
+        )
+
+        libc = ctypes.CDLL("libc.so.6")
+        libc.malloc_stats.restype = None
+        libc.malloc_stats()
+
+        class MallInfo(ctypes.Structure):
+            _fields_ = [
+                (name, ctypes.c_int)
+                for name in (
+                    "arena",
+                    "ordblks",
+                    "smblks",
+                    "hblks",
+                    "hblkhd",
+                    "usmblks",
+                    "fsmblks",
+                    "uordblks",
+                    "fordblks",
+                    "keepcost",
+                )
+            ]
+
+        mallinfo = libc.mallinfo
+        mallinfo.argtypes = []
+        mallinfo.restype = MallInfo
+
+        info = mallinfo()
+        fields = [(name, getattr(info, name)) for name, _ in info._fields_]
+        print("Malloc info:")
+        for name, value in fields:
+            print(f"- {name}: {value}")
+
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
 
@@ -148,4 +194,5 @@ class JiraClient:
             logger.info(f"Current query position: {params['startAt']}/{total_issues}")
             issue_response_list = (await self._get_paginated_issues(params))["issues"]
             yield issue_response_list
+            self.print_process_info()
             params["startAt"] += PAGE_SIZE
