@@ -131,16 +131,10 @@ class JiraClient:
         return issue_response.json()
 
     def print_process_info(self):
-        process = psutil.Process(os.getpid())
-        print(f"Open files: {len(process.open_files())}")
-        print(f"Active Connections: {len(process.connections())}")
-        print(f"Number of threads: {process.num_threads()}")
-        print(f"RSS: {process.memory_info().rss / 1024 ** 2} MB")
-        print(
-            f"Number of active coroutines: {len(asyncio.all_tasks(asyncio.get_event_loop()))}"
-        )
-
         libc = ctypes.CDLL("libc.so.6")
+        libc.malloc_trim.restype = ctypes.c_int
+        libc.malloc_trim.argtypes = [ctypes.c_size_t]
+
         libc.malloc_stats.restype = None
         libc.malloc_stats()
 
@@ -170,6 +164,17 @@ class JiraClient:
         print("Malloc info:")
         for name, value in fields:
             print(f"- {name}: {value}")
+
+        process = psutil.Process(os.getpid())
+        print(f"Open files: {len(process.open_files())}")
+        print(f"Active Connections: {len(process.connections())}")
+        print(f"Number of threads: {process.num_threads()}")
+        print(
+            f"Number of active coroutines: {len(asyncio.all_tasks(asyncio.get_event_loop()))}"
+        )
+        print(f"RSS before trim: {process.memory_info().rss / 1024 ** 2} MB")
+        libc.malloc_trim(0)  # Pass 0 to trim all possible memory
+        print(f"RSS after trim: {process.memory_info().rss / 1024 ** 2} MB")
 
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
