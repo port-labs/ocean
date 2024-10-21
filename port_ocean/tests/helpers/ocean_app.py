@@ -43,9 +43,11 @@ def get_integration_ocean_app(
 
 
 def get_integation_resource_configs(integration_path: str) -> List[ResourceConfig]:
-    with open(
-        f"{integration_path}/.port/resources/port-app-config.yml"
-    ) as port_app_config_file:
+    config_file_path = f"{integration_path}/.port/resources/port-app-config."
+    if not Path(f"{config_file_path}yml").exists():
+        config_file_path = f"{config_file_path}yaml"
+
+    with open(config_file_path) as port_app_config_file:
         resource_configs = safe_load(port_app_config_file)
 
     return [ResourceConfig(**item) for item in resource_configs["resources"]]
