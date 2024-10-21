@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added rate limiting to the integration to prevent reaching the Snyk API rate limit
+- Added rate limiting handling to the integration to prevent reaching the Snyk API rate limit
 
 
 ## 0.1.94 (2024-10-14)
