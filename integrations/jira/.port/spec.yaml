@@ -7,22 +7,22 @@ features:
     resources:
       - kind: project
       - kind: issue
-# configurations:
-#   - name: appHost
-#     required: false
-#     type: url
-#     description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Jira"
-#   - name: jiraHost
-#     required: true
-#     type: string
-#     description: "The URL of your Jira, for example: https://example.atlassian.net"
-#   - name: atlassianUserEmail
-#     required: true
-#     type: string
-#     description: "The email of the user used to query Jira"
-#     sensitive: true
-#   - name: atlassianUserToken
-#     required: true
-#     type: string
-#     description: You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
-#     sensitive: true
+configurations:
+  - name: appHost
+    required: false
+    type: url
+    description: "The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Jira"
+  - name: jiraHost
+    required: true
+    type: string
+    description: "The URL of your Jira, for example: https://example.atlassian.net"
+  - name: atlassianUserEmail
+    required: true
+    type: string
+    description: "The email of the user used to query Jira"
+    sensitive: true
+  - name: atlassianUserToken
+    required: true
+    type: string
+    description: You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
+    sensitive: true
