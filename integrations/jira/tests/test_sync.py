@@ -35,7 +35,11 @@ async def test_full_sync_using_mocked_3rd_party(
                 "atlassian_user_email": "jira@atlassian.net",
                 "atlassian_user_token": "asdf"
             }
-        }
+        },
+        "port": {
+            "client_id": "bla",
+            "client_secret": "bla",
+        },
     }
     print(config)
     app = get_integration_ocean_app(
