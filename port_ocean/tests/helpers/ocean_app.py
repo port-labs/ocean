@@ -46,6 +46,8 @@ def get_integation_resource_configs(integration_path: str) -> List[ResourceConfi
     config_file_path = f"{integration_path}/.port/resources/port-app-config."
     if not Path(f"{config_file_path}yml").exists():
         config_file_path = f"{config_file_path}yaml"
+    else:
+        config_file_path = f"{config_file_path}yml"
 
     with open(config_file_path) as port_app_config_file:
         resource_configs = safe_load(port_app_config_file)
