@@ -21,7 +21,9 @@ async def test_concurrency_limit() -> None:
         rate_limiter.release()
         logger.info(f"Task {task_id} released")
 
-    tasks: list[asyncio.Task] = [request_task(i) for i in range(5)]
+    tasks: list[asyncio.Task[None]] = [
+        asyncio.create_task(request_task(i)) for i in range(5)
+    ]
     start_time: float = time.monotonic()
     await asyncio.gather(*tasks)
     elapsed_time: float = time.monotonic() - start_time
