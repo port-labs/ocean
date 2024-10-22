@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import typing
 from typing import Any, AsyncGenerator
 
@@ -175,6 +176,8 @@ class JiraClient:
         print(f"RSS before trim: {process.memory_info().rss / 1024 ** 2} MB")
         libc.malloc_trim(0)  # Pass 0 to trim all possible memory
         print(f"RSS after trim: {process.memory_info().rss / 1024 ** 2} MB")
+        gc.collect()
+        print(f"RSS after gc collect: {process.memory_info().rss / 1024 ** 2} MB")
 
     async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
