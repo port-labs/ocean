@@ -4,13 +4,13 @@ import time
 from loguru import logger
 from snyk.rate_limit import RateLimiter
 
+
 @pytest.mark.asyncio
 async def test_concurrency_limit() -> None:
     concurrency_limit: int = 3
     requests_per_minute: int = 5
     rate_limiter: RateLimiter = RateLimiter(
-        concurrency_limit=concurrency_limit,
-        requests_per_minute=requests_per_minute
+        concurrency_limit=concurrency_limit, requests_per_minute=requests_per_minute
     )
 
     async def request_task(task_id: int) -> None:
@@ -27,6 +27,7 @@ async def test_concurrency_limit() -> None:
     elapsed_time: float = time.monotonic() - start_time
     assert elapsed_time >= 1.0
 
+
 @pytest.mark.asyncio
 async def test_rate_limit() -> None:
     rate_limiter: RateLimiter = RateLimiter(concurrency_limit=5, requests_per_minute=2)
@@ -39,6 +40,7 @@ async def test_rate_limit() -> None:
     await asyncio.gather(make_request(), make_request(), make_request())
     elapsed_time: float = time.monotonic() - start_time
     assert elapsed_time >= 60, "Rate limiter did not properly enforce rate limit."
+
 
 @pytest.mark.asyncio
 async def test_request_count_reset() -> None:
@@ -55,5 +57,7 @@ async def test_request_count_reset() -> None:
     await rate_limiter.acquire()
     elapsed_time: float = time.monotonic() - start_time
 
-    assert elapsed_time < 1, "Rate limiter did not reset request count after 60 seconds."
+    assert (
+        elapsed_time < 1
+    ), "Rate limiter did not reset request count after 60 seconds."
     rate_limiter.release()
