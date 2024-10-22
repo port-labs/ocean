@@ -1,4 +1,3 @@
-
 ISSUES = [
     {
         "expand": "operations,versionedRepresentations,editmeta,changelog,customfield_10010.requestTypePractice,renderedFields",
