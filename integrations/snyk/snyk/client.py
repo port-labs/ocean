@@ -8,6 +8,10 @@ from loguru import logger
 
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+from snyk.rate_limit import RateLimiter
+
+# Setting limit to 80% of the rate limit of 1650 requests per minute allowed by Snyk (https://docs.snyk.io/snyk-api/rest-api/about-the-rest-api#rate-limiting)
+RATELIMITER = RateLimiter(1000, 1320)
 
 
 class CacheKeys(StrEnum):
@@ -60,6 +64,7 @@ class SnykClient:
             **(query_params or {}),
             **({"version": version} if version is not None else {}),
         }
+        await RATELIMITER.acquire()
         try:
             response = await self.http_client.request(
                 method=method, url=url, params=query_params, json=json_data
@@ -74,6 +79,8 @@ class SnykClient:
                 f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
             )
             raise
+        finally:
+            RATELIMITER.release()
 
     async def _get_paginated_resources(
         self,
