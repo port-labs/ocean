@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.12.6 (2024-10-20)
+
+
+### Bug Fixes
+
+- Fixed get_integration_resource_config assumption for port-app-config files to be of .yaml extension only (0.12.6)
+
+
 ## 0.12.5 (2024-10-21)
 
 
