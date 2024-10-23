@@ -26,14 +26,12 @@ async def test_full_sync_using_mocked_3rd_party(
     monkeypatch.setattr(JiraClient, "get_all_projects", projects_mock)
     monkeypatch.setattr(JiraClient, "get_all_issues", issues_mock)
     config = {
-        "event_listener": {
-            "type": "POLLING"
-        },
+        "event_listener": {"type": "POLLING"},
         "integration": {
             "config": {
                 "jira_host": "https://getport.atlassian.net",
                 "atlassian_user_email": "jira@atlassian.net",
-                "atlassian_user_token": "asdf"
+                "atlassian_user_token": "asdf",
             }
         },
         "port": {
@@ -42,10 +40,7 @@ async def test_full_sync_using_mocked_3rd_party(
         },
     }
     print(config)
-    app = get_integration_ocean_app(
-        INTEGRATION_PATH,
-        config
-    )
+    app = get_integration_ocean_app(INTEGRATION_PATH, config)
     resource_configs = get_integation_resource_configs(INTEGRATION_PATH)
     for resource_config in resource_configs:
         print(resource_config)
