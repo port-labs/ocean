@@ -201,6 +201,10 @@ class JiraClient:
         while params["startAt"] <= total_issues:
             logger.info(f"Current query position: {params['startAt']}/{total_issues}")
             issue_response_list = (await self._get_paginated_issues(params))["issues"]
-            yield issue_response_list
+            # yield issue_response_list
             self.print_process_info()
             params["startAt"] += PAGE_SIZE
+            if params["startAt"] > total_issues:
+                params["startAt"] = 0
+
+        yield (await self._get_paginated_issues(params))["issues"]
