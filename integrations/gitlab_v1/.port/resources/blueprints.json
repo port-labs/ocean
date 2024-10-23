@@ -1,0 +1,228 @@
+[
+    {
+      "identifier": "gitlabGroup",
+      "title": "Group",
+      "icon": "GitLab",
+      "schema": {
+        "properties": {
+          "visibility": {
+            "icon": "Lock",
+            "title": "Visibility",
+            "type": "string",
+            "enum": [
+              "public",
+              "internal",
+              "private"
+            ],
+            "enumColors": {
+              "public": "red",
+              "internal": "yellow",
+              "private": "green"
+            }
+          },
+          "url": {
+            "title": "URL",
+            "format": "url",
+            "type": "string",
+            "icon": "Link"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string",
+            "icon": "BlankPage"
+          }
+        },
+        "required": []
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "aggregationProperties": {},
+      "relations": {}
+    },
+    {
+      "identifier": "gitlabProject",
+      "title": "Project",
+      "icon": "Microservice",
+      "schema": {
+        "properties": {
+          "url": {
+            "title": "URL",
+            "type": "string",
+            "format": "url"
+          },
+          "readme": {
+            "title": "README",
+            "type": "string",
+            "format": "markdown"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "namespace": {
+            "title": "Namespace",
+            "type": "string"
+          },
+          "fullPath": {
+            "title": "Full Path",
+            "type": "string"
+          },
+          "defaultBranch": {
+            "title": "Default Branch",
+            "type": "string"
+          }
+        },
+        "required": []
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {},
+      "relations": {
+        "group": {
+          "title": "Group",
+          "target": "gitlabGroup",
+          "required": true,
+          "many": false
+         }
+       }
+    },
+    {
+      "identifier": "gitlabMergeRequest",
+      "title": "Merge Request",
+      "icon": "GitVersion",
+      "schema": {
+        "properties": {
+          "creator": {
+            "title": "Creator",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string",
+            "enum": [
+              "opened",
+              "closed",
+              "merged",
+              "locked"
+            ],
+            "enumColors": {
+              "opened": "yellow",
+              "closed": "red",
+              "merged": "green",
+              "locked": "blue"
+            }
+          },
+          "createdAt": {
+            "title": "Created At",
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "title": "Updated At",
+            "type": "string",
+            "format": "date-time"
+          },
+          "mergedAt": {
+            "title": "Merged At",
+            "type": "string",
+            "format": "date-time"
+          },
+          "link": {
+            "title": "Link",
+            "format": "url",
+            "type": "string"
+          },
+          "reviewers": {
+            "title": "Reviewers",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": []
+      },
+      "mirrorProperties": {},
+      "calculationProperties": {
+        "lead_time_days": {
+          "title": "Lead time (Days)",
+          "calculation": "if .properties.status == \"merged\" then ((.properties.mergedAt | sub(\"\\\\.[0-9]+\\\\+00:00$\"; \"Z\") | strptime(\"%Y-%m-%dT%H:%M:%SZ\") | mktime) - (.properties.createdAt | sub(\"\\\\.[0-9]+\\\\+00:00$\"; \"Z\") | strptime(\"%Y-%m-%dT%H:%M:%SZ\") | mktime)) / 86400 | tonumber else null end",
+          "type": "number"
+        }
+      },
+      "aggregationProperties": {},
+      "relations": {
+        "service": {
+          "title": "Project",
+          "target": "project",
+          "required": false,
+          "many": false
+        }
+      }
+    },
+    {
+      "identifier": "gitlabIssue",
+      "title": "Issue",
+      "icon": "GitLab",
+      "schema": {
+        "properties": {
+          "link": {
+            "title": "Link",
+            "type": "string",
+            "format": "url"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string",
+            "format": "markdown"
+          },
+          "createdAt": {
+            "title": "Created At",
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "title": "Closed At",
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "title": "Updated At",
+            "type": "string",
+            "format": "date-time"
+          },
+          "creator": {
+            "title": "Creator",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string",
+            "enum": ["opened", "closed"],
+            "enumColors": {
+              "opened": "green",
+              "closed": "purple"
+            }
+          },
+          "labels": {
+            "title": "Labels",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "relations": {
+        "service": {
+          "target": "project",
+          "title": "Project",
+          "required": true,
+          "many": false
+        }
+      }
+    }
+    ]
