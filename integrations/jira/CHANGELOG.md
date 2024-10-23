@@ -7,16 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.96 (2024-10-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.7 (0.1.96)
+
+
 ## 0.1.95 (2024-10-23)
 
 
 ### Features
 
-- Added support for ingesting other fields apart from the default fields (0.1.93)
+- Added support for ingesting other fields apart from the default fields (0.1.95)
 
 ### Improvements
 
-- Changed issue priority from id to name (0.1.93)
+- Changed issue priority from id to name (0.1.95)
 
 
 ## 0.1.94 (2024-10-22)
