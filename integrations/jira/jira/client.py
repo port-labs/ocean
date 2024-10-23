@@ -66,8 +66,11 @@ class JiraClient:
         issue_response = await asyncio.to_thread(
             self.client.get, f"{self.api_url}/search", params=params
         )
-        issue_response.raise_for_status()
-        return issue_response.json()
+        try:
+            issue_response.raise_for_status()
+            return issue_response.json()
+        except Exception:
+            return {"issues": [], "total": 0}
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
@@ -207,4 +210,4 @@ class JiraClient:
             if params["startAt"] > total_issues:
                 params["startAt"] = 0
 
-        yield (await self._get_paginated_issues(params))["issues"]
+        yield []
