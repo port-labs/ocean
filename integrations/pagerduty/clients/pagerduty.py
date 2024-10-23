@@ -1,13 +1,17 @@
+import asyncio
 from typing import Any, AsyncGenerator
 
 import httpx
 from loguru import logger
-
-from port_ocean.utils import http_async_client
 from port_ocean.context.event import event
+from port_ocean.utils import http_async_client
+
 from .utils import get_date_range_for_last_n_months
 
 USER_KEY = "users"
+
+MAX_CONCURRENT_REQUESTS = 1
+SAFE_MINIMUM_FOR_RATE_LIMITS = 3
 
 
 class PagerDutyClient:
@@ -17,6 +21,7 @@ class PagerDutyClient:
         self.app_host = app_host
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_param["headers"])
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
     @property
     def incident_upsert_events(self) -> list[str]:
@@ -66,6 +71,14 @@ class PagerDutyClient:
             }
         }
 
+    async def _handle_rate_limiting(self, response: httpx.Response) -> None:
+        requests_remaining = int(response.headers["ratelimit-remaining"])
+        reset_time = int(response.headers["ratelimit-reset"])
+        logger.info(f"Remaining {requests_remaining} requests, reset time {reset_time}")
+
+        if requests_remaining < SAFE_MINIMUM_FOR_RATE_LIMITS:
+            await asyncio.sleep(reset_time)
+
     async def paginate_request_to_pager_duty(
         self, data_key: str, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -75,9 +88,11 @@ class PagerDutyClient:
 
         while has_more_data:
             try:
-                response = await self.http_client.get(
-                    url, params={"offset": offset, **(params or {})}
-                )
+                async with self._semaphore:
+                    response = await self.http_client.get(
+                        url, params={"offset": offset, **(params or {})}
+                    )
+                    await self._handle_rate_limiting(response)
                 response.raise_for_status()
                 data = response.json()
                 yield data[data_key]
@@ -100,7 +115,9 @@ class PagerDutyClient:
         url = f"{self.api_url}/{object_type}/{identifier}"
 
         try:
-            response = await self.http_client.get(url)
+            async with self._semaphore:
+                response = await self.http_client.get(url)
+                await self._handle_rate_limiting(response)
             response.raise_for_status()
             data = response.json()
             return data
@@ -143,9 +160,11 @@ class PagerDutyClient:
         }
 
         try:
-            await self.http_client.post(
-                f"{self.api_url}/webhook_subscriptions", json=body
-            )
+            async with self._semaphore:
+                response = await self.http_client.post(
+                    f"{self.api_url}/webhook_subscriptions", json=body
+                )
+                await self._handle_rate_limiting(response)
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
@@ -200,7 +219,9 @@ class PagerDutyClient:
         url = f"{self.api_url}/analytics/raw/incidents/{incident_id}"
 
         try:
-            response = await self.http_client.get(url)
+            async with self._semaphore:
+                response = await self.http_client.get(url)
+                await self._handle_rate_limiting(response)
             response.raise_for_status()
             data = response.json()
             return data
@@ -234,7 +255,9 @@ class PagerDutyClient:
                     "created_at_end": date_ranges[1],
                 }
             }
-            response = await self.http_client.post(url, json=body)
+            async with self._semaphore:
+                response = await self.http_client.post(url, json=body)
+                await self._handle_rate_limiting(response)
             response.raise_for_status()
 
             logger.info(f"Successfully fetched analytics for service: {service_id}")
