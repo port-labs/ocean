@@ -8,6 +8,7 @@ from pydantic import Field
 
 class AWSDescribeResourcesSelector(Selector):
     use_get_resource_api: bool = Field(alias="useGetResourceAPI", default=False)
+    regions: list[str] = Field(alias="regions", default_factory=list)
 
 
 class AWSResourceConfig(ResourceConfig):
