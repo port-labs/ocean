@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.52 (2024-10-23)
+
+
+### Improvements
+
+- Added the option to query resources from specific regions, configurable via the regionPolicy in the selector field of the mapping.
+- Introduced `maximumConcurrentAccount` environment variable to control the maximum number of accounts synced concurrently.
+
 ## 0.2.51 (2024-10-23)
 
 
