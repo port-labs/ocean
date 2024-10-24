@@ -387,7 +387,7 @@ class SnykClient:
     async def get_organizations_in_groups(self) -> list[Any]:
         # Check if the result is already cached
         if cache := event.attributes.get(CacheKeys.GROUP):
-            logger.debug("Fetched Snyk organizations from the cache")
+            logger.info("Fetched Snyk organizations from the cache")
             return cache
 
         all_organizations = await self.get_all_organizations()
