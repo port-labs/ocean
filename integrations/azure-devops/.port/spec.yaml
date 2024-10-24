@@ -12,6 +12,11 @@ configurations:
     required: true
     type: url
     sensitive: true
+  - name: vsrmUrl
+    description: The URL of your Azure DevOps organization (e.g., "https://vsrm.dev.azure.com/{your-organization}"). To find your organization URL, refer to the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/extend/develop/work-with-urls?view=azure-devops&tabs=http">Azure DevOps documentation</a>.
+    required: true
+    type: url
+    sensitive: true
   - name: personalAccessToken
     description: A personal access token (PAT) with read permissions for the resources you want to sync. To create a PAT, see the <a target="_blank" href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops">Azure DevOps documentation</a>.
     required: true
