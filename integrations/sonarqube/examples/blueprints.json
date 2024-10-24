@@ -1,0 +1,57 @@
+{
+  "identifier": "sonarQubePortfolio",
+  "title": "SonarQube Portfolio",
+  "icon": "sonarqube",
+  "schema": {
+    "properties": {
+      "description": {
+        "type": "string",
+        "title": "Description"
+      },
+      "originalKey": {
+        "type": "string",
+        "title": "Original Key"
+      },
+      "visibility": {
+        "type": "string",
+        "title": "Visibility",
+        "enum": ["PUBLIC", "PRIVATE"],
+        "enumColors": {
+          "PUBLIC": "green",
+          "PRIVATE": "lightGray"
+        }
+      },
+      "selectionMode": {
+        "type": "string",
+        "title": "Selection Mode",
+        "enum": ["AUTO", "MANUAL", "NONE"],
+        "enumColors": {
+          "AUTO": "blue",
+          "MANUAL": "green",
+          "NONE": "lightGray"
+        }
+      },
+      "disabled": {
+        "type": "boolean",
+        "title": "Disabled"
+      }
+    }
+  },
+  "mirrorProperties": {},
+  "calculationProperties": {},
+  "aggregationProperties": {},
+  "relations": {
+    "subPortfolios": {
+      "target": "sonarQubePortfolio",
+      "required": false,
+      "title": "Sub Portfolios",
+      "many": true
+    },
+    "referencedBy": {
+      "target": "sonarQubePortfolio",
+      "required": false,
+      "title": "Referenced By",
+      "many": true
+    }
+  }
+}
