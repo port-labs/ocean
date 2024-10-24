@@ -125,6 +125,17 @@ async def resync_custom_kind(
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
     next_token = None
+
+    resource_config_selector = typing.cast(
+        AWSResourceConfig, event.resource_config
+    ).selector
+
+    if not resource_config_selector.is_region_allowed(region):
+        logger.info(
+            f"Skipping resyncing {kind} in region {region} in account {account_id} because it's not allowed"
+        )
+        return
+
     if not describe_method_params:
         describe_method_params = {}
     while True:
