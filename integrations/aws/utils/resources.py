@@ -165,11 +165,18 @@ async def resync_custom_kind(
 async def resync_cloudcontrol(
     kind: str, session: aioboto3.Session
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    use_get_resource_api = typing.cast(
+    resource_config_selector = typing.cast(
         AWSResourceConfig, event.resource_config
-    ).selector.use_get_resource_api
+    ).selector
+    use_get_resource_api = resource_config_selector.use_get_resource_api
+
     region = session.region_name
     account_id = await _session_manager.find_account_id_by_session(session)
+    if not resource_config_selector.is_region_allowed(region):
+        logger.info(
+            f"Skipping resyncing {kind} in region {region} in account {account_id} because it's not allowed"
+        )
+        return
     logger.info(f"Resyncing {kind} in account {account_id} in region {region}")
     next_token = None
     while True:

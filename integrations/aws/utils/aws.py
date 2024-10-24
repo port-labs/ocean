@@ -1,5 +1,4 @@
 from typing import Any, AsyncIterator, Optional, Union
-import typing
 
 import aioboto3
 from port_ocean.context.ocean import ocean
@@ -59,19 +58,15 @@ async def session_factory(
     credentials: AwsCredentials,
     custom_region: Optional[str],
     use_default_region: Optional[bool],
-    regions_to_query: Optional[list[str]],
 ) -> AsyncIterator[aioboto3.Session]:
-    if use_default_region and (
-        not regions_to_query or default_region in regions_to_query
-    ):
+
+    if use_default_region:
         default_region = get_default_region_from_credentials(credentials)
         yield await credentials.create_session(default_region)
-    elif custom_region and (not regions_to_query or custom_region in regions_to_query):
+    elif custom_region:
         yield await credentials.create_session(custom_region)
     else:
-        async for session in credentials.create_session_for_each_region(
-            regions_to_query
-        ):
+        async for session in credentials.create_session_for_each_region():
             yield session
 
 
@@ -79,7 +74,6 @@ async def get_sessions(
     custom_account_id: Optional[str] = None,
     custom_region: Optional[str] = None,
     use_default_region: Optional[bool] = None,
-    regions_to_query: Optional[list[str]] = None,
 ) -> AsyncIterator[aioboto3.Session]:
     """
     Gets boto3 sessions for the AWS regions.
@@ -89,14 +83,12 @@ async def get_sessions(
     if custom_account_id:
         credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
         async for session in session_factory(
-            credentials, custom_region, use_default_region, regions_to_query
+            credentials, custom_region, use_default_region
         ):
             yield session
     else:
         tasks = [
-            session_factory(
-                credentials, custom_region, use_default_region, regions_to_query
-            )
+            session_factory(credentials, custom_region, use_default_region)
             async for credentials in get_accounts()
         ]
         if tasks:

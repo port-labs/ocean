@@ -1,10 +1,12 @@
 import enum
 
 from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
 import asyncio
 
 
-MAX_CONCURRENT_TASKS = 50
+MAX_CONCURRENT_TASKS: int = int(ocean.integration_config["maximum_concurrent_accounts"])
+
 semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TASKS)
 
 

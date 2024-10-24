@@ -49,9 +49,7 @@ class AwsCredentials:
             )
 
     async def create_session_for_each_region(
-        self, regions_to_query: Optional[list[str]] = None
+        self,
     ) -> AsyncIterator[aioboto3.Session]:
         for region in self.enabled_regions:
-            if regions_to_query and region not in regions_to_query:
-                continue
             yield await self.create_session(region)
