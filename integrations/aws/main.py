@@ -34,13 +34,15 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
     is_server_error,
-    semaphore,
+    get_semaphore,
 )
 from port_ocean.utils.async_iterators import (
     stream_async_iterators_tasks,
     semaphore_async_iterator,
 )
 import functools
+
+semaphore = get_semaphore()
 
 
 async def _handle_global_resource_resync(
@@ -86,6 +88,9 @@ async def resync_resources_for_account(
                 async for batch in resync_cloudcontrol(kind, session):
                     yield batch
             except Exception as exc:
+                logger.error(
+                    f"Failed to fetch {kind} for {session.region_name} in {credentials.account_id}: {exc}"
+                )
                 regions.append(session.region_name)
                 errors.append(exc)
                 continue

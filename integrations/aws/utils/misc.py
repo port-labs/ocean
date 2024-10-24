@@ -1,11 +1,16 @@
 import enum
 
 from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
 import asyncio
 
 
-MAX_CONCURRENT_TASKS = 50
-semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TASKS)
+def get_semaphore() -> asyncio.BoundedSemaphore:
+    max_concurrent_accounts: int = int(
+        ocean.integration_config["maximum_concurrent_accounts"]
+    )
+    semaphore = asyncio.BoundedSemaphore(max_concurrent_accounts)
+    return semaphore
 
 
 class CustomProperties(enum.StrEnum):
