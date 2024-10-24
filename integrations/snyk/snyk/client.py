@@ -264,13 +264,14 @@ class SnykClient:
             not user_reference
         ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
             return {}
+        
         ## The user_reference is in the format of /rest/orgs/{org_id}/users/{user_id}. Some users may not be associated with the organization that the integration is configured with. In this instance, we can return an empty dict
         reference_parts = user_reference.split("/")
         org_id = reference_parts[3]
         user_id = reference_parts[-1]
 
         if self.organization_ids and org_id not in self.organization_ids:
-            logger.warning(
+            logger.debug(
                 f"User {user_id} in organization {org_id} is not associated with any of the organizations provided to the integration org_id. Skipping..."
             )
             return {}
