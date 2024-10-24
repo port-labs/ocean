@@ -25,9 +25,10 @@ MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 20000
 
 
 class AzureDevopsClient(HTTPBaseClient):
-    def __init__(self, organization_url: str, personal_access_token: str) -> None:
+    def __init__(self, organization_url: str, vsrm_url, personal_access_token: str) -> None:
         super().__init__(personal_access_token)
         self._organization_base_url = organization_url
+        self._vsrm_base_url = vsrm_url
 
     @classmethod
     def create_from_ocean_config(cls) -> "AzureDevopsClient":
@@ -35,6 +36,7 @@ class AzureDevopsClient(HTTPBaseClient):
             return cache
         azure_devops_client = cls(
             ocean.integration_config["organization_url"],
+            ocean.integration_config["vsrm_url"],
             ocean.integration_config["personal_access_token"],
         )
         event.attributes["azure_devops_client"] = azure_devops_client
@@ -124,6 +126,17 @@ class AzureDevopsClient(HTTPBaseClient):
                     for pipeline in pipelines:
                         pipeline["__projectId"] = project["id"]
                     yield pipelines
+                    
+    async def generate_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                releases_url = f"{self._vsrm_base_url}/{project['id']}/{API_URL_PREFIX}/release/releases"               
+                async for releases in self._get_paginated_by_top_and_skip(releases_url):
+                        for release in releases:
+                            release["__projectId"] = project["id"]
+                            release["__project"] = project
+                            yield releases
+
 
     async def generate_repository_policies(
         self,
@@ -401,3 +414,4 @@ class AzureDevopsClient(HTTPBaseClient):
         return await self._get_item_content(
             file_path, repository_id, "Commit", commit_id
         )
+    
