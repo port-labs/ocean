@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Generator
 from snyk.client import SnykClient
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -35,7 +35,7 @@ def mock_ocean_context() -> None:
 
 
 @pytest.fixture
-def mock_event_context() -> MagicMock:
+def mock_event_context() -> Generator[MagicMock, None, None]:
     """Fixture to mock the event context."""
     mock_event = MagicMock(spec=EventContext)
     mock_event.event_type = "test_event"
