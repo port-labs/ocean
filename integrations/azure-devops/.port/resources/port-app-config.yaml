@@ -109,7 +109,7 @@ resources:
     port:
       entity:
         mappings:
-          identifier: .id | tostring | gsub(" "; "")
+          identifier: .projectReference.id + "-" + (.id | tostring) | gsub(" "; "")
           title: .name
           blueprint: '"release"'
           properties:
@@ -117,8 +117,8 @@ resources:
             reason: .reason
             createdDate: .createdOn
             modifiedDate: .modifiedOn
-            createdBy: .createdBy.displayName
-            modifiedBy: .modifiedBy.displayName
+            createdBy: .createdBy.uniqueName
+            modifiedBy: .modifiedBy.uniqueName
             definitionName: .releaseDefinition.name
             link: ._links.web.href | gsub("_release?releaseId="; "")
           relations:
