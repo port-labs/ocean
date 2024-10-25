@@ -17,6 +17,7 @@ MOCK_ISSUES = [{"id": "issue1"}, {"id": "issue2"}]
 MOCK_ORG_URL = "https://your_organization_url.com"
 MOCK_PERSONAL_ACCESS_TOKEN = "personal_access_token"
 
+
 # Port Ocean Mocks
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
@@ -47,6 +48,7 @@ def mock_event_context() -> MagicMock:
     with patch("port_ocean.context.event.event", mock_event):
         yield mock_event
 
+
 # Snyk Client Tests
 @pytest.fixture
 def snyk_client() -> SnykClient:
@@ -60,11 +62,14 @@ def snyk_client() -> SnykClient:
         webhook_secret=None,
     )
 
+
 @pytest.mark.asyncio
 async def test_send_api_request_rate_limit(snyk_client: SnykClient) -> None:
     """Test rate limit enforcement on API request."""
     # Mock the HTTP request to avoid making real API calls
-    with patch.object(snyk_client.http_client, 'request', new_callable=AsyncMock) as mock_request:
+    with patch.object(
+        snyk_client.http_client, "request", new_callable=AsyncMock
+    ) as mock_request:
         mock_request.return_value.json = AsyncMock(return_value={})
         mock_request.return_value.raise_for_status = AsyncMock()
 
@@ -76,41 +81,57 @@ async def test_send_api_request_rate_limit(snyk_client: SnykClient) -> None:
         start_time = time.monotonic()
 
         # Mock RATELIMITER to simulate rate limiting behavior
-        with patch("snyk.client.RATELIMITER", new=AsyncLimiter(5, 1)):  # Allowing 10 requests per second
+        with patch(
+            "snyk.client.RATELIMITER", new=AsyncLimiter(5, 1)
+        ):  # Allowing 10 requests per second
             await asyncio.gather(*[make_request() for _ in range(15)])
 
         elapsed_time = time.monotonic() - start_time
 
         # ASSERT
         # Given that we have 5 requests allowed per second, making 15 should take at least 1 second due to the rate limit.
-        assert elapsed_time >= 1.0, "Rate limiter did not properly enforce the rate limit."
+        assert (
+            elapsed_time >= 1.0
+        ), "Rate limiter did not properly enforce the rate limit."
 
 
 @pytest.mark.asyncio
-async def test_get_paginated_resources(snyk_client: SnykClient, mock_event_context: MagicMock) -> None:
+async def test_get_paginated_resources(
+    snyk_client: SnykClient, mock_event_context: MagicMock
+) -> None:
     """Test getting paginated resources with mocked response."""
+
     async def mock_send_api_request(*args: Any, **kwargs: Any) -> Dict[str, Any]:
-        if kwargs.get('url').endswith('/page1'):
+        if kwargs.get("url").endswith("/page1"):
             return {"data": [{"id": "item1"}], "links": {"next": "/rest/page2"}}
-        elif kwargs.get('url').endswith('/page2'):
+        elif kwargs.get("url").endswith("/page2"):
             return {"data": [{"id": "item2"}], "links": {"next": ""}}
 
-    with patch.object(snyk_client, '_send_api_request', side_effect=mock_send_api_request):
+    with patch.object(
+        snyk_client, "_send_api_request", side_effect=mock_send_api_request
+    ):
         url_path = "/page1"
 
         # ACT
         resources: List[Dict[str, Any]] = []
-        async for resource_batch in snyk_client._get_paginated_resources(url_path=url_path):
+        async for resource_batch in snyk_client._get_paginated_resources(
+            url_path=url_path
+        ):
             resources.extend(resource_batch)
 
         # ASSERT
         assert resources == [{"id": "item1"}, {"id": "item2"}]
 
+
 @pytest.mark.asyncio
-async def test_rate_limit_reset_behavior(snyk_client: SnykClient, mock_event_context: MagicMock) -> None:
+async def test_rate_limit_reset_behavior(
+    snyk_client: SnykClient, mock_event_context: MagicMock
+) -> None:
     """Test rate limiter reset behavior after reaching limit."""
     # Mock the HTTP request to avoid making real API calls
-    with patch.object(snyk_client.http_client, 'request', new_callable=AsyncMock) as mock_request:
+    with patch.object(
+        snyk_client.http_client, "request", new_callable=AsyncMock
+    ) as mock_request:
         mock_request.return_value.json = AsyncMock(return_value={})
         mock_request.return_value.raise_for_status = AsyncMock()
 
@@ -120,7 +141,9 @@ async def test_rate_limit_reset_behavior(snyk_client: SnykClient, mock_event_con
             await mock_request.return_value.raise_for_status()
 
         # Mock the RATELIMITER to simulate 5 requests per minute
-        with patch("snyk.client.RATELIMITER.acquire", new_callable=AsyncMock) as mock_acquire:
+        with patch(
+            "snyk.client.RATELIMITER.acquire", new_callable=AsyncMock
+        ) as mock_acquire:
             mock_acquire.return_value = None
 
             # Make initial requests
@@ -137,4 +160,6 @@ async def test_rate_limit_reset_behavior(snyk_client: SnykClient, mock_event_con
 
             # ASSERT
             # After waiting for 60 seconds, there should be no additional delay
-            assert elapsed_time < 1.0, "Rate limiter did not reset request count after 60 seconds."
+            assert (
+                elapsed_time < 1.0
+            ), "Rate limiter did not reset request count after 60 seconds."
