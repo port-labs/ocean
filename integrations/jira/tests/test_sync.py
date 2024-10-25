@@ -15,7 +15,7 @@ from .fixtures import ISSUES, PROJECTS
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
 
-async def test_full_sync_using_mocked_3rd_party(
+async def test_full_sync_produces_correct_response_from_api(
     monkeypatch: Any,
 ) -> None:
     projects_mock = AsyncMock()
