@@ -8,10 +8,10 @@ from loguru import logger
 
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
-from snyk.rate_limit import RateLimiter
+from aiolimiter import AsyncLimiter
 
 # Setting limit to 80% of the rate limit of 1650 requests per minute allowed by Snyk (https://docs.snyk.io/snyk-api/rest-api/about-the-rest-api#rate-limiting)
-RATELIMITER = RateLimiter(1000, 1320)
+RATELIMITER = AsyncLimiter(1320)
 
 
 class CacheKeys(StrEnum):
@@ -64,23 +64,21 @@ class SnykClient:
             **(query_params or {}),
             **({"version": version} if version is not None else {}),
         }
-        await RATELIMITER.acquire()
-        try:
-            response = await self.http_client.request(
-                method=method, url=url, params=query_params, json=json_data
-            )
-            response.raise_for_status()
-            return response.json()
+        async with RATELIMITER:
+            try:
+                response = await self.http_client.request(
+                    method=method, url=url, params=query_params, json=json_data
+                )
+                response.raise_for_status()
+                return response.json()
 
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
-                f"version: {version}, json: {json_data}. "
-                f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
-            )
-            raise
-        finally:
-            RATELIMITER.release()
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
+                    f"version: {version}, json: {json_data}. "
+                    f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
+                )
+                raise
 
     async def _get_paginated_resources(
         self,
