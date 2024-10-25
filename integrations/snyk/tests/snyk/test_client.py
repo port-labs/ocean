@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
-from typing import Any, Dict, List, Generator, AsyncGenerator
+from typing import Any, Dict, List
 from snyk.client import SnykClient
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.ocean import initialize_port_ocean_context
