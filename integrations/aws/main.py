@@ -44,7 +44,6 @@ import functools
 
 semaphore = get_semaphore()
 
-
 async def _handle_global_resource_resync(
     kind: str,
     credentials: AwsCredentials,
@@ -288,81 +287,72 @@ class ResourceUpdate(BaseModel):
 @ocean.router.post("/webhook")
 async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Response:
     await update_available_access_credentials()
-    try:
-        logger.info(f"Received AWS Webhook request body: {update}")
-        resource_type = update.resource_type
-        identifier = update.identifier
-        account_id = update.accountId
-        region = update.awsRegion
+    logger.info(f"Received AWS Webhook request body: {update}")
+    resource_type = update.resource_type
+    identifier = update.identifier
+    account_id = update.accountId
+    region = update.awsRegion
 
-        with logger.contextualize(
-            account_id=account_id, resource_type=resource_type, identifier=identifier
-        ):
-            matching_resource_configs = get_matching_kinds_and_blueprints_from_config(
-                resource_type
+    with logger.contextualize(
+        account_id=account_id, resource_type=resource_type, identifier=identifier
+    ):
+        allowed_configs, disallowed_configs = get_matching_kinds_and_blueprints_from_config(
+            resource_type, region
+        )
+
+        if disallowed_configs:
+            logger.info(
+                f"Unregistering resource {identifier} of type {resource_type} in region {region} and account {account_id} for blueprint {disallowed_configs.values()} because it is not allowed"
             )
-
-            logger.debug(
-                "Querying full resource on AWS before registering change in port"
+            await ocean.unregister(
+                [Entity(blueprint=blueprint, identifier=identifier) for blueprints in disallowed_configs.values() for blueprint in blueprints]
             )
+        
+        if not allowed_configs:
+            logger.info(
+                f"{resource_type} not found or disabled for region {region} in account {account_id}"
+            )
+            return fastapi.Response(status_code=status.HTTP_200_OK)
 
-            try:
-                resource = await describe_single_resource(
-                    resource_type, identifier, account_id, region
+        logger.debug("Querying full resource on AWS before registering change in port")
+        resource = None
+        try:
+            resource = await describe_single_resource(
+                resource_type, identifier, account_id, region
+            )
+        except Exception as e:
+            if is_access_denied_exception(e):
+                logger.error(
+                    f"Cannot sync {resource_type} in region {region} in account {account_id} due to missing access permissions {e}"
                 )
-            except Exception as e:
-                if is_access_denied_exception(e):
-                    logger.error(
-                        f"Cannot sync {resource_type} in region {region} in account {account_id} due to missing access permissions {e}"
-                    )
-                    return fastapi.Response(
-                        status_code=status.HTTP_200_OK,
-                    )
-                if is_server_error(e):
-                    logger.error(
-                        f"Cannot sync {resource_type} in region {region} in account {account_id} due to server error {e}"
-                    )
-                    return fastapi.Response(
-                        status_code=status.HTTP_200_OK,
-                    )
-                resource = None
+            elif is_server_error(e):
+                logger.error(
+                    f"Cannot sync {resource_type} in region {region} in account {account_id} due to server error {e}"
+                )
+            else:
+                logger.exception("Failed to describe resource")
+            return fastapi.Response(status_code=status.HTTP_200_OK)
 
-            for kind in matching_resource_configs:
-                blueprints = matching_resource_configs[kind]
-                if not resource:  # Resource probably deleted
-                    for blueprint in blueprints:
-                        logger.info(
-                            "Resource not found in AWS, un-registering from port"
-                        )
-                        await ocean.unregister(
-                            [
-                                Entity(
-                                    blueprint=blueprint,
-                                    identifier=identifier,
-                                )
-                            ]
-                        )
-                else:  # Resource found in AWS, update port
-                    logger.info("Resource found in AWS, registering change in port")
-                    resource.update(
-                        {
-                            CustomProperties.KIND: resource_type,
-                            CustomProperties.ACCOUNT_ID: account_id,
-                            CustomProperties.REGION: region,
-                        }
-                    )
-                    await ocean.register_raw(
-                        kind,
-                        [fix_unserializable_date_properties(resource)],
-                    )
+        for kind, blueprints in allowed_configs.items():
+            if not resource:  # Resource probably deleted
+                logger.info("Resource not found in AWS, un-registering from port")
+                await ocean.unregister(
+                    [Entity(blueprint=blueprint, identifier=identifier) for blueprint in blueprints]
+                )
+            else:  # Resource found in AWS, update port
+                logger.info("Resource found in AWS, registering change in port")
+                resource.update(
+                    {
+                        CustomProperties.KIND: resource_type,
+                        CustomProperties.ACCOUNT_ID: account_id,
+                        CustomProperties.REGION: region,
+                    }
+                )
+                await ocean.register_raw(
+                    kind, [fix_unserializable_date_properties(resource)]
+                )
 
-            logger.info("Webhook processed successfully")
-            return fastapi.Response(
-                status_code=status.HTTP_200_OK, content=json.dumps({"ok": True})
-            )
-    except Exception as e:
-        logger.exception("Failed to process event from aws")
+        logger.info("Webhook processed successfully")
         return fastapi.Response(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=json.dumps({"ok": False, "error": str(e)}),
+            status_code=status.HTTP_200_OK, content=json.dumps({"ok": True})
         )

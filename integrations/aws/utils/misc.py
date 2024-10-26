@@ -51,16 +51,23 @@ def is_server_error(e: Exception) -> bool:
 
 
 def get_matching_kinds_and_blueprints_from_config(
-    kind: str,
-) -> dict[str, list[str]]:
-    kinds: dict[str, list[str]] = {}
+    kind: str, region: str
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    allowed_kinds: dict[str, list[str]] = {}
+    disallowed_kinds: dict[str, list[str]] = {}
     resources = event.port_app_config.resources
 
     for resource in resources:
         blueprint = resource.port.entity.mappings.blueprint.strip('"')
-        if resource.kind in kinds:
-            kinds[resource.kind].append(blueprint)
+        if not resource.selector.is_region_allowed(region) and kind == resource.kind:
+            if kind in disallowed_kinds:
+                disallowed_kinds[kind].append(blueprint)
+            else:
+                disallowed_kinds[kind] = [blueprint]
         elif kind == resource.kind:
-            kinds[resource.kind] = [blueprint]
+            if kind in allowed_kinds:
+                allowed_kinds[kind].append(blueprint)
+            else:
+                allowed_kinds[kind] = [blueprint]
 
-    return kinds
+    return allowed_kinds, disallowed_kinds
