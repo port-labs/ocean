@@ -2,6 +2,8 @@ import enum
 
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
+from utils.overrides import AWSDescribeResourcesSelector
+import typing
 import asyncio
 
 
@@ -56,10 +58,10 @@ def get_matching_kinds_and_blueprints_from_config(
     allowed_kinds: dict[str, list[str]] = {}
     disallowed_kinds: dict[str, list[str]] = {}
     resources = event.port_app_config.resources
-
     for resource in resources:
         blueprint = resource.port.entity.mappings.blueprint.strip('"')
-        if not resource.selector.is_region_allowed(region) and kind == resource.kind:
+        resource_selector = typing.cast(AWSDescribeResourcesSelector, resource.selector)
+        if not resource_selector.is_region_allowed(region) and kind == resource.kind:
             if kind in disallowed_kinds:
                 disallowed_kinds[kind].append(blueprint)
             else:
