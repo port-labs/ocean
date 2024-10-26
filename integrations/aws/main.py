@@ -44,6 +44,7 @@ import functools
 
 semaphore = get_semaphore()
 
+
 async def _handle_global_resource_resync(
     kind: str,
     credentials: AwsCredentials,
@@ -296,8 +297,8 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
     with logger.contextualize(
         account_id=account_id, resource_type=resource_type, identifier=identifier
     ):
-        allowed_configs, disallowed_configs = get_matching_kinds_and_blueprints_from_config(
-            resource_type, region
+        allowed_configs, disallowed_configs = (
+            get_matching_kinds_and_blueprints_from_config(resource_type, region)
         )
 
         if disallowed_configs:
@@ -305,9 +306,13 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                 f"Unregistering resource {identifier} of type {resource_type} in region {region} and account {account_id} for blueprint {disallowed_configs.values()} because it is not allowed"
             )
             await ocean.unregister(
-                [Entity(blueprint=blueprint, identifier=identifier) for blueprints in disallowed_configs.values() for blueprint in blueprints]
+                [
+                    Entity(blueprint=blueprint, identifier=identifier)
+                    for blueprints in disallowed_configs.values()
+                    for blueprint in blueprints
+                ]
             )
-        
+
         if not allowed_configs:
             logger.info(
                 f"{resource_type} not found or disabled for region {region} in account {account_id}"
@@ -337,7 +342,10 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
             if not resource:  # Resource probably deleted
                 logger.info("Resource not found in AWS, un-registering from port")
                 await ocean.unregister(
-                    [Entity(blueprint=blueprint, identifier=identifier) for blueprint in blueprints]
+                    [
+                        Entity(blueprint=blueprint, identifier=identifier)
+                        for blueprint in blueprints
+                    ]
                 )
             else:  # Resource found in AWS, update port
                 logger.info("Resource found in AWS, registering change in port")
