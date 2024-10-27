@@ -1481,22 +1481,23 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-gitlab"
-version = "3.15.0"
-description = "Interact with GitLab API"
+version = "4.13.0"
+description = "A python wrapper for the GitLab API"
 optional = false
-python-versions = ">=3.7.0"
+python-versions = ">=3.8.0"
 files = [
-    {file = "python-gitlab-3.15.0.tar.gz", hash = "sha256:c9e65eb7612a9fbb8abf0339972eca7fd7a73d4da66c9b446ffe528930aff534"},
-    {file = "python_gitlab-3.15.0-py3-none-any.whl", hash = "sha256:8f8d1c0d387f642eb1ac7bf5e8e0cd8b3dd49c6f34170cee3c7deb7d384611f3"},
+    {file = "python_gitlab-4.13.0-py3-none-any.whl", hash = "sha256:8299a054fb571da16e1a8c1868fff01f34ac41ea1410c713a4647b3bbb2aa279"},
+    {file = "python_gitlab-4.13.0.tar.gz", hash = "sha256:576bfb0901faca0c6b2d1ff2592e02944a6ec3e086c3129fb43c2a0df56a1c67"},
 ]
 
 [package.dependencies]
-requests = ">=2.25.0"
-requests-toolbelt = ">=0.10.1"
+requests = ">=2.32.0"
+requests-toolbelt = ">=1.0.0"
 
 [package.extras]
 autocompletion = ["argcomplete (>=1.10.0,<3)"]
-yaml = ["PyYaml (>=5.2)"]
+graphql = ["gql[httpx] (>=3.5.0,<4)"]
+yaml = ["PyYaml (>=6.0.1)"]
 
 [[package]]
 name = "python-multipart"
@@ -2280,4 +2281,4 @@ dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "c04f9ef4be1f8bedfb83543b0f6c98d0bd187c1a4f9bc24a4cf1446531ba2a48"
+content-hash = "b3159a789eadff7ac879a628fc81a5ebd0bbde6199b3a96fc8947a64aca87efb"
