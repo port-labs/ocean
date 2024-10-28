@@ -10,15 +10,22 @@ import requests
 from loguru import logger
 
 from jira.client import JiraClient
+from jira.overrides import JiraPortAppConfig
 from port_ocean import Ocean
 from port_ocean.core.defaults import initialize_defaults
+from port_ocean.core.handlers import APIPortAppConfig
+from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.run import _get_default_config_factory
 
 PAGE_SIZE = 50
 
+class JiraIntegration(BaseIntegration):
+    class AppConfigHandlerClass(APIPortAppConfig):
+        CONFIG_CLASS = JiraPortAppConfig
+
 config_factory = _get_default_config_factory()
 app = Ocean(
-    integration_class=None,
+    integration_class=JiraIntegration,
     config_factory=config_factory,
     config_override={},
 )
@@ -130,7 +137,7 @@ class JiraClient:
             if params["startAt"] > total_issues:
                 params["startAt"] = 0
 
-        return []
+        yield []
 
 
 class ObjectKind(StrEnum):
@@ -159,32 +166,32 @@ async def setup_application() -> None:
     )
 
 
-@app.integration.on_resync(ObjectKind.PROJECT)
-async def on_resync_projects(kind: str) -> Any:
-    client = JiraClient(
-        app.integration.integration_config["jira_host"],
-        app.integration.integration_config["atlassian_user_email"],
-        app.integration.integration_config["atlassian_user_token"],
-    )
+# async def on_resync_projects(kind: str) -> Any:
+#     client = JiraClient(
+#         app.config.integration.config.dict()["jira_host"],
+#         app.config.integration.config.dict()["atlassian_user_email"],
+#         app.config.integration.config.dict()["atlassian_user_token"],
+#     )
+#
+#     async for projects in client.get_paginated_projects():
+#         logger.info(f"Received project batch with {len(projects)} issues")
+#         yield projects
+# app.integration.on_resync(on_resync_projects, ObjectKind.PROJECT)
 
-    async for projects in client.get_paginated_projects():
-        logger.info(f"Received project batch with {len(projects)} issues")
-        yield projects
-
-
-@app.integration.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> Any:
     client = JiraClient(
-        app.integration.integration_config["jira_host"],
-        app.integration.integration_config["atlassian_user_email"],
-        app.integration.integration_config["atlassian_user_token"],
+        app.config.integration.config.dict()["jira_host"],
+        app.config.integration.config.dict()["atlassian_user_email"],
+        app.config.integration.config.dict()["atlassian_user_token"],
     )
 
     async for issues in client.get_paginated_issues():
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
+app.integration.on_resync(on_resync_issues, ObjectKind.ISSUE)
 
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
+    loop.run_until_complete(app.integration.start())
     loop.run_until_complete(app.integration.sync_raw_all())
