@@ -1,14 +1,28 @@
 import asyncio
+import ctypes
 import gc
-from typing import Any, AsyncGenerator
+import os
+from enum import StrEnum
+from typing import Any
 
+import psutil
 import requests
 from loguru import logger
 
-import psutil
-import os
-import ctypes
+from jira.client import JiraClient
+from port_ocean import Ocean
+from port_ocean.core.defaults import initialize_defaults
+from port_ocean.run import _get_default_config_factory
 
+PAGE_SIZE = 50
+
+config_factory = _get_default_config_factory()
+app = Ocean(
+    integration_class=None,
+    config_factory=config_factory,
+    config_override={},
+)
+initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
 
 PAGE_SIZE = 50
 
@@ -119,11 +133,58 @@ class JiraClient:
         return []
 
 
-if __name__ == "__main__":
+class ObjectKind(StrEnum):
+    PROJECT = "project"
+    ISSUE = "issue"
+
+
+async def setup_application() -> None:
+    logic_settings = app.integration.integration_config
+    app_host = logic_settings.get("app_host")
+    if not app_host:
+        logger.warning(
+            "No app host provided, skipping webhook creation. "
+            "Without setting up the webhook, the integration will not export live changes from Jira"
+        )
+        return
+
     jira_client = JiraClient(
-        jira_url=os.environ.get("OCEAN__INTEGRATION__CONFIG__JIRA_HOST"),
-        jira_email=os.environ.get("OCEAN__INTEGRATION__CONFIG__ATLASSIAN_USER_EMAIL"),
-        jira_token=os.environ.get("OCEAN__INTEGRATION__CONFIG__ATLASSIAN_USER_TOKEN"),
+        logic_settings["jira_host"],
+        logic_settings["atlassian_user_email"],
+        logic_settings["atlassian_user_token"],
     )
+
+    await jira_client.create_events_webhook(
+        logic_settings["app_host"],
+    )
+
+
+@app.integration.on_resync(ObjectKind.PROJECT)
+async def on_resync_projects(kind: str) -> Any:
+    client = JiraClient(
+        app.integration.integration_config["jira_host"],
+        app.integration.integration_config["atlassian_user_email"],
+        app.integration.integration_config["atlassian_user_token"],
+    )
+
+    async for projects in client.get_paginated_projects():
+        logger.info(f"Received project batch with {len(projects)} issues")
+        yield projects
+
+
+@app.integration.on_resync(ObjectKind.ISSUE)
+async def on_resync_issues(kind: str) -> Any:
+    client = JiraClient(
+        app.integration.integration_config["jira_host"],
+        app.integration.integration_config["atlassian_user_email"],
+        app.integration.integration_config["atlassian_user_token"],
+    )
+
+    async for issues in client.get_paginated_issues():
+        logger.info(f"Received issue batch with {len(issues)} issues")
+        yield issues
+
+
+if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(jira_client.get_paginated_issues())
+    loop.run_until_complete(app.integration.sync_raw_all())
