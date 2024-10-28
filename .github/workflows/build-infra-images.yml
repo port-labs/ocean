@@ -1,0 +1,34 @@
+name: Build infra images
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    uses: ./.github/workflows/detect-changes-matrix.yml
+  build-infra:
+    runs-on: 'ubuntu-latest'
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.infra == 'true' }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        uses: ./.github/workflows/actions/build-docker-image
+        with:
+          dockerfile: ./integrations/_infra/Dockerfile.base.builder
+          platforms: linux/amd64,linux/arm64
+          tags: ghcr.io/port-labs/port-ocean-base-builder:latest
+          docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
+          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+
+      - name: Build Docker Image
+        uses: ./.github/workflows/actions/build-docker-image
+        with:
+          dockerfile: ./integrations/_infra/Dockerfile.base.runner
+          platforms: linux/amd64,linux/arm64
+          tags: ghcr.io/port-labs/port-ocean-base-runner:latest
+          docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
+          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          skip-init: 'true'
