@@ -185,6 +185,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             "GitLabFilesResourceConfig", event.resource_config
         )
         if not isinstance(gitlab_resource_config, GitLabFilesResourceConfig):
+            logger.error("Invalid resource config type for GitLab files resync")
             return
 
         selector = gitlab_resource_config.selector
@@ -201,7 +202,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
-                    f"Processing projects files for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
+                    f"Processing project files for {projects_processed_in_full_batch}/{len(projects)} projects in batch: {[project.path_with_namespace for project in projects_batch]}"
                 )
                 tasks = [
                     service.search_files_in_project(project, selector.files.path)
@@ -214,7 +215,9 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     async for batch in stream_async_iterators_tasks(*tasks):
                         yield batch
                 else:
-                    logger.info("No relevant projects were found in batch, skipping it")
+                    logger.info(
+                        f"No relevant projects were found in batch for path '{selector.files.path}', skipping it"
+                    )
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
