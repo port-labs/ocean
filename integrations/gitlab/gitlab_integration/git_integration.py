@@ -127,7 +127,7 @@ class FilesSelector(BaseModel):
         description="A list of repositories to search files in", default_factory=list
     )
     search_type: Literal["zoekt", "advanced", "basic"] = Field(
-        alias="searchType", default="basic"
+        alias="searchType", default="advanced"
     )
 
 
