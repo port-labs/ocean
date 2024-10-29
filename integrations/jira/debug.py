@@ -2,22 +2,87 @@ import asyncio
 import ctypes
 import gc
 import os
+import sys
+from asyncio import ensure_future
+from contextlib import asynccontextmanager
 from enum import StrEnum
 from typing import Any
 
 import psutil
 import requests
+import uvicorn
+from fastapi import FastAPI
 from loguru import logger
 
 from jira.client import JiraClient
 from jira.overrides import JiraPortAppConfig
-from port_ocean import Ocean
+from port_ocean.clients.port.client import PortClient
+from port_ocean.config.settings import IntegrationConfiguration
+from port_ocean.context.ocean import initialize_port_ocean_context, ocean
 from port_ocean.core.defaults import initialize_defaults
 from port_ocean.core.handlers import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.run import _get_default_config_factory
+from port_ocean.utils.signal import signal_handler
+from port_ocean.version import __integration_version__
 
 PAGE_SIZE = 50
+
+class Ocean:
+    def __init__(
+        self,
+        app: Any | None = None,
+        integration_class: Any | None = None,
+        integration_router: Any | None = None,
+        config_factory: Any | None = None,
+        config_override: Any | None = None,
+    ):
+        initialize_port_ocean_context(self)
+        self.fast_api_app = app or FastAPI()
+        # self.fast_api_app.middleware("http")(request_handler)
+
+        self.config = IntegrationConfiguration(
+            # type: ignore
+            _integration_config_model=config_factory,
+            **(config_override or {}),
+        )
+
+        # self.integration_router = integration_router or APIRouter()
+
+        self.port_client = PortClient(
+            base_url=self.config.port.base_url,
+            client_id=self.config.port.client_id,
+            client_secret=self.config.port.client_secret,
+            integration_identifier=self.config.integration.identifier,
+            integration_type=self.config.integration.type,
+            integration_version=__integration_version__,
+        )
+        self.integration = (
+            integration_class(ocean) if integration_class else BaseIntegration(ocean)
+        )
+
+        # self.resync_state_updater = ResyncStateUpdater(
+        #     self.port_client, self.config.scheduled_resync_interval
+        # )
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        # self.fast_api_app.include_router(self.integration_router, prefix="/integration")
+
+        @asynccontextmanager
+        async def lifecycle(_: Any) -> Any:
+            try:
+                await self.integration.start()
+                ensure_future(asyncio.create_task(self.integration.sync_raw_all()))
+                # await self._setup_scheduled_resync()
+                yield None
+            except Exception:
+                logger.exception("Integration had a fatal error. Shutting down.")
+                sys.exit("Server stopped")
+            finally:
+                signal_handler.exit()
+
+        self.fast_api_app.router.lifespan_context = lifecycle
+        await self.fast_api_app(scope, receive, send)
 
 class JiraIntegration(BaseIntegration):
     class AppConfigHandlerClass(APIPortAppConfig):
@@ -193,5 +258,6 @@ app.integration.on_resync(on_resync_issues, ObjectKind.ISSUE)
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(app.integration.start())
-    loop.run_until_complete(app.integration.sync_raw_all())
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # loop.run_until_complete(app.integration.start())
+    # loop.run_until_complete(app.integration.sync_raw_all())
