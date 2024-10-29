@@ -3,7 +3,6 @@ from typing import Dict, Any, Literal, Tuple, List, Type
 from gitlab.v4.objects import Project
 from loguru import logger
 from pydantic import Field, BaseModel
-
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,
@@ -126,6 +125,9 @@ class FilesSelector(BaseModel):
     path: str = Field(description="The path to get the files from")
     repos: List[str] = Field(
         description="A list of repositories to search files in", default_factory=list
+    )
+    search_type: Literal["zoekt", "advanced", "basic"] = Field(
+        alias="searchType", default="basic"
     )
 
 

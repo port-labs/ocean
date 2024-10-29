@@ -160,9 +160,7 @@ class GitlabService:
         ]
 
     async def search_files_in_project(
-        self,
-        project: Project,
-        path: str | List[str],
+        self, project: Project, path: str | List[str], search_type: str
     ) -> AsyncIterator[list[dict[str, Any]]]:
         logger.info(
             f"Searching project {project.path_with_namespace} for files with path pattern {path}"
@@ -178,14 +176,13 @@ class GitlabService:
                     project.search,
                     scope="blobs",
                     search=f"filename:{file_pattern}",
+                    search_type=search_type,
                     retry_transient_errors=True,
                 ):
                     logger.info(
                         f"Found {len(files)} files in project {project.path_with_namespace} with file pattern {file_pattern}, filtering all that don't match path pattern {path}"
                     )
-                    files = typing.cast(
-                        Union[GitlabList, List[Dict[str, Any]]], files
-                    )
+                    files = typing.cast(Union[GitlabList, List[Dict[str, Any]]], files)
                     tasks = []
                     for file in files:
                         if does_pattern_apply(path, file["path"]):

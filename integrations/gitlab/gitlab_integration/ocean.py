@@ -216,7 +216,9 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                             matching_projects.append(project)
                             tasks.append(
                                 service.search_files_in_project(
-                                    project, selector.files.path
+                                    project,
+                                    selector.files.path,
+                                    selector.files.search_type,
                                 )
                             )
 

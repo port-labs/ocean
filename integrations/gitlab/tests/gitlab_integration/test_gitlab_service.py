@@ -36,7 +36,7 @@ async def test_search_files_in_folders_in_project(
     # Act
     actual_files = []
     async for file in mocked_gitlab_service.search_files_in_project(
-        mock_project, search_pattern
+        mock_project, search_pattern, search_type="basic"
     ):
         actual_files.extend(file)
 
@@ -52,6 +52,7 @@ async def test_search_files_in_project(
 ) -> None:
     # Arrange
     search_pattern = "**/file.yaml"
+    search_type = "basic"
 
     mock_project = MagicMock()
     monkeypatch.setattr(mock_project, "search", mock_search)
@@ -59,7 +60,7 @@ async def test_search_files_in_project(
     # Act
     actual_files = []
     async for file in mocked_gitlab_service.search_files_in_project(
-        mock_project, search_pattern
+        mock_project, search_pattern, search_type
     ):
         actual_files.extend(file)
 
@@ -82,7 +83,7 @@ async def test_search_files_invalid_glob_in_project(
     # Act
     actual_files = []
     async for file in mocked_gitlab_service.search_files_in_project(
-        mock_project, search_pattern
+        mock_project, search_pattern, search_type="basic"
     ):
         actual_files.extend(file)
 
@@ -113,7 +114,7 @@ async def test_search_generic_files_inside_folder_inside_folder_in_project(
     # Act
     actual_files = []
     async for file in mocked_gitlab_service.search_files_in_project(
-        mock_project, search_pattern
+        mock_project, search_pattern, search_type="basic"
     ):
         actual_files.extend(file)
 
