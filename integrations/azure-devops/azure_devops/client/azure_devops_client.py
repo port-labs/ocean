@@ -124,14 +124,18 @@ class AzureDevopsClient(HTTPBaseClient):
                     for pipeline in pipelines:
                         pipeline["__projectId"] = project["id"]
                     yield pipelines
-                    
+
     async def generate_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self.generate_projects():
             for project in projects:
-                releases_url = self._organization_base_url.replace("dev.azure.com", "vsrm.dev.azure.com") + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
+                releases_url = (
+                    self._organization_base_url.replace(
+                        "dev.azure.com", "vsrm.dev.azure.com"
+                    )
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
+                )
                 async for releases in self._get_paginated_by_top_and_skip(releases_url):
-                        yield releases
-
+                    yield releases
 
     async def generate_repository_policies(
         self,
@@ -409,4 +413,3 @@ class AzureDevopsClient(HTTPBaseClient):
         return await self._get_item_content(
             file_path, repository_id, "Commit", commit_id
         )
-    

@@ -158,10 +158,7 @@ EXPECTED_RELEASES = [
         "reason": "manual",
         "releaseNameFormat": "Release-$(rev:r)",
         "keepForever": False,
-        "projectReference": {
-            "id": "proj1",
-            "name": "Project One"
-        }
+        "projectReference": {"id": "proj1", "name": "Project One"},
     }
 ]
 
@@ -497,6 +494,7 @@ async def test_generate_releases(mock_event_context: MagicMock) -> None:
 
                 # ASSERT
                 assert releases == EXPECTED_RELEASES
+
 
 @pytest.mark.asyncio
 async def test_get_pull_request() -> None:
