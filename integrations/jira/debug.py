@@ -113,8 +113,8 @@ class Ocean:
         async def lifecycle(_: Any) -> Any:
             try:
                 await self.integration.start()
-                ensure_future(asyncio.create_task(self.integration.sync_raw_all()))
                 await self._setup_scheduled_resync()
+                ensure_future(asyncio.create_task(self.integration.sync_raw_all()))
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
