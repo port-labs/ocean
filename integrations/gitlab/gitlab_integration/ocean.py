@@ -202,7 +202,8 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
-                    f"Processing project files for {projects_processed_in_full_batch}/{len(projects)} projects in batch: {[project.path_with_namespace for project in projects_batch]}"
+                    f"Processing project files for {projects_processed_in_full_batch}/{len(projects)} "
+                    f"projects in batch: {[project.path_with_namespace for project in projects_batch]}"
                 )
                 tasks = [
                     service.search_files_in_project(project, selector.files.path)
