@@ -103,3 +103,23 @@ resources:
           blueprint: '"column"'
           relations:
             board: .__board.id | gsub(" "; "")
+  - kind: release
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .projectReference.id + "-" + (.id | tostring) | gsub(" "; "")
+          title: .name
+          blueprint: '"release"'
+          properties:
+            status: .status
+            reason: .reason
+            createdDate: .createdOn
+            modifiedDate: .modifiedOn
+            createdBy: .createdBy.uniqueName
+            modifiedBy: .modifiedBy.uniqueName
+            definitionName: .releaseDefinition.name
+            link: ._links.web.href | gsub("_release?releaseId="; "")
+          relations:
+            project: .projectReference.id | gsub(" "; "")
