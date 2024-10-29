@@ -13,7 +13,7 @@ USER_KEY = "users"
 
 MAX_CONCURRENT_REQUESTS = 1
 SAFE_MINIMUM_FOR_RATE_LIMITS = 3
-MAX_RETRY_COUNT = 5 
+MAX_RETRY_COUNT = 5
 
 
 class PagerDutyClient:
@@ -76,6 +76,7 @@ class PagerDutyClient:
                 "Content-Type": "application/json",
             }
         }
+
     async def _handle_rate_limiting(self, response: httpx.Response) -> None:
         if response.status_code == 429:
             await self._rate_limiter.handle_rate_limiting(response)
@@ -241,7 +242,9 @@ class PagerDutyClient:
             logger.error(f"HTTP occurred while fetching incident analytics data: {e}")
             return {}
 
-    async def get_service_analytics(self, service_id: str, months_period: int = 6) -> Dict[str, Any]:
+    async def get_service_analytics(
+        self, service_id: str, months_period: int = 6
+    ) -> Dict[str, Any]:
         logger.info(f"Fetching analytics for service: {service_id}")
         url = f"{self.api_url}/analytics/metrics/incidents/services"
         date_ranges = get_date_range_for_last_n_months(months_period)
@@ -260,20 +263,26 @@ class PagerDutyClient:
             body,
         )
 
-    async def _handle_service_analytics_request(self, url: str, body: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_service_analytics_request(
+        self, url: str, body: Dict[str, Any]
+    ) -> Dict[str, Any]:
         async with self._semaphore:
             response = await self.http_client.post(url, json=body)
 
-        response.raise_for_status()  
+        response.raise_for_status()
 
         data = response.json().get("data", [])
         if not data:
-            logger.info(f"No analytics data found for service: {body['filters']['service_ids'][0]}")
+            logger.info(
+                f"No analytics data found for service: {body['filters']['service_ids'][0]}"
+            )
             return {}
 
-        logger.info(f"Successfully fetched analytics for service: {body['filters']['service_ids'][0]}")
-        return data[0]  
-    
+        logger.info(
+            f"Successfully fetched analytics for service: {body['filters']['service_ids'][0]}"
+        )
+        return data[0]
+
     async def fetch_and_cache_users(self) -> None:
         async for users in self.paginate_request_to_pager_duty(data_key=USER_KEY):
             for user in users:

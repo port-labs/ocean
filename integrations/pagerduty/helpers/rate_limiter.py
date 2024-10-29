@@ -20,13 +20,18 @@ class RateLimiter:
                     retry_count += 1
                     continue
                 else:
-                    logger.error(f"Client error {e.response.status_code} for URL: {e.request.url} - {e.response.text}")
+                    logger.error(
+                        f"Client error {e.response.status_code} for URL: {e.request.url} - {e.response.text}"
+                    )
                     return {}
-                
+
     async def handle_rate_limiting(self, response: httpx.Response) -> None:
         requests_remaining = int(response.headers.get("ratelimit-remaining", 0))
         reset_time = int(response.headers.get("ratelimit-reset", 0))
-        logger.info(f"Remaining {requests_remaining} requests, reset time {reset_time} seconds")
-        logger.warning(f"Low request limit. Waiting for {reset_time} seconds before next call.")
+        logger.info(
+            f"Remaining {requests_remaining} requests, reset time {reset_time} seconds"
+        )
+        logger.warning(
+            f"Low request limit. Waiting for {reset_time} seconds before next call."
+        )
         await asyncio.sleep(reset_time)
-        

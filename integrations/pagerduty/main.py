@@ -32,24 +32,24 @@ async def enrich_service_with_analytics_data(
     client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
 ) -> list[dict[str, Any]]:
     enriched_services = []
-    
+
     for i in range(0, len(services), ANALYTICS_BATCH_SIZE):
-        batch = services[i:i + ANALYTICS_BATCH_SIZE]
+        batch = services[i : i + ANALYTICS_BATCH_SIZE]
         analytics_data = await asyncio.gather(
             *[
                 client.get_service_analytics(service["id"], months_period)
                 for service in batch
             ]
         )
-        
-        enriched_services.extend([
-            {**service, "__analytics": analytics}
-            for service, analytics in zip(batch, 
-            analytics_data)
-        ])
-        
-    return enriched_services
 
+        enriched_services.extend(
+            [
+                {**service, "__analytics": analytics}
+                for service, analytics in zip(batch, analytics_data)
+            ]
+        )
+
+    return enriched_services
 
 
 async def enrich_incidents_with_analytics_data(
@@ -117,7 +117,6 @@ async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             services = await enrich_service_with_analytics_data(
                 pager_duty_client, services, selector.analytics_months_period
             )
-
 
         yield await pager_duty_client.update_oncall_users(services)
 
