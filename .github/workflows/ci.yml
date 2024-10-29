@@ -37,7 +37,6 @@ jobs:
           echo $(echo ${integrations_to_build[@]} | jq -R -c 'split(" ")')
           echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_build[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
 
-
   build-integration:
     runs-on: ubuntu-latest
     if: needs.prepare-matrix.outputs.matrix != '[]'
@@ -56,16 +55,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: ${{ matrix.platform }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          platforms: ${{ matrix.platform }}
 
       - name: Prepare Docker images tags
         id: prepare_tags
@@ -101,32 +90,15 @@ jobs:
             echo "is_dev_version=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Get used docker base image
-        id: get-docker-image
-        run: |
-          echo "base_image=$(cat ${{ steps.prepare_tags.outputs.dockerfile_path }} | head -n 1 | awk -F '=' '{print $2}' )" >> $GITHUB_OUTPUT
-
-      - name: Cache Docker images
-        uses: ScribeMD/docker-cache@0.5.0
+      - name: Build Docker Image
+        uses: ./.github/workflows/actions/build-docker-image
         with:
-          key: docker-${{ matrix.integration }}-${{ steps.get-docker-image.outputs.base_image }}-${{ matrix.platform }}
-
-      - name: Build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ${{ steps.prepare_tags.outputs.dockerfile_path }}
+          dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}
           platforms: ${{ matrix.platform }}
-          push: false
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           tags: ${{ steps.prepare_tags.outputs.tags }}
           build-args: |
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
             INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
-
-      - name: Verify Built Image
-        run: |
-          SINGLE_TAG=$(echo "${{ steps.prepare_tags.outputs.tags }}" | awk -F ',' '{print $1};' )
-          docker run --platform ${{ matrix.platform }} --rm --entrypoint bash "${SINGLE_TAG}" -c 'ocean version'
+          docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
+          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          skip-push: 'true'
