@@ -1,7 +1,7 @@
 import asyncio
 from loguru import logger
 import httpx
-from typing import Callable, Dict, Any
+from typing import Callable, Any
 
 
 class RateLimiter:
