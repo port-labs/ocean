@@ -265,7 +265,7 @@ class SnykClient:
         ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
             return {}
         
-        ## The user_reference is in the format of /rest/orgs/{org_id}/users/{user_id}. Some users may not be associated with the organization that the integration is configured with. In this instance, we can return an empty dict
+        # The user_reference is in the format of /rest/orgs/{org_id}/users/{user_id}. Some users may not be associated with the organization that the integration is configured with. In this instance, we can return an empty dict
         reference_parts = user_reference.split("/")
         org_id = reference_parts[3]
         user_id = reference_parts[-1]
