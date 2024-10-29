@@ -368,8 +368,6 @@ class SonarQubeClient:
         if api_query_params:
             query_params.update(api_query_params)
 
-        logger.info(f"Endpoint path: {endpoint_path}")
-
         response = await self.send_paginated_api_request(
             endpoint=endpoint_path,
             data_key="issues",
