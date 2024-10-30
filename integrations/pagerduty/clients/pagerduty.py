@@ -243,7 +243,7 @@ class PagerDutyClient:
             return {}
 
     async def get_service_analytics(
-        self, service_id: str, months_period: int = 6
+        self, service_id: str, months_period: int = 3
     ) -> Dict[str, Any]:
         logger.info(f"Fetching analytics for service: {service_id}")
         date_ranges = get_date_range_for_last_n_months(months_period)
