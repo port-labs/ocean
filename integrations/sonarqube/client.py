@@ -42,7 +42,6 @@ class Endpoints:
     ANALYSIS = "activity_feed/list"
     PORTFOLIO_DETAILS = "views/show"
     PORTFOLIOS = "views/list"
-    VERSION = "server/version"
 
 
 PAGE_SIZE = 100
@@ -337,7 +336,7 @@ class SonarQubeClient:
         """
         component_issues = []
         component_key = component.get("key")
-        query_params = {"componentKeys": component_key}
+        query_params = {"component": component_key}
 
         if api_query_params:
             query_params.update(api_query_params)
