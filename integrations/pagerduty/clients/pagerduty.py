@@ -258,9 +258,7 @@ class PagerDutyClient:
 
         try:
             data = await self.send_api_request(
-                "analytics/metrics/incidents/services",
-                method="POST",
-                json_data=body
+                "analytics/metrics/incidents/services", method="POST", json_data=body
             )
             logger.info(f"Successfully fetched analytics for service: {service_id}")
             return data
@@ -278,7 +276,7 @@ class PagerDutyClient:
         logger.debug(
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
-        
+
         async with self._semaphore:
             while True:
                 try:
@@ -295,7 +293,9 @@ class PagerDutyClient:
                         logger.debug(f"Resource not found at {endpoint}")
                         return {}
                     elif e.response.status_code == 429:
-                        requests_remaining = int(e.response.headers.get("ratelimit-remaining", 0))
+                        requests_remaining = int(
+                            e.response.headers.get("ratelimit-remaining", 0)
+                        )
                         reset_time = int(e.response.headers.get("ratelimit-reset", 10))
                         logger.debug(
                             f"Rate limit reached, {requests_remaining} requests remaining. "
