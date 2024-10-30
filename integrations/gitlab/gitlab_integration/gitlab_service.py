@@ -160,7 +160,7 @@ class GitlabService:
         ]
 
     async def search_files_in_project(
-        self, project: Project, path: str | List[str], search_type: str
+        self, project: Project, path: str | List[str]
     ) -> AsyncIterator[list[dict[str, Any]]]:
         logger.info(
             f"Searching project {project.path_with_namespace} for files with path pattern {path}"
@@ -176,7 +176,7 @@ class GitlabService:
                     project.search,
                     scope="blobs",
                     search=f"filename:{file_pattern}",
-                    search_type=search_type,
+                    search_type="advanced",
                     retry_transient_errors=True,
                 ):
                     logger.info(

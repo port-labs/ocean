@@ -126,9 +126,6 @@ class FilesSelector(BaseModel):
     repos: List[str] = Field(
         description="A list of repositories to search files in", default_factory=list
     )
-    search_type: Literal["zoekt", "advanced", "basic"] = Field(
-        alias="searchType", default="advanced"
-    )
 
 
 class GitLabFilesSelector(Selector):
