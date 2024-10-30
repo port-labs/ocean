@@ -127,6 +127,14 @@ async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield boards
 
 
+@ocean.on_resync(Kind.RELEASE)
+async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for releases in azure_devops_client.generate_releases():
+        logger.info(f"Resyncing {len(releases)} releases")
+        yield releases
+
+
 @ocean.router.post("/webhook")
 async def webhook(request: Request) -> dict[str, Any]:
     body = await request.json()
