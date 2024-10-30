@@ -19,7 +19,6 @@ class ObjectKind(StrEnum):
 
 
 SKIP_WEBHOOK_CREATION = False
-SEMAPHORE_LIMIT = 30
 
 
 def init_terraform_client() -> TerraformClient:
@@ -40,40 +39,38 @@ def init_terraform_client() -> TerraformClient:
 async def enrich_state_versions_with_output_data(
     http_client: TerraformClient, state_versions: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
-        tasks = [
-            http_client.get_state_version_output(state_version["id"])
-            for state_version in state_versions
-        ]
+    tasks = [
+        http_client.get_state_version_output(state_version["id"])
+        for state_version in state_versions
+    ]
 
-        output_batches = []
-        for completed_task in asyncio.as_completed(tasks):
-            output = await completed_task
-            output_batches.append(output)
+    output_batches = []
+    for completed_task in asyncio.as_completed(tasks):
+        output = await completed_task
+        output_batches.append(output)
 
-        enriched_state_versions = [
-            {**state_version, "__output": output}
-            for state_version, output in zip(state_versions, output_batches)
-        ]
+    enriched_state_versions = [
+        {**state_version, "__output": output}
+        for state_version, output in zip(state_versions, output_batches)
+    ]
 
-        return enriched_state_versions
+    return enriched_state_versions
 
 
 async def enrich_workspaces_with_tags(
     http_client: TerraformClient, workspaces: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
     async def get_tags_for_workspace(workspace: dict[str, Any]) -> dict[str, Any]:
-        async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
-            try:
-                tags = []
-                async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
-                    tags.extend(tag_batch)
-                return {**workspace, "__tags": tags}
-            except Exception as e:
-                logger.warning(
-                    f"Failed to fetch tags for workspace {workspace['id']}: {e}"
-                )
-                return {**workspace, "__tags": []}
+        try:
+            tags = []
+            async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
+                tags.extend(tag_batch)
+            return {**workspace, "__tags": tags}
+        except Exception as e:
+            logger.warning(
+                f"Failed to fetch tags for workspace {workspace['id']}: {e}"
+            )
+            return {**workspace, "__tags": []}
 
     tasks = [get_tags_for_workspace(workspace) for workspace in workspaces]
     enriched_workspaces = [await task for task in asyncio.as_completed(tasks)]
@@ -84,15 +81,14 @@ async def enrich_workspaces_with_tags(
 async def enrich_workspace_with_tags(
     http_client: TerraformClient, workspace: dict[str, Any]
 ) -> dict[str, Any]:
-    async with asyncio.BoundedSemaphore(SEMAPHORE_LIMIT):
-        try:
-            tags = []
-            async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
-                tags.extend(tag_batch)
-            return {**workspace, "__tags": tags}
-        except Exception as e:
-            logger.warning(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
-            return {**workspace, "__tags": []}
+    try:
+        tags = []
+        async for tag_batch in http_client.get_workspace_tags(workspace["id"]):
+            tags.extend(tag_batch)
+        return {**workspace, "__tags": tags}
+    except Exception as e:
+        logger.warning(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
+        return {**workspace, "__tags": []}
 
 
 @ocean.on_resync(ObjectKind.ORGANIZATION)

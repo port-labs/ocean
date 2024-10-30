@@ -3,6 +3,9 @@ from port_ocean.utils import http_async_client
 import httpx
 from loguru import logger
 from enum import StrEnum
+from aiolimiter import AsyncLimiter
+import time
+import asyncio
 
 from port_ocean.context.event import event
 
@@ -22,6 +25,9 @@ class CacheKeys(StrEnum):
 
 PAGE_SIZE = 100
 
+# Terraform's rate limit is 30 requests per second
+RATE_LIMIT = 30
+
 
 class TerraformClient:
     def __init__(self, terraform_base_url: str, auth_token: str) -> None:
@@ -33,6 +39,11 @@ class TerraformClient:
         self.api_url = f"{self.terraform_base_url}/api/v2"
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
+        
+        # Initialize rate limiter for 30 requests per second
+        self.rate_limiter = AsyncLimiter(30, 1)  # 30 requests per 1 second
+        self._remaining = RATE_LIMIT
+        self._reset_time = None
 
     async def send_api_request(
         self,
@@ -41,32 +52,54 @@ class TerraformClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        logger.info(f"Requesting Terraform Cloud data for endpoint: {endpoint}")
-        try:
-            url = f"{self.api_url}/{endpoint}"
-            logger.info(
-                f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
-            )
-            response = await self.client.request(
-                method=method,
-                url=url,
-                params=query_params,
-                json=json_data,
-            )
-            response.raise_for_status()
+        async with self.rate_limiter:
+            try:
+                url = f"{self.api_url}/{endpoint}"
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=query_params,
+                    json=json_data,
+                )
 
-            logger.info(f"Successfully retrieved data for endpoint: {endpoint}")
+                # Update rate limit info from headers
+                self._remaining = int(response.headers.get('x-ratelimit-remaining', RATE_LIMIT))
+                reset_in = float(response.headers.get('x-ratelimit-reset', 1))  # Default to 1 second
+                self._reset_time = time.time() + reset_in
+                
+                logger.info(
+                    f"Rate limit info - "
+                    f"Limit: {response.headers.get('x-ratelimit-limit', RATE_LIMIT)}, "
+                    f"Remaining: {self._remaining}, "
+                    f"Reset: {reset_in}"
+                )
 
-            return response.json()
+                if response.status_code == 429:
+                    logger.warning(
+                        f"Rate limited on {endpoint}. "
+                        f"Headers: {dict(response.headers)}. "
+                        f"Waiting {reset_in} seconds"
+                    )
+                    await asyncio.sleep(reset_in)
+                    return await self.send_api_request(endpoint, method, query_params, json_data)
 
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"HTTP error on {endpoint}: {e.response.status_code} - {e.response.text}"
-            )
-            raise
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error on {endpoint}: {str(e)}")
-            raise
+                response.raise_for_status()
+                return response.json()
+
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    reset_in = float(e.response.headers.get('x-ratelimit-reset', 1))
+                    logger.warning(
+                        f"Rate limited on {endpoint}. "
+                        f"Headers: {dict(e.response.headers)}. "
+                        f"Waiting {reset_in} seconds"
+                    )
+                    await asyncio.sleep(reset_in)
+                    return await self.send_api_request(endpoint, method, query_params, json_data)
+                logger.error(
+                    f"HTTP error on {endpoint}: {e.response.status_code} - {e.response.text}"
+                )
+                raise
 
     async def get_paginated_resources(
         self, endpoint: str, params: Optional[dict[str, Any]] = None
