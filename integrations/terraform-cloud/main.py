@@ -142,7 +142,7 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async def process_workspaces() -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for workspaces in terraform_client.get_paginated_workspaces():
             logger.info(
-                f"Processing batch of {len(workspaces)} workspaces for {kind}"
+                f"Getting {kind}s for {len(workspaces)} workspaces"
             )
             
             runs_by_workspace = await process_in_queue(
