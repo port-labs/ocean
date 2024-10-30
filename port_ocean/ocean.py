@@ -18,11 +18,8 @@ from port_ocean.context.ocean import (
     ocean,
     initialize_port_ocean_context,
 )
-from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import Runtime
-from port_ocean.log.sensetive import sensitive_log_filter
-from port_ocean.middlewares import request_handler
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
@@ -39,7 +36,7 @@ class Ocean:
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()
-        self.fast_api_app.middleware("http")(request_handler)
+        # self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(
             # type: ignore
@@ -48,10 +45,10 @@ class Ocean:
         )
 
         # add the integration sensitive configuration to the sensitive patterns to mask out
-        sensitive_log_filter.hide_sensitive_strings(
-            *self.config.get_sensitive_fields_data()
-        )
-        self.integration_router = integration_router or APIRouter()
+        # sensitive_log_filter.hide_sensitive_strings(
+        #     *self.config.get_sensitive_fields_data()
+        # )
+        # self.integration_router = integration_router or APIRouter()
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
@@ -65,9 +62,9 @@ class Ocean:
             integration_class(ocean) if integration_class else BaseIntegration(ocean)
         )
 
-        self.resync_state_updater = ResyncStateUpdater(
-            self.port_client, self.config.scheduled_resync_interval
-        )
+        # self.resync_state_updater = ResyncStateUpdater(
+        #     self.port_client, self.config.scheduled_resync_interval
+        # )
 
     def is_saas(self) -> bool:
         return self.config.runtime == Runtime.Saas
@@ -112,7 +109,7 @@ class Ocean:
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        self.fast_api_app.include_router(self.integration_router, prefix="/integration")
+        # self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
