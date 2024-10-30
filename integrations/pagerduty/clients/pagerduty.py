@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, Optional
 
 import httpx
 from loguru import logger
@@ -24,10 +24,6 @@ class PagerDutyClient:
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_param["headers"])
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-        self._rate_limiter = RateLimiter(
-            max_retries=MAX_RETRY_COUNT,
-            safe_minimum=SAFE_MINIMUM_FOR_RATE_LIMITS,
-        )
 
     @property
     def incident_upsert_events(self) -> list[str]:
@@ -78,8 +74,12 @@ class PagerDutyClient:
         }
 
     async def _handle_rate_limiting(self, response: httpx.Response) -> None:
-        if response.status_code == 429:
-            await self._rate_limiter.handle_rate_limiting(response)
+        requests_remaining = int(response.headers["ratelimit-remaining"])
+        reset_time = int(response.headers["ratelimit-reset"])
+        logger.info(f"Remaining {requests_remaining} requests, reset time {reset_time}")
+
+        if requests_remaining < SAFE_MINIMUM_FOR_RATE_LIMITS:
+            await asyncio.sleep(reset_time)
 
     async def paginate_request_to_pager_duty(
         self, data_key: str, params: dict[str, Any] | None = None
@@ -246,7 +246,6 @@ class PagerDutyClient:
         self, service_id: str, months_period: int = 6
     ) -> Dict[str, Any]:
         logger.info(f"Fetching analytics for service: {service_id}")
-        url = f"{self.api_url}/analytics/metrics/incidents/services"
         date_ranges = get_date_range_for_last_n_months(months_period)
 
         body = {
@@ -257,31 +256,59 @@ class PagerDutyClient:
             }
         }
 
-        return await self._rate_limiter.call_with_rate_limiting(
-            self._send_service_analytics_request,
-            url,
-            body,
-        )
-
-    async def _send_service_analytics_request(
-        self, url: str, body: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        async with self._semaphore:
-            response = await self.http_client.post(url, json=body)
-
-        response.raise_for_status()
-
-        data = response.json().get("data", [])
-        if not data:
-            logger.info(
-                f"No analytics data found for service: {body['filters']['service_ids'][0]}"
+        try:
+            data = await self.send_api_request(
+                "analytics/metrics/incidents/services",
+                method="POST",
+                json_data=body
             )
-            return {}
+            logger.info(f"Successfully fetched analytics for service: {service_id}")
+            return data
+        except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+            logger.error(f"Error fetching analytics for service {service_id}: {e}")
+            raise
 
-        logger.info(
-            f"Successfully fetched analytics for service: {body['filters']['service_ids'][0]}"
+    async def send_api_request(
+        self,
+        endpoint: str,
+        method: str = "GET",
+        query_params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
+        logger.debug(
+            f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
-        return data[0]
+        
+        async with self._semaphore:
+            while True:
+                try:
+                    response = await self.http_client.request(
+                        method=method,
+                        url=f"{self.api_url}/{endpoint}",
+                        params=query_params,
+                        json=json_data,
+                    )
+                    response.raise_for_status()
+                    return response.json()
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code == 404:
+                        logger.debug(f"Resource not found at {endpoint}")
+                        return {}
+                    elif e.response.status_code == 429:
+                        requests_remaining = int(e.response.headers.get("ratelimit-remaining", 0))
+                        reset_time = int(e.response.headers.get("ratelimit-reset", 10))
+                        logger.debug(
+                            f"Rate limit reached, {requests_remaining} requests remaining. "
+                            f"Resetting in {reset_time} seconds."
+                        )
+                        await asyncio.sleep(reset_time)
+                        continue
+                    else:
+                        logger.error(f"HTTP error: {e}")
+                        raise
+                except httpx.HTTPError as e:
+                    logger.error(f"HTTP error occurred: {e}")
+                    raise
 
     async def fetch_and_cache_users(self) -> None:
         async for users in self.paginate_request_to_pager_duty(data_key=USER_KEY):
