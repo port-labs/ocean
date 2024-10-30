@@ -335,7 +335,11 @@ class SonarQubeClient:
         """
         component_issues = []
         component_key = component.get("key")
-        query_params = {"component": component_key}
+
+        if self.is_onpremise:
+            query_params = {"components": component_key}
+        else:
+            query_params = {"componentKeys": component_key}
 
         if api_query_params:
             query_params.update(api_query_params)
