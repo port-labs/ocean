@@ -38,8 +38,7 @@ class Endpoints:
     WEBHOOKS = "webhooks"
     MEASURES = "measures/component"
     BRANCHES = "project_branches/list"
-    ONPREM_ISSUES = "issues/list"
-    SAAS_ISSUES = "issues/search"
+    ISSUES_SEARCH = "issues/search"
     ANALYSIS = "activity_feed/list"
     PORTFOLIO_DETAILS = "views/show"
     PORTFOLIOS = "views/list"
@@ -160,7 +159,7 @@ class SonarQubeClient:
             if (
                 e.response.status_code == 400
                 and query_params.get("ps", 0) > PAGE_SIZE
-                and endpoint in [Endpoints.ONPREM_ISSUES, Endpoints.SAAS_ISSUES]
+                and endpoint == Endpoints.ISSUES_SEARCH
             ):
                 logger.error(
                     "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Consider using apiFilters in the config mapping to narrow the scope of your search. Returning accumulated issues and skipping further results."
@@ -336,20 +335,17 @@ class SonarQubeClient:
         """
         component_issues = []
         component_key = component.get("key")
-        endpoint_path = ""
 
         if self.is_onpremise:
-            query_params = {"project": component_key}
-            endpoint_path = Endpoints.ONPREM_ISSUES
+            query_params = {"components": component_key}
         else:
             query_params = {"componentKeys": component_key}
-            endpoint_path = Endpoints.SAAS_ISSUES
 
         if api_query_params:
             query_params.update(api_query_params)
 
         response = await self.send_paginated_api_request(
-            endpoint=endpoint_path,
+            endpoint=Endpoints.ISSUES_SEARCH,
             data_key="issues",
             query_params=query_params,
         )
