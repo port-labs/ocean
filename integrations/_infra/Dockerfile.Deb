@@ -24,6 +24,13 @@ ARG BUILD_CONTEXT
 
 ENV LIBRDKAFKA_VERSION=1.9.2
 
+RUN apt-get update \
+    && apt-get install -y \
+        ca-certificates \
+        openssl \
+        curl \
+    && apt-get clean
+
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
 # Used to ensure that new integrations will be public, see https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility
 LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean
