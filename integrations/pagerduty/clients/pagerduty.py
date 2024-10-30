@@ -11,7 +11,7 @@ from .utils import get_date_range_for_last_n_months
 
 USER_KEY = "users"
 
-MAX_CONCURRENT_REQUESTS = 1
+MAX_CONCURRENT_REQUESTS = 10
 SAFE_MINIMUM_FOR_RATE_LIMITS = 3
 MAX_RETRY_COUNT = 5
 
@@ -258,12 +258,12 @@ class PagerDutyClient:
         }
 
         return await self._rate_limiter.call_with_rate_limiting(
-            self._handle_service_analytics_request,
+            self._send_service_analytics_request,
             url,
             body,
         )
 
-    async def _handle_service_analytics_request(
+    async def _send_service_analytics_request(
         self, url: str, body: Dict[str, Any]
     ) -> Dict[str, Any]:
         async with self._semaphore:
