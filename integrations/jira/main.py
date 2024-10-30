@@ -61,21 +61,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    # client = JiraClient(
-    #     ocean.integration_config["jira_host"],
-    #     ocean.integration_config["atlassian_user_email"],
-    #     ocean.integration_config["atlassian_user_token"],
-    # )
-    # logger.info(f'Received webhook event of type: {data.get("webhookEvent")}')
-    # if "project" in data:
-    #     logger.info(f'Received webhook event for project: {data["project"]["key"]}')
-    #     project = await client.get_single_project(data["project"]["key"])
-    #     await ocean.register_raw(ObjectKind.PROJECT, [project])
-    # elif "issue" in data:
-    #     logger.info(f'Received webhook event for issue: {data["issue"]["key"]}')
-    #     issue = await client.get_single_issue(data["issue"]["key"])
-    #     await ocean.register_raw(ObjectKind.ISSUE, [issue])
-    # logger.info("Webhook event processed")
     return {"ok": True}
 
 
