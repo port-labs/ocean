@@ -75,7 +75,6 @@ class PagerDutyClient:
     async def paginate_request_to_pager_duty(
         self, data_key: str, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        url = f"{self.api_url}/{data_key}"
         offset = 0
         has_more_data = True
 
