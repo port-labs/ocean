@@ -46,7 +46,6 @@ class Endpoints:
 
 PAGE_SIZE = 100
 
-
 PORTFOLIO_VIEW_QUALIFIERS = ["VW", "SVW"]
 
 
