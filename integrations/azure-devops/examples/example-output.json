@@ -17,5 +17,30 @@
     "relations": {
       "project": "6f84ea1f-e939-477f-8992-4145cb37ed35"
     }
+  },
+  {
+    "identifier": "18",
+    "title": "Release-18",
+    "blueprint": "release",
+    "properties": {
+      "status": "abandoned",
+      "reason": "manual",
+      "createdDate": "2017-06-16T01:36:20.397Z",
+      "modifiedDate": "2017-06-16T01:36:21.07Z",
+      "createdBy": "Chuck Reinhart",
+      "modifiedBy": "Chuck Reinhart",
+      "definitionName": "MyShuttle.CD",
+      "description": "Creating Sample release",
+      "releaseNameFormat": "Release-$(rev:r)",
+      "keepForever": false,
+      "logsContainerUrl": "https://vsrm.dev.azure.com/fabrikam/1b6aba50-6176-4df2-a8e3-f0394ec0b0a2/_apis/Release/releases/18/logs",
+      "definitionSnapshotRevision": 1,
+      "variables": {},
+      "tags": [],
+      "link": "https://dev.azure.com/fabrikam/1b6aba50-6176-4df2-a8e3-f0394ec0b0a2/_release?releaseId=18&_a=release-summary"
+    },
+    "relations": {
+      "project": "1b6aba50-6176-4df2-a8e3-f0394ec0b0a2"
+    }
   }
 ]
