@@ -26,7 +26,8 @@ class CacheKeys(StrEnum):
 PAGE_SIZE = 100
 
 # Terraform's rate limit is 30 requests per second
-RATE_LIMIT = 30
+# We're using a buffer of 5 requests to account for any variability in request times
+TERRAFORM_RATE_LIMIT = 25
 
 
 class TerraformClient:
@@ -40,9 +41,8 @@ class TerraformClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
         
-        # Initialize rate limiter for 30 requests per second
-        self.rate_limiter = AsyncLimiter(30, 1)  # 30 requests per 1 second
-        self._remaining = RATE_LIMIT
+        self.rate_limiter = AsyncLimiter(TERRAFORM_RATE_LIMIT, 1)
+        self._remaining = TERRAFORM_RATE_LIMIT
         self._reset_time = None
 
     async def send_api_request(
@@ -62,14 +62,13 @@ class TerraformClient:
                     json=json_data,
                 )
 
-                # Update rate limit info from headers
-                self._remaining = int(response.headers.get('x-ratelimit-remaining', RATE_LIMIT))
+                self._remaining = int(response.headers.get('x-ratelimit-remaining', TERRAFORM_RATE_LIMIT))
                 reset_in = float(response.headers.get('x-ratelimit-reset', 1))  # Default to 1 second
                 self._reset_time = time.time() + reset_in
                 
                 logger.info(
                     f"Rate limit info - "
-                    f"Limit: {response.headers.get('x-ratelimit-limit', RATE_LIMIT)}, "
+                    f"Limit: {response.headers.get('x-ratelimit-limit', TERRAFORM_RATE_LIMIT)}, "
                     f"Remaining: {self._remaining}, "
                     f"Reset: {reset_in}"
                 )
