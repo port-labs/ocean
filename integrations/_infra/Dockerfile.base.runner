@@ -9,5 +9,5 @@ ENV LIBRDKAFKA_VERSION=1.9.2
 ENV PIP_ROOT_USER_ACTION=ignore
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends librdkafka-dev python3 \
+    && apt-get install -y --no-install-recommends librdkafka-dev python3 ca-certificates openssl curl  \
     && apt-get clean
