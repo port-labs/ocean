@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.12.2-dev18"
+version = "0.12.2-dev19"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -40,8 +40,8 @@ pydantic = { version = "^1.10.8", extras = ["dotenv"] }
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=2.3.4,<4.0.0"
-fastapi = ">=0.100,<0.112"
-uvicorn = ">=0.22,<0.31"
+fastapi = ">=0.100,<0.116"
+uvicorn = ">=0.22,<0.33"
 confluent-kafka = "^2.1.1"
 httpx = ">=0.24.1,<0.28.0"
 jq = "^1.8.0"
