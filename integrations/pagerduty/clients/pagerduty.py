@@ -72,14 +72,6 @@ class PagerDutyClient:
             }
         }
 
-    async def _handle_rate_limiting(self, response: httpx.Response) -> None:
-        requests_remaining = int(response.headers["ratelimit-remaining"])
-        reset_time = int(response.headers["ratelimit-reset"])
-        logger.info(f"Remaining {requests_remaining} requests, reset time {reset_time}")
-
-        if requests_remaining < SAFE_MINIMUM_FOR_RATE_LIMITS:
-            await asyncio.sleep(reset_time)
-
     async def paginate_request_to_pager_duty(
         self, data_key: str, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -89,46 +81,28 @@ class PagerDutyClient:
 
         while has_more_data:
             try:
-                async with self._semaphore:
-                    response = await self.http_client.get(
-                        url, params={"offset": offset, **(params or {})}
-                    )
-                    await self._handle_rate_limiting(response)
-                response.raise_for_status()
-                data = response.json()
+                data = await self.send_api_request(
+                    endpoint=data_key, query_params={"offset": offset, **(params or {})}
+                )
                 yield data[data_key]
 
                 has_more_data = data["more"]
                 if has_more_data:
                     offset += data["limit"]
-            except httpx.HTTPStatusError as e:
-                logger.error(
-                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-                )
-                raise
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP occurred while fetching paginated data: {e}")
+            except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+                logger.error(f"Error fetching paginated data: {e}")
                 raise
 
     async def get_singular_from_pager_duty(
         self, object_type: str, identifier: str
     ) -> dict[str, Any]:
-        url = f"{self.api_url}/{object_type}/{identifier}"
-
         try:
-            async with self._semaphore:
-                response = await self.http_client.get(url)
-                await self._handle_rate_limiting(response)
-            response.raise_for_status()
-            data = response.json()
-            return data
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            data = await self.send_api_request(
+                endpoint=f"{object_type}/{identifier}", method="GET"
             )
-            raise
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP occurred while fetching data: {e}")
+            return data
+        except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+            logger.error(f"Error fetching data: {e}")
             raise
 
     async def create_webhooks_if_not_exists(self) -> None:
@@ -161,18 +135,11 @@ class PagerDutyClient:
         }
 
         try:
-            async with self._semaphore:
-                response = await self.http_client.post(
-                    f"{self.api_url}/webhook_subscriptions", json=body
-                )
-                await self._handle_rate_limiting(response)
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            await self.send_api_request(
+                endpoint="webhook_subscriptions", method="POST", json_data=body
             )
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP occurred while creating webhook subscription {e}")
-            raise
+        except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+            logger.error(f"Error creating webhook subscription: {e}")
 
     async def get_oncall_user(
         self, *escalation_policy_ids: str
@@ -217,29 +184,21 @@ class PagerDutyClient:
 
     async def get_incident_analytics(self, incident_id: str) -> dict[str, Any]:
         logger.info(f"Fetching analytics for incident: {incident_id}")
-        url = f"{self.api_url}/analytics/raw/incidents/{incident_id}"
 
         try:
-            async with self._semaphore:
-                response = await self.http_client.get(url)
-                await self._handle_rate_limiting(response)
-            response.raise_for_status()
-            data = response.json()
+            data = await self.send_api_request(
+                endpoint=f"analytics/raw/incidents/{incident_id}", method="GET"
+            )
             return data
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
+        except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+            if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 404:
                 logger.debug(
                     f"Incident {incident_id} analytics data was not found, skipping..."
                 )
                 return {}
-
-            logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-            )
-            return {}
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP occurred while fetching incident analytics data: {e}")
-            return {}
+            else:
+                logger.error(f"Error fetching incident analytics data: {e}")
+                return {}
 
     async def get_service_analytics(
         self, service_id: str, months_period: int = 3
