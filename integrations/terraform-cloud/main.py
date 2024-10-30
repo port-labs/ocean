@@ -8,6 +8,7 @@ from loguru import logger
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
+from port_ocean.utils.queue_utils import process_in_queue
 
 
 class ObjectKind(StrEnum):
@@ -19,6 +20,9 @@ class ObjectKind(StrEnum):
 
 
 SKIP_WEBHOOK_CREATION = False
+
+# Constants for rate limiting
+MAX_CONCURRENCY = 25  # Keep slightly under the 30/sec limit to allow for overhead
 
 
 def init_terraform_client() -> TerraformClient:
@@ -39,22 +43,24 @@ def init_terraform_client() -> TerraformClient:
 async def enrich_state_versions_with_output_data(
     http_client: TerraformClient, state_versions: List[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    tasks = [
-        http_client.get_state_version_output(state_version["id"])
-        for state_version in state_versions
-    ]
+    async def fetch_output(state_version: dict[str, Any]) -> dict[str, Any]:
+        try:
+            output = await http_client.get_state_version_output(state_version["id"])
+            return {**state_version, "__output": output}
+        except Exception as e:
+            logger.warning(
+                f"Failed to fetch output for state version {state_version['id']}: {e}"
+            )
+            return {**state_version, "__output": {}}
 
-    output_batches = []
-    for completed_task in asyncio.as_completed(tasks):
-        output = await completed_task
-        output_batches.append(output)
-
-    enriched_state_versions = [
-        {**state_version, "__output": output}
-        for state_version, output in zip(state_versions, output_batches)
-    ]
-
-    return enriched_state_versions
+    # We can process many more items concurrently with 30 req/sec limit
+    enriched_versions = await process_in_queue(
+        state_versions,
+        fetch_output,
+        concurrency=MAX_CONCURRENCY
+    )
+    
+    return enriched_versions
 
 
 async def enrich_workspaces_with_tags(
@@ -72,9 +78,12 @@ async def enrich_workspaces_with_tags(
             )
             return {**workspace, "__tags": []}
 
-    tasks = [get_tags_for_workspace(workspace) for workspace in workspaces]
-    enriched_workspaces = [await task for task in asyncio.as_completed(tasks)]
-
+    enriched_workspaces = await process_in_queue(
+        workspaces,
+        get_tags_for_workspace,
+        concurrency=MAX_CONCURRENCY
+    )
+    
     return enriched_workspaces
 
 
@@ -120,31 +129,33 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.RUN)
 async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    BATCH_SIZE = 10
+
     terraform_client = init_terraform_client()
+    
+    async def fetch_runs_for_workspace(workspace: dict[str, Any]) -> List[dict[str, Any]]:
+        all_runs = []
+        async for runs in terraform_client.get_paginated_runs_for_workspace(workspace["id"]):
+            all_runs.extend(runs)
+        return all_runs
 
-    async def fetch_runs_for_workspace(
-        workspace: dict[str, Any]
-    ) -> List[List[Dict[str, Any]]]:
-        return [
-            run
-            async for run in terraform_client.get_paginated_runs_for_workspace(
-                workspace["id"]
-            )
-        ]
-
-    async def fetch_runs_for_all_workspaces() -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async def process_workspaces() -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for workspaces in terraform_client.get_paginated_workspaces():
             logger.info(
-                f"Received {len(workspaces)} batch workspaces... fetching its associated {kind}"
+                f"Processing batch of {len(workspaces)} workspaces for {kind}"
             )
+            
+            runs_by_workspace = await process_in_queue(
+                workspaces,
+                fetch_runs_for_workspace,
+                concurrency=BATCH_SIZE
+            )
+            
+            for workspace_runs in runs_by_workspace:
+                if workspace_runs:
+                    yield workspace_runs
 
-            tasks = [fetch_runs_for_workspace(workspace) for workspace in workspaces]
-            for completed_task in asyncio.as_completed(tasks):
-                workspace_runs = await completed_task
-                for runs in workspace_runs:
-                    yield runs
-
-    async for run_batch in fetch_runs_for_all_workspaces():
+    async for run_batch in process_workspaces():
         yield run_batch
 
 
