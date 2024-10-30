@@ -11,8 +11,6 @@ from .utils import get_date_range_for_last_n_months
 USER_KEY = "users"
 
 MAX_CONCURRENT_REQUESTS = 10
-SAFE_MINIMUM_FOR_RATE_LIMITS = 3
-MAX_RETRY_COUNT = 5
 
 
 class PagerDutyClient:
