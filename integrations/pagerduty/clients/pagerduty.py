@@ -5,7 +5,6 @@ import httpx
 from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
-from helpers.rate_limiter import RateLimiter
 
 from .utils import get_date_range_for_last_n_months
 
