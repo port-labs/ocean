@@ -39,7 +39,7 @@ class Ocean:
     ):
         initialize_port_ocean_context(self)
         self.fast_api_app = app or FastAPI()
-        self.fast_api_app.middleware("http")(request_handler)
+        # self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(
             # type: ignore
