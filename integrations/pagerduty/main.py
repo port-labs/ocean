@@ -17,8 +17,6 @@ from integration import (
     PagerdutyServiceResourceConfig,
 )
 
-ANALYTICS_BATCH_SIZE = 9
-
 
 def initialize_client() -> PagerDutyClient:
     return PagerDutyClient(
@@ -31,25 +29,17 @@ def initialize_client() -> PagerDutyClient:
 async def enrich_service_with_analytics_data(
     client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
 ) -> list[dict[str, Any]]:
-    enriched_services = []
+    async def fetch_service_analytics(service):
+        try:
+            analytics = await client.get_service_analytics(service["id"], months_period)
+            return {**service, "__analytics": analytics}
+        except Exception as e:
+            logger.error(f"Failed to fetch analytics for service {service['id']}: {e}")
+            return {**service, "__analytics": None}
 
-    for i in range(0, len(services), ANALYTICS_BATCH_SIZE):
-        batch = services[i : i + ANALYTICS_BATCH_SIZE]
-        analytics_data = await asyncio.gather(
-            *[
-                client.get_service_analytics(service["id"], months_period)
-                for service in batch
-            ]
-        )
-
-        enriched_services.extend(
-            [
-                {**service, "__analytics": analytics}
-                for service, analytics in zip(batch, analytics_data)
-            ]
-        )
-
-    return enriched_services
+    return await asyncio.gather(
+        *[fetch_service_analytics(service) for service in services]
+    )
 
 
 async def enrich_incidents_with_analytics_data(
