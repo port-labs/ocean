@@ -12,7 +12,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Resolved unexpected deletion of file kind entities by explicitly declaring the file search in projects to use the advanced search type.
+- Explicitly declaring the file search in projects to use the advanced search type, in cases where the default search in gitlab changes.
+- Enhanced more verbosity on file kind
 
 
 0.1.134 (2024-10-23)
