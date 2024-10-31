@@ -1,6 +1,5 @@
 from typing import Callable, TYPE_CHECKING, Any, Literal, Union
 
-from fastapi import APIRouter
 from pydantic.main import BaseModel
 from werkzeug.local import LocalProxy
 
@@ -43,10 +42,6 @@ class PortOceanContext:
     @property
     def config(self) -> "IntegrationConfiguration":
         return self.app.config
-
-    @property
-    def router(self) -> APIRouter:
-        return self.app.integration_router
 
     @property
     def integration(self) -> "BaseIntegration":

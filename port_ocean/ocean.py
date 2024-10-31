@@ -1,12 +1,13 @@
 import asyncio
 import sys
 import threading
-from contextlib import asynccontextmanager
-from typing import Callable, Any, Dict, AsyncIterator, Type
+from typing import Callable, Any, Dict, Type
 
-from fastapi import FastAPI, APIRouter
 from loguru import logger
 from pydantic import BaseModel
+from starlette.middleware import Middleware
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
@@ -22,25 +23,28 @@ from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.core.models import Runtime
 from port_ocean.log.sensetive import sensitive_log_filter
-from port_ocean.middlewares import request_handler
+from port_ocean.middlewares import RequestHandlerMiddleware
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
+import contextlib
+
+from starlette.applications import Starlette
 
 
 class Ocean:
     def __init__(
         self,
-        app: FastAPI | None = None,
+        app: Starlette | None = None,
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
-        integration_router: APIRouter | None = None,
+        integration_router: None = None,
         config_factory: Type[BaseModel] | None = None,
         config_override: Dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
 
-        @asynccontextmanager
-        async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
+        @contextlib.asynccontextmanager
+        async def lifespan(app):
             try:
                 await self.integration.start()
                 await self._setup_scheduled_resync()
@@ -51,9 +55,14 @@ class Ocean:
             finally:
                 signal_handler.exit()
 
-        self.fast_api_app = app or FastAPI(lifespan=lifecycle)
+        async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+            return JSONResponse({"ok": True})
 
-        # self.fast_api_app.middleware("http")(request_handler)
+        self.starlette_app = Starlette(
+            routes=[Route("/integration/webhook", endpoint=handle_webhook_request)],
+            middleware=[Middleware(RequestHandlerMiddleware)],
+            lifespan=lifespan,
+        )
 
         self.config = IntegrationConfiguration(
             # type: ignore
@@ -65,13 +74,6 @@ class Ocean:
         sensitive_log_filter.hide_sensitive_strings(
             *self.config.get_sensitive_fields_data()
         )
-        self.integration_router = integration_router or APIRouter()
-
-        @self.integration_router.post("/webhook")
-        async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-            return {"ok": True}
-
-        self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
@@ -132,4 +134,4 @@ class Ocean:
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        await self.fast_api_app(scope, receive, send)
+        await self.starlette_app(scope, receive, send)
