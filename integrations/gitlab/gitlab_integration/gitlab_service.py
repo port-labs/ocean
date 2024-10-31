@@ -727,7 +727,7 @@ class GitlabService:
             return json.loads(file.decode())
         except json.JSONDecodeError:
             try:
-                logger.info(
+                logger.debug(
                     f"Trying to process file {file.file_path} in project {project.path_with_namespace} as YAML"
                 )
                 documents = list(yaml.load_all(file.decode(), Loader=yaml.SafeLoader))
