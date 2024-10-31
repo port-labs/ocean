@@ -256,7 +256,5 @@ async def resync_cloudcontrol(
                         f"Skipping resyncing {kind} resource with id {instance.get('Identifier')} in region {region} in account {account_id} because it doesn't exist"
                     )
                 else:
-                    logger.error(
-                        f"An error occured while resyncing {kind} in region {region}, {e}"
-                    )
+                    logger.error(f"Error resyncing {kind} in region {region}, {e}")
                     raise e
