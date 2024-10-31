@@ -1,5 +1,6 @@
 import json
 import typing
+from typing import List
 
 from fastapi import Response, status
 import fastapi
@@ -28,6 +29,8 @@ from utils.aws import (
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.context.event import event
+from utils.overrides import AWSResourceConfig
 from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
@@ -298,8 +301,17 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
         with logger.contextualize(
             account_id=account_id, resource_type=resource_type, identifier=identifier
         ):
+            aws_resource_config = typing.cast(
+                List[AWSResourceConfig], event.port_app_config.resources
+            )
+            if not isinstance(aws_resource_config, AWSResourceConfig):
+                logger.info("No resources configured in the port app config")
+                return fastapi.Response(status_code=status.HTTP_200_OK)
+
             allowed_configs, disallowed_configs = (
-                get_matching_kinds_and_blueprints_from_config(resource_type, region)
+                get_matching_kinds_and_blueprints_from_config(
+                    resource_type, region, aws_resource_config
+                )
             )
 
             if disallowed_configs:
@@ -339,8 +351,11 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                         f"Cannot sync {resource_type} in region {region} in account {account_id} due to server error {e}"
                     )
                     return fastapi.Response(status_code=status.HTTP_200_OK)
-                else:
-                    logger.exception("Failed to describe resource")
+
+                logger.error(
+                    f"Failed to retrieve '{resource_type}' resource with ID '{identifier}' in region '{region}' for account '{account_id}'. "
+                    f"Verify that the resource exists and that the necessary permissions are granted."
+                )
 
                 resource = None
 
