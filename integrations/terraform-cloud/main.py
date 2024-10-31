@@ -14,6 +14,7 @@ from port_ocean.utils.async_iterators import (
     semaphore_async_iterator,
 )
 
+
 class ObjectKind(StrEnum):
     WORKSPACE = "workspace"
     RUN = "run"
@@ -128,22 +129,26 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
 
-    async def fetch_runs_for_workspace(workspace_id: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for runs in terraform_client.get_paginated_runs_for_workspace(workspace_id):
+    async def fetch_runs_for_workspace(
+        workspace_id: str,
+    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        async for runs in terraform_client.get_paginated_runs_for_workspace(
+            workspace_id
+        ):
             yield runs
 
     async def process_workspaces() -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for workspaces in terraform_client.get_paginated_workspaces():
             logger.info(f"Getting {kind}s for {len(workspaces)} workspaces")
-            
+
             tasks = [
                 semaphore_async_iterator(
                     semaphore,
-                    functools.partial(fetch_runs_for_workspace, workspace["id"])
+                    functools.partial(fetch_runs_for_workspace, workspace["id"]),
                 )
                 for workspace in workspaces
             ]
-            
+
             if tasks:
                 async for run_batch in stream_async_iterators_tasks(*tasks):
                     yield run_batch
