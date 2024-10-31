@@ -1,14 +1,41 @@
-from typing import Any, AsyncGenerator, Optional
-from port_ocean.utils import http_async_client
-import httpx
-from loguru import logger
-from enum import StrEnum
-from aiolimiter import AsyncLimiter
-import time
+"""
+Terraform Cloud API Client with dual rate limiting strategy:
+
+1. Token Bucket (self.burst_limiter):
+   - Handles burst capacity for concurrent operations
+   - Allows short bursts above base rate limit
+   - Essential for concurrent workspace operations (tags, runs, state versions)
+   - First line of defense against rate limits
+
+2. AsyncLimiter (self.rate_limiter):
+   - Time-based rate limiting
+   - Ensures steady-state request rate
+   - Maintains long-term compliance with API limits
+   - Second layer of protection
+
+This dual approach is necessary because:
+- Workspace operations can trigger multiple concurrent requests
+- Some operations (like fetching runs) require pagination
+- Need to handle both burst capacity and steady-state rate
+- Terraform's API has both rate (30 req/sec) and concurrency constraints
+# https://developer.hashicorp.com/terraform/enterprise/application-administration/general#api-rate-limiting
+"""
+
 import asyncio
+import time
+import httpx
+
+from enum import StrEnum
+from typing import Any, AsyncGenerator, Optional
+from aiolimiter import AsyncLimiter
+from loguru import logger
 
 from port_ocean.context.event import event
+from port_ocean.utils import http_async_client
 
+from rate_limiting import TokenBucket
+
+# Constants
 TERRAFORM_WEBHOOK_EVENTS = [
     "run:applying",
     "run:completed",
@@ -24,10 +51,7 @@ class CacheKeys(StrEnum):
 
 
 PAGE_SIZE = 100
-
-# Terraform's rate limit is 30 requests per second
-# We're using a buffer of 5 requests to account for any variability in request times
-TERRAFORM_RATE_LIMIT = 25
+TERRAFORM_RATE_LIMIT = 25  # Buffer below 30/sec limit
 
 
 class TerraformClient:
@@ -40,10 +64,14 @@ class TerraformClient:
         self.api_url = f"{self.terraform_base_url}/api/v2"
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
-        
+
         self.rate_limiter = AsyncLimiter(TERRAFORM_RATE_LIMIT, 1)
+        self.burst_limiter = TokenBucket.create(
+            rate=25,  # Refill rate (tokens/sec) slightly lower than terraform's 30 reqs/sec limit
+            capacity=50,  # Extra burst capacity for workspace enrichment operations
+        )
         self._remaining = TERRAFORM_RATE_LIMIT
-        self._reset_time = None
+        self._reset_time = time.time()
 
     async def send_api_request(
         self,
@@ -52,6 +80,10 @@ class TerraformClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
+        # First handle burst capacity
+        await self.burst_limiter.acquire()
+
+        # Then handle overall rate limiting
         async with self.rate_limiter:
             try:
                 url = f"{self.api_url}/{endpoint}"
@@ -62,10 +94,14 @@ class TerraformClient:
                     json=json_data,
                 )
 
-                self._remaining = int(response.headers.get('x-ratelimit-remaining', TERRAFORM_RATE_LIMIT))
-                reset_in = float(response.headers.get('x-ratelimit-reset', 1))  # Default to 1 second
+                self._remaining = int(
+                    response.headers.get("x-ratelimit-remaining", TERRAFORM_RATE_LIMIT)
+                )
+                reset_in = float(
+                    response.headers.get("x-ratelimit-reset", 1)
+                )  # Default to 1 second
                 self._reset_time = time.time() + reset_in
-                
+
                 logger.info(
                     f"Rate limit info - "
                     f"Limit: {response.headers.get('x-ratelimit-limit', TERRAFORM_RATE_LIMIT)}, "
@@ -80,21 +116,25 @@ class TerraformClient:
                         f"Waiting {reset_in} seconds"
                     )
                     await asyncio.sleep(reset_in)
-                    return await self.send_api_request(endpoint, method, query_params, json_data)
+                    return await self.send_api_request(
+                        endpoint, method, query_params, json_data
+                    )
 
                 response.raise_for_status()
                 return response.json()
 
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
-                    reset_in = float(e.response.headers.get('x-ratelimit-reset', 1))
+                    reset_in = float(e.response.headers.get("x-ratelimit-reset", 1))
                     logger.warning(
                         f"Rate limited on {endpoint}. "
                         f"Headers: {dict(e.response.headers)}. "
                         f"Waiting {reset_in} seconds"
                     )
                     await asyncio.sleep(reset_in)
-                    return await self.send_api_request(endpoint, method, query_params, json_data)
+                    return await self.send_api_request(
+                        endpoint, method, query_params, json_data
+                    )
                 logger.error(
                     f"HTTP error on {endpoint}: {e.response.status_code} - {e.response.text}"
                 )
