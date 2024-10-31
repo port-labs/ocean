@@ -59,8 +59,11 @@ class Ocean:
             return JSONResponse({"ok": True})
 
         self.starlette_app = Starlette(
-            routes=[Route("/integration/webhook", endpoint=handle_webhook_request)],
-            middleware=[Middleware(RequestHandlerMiddleware)],
+            routes=[
+                Route("/docs", endpoint=handle_webhook_request),
+                Route("/integration/webhook", endpoint=handle_webhook_request),
+            ],
+            # middleware=[Middleware(RequestHandlerMiddleware)],
             lifespan=lifespan,
         )
 
