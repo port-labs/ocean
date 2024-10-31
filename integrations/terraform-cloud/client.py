@@ -1,26 +1,3 @@
-"""
-Terraform Cloud API Client with dual rate limiting strategy:
-
-1. Token Bucket (self.burst_limiter):
-   - Handles burst capacity for concurrent operations
-   - Allows short bursts above base rate limit
-   - Essential for concurrent workspace operations (tags, runs, state versions)
-   - First line of defense against rate limits
-
-2. AsyncLimiter (self.rate_limiter):
-   - Time-based rate limiting
-   - Ensures steady-state request rate
-   - Maintains long-term compliance with API limits
-   - Second layer of protection
-
-This dual approach is necessary because:
-- Workspace operations can trigger multiple concurrent requests
-- Some operations (like fetching runs) require pagination
-- Need to handle both burst capacity and steady-state rate
-- Terraform's API has both rate (30 req/sec) and concurrency constraints
-# https://developer.hashicorp.com/terraform/enterprise/application-administration/general#api-rate-limiting
-"""
-
 import asyncio
 import time
 import httpx
@@ -32,8 +9,6 @@ from loguru import logger
 
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
-
-from rate_limiting import TokenBucket
 
 # Constants
 TERRAFORM_WEBHOOK_EVENTS = [
@@ -66,10 +41,6 @@ class TerraformClient:
         self.client.headers.update(self.base_headers)
 
         self.rate_limiter = AsyncLimiter(TERRAFORM_RATE_LIMIT, 1)
-        self.burst_limiter = TokenBucket.create(
-            rate=25,  # Refill rate (tokens/sec) slightly lower than terraform's 30 reqs/sec limit
-            capacity=50,  # Extra burst capacity for workspace enrichment operations
-        )
         self._remaining = TERRAFORM_RATE_LIMIT
         self._reset_time = time.time()
 
@@ -80,10 +51,6 @@ class TerraformClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        # First handle burst capacity
-        await self.burst_limiter.acquire()
-
-        # Then handle overall rate limiting
         async with self.rate_limiter:
             try:
                 url = f"{self.api_url}/{endpoint}"

@@ -1,14 +1,18 @@
+import asyncio
+import functools
 from asyncio import gather
 from enum import StrEnum
 from typing import Any, List
-
 from loguru import logger
 
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 from port_ocean.utils.queue_utils import process_in_queue
-
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+    semaphore_async_iterator,
+)
 
 class ObjectKind(StrEnum):
     WORKSPACE = "workspace"
@@ -22,6 +26,7 @@ SKIP_WEBHOOK_CREATION = False
 
 # Constants for rate limiting
 MAX_CONCURRENCY = 25  # Keep slightly under the 30/sec limit to allow for overhead
+semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENCY)
 
 
 def init_terraform_client() -> TerraformClient:
@@ -121,34 +126,30 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.RUN)
 async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    BATCH_SIZE = 25
-
     terraform_client = init_terraform_client()
 
-    async def fetch_runs_for_workspace(
-        workspace: dict[str, Any]
-    ) -> List[dict[str, Any]]:
-        all_runs = []
-        async for runs in terraform_client.get_paginated_runs_for_workspace(
-            workspace["id"]
-        ):
-            all_runs.extend(runs)
-        return all_runs
+    async def fetch_runs_for_workspace(workspace_id: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+        async for runs in terraform_client.get_paginated_runs_for_workspace(workspace_id):
+            yield runs
 
     async def process_workspaces() -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for workspaces in terraform_client.get_paginated_workspaces():
             logger.info(f"Getting {kind}s for {len(workspaces)} workspaces")
+            
+            tasks = [
+                semaphore_async_iterator(
+                    semaphore,
+                    functools.partial(fetch_runs_for_workspace, workspace["id"])
+                )
+                for workspace in workspaces
+            ]
+            
+            if tasks:
+                async for run_batch in stream_async_iterators_tasks(*tasks):
+                    yield run_batch
 
-            runs_by_workspace = await process_in_queue(
-                workspaces, fetch_runs_for_workspace, concurrency=BATCH_SIZE
-            )
-
-            for workspace_runs in runs_by_workspace:
-                if workspace_runs:
-                    yield workspace_runs
-
-    async for run_batch in process_workspaces():
-        yield run_batch
+    async for runs in process_workspaces():
+        yield runs
 
 
 @ocean.on_resync(ObjectKind.STATE_VERSION)
