@@ -66,11 +66,12 @@ class Ocean:
             *self.config.get_sensitive_fields_data()
         )
         self.integration_router = integration_router or APIRouter()
-        self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         @self.integration_router.post("/webhook")
         async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
             return {"ok": True}
+
+        self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
