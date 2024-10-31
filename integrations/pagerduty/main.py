@@ -29,7 +29,7 @@ def initialize_client() -> PagerDutyClient:
 async def enrich_service_with_analytics_data(
     client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
 ) -> list[dict[str, Any]]:
-    async def fetch_service_analytics(service):
+    async def fetch_service_analytics(service: dict[str, Any]) -> dict[str, Any]:
         try:
             analytics = await client.get_service_analytics(service["id"], months_period)
             return {**service, "__analytics": analytics}
