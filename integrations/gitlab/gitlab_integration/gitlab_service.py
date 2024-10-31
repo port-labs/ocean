@@ -739,7 +739,7 @@ class GitlabService:
                     return file.decode().decode("utf-8")
                 return documents if len(documents) > 1 else documents[0]
             except yaml.YAMLError:
-                logger.warning(
+                logger.debug(
                     f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as JSON or YAML,"
                     f" returning raw content"
                 )
