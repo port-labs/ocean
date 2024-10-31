@@ -265,5 +265,73 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "release",
+    "title": "Release",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "icon": "DefaultProperty",
+          "description": "The current status of the release"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string",
+          "description": "The reason for the release creation"
+        },
+        "createdDate": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the release was created"
+        },
+        "modifiedDate": {
+          "title": "Modified Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the release was last modified"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who created the release"
+        },
+        "modifiedBy": {
+          "title": "Modified By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who last modified the release"
+        },
+        "definitionName": {
+          "title": "Definition Name",
+          "type": "string",
+          "description": "The name of the release definition"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to the release in Azure DevOps"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "project",
+        "required": true,
+        "many": false
+      }
+    }
   }
 ]

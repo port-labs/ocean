@@ -147,6 +147,21 @@ EXPECTED_SUBSCRIPTION_CREATION_RESPONSE = {
     "eventType": "git.push",
 }
 
+EXPECTED_RELEASES = [
+    {
+        "id": 18,
+        "name": "Release-18",
+        "status": "abandoned",
+        "createdOn": "2017-06-16T01:36:20.397Z",
+        "modifiedOn": "2017-06-16T01:36:21.07Z",
+        "description": "Creating Sample release",
+        "reason": "manual",
+        "releaseNameFormat": "Release-$(rev:r)",
+        "keepForever": False,
+        "projectReference": {"id": "proj1", "name": "Project One"},
+    }
+]
+
 MOCK_FILE_CONTENT = b"file content"
 MOCK_FILE_PATH = "/path/to/file.txt"
 MOCK_REPOSITORY_ID = "repo123"
@@ -445,6 +460,40 @@ async def test_generate_repository_policies() -> None:
 
             # ASSERT
             assert policies == EXPECTED_POLICIES
+
+
+@pytest.mark.asyncio
+async def test_generate_releases(mock_event_context: MagicMock) -> None:
+    client = AzureDevopsClient(MOCK_ORG_URL, MOCK_PERSONAL_ACCESS_TOKEN)
+
+    # MOCK
+    async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
+        yield [{"id": "proj1", "name": "Project One"}]
+
+    async def mock_get_paginated_by_top_and_skip(
+        url: str, **kwargs: Any
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        if "releases" in url:
+            yield EXPECTED_RELEASES
+        else:
+            yield []
+
+    async with event_context("test_event"):
+        with patch.object(
+            client, "generate_projects", side_effect=mock_generate_projects
+        ):
+            with patch.object(
+                client,
+                "_get_paginated_by_top_and_skip",
+                side_effect=mock_get_paginated_by_top_and_skip,
+            ):
+                # ACT
+                releases: List[Dict[str, Any]] = []
+                async for release_batch in client.generate_releases():
+                    releases.extend(release_batch)
+
+                # ASSERT
+                assert releases == EXPECTED_RELEASES
 
 
 @pytest.mark.asyncio
