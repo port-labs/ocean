@@ -52,11 +52,11 @@ def is_server_error(e: Exception) -> bool:
 
 
 def get_matching_kinds_and_blueprints_from_config(
-    kind: str, region: str, resource_config: List[AWSResourceConfig]
+    kind: str, region: str, resource_configs: List[AWSResourceConfig]
 ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
     allowed_kinds: dict[str, list[str]] = {}
     disallowed_kinds: dict[str, list[str]] = {}
-    for resource in resource_config:
+    for resource in resource_configs:
         blueprint = resource.port.entity.mappings.blueprint.strip('"')
         resource_selector = resource.selector
         if not resource_selector.is_region_allowed(region) and kind == resource.kind:

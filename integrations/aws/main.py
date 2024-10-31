@@ -1,6 +1,5 @@
 import json
 import typing
-from typing import List
 
 from fastapi import Response, status
 import fastapi
@@ -30,7 +29,7 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.event import event
-from utils.overrides import AWSResourceConfig
+from utils.overrides import AWSPortAppConfig
 from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
@@ -301,16 +300,14 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
         with logger.contextualize(
             account_id=account_id, resource_type=resource_type, identifier=identifier
         ):
-            aws_resource_config = typing.cast(
-                List[AWSResourceConfig], event.port_app_config.resources
-            )
-            if not isinstance(aws_resource_config, AWSResourceConfig):
+            aws_port_app_config = typing.cast(AWSPortAppConfig, event.port_app_config)
+            if not isinstance(aws_port_app_config, AWSPortAppConfig):
                 logger.info("No resources configured in the port app config")
                 return fastapi.Response(status_code=status.HTTP_200_OK)
 
             allowed_configs, disallowed_configs = (
                 get_matching_kinds_and_blueprints_from_config(
-                    resource_type, region, aws_resource_config
+                    resource_type, region, aws_port_app_config.resources
                 )
             )
 
