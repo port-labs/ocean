@@ -10,6 +10,7 @@ from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
+    is_resource_not_found_exception,
 )
 from utils.aws import get_sessions
 
@@ -250,6 +251,12 @@ async def resync_cloudcontrol(
                     logger.warning(
                         f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
                     )
+                elif is_resource_not_found_exception(e):
+                    logger.warning(
+                        f"Skipping resyncing {kind} resource with id {instance.get('Identifier')} in region {region} in account {account_id} because it doesn't exist"
+                    )
                 else:
-                    logger.warning(f"Error resyncing {kind} in region {region}, {e}")
-                raise e
+                    logger.error(
+                        f"An error occured while resyncing {kind} in region {region}, {e}"
+                    )
+                    raise e

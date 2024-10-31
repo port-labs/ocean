@@ -90,9 +90,6 @@ async def resync_resources_for_account(
                 async for batch in resync_cloudcontrol(kind, session):
                     yield batch
             except Exception as exc:
-                logger.error(
-                    f"Failed to fetch {kind} for {session.region_name} in {credentials.account_id}: {exc}"
-                )
                 regions.append(session.region_name)
                 errors.append(exc)
                 continue

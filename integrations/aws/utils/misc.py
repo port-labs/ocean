@@ -51,6 +51,20 @@ def is_server_error(e: Exception) -> bool:
     return False
 
 
+def is_resource_not_found_exception(e: Exception) -> bool:
+    resource_not_found_error_codes = [
+        "ResourceNotFoundException",
+        "ResourceNotFound",
+        "ResourceNotFoundFault",
+    ]
+
+    if hasattr(e, "response") and e.response is not None:
+        error_code = e.response.get("Error", {}).get("Code")
+        return error_code in resource_not_found_error_codes
+
+    return False
+
+
 def get_matching_kinds_and_blueprints_from_config(
     kind: str, region: str, resource_configs: List[AWSResourceConfig]
 ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:

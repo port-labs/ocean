@@ -1,5 +1,6 @@
 from utils.misc import (
     is_access_denied_exception,
+    is_resource_not_found_exception,
     get_matching_kinds_and_blueprints_from_config,
 )
 from typing import Optional, Dict, Any
@@ -35,6 +36,26 @@ def test_access_denied_exception_with_other_error() -> None:
 def test_access_denied_exception_no_response_attribute() -> None:
     e = Exception("Test exception")
     assert not is_access_denied_exception(e)
+
+
+def test_resource_not_found_exception_with_response() -> None:
+    e = MockException(response={"Error": {"Code": "ResourceNotFoundException"}})
+    assert is_resource_not_found_exception(e)
+
+
+def test_resource_not_found_exception_without_response() -> None:
+    e = MockException(response=None)
+    assert not is_resource_not_found_exception(e)
+
+
+def test_resource_not_found_exception_with_other_error() -> None:
+    e = MockException(response={"Error": {"Code": "SomeOtherError"}})
+    assert not is_resource_not_found_exception(e)
+
+
+def test_resource_not_found_exception_no_response_attribute() -> None:
+    e = Exception("Test exception")
+    assert not is_resource_not_found_exception(e)
 
 
 class TestGetMatchingKindsAndBlueprintsFromConfig(unittest.TestCase):
