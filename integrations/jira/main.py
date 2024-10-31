@@ -59,11 +59,6 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-@ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    return {"ok": True}
-
-
 # Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:

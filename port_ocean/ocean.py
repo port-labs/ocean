@@ -53,6 +53,10 @@ class Ocean:
         )
         self.integration_router = integration_router or APIRouter()
 
+        @self.integration_router.post("/webhook")
+        async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+            return {"ok": True}
+
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
             client_id=self.config.port.client_id,
