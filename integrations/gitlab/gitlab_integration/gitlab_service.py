@@ -732,7 +732,7 @@ class GitlabService:
                 )
                 documents = list(yaml.load_all(file.decode(), Loader=yaml.SafeLoader))
                 if not documents:
-                    logger.info(
+                    logger.debug(
                         f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as YAML,"
                         f" returning raw content"
                     )
