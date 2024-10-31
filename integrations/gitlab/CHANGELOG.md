@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.135 (2024-10-23)
+====================
+
+### Improvements
+
+- Resolved unexpected deletion of file kind entities by explicitly declaring the file search in projects to use the advanced search type.
+
+
 0.1.134 (2024-10-23)
 ====================
 
