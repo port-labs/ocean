@@ -2,6 +2,7 @@ import os
 from typing import Any
 from unittest.mock import AsyncMock
 
+import pytest
 from port_ocean.tests.helpers.ocean_app import (
     get_integation_resource_configs,
     get_integration_ocean_app,
@@ -15,6 +16,7 @@ from .fixtures import ISSUES, PROJECTS
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
 
+@pytest.mark.asyncio
 async def test_full_sync_produces_correct_response_from_api(
     monkeypatch: Any,
 ) -> None:
@@ -51,4 +53,5 @@ async def test_full_sync_produces_correct_response_from_api(
         entities, errors = results
         assert len(errors) == 0
         # the factories have 4 entities each
+        # all in one batch
         assert len(list(entities)) == 1

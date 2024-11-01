@@ -127,7 +127,9 @@ class JiraClient:
     async def get_single_project(self, project: str) -> dict[str, Any]:
         return await self._get_single_item(f"{self.detail_base_url}/project/{project}")
 
-    async def get_single_issue(self, issue: str, fields: dict[str, Any] = {}) -> dict[str, Any]:
+    async def get_single_issue(
+        self, issue: str, fields: dict[str, Any] = {}
+    ) -> dict[str, Any]:
         return await self._get_single_item(f"{self.agile_url}/issue/{issue}")
 
     async def create_events_webhook(self, app_host: str) -> None:
