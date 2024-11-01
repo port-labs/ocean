@@ -1,5 +1,4 @@
 import asyncio
-import time
 import httpx
 
 from enum import StrEnum
@@ -26,7 +25,8 @@ class CacheKeys(StrEnum):
 
 
 PAGE_SIZE = 100
-TERRAFORM_RATE_LIMIT = 25  # Buffer below 30/sec limit
+NO_OF_REQUESTS = 25
+NO_OF_SECONDS = 1
 
 
 class TerraformClient:
@@ -40,9 +40,7 @@ class TerraformClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
 
-        self.rate_limiter = AsyncLimiter(TERRAFORM_RATE_LIMIT, 1)
-        self._remaining = TERRAFORM_RATE_LIMIT
-        self._reset_time = time.time()
+        self.rate_limiter = AsyncLimiter(NO_OF_REQUESTS, NO_OF_SECONDS)
 
     async def send_api_request(
         self,
@@ -61,28 +59,22 @@ class TerraformClient:
                     json=json_data,
                 )
 
-                self._remaining = int(
-                    response.headers.get("x-ratelimit-remaining", TERRAFORM_RATE_LIMIT)
-                )
-                reset_in = float(
-                    response.headers.get("x-ratelimit-reset", 1)
-                )  # Default to 1 second
-                self._reset_time = time.time() + reset_in
-
                 logger.info(
                     f"Rate limit info - "
-                    f"Limit: {response.headers.get('x-ratelimit-limit', TERRAFORM_RATE_LIMIT)}, "
-                    f"Remaining: {self._remaining}, "
-                    f"Reset: {reset_in}"
+                    f"Limit: {response.headers.get('x-ratelimit-limit', NO_OF_REQUESTS)}, "
+                    f"Remaining: {response.headers.get('x-ratelimit-remaining', NO_OF_REQUESTS)}, "
+                    f"Reset: {response.headers.get('x-ratelimit-reset', 1)}"
                 )
 
                 if response.status_code == 429:
                     logger.warning(
                         f"Rate limited on {endpoint}. "
                         f"Headers: {dict(response.headers)}. "
-                        f"Waiting {reset_in} seconds"
+                        f"Waiting {response.headers.get('x-ratelimit-reset', 1)} seconds"
                     )
-                    await asyncio.sleep(reset_in)
+                    await asyncio.sleep(
+                        float(response.headers.get("x-ratelimit-reset", 1))
+                    )
                     return await self.send_api_request(
                         endpoint, method, query_params, json_data
                     )
