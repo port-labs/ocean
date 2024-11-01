@@ -8,33 +8,34 @@ on:
         # This is a bit annoying, there's no real way to display the integrations dynamically in a dropdown for the action dispatcher
         options:
           - all
+          - argocd
           - aws
+          - azure
           - azure-devops
+          - backstage
+          - datadog
           - dynatrace
           - fake-integration
-          - gcp
-          - jenkins
-          - kafka
-          - launchdarkly
-          - newrelic
-          - opencost
-          - pagerduty
-          - servicenow
-          - sonarqube
-          - terraform-cloud
-          - argocd
-          - azure
-          - datadog
           - firehydrant
+          - gcp
           - gitlab
+          - jenkins
           - jira
+          - kafka
           - kubecost
+          - launchdarkly
           - linear
+          - newrelic
           - octopus
+          - opencost
           - opsgenie
+          - pagerduty
           - sentry
+          - servicenow
           - snyk
+          - sonarqube
           - statuspage
+          - terraform-cloud
           - wiz
 
 jobs:
@@ -77,14 +78,6 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Extract version and image tag
         id: enrich-version
         run: |
@@ -97,17 +90,16 @@ jobs:
           echo "identifier=${IDENTIFIER}" >> ${GITHUB_OUTPUT}
           echo "image_tag=${IMAGE_FULL_TAG}" >> ${GITHUB_OUTPUT}
 
-      - name: Build
-        uses: docker/build-push-action@v6
+      - name: Build Docker Image
+        uses: ./.github/workflows/actions/build-docker-image
         with:
-          context: .
-          file: ./integrations/_infra/Dockerfile
+          dockerfile: ./integrations/_infra/Dockerfile
           platforms: linux/amd64
-          push: false
+          skip-push: 'true'
           tags: ${{ steps.enrich-version.outputs.image_tag }}
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          load-created-image: 'true'
+          docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
+          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
           build-args: |
             BUILD_CONTEXT=./integrations/${{ steps.enrich-version.outputs.integration }}
             INTEGRATION_VERSION=${{ steps.enrich-version.outputs.version }}
