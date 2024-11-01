@@ -1,5 +1,3 @@
-import asyncio
-import functools
 from asyncio import gather
 from enum import StrEnum
 from typing import Any, List
@@ -9,10 +7,6 @@ from client import TerraformClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
 from port_ocean.utils.queue_utils import process_in_queue
-from port_ocean.utils.async_iterators import (
-    stream_async_iterators_tasks,
-    semaphore_async_iterator,
-)
 
 
 class ObjectKind(StrEnum):
@@ -24,10 +18,6 @@ class ObjectKind(StrEnum):
 
 
 SKIP_WEBHOOK_CREATION = False
-
-# Constants for rate limiting
-MAX_CONCURRENCY = 25  # Keep slightly under the 30/sec limit to allow for overhead
-semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENCY)
 
 
 def init_terraform_client() -> TerraformClient:
@@ -58,11 +48,10 @@ async def enrich_state_versions_with_output_data(
             )
             return {**state_version, "__output": {}}
 
-    enriched_versions = await process_in_queue(
-        state_versions, fetch_output, concurrency=MAX_CONCURRENCY
+    enriched_versions = await gather(
+        *[fetch_output(state_version) for state_version in state_versions]
     )
-
-    return enriched_versions
+    return list(enriched_versions)
 
 
 async def enrich_workspaces_with_tags(
@@ -78,11 +67,10 @@ async def enrich_workspaces_with_tags(
             logger.warning(f"Failed to fetch tags for workspace {workspace['id']}: {e}")
             return {**workspace, "__tags": []}
 
-    enriched_workspaces = await process_in_queue(
-        workspaces, get_tags_for_workspace, concurrency=MAX_CONCURRENCY
+    enriched_workspaces = await gather(
+        *[get_tags_for_workspace(workspace) for workspace in workspaces]
     )
-
-    return enriched_workspaces
+    return list(enriched_workspaces)
 
 
 async def enrich_workspace_with_tags(
@@ -128,33 +116,36 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.RUN)
 async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
+    CONCURRENCY = 15  # Process 5 workspaces concurrently
 
     async def fetch_runs_for_workspace(
-        workspace_id: str,
-    ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for runs in terraform_client.get_paginated_runs_for_workspace(
-            workspace_id
-        ):
-            yield runs
+        workspace: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        try:
+            all_runs = []
+            async for runs in terraform_client.get_paginated_runs_for_workspace(
+                workspace["id"]
+            ):
+                all_runs.extend(runs)
+            return all_runs
+        except Exception as e:
+            logger.error(
+                f"Error fetching runs for workspace {workspace['id']}: {str(e)}"
+            )
+            return []
 
-    async def process_workspaces() -> ASYNC_GENERATOR_RESYNC_TYPE:
-        async for workspaces in terraform_client.get_paginated_workspaces():
-            logger.info(f"Getting {kind}s for {len(workspaces)} workspaces")
+    async for workspaces in terraform_client.get_paginated_workspaces():
+        logger.info(f"Getting {kind}s for {len(workspaces)} workspaces")
 
-            tasks = [
-                semaphore_async_iterator(
-                    semaphore,
-                    functools.partial(fetch_runs_for_workspace, workspace["id"]),
-                )
-                for workspace in workspaces
-            ]
+        # Use process_in_queue to control concurrency
+        runs_per_workspace = await process_in_queue(
+            workspaces, fetch_runs_for_workspace, concurrency=CONCURRENCY
+        )
 
-            if tasks:
-                async for run_batch in stream_async_iterators_tasks(*tasks):
-                    yield run_batch
-
-    async for runs in process_workspaces():
-        yield runs
+        # Yield non-empty results
+        for runs in runs_per_workspace:
+            if runs:  # Only yield if runs were found
+                yield runs
 
 
 @ocean.on_resync(ObjectKind.STATE_VERSION)
