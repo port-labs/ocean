@@ -9,7 +9,6 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 
-# Constants
 TERRAFORM_WEBHOOK_EVENTS = [
     "run:applying",
     "run:completed",
