@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added the option to query resources from specific regions, configurable via the regionPolicy in the selector field of the mapping.
 - Introduced `maximumConcurrentAccount` parameter to control the maximum number of accounts synced concurrently.
+
+### Bug Fixes
+
 - Skip missing resources in a region without interrupting sync across other regions.
 
 
