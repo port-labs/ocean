@@ -1,3 +1,4 @@
+import asyncio
 import typing
 from typing import Any, AsyncGenerator
 
@@ -33,6 +34,8 @@ WEBHOOK_EVENTS = [
     *DELETE_WEBHOOK_EVENTS,
 ]
 
+MAX_CONCURRENT_REQUESTS = 10
+
 
 class JiraClient:
     def __init__(self, jira_url: str, jira_email: str, jira_token: str) -> None:
@@ -47,6 +50,17 @@ class JiraClient:
         self.client = http_async_client
         self.client.auth = self.jira_api_auth
         self.client.timeout = Timeout(REQUEST_TIMEOUT)
+        self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+        self._held_by_rate_limit = False
+
+    async def handle_rate_limits(self, response: httpx.Response) -> None:
+        if response.status_code == 429:
+            if self._held_by_rate_limit:
+                retry_after = response.headers.get("Retry-After", 5)
+            else:
+                retry_after = response.headers.get("Retry-After", 5)
+            logger.warning("Rate limit reached, waiting for 5 seconds")
+            await asyncio.sleep(retry_after)
 
     @staticmethod
     def _generate_base_req_params(
