@@ -1,6 +1,7 @@
 from typing import Callable, TYPE_CHECKING, Any, Literal, Union
 
 from pydantic.main import BaseModel
+from starlette.routing import Router
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
@@ -42,6 +43,10 @@ class PortOceanContext:
     @property
     def config(self) -> "IntegrationConfiguration":
         return self.app.config
+
+    @property
+    def router(self) -> Router:
+        return self.app.integration_router
 
     @property
     def integration(self) -> "BaseIntegration":

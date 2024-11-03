@@ -1,13 +1,16 @@
 import asyncio
+import contextlib
 import sys
 import threading
-from typing import Callable, Any, Dict, Type
+from typing import Callable, Any, Dict, AsyncIterator, Type
 
+from fastapi import FastAPI, APIRouter
 from loguru import logger
 from pydantic import BaseModel
+from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.responses import JSONResponse
-from starlette.routing import Route
+from starlette.routing import Route, Mount, Router
 from starlette.types import Scope, Receive, Send
 
 from port_ocean.clients.port.client import PortClient
@@ -27,9 +30,6 @@ from port_ocean.middlewares import RequestHandlerMiddleware
 from port_ocean.utils.repeat import repeat_every
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
-import contextlib
-
-from starlette.applications import Starlette
 
 
 class Ocean:
@@ -37,35 +37,14 @@ class Ocean:
         self,
         app: Starlette | None = None,
         integration_class: Callable[[PortOceanContext], BaseIntegration] | None = None,
-        integration_router: None = None,
+        integration_router: Router | None = None,
         config_factory: Type[BaseModel] | None = None,
         config_override: Dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
 
-        @contextlib.asynccontextmanager
-        async def lifespan(app):
-            try:
-                await self.integration.start()
-                await self._setup_scheduled_resync()
-                yield None
-            except Exception:
-                logger.exception("Integration had a fatal error. Shutting down.")
-                sys.exit("Server stopped")
-            finally:
-                signal_handler.exit()
-
-        async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-            return JSONResponse({"ok": True})
-
-        self.starlette_app = Starlette(
-            routes=[
-                Route("/docs", endpoint=handle_webhook_request),
-                Route("/integration/webhook", endpoint=handle_webhook_request),
-            ],
-            # middleware=[Middleware(RequestHandlerMiddleware)],
-            lifespan=lifespan,
-        )
+        self.starlette_app = app or Starlette()
+        self.integration_router = integration_router or Router()
 
         self.config = IntegrationConfiguration(
             # type: ignore
@@ -137,4 +116,28 @@ class Ocean:
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        @contextlib.asynccontextmanager
+        async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+            try:
+                await self.integration.start()
+                await self._setup_scheduled_resync()
+                yield None
+            except Exception:
+                logger.exception("Integration had a fatal error. Shutting down.")
+                sys.exit("Server stopped")
+            finally:
+                signal_handler.exit()
+
+        async def health() -> JSONResponse:
+            return JSONResponse({"ok": True})
+
+        self.starlette_app = Starlette(
+            routes=[
+                Route("/docs", endpoint=health),
+                Mount("/integration", routes=self.integration_router.routes),
+            ],
+            middleware=[Middleware(RequestHandlerMiddleware)],
+            lifespan=lifespan,
+        )
+
         await self.starlette_app(scope, receive, send)

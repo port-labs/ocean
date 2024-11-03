@@ -1,5 +1,10 @@
+import json
 from enum import StrEnum
 from typing import Any
+
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 from jira.client import JiraClient
 from loguru import logger
@@ -57,6 +62,15 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for issues in client.get_paginated_issues():
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
+
+
+async def handle_webhook_request(request: Request) -> JSONResponse:
+    return JSONResponse({"ok": True})
+
+
+ocean.router.routes.append(
+    Route("/webhook", methods=["post"], endpoint=handle_webhook_request)
+)
 
 
 # Called once when the integration starts.
