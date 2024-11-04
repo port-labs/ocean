@@ -6,7 +6,7 @@ features:
     resources:
       - kind: group
       - kind: project
-      - kind: merge-request
+      - kind: merge_request
       - kind: issue
 configurations:
   - name: gitlab_host

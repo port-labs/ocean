@@ -1,7 +1,15 @@
 from typing import Any
-
+from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from client import GithubClient
+from utils import ObjectKind, ResourceKindsWithSpecialHandling
 
+def init_client() -> GithubClient:
+    return GithubClient(
+        ocean.integration_config["gitlab_host"],
+        ocean.integration_config["access_token"],
+    )
 
 # Required
 # Listen to the resync event of all the kinds specified in the mapping inside port.
@@ -32,19 +40,37 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
 
     return []
 
+@ocean.on_resync(ObjectKind.GROUP)
+async def on_group_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github_client = GithubClient.create_from_ocean_config()
 
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-# @ocean.on_resync('project')
-# async def resync_project(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all projects from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_project_key": "someProjectValue", ...}]
-#
-# @ocean.on_resync('issues')
-# async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-#     # 1. Get all issues from the source system
-#     # 2. Return a list of dictionaries with the raw data of the state
-#     return [{"some_issue_key": "someIssueValue", ...}]
+    async for groups in github_client.get_groups():
+        logger.info(f"Re-syncing {len(groups)} groups")
+        yield groups
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github_client = GithubClient.create_from_ocean_config()
+
+    async for projects in github_client.get_projects():
+        logger.info(f"Re-syncing {len(projects)} projects")
+        yield projects
+
+@ocean.on_resync(ObjectKind.PROJECT)
+async def on_merge_req_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github_client = GithubClient.create_from_ocean_config()
+
+    async for merge_requests in github_client.get_merge_requests():
+        logger.info(f"Re-syncing {len(merge_requests)} merge requests")
+        yield merge_requests
+
+@ocean.on_resync(ObjectKind.ISSUE)
+async def on_issue_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    github_client = GithubClient.create_from_ocean_config()
+
+    async for issues in github_client.get_issues():
+        logger.info(f"Re-syncing {len(issues)} issues")
+        yield issues
 
 
 # Optional
