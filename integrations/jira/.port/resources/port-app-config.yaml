@@ -12,6 +12,8 @@ resources:
           blueprint: '"jiraProject"'
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
+            totalIssues: .insight.totalIssueCount
+
   - kind: issue
     selector:
       query: "true"
@@ -30,7 +32,7 @@ resources:
             assignee: .fields.assignee.emailAddress
             reporter: .fields.reporter.emailAddress
             creator: .fields.creator.emailAddress
-            priority: .fields.priority.id
+            priority: .fields.priority.name
             labels: .fields.labels
             created: .fields.created
             updated: .fields.updated
