@@ -9,6 +9,7 @@ from loguru import logger
 from pydantic import BaseModel
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
+from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route, Mount, Router
 from starlette.types import Scope, Receive, Send
@@ -128,7 +129,7 @@ class Ocean:
             finally:
                 signal_handler.exit()
 
-        async def health() -> JSONResponse:
+        async def health(request: Request) -> JSONResponse:
             return JSONResponse({"ok": True})
 
         self.starlette_app = Starlette(
