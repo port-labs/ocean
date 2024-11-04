@@ -147,6 +147,7 @@ disallow_untyped_defs = true
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 exclude = ['venv', '.venv', 'integrations']
+target-version = "py311"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
