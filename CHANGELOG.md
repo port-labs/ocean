@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.12.8 (2024-11-04)
+
+
+### Improvements
+
+- Bump fastapi to version 0.115.3 (0.12.8)
+
 ## 0.12.7 (2024-10-23)
 
 
