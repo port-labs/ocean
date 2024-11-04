@@ -1,0 +1,19 @@
+description: async-gitlab integration for Port Ocean
+icon: Gitlab
+features:
+  - type: exporter
+    section: Under Development
+    resources:
+      - kind: group
+      - kind: project
+      - kind: merge-request
+      - kind: issue
+configurations:
+  - name: gitlab_host
+    required: true
+    type: url
+    sensitive: false
+  - name: access_token
+    type: string
+    required: true
+    sensitive: true
