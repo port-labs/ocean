@@ -1,6 +1,7 @@
 import asyncio
 import json
 from typing import Any, Literal
+import typing
 
 import aioboto3
 from loguru import logger
@@ -16,6 +17,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from utils.aws import _session_manager
 from utils.overrides import AWSResourceConfig
 from botocore.config import Config as Boto3Config
+from botocore.exceptions import ClientError
 
 
 def is_global_resource(kind: str) -> bool:
@@ -226,9 +228,10 @@ async def resync_cloudcontrol(
                 for instance in resources:
                     if isinstance(instance, Exception):
                         if is_resource_not_found_exception(instance):
+                            error = typing.cast(ClientError, instance)
                             logger.warning(
-                                f"Skipping resyncing {kind} resource in region {region} in account {account_id}; {instance.get('Error').get('Message')}"
-                            )
+                                    f"Skipping resyncing {kind} resource in region {region} in account {account_id}; {error.response['Error']['Message']}"
+                                )
                             continue
 
                         raise instance
