@@ -29,7 +29,7 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.event import event
-from utils.overrides import AWSPortAppConfig
+from utils.overrides import AWSPortAppConfig, AWSResourceConfig
 from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
@@ -50,12 +50,15 @@ semaphore = get_semaphore()
 async def _handle_global_resource_resync(
     kind: str,
     credentials: AwsCredentials,
+    aws_resource_config: AWSResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     denied_access_to_default_region = False
     default_region = get_default_region_from_credentials(credentials)
     default_session = await credentials.create_session(default_region)
     try:
-        async for batch in resync_cloudcontrol(kind, default_session):
+        async for batch in resync_cloudcontrol(
+            kind, default_session, aws_resource_config
+        ):
             yield batch
     except Exception as e:
         if is_access_denied_exception(e):
@@ -67,7 +70,9 @@ async def _handle_global_resource_resync(
         logger.info(f"Trying to resync {kind} in all regions until success")
         async for session in credentials.create_session_for_each_region():
             try:
-                async for batch in resync_cloudcontrol(kind, session):
+                async for batch in resync_cloudcontrol(
+                    kind, session, aws_resource_config
+                ):
                     yield batch
                 break
             except Exception as e:
@@ -81,13 +86,19 @@ async def resync_resources_for_account(
     """Function to handle fetching resources for a single account."""
     errors, regions = [], []
 
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
+
     if is_global_resource(kind):
-        async for batch in _handle_global_resource_resync(kind, credentials):
+        async for batch in _handle_global_resource_resync(
+            kind, credentials, aws_resource_config
+        ):
             yield batch
     else:
         async for session in credentials.create_session_for_each_region():
             try:
-                async for batch in resync_cloudcontrol(kind, session):
+                async for batch in resync_cloudcontrol(
+                    kind, session, aws_resource_config
+                ):
                     yield batch
             except Exception as exc:
                 regions.append(session.region_name)
@@ -127,6 +138,7 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
     tasks = [
         semaphore_async_iterator(
@@ -139,6 +151,7 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "describe_cache_clusters",
                 "CacheClusters",
                 "Marker",
+                aws_resource_config,
             ),
         )
         async for session in get_sessions()
@@ -153,6 +166,7 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
 
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
         semaphore_async_iterator(
             semaphore,
@@ -164,6 +178,7 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "describe_load_balancers",
                 "LoadBalancers",
                 "Marker",
+                aws_resource_config,
             ),
         )
         async for session in get_sessions()
@@ -179,6 +194,7 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
 
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
         semaphore_async_iterator(
             semaphore,
@@ -190,6 +206,7 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "list_certificates",
                 "CertificateSummaryList",
                 "NextToken",
+                aws_resource_config,
             ),
         )
         async for session in get_sessions()
@@ -204,6 +221,8 @@ async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
+
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
         semaphore_async_iterator(
             semaphore,
@@ -215,6 +234,7 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "describe_images",
                 "Images",
                 "NextToken",
+                aws_resource_config,
                 {"Owners": ["self"]},
             ),
         )
@@ -229,6 +249,8 @@ async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
+
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
         semaphore_async_iterator(
             semaphore,
@@ -240,6 +262,7 @@ async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 "describe_stacks",
                 "Stacks",
                 "NextToken",
+                aws_resource_config,
             ),
         )
         async for session in get_sessions()

@@ -1,11 +1,9 @@
 import asyncio
 import json
 from typing import Any, Literal
-import typing
 
 import aioboto3
 from loguru import logger
-from port_ocean.context.event import event
 from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
@@ -110,6 +108,7 @@ async def resync_custom_kind(
     describe_method: str,
     list_param: str,
     marker_param: Literal["NextToken", "Marker"],
+    resource_config: AWSResourceConfig,
     describe_method_params: dict[str, Any] | None = None,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
@@ -127,9 +126,7 @@ async def resync_custom_kind(
     account_id = await _session_manager.find_account_id_by_session(session)
     next_token = None
 
-    resource_config_selector = typing.cast(
-        AWSResourceConfig, event.resource_config
-    ).selector
+    resource_config_selector = resource_config.selector
 
     if not resource_config_selector.is_region_allowed(region):
         logger.info(
@@ -175,11 +172,9 @@ async def resync_custom_kind(
 
 
 async def resync_cloudcontrol(
-    kind: str, session: aioboto3.Session
+    kind: str, session: aioboto3.Session, resource_config: AWSResourceConfig
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    resource_config_selector = typing.cast(
-        AWSResourceConfig, event.resource_config
-    ).selector
+    resource_config_selector = resource_config.selector
     use_get_resource_api = resource_config_selector.use_get_resource_api
 
     region = session.region_name
@@ -216,7 +211,8 @@ async def resync_cloudcontrol(
                                 region=region,
                             )
                             for instance in resources
-                        )
+                        ),
+                        return_exceptions=True,
                     )
                 else:
                     resources = [
@@ -228,6 +224,15 @@ async def resync_cloudcontrol(
                     ]
 
                 for instance in resources:
+                    if isinstance(instance, Exception):
+                        if is_resource_not_found_exception(instance):
+                            logger.warning(
+                                f"Skipping resyncing {kind} resource in region {region} in account {account_id}; {instance.get('Error').get('Message')}"
+                            )
+                            continue
+
+                        raise instance
+
                     serialized = instance.copy()
                     serialized.update(
                         {
@@ -250,10 +255,6 @@ async def resync_cloudcontrol(
                 if is_access_denied_exception(e):
                     logger.warning(
                         f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
-                    )
-                elif is_resource_not_found_exception(e):
-                    logger.warning(
-                        f"Skipping resyncing {kind} resource with id {instance.get('Identifier')} in region {region} in account {account_id} because it doesn't exist"
                     )
                 else:
                     logger.error(f"Error resyncing {kind} in region {region}, {e}")
