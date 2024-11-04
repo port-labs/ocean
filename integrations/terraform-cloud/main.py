@@ -138,8 +138,7 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Getting {kind}s for {len(workspaces)} workspaces")
 
         runs_per_workspace = await process_in_queue(
-            workspaces, fetch_runs_for_workspace, 
-            concurrency=WORKSPACE_CONCURRENCY
+            workspaces, fetch_runs_for_workspace, concurrency=WORKSPACE_CONCURRENCY
         )
 
         for runs in runs_per_workspace:
