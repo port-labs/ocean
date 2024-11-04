@@ -1,9 +1,10 @@
 from typing import Literal, Any
 
-from fastapi import APIRouter
 from loguru import logger
 from pydantic import AnyHttpUrl
 from pydantic.fields import Field
+from starlette.requests import Request
+from starlette.routing import Router, Route
 
 from port_ocean.context.ocean import ocean
 from port_ocean.core.event_listener.base import (
@@ -60,10 +61,8 @@ class HttpEventListener(BaseEventListener):
         It sets up an APIRouter to handle the `/resync` endpoint and registers the "on_resync" event handler.
         """
         logger.info("Setting up HTTP Event Listener")
-        target_channel_router = APIRouter()
 
-        @target_channel_router.post("/resync")
-        async def resync() -> None:
+        async def resync(request: Request) -> None:
             await self._resync({})
 
-        ocean.app.fast_api_app.include_router(target_channel_router)
+        ocean.router.routes.append(Route("/resync", methods=["post"], endpoint=resync))

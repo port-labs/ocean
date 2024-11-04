@@ -1,5 +1,10 @@
+import json
 from enum import StrEnum
 from typing import Any
+
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 from jira.client import JiraClient
 from loguru import logger
@@ -59,8 +64,9 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
-@ocean.router.post("/webhook")
-async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
+async def handle_webhook_request(request: Request) -> JSONResponse:
+    raw_data = await request.body()
+    data = json.loads(raw_data)
     client = JiraClient(
         ocean.integration_config["jira_host"],
         ocean.integration_config["atlassian_user_email"],
@@ -76,7 +82,12 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         issue = await client.get_single_issue(data["issue"]["key"])
         await ocean.register_raw(ObjectKind.ISSUE, [issue])
     logger.info("Webhook event processed")
-    return {"ok": True}
+    return JSONResponse({"ok": True})
+
+
+ocean.router.routes.append(
+    Route("/webhook", methods=["post"], endpoint=handle_webhook_request)
+)
 
 
 # Called once when the integration starts.

@@ -1,7 +1,7 @@
 from typing import Callable, TYPE_CHECKING, Any, Literal, Union
 
-from fastapi import APIRouter
 from pydantic.main import BaseModel
+from starlette.routing import Router
 from werkzeug.local import LocalProxy
 
 from port_ocean.clients.port.types import UserAgentType
@@ -45,7 +45,7 @@ class PortOceanContext:
         return self.app.config
 
     @property
-    def router(self) -> APIRouter:
+    def router(self) -> Router:
         return self.app.integration_router
 
     @property

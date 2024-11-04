@@ -1,7 +1,7 @@
 import abc
 
-from fastapi.responses import Response, PlainTextResponse
 from port_ocean.exceptions.base import BaseOceanException
+from starlette.responses import Response, PlainTextResponse
 
 
 class BaseAPIException(BaseOceanException, abc.ABC):
