@@ -116,7 +116,7 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.RUN)
 async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
-    CONCURRENCY = 15  # Process 5 workspaces concurrently
+    WORKSPACE_CONCURRENCY = 15
 
     async def fetch_runs_for_workspace(
         workspace: dict[str, Any]
@@ -137,15 +137,13 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for workspaces in terraform_client.get_paginated_workspaces():
         logger.info(f"Getting {kind}s for {len(workspaces)} workspaces")
 
-        # Use process_in_queue to control concurrency
         runs_per_workspace = await process_in_queue(
-            workspaces, fetch_runs_for_workspace, concurrency=CONCURRENCY
+            workspaces, fetch_runs_for_workspace, 
+            concurrency=WORKSPACE_CONCURRENCY
         )
 
-        # Yield non-empty results
         for runs in runs_per_workspace:
-            if runs:  # Only yield if runs were found
-                yield runs
+            yield runs
 
 
 @ocean.on_resync(ObjectKind.STATE_VERSION)
