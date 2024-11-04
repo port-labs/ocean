@@ -229,7 +229,7 @@ async def resync_cloudcontrol(
                     if isinstance(instance, Exception):
                         if is_resource_not_found_exception(instance):
                             error = typing.cast(ClientError, instance)
-                            logger.warning(
+                            logger.info(
                                 f"Skipping resyncing {kind} resource in region {region} in account {account_id}; {error.response['Error']['Message']}"
                             )
                             continue
