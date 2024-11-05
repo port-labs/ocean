@@ -1,16 +1,72 @@
 resources:
-  - kind: async-gitlab-example-kind
+  - kind: group
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .my_custom_id
-          title: '(.my_component + " @ " + .my_service)'
-          blueprint: '"async-gitlabExampleBlueprint"'
+          identifier: .id
+          title: .name
+          blueprint: '"gitlabGroup"'
           properties:
-            status: .my_enum
-            text: .my_custom_text
-            component: .my_component
-            service: .my_service
-            score: .my_special_score
+            visibility: .visibility
+            url: .web_url
+            description: .description
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"project"'
+          properties:
+            url: .http_url_to_repo
+            readme: .readme_url
+            description: .description
+            language: .language
+            namespace: .namespace.full_path
+            fullPath: .path_with_namespace
+            defaultBranch: .default_branch
+          relations:
+            group: .namespace.id
+  - kind: merge_request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"gitlabMergeRequest"'
+          properties:
+            creator: .author.username
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            mergedAt: .merged_at
+            link: .web_url
+            reviewers: .reviewers
+          relations:
+            project: .project_id
+
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .title
+          blueprint: '"gitlabIssue"'
+          properties:
+            link: .web_url
+            description: .description
+            createdAt: .created_at
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            creator: .author.name
+            status: .state
+          relations:
+            project: .project_id
