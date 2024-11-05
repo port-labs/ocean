@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.136 (2024-11-05)
+===================
+
+### Bug Fixes
+
+- Await logger writing exception on exit (Integration logs not being ingested)
+- Await logger thread on exit (Integration logs not being ingested)
+- Sirealize exception (Integration logs not being ingested)
+
+
 0.1.135 (2024-10-31)
 ====================
 
