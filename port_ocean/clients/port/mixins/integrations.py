@@ -100,17 +100,23 @@ class IntegrationClientMixin:
         handle_status_code(response)
         return response.json()["integration"]
 
-    def sirealize_logs(self,logs: list[dict[str, Any]]):
+    def serialize_logs(self, logs: list[dict[str, Any]]):
         _logs = copy.deepcopy(logs)
         for log in _logs:
-            if 'extra' in log.keys() and 'exc_info' in log['extra'].keys() and isinstance(log['extra']['exc_info'],Exception):
-                sirealized_exception = ''.join(format_exception(log['extra']['exc_info']))
-                log['extra']['exc_info'] = sirealized_exception
+            if (
+                "extra" in log.keys()
+                and "exc_info" in log["extra"].keys()
+                and isinstance(log["extra"]["exc_info"], Exception)
+            ):
+                sirealized_exception = "".join(
+                    format_exception(log["extra"]["exc_info"])
+                )
+                log["extra"]["exc_info"] = sirealized_exception
         return _logs
 
     async def ingest_integration_logs(self, logs: list[dict[str, Any]]) -> None:
         logger.debug("Ingesting logs")
-        sirealized_logs=self.sirealize_logs(logs)
+        sirealized_logs = self.serialize_logs(logs)
         log_attributes = await self.get_log_attributes()
         headers = await self.auth.headers()
         response = await self.client.post(

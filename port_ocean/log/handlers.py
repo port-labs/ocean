@@ -61,8 +61,8 @@ class HTTPMemoryHandler(MemoryHandler):
         ):
             return True
         return False
-    
-    def wait_for_lingering_threads(self)->None:
+
+    def wait_for_lingering_threads(self) -> None:
         for thread in self._thread_pool:
             if thread.is_alive():
                 thread.join()
@@ -76,7 +76,7 @@ class HTTPMemoryHandler(MemoryHandler):
             loop.run_until_complete(self.send_logs(_ocean, logs_to_send))
             loop.close()
 
-        def clear_thread_pool()->None:
+        def clear_thread_pool() -> None:
             for thread in self._thread_pool:
                 if not thread.is_alive():
                     self._thread_pool.remove(thread)
@@ -88,11 +88,10 @@ class HTTPMemoryHandler(MemoryHandler):
             self._serialized_buffer.clear()
             self.last_flush_time = time.time()
             clear_thread_pool()
-            thread=threading.Thread(target=_wrap_event_loop, args=(self.ocean, logs))
+            thread = threading.Thread(target=_wrap_event_loop, args=(self.ocean, logs))
             thread.start()
             self._thread_pool.append(thread)
         self.release()
-
 
     async def send_logs(
         self, _ocean: Ocean, logs_to_send: list[dict[str, Any]]
