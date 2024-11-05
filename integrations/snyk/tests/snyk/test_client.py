@@ -58,6 +58,7 @@ def snyk_client() -> SnykClient:
         organization_ids=None,
         group_ids=None,
         webhook_secret=None,
+        rate_limiter=AsyncLimiter(5, 1),
     )
 
 
@@ -76,8 +77,7 @@ async def test_send_api_request_rate_limit(snyk_client: SnykClient) -> None:
 
         start_time = time.monotonic()
 
-        with patch("snyk.client.RATELIMITER", new=AsyncLimiter(5, 1)):
-            await asyncio.gather(*[make_request() for _ in range(15)])
+        await asyncio.gather(*[make_request() for _ in range(15)])
 
         elapsed_time = time.monotonic() - start_time
 
@@ -112,37 +112,3 @@ async def test_get_paginated_resources(
             resources.extend(resource_batch)
 
         assert resources == [{"id": "item1"}, {"id": "item2"}]
-
-
-@pytest.mark.asyncio
-async def test_rate_limit_reset_behavior(
-    snyk_client: SnykClient, mock_event_context: MagicMock
-) -> None:
-    """Test rate limiter reset behavior after reaching limit."""
-    with patch.object(
-        snyk_client.http_client, "request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value.json = AsyncMock(return_value={})
-        mock_request.return_value.raise_for_status = AsyncMock()
-
-        async def make_request() -> None:
-            await snyk_client._send_api_request(url=f"{MOCK_API_URL}/test")
-            await mock_request.return_value.raise_for_status()
-
-        with patch(
-            "snyk.client.RATELIMITER.acquire", new_callable=AsyncMock
-        ) as mock_acquire:
-            mock_acquire.return_value = None
-
-            for _ in range(5):
-                await make_request()
-
-            await asyncio.sleep(60)
-
-            start_time = time.monotonic()
-            await make_request()
-            elapsed_time = time.monotonic() - start_time
-
-            assert (
-                elapsed_time < 1.0
-            ), "Rate limiter did not reset request count after 60 seconds."

@@ -13,6 +13,8 @@ from snyk.client import SnykClient
 from snyk.overrides import ProjectResourceConfig
 
 CONCURRENT_REQUESTS = 20
+SNYK_LIMIT = int(ocean.integration_config.get("snyk_rate_limit", "0"))
+RATELIMITER = AsyncLimiter(SNYK_LIMIT)
 
 
 class ObjectKind(StrEnum):
@@ -46,6 +48,7 @@ def init_client() -> SnykClient:
         parse_list(ocean.integration_config.get("organization_id", "")),
         parse_list(ocean.integration_config.get("groups", "")),
         ocean.integration_config.get("webhook_secret"),
+        RATELIMITER,
     )
 
 

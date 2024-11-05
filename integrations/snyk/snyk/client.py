@@ -5,13 +5,9 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from httpx import Timeout
 from loguru import logger
-from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from aiolimiter import AsyncLimiter
-
-SNYK_LIMIT = int(ocean.integration_config.get("snyk_rate_limit"))
-RATELIMITER = AsyncLimiter(SNYK_LIMIT)
 
 
 class CacheKeys(StrEnum):
@@ -35,6 +31,7 @@ class SnykClient:
         organization_ids: list[str] | None,
         group_ids: list[str] | None,
         webhook_secret: str | None,
+        rate_limiter: AsyncLimiter,
     ):
         self.token = token
         self.api_url = f"{api_url}/v1"
@@ -47,6 +44,7 @@ class SnykClient:
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
         self.snyk_api_version = "2024-06-21"
+        self.rate_limiter = rate_limiter
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -64,7 +62,7 @@ class SnykClient:
             **(query_params or {}),
             **({"version": version} if version is not None else {}),
         }
-        async with RATELIMITER:
+        async with self.rate_limiter:
             try:
                 response = await self.http_client.request(
                     method=method, url=url, params=query_params, json=json_data
