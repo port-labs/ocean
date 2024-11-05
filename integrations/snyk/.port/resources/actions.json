@@ -60,16 +60,16 @@
     },
     "invocationMethod": {
       "type": "WEBHOOK",
-      "url": "https://api.snyk.io/v1/org/{{ .secrets.snyk_org_id }}/project/{{ .entity.relations.project }}/ignore/{{ .entity.properties.vulnerabilityId }}",
+      "url": "https://api.snyk.io/v1/org/{{ .secrets._snyk-organization_id }}/project/{{ .entity.relations.project }}/ignore/{{ .entity.properties.vulnerabilityId }}",
       "agent": false,
       "synchronized": true,
       "method": "POST",
       "headers": {
         "RUN_ID": "{{ .run.id }}",
-        "orgId": "{{ .secrets.snyk_org_id }}",
+        "orgId": "{{ .secrets._snyk-organization_id }}",
         "issueId": "{{ .entity.properties.vulnerabilityId }}",
         "projectId": "{{ .entity.relations.project }}",
-        "Authorization": "token {{ .secrets.snyk_token }}",
+        "Authorization": "token {{ .secrets._snyk-token }}",
         "Content-Type": "application/json"
       },
       "body": {
