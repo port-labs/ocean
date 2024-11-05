@@ -1,7 +1,7 @@
 [
   {
     "identifier": "trigger_incident",
-    "title": "Trigger incident",
+    "title": "Trigger Incident",
     "icon": "pagerduty",
     "description": "Trigger a page in PagerDuty that will alert the on-call to an issue",
     "trigger": {
