@@ -65,4 +65,6 @@ class HttpEventListener(BaseEventListener):
         async def resync(request: Request) -> None:
             await self._resync({})
 
-        ocean.router.routes.append(Route("/resync", methods=["post"], endpoint=resync))
+        ocean.app.starlette_app.routes.append(
+            Route("/resync", methods=["post"], endpoint=resync)
+        )

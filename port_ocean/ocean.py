@@ -44,7 +44,7 @@ class Ocean:
     ):
         initialize_port_ocean_context(self)
 
-        self.starlette_app = app or Starlette()
+        self.starlette_app = app or None
         self.integration_router = integration_router or Router()
 
         self.config = IntegrationConfiguration(
@@ -116,7 +116,7 @@ class Ocean:
             )
             await repeated_function()
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    def _setup_starlette_app(self):
         @asynccontextmanager
         async def lifespan(_: Starlette) -> AsyncIterator[None]:
             try:
@@ -140,5 +140,9 @@ class Ocean:
             middleware=[Middleware(RequestHandlerMiddleware)],
             lifespan=lifespan,
         )
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if not self.starlette_app:
+            self._setup_starlette_app()
 
         await self.starlette_app(scope, receive, send)
