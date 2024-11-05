@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.12.3"
+version = "0.12.7"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -79,6 +79,7 @@ types-pyyaml = "^6.0.12.10"
 types-toml = "^0.10.8.6"
 yamllint = "^1.32.0"
 pytest-timeout = "^2.3.1"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"

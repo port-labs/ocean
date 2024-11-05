@@ -160,10 +160,11 @@ class GitlabService:
         ]
 
     async def search_files_in_project(
-        self,
-        project: Project,
-        path: str | List[str],
+        self, project: Project, path: str | List[str]
     ) -> AsyncIterator[list[dict[str, Any]]]:
+        logger.info(
+            f"Searching project {project.path_with_namespace} for files with path pattern {path}"
+        )
         paths = [path] if not isinstance(path, list) else path
         for path in paths:
             file_pattern = os.path.basename(path)
@@ -175,23 +176,39 @@ class GitlabService:
                     project.search,
                     scope="blobs",
                     search=f"filename:{file_pattern}",
+                    search_type="advanced",
                     retry_transient_errors=True,
                 ):
                     logger.info(
                         f"Found {len(files)} files in project {project.path_with_namespace} with file pattern {file_pattern}, filtering all that don't match path pattern {path}"
                     )
                     files = typing.cast(Union[GitlabList, List[Dict[str, Any]]], files)
-                    tasks = [
-                        self.get_and_parse_single_file(
-                            project, file["path"], project.default_branch
-                        )
-                        for file in files
-                        if does_pattern_apply(path, file["path"])
-                    ]
+                    tasks = []
+                    for file in files:
+                        if does_pattern_apply(path, file["path"]):
+                            tasks.append(
+                                self.get_and_parse_single_file(
+                                    project, file["path"], project.default_branch
+                                )
+                            )
+                        else:
+                            logger.debug(
+                                f"Skipping file {file['path']} as it doesn't match path pattern {path} for project {project.path_with_namespace}"
+                            )
+                    logger.info(
+                        f"Found {len(tasks)} files in project {project.path_with_namespace} that match path pattern {path}"
+                    )
                     parsed_files = await asyncio.gather(*tasks)
                     files_with_content = [file for file in parsed_files if file]
                     if files_with_content:
+                        logger.info(
+                            f"Found {len(files_with_content)} files with content for project {project.path_with_namespace} for path {path}"
+                        )
                         yield files_with_content
+                    else:
+                        logger.info(
+                            f"No files with content found for project {project.path_with_namespace} for path {path}"
+                        )
 
     async def _get_entities_from_git(
         self, project: Project, file_path: str | List[str], sha: str, ref: str
@@ -693,7 +710,7 @@ class GitlabService:
         return entities_before, entities_after
 
     def _parse_file_content(
-        self, file: ProjectFile
+        self, project: Project, file: ProjectFile
     ) -> Union[str, dict[str, Any], list[Any]] | None:
         """
         Process a file from a project. If the file is a JSON or YAML, it will be parsed, otherwise the raw content will be returned
@@ -702,18 +719,30 @@ class GitlabService:
         """
         if file.size > MAX_ALLOWED_FILE_SIZE_IN_BYTES:
             logger.warning(
-                f"File {file.file_path} is too large to be processed. Maximum size allowed is 1MB. Actual size of file: {file.size}"
+                f"File {file.file_path} in {project.path_with_namespace} is too large to be processed. "
+                f"Maximum size allowed is 1MB. Actual size of file: {file.size}"
             )
             return None
         try:
             return json.loads(file.decode())
         except json.JSONDecodeError:
             try:
+                logger.debug(
+                    f"Trying to process file {file.file_path} in project {project.path_with_namespace} as YAML"
+                )
                 documents = list(yaml.load_all(file.decode(), Loader=yaml.SafeLoader))
                 if not documents:
+                    logger.debug(
+                        f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as YAML,"
+                        f" returning raw content"
+                    )
                     return file.decode().decode("utf-8")
                 return documents if len(documents) > 1 else documents[0]
             except yaml.YAMLError:
+                logger.debug(
+                    f"Failed to parse file {file.file_path} in project {project.path_with_namespace} as JSON or YAML,"
+                    f" returning raw content"
+                )
                 return file.decode().decode("utf-8")
 
     async def get_and_parse_single_file(
@@ -730,7 +759,7 @@ class GitlabService:
                 f"Fetched file {file_path} in project {project.path_with_namespace}"
             )
             project_file = typing.cast(ProjectFile, project_file)
-            parsed_file = self._parse_file_content(project_file)
+            parsed_file = self._parse_file_content(project, project_file)
             project_file_dict = project_file.asdict()
 
             if not parsed_file:

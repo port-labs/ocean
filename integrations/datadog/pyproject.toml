@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "datadog"
-version = "0.1.46"
+version = "0.1.49"
 description = "Datadog Ocean Integration"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.12.3", extras = ["cli"]}
+port_ocean = {version = "^0.12.7", extras = ["cli"]}
 loguru = "^0.7.2"
 
 [tool.poetry.group.dev.dependencies]
@@ -21,6 +21,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"

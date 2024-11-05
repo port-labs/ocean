@@ -28,26 +28,37 @@ from utils.aws import (
 from port_ocean.context.ocean import ocean
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.context.event import event
+from utils.overrides import AWSPortAppConfig, AWSResourceConfig
 from utils.misc import (
     get_matching_kinds_and_blueprints_from_config,
     CustomProperties,
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
     is_server_error,
-    semaphore,
+    get_semaphore,
 )
-from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+from port_ocean.utils.async_iterators import (
+    stream_async_iterators_tasks,
+    semaphore_async_iterator,
+)
+import functools
+
+semaphore = get_semaphore()
 
 
 async def _handle_global_resource_resync(
     kind: str,
     credentials: AwsCredentials,
+    aws_resource_config: AWSResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     denied_access_to_default_region = False
     default_region = get_default_region_from_credentials(credentials)
     default_session = await credentials.create_session(default_region)
     try:
-        async for batch in resync_cloudcontrol(kind, default_session):
+        async for batch in resync_cloudcontrol(
+            kind, default_session, aws_resource_config
+        ):
             yield batch
     except Exception as e:
         if is_access_denied_exception(e):
@@ -59,7 +70,9 @@ async def _handle_global_resource_resync(
         logger.info(f"Trying to resync {kind} in all regions until success")
         async for session in credentials.create_session_for_each_region():
             try:
-                async for batch in resync_cloudcontrol(kind, session):
+                async for batch in resync_cloudcontrol(
+                    kind, session, aws_resource_config
+                ):
                     yield batch
                 break
             except Exception as e:
@@ -71,25 +84,29 @@ async def resync_resources_for_account(
     credentials: AwsCredentials, kind: str
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """Function to handle fetching resources for a single account."""
+    errors, regions = [], []
 
-    async with semaphore:  # limit the number of concurrent tasks
-        errors, regions = [], []
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
-        if is_global_resource(kind):
-            async for batch in _handle_global_resource_resync(kind, credentials):
-                yield batch
-        else:
-            async for session in credentials.create_session_for_each_region():
-                try:
-                    async for batch in resync_cloudcontrol(kind, session):
-                        yield batch
-                except Exception as exc:
-                    regions.append(session.region_name)
-                    errors.append(exc)
-                    continue
-        if errors:
-            message = f"Failed to fetch {kind} for these regions {regions} with {len(errors)} errors in account {credentials.account_id}"
-            raise ExceptionGroup(message, errors)
+    if is_global_resource(kind):
+        async for batch in _handle_global_resource_resync(
+            kind, credentials, aws_resource_config
+        ):
+            yield batch
+    else:
+        async for session in credentials.create_session_for_each_region():
+            try:
+                async for batch in resync_cloudcontrol(
+                    kind, session, aws_resource_config
+                ):
+                    yield batch
+            except Exception as exc:
+                regions.append(session.region_name)
+                errors.append(exc)
+                continue
+    if errors:
+        message = f"Failed to fetch {kind} for these regions {regions} with {len(errors)} errors in account {credentials.account_id}"
+        raise ExceptionGroup(message, errors)
 
 
 @ocean.on_resync()
@@ -99,11 +116,15 @@ async def resync_all(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     await update_available_access_credentials()
     tasks = [
-        resync_resources_for_account(credentials, kind)
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(resync_resources_for_account, credentials, kind),
+        )
         async for credentials in get_accounts()
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -117,20 +138,27 @@ async def resync_account(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.ELASTICACHE_CLUSTER)
 async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "elasticache",
-            "describe_cache_clusters",
-            "CacheClusters",
-            "Marker",
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "elasticache",
+                "describe_cache_clusters",
+                "CacheClusters",
+                "Marker",
+                aws_resource_config,
+            ),
         )
         async for session in get_sessions()
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -138,20 +166,27 @@ async def resync_elasticache(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
 
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "elbv2",
-            "describe_load_balancers",
-            "LoadBalancers",
-            "Marker",
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "elbv2",
+                "describe_load_balancers",
+                "LoadBalancers",
+                "Marker",
+                aws_resource_config,
+            ),
         )
         async for session in get_sessions()
     ]
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -159,60 +194,83 @@ async def resync_elv2_load_balancer(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def resync_acm(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
 
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "acm",
-            "list_certificates",
-            "CertificateSummaryList",
-            "NextToken",
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "acm",
+                "list_certificates",
+                "CertificateSummaryList",
+                "NextToken",
+                aws_resource_config,
+            ),
         )
         async for session in get_sessions()
     ]
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.AMI_IMAGE)
 async def resync_ami(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
+
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "ec2",
-            "describe_images",
-            "Images",
-            "NextToken",
-            {"Owners": ["self"]},
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "ec2",
+                "describe_images",
+                "Images",
+                "NextToken",
+                aws_resource_config,
+                {"Owners": ["self"]},
+            ),
         )
         async for session in get_sessions()
     ]
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
 @ocean.on_resync(kind=ResourceKindsWithSpecialHandling.CLOUDFORMATION_STACK)
 async def resync_cloudformation(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     await update_available_access_credentials()
+
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
     tasks = [
-        resync_custom_kind(
-            kind,
-            session,
-            "cloudformation",
-            "describe_stacks",
-            "Stacks",
-            "NextToken",
+        semaphore_async_iterator(
+            semaphore,
+            functools.partial(
+                resync_custom_kind,
+                kind,
+                session,
+                "cloudformation",
+                "describe_stacks",
+                "Stacks",
+                "NextToken",
+                aws_resource_config,
+            ),
         )
         async for session in get_sessions()
     ]
 
     if tasks:
         async for batch in stream_async_iterators_tasks(*tasks):
+            await update_available_access_credentials()
             yield batch
 
 
@@ -262,9 +320,34 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
         with logger.contextualize(
             account_id=account_id, resource_type=resource_type, identifier=identifier
         ):
-            matching_resource_configs = get_matching_kinds_and_blueprints_from_config(
-                resource_type
+            aws_port_app_config = typing.cast(AWSPortAppConfig, event.port_app_config)
+            if not isinstance(aws_port_app_config, AWSPortAppConfig):
+                logger.info("No resources configured in the port app config")
+                return fastapi.Response(status_code=status.HTTP_200_OK)
+
+            allowed_configs, disallowed_configs = (
+                get_matching_kinds_and_blueprints_from_config(
+                    resource_type, region, aws_port_app_config.resources
+                )
             )
+
+            if disallowed_configs:
+                logger.info(
+                    f"Unregistering resource {identifier} of type {resource_type} in region {region} and account {account_id} for blueprint {disallowed_configs.values()} because it is not allowed"
+                )
+                await ocean.unregister(
+                    [
+                        Entity(blueprint=blueprint, identifier=identifier)
+                        for blueprints in disallowed_configs.values()
+                        for blueprint in blueprints
+                    ]
+                )
+
+            if not allowed_configs:
+                logger.info(
+                    f"{resource_type} not found or disabled for region {region} in account {account_id}"
+                )
+                return fastapi.Response(status_code=status.HTTP_200_OK)
 
             logger.debug(
                 "Querying full resource on AWS before registering change in port"
@@ -279,33 +362,29 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                     logger.error(
                         f"Cannot sync {resource_type} in region {region} in account {account_id} due to missing access permissions {e}"
                     )
-                    return fastapi.Response(
-                        status_code=status.HTTP_200_OK,
-                    )
+                    return fastapi.Response(status_code=status.HTTP_200_OK)
                 if is_server_error(e):
                     logger.error(
                         f"Cannot sync {resource_type} in region {region} in account {account_id} due to server error {e}"
                     )
-                    return fastapi.Response(
-                        status_code=status.HTTP_200_OK,
-                    )
+                    return fastapi.Response(status_code=status.HTTP_200_OK)
+
+                logger.error(
+                    f"Failed to retrieve '{resource_type}' resource with ID '{identifier}' in region '{region}' for account '{account_id}'. "
+                    f"Verify that the resource exists and that the necessary permissions are granted."
+                )
+
                 resource = None
 
-            for kind in matching_resource_configs:
-                blueprints = matching_resource_configs[kind]
+            for kind, blueprints in allowed_configs.items():
                 if not resource:  # Resource probably deleted
-                    for blueprint in blueprints:
-                        logger.info(
-                            "Resource not found in AWS, un-registering from port"
-                        )
-                        await ocean.unregister(
-                            [
-                                Entity(
-                                    blueprint=blueprint,
-                                    identifier=identifier,
-                                )
-                            ]
-                        )
+                    logger.info("Resource not found in AWS, un-registering from port")
+                    await ocean.unregister(
+                        [
+                            Entity(blueprint=blueprint, identifier=identifier)
+                            for blueprint in blueprints
+                        ]
+                    )
                 else:  # Resource found in AWS, update port
                     logger.info("Resource found in AWS, registering change in port")
                     resource.update(
@@ -316,14 +395,14 @@ async def webhook(update: ResourceUpdate, response: Response) -> fastapi.Respons
                         }
                     )
                     await ocean.register_raw(
-                        kind,
-                        [fix_unserializable_date_properties(resource)],
+                        kind, [fix_unserializable_date_properties(resource)]
                     )
 
             logger.info("Webhook processed successfully")
             return fastapi.Response(
                 status_code=status.HTTP_200_OK, content=json.dumps({"ok": True})
             )
+
     except Exception as e:
         logger.exception("Failed to process event from aws")
         return fastapi.Response(
