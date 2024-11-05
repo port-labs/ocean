@@ -6,8 +6,8 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from port_ocean.utils.cache import cache_iterator_result
-from gitlab_core.helpers.utils import ObjectKind, RESOURCE_API_VERSIONS
-from gitlab_core.helpers.ratelimiter import GitLabRateLimiter
+from gitlab.helpers.utils import ObjectKind, RESOURCE_API_VERSIONS
+from gitlab.helpers.ratelimiter import GitLabRateLimiter
 
 PAGE_SIZE = 100
 
@@ -38,6 +38,25 @@ class GitLabClient(GitLabRateLimiter):
     @staticmethod
     async def get_resource_api_version(resource_type: ObjectKind) -> str:
         return RESOURCE_API_VERSIONS.get(resource_type, "v4")
+
+    async def update_resource(
+            self,
+            resource_id: str,
+            resource_type: ObjectKind
+    ):
+        api_version = await self.get_resource_api_version(resource_type)
+        url = f"{self.api_url}/{api_version}/{resource_type.value}s/{resource_id}"
+
+        try:
+            response = await self._get_single_resource(url)
+            resource = response.json()
+
+            await ocean.register_raw(resource_type, resource)
+            logger.info(f"Updated {resource_type} {resource_id} in Port")
+        except Exception as e:
+            logger.error(f"Failed to update {resource_type.value} {resource_id}: {str(e)}")
+
+        return
 
     async def _get_single_resource(
         self,
@@ -123,9 +142,6 @@ class GitLabClient(GitLabRateLimiter):
                     resource_type=ObjectKind.MERGE_REQUEST
             ):
                 for merge_request in merge_requests:
-                    logger.info(
-                        f"Fetched MR {merge_request}"
-                    )
                     if 'id' in merge_request:
                         merge_request['id'] = str(merge_request['id'])
                         merge_request['project_id'] = str(merge_request['project_id'])

@@ -155,7 +155,7 @@
       },
       "aggregationProperties": {},
       "relations": {
-        "service": {
+        "project": {
           "title": "Project",
           "target": "project",
           "required": false,
@@ -217,7 +217,7 @@
         }
       },
       "relations": {
-        "service": {
+        "project": {
           "target": "project",
           "title": "Project",
           "required": true,

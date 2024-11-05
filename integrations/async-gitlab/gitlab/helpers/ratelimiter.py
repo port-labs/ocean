@@ -1,7 +1,7 @@
 from typing import final
 from aiolimiter import AsyncLimiter
 from loguru import logger
-from gitlab_core.helpers.quota import GitLabAPIQuota
+from gitlab.helpers.quota import GitLabAPIQuota
 
 
 _DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0  # Time period in seconds
@@ -29,7 +29,7 @@ class GitLabRateLimiter(GitLabAPIQuota):
 
     @final
     def quota_name(self) -> str:
-        return f"GitLab API Rate Limit"
+        return "GitLab API Rate Limit"
 
     async def limiter(self) -> AsyncLimiter:
         return await self.register()
