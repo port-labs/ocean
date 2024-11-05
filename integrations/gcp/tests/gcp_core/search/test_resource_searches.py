@@ -62,14 +62,14 @@ async def test_get_single_subscription(
     from gcp_core.search.resource_searches import get_single_subscription
 
     expected_subscription = {
-        "ack_deadline_seconds": 0,
+        "ackDeadlineSeconds": 0,
         "detached": False,
-        "enable_exactly_once_delivery": False,
-        "enable_message_ordering": False,
+        "enableExactlyOnceDelivery": False,
+        "enableMessageOrdering": False,
         "filter": "",
         "labels": {},
         "name": "subscription_name",
-        "retain_acked_messages": False,
+        "retainAckedMessages": False,
         "state": 0,
         "topic": "",
     }
@@ -129,18 +129,18 @@ async def test_feed_to_resource(integration_config: Any, monkeypatch: Any) -> No
 
     expected_resource = {
         "__project": {
-            "display_name": "",
+            "displayName": "",
             "etag": "",
             "labels": {},
             "name": "project_name",
             "parent": "",
-            "project_id": "",
+            "projectId": "",
             "state": 0,
         },
-        "kms_key_name": "",
+        "kmsKeyName": "",
         "labels": {},
         "name": "topic_name",
-        "satisfies_pzs": False,
+        "satisfiesPzs": False,
         "state": 0,
     }
 
