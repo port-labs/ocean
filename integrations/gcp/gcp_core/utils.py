@@ -49,7 +49,7 @@ def parse_latest_resource_from_asset(asset_data: AssetData) -> dict[Any, Any]:
 
 
 def parse_protobuf_message(message: proto.Message) -> dict[str, Any]:
-    return proto.Message.to_dict(message)
+    return proto.Message.to_dict(message, preserving_proto_field_name=False)
 
 
 def parse_protobuf_messages(
