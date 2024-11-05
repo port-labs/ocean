@@ -223,5 +223,61 @@
       "visibility": "private",
       "lastUpdateTime": "2024-01-08T12:07:57.667Z"
     }
+  },
+  {
+    "id": 18,
+    "name": "Release-18",
+    "status": "abandoned",
+    "createdOn": "2017-06-16T01:36:20.397Z",
+    "modifiedOn": "2017-06-16T01:36:21.07Z",
+    "modifiedBy": {
+      "id": "4adb1680-0eac-6149-b5ee-fc8b4f6ca227",
+      "displayName": "Chuck Reinhart",
+      "uniqueName": "fabfiber@outlook.com",
+      "url": "https://vssps.dev.azure.com/fabrikam/_apis/Identities/4adb1680-0eac-6149-b5ee-fc8b4f6ca227",
+      "imageUrl": "https://dev.azure.com/fabrikam/_api/_common/identityImage?id=4adb1680-0eac-6149-b5ee-fc8b4f6ca227"
+    },
+    "createdBy": {
+      "id": "4adb1680-0eac-6149-b5ee-fc8b4f6ca227",
+      "displayName": "Chuck Reinhart",
+      "uniqueName": "fabfiber@outlook.com",
+      "url": "https://vssps.dev.azure.com/fabrikam/_apis/Identities/4adb1680-0eac-6149-b5ee-fc8b4f6ca227",
+      "imageUrl": "https://dev.azure.com/fabrikam/_api/_common/identityImage?id=4adb1680-0eac-6149-b5ee-fc8b4f6ca227"
+    },
+    "variables": {},
+    "variableGroups": [],
+    "releaseDefinition": {
+      "id": 1,
+      "name": "MyShuttle.CD",
+      "url": "https://vsrm.dev.azure.com/fabrikam/1b6aba50-6176-4df2-a8e3-f0394ec0b0a2/_apis/Release/definitions/1",
+      "_links": {
+        "self": {
+          "href": "https://vsrm.dev.azure.com/fabrikam/1b6aba50-6176-4df2-a8e3-f0394ec0b0a2/_apis/Release/definitions/1"
+        },
+        "web": {
+          "href": "https://dev.azure.com/fabrikam/1b6aba50-6176-4df2-a8e3-f0394ec0b0a2/_release?definitionId=1"
+        }
+      }
+    },
+    "description": "Creating Sample release",
+    "reason": "manual",
+    "releaseNameFormat": "Release-$(rev:r)",
+    "keepForever": false,
+    "definitionSnapshotRevision": 1,
+    "logsContainerUrl": "https://vsrm.dev.azure.com/fabrikam/1b6aba50-6176-4df2-a8e3-f0394ec0b0a2/_apis/Release/releases/18/logs",
+    "url": "https://vsrm.dev.azure.com/fabrikam/1b6aba50-6176-4df2-a8e3-f0394ec0b0a2/_apis/Release/releases/18",
+    "_links": {
+      "self": {
+        "href": "https://vsrm.dev.azure.com/fabrikam/1b6aba50-6176-4df2-a8e3-f0394ec0b0a2/_apis/Release/releases/18"
+      },
+      "web": {
+        "href": "https://dev.azure.com/fabrikam/1b6aba50-6176-4df2-a8e3-f0394ec0b0a2/_release?releaseId=18&_a=release-summary"
+      }
+    },
+    "tags": [],
+    "projectReference": {
+      "id": "1b6aba50-6176-4df2-a8e3-f0394ec0b0a2",
+      "name": "Test Project"
+    }
   }
 ]

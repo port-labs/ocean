@@ -23,12 +23,23 @@ DEPRECATION_WARNING = "Please use the get_resources method with the application 
 
 
 class ArgocdClient:
-    def __init__(self, token: str, server_url: str, ignore_server_error: bool):
+    def __init__(
+        self,
+        token: str,
+        server_url: str,
+        ignore_server_error: bool,
+        allow_insecure: bool,
+    ):
         self.token = token
         self.api_url = f"{server_url}/api/v1"
         self.ignore_server_error = ignore_server_error
+        self.allow_insecure = allow_insecure
         self.api_auth_header = {"Authorization": f"Bearer {self.token}"}
-        self.http_client = http_async_client
+        if self.allow_insecure:
+            # This is not recommended for production use
+            self.http_client = httpx.AsyncClient(verify=False)
+        else:
+            self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
 
     async def _send_api_request(

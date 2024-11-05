@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "azure"
-version = "0.1.96"
+version = "0.1.99"
 description = "Azure integration"
 authors = ["Tom Tankilevitch <tom@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.12.3", extras = ["cli"]}
+port_ocean = {version = "^0.12.7", extras = ["cli"]}
 # due to patching the azure-mgmt-resource package, we need to use a specific version
 azure-mgmt-resource = "23.0.1"
 azure-identity = "^1.13.0"
@@ -27,6 +27,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"

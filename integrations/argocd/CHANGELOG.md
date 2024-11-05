@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.97 (2024-10-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.7
+
+
+## 0.1.96 (2024-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.6
+
+
+## 0.1.95 (2024-10-18)
+
+
+### Improvements
+
+- Added support for optional insecure connections to Argocd with SSL verification disabled when allow_insecure is set to True (0.1.95)
+
+
+## 0.1.94 (2024-10-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.4
+
+
 # 0.1.93 (2024-10-10)
 
 

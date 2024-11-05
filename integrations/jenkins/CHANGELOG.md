@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.1.67 (2024-10-30)
+
+### Improvements
+
+- Increase builds fetched per job from 50 to 100
+
+## 0.1.66 (2024-10-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.7
+
+
+## 0.1.65 (2024-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.6
+
+
+## 0.1.64 (2024-10-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.4
+
 
 ## 0.1.63 (2024-10-09)
 

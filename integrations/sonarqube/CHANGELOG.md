@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.105 (2024-10-29)
+
+
+### Bug Fixes
+
+- Fixed bug where issues/list API is not available for older SonarQube instance versions
+
+
+## 0.1.104 (2024-10-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.7
+
+
+## 0.1.103 (2024-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.6
+
+
+## 0.1.102 (2024-10-21)
+
+
+### Features
+
+- Added support for portfolios (0.1.102)
+
+
+## 0.1.101 (2024-10-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.4
+
+
 ## 0.1.100 (2024-10-09)
 
 

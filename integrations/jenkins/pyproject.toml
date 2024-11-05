@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "jenkins"
-version = "0.1.63"
+version = "0.1.67"
 description = "Jenkins Integration to Port Ocean"
 authors = ["Albert Luganga <ahosea15@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.12.3", extras = ["cli"]}
+port_ocean = {version = "^0.12.7", extras = ["cli"]}
 pip = "^23.3.1"
 python-dotenv = "^1.0.0"
 loguru = "^0.7.2"
@@ -23,6 +23,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"
