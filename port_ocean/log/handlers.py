@@ -37,6 +37,7 @@ class HTTPMemoryHandler(MemoryHandler):
         self.flush_size = flush_size
         self.last_flush_time = time.time()
         self._serialized_buffer: list[dict[str, Any]] = []
+        self._thread_pool: list[threading.Thread] = []
 
     @property
     def ocean(self) -> Ocean | None:
@@ -60,6 +61,11 @@ class HTTPMemoryHandler(MemoryHandler):
         ):
             return True
         return False
+    
+    def wait_for_lingering_threads(self)->None:
+        for thread in self._thread_pool:
+            if thread.is_alive():
+                thread.join()
 
     def flush(self) -> None:
         if self.ocean is None or not self.buffer:
@@ -70,14 +76,23 @@ class HTTPMemoryHandler(MemoryHandler):
             loop.run_until_complete(self.send_logs(_ocean, logs_to_send))
             loop.close()
 
+        def clear_thread_pool()->None:
+            for thread in self._thread_pool:
+                if not thread.is_alive():
+                    self._thread_pool.remove(thread)
+
         self.acquire()
         logs = list(self._serialized_buffer)
         if logs:
             self.buffer.clear()
             self._serialized_buffer.clear()
             self.last_flush_time = time.time()
-            threading.Thread(target=_wrap_event_loop, args=(self.ocean, logs)).start()
+            clear_thread_pool()
+            thread=threading.Thread(target=_wrap_event_loop, args=(self.ocean, logs))
+            thread.start()
+            self._thread_pool.append(thread)
         self.release()
+
 
     async def send_logs(
         self, _ocean: Ocean, logs_to_send: list[dict[str, Any]]
