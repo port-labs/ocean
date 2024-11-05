@@ -5,13 +5,13 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from httpx import Timeout
 from loguru import logger
-
+from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
 from aiolimiter import AsyncLimiter
 
-# Setting limit to 80% of the rate limit of 1650 requests per minute allowed by Snyk (https://docs.snyk.io/snyk-api/rest-api/about-the-rest-api#rate-limiting)
-RATELIMITER = AsyncLimiter(1320)
+SNYK_LIMIT = int(ocean.integration_config.get("snyk_rate_limit"))
+RATELIMITER = AsyncLimiter(SNYK_LIMIT)
 
 
 class CacheKeys(StrEnum):

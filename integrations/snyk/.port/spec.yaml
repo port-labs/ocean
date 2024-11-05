@@ -37,3 +37,8 @@ configurations:
     type: string
     required: false
     description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Snyk
+  - name: snykRateLimit
+    type: string
+    required: false
+    default: 1320
+    description: The API limit enforced by Snyk. The default is 80% of the 1650 requests per minute allowed by Snyk (<a href="https://docs.snyk.io/snyk-api/rest-api/about-the-rest-api#rate-limiting" target="_blank">Snyk Documentation</a>)
