@@ -8,7 +8,7 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-
+from aiolimiter import AsyncLimiter
 from snyk.client import SnykClient
 from snyk.overrides import ProjectResourceConfig
 
