@@ -1,17 +1,36 @@
 import asyncio
 import base64
-from typing import Any, Optional, AsyncGenerator, cast
+from typing import Any, AsyncGenerator, Generator, Optional, cast
 
 import httpx
 from loguru import logger
-
-from integration import (
-    SonarQubeIssueResourceConfig,
-    CustomSelector,
-    SonarQubeProjectResourceConfig,
-)
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+
+from integration import (
+    CustomSelector,
+    SonarQubeIssueResourceConfig,
+    SonarQubeProjectResourceConfig,
+)
+
+
+def turn_sequence_to_chunks(
+    sequence: list[str], chunk_size: int
+) -> Generator[list[str], None, None]:
+    if chunk_size >= len(sequence):
+        yield sequence
+        return
+    start, end = 0, chunk_size
+
+    while start <= len(sequence) and sequence[start:end]:
+        yield sequence[start:end]
+        start += chunk_size
+        end += chunk_size
+
+    return
+
+
+MAX_PORTFOLIO_REQUESTS = 20
 
 
 class Endpoints:
@@ -19,12 +38,15 @@ class Endpoints:
     WEBHOOKS = "webhooks"
     MEASURES = "measures/component"
     BRANCHES = "project_branches/list"
-    ONPREM_ISSUES = "issues/list"
-    SAAS_ISSUES = "issues/search"
+    ISSUES_SEARCH = "issues/search"
     ANALYSIS = "activity_feed/list"
+    PORTFOLIO_DETAILS = "views/show"
+    PORTFOLIOS = "views/list"
 
 
 PAGE_SIZE = 100
+
+PORTFOLIO_VIEW_QUALIFIERS = ["VW", "SVW"]
 
 
 class SonarQubeClient:
@@ -137,7 +159,7 @@ class SonarQubeClient:
             if (
                 e.response.status_code == 400
                 and query_params.get("ps", 0) > PAGE_SIZE
-                and endpoint in [Endpoints.ONPREM_ISSUES, Endpoints.SAAS_ISSUES]
+                and endpoint == Endpoints.ISSUES_SEARCH
             ):
                 logger.error(
                     "The request exceeded the maximum number of issues that can be returned (10,000) from SonarQube API. Consider using apiFilters in the config mapping to narrow the scope of your search. Returning accumulated issues and skipping further results."
@@ -313,20 +335,17 @@ class SonarQubeClient:
         """
         component_issues = []
         component_key = component.get("key")
-        endpoint_path = ""
 
         if self.is_onpremise:
-            query_params = {"project": component_key}
-            endpoint_path = Endpoints.ONPREM_ISSUES
+            query_params = {"components": component_key}
         else:
             query_params = {"componentKeys": component_key}
-            endpoint_path = Endpoints.SAAS_ISSUES
 
         if api_query_params:
             query_params.update(api_query_params)
 
         response = await self.send_paginated_api_request(
-            endpoint=endpoint_path,
+            endpoint=Endpoints.ISSUES_SEARCH,
             data_key="issues",
             query_params=query_params,
         )
@@ -479,6 +498,52 @@ class SonarQubeClient:
                 project_key=component["key"]
             )
             yield analysis_data
+
+    async def _get_all_portfolios(self) -> list[dict[str, Any]]:
+        logger.info(
+            f"Fetching all root portfolios in organization: {self.organization_id}"
+        )
+        response = await self.send_api_request(endpoint=Endpoints.PORTFOLIOS)
+        return response.get("views", [])
+
+    async def _get_portfolio_details(self, portfolio_key: str) -> dict[str, Any]:
+        logger.info(f"Fetching portfolio details for: {portfolio_key}")
+        response = await self.send_api_request(
+            endpoint=Endpoints.PORTFOLIO_DETAILS,
+            query_params={"key": portfolio_key},
+        )
+        return response
+
+    def _extract_subportfolios(self, portfolio: dict[str, Any]) -> list[dict[str, Any]]:
+        logger.info(f"Fetching subportfolios for: {portfolio['key']}")
+        subportfolios = portfolio.get("subViews", []) or []
+        all_portfolios = []
+        for subportfolio in subportfolios:
+            if subportfolio.get("qualifier") in PORTFOLIO_VIEW_QUALIFIERS:
+                all_portfolios.append(subportfolio)
+            all_portfolios.extend(self._extract_subportfolios(subportfolio))
+        return all_portfolios
+
+    async def get_all_portfolios(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info(f"Fetching all portfolios in organization: {self.organization_id}")
+        portfolios = await self._get_all_portfolios()
+        portfolio_keys_chunks = turn_sequence_to_chunks(
+            [portfolio["key"] for portfolio in portfolios], MAX_PORTFOLIO_REQUESTS
+        )
+
+        for portfolio_keys in portfolio_keys_chunks:
+            try:
+                portfolios_data = await asyncio.gather(
+                    *[
+                        self._get_portfolio_details(portfolio_key)
+                        for portfolio_key in portfolio_keys
+                    ]
+                )
+                for portfolio_data in portfolios_data:
+                    yield [portfolio_data]
+                    yield self._extract_subportfolios(portfolio_data)
+            except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+                logger.error(f"Error occurred while fetching portfolio details: {e}")
 
     def sanity_check(self) -> None:
         try:
