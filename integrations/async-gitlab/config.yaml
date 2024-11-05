@@ -1,0 +1,19 @@
+# This is an example configuration file for the integration service.
+# Please copy this file to config.yaml file in the integration folder and edit it to your needs.
+initializePortResources: true
+scheduledResyncInterval: 1440 # 60 minutes X 24 hours = 1 day
+port:
+  clientId: "{{ from env OCEAN__PORT__CLIENT_ID }}" # Can be loaded using environment variable: PORT_CLIENT_ID
+  clientSecret: "{{ from env OCEAN__PORT__CLIENT_SECRET }}" # Can be loaded using environment variable: PORT_CLIENT_SECRET
+  base_url: https://api.getport.io
+# The event listener to use for the integration service.
+eventListener:
+  type: POLLING
+integration:
+  # The identifier of this integration instance.
+  identifier: "Gitlab"
+  # The type of the integration.
+  type: "Gitlab"
+  config:
+    gitlab_host: "{{ from env GITLAB_HOST }}"
+    access_token: "{{ from env GITLAB_ACCESS_TOKEN }}"
