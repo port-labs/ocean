@@ -4,13 +4,13 @@ type: "exporter"
 identifier: "test-gitlab"
 
 port:
-  client_id: "${OCEAN__PORT__CLIENT_ID}"       
-  client_secret: "${OCEAN__PORT__CLIENT_SECRET}" 
-  base_url: "${OCEAN__PORT__BASE_URL}"         
+  client_id: "${OCEAN__PORT__CLIENT_ID}"
+  client_secret: "${OCEAN__PORT__CLIENT_SECRET}"
+  base_url: "${OCEAN__PORT__BASE_URL}"
 
 features:
   - type: exporter
-    section: Under Development 
+    section: Under Development
     resources:
       - kind: group
       - kind: project
@@ -34,7 +34,7 @@ configurations:
     description: "URL where GitLab will send webhook events"
     type: url
     required: true
-    
+
   - name: rate_limit
     description: "Maximum number of API requests per minute"
     type: integer
