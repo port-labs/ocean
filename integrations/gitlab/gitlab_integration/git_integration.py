@@ -3,7 +3,6 @@ from typing import Dict, Any, Literal, Tuple, List, Type
 from gitlab.v4.objects import Project
 from loguru import logger
 from pydantic import Field, BaseModel
-
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,

@@ -1,15 +1,18 @@
 [tool.poetry]
 name = "gcp"
-version = "0.1.48"
+version = "0.1.66"
 description = "A GCP ocean integration"
 authors = ["Matan Geva <matang@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.10.5", extras = ["cli"]}
+port_ocean = {version = "^0.12.8", extras = ["cli"]}
 google-cloud-asset = "^3.25.1"
 google-cloud-pubsub = "^2.21.1"
 google-cloud-resource-manager = "^1.12.3"
+google-cloud-quotas = "^0.1.10"
+aiolimiter = "^1.1.0"
+types-requests = "^2.32.0.20240712"
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
@@ -23,6 +26,7 @@ pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
 ruff = "^0.6.3"
 towncrier = "^23.6.0"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"

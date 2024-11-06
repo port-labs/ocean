@@ -7,6 +7,126 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.12.8 (2024-11-04)
+
+
+### Improvements
+
+- Bump fastapi to version 0.115.3 - fix Starlette Denial of service (DoS) via multipart/form-data (0.12.8)
+
+## 0.12.7 (2024-10-23)
+
+
+### Bug Fixes
+
+- Fixed get_integration_ocean_app test fixture configuration injection (0.12.7)
+
+
+## 0.12.6 (2024-10-20)
+
+
+### Bug Fixes
+
+- Fixed get_integration_resource_config assumption for port-app-config files to be of .yaml extension only (0.12.6)
+
+
+## 0.12.5 (2024-10-21)
+
+
+### Bug Fixes
+
+- Fixed get_integration_resource_config assumption for port-app-config files to be of .yml extension only (0.12.5)
+
+
+## 0.12.3 (2024-10-09)
+
+### Improvements
+
+- Updated docker base image to improve security vulnerabilities
+
+
+## 0.12.2 (2024-10-06)
+
+### Improvements
+
+- Added a util `semaphore_async_iterator` to enable seamless control over concurrent executions.
+
+
+## 0.12.1 (2024-10-02)
+
+### Bug Fixes
+
+- Fixed a bug when running jq with iterator that caused the integration to crash
+- Reverted image to `python:3.11-slim-buster` to fix the issue with the alpine image
+
+## 0.12.0 (2024-10-01)
+
+### Improvements
+
+- Replace `python:3.11-slim-bookworm` with `python:3.11-alpine` to reduce dependencies and fix vulnerabilities
+
+### Bug Fixes
+
+- Fixed smoke tests to run concurrently and clean up after themselves
+
+## 0.11.0 (2024-09-29)
+
+### Improvements
+
+- Replace pyjq with jq.py to bump jq version from 1.5.2 to 1.7.1
+
+## 0.10.12 (2024-09-19)
+
+### Bug Fixes
+
+- Fixed updating state of resync when the resync is being cancelled by a new resync event
+
+## 0.10.11 (2024-09-17)
+
+### Improvements
+
+- Add smoke test with a live integration to validate core changes
+
+## 0.10.10 (2024-09-12)
+
+### Bug Fixes
+
+- Fixed failing on initialization of the integration when one of the actions exists in port
+
+### Improvements
+
+- Added fix lint command to the makefile as well as the pre-commit hook
+
+
+## 0.10.9 (2024-09-05)
+
+### Bug Fixes
+
+- Replaced StopAsyncIteration with a return statement to ignore prevent errors in cases where empty tasks are sent to the stream_async_iterators_tasks function
+
+
+## 0.10.8 (2024-09-04)
+
+### Bug Fixes
+
+- Avoid raising exception when receiving ReadTimeout on batch upsert entities
+- Increased both internal port client and third party client timeout to handle long requests
+
+
+## 0.10.7 (2024-08-28)
+
+### Improvements
+
+- Add search identifier support (Allow to run a search query to find the identifier of the entity as part of the mapping)
+
+
+## 0.10.6 (2024-08-31)
+
+### Bug Fixes
+
+- Fixed error log when looking for existence of integration on initialization
+
+
 ## 0.10.5 (2024-08-27)
 
 ### Improvements

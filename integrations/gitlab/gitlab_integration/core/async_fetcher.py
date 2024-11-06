@@ -23,6 +23,7 @@ from port_ocean.core.models import Entity
 T = TypeVar("T", bound=RESTObject)
 
 DEFAULT_PAGINATION_PAGE_SIZE = 100
+FIRST_PAGE = 1
 
 
 class AsyncFetcher:
@@ -165,7 +166,7 @@ class AsyncFetcher:
     ) -> GitlabList | List[Dict[str, Any]]:
         with ThreadPoolExecutor() as executor:
 
-            def fetch_func():
+            def fetch_func() -> GitlabList | List[Dict[str, Any]]:
                 return project.repository_tree(
                     path=path,
                     ref=ref,

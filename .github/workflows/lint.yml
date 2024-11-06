@@ -6,54 +6,33 @@ on:
 
 jobs:
   detect-changes:
-    name: Detect changes
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-
-      - name: Get list of changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v44.5.7
-      - name: Set matrix
-        id: set-matrix
-        run: |
-          folders_to_ignore="integrations/*/LICENSE.md|integrations/*/README.md|integrations/*/CONTRIBUTING.md|integrations/*/CHANGELOG.md"
-          changed_folders=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep '^integrations/' | grep -v '^($folders_to_ignore)' | cut -d'/' -f2 | sort | uniq)
-          if [ -z "$changed_folders" ]; then
-            changed_folders=""
-          fi
-
-          folders_to_ignore="integrations/|scripts/|assets/|docs/|LICENSE.md|README.md|CONTRIBUTING.md|CHANGELOG.md"
-          other_changes=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' | grep -v '^($folders_to_ignore)' | wc -l)
-          if [ "$other_changes" -ne 0 ]; then
-            # Add the root directory to the matrix if there are changes outside the integrations folder
-            changed_folders=$(echo -e "$changed_folders\n.")
-          fi
-
-          matrix=$(echo "$changed_folders" | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
-
+    uses: ./.github/workflows/detect-changes-matrix.yml
   lint:
     name: ${{ matrix.folder == '.' && '🌊 Ocean Core' || format('🚢 {0}', matrix.folder) }}
     needs: detect-changes
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 5
       matrix:
         folder: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install poetry
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Checkout Repo
-        uses: actions/checkout@v4
+          cache: 'poetry'
+
       - name: Install dependencies
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
         run: |
           make install
+
       - name: Lint
         working-directory: ${{ matrix.folder != '.' && format('integrations/{0}', matrix.folder) || '.' }}
         run: |

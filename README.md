@@ -16,13 +16,13 @@ empowering engineers to effortlessly prioritize key features and streamline the 
 In order to install the Ocean Framework, run the following command:
 
 ```bash
-pip install port-ocean[cli]
+pip install "port-ocean[cli]"
 ```
 
 Or
 
 ```bash
-poetry add port-ocean[cli]
+poetry add "port-ocean[cli]"
 ```
 
 ## Run Integration

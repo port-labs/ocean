@@ -41,7 +41,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-          ./scripts/bump-all.sh ^${{ steps.version.outputs.version }}
+          ./scripts/bump-all.sh ${{ steps.version.outputs.version }}
 
 
       - name: Open pull request

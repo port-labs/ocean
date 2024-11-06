@@ -154,6 +154,12 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[RAW_ITEM],
         user_agent_type: UserAgentType,
     ) -> tuple[list[Entity], list[Exception]]:
+        if resource.port.entity.mappings.is_using_search_identifier:
+            logger.info(
+                f"Skip unregistering resource of kind {resource.kind}, as mapping defined with search identifier"
+            )
+            return [], []
+
         objects_diff = await self._calculate_raw([(resource, results)])
         entities_selector_diff, errors = objects_diff[0]
 
@@ -272,7 +278,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 [
                     entity
                     for entity in entities_to_delete
-                    if (entity.identifier, entity.blueprint)
+                    if not entity.is_using_search_identifier
+                    and (entity.identifier, entity.blueprint)
                     not in registered_entities_attributes
                 ],
             )
@@ -449,7 +456,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                         creation_results.append(await task)
             except asyncio.CancelledError as e:
-                logger.warning("Resync aborted successfully")
+                logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
+                raise
             else:
                 if not did_fetched_current_state:
                     logger.warning(
@@ -482,3 +490,4 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         {"before": entities_at_port, "after": flat_created_entities},
                         user_agent_type,
                     )
+                    logger.info("Resync finished successfully")

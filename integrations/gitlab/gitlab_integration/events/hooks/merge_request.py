@@ -1,4 +1,5 @@
 from typing import Any
+from loguru import logger
 
 from gitlab.v4.objects import Project
 
@@ -13,6 +14,10 @@ class MergeRequest(ProjectHandler):
     system_events = ["merge_request"]
 
     async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
+        logger.debug(
+            f"Handling merge request hook for project {gitlab_project.path_with_namespace}, merge_request_id: {body.get('object_attributes', {}).get('iid')},"
+            f" merge_request_title: {body.get('object_attributes', {}).get('title')}, status: {body.get('object_attributes', {}).get('state')}"
+        )
         merge_requests = await AsyncFetcher.fetch_single(
             gitlab_project.mergerequests.get,
             body["object_attributes"]["iid"],
