@@ -35,7 +35,7 @@
       "method": "POST",
       "headers": {
         "RUN_ID": "{{ .run.id }}",
-        "Authorization": "Token token={{ .secrets._pagerduty-token }}",
+        "Authorization": "Token token={{ .secrets._PAGERDUTY_TOKEN }}",
         "Accept": "application/vnd.pagerduty+json;version=2",
         "Content-Type": "application/json",
         "From": "{{ .trigger.by.user.email }}"
