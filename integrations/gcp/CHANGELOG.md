@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Sets GCP returned `pubsub` fields to `camelCase` rather than `snake_case`.  
 
+## 0.1.66 (2024-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+
 ## 0.1.65 (2024-10-23)
 
 
