@@ -1,0 +1,20 @@
+description: gitlab-v2 integration for Port Ocean
+icon: Gitlab  # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Under Development  # Should be one of the available sections in Port
+    resources:
+      - kind: group
+      - kind: project
+      - kind: merge-request
+      - kind: issue
+configurations:
+  - name: gitlabToken
+    # required: true
+    type: string
+    sensitive: true
+  - name: gitlabUrl
+    type: url
+  - name: gitlabSecret
+    type: string
+    sensitive: true

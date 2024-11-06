@@ -11,12 +11,12 @@ repos:
       - id: check-executables-have-shebangs
       - id: check-symlinks
       - id: detect-aws-credentials
-  - repo: local
-    hooks:
-      - id: fix lint
-        name: Fix linter
-        description: This hooks fixes our linters
-        entry: make lint/fix
-        language: system
-        types:
-          - python
+  # - repo: local
+  #   hooks:
+  #     - id: fix lint
+  #       name: Fix linter
+  #       description: This hooks fixes our linters
+  #       entry: make lint/fix
+  #       language: system
+  #       types:
+  #         - python
