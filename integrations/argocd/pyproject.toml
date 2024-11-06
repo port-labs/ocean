@@ -85,6 +85,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
+target-version = "py311"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
