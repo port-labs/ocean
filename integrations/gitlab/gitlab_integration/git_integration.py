@@ -65,7 +65,7 @@ class SearchEntityProcessor(JQEntityProcessor):
         match = None
         if project:
             if scope == "blobs":
-                # if the query does not contain a path ots, we add the base path to the query
+                # if the query does not contain a path filter, we add the base path to the query
                 # this is done to avoid searching the entire project for the file, if the base path is known
                 # having the base path applies to the case where we export a folder as a monorepo
                 if base_path and "path:" not in query:

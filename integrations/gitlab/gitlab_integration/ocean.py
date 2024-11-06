@@ -136,7 +136,6 @@ async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for groups_batch in service.get_all_groups():
             tasks = [service.enrich_group_with_members(group) for group in groups_batch]
             enriched_groups = await asyncio.gather(*tasks)
-            logger.warning(f"Enriched Groups {enriched_groups}")
             yield enriched_groups
 
 
@@ -330,4 +329,5 @@ async def resync_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             group_tasks = [process_group_members(service, group) for group in groups]
             for group_task in asyncio.as_completed(group_tasks):
                 group_members = await group_task
+                logger.warning(f"Enriched Members {group_members}")
                 yield group_members
