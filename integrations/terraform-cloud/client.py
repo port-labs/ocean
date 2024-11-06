@@ -1,6 +1,3 @@
-import asyncio
-import httpx
-
 from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from aiolimiter import AsyncLimiter
@@ -49,54 +46,23 @@ class TerraformClient:
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         async with self.rate_limiter:
-            try:
-                url = f"{self.api_url}/{endpoint}"
-                response = await self.client.request(
-                    method=method,
-                    url=url,
-                    params=query_params,
-                    json=json_data,
-                )
+            url = f"{self.api_url}/{endpoint}"
+            response = await self.client.request(
+                method=method,
+                url=url,
+                params=query_params,
+                json=json_data,
+            )
 
-                logger.info(
-                    f"Rate limit info - "
-                    f"Limit: {response.headers.get('x-ratelimit-limit', NO_OF_REQUESTS)}, "
-                    f"Remaining: {response.headers.get('x-ratelimit-remaining', NO_OF_REQUESTS)}, "
-                    f"Reset: {response.headers.get('x-ratelimit-reset', 1)}"
-                )
+            logger.info(
+                f"Rate limit info - "
+                f"Limit: {response.headers.get('x-ratelimit-limit', NO_OF_REQUESTS)}, "
+                f"Remaining: {response.headers.get('x-ratelimit-remaining', NO_OF_REQUESTS)}, "
+                f"Reset: {response.headers.get('x-ratelimit-reset', 1)}"
+            )
 
-                if response.status_code == 429:
-                    logger.warning(
-                        f"Rate limited on {endpoint}. "
-                        f"Headers: {dict(response.headers)}. "
-                        f"Waiting {response.headers.get('x-ratelimit-reset', 1)} seconds"
-                    )
-                    await asyncio.sleep(
-                        float(response.headers.get("x-ratelimit-reset", 1))
-                    )
-                    return await self.send_api_request(
-                        endpoint, method, query_params, json_data
-                    )
-
-                response.raise_for_status()
-                return response.json()
-
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    reset_in = float(e.response.headers.get("x-ratelimit-reset", 1))
-                    logger.warning(
-                        f"Rate limited on {endpoint}. "
-                        f"Headers: {dict(e.response.headers)}. "
-                        f"Waiting {reset_in} seconds"
-                    )
-                    await asyncio.sleep(reset_in)
-                    return await self.send_api_request(
-                        endpoint, method, query_params, json_data
-                    )
-                logger.error(
-                    f"HTTP error on {endpoint}: {e.response.status_code} - {e.response.text}"
-                )
-                raise
+            response.raise_for_status()
+            return response.json()
 
     async def get_paginated_resources(
         self, endpoint: str, params: Optional[dict[str, Any]] = None
