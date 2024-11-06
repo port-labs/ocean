@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Load configuration values
-GITLAB_API_URL = os.getenv("OCEAN__INTEGRATION__CONFIG__GITLAB_API_URL", "https://gitlab.com/api/v4")
+GITLAB_API_URL = os.getenv("OCEAN__INTEGRATION__CONFIG__GITLAB_API_URL")
 GITLAB_TOKEN = os.getenv("OCEAN__INTEGRATION__CONFIG__GITLAB_TOKEN")
 RATE_LIMIT = int(os.getenv("OCEAN__INTEGRATION__CONFIG__RATE_LIMIT", 10))
 RATE_LIMIT_PERIOD = int(os.getenv("OCEAN__INTEGRATION__CONFIG__RATE_LIMIT_PERIOD", 60))
@@ -36,7 +36,7 @@ class GitLabHandler:
 
         while url:
             response = await http_async_client.get(url, params=params, headers=headers, timeout=30)
-
+            
             if response.status_code == 429:  # Too Many Requests
                 logging.warning("Rate limit reached; retrying after delay")
                 await asyncio.sleep(self.rate_limit_period)
@@ -45,7 +45,7 @@ class GitLabHandler:
             response.raise_for_status()
             data = response.json()
             all_data.extend(data)
-
+            
             # Check for pagination
             next_page = response.headers.get("X-Next-Page")
             url = f"{self.api_url}{endpoint}?page={next_page}" if next_page else None
@@ -67,14 +67,14 @@ class GitLabHandler:
                 "description": group.get("description"),
                 "visibility": group.get("visibility"),
             })
-
+            
             # Recursively fetch subgroups, only if there are any
             if group.get("subgroup_count", 0) > 0:
                 subgroups = await self.fetch_groups(parent_id=group["id"])
                 all_groups.extend(subgroups)
 
         return all_groups
-
+   
 
     async def fetch_projects(self) -> List[Dict[str, Any]]:
         """Fetch projects from GitLab."""
@@ -82,7 +82,7 @@ class GitLabHandler:
         endpoint = "/projects"
         params = {"per_page": self.rate_limit}
         data = await self._rate_limited_request(endpoint, params)
-
+        
         return [
             {
                 "identifier": project["id"],
@@ -114,6 +114,28 @@ class GitLabHandler:
                 "reviewers": [reviewer["username"] for reviewer in mr.get("reviewers", [])],
             }
             for mr in data
+        ]
+
+    async def fetch_issues(self) -> List[Dict[str, Any]]:
+        """Fetch issues from GitLab."""
+        logging.info("Fetching issues from GitLab...")
+        endpoint = "/issues"
+        params = {"scope": "all", "per_page": self.rate_limit}
+        data = await self._rate_limited_request(endpoint, params)
+
+        return [
+            {
+                "identifier": issue["id"],
+                "title": issue["title"],
+                "status": issue["state"],
+                "author": issue["author"]["username"],
+                "createdAt": issue["created_at"],
+                "updatedAt": issue["updated_at"],
+                "closedAt": issue.get("closed_at"),
+                "link": issue["web_url"],
+                "labels": issue.get("labels", []),
+            }
+            for issue in data
         ]
 
     async def setup_webhook(self) -> None:

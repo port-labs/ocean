@@ -24,6 +24,10 @@ async def on_resync(kind: str) -> List[Dict]:
     elif kind == "merge_request":
         logging.info("Resyncing merge requests from GitLab...")
         return await gitlab_handler.fetch_merge_requests()
+    elif kind == "issue":
+        logging.info("Resyncing issues from GitLab...")
+        return await gitlab_handler.fetch_issues()
+    
     logging.warning(f"Unsupported kind for resync: {kind}")
     return []
 
