@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Implemented Terraform API rate limiting to prevent resync failures that caused stale data in Port. Previously, exceeding the API's request limit interrupted resyncs, preventing the deletion of outdated entities.
 
+## 0.1.75 (2024-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+
 ## 0.1.74 (2024-10-23)
 
 
