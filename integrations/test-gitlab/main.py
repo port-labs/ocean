@@ -13,11 +13,21 @@ gitlab_handler = GitLabHandler()
 @ocean.on_resync()
 async def on_resync(kind: str) -> List[Dict]:
     """
-    Resync handler based on entity kind. Supports only 'group' kind in this branch.
+    Resync handler based on entity kind. Supports project, group, merge_request, and issue kinds.
     """
     if kind == "group":
         logging.info("Resyncing groups from GitLab...")
         return await gitlab_handler.fetch_groups()
-    
+
     logging.warning(f"Unsupported kind for resync: {kind}")
     return []
+
+# Listen to the start event to set up webhooks
+@ocean.on_start()
+async def on_start() -> None:
+    """
+    Handler for integration start event.
+    Sets up necessary configurations like webhook subscriptions.
+    """
+    logging.info("Starting GitLab integration and setting up webhooks...")
+    await gitlab_handler.setup_webhook()

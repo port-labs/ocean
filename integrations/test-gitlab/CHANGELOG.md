@@ -5,10 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2024-11-05
+
+### Added
+- **Webhooks Integration**: Added support for GitLab webhooks to enable real-time updates for projects and groups in Port Ocean.
+- **Pagination Support**: Implemented pagination to fetch large data sets from GitLab effectively.
+- **Rate Limiting**: Added rate limiting to control API request frequency, avoiding GitLab API rate restrictions.
+- **Recursive Fetching for Subgroups**: Enabled recursive fetching of subgroups, allowing hierarchical group structures to be synced completely.
+
 ## [0.1.0-beta] - 2024-11-04
 
 ### Added
-- **GitLab Groups Integration**: Added initial support for syncing GitLab groups into Port Ocean.
+- **GitLab Groups Integration**: Initial support for syncing GitLab groups into Port Ocean.
   - Fetches top-level group details from GitLab and maps them to Port Ocean entities.
-
-
