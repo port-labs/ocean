@@ -3,7 +3,7 @@
     "identifier": "ignore_snyk_issue",
     "title": "Ignore Snyk Issue",
     "icon": "Snyk",
-    "description": "",
+    "description": "Ignore a Snyk issue with reason and expiration date.",
     "trigger": {
       "type": "self-service",
       "operation": "DAY-2",
@@ -60,16 +60,16 @@
     },
     "invocationMethod": {
       "type": "WEBHOOK",
-      "url": "https://api.snyk.io/v1/org/{{ .secrets._snyk-organization_id }}/project/{{ .entity.relations.project }}/ignore/{{ .entity.properties.vulnerabilityId }}",
+      "url": "https://api.snyk.io/v1/org/{{ .secrets._SNYK_ORGANIZATION_ID }}/project/{{ .entity.relations.project }}/ignore/{{ .entity.properties.vulnerabilityId }}",
       "agent": false,
       "synchronized": true,
       "method": "POST",
       "headers": {
         "RUN_ID": "{{ .run.id }}",
-        "orgId": "{{ .secrets._snyk-organization_id }}",
+        "orgId": "{{ .secrets._SNYK_ORGANIZATION_ID }}",
         "issueId": "{{ .entity.properties.vulnerabilityId }}",
         "projectId": "{{ .entity.relations.project }}",
-        "Authorization": "token {{ .secrets._snyk-token }}",
+        "Authorization": "token {{ .secrets._SNYK_TOKEN }}",
         "Content-Type": "application/json"
       },
       "body": {
