@@ -1,0 +1,21 @@
+name: Tag main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  tag-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: tag main
+        run: |
+          # get tag from pyproject.toml
+          TAG=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
+          git tag "v${TAG}"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
