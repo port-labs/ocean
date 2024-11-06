@@ -3,15 +3,14 @@ icon: "gitlab"
 type: "exporter"
 identifier: "test-gitlab"
 
-# Port Ocean settings (ensure this field matches the integration's expectations)
 port:
-  client_id: "${OCEAN__PORT__CLIENT_ID}"        # Environment variable for client ID
-  client_secret: "${OCEAN__PORT__CLIENT_SECRET}" # Environment variable for client secret
-  base_url: "${OCEAN__PORT__BASE_URL}"          # Environment variable for base URL
+  client_id: "${OCEAN__PORT__CLIENT_ID}"       
+  client_secret: "${OCEAN__PORT__CLIENT_SECRET}" 
+  base_url: "${OCEAN__PORT__BASE_URL}"         
 
 features:
   - type: exporter
-    section: Under Development  # Should be one of the available sections in Port
+    section: Under Development 
     resources:
       - kind: group
       - kind: project
@@ -35,8 +34,7 @@ configurations:
     description: "URL where GitLab will send webhook events"
     type: url
     required: true
-    default: "https://your-webhook-url.com"
-
+    
   - name: rate_limit
     description: "Maximum number of API requests per minute"
     type: integer
