@@ -15,10 +15,12 @@ async def on_resync(kind: str) -> List[Dict]:
     """
     Resync handler based on entity kind. Supports project, group, merge_request, and issue kinds.
     """
-    if kind == "group":
+    if kind == "project":
+        logging.info("Resyncing projects from GitLab...")
+        return await gitlab_handler.fetch_projects()
+    elif kind == "group":
         logging.info("Resyncing groups from GitLab...")
-        return await gitlab_handler.fetch_groups()
-
+        return await gitlab_handler.fetch_groups()    
     logging.warning(f"Unsupported kind for resync: {kind}")
     return []
 
