@@ -1,8 +1,14 @@
-# Changelog - Ocean - test-gitlab
+# Changelog - Ocean - gitlab_v2
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<!-- towncrier release notes start -->
+## [0.1.0-beta] - 2024-11-04
+
+### Added
+- **GitLab Groups Integration**: Added initial support for syncing GitLab groups into Port Ocean.
+  - Fetches top-level group details from GitLab and maps them to Port Ocean entities.
+
+
