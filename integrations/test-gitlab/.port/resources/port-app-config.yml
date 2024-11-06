@@ -24,7 +24,7 @@ resources:
         mappings:
           identifier: .id|tostring
           title: .name
-          blueprint: '"gitlabProject"'
+          blueprint: '"project"'
           properties:
             url: .web_url
             readme: .readme

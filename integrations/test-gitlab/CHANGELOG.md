@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0-beta] - 2024-11-06
+
+### Added
+- **Webhook Integration**: Refined webhook setup to handle GitLab group, project, and other relevant events more effectively.
+  - Added support for instance-level webhooks to capture events across all GitLab resources.
+  - Improved error handling for webhook setup to handle permission errors.
+- **Testing Suite Enhancements**:
+  - Added unit tests and integration tests for data-fetching methods (`fetch_groups`, `fetch_projects`, `fetch_merge_requests`, `fetch_issues`).
+  - Mocked responses in unit tests to simulate API responses, ensuring consistency and isolating logic.
+  - Integrated logging in test cases to provide detailed information about test execution progress.
+
+### Fixed
+- **Blueprint Availability Issue**: Resolved issues with missing or misconfigured blueprints that could interfere with entity upserts.
+
+### Changed
+- **Error Handling**: Enhanced error handling and logging for webhook setup to improve debugging for `403 Forbidden` responses and other potential issues.
+
 ## [0.5.0] - 2024-11-06
 
 ### Added

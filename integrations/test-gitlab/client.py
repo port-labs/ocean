@@ -36,7 +36,7 @@ class GitLabHandler:
 
         while url:
             response = await http_async_client.get(url, params=params, headers=headers, timeout=30)
-            
+
             if response.status_code == 429:  # Too Many Requests
                 logging.warning("Rate limit reached; retrying after delay")
                 await asyncio.sleep(self.rate_limit_period)
@@ -45,7 +45,7 @@ class GitLabHandler:
             response.raise_for_status()
             data = response.json()
             all_data.extend(data)
-            
+
             # Check for pagination
             next_page = response.headers.get("X-Next-Page")
             url = f"{self.api_url}{endpoint}?page={next_page}" if next_page else None
@@ -67,14 +67,14 @@ class GitLabHandler:
                 "description": group.get("description"),
                 "visibility": group.get("visibility"),
             })
-            
+
             # Recursively fetch subgroups, only if there are any
             if group.get("subgroup_count", 0) > 0:
                 subgroups = await self.fetch_groups(parent_id=group["id"])
                 all_groups.extend(subgroups)
 
         return all_groups
-   
+
 
     async def fetch_projects(self) -> List[Dict[str, Any]]:
         """Fetch projects from GitLab."""
@@ -82,7 +82,7 @@ class GitLabHandler:
         endpoint = "/projects"
         params = {"per_page": self.rate_limit}
         data = await self._rate_limited_request(endpoint, params)
-        
+
         return [
             {
                 "identifier": project["id"],
@@ -139,23 +139,27 @@ class GitLabHandler:
         ]
 
     async def setup_webhook(self) -> None:
-        """Set up webhook to receive real-time events for GitLab resources."""
-        logging.info("Setting up webhook for GitLab resources...")
+        """Set up an instance-level webhook to handle events across all GitLab projects and groups."""
+        logging.info("Setting up instance-level webhook for all GitLab resources...")
         endpoint = "/hooks"
         payload = {
             "url": WEBHOOK_URL,
-            "events": [
-                "project_create", "project_update", "project_delete",
-                "group_create", "group_update", "group_delete",
-                "merge_request_events", "issue_events"
-            ],
             "enable_ssl_verification": True,
+            "push_events": True,
+            "merge_requests_events": True,
+            "issues_events": True,
+            "note_events": True,
+            "tag_push_events": True,
+            "wiki_page_events": True,
+            "pipeline_events": True,
+            "job_events": True,
+            "deployment_events": True
         }
         headers = {"Authorization": f"Bearer {self.token}"}
 
         try:
             response = await http_async_client.post(f"{self.api_url}{endpoint}", json=payload, headers=headers, timeout=30)
             response.raise_for_status()
-            logging.info("Webhook setup complete for GitLab resources.")
+            logging.info("Instance-level webhook setup complete.")
         except Exception as e:
-            logging.error(f"Failed to set up webhook: {e}")
+            logging.error(f"Failed to set up instance-level webhook: {e}")
