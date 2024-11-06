@@ -1,0 +1,78 @@
+deleteDependentEntities: true
+createMissingRelatedEntities: true
+
+resources:
+  - kind: group
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"gitlabGroup"'
+          properties:
+            visibility: .visibility
+            url: .web_url
+            description: .description
+
+  - kind: project
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .name
+          blueprint: '"gitlabProject"'
+          properties:
+            url: .web_url
+            readme: .readme
+            description: .description
+            language: .__languages | to_entries | max_by(.value) | .key
+            namespace: .namespace
+            fullPath: .full_path
+            defaultBranch: .default_branch
+        relations:
+          group: .namespace.id|tostring
+
+  - kind: merge_request
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"gitlabMergeRequest"'
+          properties:
+            creator: .author.username
+            status: .state
+            createdAt: .created_at
+            updatedAt: .updated_at
+            mergedAt: .merged_at
+            link: .web_url
+            reviewers: '.reviewers[] | .username'
+        relations:
+          project: .namespace.id|tostring
+
+  - kind: issue
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id|tostring
+          title: .title
+          blueprint: '"gitlabIssue"'
+          properties:
+            link: .web_url
+            description: .description
+            createdAt: .created_at
+            closedAt: .closed_at
+            updatedAt: .updated_at
+            creator: .author.username
+            status: .state
+            labels: '.labels[]'
+        relations:
+          project: .namespace.id|tostring

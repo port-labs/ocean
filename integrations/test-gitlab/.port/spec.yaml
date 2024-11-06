@@ -1,0 +1,50 @@
+description: "GitLab integration for Port Ocean, enabling project export and webhook setup"
+icon: "gitlab"
+type: "exporter"
+identifier: "test-gitlab"
+
+# Port Ocean settings (ensure this field matches the integration's expectations)
+port:
+  client_id: "${OCEAN__PORT__CLIENT_ID}"        # Environment variable for client ID
+  client_secret: "${OCEAN__PORT__CLIENT_SECRET}" # Environment variable for client secret
+  base_url: "${OCEAN__PORT__BASE_URL}"          # Environment variable for base URL
+
+features:
+  - type: exporter
+    section: Under Development  # Should be one of the available sections in Port
+    resources:
+      - kind: group
+      - kind: project
+      - kind: merge_request
+      - kind: issue
+
+configurations:
+  - name: gitlab_api_url
+    description: "Base URL for GitLab API"
+    type: url
+    required: true
+    default: "https://gitlab.com/api/v4"
+
+  - name: gitlab_token
+    description: "Personal access token for authenticating with GitLab API"
+    type: string
+    sensitive: true
+    required: true
+
+  - name: webhook_url
+    description: "URL where GitLab will send webhook events"
+    type: url
+    required: true
+    default: "https://your-webhook-url.com"
+
+  - name: rate_limit
+    description: "Maximum number of API requests per minute"
+    type: integer
+    required: false
+    default: 10
+
+  - name: rate_limit_period
+    description: "Period in seconds for rate limit interval"
+    type: integer
+    required: false
+    default: 60
