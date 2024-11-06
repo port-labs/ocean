@@ -286,24 +286,27 @@ class AzureDevopsClient(HTTPBaseClient):
                 ]
 
     async def _enrich_boards(
-        self, boards: list[dict[str, Any]], project_id: str
+        self, boards: list[dict[str, Any]], project_id: str, team_id: str
     ) -> list[dict[str, Any]]:
         for board in boards:
             response = await self.send_request(
                 "GET",
-                f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/work/boards/{board['id']}",
+                f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/boards/{board['id']}",
             )
             board.update(response.json())
         return boards
 
     async def _get_boards(self, project_id: str) -> list[dict[str, Any]]:
-        get_boards_url = (
-            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/work/boards"
-        )
-        response = await self.send_request("GET", get_boards_url)
-        board_data = response.json().get("value", [])
-        logger.info(f"Found {len(board_data)} boards for project {project_id}")
-        return await self._enrich_boards(board_data, project_id)
+        teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
+        async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
+            for team in teams_in_project:
+                get_boards_url = (
+                    f"{self._organization_base_url}/{project_id}/{team.get('id')}/{API_URL_PREFIX}/work/boards"
+                )
+                response = await self.send_request("GET", get_boards_url)
+                board_data = response.json().get("value", [])
+                logger.info(f"Found {len(board_data)} boards for project {project_id}")
+                yield await self._enrich_boards(board_data, project_id, team.get("id"))
 
     @cache_iterator_result()
     async def get_boards_in_organization(
@@ -313,7 +316,8 @@ class AzureDevopsClient(HTTPBaseClient):
             yield [
                 {**board, "__project": project}
                 for project in projects
-                for board in await self._get_boards(project["id"])
+                async for boards in self._get_boards(project["id"])
+                for board in boards
             ]
 
     async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:

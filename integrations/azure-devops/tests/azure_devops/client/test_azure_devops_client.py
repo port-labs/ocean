@@ -572,8 +572,8 @@ async def test_get_boards_in_organization(mock_event_context: MagicMock) -> None
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "proj1", "name": "Project One"}]
 
-    async def mock_get_boards(project_id: str) -> List[Dict[str, Any]]:
-        return [
+    async def mock_get_boards(project_id: str) -> AsyncGenerator[Dict[str, Any], None]:
+        yield [
             {"id": "board1", "name": "Board One"},
             {"id": "board2", "name": "Board Two"},
         ]
