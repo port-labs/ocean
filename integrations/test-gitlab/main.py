@@ -20,7 +20,10 @@ async def on_resync(kind: str) -> List[Dict]:
         return await gitlab_handler.fetch_projects()
     elif kind == "group":
         logging.info("Resyncing groups from GitLab...")
-        return await gitlab_handler.fetch_groups()    
+        return await gitlab_handler.fetch_groups()
+    elif kind == "merge_request":
+        logging.info("Resyncing merge requests from GitLab...")
+        return await gitlab_handler.fetch_merge_requests()
     logging.warning(f"Unsupported kind for resync: {kind}")
     return []
 

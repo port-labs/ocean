@@ -36,7 +36,7 @@ class GitLabHandler:
 
         while url:
             response = await http_async_client.get(url, params=params, headers=headers, timeout=30)
-            
+
             if response.status_code == 429:  # Too Many Requests
                 logging.warning("Rate limit reached; retrying after delay")
                 await asyncio.sleep(self.rate_limit_period)
@@ -45,7 +45,7 @@ class GitLabHandler:
             response.raise_for_status()
             data = response.json()
             all_data.extend(data)
-            
+
             # Check for pagination
             next_page = response.headers.get("X-Next-Page")
             url = f"{self.api_url}{endpoint}?page={next_page}" if next_page else None
@@ -67,14 +67,14 @@ class GitLabHandler:
                 "description": group.get("description"),
                 "visibility": group.get("visibility"),
             })
-            
+
             # Recursively fetch subgroups, only if there are any
             if group.get("subgroup_count", 0) > 0:
                 subgroups = await self.fetch_groups(parent_id=group["id"])
                 all_groups.extend(subgroups)
 
         return all_groups
-   
+
 
     async def fetch_projects(self) -> List[Dict[str, Any]]:
         """Fetch projects from GitLab."""
@@ -82,7 +82,7 @@ class GitLabHandler:
         endpoint = "/projects"
         params = {"per_page": self.rate_limit}
         data = await self._rate_limited_request(endpoint, params)
-        
+
         return [
             {
                 "identifier": project["id"],
@@ -92,6 +92,28 @@ class GitLabHandler:
                 "namespace": project.get("namespace", {}).get("full_path"),
             }
             for project in data
+        ]
+
+    async def fetch_merge_requests(self) -> List[Dict[str, Any]]:
+        """Fetch merge requests from GitLab."""
+        logging.info("Fetching merge requests from GitLab...")
+        endpoint = "/merge_requests"
+        params = {"scope": "all", "per_page": self.rate_limit}
+        data = await self._rate_limited_request(endpoint, params)
+
+        return [
+            {
+                "identifier": mr["id"],
+                "title": mr["title"],
+                "status": mr["state"],
+                "author": mr["author"]["username"],
+                "createdAt": mr["created_at"],
+                "updatedAt": mr["updated_at"],
+                "mergedAt": mr.get("merged_at"),
+                "link": mr["web_url"],
+                "reviewers": [reviewer["username"] for reviewer in mr.get("reviewers", [])],
+            }
+            for mr in data
         ]
 
     async def setup_webhook(self) -> None:
