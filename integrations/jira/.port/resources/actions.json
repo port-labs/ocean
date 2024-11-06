@@ -42,7 +42,7 @@
         "RUN_ID": "{{ .run.id }}",
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": "Basic {{.secrets._jira-atlassian_user_email + ':' + .secrets._jira-atlassian_user_token |  @base64}}"
+        "Authorization": "Basic {{.secrets._JIRA_ATLASSIAN_USER_EMAIL + ':' + .secrets._JIRA_ATLASSIAN_USER_TOKEN |  @base64}}"
       },
       "body": {
         "fields": {
