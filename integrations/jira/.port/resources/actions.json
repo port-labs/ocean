@@ -1,7 +1,7 @@
 [
   {
     "identifier": "jira_open_issue",
-    "title": "Create task",
+    "title": "Create a Jira Task",
     "icon": "Jira",
     "description": "Create a backlog task for a chosen project ",
     "trigger": {
