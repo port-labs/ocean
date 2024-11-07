@@ -296,7 +296,7 @@ class AzureDevopsClient(HTTPBaseClient):
             board.update(response.json())
         return boards
 
-    async def _get_boards(self, project_id: str) -> list[dict[str, Any]]:
+    async def _get_boards(self, project_id: str) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
         async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
             for team in teams_in_project:
@@ -304,7 +304,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 response = await self.send_request("GET", get_boards_url)
                 board_data = response.json().get("value", [])
                 logger.info(f"Found {len(board_data)} boards for project {project_id}")
-                yield await self._enrich_boards(board_data, project_id, team.get("id"))
+                yield await self._enrich_boards(board_data, project_id, team["id"])
 
     @cache_iterator_result()
     async def get_boards_in_organization(
