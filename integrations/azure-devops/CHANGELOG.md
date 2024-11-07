@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.78.bugfix (2024-11-07)
+## 0.1.79 (2024-11-07)
 
 
 ### Bug Fixes
 
 - Fixed Azure DevOps Boards integration to include team context, API endpoint will iterate through all project teams, ensuring non-default team boards and columns are ingested
+
+
+## 0.1.78 (2024-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
 
 
 ## 0.1.77 (2024-10-23)
