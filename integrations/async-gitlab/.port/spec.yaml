@@ -13,6 +13,7 @@ configurations:
     required: true
     type: url
     sensitive: false
+    default: https://gitlab.com
   - name: access_token
     type: string
     required: true

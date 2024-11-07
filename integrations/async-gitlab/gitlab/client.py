@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, Dict
 from httpx import HTTPStatusError, Response
 from loguru import logger
 import re
@@ -109,53 +109,33 @@ class GitLabClient(GitLabRateLimiter):
                 raise
 
     @cache_iterator_result()
-    async def get_groups(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_resources(
+        self,
+        resource_type: ObjectKind,
+        query_params: Optional[Dict[str, str]] = None
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         limiter = await self.limiter()
         async with limiter:
-            async for groups in self.get_paginated_resources(
-                    resource_type=ObjectKind.GROUP
+            async for resources in self.get_paginated_resources(
+                    resource_type=resource_type,
+                    query_params=query_params
             ):
-                for group in groups:
-                    if 'id' in group:
-                        group['id'] = str(group['id'])
-                yield groups
+                for resource in resources:
+                    if 'id' in resource:
+                        resource['id'] = str(resource['id'])
 
-    @cache_iterator_result()
-    async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        limiter = await self.limiter()
-        async with limiter:
-            async for projects in self.get_paginated_resources(
-                    resource_type=ObjectKind.PROJECT,
-                    query_params={"owned": "yes"}
-            ):
-                for project in projects:
-                    if 'id' in project:
-                        project['id'] = str(project['id'])
-                        project['namespace']['id'] = str(project['namespace']['id'])
-                yield projects
+                    # Additional processing based on the resource type
+                    match resource_type:
+                        case ObjectKind.PROJECT:
+                            if 'namespace' in resource and 'id' in resource['namespace']:
+                                resource['namespace']['id'] = str(resource['namespace']['id'])
 
-    @cache_iterator_result()
-    async def get_merge_requests(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        limiter = await self.limiter()
-        async with limiter:
-            async for merge_requests in self.get_paginated_resources(
-                    resource_type=ObjectKind.MERGE_REQUEST
-            ):
-                for merge_request in merge_requests:
-                    if 'id' in merge_request:
-                        merge_request['id'] = str(merge_request['id'])
-                        merge_request['project_id'] = str(merge_request['project_id'])
-                yield merge_requests
+                        case ObjectKind.MERGE_REQUEST:
+                            if 'project_id' in resource:
+                                resource['project_id'] = str(resource['project_id'])
 
-    @cache_iterator_result()
-    async def get_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        limiter = await self.limiter()
-        async with limiter:
-            async for issues in self.get_paginated_resources(
-                    resource_type=ObjectKind.ISSUE
-            ):
-                for issue in issues:
-                    if 'id' in issue:
-                        issue['id'] = str(issue['id'])
-                        issue['project_id'] = str(issue['project_id'])
-                yield issues
+                        case ObjectKind.ISSUE:
+                            if 'project_id' in resource:
+                                resource['project_id'] = str(resource['project_id'])
+
+                yield resources
