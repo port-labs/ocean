@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed Azure DevOps Boards integration to include team context, API endpoint will iterate through all project teams, ensuring non-default team boards and columns are ingested
+- Fixed the API endpoint used in the boards kind to iterate through all project teams, ensuring non-default team boards and columns are ingested
 
 
 ## 0.1.78 (2024-11-06)
