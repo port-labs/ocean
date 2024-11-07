@@ -17,6 +17,9 @@ from gitlab_integration.git_integration import (
     GitLabFilesResourceConfig,
 )
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -37,24 +40,28 @@ async def start_processors() -> None:
         logger.exception(f"Failed to start event processors: {e}")
 
 
-@ocean.router.post("/hook/{group_id}")
-async def handle_webhook_request(group_id: str, request: Request) -> dict[str, Any]:
+async def handle_webhook_request(request: Request) -> JSONResponse:
+    group_id = request.path_params["group_id"]
     event_id = f"{request.headers.get('X-Gitlab-Event')}:{group_id}"
     with logger.contextualize(event_id=event_id):
         try:
             logger.info(f"Received webhook event {event_id} from Gitlab")
             body = await request.json()
             await event_handler.notify(event_id, body)
-            return {"ok": True}
+            return JSONResponse({"ok": True})
         except Exception as e:
             logger.exception(
                 f"Failed to handle webhook event {event_id} from Gitlab, error: {e}"
             )
-            return {"ok": False, "error": str(e)}
+            return JSONResponse({"ok": False, "error": str(e)})
 
 
-@ocean.router.post("/system/hook")
-async def handle_system_webhook_request(request: Request) -> dict[str, Any]:
+ocean.router.routes.append(
+    Route("/hook/{group_id}", methods=["post"], endpoint=handle_webhook_request)
+)
+
+
+async def handle_system_webhook_request(request: Request) -> JSONResponse:
     try:
         body: dict[str, Any] = await request.json()
         # some system hooks have event_type instead of event_name in the body, such as merge_request events
@@ -63,12 +70,17 @@ async def handle_system_webhook_request(request: Request) -> dict[str, Any]:
             logger.info(f"Received system webhook event {event_name} from Gitlab")
             await system_event_handler.notify(event_name, body)
 
-        return {"ok": True}
+        return JSONResponse({"ok": True})
     except Exception as e:
         logger.exception(
             "Failed to handle system webhook event from Gitlab, error: {e}"
         )
-        return {"ok": False, "error": str(e)}
+        return JSONResponse({"ok": False, "error": str(e)})
+
+
+ocean.router.routes.append(
+    Route("/system/hook", methods=["post"], endpoint=handle_system_webhook_request)
+)
 
 
 @ocean.on_start()
