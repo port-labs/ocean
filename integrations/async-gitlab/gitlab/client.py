@@ -114,8 +114,7 @@ class GitLabClient(GitLabRateLimiter):
         resource_type: ObjectKind,
         query_params: Optional[Dict[str, str]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        limiter = await self.limiter()
-        async with limiter:
+        async with self.limiter:
             async for resources in self.get_paginated_resources(
                     resource_type=resource_type,
                     query_params=query_params
