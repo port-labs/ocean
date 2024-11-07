@@ -1,43 +1,10 @@
-from typing import Any, Generator, TypedDict
-from unittest.mock import MagicMock, patch
+from typing import Any, TypedDict
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from port_ocean.context.event import EventContext
-from port_ocean.context.ocean import initialize_port_ocean_context
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 
 from client import JiraClient
-
-
-@pytest.fixture(autouse=True)
-def mock_ocean_context() -> None:
-    """Fixture to mock the Ocean context initialization."""
-    try:
-        mock_ocean_app = MagicMock()
-        mock_ocean_app.config.integration.config = {
-            "jira_host": "https://getport.atlassian.net",
-            "atlassian_user_email": "jira@atlassian.net",
-            "atlassian_user_token": "asdf",
-        }
-        mock_ocean_app.integration_router = MagicMock()
-        mock_ocean_app.port_client = MagicMock()
-        initialize_port_ocean_context(mock_ocean_app)
-    except PortOceanContextAlreadyInitializedError:
-        pass
-
-
-@pytest.fixture
-def mock_event_context() -> Generator[MagicMock, None, None]:
-    """Fixture to mock the event context."""
-    mock_event = MagicMock(spec=EventContext)
-    mock_event.event_type = "test_event"
-    mock_event.trigger_type = "manual"
-    mock_event.attributes = {}
-    mock_event._aborted = False
-
-    with patch("port_ocean.context.event.event", mock_event):
-        yield mock_event
 
 
 class HttpxResponses(TypedDict):
@@ -83,13 +50,15 @@ class MockHttpxClient:
     ],
 )
 def test_base_required_params_are_generated_correctly(
-    kwargs: dict[str, int], expected_result: dict[str, int]
+    mock_ocean_context: Any, kwargs: dict[str, int], expected_result: dict[str, int]
 ) -> None:
     assert JiraClient._generate_base_req_params(**kwargs) == expected_result
 
 
 @pytest.mark.asyncio
-async def test_make_paginated_request_will_hit_api_till_no_response_left() -> None:
+async def test_make_paginated_request_will_hit_api_till_no_response_left(
+    mock_ocean_context: Any,
+) -> None:
     client = JiraClient(
         "https://myorg.atlassian.net",
         "mail@email.com",
@@ -135,7 +104,9 @@ async def test_make_paginated_request_will_hit_api_till_no_response_left() -> No
 
 
 @pytest.mark.asyncio
-async def test_get_all_projects_will_compose_correct_url(monkeypatch: Any) -> None:
+async def test_get_all_projects_will_compose_correct_url(
+    mock_ocean_context: Any, monkeypatch: Any
+) -> None:
     mock_paginated_request = MagicMock()
     mock_paginated_request.__aiter__.return_value = ()
 
@@ -156,7 +127,9 @@ async def test_get_all_projects_will_compose_correct_url(monkeypatch: Any) -> No
 
 
 @pytest.mark.asyncio
-async def test_get_all_issues_will_compose_correct_url(monkeypatch: Any) -> None:
+async def test_get_all_issues_will_compose_correct_url(
+    mock_ocean_context: Any, monkeypatch: Any
+) -> None:
     mock_paginated_request = MagicMock()
     mock_paginated_request.__aiter__.return_value = ()
 
@@ -164,7 +137,12 @@ async def test_get_all_issues_will_compose_correct_url(monkeypatch: Any) -> None
 
     client = JiraClient("https://myorg.atlassian.net", "mail.email.com", "token")
 
-    async for _ in client.get_all_issues():
+    async for _ in client.get_all_issues(
+        {
+            "jql": "project = TEST",
+            "fields": "summary",
+        }
+    ):
         pass
 
     # we can't assert the exact call because one of the params is a lambda
@@ -173,4 +151,7 @@ async def test_get_all_issues_will_compose_correct_url(monkeypatch: Any) -> None
         "https://myorg.atlassian.net/rest/api/3/search",
     )
 
-    assert client._make_paginated_request.call_args_list[0][1]["params"] == {}  # type: ignore
+    assert client._make_paginated_request.call_args_list[0][1]["params"] == {  # type: ignore
+        "jql": "project = TEST",
+        "fields": "summary",
+    }
