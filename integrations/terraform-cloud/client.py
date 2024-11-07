@@ -21,8 +21,8 @@ class CacheKeys(StrEnum):
 
 
 PAGE_SIZE = 100
-NO_OF_REQUESTS = 25
-NO_OF_SECONDS = 1
+NUMBER_OF_REQUESTS = 25
+NUMBER_OF_SECONDS = 1
 
 
 class TerraformClient:
@@ -36,7 +36,7 @@ class TerraformClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
 
-        self.rate_limiter = AsyncLimiter(NO_OF_REQUESTS, NO_OF_SECONDS)
+        self.rate_limiter = AsyncLimiter(NUMBER_OF_REQUESTS, NUMBER_OF_SECONDS)
 
     async def send_api_request(
         self,
@@ -53,14 +53,6 @@ class TerraformClient:
                 params=query_params,
                 json=json_data,
             )
-
-            logger.info(
-                f"Rate limit info - "
-                f"Limit: {response.headers.get('x-ratelimit-limit', NO_OF_REQUESTS)}, "
-                f"Remaining: {response.headers.get('x-ratelimit-remaining', NO_OF_REQUESTS)}, "
-                f"Reset: {response.headers.get('x-ratelimit-reset', 1)}"
-            )
-
             response.raise_for_status()
             return response.json()
 
