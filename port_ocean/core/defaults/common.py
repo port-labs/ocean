@@ -77,17 +77,31 @@ def deconstruct_blueprints_to_creation_steps(
     )
 
 
-def get_port_integration_defaults(
-    port_app_config_class: Type[PortAppConfig], base_path: Path = Path(".")
-) -> Defaults | None:
-    defaults_dir = base_path / ".port/resources"
-    if not defaults_dir.exists():
-        return None
+def is_valid_dir(path: Path) -> bool:
+    if not path.exists():
+        return False
 
-    if not defaults_dir.is_dir():
+    if not path.is_dir():
         raise UnsupportedDefaultFileType(
-            f"Defaults directory is not a directory: {defaults_dir}"
+            f"Defaults directory is not a directory: {path}"
         )
+
+    return True
+
+
+def get_port_integration_defaults(
+    port_app_config_class: Type[PortAppConfig],
+    custom_defaults_dir: Optional[str] = None,
+) -> Defaults | None:
+    base_path: Path = Path(".")
+    DEFAULT_DEFAULTS_DIR = ".port/resources"
+
+    if custom_defaults_dir and is_valid_dir(base_path / custom_defaults_dir):
+        defaults_dir = base_path / custom_defaults_dir
+    elif is_valid_dir(base_path / DEFAULT_DEFAULTS_DIR):
+        defaults_dir = base_path / DEFAULT_DEFAULTS_DIR
+    else:
+        return None
 
     default_jsons = {}
     allowed_file_names = [
