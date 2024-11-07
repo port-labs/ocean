@@ -1,6 +1,6 @@
 from port_ocean.log.handlers import _serialize_record
 from loguru import logger
-import loguru
+from logging import LogRecord
 from queue import Queue
 from logging.handlers import QueueHandler
 from typing import Callable
@@ -49,14 +49,13 @@ def test_serialize_record_exc_info_group_exception():
 
 
 def assert_extra(extra: dict):
-    assert "exc_info" in extra
-    exc_info = extra.get("exc_info")
+    exc_info = extra.get("exc_info", None)
     assert type(exc_info) is str
     return exc_info
 
 
-def log_record(cb: Callable[[None], None]) -> "loguru.Record":
-    queue = Queue["loguru.Record"]()
+def log_record(cb: Callable[[None], None]) -> LogRecord:
+    queue = Queue[LogRecord]()
     queue_handler = QueueHandler(queue)
     logger_id = logger.add(
         queue_handler,

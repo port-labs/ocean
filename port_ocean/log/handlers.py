@@ -18,8 +18,8 @@ from traceback import format_exception
 def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
     extra = {**deepcopy(record.__dict__["extra"])}
     if isinstance(extra.get("exc_info"), Exception):
-        sirealized_exception = "".join(format_exception(extra.get("exc_info")))
-        extra["exc_info"] = sirealized_exception
+        serialized_exception = "".join(format_exception(extra.get("exc_info")))
+        extra["exc_info"] = serialized_exception
     return {
         "message": record.msg,
         "level": record.levelname,
