@@ -11,16 +11,22 @@ from loguru import logger
 
 from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
+from copy import deepcopy
+from traceback import format_exception
 
 
 def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
+    extra = {**deepcopy(record.__dict__["extra"])}
+    if isinstance(extra.get("exc_info"), Exception):
+        serialized_exception = "".join(format_exception(extra.get("exc_info")))
+        extra["exc_info"] = serialized_exception
     return {
         "message": record.msg,
         "level": record.levelname,
         "timestamp": datetime.utcfromtimestamp(record.created).strftime(
             "%Y-%m-%dT%H:%M:%S.%fZ"
         ),
-        "extra": record.__dict__["extra"],
+        "extra": extra,
     }
 
 
@@ -37,6 +43,7 @@ class HTTPMemoryHandler(MemoryHandler):
         self.flush_size = flush_size
         self.last_flush_time = time.time()
         self._serialized_buffer: list[dict[str, Any]] = []
+        self._thread_pool: list[threading.Thread] = []
 
     @property
     def ocean(self) -> Ocean | None:
@@ -46,6 +53,7 @@ class HTTPMemoryHandler(MemoryHandler):
         return None
 
     def emit(self, record: logging.LogRecord) -> None:
+
         self._serialized_buffer.append(_serialize_record(record))
         super().emit(record)
 
@@ -61,6 +69,11 @@ class HTTPMemoryHandler(MemoryHandler):
             return True
         return False
 
+    def wait_for_lingering_threads(self) -> None:
+        for thread in self._thread_pool:
+            if thread.is_alive():
+                thread.join()
+
     def flush(self) -> None:
         if self.ocean is None or not self.buffer:
             return
@@ -70,13 +83,21 @@ class HTTPMemoryHandler(MemoryHandler):
             loop.run_until_complete(self.send_logs(_ocean, logs_to_send))
             loop.close()
 
+        def clear_thread_pool() -> None:
+            for thread in self._thread_pool:
+                if not thread.is_alive():
+                    self._thread_pool.remove(thread)
+
         self.acquire()
         logs = list(self._serialized_buffer)
         if logs:
             self.buffer.clear()
             self._serialized_buffer.clear()
             self.last_flush_time = time.time()
-            threading.Thread(target=_wrap_event_loop, args=(self.ocean, logs)).start()
+            clear_thread_pool()
+            thread = threading.Thread(target=_wrap_event_loop, args=(self.ocean, logs))
+            thread.start()
+            self._thread_pool.append(thread)
         self.release()
 
     async def send_logs(
