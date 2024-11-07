@@ -16,6 +16,4 @@ jobs:
           # get tag from pyproject.toml
           TAG=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
           git tag "v${TAG}"
-          git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git push origin main --tags
