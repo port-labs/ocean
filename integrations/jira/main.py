@@ -71,7 +71,6 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     client = initialize_client()
     webhook_event: str = data.get("webhookEvent", "")
     logger.info(f"Received webhook event of type: {webhook_event}")
-    logger.info(f"Data: {data}")
     ocean_action = None
     delete_action = False
 
@@ -100,7 +99,6 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
             resource_configs = typing.cast(
                 JiraPortAppConfig, event.port_app_config
             ).resources
-            logger.info(resource_configs)
 
             matching_resource_configs = [
                 resource_config
@@ -110,10 +108,8 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
                     and isinstance(resource_config.selector, JiraIssueSelector)
                 )
             ]
-            logger.info(f"Matching resource configs: {matching_resource_configs}")
 
             matching_resource_config = matching_resource_configs[0]
-            logger.info(f"Matching resource config: {matching_resource_config}")
 
             config = typing.cast(
                 JiraIssueResourceConfig, matching_resource_config
