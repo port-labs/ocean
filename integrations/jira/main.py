@@ -8,7 +8,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import CREATE_UPDATE_WEBHOOK_EVENTS, DELETE_WEBHOOK_EVENTS, JiraClient
-from integration import JiraIssueResourceConfig
+from integration import JiraIssueResourceConfig, JiraIssueSelector, JiraPortAppConfig
 
 
 class ObjectKind(StrEnum):
@@ -71,6 +71,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     client = initialize_client()
     webhook_event: str = data.get("webhookEvent", "")
     logger.info(f"Received webhook event of type: {webhook_event}")
+    logger.info(f"Data: {data}")
     ocean_action = None
     delete_action = False
 
@@ -96,7 +97,41 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         if delete_action:
             issue = data["issue"]
         else:
-            issue = await client.get_single_issue(data["issue"]["key"])
+            resource_configs = typing.cast(
+                JiraPortAppConfig, event.port_app_config
+            ).resources
+            logger.info(resource_configs)
+
+            matching_resource_configs = [
+                resource_config
+                for resource_config in resource_configs
+                if (
+                    resource_config.kind == ObjectKind.ISSUE
+                    and isinstance(resource_config.selector, JiraIssueSelector)
+                )
+            ]
+            logger.info(f"Matching resource configs: {matching_resource_configs}")
+
+            matching_resource_config = matching_resource_configs[0]
+            logger.info(f"Matching resource config: {matching_resource_config}")
+
+            config = typing.cast(
+                JiraIssueResourceConfig, matching_resource_config
+            ).selector
+            params = {}
+            if config.jql:
+                params["jql"] = f"{config.jql} AND key = {data['issue']['key']}"
+            else:
+                params["jql"] = f"key = {data['issue']['key']}"
+            issues = await anext(client.get_all_issues(params))
+            if not issues:
+                logger.warning(
+                    f"Issue {data['issue']['key']} not found."
+                    "This is likely due to JQL filter"
+                )
+                await ocean.unregister_raw(ObjectKind.ISSUE, [data["issue"]])
+                return {"ok": True}
+            issue = issues[0]
         await ocean_action(ObjectKind.ISSUE, [issue])
     logger.info("Webhook event processed")
     return {"ok": True}

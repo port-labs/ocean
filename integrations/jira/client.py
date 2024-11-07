@@ -128,7 +128,7 @@ class JiraClient:
         return await self._get_single_item(f"{self.detail_base_url}/project/{project}")
 
     async def get_single_issue(
-        self, issue: str, fields: dict[str, Any] = {}
+        self, issue: str, fields: dict[str, Any] = {}, jql: str | None = None
     ) -> dict[str, Any]:
         return await self._get_single_item(f"{self.agile_url}/issue/{issue}")
 
