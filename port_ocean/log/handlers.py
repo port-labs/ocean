@@ -11,16 +11,22 @@ from loguru import logger
 
 from port_ocean import Ocean
 from port_ocean.context.ocean import ocean
+from copy import deepcopy
+from traceback import format_exception
 
 
 def _serialize_record(record: logging.LogRecord) -> dict[str, Any]:
+    extra = {**deepcopy(record.__dict__["extra"])}
+    if isinstance(extra.get("exc_info"), Exception):
+        sirealized_exception = "".join(format_exception(extra.get("exc_info")))
+        extra["exc_info"] = sirealized_exception
     return {
         "message": record.msg,
         "level": record.levelname,
         "timestamp": datetime.utcfromtimestamp(record.created).strftime(
             "%Y-%m-%dT%H:%M:%S.%fZ"
         ),
-        "extra": record.__dict__["extra"],
+        "extra": extra,
     }
 
 
@@ -47,6 +53,7 @@ class HTTPMemoryHandler(MemoryHandler):
         return None
 
     def emit(self, record: logging.LogRecord) -> None:
+
         self._serialized_buffer.append(_serialize_record(record))
         super().emit(record)
 
