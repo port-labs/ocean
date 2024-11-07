@@ -296,7 +296,9 @@ class AzureDevopsClient(HTTPBaseClient):
             board.update(response.json())
         return boards
 
-    async def _get_boards(self, project_id: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def _get_boards(
+        self, project_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
         async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
             for team in teams_in_project:
