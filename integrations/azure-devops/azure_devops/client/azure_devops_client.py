@@ -302,7 +302,7 @@ class AzureDevopsClient(HTTPBaseClient):
         teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
         async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
             for team in teams_in_project:
-                get_boards_url = f"{self._organization_base_url}/{project_id}/{team["id"]}/{API_URL_PREFIX}/work/boards"
+                get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
                 response = await self.send_request("GET", get_boards_url)
                 board_data = response.json().get("value", [])
                 logger.info(f"Found {len(board_data)} boards for project {project_id}")
