@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 import typing
 from loguru import logger
 from gitlab.v4.objects import Project, Group
@@ -66,12 +66,13 @@ class GroupHandler(HookHandler):
         logger.info(f"Finished handling {event} for group {group_path}")
 
     @abstractmethod
-    async def _on_hook(self, body: dict[str, Any], gitlab_group: Group) -> None:
+    async def _on_hook(
+        self, body: dict[str, Any], gitlab_group: Optional[Group]
+    ) -> None:
         pass
 
     async def _register_group(self, kind: str, gitlab_group: Dict[str, Any]) -> None:
-        if self.gitlab_service.should_run_for_path(gitlab_group["full_path"]):
-            await ocean.register_raw(kind, [gitlab_group])
+        await ocean.register_raw(kind, [gitlab_group])
 
     async def _register_group_with_members(
         self, kind: str, gitlab_group: Group

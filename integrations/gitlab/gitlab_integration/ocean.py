@@ -130,8 +130,6 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield [group.asdict() for group in groups_batch]
 
 
-# from memory_profiler import profile
-# @profile
 @ocean.on_resync(ObjectKind.GROUPWITHMEMBERS)
 async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     gitlab_resource_config: GitlabGroupWithMembersResourceConfig = typing.cast(
