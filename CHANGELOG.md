@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.12.9 (2024-11-08)
+
+
+### Bug Fixes
+
+- Fixed failing lint in ocean test handler (0.12.9)
+
+
 ## 0.12.9 (2024-11-07)
 
 
