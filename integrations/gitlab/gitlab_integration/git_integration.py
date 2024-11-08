@@ -121,18 +121,18 @@ class GitlabResourceConfig(ResourceConfig):
     selector: GitlabSelector
 
 
-class MembersSelector(Selector):
+class GroupWithMembersSelector(Selector):
 
-    enrich_with_public_email: bool | None = Field(
+    enrich_with_public_email: bool = Field(
         alias="enrichWithPublicEmail",
         default=False,
-        description="If set to true, the integration will enrich members with public email field. Default value is false",
+        description="If set to true, the integration will enrich group members with public email field. Default value is false",
     )
 
 
-class GitlabMembersResourceConfig(ResourceConfig):
-    kind: Literal["member"]
-    selector: MembersSelector
+class GitlabGroupWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["group-with-members"]
+    selector: GroupWithMembersSelector
 
 
 class FilesSelector(BaseModel):
@@ -169,7 +169,7 @@ class GitlabPortAppConfig(PortAppConfig):
         default=True,
         description="If set to false, bots will be filtered out from the members list. Default value is true",
     )
-    resources: list[GitlabMembersResourceConfig | GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitlabGroupWithMembersResourceConfig | GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

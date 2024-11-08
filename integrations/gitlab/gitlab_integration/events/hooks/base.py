@@ -1,10 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import List, Any, Optional, Dict
+from typing import List, Any, Dict
+import typing
 from loguru import logger
 from gitlab.v4.objects import Project, Group
 from gitlab_integration.gitlab_service import GitlabService
-from gitlab_integration.utils import ObjectKind
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
+from gitlab_integration.git_integration import (
+    GitlabPortAppConfig,
+    GroupWithMembersSelector,
+)
 
 
 class HookHandler(ABC):
@@ -61,17 +66,42 @@ class GroupHandler(HookHandler):
         logger.info(f"Finished handling {event} for group {group_path}")
 
     @abstractmethod
-    async def _on_hook(
-        self, body: dict[str, Any], gitlab_group: Optional[Group]
-    ) -> None:
+    async def _on_hook(self, body: dict[str, Any], gitlab_group: Group) -> None:
         pass
 
     async def _register_group(self, kind: str, gitlab_group: Dict[str, Any]) -> None:
-        if self.gitlab_service.should_run_for_group(gitlab_group):
+        if self.gitlab_service.should_run_for_path(gitlab_group["full_path"]):
             await ocean.register_raw(kind, [gitlab_group])
 
     async def _register_group_with_members(
         self, kind: str, gitlab_group: Group
     ) -> None:
-        gitlab_group = await self.gitlab_service.enrich_group_with_members(gitlab_group)
-        await self._register_group(kind, gitlab_group)
+
+        resource_configs = typing.cast(
+            GitlabPortAppConfig, event.port_app_config
+        ).resources
+
+        matching_resource_configs = [
+            resource_config
+            for resource_config in resource_configs
+            if (
+                resource_config.kind == kind
+                and isinstance(resource_config.selector, GroupWithMembersSelector)
+            )
+        ]
+
+        if not matching_resource_configs:
+            logger.info(
+                "Group With Member resource not found in port app config, update port app config to include the resource type"
+            )
+            return
+        for resource_config in matching_resource_configs:
+            enrich_with_public_email = resource_config.selector.enrich_with_public_email
+            gitlab_group_result: Dict[str, Any] = (
+                await self.gitlab_service.enrich_group_with_members(
+                    gitlab_group, enrich_with_public_email
+                )
+                if enrich_with_public_email
+                else gitlab_group.asdict()
+            )
+            await self._register_group(kind, gitlab_group_result)

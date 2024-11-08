@@ -455,21 +455,13 @@ class GitlabService:
         else:
             return None
 
-    async def get_group(self, group_id: int) -> Optional[Group]:
-        try:
-            logger.info(f"Fetching group with ID: {group_id}")
-            group_response = await AsyncFetcher.fetch_single(
-                self.gitlab_client.groups.get, group_id
-            )
-            group: Group = typing.cast(Group, group_response)
-            return group
-        except gitlab.exceptions.GitlabGetError as err:
-            if err.response_code == 404:
-                logger.warning(f"Group with ID {group_id} not found (404).")
-                return None
-            else:
-                logger.error(f"Failed to fetch group with ID {group_id}: {err}")
-                raise
+    async def get_group(self, group_id: int) -> Group:
+        logger.info(f"Fetching group with ID: {group_id}")
+        group_response = await AsyncFetcher.fetch_single(
+            self.gitlab_client.groups.get, group_id
+        )
+        group: Group = typing.cast(Group, group_response)
+        return group
 
     @cache_iterator_result()
     async def get_all_groups(
@@ -772,21 +764,21 @@ class GitlabService:
                 )
                 yield unsynced_members
 
-    async def enrich_group_with_members(self, group: Group) -> dict[str, Any]:
-        group_members = [
-            member
-            async for members in self.get_all_group_members(group)
-            for member in members
-        ]
-        group_dict: dict[str, Any] = group.asdict()
-        group_dict.update(
-            {
-                "__members": [
-                    {"id": group_member.id, "username": group_member.username}
-                    for group_member in group_members
+    async def enrich_group_with_members(
+        self, group: Group, include_public_email: bool = False
+    ) -> dict[str, Any]:
+        group_members = []
+        async for members in self.get_all_group_members(group):
+            if include_public_email:
+                tasks = [
+                    self.enrich_member_with_public_email(member) for member in members
                 ]
-            }
-        )
+                group_members.extend(await asyncio.gather(*tasks))
+            else:
+                group_members.extend(member.asdict() for member in members)
+
+        group_dict: dict[str, Any] = group.asdict()
+        group_dict["__members"] = group_members
         return group_dict
 
     async def enrich_member_with_public_email(
@@ -830,9 +822,8 @@ class GitlabService:
             if err.response_code == 404:
                 logger.warning(f"Group Member with ID {member_id} not found (404).")
                 return None
-            else:
-                logger.error(f"Failed to fetch group with ID {member_id}: {err}")
-                raise
+            logger.error(f"Failed to fetch group with ID {member_id}: {err}")
+            raise
 
     async def get_entities_diff(
         self,
