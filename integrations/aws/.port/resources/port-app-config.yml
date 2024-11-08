@@ -13,7 +13,7 @@ resources:
             email: .Email
             status: .Status
             joined_method: .JoinedMethod
-            joined_timestamp: .JoinedTimestamp
+            joined_timestamp: .JoinedTimestamp | sub(" "; "T")
 
   - kind: AWS::S3::Bucket
     selector:
