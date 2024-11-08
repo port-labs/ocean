@@ -119,22 +119,4 @@ class GitLabClient(GitLabRateLimiter):
                     resource_type=resource_type,
                     query_params=query_params
             ):
-                for resource in resources:
-                    if 'id' in resource:
-                        resource['id'] = str(resource['id'])
-
-                    # Additional processing based on the resource type
-                    match resource_type:
-                        case ObjectKind.PROJECT:
-                            if 'namespace' in resource and 'id' in resource['namespace']:
-                                resource['namespace']['id'] = str(resource['namespace']['id'])
-
-                        case ObjectKind.MERGE_REQUEST:
-                            if 'project_id' in resource:
-                                resource['project_id'] = str(resource['project_id'])
-
-                        case ObjectKind.ISSUE:
-                            if 'project_id' in resource:
-                                resource['project_id'] = str(resource['project_id'])
-
                 yield resources
