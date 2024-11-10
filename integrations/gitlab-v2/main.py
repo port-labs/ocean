@@ -5,6 +5,30 @@ from loguru import logger
 
 from client import GitLabHandler
 from port_ocean.context.ocean import ocean
+from choices import Endpoint, Entity
+
+
+ENDPOINTS = {
+    Entity.GROUP.value: Endpoint.GROUP.value,
+    Entity.PROJECT.value: Endpoint.PROJECT.value,
+    Entity.MERGE_REQUEST.value: Endpoint.MERGE_REQUEST.value,
+    Entity.ISSUE.value: Endpoint.ISSUE.value,
+}
+
+
+@ocean.on_resync()
+async def on_resync(kind: str) -> list[dict[Any, Any]]:
+    """
+    Resync handler based on entity kind. Supports project, group, merge_request, and issue kinds.
+    """
+
+    if kind in ENDPOINTS:
+        logger.info(f"Resycing {kind} from Gitlab...")
+        handler = GitLabHandler()
+        return await handler.fetch_data(ENDPOINTS[kind])
+
+    logger.warning(f"Unsupported kind for resync: {kind}")
+    return []
 
 
 @ocean.router.post("/webhook")
@@ -34,45 +58,3 @@ async def gitlab_webhook(request: Request) -> dict[str, bool]:
     logger.info("Webhook processed successfully.")
 
     return {"success": True}
-
-
-# The same sync logic can be registered for one of the kinds that are available in the mapping in port.
-@ocean.on_resync("group")
-async def resync_group(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all groups from the source system
-    # 2. Return a list of dictionaries with the raw data of the state
-    handler = GitLabHandler()
-    return await handler.fetch_data("/groups")
-
-
-@ocean.on_resync("project")
-async def resync_project(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all projects from the source system
-    # 2. Return a list of dictionaries with the raw data of the state
-    handler = GitLabHandler()
-    return await handler.fetch_data("/projects?membership=yes")
-
-
-@ocean.on_resync("merge-request")
-async def resync_merge_request(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all merge requests from the source system
-    # 2. Return a list of dictionaries with the raw data of the state
-    handler = GitLabHandler()
-    return await handler.fetch_data("/merge_requests")
-
-
-@ocean.on_resync("issue")
-async def resync_issues(kind: str) -> list[dict[Any, Any]]:
-    # 1. Get all issues from the source system
-    # 2. Return a list of dictionaries with the raw data of the state
-    handler = GitLabHandler()
-    return await handler.fetch_data("/issues")
-
-
-# Optional
-# Listen to the start event of the integration. Called once when the integration starts.
-@ocean.on_start()
-async def on_start() -> None:
-    # Something to do when the integration starts
-    # For example create a client to query 3rd party services - GitHub, Jira, etc...
-    print("Starting gitlab-v2 integration")

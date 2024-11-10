@@ -1,139 +1,132 @@
-import asyncio
+from typing import Any
 import dateutil.parser as dt_parser
 
 from loguru import logger
+from aiolimiter import AsyncLimiter
 
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
+from choices import Endpoint, Entity
 
 
 class GitLabHandler:
     def __init__(self) -> None:
-        self.token = ocean.integration_config.get("gitlab_token")
-        self.gitlab_baseurl = ocean.integration_config.get("gitlab_url")
-        self.port_url = ocean.config.port.base_url
         self.client = http_async_client
-        self.headers = {"Authorization": f"Bearer {self.token}"}
 
-    async def fetch_data(self, endpoint: str) -> dict:
-        url = f"{self.gitlab_baseurl}{endpoint}"
+    async def get_limiter(self, endpoint: str) -> AsyncLimiter:
+        if endpoint == Endpoint.GROUP.value:
+            rate_limit = ocean.integration_config.get("group_ratelimit", 200)
+        elif endpoint == Endpoint.PROJECT.value:
+            rate_limit = ocean.integration_config.get("project_ratelimit", 200)
+        elif endpoint == Endpoint.MERGE_REQUEST.value:
+            rate_limit = ocean.integration_config.get("mergerequest_ratelimit", 200)
+        else:
+            rate_limit = ocean.integration_config.get("issue_ratelimit", 200)
 
-        resp = await self.client.get(url, headers=self.headers)
-        if resp.status_code == 429:  # Rate Limiting
-            message = resp.json().get("message", "")
-            logger.error(f"{message}, retry will start in 5 minutes.")
-            await asyncio.sleep(300)  # Sleep for 5 minutes
-            await self.fetch_data(endpoint)
+        return AsyncLimiter(0.8 * rate_limit)
 
-        if resp.status_code != 200:
-            logger.error(
-                f"Encountered an HTTP error with status code: {resp.status_code} and response text: {resp.text} while calling {endpoint}"
-            )
-            return []
+    async def fetch_data(self, endpoint: str) -> list[dict[str, Any]]:
+        token = ocean.integration_config.get("gitlab_token")
+        gitlab_baseurl = ocean.integration_config.get("gitlab_url")
 
-        return resp.json()
+        self.headers = {"Authorization": f"Bearer {token}"}
+        url = f"{gitlab_baseurl}{endpoint}"
 
-    async def patch_entity(
-        self, blueprint_identifier: str, entity_identifier: str, payload: dict
-    ):
-        port_headers = await ocean.port_client.auth.headers()
-        url = f"{self.port_url}/v1/blueprints/{blueprint_identifier}/entities/{entity_identifier}"
-        resp = await self.client.put(url, json=payload, headers=port_headers)
-        if resp.status_code != 200:
-            logger.error(
-                f"Encountered an HTTP error with status code: {resp.status_code} and response text: {resp.text}"
-            )
+        limiter = await self.get_limiter(endpoint)
+        async with limiter:
+            resp = await self.client.get(url, headers=self.headers)
+            if resp.status_code != 200:
+                logger.error(
+                    f"Encountered an HTTP error with status code: {resp.status_code} and response text: {resp.text} while calling {endpoint}"
+                )
+                return []
 
-        return resp.json()
+            return resp.json()
+
+    async def patch_entity(self, entity_type: str, payload: dict[str, Any]) -> None:
+        await ocean.register_raw(entity_type, [payload])
 
     async def parse_datetime(self, datetime_str: str) -> str:
         obj = dt_parser.parse(datetime_str)
         return obj.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
-    async def issue_handler(self, data: dict) -> None:
+    async def issue_handler(self, data: dict[str, Any]) -> None:
         """
-        headers - X-Gitlab-Event: Issue Hook
-
         https://docs.gitlab.com/ee/user/project/integrations/webhook_events.html#issue-events
         """
 
         object_attributes = data["object_attributes"]
         entity_id = object_attributes["id"]
         labels = [data["title"] for data in data["labels"]]
+
         payload = {
-            "identifier": str(entity_id),
+            "id": entity_id,
             "title": object_attributes["title"],
-            "properties": {
-                "link": object_attributes["url"],
-                "description": object_attributes["description"],
-                "createdAt": await self.parse_datetime(object_attributes["created_at"]),
-                "updatedAt": await self.parse_datetime(object_attributes["updated_at"]),
-                "creator": data["user"]["name"],
-                "status": object_attributes["state"],
-                "labels": ", ".join(labels),
-            },
-            "relations": {"service": str(object_attributes["project_id"])},
+            "web_url": object_attributes["url"],
+            "description": object_attributes["description"],
+            "created_at": await self.parse_datetime(object_attributes["created_at"]),
+            "updated_at": await self.parse_datetime(object_attributes["updated_at"]),
+            "author": data["user"],
+            "state": object_attributes["state"],
+            "labels": labels,
+            "project_id": object_attributes["project_id"],
         }
 
-        await self.patch_entity("gitlabIssue", entity_id, payload)
+        closed_at = object_attributes.get("closed_at")
+        if closed_at:
+            payload["closed_at"] = await self.parse_datetime(closed_at)
 
-    async def merge_request_handler(self, data: dict) -> None:
+        await self.patch_entity(Entity.ISSUE.value, payload)
+
+    async def merge_request_handler(self, data: dict[str, Any]) -> None:
         """
-        X-Gitlab-Event: Merge Request Hook
-
         https://docs.gitlab.com/ee/user/project/integrations/webhook_events.html#merge-request-events
         """
 
         object_attributes = data["object_attributes"]
         entity_id = object_attributes["id"]
-        reviewers = [data["name"] for data in data.get("reviewers", [])]
 
         payload = {
-            "identifier": str(entity_id),
+            "id": entity_id,
             "title": object_attributes["title"],
-            "properties": {
-                "creator": data["user"]["name"],
-                "status": object_attributes["state"],
-                "createdAt": await self.parse_datetime(object_attributes["created_at"]),
-                "updatedAt": await self.parse_datetime(object_attributes["updated_at"]),
-                "link": object_attributes["url"],
-                "reviewers": ", ".join(reviewers),
-            },
-            "relations": {"service": str(data["project"]["id"])},
+            "author": {"name": data["user"]["name"]},
+            "state": object_attributes["state"],
+            "created_at": await self.parse_datetime(object_attributes["created_at"]),
+            "updated_at": await self.parse_datetime(object_attributes["updated_at"]),
+            "web_url": object_attributes["url"],
+            "reviewers": data.get("reviewers", []),
+            "project_id": data["project"]["id"],
         }
 
-        await self.patch_entity("gitlabMergeRequest", entity_id, payload)
+        await self.patch_entity(Entity.MERGE_REQUEST.value, payload)
 
-    async def webhook_handler(self, data: dict) -> None:
+    async def webhook_handler(self, data: dict[str, Any]) -> None:
         object_kind = data["object_kind"]
         if object_kind == "issue":
             await self.issue_handler(data)
         elif object_kind == "merge_request":
             await self.merge_request_handler(data)
 
-    async def project_handler(self, data: dict) -> None:
-        entity_id = data["group_id"]
+    async def project_handler(self, data: dict[str, Any]) -> None:
         payload = {
-            "identifier": str(entity_id),
-            "title": data["name"],
-            "properties": {
-                "namespace": data["path_with_namespace"],
-            },
+            "id": data["project_id"],
+            "name": data["name"],
+            "description": data["path"],
+            "path_with_namespace": data["path_with_namespace"]
         }
 
-        await self.patch_entity("project", entity_id, payload)
+        await self.patch_entity(Entity.PROJECT.value, payload)
 
-    async def group_handler(self, data: dict) -> None:
-        entity_id = data["project_id"]
+    async def group_handler(self, data: dict[str, Any]) -> None:
         payload = {
-            "identifier": str(entity_id),
-            "title": data["name"],
-            "properties": {},
+            "id": data["group_id"],
+            "name": data["name"],
+            "description": data["path"],
         }
 
-        await self.patch_entity("gitlabGroup", entity_id, payload)
+        await self.patch_entity(Entity.GROUP.value, payload)
 
-    async def system_hook_handler(self, data: dict) -> None:
+    async def system_hook_handler(self, data: dict[str, Any]) -> None:
         """
         https://docs.gitlab.com/ee/administration/system_hooks.html
         """
