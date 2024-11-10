@@ -79,6 +79,9 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     return {"ok": True}
 
 
+ocean.app.fast_api_app.include_router(ocean.router, prefix="/integration")
+
+
 # Called once when the integration starts.
 @ocean.on_start()
 async def on_start() -> None:

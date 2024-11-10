@@ -39,8 +39,22 @@ class Ocean:
         config_override: Dict[str, Any] | None = None,
     ):
         initialize_port_ocean_context(self)
-        self.fast_api_app = app or FastAPI()
-        self.fast_api_app.middleware("http")(request_handler)
+
+        @asynccontextmanager
+        async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+            try:
+                await self.integration.start()
+                await self._setup_scheduled_resync()
+                yield None
+            except Exception:
+                logger.exception("Integration had a fatal error. Shutting down.")
+                logger.complete()
+                sys.exit("Server stopped")
+            finally:
+                signal_handler.exit()
+
+        self.fast_api_app = app or FastAPI(lifespan=lifespan)
+        # self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(
             # type: ignore
@@ -113,20 +127,4 @@ class Ocean:
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        self.fast_api_app.include_router(self.integration_router, prefix="/integration")
-
-        @asynccontextmanager
-        async def lifecycle(_: FastAPI) -> AsyncIterator[None]:
-            try:
-                await self.integration.start()
-                await self._setup_scheduled_resync()
-                yield None
-            except Exception:
-                logger.exception("Integration had a fatal error. Shutting down.")
-                logger.complete()
-                sys.exit("Server stopped")
-            finally:
-                signal_handler.exit()
-
-        self.fast_api_app.router.lifespan_context = lifecycle
         await self.fast_api_app(scope, receive, send)
