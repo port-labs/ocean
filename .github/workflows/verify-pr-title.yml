@@ -13,7 +13,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          if [[ ! "$PR_TITLE" =~ ^\[(Integration|Core|Docs|CI)\]\ .+ ]]; then
+          if [[ ! "$PR_TITLE" =~ ^\[(Integration|Core|Docs|CI|Infra)\]\ .+ ]]; then
             echo "PR title does not match the required convention."
             echo "Examples of acceptable titles:"
             echo "[Integration] Resolve missing team context in board ingestion for non-default teams"
