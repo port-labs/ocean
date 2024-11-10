@@ -13,14 +13,14 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          if [[ ! "$PR_TITLE" =~ ^\[(Integration|Core|Docs)(\]\[.*?\])?\]\ .+ ]]; then
+          if [[ ! "$PR_TITLE" =~ ^\[(Integration|Core|Docs)\]\ .+ ]]; then
             echo "PR title does not match the required convention."
             echo "Examples of acceptable titles:"
-            echo "[Integration][ADO] Fix missing team context for non default teams while ingesting boards"
-            echo "[Core][Logging] Fix Integration logs not being ingested"
-            echo "[Core] bump fastapi version"
-            echo "[Docs] Fix Ocean Denial of service in http-proxy-middleware in docs"
-            echo "[Integration][AWS] Added support to choose specific regions to query resources from"
+            echo "[Integration] Resolve missing team context in board ingestion for non-default teams"
+            echo "[Core] Ensure ingestion of integration logs"
+            echo "[Core] Upgrade FastAPI version to improve performance and compatibility"
+            echo "[Docs] Correct documentation on Ocean's denial-of-service vulnerability in http-proxy-middleware"
+            echo "[Integration] Enable region-specific resource querying support"
             exit 1
           else
             echo "PR title matches the required convention."
