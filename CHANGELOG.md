@@ -7,6 +7,23 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.13.0 (2024-11-10)
+
+
+### Improvements
+
+- Bump python from 3.11 to 3.12 (0.13.0)
+
+## 0.12.9 (2024-11-07)
+
+
+### Bug Fixes
+
+- Await logger writing exception on exit (Integration logs not being ingested)
+- Await logger thread on exit (Integration logs not being ingested)
+- Serialize exception (Integration logs not being ingested)
+
+
 ## 0.12.8 (2024-11-04)
 
 
