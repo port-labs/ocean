@@ -125,6 +125,18 @@ class AzureDevopsClient(HTTPBaseClient):
                         pipeline["__projectId"] = project["id"]
                     yield pipelines
 
+    async def generate_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                releases_url = (
+                    self._organization_base_url.replace(
+                        "dev.azure.com", "vsrm.dev.azure.com"
+                    )
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
+                )
+                async for releases in self._get_paginated_by_top_and_skip(releases_url):
+                    yield releases
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -257,6 +269,56 @@ class AzureDevopsClient(HTTPBaseClient):
         response = await self.send_request("GET", get_single_repository_url)
         repository_data = response.json()
         return repository_data
+
+    async def get_columns(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for boards in self.get_boards_in_organization():
+            for board in boards:
+                yield [
+                    {
+                        **column,
+                        "__board": board,
+                        "__stateType": stateType,
+                        "__stateName": stateName,
+                    }
+                    for column in board.get("columns", [])
+                    if column.get("stateMappings")
+                    for stateType, stateName in column.get("stateMappings").items()
+                ]
+
+    async def _enrich_boards(
+        self, boards: list[dict[str, Any]], project_id: str, team_id: str
+    ) -> list[dict[str, Any]]:
+        for board in boards:
+            response = await self.send_request(
+                "GET",
+                f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/boards/{board['id']}",
+            )
+            board.update(response.json())
+        return boards
+
+    async def _get_boards(
+        self, project_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
+        async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
+            for team in teams_in_project:
+                get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
+                response = await self.send_request("GET", get_boards_url)
+                board_data = response.json().get("value", [])
+                logger.info(f"Found {len(board_data)} boards for project {project_id}")
+                yield await self._enrich_boards(board_data, project_id, team["id"])
+
+    @cache_iterator_result()
+    async def get_boards_in_organization(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            yield [
+                {**board, "__project": project}
+                for project in projects
+                async for boards in self._get_boards(project["id"])
+                for board in boards
+            ]
 
     async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:
         headers = {"Content-Type": "application/json"}

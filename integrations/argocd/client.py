@@ -23,11 +23,23 @@ DEPRECATION_WARNING = "Please use the get_resources method with the application 
 
 
 class ArgocdClient:
-    def __init__(self, token: str, server_url: str):
+    def __init__(
+        self,
+        token: str,
+        server_url: str,
+        ignore_server_error: bool,
+        allow_insecure: bool,
+    ):
         self.token = token
         self.api_url = f"{server_url}/api/v1"
+        self.ignore_server_error = ignore_server_error
+        self.allow_insecure = allow_insecure
         self.api_auth_header = {"Authorization": f"Bearer {self.token}"}
-        self.http_client = http_async_client
+        if self.allow_insecure:
+            # This is not recommended for production use
+            self.http_client = httpx.AsyncClient(verify=False)
+        else:
+            self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
 
     async def _send_api_request(
@@ -52,12 +64,16 @@ class ArgocdClient:
             logger.error(
                 f"Encountered an HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
-            raise
+            if self.ignore_server_error:
+                return {}
+            raise e
         except httpx.HTTPError as e:
             logger.error(
                 f"Encountered an HTTP error {e} while sending a request to {method} {url} with query_params: {query_params}"
             )
-            raise
+            if self.ignore_server_error:
+                return {}
+            raise e
 
     async def get_resources(self, resource_kind: ObjectKind) -> list[dict[str, Any]]:
         url = f"{self.api_url}/{resource_kind}s"
@@ -66,6 +82,8 @@ class ArgocdClient:
             return response_data["items"]
         except Exception as e:
             logger.error(f"Failed to fetch resources of kind {resource_kind}: {e}")
+            if self.ignore_server_error:
+                return []
             raise e
 
     async def get_application_by_name(self, name: str) -> dict[str, Any]:

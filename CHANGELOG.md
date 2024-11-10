@@ -7,6 +7,47 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.12.9 (2024-11-07)
+
+
+### Bug Fixes
+
+- Await logger writing exception on exit (Integration logs not being ingested)
+- Await logger thread on exit (Integration logs not being ingested)
+- Serialize exception (Integration logs not being ingested)
+
+
+## 0.12.8 (2024-11-04)
+
+
+### Improvements
+
+- Bump fastapi to version 0.115.3 - fix Starlette Denial of service (DoS) via multipart/form-data (0.12.8)
+
+## 0.12.7 (2024-10-23)
+
+
+### Bug Fixes
+
+- Fixed get_integration_ocean_app test fixture configuration injection (0.12.7)
+
+
+## 0.12.6 (2024-10-20)
+
+
+### Bug Fixes
+
+- Fixed get_integration_resource_config assumption for port-app-config files to be of .yaml extension only (0.12.6)
+
+
+## 0.12.5 (2024-10-21)
+
+
+### Bug Fixes
+
+- Fixed get_integration_resource_config assumption for port-app-config files to be of .yml extension only (0.12.5)
+
+
 ## 0.12.3 (2024-10-09)
 
 ### Improvements

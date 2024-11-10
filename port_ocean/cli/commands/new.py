@@ -1,23 +1,13 @@
 # -*- coding: utf-8 -*-
 
-import click
 import json
-from cookiecutter.main import cookiecutter  # type: ignore
 import os
 
-from port_ocean.cli.commands.main import cli_start, print_logo, console
+import click
+from cookiecutter.main import cookiecutter  # type: ignore
+
+from port_ocean.cli.commands.main import cli_start, console, print_logo
 from port_ocean.cli.utils import cli_root_path
-
-
-def symlink_makefile(result: str, name: str) -> None:
-    infra_make_file = os.path.join(
-        os.path.dirname(result), "../integrations/_infra/Makefile"
-    )
-    target_link_make_file = os.path.join(
-        os.path.dirname(result), f"../integrations/{name}/Makefile"
-    )
-
-    os.link(infra_make_file, target_link_make_file)
 
 
 def add_vscode_configuration(result: str, name: str) -> None:
@@ -73,11 +63,13 @@ def new(path: str, is_private_integration: bool) -> None:
             "is_private_integration": is_private_integration,
         },
     )
+
     name = result.split("/")[-1]
 
-    if not is_private_integration:
+    final_private_integration = os.path.exists(os.path.join(result, "Dockerfile"))
+
+    if not final_private_integration:
         add_vscode_configuration(result, name)
-        symlink_makefile(result, name)
 
     console.print(
         "\n🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!",
@@ -95,7 +87,7 @@ def new(path: str, is_private_integration: bool) -> None:
         "⚓️ Set sail with [blue]Ocean[/blue]: Run [bold][blue]ocean sail[/blue] <path_to_integration>[/bold] to run the project using Ocean.\n"
         f"▶️ [bold][blue]ocean sail {path}/{name}[/blue][/bold] \n"
     )
-    if not is_private_integration:
+    if not final_private_integration:
         console.print(
             "⚓️ Smooth sailing with [blue]Make[/blue]: Alternatively, you can run [bold][blue]make run[/blue][/bold] to launch your project using Make. \n"
             f"▶️ [bold][blue]make run {path}/{name}[/blue][/bold]"

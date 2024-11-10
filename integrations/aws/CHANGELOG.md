@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.54 (2024-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+
+## 0.2.53 (2024-10-31)
+
+
+### Improvements
+
+- Added the option to query resources from specific regions, configurable via the regionPolicy in the selector field of the mapping.
+- Introduced `maximumConcurrentAccount` parameter to control the maximum number of accounts synced concurrently.
+
+### Bug Fixes
+
+- Skip missing resources in a region without interrupting sync across other regions.
+
+
+## 0.2.52 (2024-10-30)
+
+
+### Bug Fixes
+
+-  Updated `joined_timestamp` mapping in AWS Organizations to comply with RFC3339 timestamp format by replacing the space delimiter with 'T' in the `JoinedTimestamp` field.
+
+
+## 0.2.51 (2024-10-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.7
+
+
+## 0.2.50 (2024-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.6
+
+
+## 0.2.49 (2024-10-14)
+
+
+### Improvements
+
+- Removed iterative calls to the cache for tracking expiry, reducing the likelihood of a thundering herd problem.
+- Enhanced semaphore implementation to properly limit concurrency across tasks, rather than within tasks, improving performance and resource utilization.
+
+
+## 0.2.48 (2024-10-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.4
+
+
 ## 0.2.47 (2024-10-09)
 
 
