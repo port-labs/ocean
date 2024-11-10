@@ -54,7 +54,7 @@ class Ocean:
                 signal_handler.exit()
 
         self.fast_api_app = app or FastAPI(lifespan=lifespan)
-        # self.fast_api_app.middleware("http")(request_handler)
+        self.fast_api_app.middleware("http")(request_handler)
 
         self.config = IntegrationConfiguration(
             # type: ignore
@@ -67,6 +67,7 @@ class Ocean:
             *self.config.get_sensitive_fields_data()
         )
         self.integration_router = integration_router or APIRouter()
+        self.integration_router_included = False
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
@@ -127,4 +128,10 @@ class Ocean:
             await repeated_function()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if not self.integration_router_included:
+            self.fast_api_app.include_router(
+                self.integration_router, prefix="/integration"
+            )
+            self.integration_router_included = True
+
         await self.fast_api_app(scope, receive, send)
