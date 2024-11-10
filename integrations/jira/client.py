@@ -1,18 +1,15 @@
 import typing
-from typing import Any, AsyncGenerator, Literal
+from typing import Any, AsyncGenerator
 
 import httpx
 from httpx import BasicAuth, Timeout
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
-from port_ocean.utils.cache import cache_iterator_result
-
-from integration import SprintState
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
-REQUEST_TIMEOUT = 60
+REQUEST_TIMEOUT = 120
 
 
 CREATE_UPDATE_WEBHOOK_EVENTS = [
@@ -22,13 +19,6 @@ CREATE_UPDATE_WEBHOOK_EVENTS = [
     "project_updated",
     "project_restored_deleted",
     "project_restored_archived",
-    "sprint_created",
-    "sprint_updated",
-    "sprint_started",
-    "sprint_closed",
-    "board_created",
-    "board_updated",
-    "board_configuration_changed",
 ]
 
 DELETE_WEBHOOK_EVENTS = [
@@ -36,8 +26,6 @@ DELETE_WEBHOOK_EVENTS = [
     "project_deleted",
     "project_soft_deleted",
     "project_archived",
-    "sprint_deleted",
-    "board_deleted",
 ]
 
 WEBHOOK_EVENTS = [
@@ -91,17 +79,6 @@ class JiraClient:
                 params = {**params, "startAt": start}
                 logger.info(f"Next page startAt: {start}")
             except httpx.HTTPStatusError as e:
-                # some Jira boards may not support sprints
-                # we check for these and skip throwing an error for them
-
-                if e.response.status_code == 400 and (
-                    "support sprints" in e.response.json()["errorMessages"][0]
-                ):
-                    logger.warning(
-                        f"Jira board with url {url} does not support sprints"
-                    )
-                    is_last = True
-                    continue
 
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code}"
@@ -114,43 +91,15 @@ class JiraClient:
         logger.info("Finished paginated request")
         return
 
-    async def get_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_all_projects(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self._make_paginated_request(
             f"{self.detail_base_url}/project/search"
         ):
             yield projects["values"]
 
-    async def _get_issues_from_board(
-        self, params: dict[str, str]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for boards in self.get_all_boards():
-            for board in boards:
-                async for issues in self._make_paginated_request(
-                    f"{self.agile_url}/board/{board['id']}/issue",
-                    params=params,
-                    is_last_function=lambda response: response["startAt"]
-                    + response["maxResults"]
-                    >= response["total"],
-                ):
-                    yield issues["issues"]
-
-    async def _get_issues_from_sprint(
-        self, params: dict[str, str], sprint_state: SprintState
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        sprint_params = {"state": sprint_state}
-        async for sprints in self.get_all_sprints(sprint_params):
-            for sprint in sprints:
-                async for issues in self._make_paginated_request(
-                    f"{self.agile_url}/sprint/{sprint['id']}/issue",
-                    params=params,
-                    is_last_function=lambda response: response["startAt"]
-                    + response["maxResults"]
-                    >= response["total"],
-                ):
-                    yield issues["issues"]
-
-    async def _get_issues_from_org(
-        self, params: dict[str, str]
+    async def get_all_issues(
+        self,
+        params: dict[str, Any] = {},
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for issues in self._make_paginated_request(
             f"{self.detail_base_url}/search",
@@ -160,49 +109,6 @@ class JiraClient:
             >= response["total"],
         ):
             yield issues["issues"]
-
-    async def get_all_issues(
-        self,
-        source: Literal["board", "sprint", "all"],
-        params: dict[str, Any] = {},
-        sprintState: SprintState = "active",
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        ISSUES_MAP = {
-            "board": self._get_issues_from_board,
-            "all": self._get_issues_from_org,
-        }
-        logger.info("Running syncing for type {}".format(source))
-
-        if source == "sprint":
-            async for issues in self._get_issues_from_sprint(params, sprintState):
-                yield issues
-            return
-
-        async for issues in ISSUES_MAP[source](params):
-            yield issues
-
-    @cache_iterator_result()
-    async def _get_sprints_from_board(
-        self, board_id: int, params: dict[str, str]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for sprints in self._make_paginated_request(
-            f"{self.agile_url}/board/{board_id}/sprint", params=params
-        ):
-            yield sprints["values"]
-
-    @cache_iterator_result()
-    async def get_all_sprints(
-        self, params: dict[str, str]
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for boards in self.get_all_boards():
-            for board in boards:
-                async for sprints in self._get_sprints_from_board(board["id"], params):
-                    yield sprints
-
-    @cache_iterator_result()
-    async def get_all_boards(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for boards in self._make_paginated_request(f"{self.agile_url}/board/"):
-            yield boards["values"]
 
     async def _get_single_item(self, url: str) -> dict[str, Any]:
         try:
@@ -221,14 +127,10 @@ class JiraClient:
     async def get_single_project(self, project: str) -> dict[str, Any]:
         return await self._get_single_item(f"{self.detail_base_url}/project/{project}")
 
-    async def get_single_issue(self, issue: str) -> dict[str, Any]:
+    async def get_single_issue(
+        self, issue: str, fields: dict[str, Any] = {}, jql: str | None = None
+    ) -> dict[str, Any]:
         return await self._get_single_item(f"{self.agile_url}/issue/{issue}")
-
-    async def get_single_sprint(self, sprint_id: int) -> dict[str, Any]:
-        return await self._get_single_item(f"{self.agile_url}/sprint/{sprint_id}")
-
-    async def get_single_board(self, board_id: int) -> dict[str, Any]:
-        return await self._get_single_item(f"{self.agile_url}/board/{board_id}")
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"

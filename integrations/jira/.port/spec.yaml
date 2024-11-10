@@ -6,8 +6,6 @@ features:
     section: Project management
     resources:
       - kind: project
-      - kind: board
-      - kind: sprint
       - kind: issue
 configurations:
   - name: appHost

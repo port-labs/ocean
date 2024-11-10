@@ -14,44 +14,10 @@ resources:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
             totalIssues: .insight.totalIssueCount
 
-  - kind: board
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .name
-          blueprint: '"jiraBoard"'
-          properties:
-            url: (.self | split("/") | .[:3] | join("/")) + "/jira/software/c/projects/" + .location.projectKey + "/boards/" + (.id | tostring)
-            type: .type
-          relations:
-            project: if .location.projectId == null then '' else .location.projectId | tostring end
-
-  - kind: sprint
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .id | tostring
-          title: .name
-          blueprint: '"jiraSprint"'
-          properties:
-            url: .self
-            state: .state
-            startDate: .startDate
-            endDate: .endDate
-          relations:
-            board: if .originBoardId then .originBoardId | tostring else '' end
-
   - kind: issue
     selector:
       query: "true"
       jql: "(statusCategory != Done) OR (created >= -1w) OR (updated >= -1w)"
-      source: "sprint"
-      sprintState: "active"
     port:
       entity:
         mappings:
@@ -72,7 +38,6 @@ resources:
             updated: .fields.updated
             resolutionDate: .fields.resolutiondate
           relations:
-            sprint: if .fields.sprint.id then .fields.sprint.id | tostring else '' end
             project: .fields.project.key
             parentIssue: .fields.parent.key
             subtasks: .fields.subtasks | map(.key)

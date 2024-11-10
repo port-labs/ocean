@@ -8,14 +8,12 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import CREATE_UPDATE_WEBHOOK_EVENTS, DELETE_WEBHOOK_EVENTS, JiraClient
-from integration import JiraIssueResourceConfig, JiraSprintResourceConfig
+from integration import JiraIssueResourceConfig, JiraIssueSelector, JiraPortAppConfig
 
 
 class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
-    BOARD = "board"
-    SPRINT = "sprint"
 
 
 def initialize_client() -> JiraClient:
@@ -47,40 +45,23 @@ async def setup_application() -> None:
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
 
-    async for projects in client.get_projects():
+    async for projects in client.get_all_projects():
         logger.info(f"Received project batch with {len(projects)} projects")
         yield projects
-
-
-@ocean.on_resync(ObjectKind.BOARD)
-async def on_resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_client()
-
-    async for boards in client.get_all_boards():
-        logger.info(f"Received board batch with {len(boards)} boards")
-        yield boards
-
-
-@ocean.on_resync(ObjectKind.SPRINT)
-async def on_resync_sprints(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = initialize_client()
-    config = typing.cast(JiraSprintResourceConfig, event.resource_config)
-    params = {"state": config.selector.state}
-    async for sprints in client.get_all_sprints(params):
-        logger.info(f"Received sprint batch with {len(sprints)} sprints")
-        yield sprints
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = initialize_client()
-    config = typing.cast(JiraIssueResourceConfig, event.resource_config)
+    config = typing.cast(JiraIssueResourceConfig, event.resource_config).selector
     params = {}
-    if config.selector.jql:
-        params["jql"] = config.selector.jql
-        logger.info(f"Found JQL filter: {config.selector.jql}")
+    if config.jql:
+        params["jql"] = config.jql
 
-    async for issues in client.get_all_issues(config.selector.source, params):
+    if config.fields:
+        params["fields"] = config.fields
+
+    async for issues in client.get_all_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 
@@ -115,22 +96,39 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         if delete_action:
             issue = data["issue"]
         else:
-            issue = await client.get_single_issue(data["issue"]["key"])
+            resource_configs = typing.cast(
+                JiraPortAppConfig, event.port_app_config
+            ).resources
+
+            matching_resource_configs = [
+                resource_config
+                for resource_config in resource_configs
+                if (
+                    resource_config.kind == ObjectKind.ISSUE
+                    and isinstance(resource_config.selector, JiraIssueSelector)
+                )
+            ]
+
+            matching_resource_config = matching_resource_configs[0]
+
+            config = typing.cast(
+                JiraIssueResourceConfig, matching_resource_config
+            ).selector
+            params = {}
+            if config.jql:
+                params["jql"] = f"{config.jql} AND key = {data['issue']['key']}"
+            else:
+                params["jql"] = f"key = {data['issue']['key']}"
+            issues = await anext(client.get_all_issues(params))
+            if not issues:
+                logger.warning(
+                    f"Issue {data['issue']['key']} not found."
+                    "This is likely due to JQL filter"
+                )
+                await ocean.unregister_raw(ObjectKind.ISSUE, [data["issue"]])
+                return {"ok": True}
+            issue = issues[0]
         await ocean_action(ObjectKind.ISSUE, [issue])
-    elif "board" in webhook_event:
-        logger.info(f'Received webhook event for board: {data["board"]["id"]}')
-        if delete_action:
-            board = data["board"]
-        else:
-            board = await client.get_single_board(data["board"]["id"])
-        await ocean_action(ObjectKind.BOARD, [board])
-    elif "sprint" in webhook_event:
-        logger.info(f'Received webhook event for sprint: {data["sprint"]["id"]}')
-        if delete_action:
-            sprint = data["sprint"]
-        else:
-            sprint = await client.get_single_sprint(data["sprint"]["id"])
-        await ocean_action(ObjectKind.SPRINT, [sprint])
     logger.info("Webhook event processed")
     return {"ok": True}
 

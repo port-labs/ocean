@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.97 (2024-11-07)
+
+
+### Features
+
+- Added a field to display total issues in a project
+- Added support for ingesting other fields apart from the default fields (Jira Sprint support)
+
+### Improvements
+
+- Changed issue priority from id to name
+
+
 ## 0.1.96 (2024-11-06)
 
 
