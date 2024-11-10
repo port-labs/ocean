@@ -1,0 +1,9 @@
+description: Fake integration for Port Ocean
+# Should be one of the available icons in Port, you should replace this!
+icon: Cookiecutter
+features:
+  - type: exporter
+    section: Under Development  # Should be one of the available sections in Port
+    resources:
+      - kind: fake-department
+      - kind: fake-person

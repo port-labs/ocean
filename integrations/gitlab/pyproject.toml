@@ -1,24 +1,32 @@
 [tool.poetry]
 name = "gitlab"
-version = "0.1.99"
+version = "0.1.136"
 description = "Gitlab integration for Port using Port-Ocean Framework"
 authors = ["Yair Siman-Tov <yair@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
 aiofiles = "^0.6.0"
+aiolimiter = "^1.1.0"
 python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
 jsonschema = "^4.17.3"
-port_ocean = {version = "^0.9.11", extras = ["cli"]}
+port_ocean = {version = "^0.12.8", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.2"
+# uncomment this if you want to debug the ocean core together with your integration
+# port_ocean = { path = '../../', develop = true, extras = ['all'] }
 black = "^24.4.2"
 mypy = "^1.3.0"
-ruff = "^0.0.278"
-types-pyyaml = "^6.0.12.10"
+pylint = ">=2.17.4,<4.0.0"
+pytest = ">=8.2,<9.0"
+pytest-asyncio = ">=0.24.0"
+pytest-httpx = ">=0.30.0"
+pytest-xdist = "^3.6.1"
+ruff = "^0.6.3"
 towncrier = "^23.6.0"
+types-PyYAML = "^6.0.0"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"
@@ -61,8 +69,8 @@ title_format = "{version} ({project_date})"
   showcontent = true
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 exclude = [
@@ -88,3 +96,8 @@ exclude = '''
   |\.venv
 )/
 '''
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-vv -n auto ./tests"

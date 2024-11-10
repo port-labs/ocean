@@ -1,0 +1,26 @@
+description: Octopus Deploy integration for Port Ocean
+icon: Octopus
+docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/octopus
+features:
+  - type: exporter
+    section: CICD
+    resources:
+      - kind: space
+      - kind: project
+      - kind: release
+      - kind: deployment
+      - kind: machine
+configurations:
+  - name: octopusApiKey
+    required: true
+    type: string
+    description: Octopus Deploy API key. For more information on creating an API key, refer to the <a href="https://octopus.com/docs/octopus-rest-api/how-to-create-an-api-key" target="_blank">Octopus API documentation</a>.
+    sensitive: true
+  - name: serverUrl
+    required: true
+    type: url
+    description: The base URL of your Octopus Deploy instance. It should include the protocol (e.g. <a href="https://demo.octopus.com" target="_blank">https://demo.octopus.com</a>).
+  - name: appHost
+    required: false
+    type: url
+    description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in Octopus Deploy.

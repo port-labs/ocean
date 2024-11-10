@@ -24,7 +24,7 @@ class Preset(TypedDict):
 
 class Defaults(BaseModel):
     blueprints: list[dict[str, Any]] = []
-    actions: list[Preset] = []
+    actions: list[dict[str, Any]] = []
     scorecards: list[Preset] = []
     pages: list[dict[str, Any]] = []
     port_app_config: Optional[PortAppConfig] = Field(

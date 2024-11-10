@@ -1,25 +1,32 @@
 [tool.poetry]
 name = "aws"
-version = "0.2.25"
+version = "0.2.54"
 description = "This integration will map all your resources in all the available accounts to your Port entities"
 authors = ["Shalev Avhar <shalev@getport.io>", "Erik Zaadi <erik@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-port_ocean = {version = "^0.9.11", extras = ["cli"]}
+port_ocean = {version = "^0.12.8", extras = ["cli"]}
 python-dotenv = "^1.0.1"
 aioboto3 = "^12.4.0"
 boto3-stubs = {version = "1.34.76", extras = ["acm", "apigateway", "appconfig", "athena", "cloudcontrol", "cloudformation", "cloudwatch", "dynamodb", "ec2", "ec2-instance-connect", "ecr", "ecs", "elasticache", "elb", "elbv2", "events", "iam", "lambda", "logs", "organizations", "rds", "route53", "s3", "sagemaker", "secretsmanager", "sns", "sqs", "ssm", "sts"]}
 types-aioboto3 = "^12.4.0"
 types-aiobotocore = {extras = ["sts"], version = "^2.12.3"}
+aiocache = "^0.12.2"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.2"
-black = "^24.3.0"
+# Uncomment this if you want to debug the ocean core together with your integration
+# port_ocean = { path = '../../', develop = true, extras = ['all'] }
+black = "^24.4.2"
 mypy = "^1.3.0"
-ruff = "^0.0.278"
-pylint = "^2.17.4"
+pylint = ">=2.17.4,<4.0.0"
+pytest = ">=8.2,<9.0"
+pytest-asyncio = ">=0.24.0"
+pytest-httpx = ">=0.30.0"
+pytest-xdist = "^3.6.1"
+ruff = "^0.6.3"
 towncrier = "^23.6.0"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"
@@ -58,8 +65,8 @@ underlines = [""]
   showcontent = true
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.mypy]
 exclude = [
@@ -84,6 +91,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
+target-version = "py311"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -106,3 +114,8 @@ exclude = '''
   |\.venv
 )/
 '''
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-vv -n auto ./tests"

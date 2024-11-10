@@ -71,3 +71,22 @@ resources:
             activatedAt: .activatedAt
           relations:
             newRelicService: ".__APPLICATION.entity_guids + .__SERVICE.entity_guids"
+  - kind: newRelicServiceLevel
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"newRelicServiceLevel"'
+          identifier: .serviceLevel.indicators[0].id
+          title: .serviceLevel.indicators[0].name
+          properties:
+            description: .serviceLevel.indicators[0].description
+            targetThreshold: .serviceLevel.indicators[0].objectives[0].target
+            createdAt: if .serviceLevel.indicators[0].createdAt != null then (.serviceLevel.indicators[0].createdAt | tonumber / 1000 | todate) else null end
+            updatedAt: .serviceLevel.indicators[0].updatedAt
+            createdBy: .serviceLevel.indicators[0].createdBy.email
+            sli: .__SLI.SLI
+            tags: .tags
+          relations:
+            newRelicService: .serviceLevel.indicators[0].guid

@@ -45,3 +45,4 @@ class ObjectKind:
     PIPELINE = "pipeline"
     PROJECT = "project"
     FOLDER = "folder"
+    FILE = "file"

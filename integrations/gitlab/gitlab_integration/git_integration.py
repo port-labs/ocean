@@ -1,9 +1,8 @@
-from typing import Dict, Any, Tuple, List, Type
+from typing import Dict, Any, Literal, Tuple, List, Type
 
 from gitlab.v4.objects import Project
 from loguru import logger
 from pydantic import Field, BaseModel
-
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,
@@ -122,6 +121,22 @@ class GitlabResourceConfig(ResourceConfig):
     selector: GitlabSelector
 
 
+class FilesSelector(BaseModel):
+    path: str = Field(description="The path to get the files from")
+    repos: List[str] = Field(
+        description="A list of repositories to search files in", default_factory=list
+    )
+
+
+class GitLabFilesSelector(Selector):
+    files: FilesSelector
+
+
+class GitLabFilesResourceConfig(ResourceConfig):
+    selector: GitLabFilesSelector
+    kind: Literal["file"]
+
+
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str | None
@@ -131,7 +146,7 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-    resources: list[GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

@@ -47,12 +47,15 @@ class BaseEntitiesStateApplier(BaseHandler):
     @abstractmethod
     async def upsert(
         self, entities: list[Entity], user_agent_type: UserAgentType
-    ) -> None:
+    ) -> list[Entity]:
         """Upsert (insert or update) the given entities into the state.
 
         Args:
             entities (list[Entity]): The entities to be upserted.
             user_agent_type (UserAgentType): The user agent responsible for the upsert.
+
+        Returns:
+            list[Entity]: The upserted entities.
         """
         pass
 

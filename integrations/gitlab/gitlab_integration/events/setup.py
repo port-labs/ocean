@@ -12,6 +12,7 @@ from gitlab_integration.events.hooks.merge_request import MergeRequest
 from gitlab_integration.events.hooks.pipelines import Pipelines
 from gitlab_integration.events.hooks.push import PushHook
 from gitlab_integration.events.hooks.group import GroupHook
+from gitlab_integration.events.hooks.project_files import ProjectFiles
 from gitlab_integration.gitlab_service import GitlabService
 from gitlab_integration.models.webhook_groups_override_config import (
     WebhookMappingConfig,
@@ -114,7 +115,7 @@ def validate_hooks_override_config(
     validate_groups_hooks_events(groups_paths)
 
 
-def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
+def setup_listeners(gitlab_service: GitlabService, group_id: str) -> None:
     handlers = [
         PushHook(gitlab_service),
         MergeRequest(gitlab_service),
@@ -122,12 +123,13 @@ def setup_listeners(gitlab_service: GitlabService, webhook_id: str) -> None:
         Issues(gitlab_service),
         Pipelines(gitlab_service),
         GroupHook(gitlab_service),
+        ProjectFiles(gitlab_service),
     ]
     for handler in handlers:
         logger.info(
-            f"Setting up listeners for webhook {webhook_id} for group mapping {gitlab_service.group_mapping}"
+            f"Setting up listeners {handler.events} for group {group_id} for group mapping {gitlab_service.group_mapping}"
         )
-        event_ids = [f"{event_name}:{webhook_id}" for event_name in handler.events]
+        event_ids = [f"{event_name}:{group_id}" for event_name in handler.events]
         event_handler.on(event_ids, handler.on_hook)
 
 
@@ -139,15 +141,17 @@ def setup_system_listeners(gitlab_clients: list[GitlabService]) -> None:
         Issues,
         Pipelines,
         GroupHook,
+        ProjectFiles,
     ]
     for handler in handlers:
+        logger.info(f"Setting up system listeners {handler.system_events}")
         system_event_handler.on(handler)
 
     for gitlab_service in gitlab_clients:
         system_event_handler.add_client(gitlab_service)
 
 
-def create_webhooks_by_client(
+async def create_webhooks_by_client(
     gitlab_host: str,
     app_host: str,
     token: str,
@@ -157,16 +161,16 @@ def create_webhooks_by_client(
     gitlab_client = Gitlab(gitlab_host, token)
     gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
 
-    groups_for_webhooks = gitlab_service.get_filtered_groups_for_webhooks(
+    groups_for_webhooks = await gitlab_service.get_filtered_groups_for_webhooks(
         list(groups_hooks_events_override.keys())
         if groups_hooks_events_override
         else None
     )
 
-    webhooks_ids: list[str] = []
+    groups_ids_with_webhooks: list[str] = []
 
     for group in groups_for_webhooks:
-        webhook_id = gitlab_service.create_webhook(
+        group_id = await gitlab_service.create_webhook(
             group,
             (
                 groups_hooks_events_override.get(
@@ -177,13 +181,13 @@ def create_webhooks_by_client(
             ),
         )
 
-        if webhook_id:
-            webhooks_ids.append(webhook_id)
+        if group_id:
+            groups_ids_with_webhooks.append(group_id)
 
-    return gitlab_service, webhooks_ids
+    return gitlab_service, groups_ids_with_webhooks
 
 
-def setup_application(
+async def setup_application(
     token_mapping: dict[str, list[str]],
     gitlab_host: str,
     app_host: str,
@@ -193,6 +197,7 @@ def setup_application(
     validate_token_mapping(token_mapping)
 
     if use_system_hook:
+        logger.info("Using system hook")
         validate_use_system_hook(token_mapping)
         token, group_mapping = list(token_mapping.items())[0]
         gitlab_client = Gitlab(gitlab_host, token)
@@ -200,38 +205,44 @@ def setup_application(
         setup_system_listeners([gitlab_service])
 
     else:
+        logger.info("Using group hooks")
         validate_hooks_override_config(
             token_mapping, token_group_override_hooks_mapping
         )
 
-        client_to_webhooks: list[tuple[GitlabService, list[str]]] = []
+        client_to_group_ids_with_webhooks: list[tuple[GitlabService, list[str]]] = []
 
         for token, group_mapping in token_mapping.items():
-            if not token_group_override_hooks_mapping:
-                client_to_webhooks.append(
-                    create_webhooks_by_client(
-                        gitlab_host,
-                        app_host,
-                        token,
-                        None,
-                        group_mapping,
-                    )
-                )
-            else:
-                groups = token_group_override_hooks_mapping.tokens.get(
-                    token, WebhookTokenConfig(groups=[])
-                ).groups
-                if groups:
-                    client_to_webhooks.append(
-                        create_webhooks_by_client(
+            try:
+                if not token_group_override_hooks_mapping:
+                    client_to_group_ids_with_webhooks.append(
+                        await create_webhooks_by_client(
                             gitlab_host,
                             app_host,
                             token,
-                            groups,
+                            None,
                             group_mapping,
                         )
                     )
+                else:
+                    groups = token_group_override_hooks_mapping.tokens.get(
+                        token, WebhookTokenConfig(groups=[])
+                    ).groups
+                    if groups:
+                        client_to_group_ids_with_webhooks.append(
+                            await create_webhooks_by_client(
+                                gitlab_host,
+                                app_host,
+                                token,
+                                groups,
+                                group_mapping,
+                            )
+                        )
+            except Exception as e:
+                logger.exception(
+                    f"Failed to create webhooks for group mapping {group_mapping}, error: {e}"
+                )
 
-        for client, webhook_ids in client_to_webhooks:
-            for webhook_id in webhook_ids:
-                setup_listeners(client, webhook_id)
+        for client, group_ids in client_to_group_ids_with_webhooks:
+            for group_id in group_ids:
+                setup_listeners(client, group_id)

@@ -64,7 +64,6 @@ class BlueprintClientMixin:
             f"Deleting blueprint with id: {identifier} with all entities: {delete_entities}"
         )
         headers = await self.auth.headers(user_agent_type)
-        response = None
 
         if not delete_entities:
             response = await self.client.delete(
@@ -83,21 +82,22 @@ class BlueprintClientMixin:
             return response.json().get("migrationId", "")
 
     async def create_action(
-        self, blueprint_identifier: str, action: dict[str, Any]
+        self, action: dict[str, Any], should_log: bool = True
     ) -> None:
         logger.info(f"Creating action: {action}")
         response = await self.client.post(
-            f"{self.auth.api_url}/blueprints/{blueprint_identifier}/actions",
+            f"{self.auth.api_url}/actions",
             json=action,
             headers=await self.auth.headers(),
         )
 
-        handle_status_code(response)
+        handle_status_code(response, should_log=should_log)
 
     async def create_scorecard(
         self,
         blueprint_identifier: str,
         scorecard: dict[str, Any],
+        should_log: bool = True,
     ) -> None:
         logger.info(f"Creating scorecard: {scorecard}")
         response = await self.client.post(
@@ -106,11 +106,10 @@ class BlueprintClientMixin:
             headers=await self.auth.headers(),
         )
 
-        handle_status_code(response)
+        handle_status_code(response, should_log=should_log)
 
     async def create_page(
-        self,
-        page: dict[str, Any],
+        self, page: dict[str, Any], should_log: bool = True
     ) -> dict[str, Any]:
         logger.info(f"Creating page: {page}")
         response = await self.client.post(
@@ -119,7 +118,7 @@ class BlueprintClientMixin:
             headers=await self.auth.headers(),
         )
 
-        handle_status_code(response)
+        handle_status_code(response, should_log=should_log)
         return page
 
     async def delete_page(

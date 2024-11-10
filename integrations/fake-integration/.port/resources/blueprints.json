@@ -1,0 +1,56 @@
+[
+    {
+        "identifier": "fake-department",
+        "title": "Fake Department",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    {
+        "identifier": "fake-person",
+        "title": "Fake Person",
+        "icon": "Blueprint",
+        "schema": {
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "WORKING",
+                        "NOPE"
+                    ],
+                    "enumColors": {
+                        "WORKING": "green",
+                        "NOPE": "red"
+                    },
+                    "title": "Status"
+                },
+                "email": {
+                    "type": "string",
+                    "format": "email",
+                    "title": "Email"
+                },
+                "age": {
+                    "type": "number",
+                    "title": "Age"
+                }
+            }
+        },
+        "relations": {
+            "department": {
+                "title": "Department",
+                "description": "Fake Department",
+                "target": "fake-department",
+                "required": false,
+                "many": false
+            }
+        }
+    }
+]

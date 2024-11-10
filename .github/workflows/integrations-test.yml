@@ -1,0 +1,51 @@
+name: Integrations Test
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  detect-changes:
+    uses: ./.github/workflows/detect-changes-matrix.yml
+  test:
+    name: ${{ format('🚢 {0}', matrix.folder) }}
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    if: ${{ needs.detect-changes.outputs.integrations != '[]' }}
+    strategy:
+      max-parallel: 5
+      matrix:
+        folder: ${{ fromJson(needs.detect-changes.outputs.integrations) }}
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install poetry
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
+        run: |
+          make install
+
+      - name: Test
+        working-directory: ${{ format('integrations/{0}', matrix.folder) }}
+        env:
+          PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ format('integrations/{0}', matrix.folder) }}.xml
+        run: |
+          make test
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v4
+        if: ${{ always() }}
+        with:
+          report_paths: '**/junit/test-results-**/*.xml'
+          include_passed: true
+          require_tests: true
+          fail_on_failure: true

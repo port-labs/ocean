@@ -15,6 +15,9 @@ class AccountNotFoundError(OceanAbortException):
     pass
 
 
+ASSUME_ROLE_DURATION_SECONDS = 3600  # 1 hour
+
+
 class SessionManager:
     def __init__(self) -> None:
         """
@@ -93,7 +96,9 @@ class SessionManager:
         async with application_session.client("sts") as sts_client:
             try:
                 organizations_client = await sts_client.assume_role(
-                    RoleArn=organization_role_arn, RoleSessionName="AssumeRoleSession"
+                    RoleArn=organization_role_arn,
+                    RoleSessionName="OceanOrgAssumeRoleSession",
+                    DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
                 )
 
                 credentials = organizations_client["Credentials"]
@@ -150,7 +155,8 @@ class SessionManager:
         try:
             account_role = await sts_client.assume_role(
                 RoleArn=f'arn:aws:iam::{account["Id"]}:role/{self._get_account_read_role_name()}',
-                RoleSessionName="AssumeRoleSession",
+                RoleSessionName="OceanMemberAssumeRoleSession",
+                DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
             )
             raw_credentials = account_role["Credentials"]
             credentials = AwsCredentials(

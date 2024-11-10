@@ -115,5 +115,223 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "workItem",
+    "title": "Work Item",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string",
+          "icon": "AzureDevops",
+          "description": "The type of work item (e.g., Bug, Task, User Story)",
+          "enum": [
+            "Issue",
+            "Epic",
+            "Task"
+          ],
+          "enumColors": {
+            "Issue": "green",
+            "Epic": "orange",
+            "Task": "blue"
+          }
+        },
+        "state": {
+          "title": "State",
+          "type": "string",
+          "icon": "AzureDevops",
+          "description": "The current state of the work item (e.g., New, Active, Closed)"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string",
+          "description": "The title of the work item"
+        },
+        "effort": {
+          "title": "Effort",
+          "type": "number",
+          "description": "The estimated effort for the work item"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "format": "markdown",
+          "description": "A detailed description of the work item"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to the work item in Azure DevOps"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who created the work item"
+        },
+        "changedBy": {
+          "title": "Changed By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who last changed the work item"
+        },
+        "createdDate": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the work item was created"
+        },
+        "changedDate": {
+          "title": "Changed Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the work item was last changed"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {
+      "board": {
+        "title": "Board",
+        "path": "column.board.$title"
+      }
+    },
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "project",
+        "required": true,
+        "many": false
+      },
+      "column": {
+        "title": "Column",
+        "description": "The column the entity belongs",
+        "target": "column",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "column",
+    "title": "Column",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {},
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "board": {
+        "title": "board",
+        "target": "board",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "board",
+    "title": "Board",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to the board in Azure DevOps"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "project",
+        "required": true,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "release",
+    "title": "Release",
+    "icon": "AzureDevops",
+    "schema": {
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string",
+          "icon": "DefaultProperty",
+          "description": "The current status of the release"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string",
+          "description": "The reason for the release creation"
+        },
+        "createdDate": {
+          "title": "Created Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the release was created"
+        },
+        "modifiedDate": {
+          "title": "Modified Date",
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time when the release was last modified"
+        },
+        "createdBy": {
+          "title": "Created By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who created the release"
+        },
+        "modifiedBy": {
+          "title": "Modified By",
+          "type": "string",
+          "icon": "User",
+          "description": "The person who last modified the release"
+        },
+        "definitionName": {
+          "title": "Definition Name",
+          "type": "string",
+          "description": "The name of the release definition"
+        },
+        "link": {
+          "title": "Link",
+          "type": "string",
+          "format": "url",
+          "icon": "AzureDevops",
+          "description": "Link to the release in Azure DevOps"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "project": {
+        "title": "Project",
+        "target": "project",
+        "required": true,
+        "many": false
+      }
+    }
   }
 ]

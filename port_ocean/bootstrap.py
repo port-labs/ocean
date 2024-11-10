@@ -16,7 +16,7 @@ def _get_base_integration_class_from_module(
     for name, obj in getmembers(module):
         if (
             isclass(obj)
-            and type(obj) == type
+            and type(obj) is type
             and issubclass(obj, BaseIntegration)
             and obj != BaseIntegration
         ):

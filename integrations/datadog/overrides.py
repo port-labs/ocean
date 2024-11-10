@@ -6,7 +6,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     Selector,
 )
-from pydantic import Field, validator
+from pydantic import Field, validator, BaseModel
 
 from port_ocean.core.integrations.base import BaseIntegration
 
@@ -33,10 +33,32 @@ class SLOHistoryResourceConfig(ResourceConfig):
     selector: SLOHistorySelector
 
 
-class DataDogPortAppConfig(PortAppConfig):
-    resources: list[SLOHistoryResourceConfig | ResourceConfig] = Field(
-        default_factory=list
+class DatadogMetricSelector(BaseModel):
+    tag: str = Field(alias="tag", required=True)
+    value: str = Field(alias="value", default="*")
+
+
+class DatadogSelector(BaseModel):
+    metric: str = Field(alias="metric", required=True)
+    env: DatadogMetricSelector = Field(alias="env")
+    service: DatadogMetricSelector = Field(alias="service")
+    timeframe: int = Field(
+        alias="timeframe", description="Time frame in minutes", default=1
     )
+
+
+class DatadogResourceSelector(Selector):
+    datadog_selector: DatadogSelector = Field(alias="datadogSelector")
+
+
+class DatadogResourceConfig(ResourceConfig):
+    selector: DatadogResourceSelector
+
+
+class DataDogPortAppConfig(PortAppConfig):
+    resources: list[
+        SLOHistoryResourceConfig | DatadogResourceConfig | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class DatadogIntegration(BaseIntegration):

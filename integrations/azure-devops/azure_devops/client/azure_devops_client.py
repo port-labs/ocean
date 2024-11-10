@@ -1,16 +1,27 @@
 import json
+import asyncio
+import typing
+
 from typing import Any, AsyncGenerator, Optional
-from azure_devops.webhooks.webhook_event import WebhookEvent
 from httpx import HTTPStatusError
+from loguru import logger
+
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from loguru import logger
-from .base_client import HTTPBaseClient
 from port_ocean.utils.cache import cache_iterator_result
-import asyncio
+
+from azure_devops.misc import AzureDevopsWorkItemResourceConfig
+from azure_devops.webhooks.webhook_event import WebhookEvent
+
+from .base_client import HTTPBaseClient
+
 
 API_URL_PREFIX = "_apis"
 WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
+# Maximum number of work item IDs allowed in a single API request
+# (based on Azure DevOps API limitations) https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1&tabs=HTTP
+MAX_WORK_ITEMS_PER_REQUEST = 200
+MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 20000
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -56,7 +67,6 @@ class AzureDevopsClient(HTTPBaseClient):
                 logger.info("Adding default team to projects")
                 tasks = [self.get_single_project(project["id"]) for project in projects]
                 projects = await asyncio.gather(*tasks)
-
             yield projects
 
     @cache_iterator_result()
@@ -115,6 +125,18 @@ class AzureDevopsClient(HTTPBaseClient):
                         pipeline["__projectId"] = project["id"]
                     yield pipelines
 
+    async def generate_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                releases_url = (
+                    self._organization_base_url.replace(
+                        "dev.azure.com", "vsrm.dev.azure.com"
+                    )
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
+                )
+                async for releases in self._get_paginated_by_top_and_skip(releases_url):
+                    yield releases
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -137,6 +159,105 @@ class AzureDevopsClient(HTTPBaseClient):
                     policy["__repository"] = repo
                 yield repo_policies
 
+    async def generate_work_items(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """
+        Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
+        """
+        async for projects in self.generate_projects():
+            for project in projects:
+                # 1. Execute WIQL query to get work item IDs
+                work_item_ids = await self._fetch_work_item_ids(project)
+                logger.info(
+                    f"Found {len(work_item_ids)} work item IDs for project {project['name']}"
+                )
+                # 2. Fetch work items using the IDs (in batches if needed)
+                work_items = await self._fetch_work_items_in_batches(
+                    project["id"], work_item_ids
+                )
+                logger.debug(f"Received {len(work_items)} work items")
+
+                # Call the private method to add __projectId to each work item
+                work_items = self._add_project_details_to_work_items(
+                    work_items, project
+                )
+                yield work_items
+
+    async def _fetch_work_item_ids(self, project: dict[str, Any]) -> list[int]:
+        """
+        Executes a WIQL query to fetch work item IDs for a given project.
+
+        :param project_id: The ID of the project.
+        :return: A list of work item IDs.
+        """
+        config = typing.cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
+        wiql_query = (
+            f"SELECT [Id] from WorkItems WHERE [System.AreaPath] = '{project['name']}'"
+        )
+
+        if config.selector.wiql:
+            # Append the user-provided wiql to the WHERE clause
+            wiql_query += f" AND {config.selector.wiql}"
+            logger.info(f"Found and appended WIQL filter: {config.selector.wiql}")
+
+        wiql_url = (
+            f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
+        )
+        logger.info(
+            f"Fetching work item IDs for project {project['name']} using WIQL query {wiql_query}"
+        )
+        wiql_response = await self.send_request(
+            "POST",
+            wiql_url,
+            params={
+                "api-version": "7.1-preview.2",
+                "$top": MAX_WORK_ITEMS_RESULTS_PER_PROJECT,
+            },
+            data=json.dumps({"query": wiql_query}),
+            headers={"Content-Type": "application/json"},
+        )
+        wiql_response.raise_for_status()
+        return [item["id"] for item in wiql_response.json()["workItems"]]
+
+    async def _fetch_work_items_in_batches(
+        self, project_id: str, work_item_ids: list[int]
+    ) -> list[dict[str, Any]]:
+        """
+        Fetches work items in batches based on the list of work item IDs.
+
+        :param project_id: The ID of the project.
+        :param work_item_ids: A list of work item IDs to fetch.
+        :return: A list of work items.
+        """
+        work_items = []
+        for i in range(0, len(work_item_ids), MAX_WORK_ITEMS_PER_REQUEST):
+            batch_ids = work_item_ids[i : i + MAX_WORK_ITEMS_PER_REQUEST]
+            work_items_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems"
+            params = {
+                "ids": ",".join(map(str, batch_ids)),
+                "api-version": "7.1-preview.3",
+            }
+            work_items_response = await self.send_request(
+                "GET", work_items_url, params=params
+            )
+            work_items_response.raise_for_status()
+            work_items.extend(work_items_response.json()["value"])
+
+        return work_items
+
+    def _add_project_details_to_work_items(
+        self, work_items: list[dict[str, Any]], project: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """
+        Adds the project ID to each work item in the list.
+
+        :param work_items: List of work items to modify.
+        :param project_id: The project ID to add to each work item.
+        """
+        for work_item in work_items:
+            work_item["__projectId"] = project["id"]
+            work_item["__project"] = project
+        return work_items
+
     async def get_pull_request(self, pull_request_id: str) -> dict[Any, Any]:
         get_single_pull_request_url = f"{self._organization_base_url}/{API_URL_PREFIX}/git/pullrequests/{pull_request_id}"
         response = await self.send_request("GET", get_single_pull_request_url)
@@ -148,6 +269,56 @@ class AzureDevopsClient(HTTPBaseClient):
         response = await self.send_request("GET", get_single_repository_url)
         repository_data = response.json()
         return repository_data
+
+    async def get_columns(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for boards in self.get_boards_in_organization():
+            for board in boards:
+                yield [
+                    {
+                        **column,
+                        "__board": board,
+                        "__stateType": stateType,
+                        "__stateName": stateName,
+                    }
+                    for column in board.get("columns", [])
+                    if column.get("stateMappings")
+                    for stateType, stateName in column.get("stateMappings").items()
+                ]
+
+    async def _enrich_boards(
+        self, boards: list[dict[str, Any]], project_id: str, team_id: str
+    ) -> list[dict[str, Any]]:
+        for board in boards:
+            response = await self.send_request(
+                "GET",
+                f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/boards/{board['id']}",
+            )
+            board.update(response.json())
+        return boards
+
+    async def _get_boards(
+        self, project_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
+        async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
+            for team in teams_in_project:
+                get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
+                response = await self.send_request("GET", get_boards_url)
+                board_data = response.json().get("value", [])
+                logger.info(f"Found {len(board_data)} boards for project {project_id}")
+                yield await self._enrich_boards(board_data, project_id, team["id"])
+
+    @cache_iterator_result()
+    async def get_boards_in_organization(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            yield [
+                {**board, "__project": project}
+                for project in projects
+                async for boards in self._get_boards(project["id"])
+                for board in boards
+            ]
 
     async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:
         headers = {"Content-Type": "application/json"}

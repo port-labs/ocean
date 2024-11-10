@@ -2,73 +2,102 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run snyk integration",
-      "type": "debugpy",
-      "request": "launch",
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/snyk",
+      "envFile": "${workspaceFolder}/integrations/snyk/.env",
+      "justMyCode": true,
+      "name": "Run snyk integration",
       "program": "${workspaceFolder}/integrations/snyk/debug.py",
-      "console": "integratedTerminal",
-      "justMyCode": true,
-      "envFile": "${workspaceFolder}/integrations/snyk/.env"
+      "python": "${workspaceFolder}/integrations/snyk/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     },
     {
-      "name": "Run pagerduty integration",
-      "type": "debugpy",
-      "request": "launch",
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/pagerduty",
+      "envFile": "${workspaceFolder}/integrations/pagerduty/.env",
+      "justMyCode": true,
+      "name": "Run pagerduty integration",
       "program": "${workspaceFolder}/integrations/pagerduty/debug.py",
-      "console": "integratedTerminal",
-      "justMyCode": true,
-      "envFile": "${workspaceFolder}/integrations/pagerduty/.env"
+      "python": "${workspaceFolder}/integrations/pagerduty/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     },
     {
-      "name": "Run gitlab integration",
-      "type": "debugpy",
-      "request": "launch",
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/gitlab",
+      "envFile": "${workspaceFolder}/integrations/gitlab/.env",
+      "name": "Run gitlab integration",
       "program": "${workspaceFolder}/integrations/gitlab/debug.py",
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/integrations/gitlab/.env"
+      "python": "${workspaceFolder}/integrations/gitlab/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     },
     {
-      "name": "Run argocd integration",
-      "type": "debugpy",
-      "request": "launch",
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/argocd",
+      "envFile": "${workspaceFolder}/integrations/argocd/.env",
+      "justMyCode": true,
+      "name": "Run argocd integration",
       "program": "${workspaceFolder}/integrations/argocd/debug.py",
-      "console": "integratedTerminal",
-      "justMyCode": true,
-      "envFile": "${workspaceFolder}/integrations/argocd/.env"
+      "python": "${workspaceFolder}/integrations/argocd/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     },
     {
-      "name": "Run azure-devops integration",
-      "type": "debugpy",
-      "request": "launch",
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/azure-devops",
-      "program": "${workspaceFolder}/integrations/azure-devops/debug.py",
-      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/integrations/azure-devops/.env",
       "justMyCode": true,
-      "envFile": "${workspaceFolder}/integrations/azure-devops/.env"
+      "name": "Run azure-devops integration",
+      "program": "${workspaceFolder}/integrations/azure-devops/debug.py",
+      "python": "${workspaceFolder}/integrations/azure-devops/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     },
     {
-      "name": "Run GCP integration",
-      "type": "debugpy",
-      "request": "launch",
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/gcp",
-      "program": "${workspaceFolder}/integrations/gcp/debug.py",
-      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/integrations/gcp/.env",
       "justMyCode": false,
-      "envFile": "${workspaceFolder}/integrations/gcp/.env"
+      "name": "Run GCP integration",
+      "program": "${workspaceFolder}/integrations/gcp/debug.py",
+      "python": "${workspaceFolder}/integrations/gcp/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     },
     {
-      "name": "Run AWS integration",
-      "type": "debugpy",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/integrations/aws",
-      "program": "${workspaceFolder}/integrations/aws/debug.py",
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/aws",
+      "envFile": "${workspaceFolder}/integrations/aws/.env",
       "justMyCode": false,
-      "envFile": "${workspaceFolder}/integrations/aws/.env"
+      "name": "Run AWS integration",
+      "program": "${workspaceFolder}/integrations/aws/debug.py",
+      "python": "${workspaceFolder}/integrations/aws/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/test-integration",
+      "envFile": "${workspaceFolder}/integrations/test-integration/.env",
+      "justMyCode": true,
+      "name": "Run test-integration integration",
+      "program": "${workspaceFolder}/integrations/test-integration/debug.py",
+      "python": "${workspaceFolder}/integrations/test-integration/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/backstage",
+      "envFile": "${workspaceFolder}/integrations/backstage/.env",
+      "justMyCode": true,
+      "name": "Run backstage integration",
+      "program": "${workspaceFolder}/integrations/backstage/debug.py",
+      "python": "${workspaceFolder}/integrations/backstage/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }

@@ -13,12 +13,7 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ secrets.DOCKER_MACHINE_USER }}
-          password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+
       - name: Prepare matrix
         id: prepare-matrix
         run: |
@@ -56,23 +51,14 @@ jobs:
       contents: read
     needs: [prepare-matrix]
     strategy:
+      # limit the number of parallel jobs to avoid hitting the ghcr.io rate limit
+      max-parallel: 5
       matrix:
         integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ secrets.DOCKER_MACHINE_USER }}
-          password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+
       - name: Prepare Docker images tags
         id: prepare_tags
         run: |
@@ -106,17 +92,17 @@ jobs:
             echo "is_dev_version=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
+      - name: Build Docker Image
+        uses: ./.github/workflows/actions/build-docker-image
         with:
-          context: .
-          file: ${{ steps.prepare_tags.outputs.dockerfile_path }}
+          dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}
           platforms: linux/amd64,linux/arm64
-          push: true
           tags: ${{ steps.prepare_tags.outputs.tags }}
           build-args: |
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
             INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
+          docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
+          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
 
   upload-specs:
     runs-on: ubuntu-latest
@@ -124,7 +110,6 @@ jobs:
       packages: write
       contents: read
     needs: release-integration
-    if: needs.release-integration.outputs.is_dev_version == 'false'
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -137,42 +122,74 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Upload specifications to s3
         run: |
-          # Temporary file to store the concatenated YAML content
-          all_integrations_temp_file="all_integrations_temp_file.yaml"
-
-          # Temporary file to store each integration YAML content
-          specific_integration_temp_file="specific_integration_temp_file.yaml"
+          # Temporary file
+          temp_file="temp.yaml"
 
           # Output file name
-          output_file="index.json"
+          index_file="index.json"
 
           # AWS S3 bucket details
           aws_s3_bucket="ocean-registry"
 
+          # Fetch existing index file or create empty one of not exists
+          if aws s3 ls "s3://$aws_s3_bucket/$index_file" >/dev/null 2>&1; then
+              aws s3 cp "s3://$aws_s3_bucket/$index_file" $index_file
+              echo "Successfully fetched global index file from s3 bucket."
+          else
+              echo "Index file does not exist in the S3 bucket, Creating new one..."
+              echo "[]" >"$index_file"
+          fi
+
           # Find all ocean-spec.yaml files under the specified directory
-          find integrations/*/.port -type f -name "spec.yaml" > file_list.txt
+          find integrations/*/.port -type f -name "spec.yaml" >file_list.txt
 
           while IFS= read -r file; do
-          integration_dir=$(dirname "$file")
-          # Extract the type for pyproject.toml
-          type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+              integration_dir=$(dirname "$file")
+              integration_name=$(echo "$integration_dir" | awk -F'/' '{print $2}')
 
-          # Extract the version from pyproject.toml
-          version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
+              # Extract the type for pyproject.toml
+              type=$(grep -E '^name = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-          # Store the integration's yaml file content into a temporary file
-          integration_dest="$(echo $integration_dir | awk -F'/' '{print $2}').json"
-          sed 's/^/  /' "$file" > "$specific_integration_temp_file"
-          echo "  type: $type" >> "$specific_integration_temp_file"
-          echo "  version: $version" >> "$specific_integration_temp_file"
+              # Extract the version from pyproject.toml
+              version=$(grep -E '^version = ".*"' "$integration_dir/../pyproject.toml" | cut -d'"' -f2)
 
-          yq -o=json . < "$specific_integration_temp_file" > "$integration_dest"
-          aws s3 cp "$integration_dest" "s3://$aws_s3_bucket/$integration_dest"
+              integration_spec="$integration_name-$version.json"
+              integration_dest="$integration_name/$integration_spec"
+              integration_legacy_dest="$integration_name.json" # TODO: legacy support, remove once not in use
 
-          # Concatenate the YAML files into a temporary file
-          echo "- " >> "$all_integrations_temp_file"
-          cat "$specific_integration_temp_file" >> "$all_integrations_temp_file"
-          done < file_list.txt
+              # Convert YAML to JSON
+              yq -o json "$file" >"$temp_file"
 
-          yq -o=json . < "$all_integrations_temp_file" > "$output_file"
-          aws s3 cp "$output_file" "s3://$aws_s3_bucket/$output_file"
+              # Add version attribute
+              jq --arg type "$type" --arg version "$version" '. + {type: $type, version: $version}' "$temp_file" >"$integration_spec"
+
+              if [[ ! ${version} =~ ^.+-dev$ ]]; then
+                  # Upload integration's version manifest to s3
+                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_dest"
+                  aws s3 cp "$integration_spec" "s3://$aws_s3_bucket/$integration_legacy_dest" # TODO: legacy support, remove once not in use
+                  echo "Successfully uploaded $integration_spec to s3 bucket."
+
+                  # Get the latest version of the current integration
+                  latest_version=$(jq --arg type "$type" -r '.[] | select(.type == $type) | .version' "$index_file")
+
+                  # Add integration's spec to global index file
+                  regexp="^[0-9.]+$"
+                  if [[ ! "$latest_version" ]]; then
+                      # Add new integration spec if latest tag doesn't exist
+                      jq --argjson new_spec "[$(cat "$integration_spec")]" '. += $new_spec' "$index_file" >"$temp_file"
+                      mv "$temp_file" "$index_file"
+                  elif [[ ! "$latest_version" =~ $regexp ]] || [[ "$version" =~ $regexp ]]; then
+                      # Override global index file if released non-dev version or integration doesn't have non-dev latest tag
+                      jq --argjson updated_spec "$(cat "$integration_spec")" --arg type "$type" \
+                          'map(if .type == $type then $updated_spec else . end)' "$index_file" >"$temp_file"
+                      mv "$temp_file" "$index_file"
+                  fi
+
+                  # Upload global index file to s3
+                  aws s3 cp "$index_file" "s3://$aws_s3_bucket/$index_file"
+                  echo "Successfully uploaded $index_file to s3 bucket."
+              else
+                  echo "Did not upload integration spec since the version was in development ('${version}')"
+              fi
+
+          done <file_list.txt

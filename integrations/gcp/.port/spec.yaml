@@ -10,9 +10,14 @@ configurations:
     type: string
     require: false
     description: Base64 encoding of your Google Cloud's ADC Credentials configuration file. For more information, see the <a href="https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/cloud-providers/gcp/installation" target="_blank">Google documentation</a>
+  - name: searchAllResourcesPerMinuteQuota
+    type: integer
+    require: false
+    description: The allowed number of requests to the GCP assets inventory. By default it is set to 400, but can be adjusted per to your GCP plan. For more information see the <a href="https://cloud.google.com/asset-inventory/docs/quota#project_quota" target="_blank">GCP quota documentation</a>
+    default: 400
 deploymentMethodRequirements:
   - type: default
-    configurations: ['encodedADCConfiguration']
+    configurations: ["encodedADCConfiguration"]
 deploymentMethodOverride:
   - type: helm
   - type: docker
@@ -20,39 +25,6 @@ deploymentMethodOverride:
   - type: gitlabCI
   - type: terraform-gcp
     module: port-labs/integration-factory/ocean
-    example: gcp_integration_with_real_time
+    example: gcp_cloud_run
     title: GCP's Cloud Run
-    version: ">=0.0.25"
-    extraVars:
-      - name: assets_types_for_monitoring
-        description: A list of resources to filter events from Google Cloud.
-        required: true
-        default:
-          - "cloudresourcemanager.googleapis.com/Organization"
-          - "cloudresourcemanager.googleapis.com/Project"
-          - "storage.googleapis.com/Bucket"
-          - "cloudfunctions.googleapis.com/CloudFunction"
-          - "pubsub.googleapis.com/Subscription"
-          - "pubsub.googleapis.com/Topic"
-          - "container.googleapis.com/Cluster"
-        type: array
-      - name: gcp_ocean_integration_sa_permissions
-        description: A list of permissions that will be assigned to the Google Cloud Service account to export Google Cloud Resources.
-        required: true
-        default:
-          - "cloudasset.assets.exportResource"
-          - "cloudasset.assets.listCloudAssetFeeds"
-          - "cloudasset.assets.listResource"
-          - "cloudasset.assets.searchAllResources"
-          - "cloudasset.feeds.create"
-          - "cloudasset.feeds.list"
-          - "pubsub.topics.list"
-          - "pubsub.topics.get"
-          - "resourcemanager.projects.get"
-          - "resourcemanager.projects.list"
-          - "resourcemanager.folders.get"
-          - "resourcemanager.folders.list"
-          - "resourcemanager.organizations.get"
-          - "run.routes.invoke"
-          - "run.jobs.run"
-        type: array
+    version: ">=0.0.31"
