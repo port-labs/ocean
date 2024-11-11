@@ -4,7 +4,7 @@ from typing import Type
 import httpx
 from loguru import logger
 
-from config.settings import IntegrationConfiguration
+from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import ocean
 from port_ocean.core.defaults.common import (
     get_port_integration_defaults,
