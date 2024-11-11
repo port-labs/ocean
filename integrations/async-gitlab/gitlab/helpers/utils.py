@@ -15,7 +15,6 @@ class ObjectKind(StrEnum):
     RELEASE = "release"
 
 
-# A dictionary to map each resource type to its API version
 RESOURCE_API_VERSIONS = {
     ObjectKind.GROUP: "v4",
     ObjectKind.PROJECT: "v4",

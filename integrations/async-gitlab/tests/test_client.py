@@ -35,24 +35,6 @@ async def test_get_resource_api_version(gitlab_client):
     assert version == "v4"
 
 
-# @pytest.mark.asyncio
-# async def test_update_resource_success(gitlab_client, mock_response):
-#     with patch.object(gitlab_client, "_get_single_resource", return_value=mock_response) as mock_get:
-#         with patch("port_ocean.context.ocean.register_raw", new_callable=AsyncMock) as mock_register:
-#             await gitlab_client.update_resource("1", ObjectKind.PROJECT)
-#             mock_get.assert_called_once()
-#             mock_register.assert_awaited_once_with(ObjectKind.PROJECT, {"id": 1, "name": "test"})
-#
-#
-# @pytest.mark.asyncio
-# async def test_update_resource_failure(gitlab_client):
-#     with patch.object(gitlab_client, "_get_single_resource", side_effect=Exception("error")) as mock_get:
-#         with patch("loguru.logger.error") as mock_log_error:
-#             await gitlab_client.update_resource("1", ObjectKind.PROJECT)
-#             mock_get.assert_called_once()
-#             mock_log_error.assert_called_once_with("Failed to update project 1: error")
-
-
 @pytest.mark.asyncio
 async def test_get_single_resource_success(gitlab_client, mock_response):
     with patch.object(gitlab_client.http_client, "get", return_value=mock_response) as mock_get:
