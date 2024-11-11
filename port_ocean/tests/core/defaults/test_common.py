@@ -9,11 +9,6 @@ from port_ocean.core.defaults.common import (
 )
 
 
-# Mock PortAppConfig and Defaults
-class MockPortAppConfig(PortAppConfig):
-    pass
-
-
 @pytest.fixture
 def setup_mock_directories(tmp_path: Path) -> tuple[Path, Path, Path]:
     # Create .port/resources with sample files
@@ -151,7 +146,7 @@ def test_fallback_to_default_dir_if_custom_dir_invalid(
         # Act
         custom_defaults_dir = str(non_existing_dir.relative_to(resources_dir.parent))
         defaults = get_port_integration_defaults(
-            port_app_config_class=MockPortAppConfig,
+            port_app_config_class=PortAppConfig,
             custom_defaults_dir=custom_defaults_dir,
             base_path=resources_dir.parent.parent,
         )
@@ -161,3 +156,11 @@ def test_fallback_to_default_dir_if_custom_dir_invalid(
         assert defaults.blueprints[0].get("identifier") == "mock-identifier"
         assert defaults.port_app_config is not None
         assert defaults.port_app_config.resources[0].kind == "mock-kind"
+
+
+def test_fallback_does_not_exist() -> None:
+    # Act
+    defaults = get_port_integration_defaults(port_app_config_class=PortAppConfig)
+
+    # Assert
+    assert defaults is None

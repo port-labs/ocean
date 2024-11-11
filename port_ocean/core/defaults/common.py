@@ -79,10 +79,7 @@ def deconstruct_blueprints_to_creation_steps(
 
 
 def is_valid_dir(path: Path) -> bool:
-    if not path.exists() or not path.is_dir():
-        return False
-
-    return True
+    return path.is_dir()
 
 
 def get_port_integration_defaults(
