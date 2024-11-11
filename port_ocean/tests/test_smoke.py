@@ -1,5 +1,5 @@
 from os import environ
-from typing import Tuple
+from typing import Any, Tuple
 import pytest
 
 from port_ocean.clients.port.client import PortClient
@@ -72,3 +72,17 @@ async def test_valid_fake_persons(
                 if x["relations"]["department"] == department
             ]
         )
+
+
+async def test_resources_path(
+    port_client_for_fake_integration: Tuple[SmokeTestDetails, PortClient],
+    get_mocked_ocean_app: Any,
+) -> None:
+    custom_resources_path = ".port/custom_resources"
+    app = get_mocked_ocean_app({custom_resources_path: custom_resources_path})
+    resource_configs = app.resource_configs
+    assert len(resource_configs) > 0
+    assert resource_configs[0].resources_path is not None
+    assert resource_configs[0].resources_path == app.resources_path
+    assert resource_configs[0].resources_path == app.resources_path
+    assert resource_configs[0].resources_path == app.resources_path

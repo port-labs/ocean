@@ -91,16 +91,16 @@ def get_port_integration_defaults(
     base_path: Path = Path("."),
 ) -> Defaults | None:
     default_defaults_dir = base_path / ".port/resources"
+    defaults_dir = (
+        base_path / custom_defaults_dir if custom_defaults_dir else default_defaults_dir
+    )
 
-    if not custom_defaults_dir:
+    if not is_valid_dir(defaults_dir):
+        if custom_defaults_dir:
+            logger.warning(
+                f"Could not find custom defaults directory {custom_defaults_dir}, using default"
+            )
         defaults_dir = default_defaults_dir
-    elif not is_valid_dir(base_path / custom_defaults_dir):
-        logger.warning(
-            f"Could not find custom defaults directory {custom_defaults_dir}, using default"
-        )
-        defaults_dir = default_defaults_dir
-    else:
-        defaults_dir = base_path / custom_defaults_dir
 
     if not is_valid_dir(defaults_dir):
         logger.warning(
