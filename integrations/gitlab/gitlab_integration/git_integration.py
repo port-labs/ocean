@@ -121,18 +121,31 @@ class GitlabResourceConfig(ResourceConfig):
     selector: GitlabSelector
 
 
-class GroupWithMembersSelector(Selector):
+class GitlabMemberSelector(Selector):
 
-    enrich_with_public_email: bool = Field(
+    include_public_email: bool = Field(
         alias="enrichWithPublicEmail",
         default=False,
         description="If set to true, the integration will enrich group members with public email field. Default value is false",
     )
+    include_inherited_members: bool = Field(
+        alias="includeInheritedMembers",
+        default=False,
+        description="If set to true, the integration will include inherited members in the group members list. Default value is false",
+    )
+    # The "include bot members" flag affects both the "group" and "member" kinds.
+    # To prevent inconsistencies, the behavior or value of this parameter should be consistent for both "groups" and "members".
+    # Therefore, it should be included at the top level of the configuration.
+    include_bot_members: bool = Field(
+        alias="includeBotMembers",
+        default=True,
+        description="If set to false, bots will be filtered out from the members list. Default value is true",
+    )
 
 
-class GitlabGroupWithMembersResourceConfig(ResourceConfig):
-    kind: Literal["group-with-members"]
-    selector: GroupWithMembersSelector
+class GitlabObjectWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["project-with-members", "group-with-members"]
+    selector: GitlabMemberSelector
 
 
 class FilesSelector(BaseModel):
@@ -160,16 +173,7 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-
-    # The "include bot members" flag affects both the "group" and "member" kinds.
-    # To prevent inconsistencies, the behavior or value of this parameter should be consistent for both "groups" and "members".
-    # Therefore, it should be included at the top level of the configuration.
-    include_bot_members: bool | None = Field(
-        alias="includeBotMembers",
-        default=True,
-        description="If set to false, bots will be filtered out from the members list. Default value is true",
-    )
-    resources: list[GitlabGroupWithMembersResourceConfig | GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitlabObjectWithMembersResourceConfig | GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

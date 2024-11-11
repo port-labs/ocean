@@ -52,5 +52,6 @@ class ObjectKind:
     PROJECT = "project"
     FOLDER = "folder"
     MEMBER = "member"
-    GROUPWITHMEMBERS = "group-with-members"
     FILE = "file"
+    GROUPWITHMEMBERS = "group-with-members"
+    PROJECTWITHMEMBERS = "project-with-members"

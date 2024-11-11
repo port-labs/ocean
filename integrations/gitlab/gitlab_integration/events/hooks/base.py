@@ -8,7 +8,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from gitlab_integration.git_integration import (
     GitlabPortAppConfig,
-    GroupWithMembersSelector,
+    GitlabMemberSelector,
 )
 
 
@@ -87,7 +87,7 @@ class GroupHandler(HookHandler):
             for resource_config in resource_configs
             if (
                 resource_config.kind == kind
-                and isinstance(resource_config.selector, GroupWithMembersSelector)
+                and isinstance(resource_config.selector, GitlabMemberSelector)
             )
         ]
 
@@ -97,12 +97,18 @@ class GroupHandler(HookHandler):
             )
             return
         for resource_config in matching_resource_configs:
-            enrich_with_public_email = resource_config.selector.enrich_with_public_email
+            include_public_email = resource_config.selector.include_public_email
+            include_bot_members = resource_config.selector.include_bot_members
+            include_inherited_members = (
+                resource_config.selector.include_inherited_members
+            )
+
             gitlab_group_result: Dict[str, Any] = (
                 await self.gitlab_service.enrich_group_with_members(
-                    gitlab_group, enrich_with_public_email
+                    gitlab_group,
+                    include_public_email,
+                    include_bot_members,
+                    include_inherited_members,
                 )
-                if enrich_with_public_email
-                else gitlab_group.asdict()
             )
-            await self._register_group(kind, gitlab_group_result)
+            await self._register_group(resource_config.kind, gitlab_group_result)

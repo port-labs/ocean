@@ -10,11 +10,11 @@ import anyio.to_thread
 import yaml
 from gitlab import Gitlab, GitlabError, GitlabList
 from gitlab.base import RESTObject
-import gitlab.exceptions
 from gitlab.v4.objects import (
     Group,
     User,
     GroupMember,
+    ProjectMember,
     GroupMergeRequest,
     Issue,
     MergeRequest,
@@ -33,6 +33,7 @@ from yaml.parser import ParserError
 from port_ocean.context.event import event
 from port_ocean.core.models import Entity
 from port_ocean.utils.cache import cache_iterator_result
+import functools
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
 GROUPS_CACHE_KEY = "__cache_all_groups"
@@ -551,21 +552,32 @@ class GitlabService:
             )
             return {"__languages": {}}
 
+    # @classmethod
+    # async def enrich_project_with_extras(cls, project: Project) -> dict[str, Any]:
+    #     tasks = [
+    #         cls.async_project_language_wrapper(project),
+    #     ]
+    #     tasks_extras = await asyncio.gather(*tasks)
+    #     project_with_extras = project.asdict()
+    #     project_with_extras.update(
+    #         **{
+    #             key: value
+    #             for task_extras in tasks_extras
+    #             for key, value in task_extras.items()
+    #         }
+    #     )
+    #     return project_with_extras
+
     @classmethod
-    async def enrich_project_with_extras(cls, project: Project) -> dict[str, Any]:
+    async def enrich_project_with_extras(cls, project: Project) -> Project:
         tasks = [
             cls.async_project_language_wrapper(project),
         ]
         tasks_extras = await asyncio.gather(*tasks)
-        project_with_extras = project.asdict()
-        project_with_extras.update(
-            **{
-                key: value
-                for task_extras in tasks_extras
-                for key, value in task_extras.items()
-            }
-        )
-        return project_with_extras
+        for task_extras in tasks_extras:
+            for key, value in task_extras.items():
+                setattr(project, key, value)  # Update the project object
+        return project
 
     @staticmethod
     def validate_file_is_directory(
@@ -701,30 +713,100 @@ class GitlabService:
             issues: List[Issue] = typing.cast(List[Issue], issues_batch)
             yield issues
 
-    def should_run_for_members(self, member: GroupMember):
-        port_app_config: GitlabPortAppConfig = typing.cast(
-            "GitlabPortAppConfig", event.port_app_config
-        )
-        include_bot_members = port_app_config.include_bot_members
-        return include_bot_members or not member.username.__contains__("bot")
+    def should_run_for_members(self, include_bot_members: bool, member: GroupMember):
+        return (
+            include_bot_members or not member.is_bot
+        )  # member.username.__contains__("bot")
+
+    async def get_all_project_members(
+        self,
+        project: Project,
+        include_inherited_members: bool = False,
+        include_bot_members: bool = True,
+    ) -> typing.AsyncIterator[List[ProjectMember]]:
+        """
+        Fetches all members of a project
+        :param project: Project object
+        :param include_inherited_members: Whether to include members inherited through ancestor groups
+        :return: List of ProjectMember objects
+        """
+        try:
+            logger.info(f"Fetching all members of project {project.name}")
+            fetch_func = (
+                project.members_all.list
+                if include_inherited_members
+                else project.members.list
+            )
+            validation_func = functools.partial(
+                self.should_run_for_members, include_bot_members
+            )
+
+            async for members_batch in AsyncFetcher.fetch_batch(
+                fetch_func=fetch_func,
+                validation_func=validation_func,
+                pagination="offset",
+                order_by="id",
+                sort="asc",
+            ):
+                members: List[ProjectMember] = typing.cast(
+                    List[ProjectMember], members_batch
+                )
+                logger.info(
+                    f"Queried {len(members)} members {[member.username for member in members]} from {project.name}"
+                )
+                yield members
+        except Exception as e:
+            logger.error(f"Failed to get members for project={project.name}. error={e}")
+            return
+
+    async def enrich_project_with_members(
+        self,
+        project: Project,
+        include_inherited_members: bool = False,
+        include_bot_members: bool = True,
+        include_public_email: bool = False,
+    ) -> dict[str, Any]:
+        project_members = []
+        async for members in self.get_all_project_members(
+            project, include_inherited_members, include_bot_members
+        ):
+            if include_public_email:
+                tasks = [
+                    self.enrich_member_with_public_email(member) for member in members
+                ]
+                project_members.extend(await asyncio.gather(*tasks))
+            else:
+                project_members.extend(member.asdict() for member in members)
+
+        project_dict: dict[str, Any] = project.asdict()
+        project_dict["__members"] = project_members
+        return project_dict
 
     async def get_all_group_members(
-        self, group: Group, include_inherited: bool = False
+        self,
+        group: Group,
+        include_inherited_members: bool = False,
+        include_bot_members: bool = True,
     ) -> typing.AsyncIterator[List[GroupMember]]:
         """
         Fetches all members of a group
         :param group: Group object
-        :param include_inherited: Whether to include members inherited through ancestor groups
+        :param include_inherited_members: Whether to include members inherited through ancestor groups
         :return: List of GroupMember objects
         """
         try:
             logger.info(f"Fetching all members of group {group.name}")
             fetch_func = (
-                group.members_all.list if include_inherited else group.members.list
+                group.members_all.list
+                if include_inherited_members
+                else group.members.list
+            )
+            validation_func = functools.partial(
+                self.should_run_for_members, include_bot_members
             )
             async for members_batch in AsyncFetcher.fetch_batch(
                 fetch_func=fetch_func,
-                validation_func=self.should_run_for_members,
+                validation_func=validation_func,
                 pagination="offset",
                 order_by="id",
                 sort="asc",
@@ -749,7 +831,7 @@ class GitlabService:
             MEMBERS_CACHE_KEY, {}
         ).setdefault(self.gitlab_client.private_token, [])
         async for members_batch in self.get_all_group_members(
-            group, include_inherited=True
+            group, include_inherited_members=True
         ):
             unsynced_members = [
                 member for member in members_batch if member.id not in cached_member_ids
@@ -765,10 +847,16 @@ class GitlabService:
                 yield unsynced_members
 
     async def enrich_group_with_members(
-        self, group: Group, include_public_email: bool = False
+        self,
+        group: Group,
+        include_public_email: bool = False,
+        include_inherited_members: bool = False,
+        include_bot_members: bool = True,
     ) -> dict[str, Any]:
         group_members = []
-        async for members in self.get_all_group_members(group):
+        async for members in self.get_all_group_members(
+            group, include_inherited_members, include_bot_members
+        ):
             if include_public_email:
                 tasks = [
                     self.enrich_member_with_public_email(member) for member in members
@@ -782,7 +870,7 @@ class GitlabService:
         return group_dict
 
     async def enrich_member_with_public_email(
-        self, member: GroupMember
+        self, member: GroupMember | ProjectMember
     ) -> dict[str, Any]:
         user: User = await self.get_user(member.id)
         member_dict: dict[str, Any] = member.asdict()
@@ -808,22 +896,22 @@ class GitlabService:
             ] = user
             return user
 
-    async def get_group_member(
-        self, group: Group, member_id: int
-    ) -> Optional[GroupMember]:
-        try:
+    # async def get_group_member(
+    #     self, group: Group, member_id: int
+    # ) -> Optional[GroupMember]:
+    #     try:
 
-            logger.info(f"fetching group member {member_id} from group {group.id}")
-            result = await AsyncFetcher.fetch_single(group.members.get, member_id)
-            group_member = typing.cast(GroupMember, result)
-            return group_member if self.should_run_for_members(group_member) else None
+    #         logger.info(f"fetching group member {member_id} from group {group.id}")
+    #         result = await AsyncFetcher.fetch_single(group.members.get, member_id)
+    #         group_member = typing.cast(GroupMember, result)
+    #         return group_member if self.should_run_for_members(group_member) else None
 
-        except gitlab.exceptions.GitlabGetError as err:
-            if err.response_code == 404:
-                logger.warning(f"Group Member with ID {member_id} not found (404).")
-                return None
-            logger.error(f"Failed to fetch group with ID {member_id}: {err}")
-            raise
+    #     except gitlab.exceptions.GitlabGetError as err:
+    #         if err.response_code == 404:
+    #             logger.warning(f"Group Member with ID {member_id} not found (404).")
+    #             return None
+    #         logger.error(f"Failed to fetch group with ID {member_id}: {err}")
+    #         raise
 
     async def get_entities_diff(
         self,
