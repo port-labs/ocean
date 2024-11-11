@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Type, Any, TypedDict, Optional
 
 import httpx
+from loguru import logger
 import yaml
 from pydantic import BaseModel, Field
 from starlette import status
@@ -78,13 +79,8 @@ def deconstruct_blueprints_to_creation_steps(
 
 
 def is_valid_dir(path: Path) -> bool:
-    if not path.exists():
+    if not path.exists() or not path.is_dir():
         return False
-
-    if not path.is_dir():
-        raise UnsupportedDefaultFileType(
-            f"Defaults directory is not a directory: {path}"
-        )
 
     return True
 
@@ -92,15 +88,24 @@ def is_valid_dir(path: Path) -> bool:
 def get_port_integration_defaults(
     port_app_config_class: Type[PortAppConfig],
     custom_defaults_dir: Optional[str] = None,
+    base_path: Path = Path("."),
 ) -> Defaults | None:
-    base_path: Path = Path(".")
-    DEFAULT_DEFAULTS_DIR = ".port/resources"
+    default_defaults_dir = base_path / ".port/resources"
 
-    if custom_defaults_dir and is_valid_dir(base_path / custom_defaults_dir):
-        defaults_dir = base_path / custom_defaults_dir
-    elif is_valid_dir(base_path / DEFAULT_DEFAULTS_DIR):
-        defaults_dir = base_path / DEFAULT_DEFAULTS_DIR
+    if not custom_defaults_dir:
+        defaults_dir = default_defaults_dir
+    elif not is_valid_dir(base_path / custom_defaults_dir):
+        logger.warning(
+            f"Could not find custom defaults directory {custom_defaults_dir}, using default"
+        )
+        defaults_dir = default_defaults_dir
     else:
+        defaults_dir = base_path / custom_defaults_dir
+
+    if not is_valid_dir(defaults_dir):
+        logger.warning(
+            f"Could not find defaults directory {defaults_dir}, skipping defaults"
+        )
         return None
 
     default_jsons = {}
