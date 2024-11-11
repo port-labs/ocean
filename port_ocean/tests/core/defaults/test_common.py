@@ -158,7 +158,7 @@ def test_fallback_to_default_dir_if_custom_dir_invalid(
         assert defaults.port_app_config.resources[0].kind == "mock-kind"
 
 
-def test_fallback_does_not_exist() -> None:
+def test_default_resources_path_does_not_exist() -> None:
     # Act
     defaults = get_port_integration_defaults(port_app_config_class=PortAppConfig)
 

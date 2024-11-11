@@ -1,6 +1,7 @@
+from pathlib import Path
 from typing import Any, Literal, Type, cast
 
-from pydantic import Extra, AnyHttpUrl, parse_obj_as, parse_raw_as
+from pydantic import DirectoryPath, Extra, AnyHttpUrl, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
 from pydantic.env_settings import InitSettingsSource, EnvSettingsSource, BaseSettings
 from pydantic.fields import Field
@@ -78,7 +79,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         default_factory=lambda: IntegrationSettings(type="", identifier="")
     )
     runtime: Runtime = Runtime.OnPrem
-    resources_path: str = Field(default=".port/resources")
+    resources_path: DirectoryPath = Field(default=Path(".port/resources"))
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:

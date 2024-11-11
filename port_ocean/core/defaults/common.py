@@ -92,6 +92,9 @@ def get_port_integration_defaults(
     if custom_defaults_dir and is_valid_dir(base_path / custom_defaults_dir):
         defaults_dir = base_path / custom_defaults_dir
     elif is_valid_dir(fallback_dir):
+        logger.info(
+            f"Could not find custom defaults directory, falling back to {fallback_dir}"
+        )
         defaults_dir = fallback_dir
     else:
         logger.warning(
