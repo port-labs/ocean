@@ -44,4 +44,8 @@ async def on_webhook_alert(request: Request) -> dict[str, Any]:
 
 @ocean.on_start()
 async def on_start() -> None:
-    print("Starting async-gitlab integration")
+    print("Starting async-gitlab integration...")
+
+    print("Initializing webhook setup...")
+    webhook_handler = WebhookHandler()
+    await webhook_handler.setup()

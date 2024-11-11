@@ -1,5 +1,4 @@
 from typing import Any, Dict
-from functools import partial
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from gitlab.helpers.utils import ObjectKind
@@ -24,6 +23,15 @@ class WebhookHandler:
             "project_token": ObjectKind.PROJECT,
             "group_token": ObjectKind.GROUP,
         }
+        self.events = [
+            "push_events", "tag_push_events",
+            "project_create", "project_update", "project_delete",
+            "group_create", "group_update", "group_delete",
+            "merge_request_events", "pipeline_events", "deployment_events",
+            "note_events", "wiki_page_events",
+            "issue_events", "feature_flag_events", "releases_events",
+            "project_token_events", "group_token_events"
+        ]
 
     async def handle_event(self, event_type: str, payload: Dict[str, Any]):
         kind = self.event_handlers.get(event_type)
@@ -67,3 +75,17 @@ class WebhookHandler:
         if response is not None:
             resource = response.json()
             await ocean.register_raw(resource_type, resource)
+
+    async def setup(self) -> None:
+        path = "/hooks"
+        payload = {
+            "url": WEBHOOK_URL,
+            "events": self.events,
+            "enable_ssl_verification": True,
+        }
+
+        try:
+            await self.gitlab_handler.create_resource(path, payload)
+            logger.info("Webhook setup completed")
+        except Exception as e:
+            logger.error(f"Error setting up webhook: {e}")

@@ -101,3 +101,22 @@ class GitLabClient(GitLabRateLimiter):
                     query_params=query_params
             ):
                 yield resources
+
+    async def create_resource(
+        self,
+        path: str,
+        payload: Dict
+    ) -> Response:
+        try:
+            url = f"{self.api_url}/v4/{path}"
+
+            self.http_client.headers.update(self.api_auth_header)
+            response = await self.http_client.post(url=url, json=payload)
+            response.raise_for_status()
+            return response
+
+        except HTTPStatusError as e:
+            logger.error(
+                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            )
+            raise
