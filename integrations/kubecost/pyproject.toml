@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kubecost"
-version = "0.1.91"
+version = "0.1.92"
 description = "Kubecost integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
