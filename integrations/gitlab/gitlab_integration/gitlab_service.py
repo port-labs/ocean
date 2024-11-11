@@ -714,9 +714,7 @@ class GitlabService:
             yield issues
 
     def should_run_for_members(self, include_bot_members: bool, member: GroupMember):
-        return (
-            include_bot_members or not member.is_bot
-        )  # member.username.__contains__("bot")
+        return include_bot_members or not member.username.__contains__("bot")
 
     async def get_all_project_members(
         self,
