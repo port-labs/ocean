@@ -23,7 +23,7 @@ class Groups(GroupHandler):
                 ObjectKind.GROUP,
                 gitlab_group.asdict(),
             )
-            await self._register_group_with_members(
+            await self._register_object_with_members(
                 ObjectKind.GROUPWITHMEMBERS, gitlab_group
             )
             logger.info(f"Registered group {body['group_id']}")

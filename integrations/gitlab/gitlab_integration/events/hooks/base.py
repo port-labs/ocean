@@ -3,6 +3,7 @@ from typing import List, Any, Dict, Optional
 import typing
 from loguru import logger
 from gitlab.v4.objects import Project, Group
+from gitlab.base import RESTObject
 from gitlab_integration.gitlab_service import GitlabService
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
@@ -25,6 +26,43 @@ class HookHandler(ABC):
     @abstractmethod
     async def on_hook(self, event: str, body: dict[str, Any]) -> None:
         pass
+
+    async def _register_object_with_members(self, kind: str, gitlab_object: RESTObject):
+        resource_configs = typing.cast(
+            GitlabPortAppConfig, event.port_app_config
+        ).resources
+
+        matching_resource_configs = [
+            resource_config
+            for resource_config in resource_configs
+            if (
+                resource_config.kind == kind
+                and isinstance(resource_config.selector, GitlabMemberSelector)
+            )
+        ]
+
+        if not matching_resource_configs:
+            logger.info(
+                "Resource not found in port app config, update port app config to include the resource type"
+            )
+            return
+
+        for resource_config in matching_resource_configs:
+            include_public_email = resource_config.selector.include_public_email
+            include_bot_members = resource_config.selector.include_bot_members
+            include_inherited_members = (
+                resource_config.selector.include_inherited_members
+            )
+
+            object_result: Dict[str, Any] = (
+                await self.gitlab_service.enrich_object_with_members(
+                    gitlab_object,
+                    include_public_email,
+                    include_bot_members,
+                    include_inherited_members,
+                )
+            )
+            await ocean.register_raw(resource_config.kind, [object_result])
 
 
 class ProjectHandler(HookHandler):
@@ -73,42 +111,3 @@ class GroupHandler(HookHandler):
 
     async def _register_group(self, kind: str, gitlab_group: Dict[str, Any]) -> None:
         await ocean.register_raw(kind, [gitlab_group])
-
-    async def _register_group_with_members(
-        self, kind: str, gitlab_group: Group
-    ) -> None:
-
-        resource_configs = typing.cast(
-            GitlabPortAppConfig, event.port_app_config
-        ).resources
-
-        matching_resource_configs = [
-            resource_config
-            for resource_config in resource_configs
-            if (
-                resource_config.kind == kind
-                and isinstance(resource_config.selector, GitlabMemberSelector)
-            )
-        ]
-
-        if not matching_resource_configs:
-            logger.info(
-                "Group With Member resource not found in port app config, update port app config to include the resource type"
-            )
-            return
-        for resource_config in matching_resource_configs:
-            include_public_email = resource_config.selector.include_public_email
-            include_bot_members = resource_config.selector.include_bot_members
-            include_inherited_members = (
-                resource_config.selector.include_inherited_members
-            )
-
-            gitlab_group_result: Dict[str, Any] = (
-                await self.gitlab_service.enrich_group_with_members(
-                    gitlab_group,
-                    include_public_email,
-                    include_bot_members,
-                    include_inherited_members,
-                )
-            )
-            await self._register_group(resource_config.kind, gitlab_group_result)

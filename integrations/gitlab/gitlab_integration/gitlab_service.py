@@ -9,12 +9,10 @@ import aiolimiter
 import anyio.to_thread
 import yaml
 from gitlab import Gitlab, GitlabError, GitlabList
-from gitlab.base import RESTObject
+from gitlab.base import RESTObject, RESTObjectList
 from gitlab.v4.objects import (
     Group,
     User,
-    GroupMember,
-    ProjectMember,
     GroupMergeRequest,
     Issue,
     MergeRequest,
@@ -552,22 +550,6 @@ class GitlabService:
             )
             return {"__languages": {}}
 
-    # @classmethod
-    # async def enrich_project_with_extras(cls, project: Project) -> dict[str, Any]:
-    #     tasks = [
-    #         cls.async_project_language_wrapper(project),
-    #     ]
-    #     tasks_extras = await asyncio.gather(*tasks)
-    #     project_with_extras = project.asdict()
-    #     project_with_extras.update(
-    #         **{
-    #             key: value
-    #             for task_extras in tasks_extras
-    #             for key, value in task_extras.items()
-    #         }
-    #     )
-    #     return project_with_extras
-
     @classmethod
     async def enrich_project_with_extras(cls, project: Project) -> Project:
         tasks = [
@@ -713,29 +695,55 @@ class GitlabService:
             issues: List[Issue] = typing.cast(List[Issue], issues_batch)
             yield issues
 
-    def should_run_for_members(self, include_bot_members: bool, member: GroupMember):
+    def should_run_for_members(self, include_bot_members: bool, member: RESTObject):
         return include_bot_members or not member.username.__contains__("bot")
 
-    async def get_all_project_members(
+    async def enrich_object_with_members(
         self,
-        project: Project,
+        obj: RESTObject,
         include_inherited_members: bool = False,
         include_bot_members: bool = True,
-    ) -> typing.AsyncIterator[List[ProjectMember]]:
+        include_public_email: bool = False,
+    ) -> dict[str, Any]:
         """
-        Fetches all members of a project
-        :param project: Project object
-        :param include_inherited_members: Whether to include members inherited through ancestor groups
-        :param include_bot_members: Whether to include bot members (tokens, etc.)
-        :return: List of ProjectMember objects
+        Enriches an object (e.g., Project or Group) with its members.
+        """
+        members_list = []
+        async for members in self.get_all_object_members(
+            obj, include_inherited_members, include_bot_members
+        ):
+            if include_public_email:
+                tasks = [
+                    self.enrich_member_with_public_email(member) for member in members
+                ]
+                members_list.extend(await asyncio.gather(*tasks))
+            else:
+                members_list.extend(member.asdict() for member in members)
+
+        obj_dict: dict[str, Any] = obj.asdict()
+        obj_dict["__members"] = members_list
+        return obj_dict
+
+    async def get_all_object_members(
+        self,
+        obj: RESTObject,
+        include_inherited_members: bool = False,
+        include_bot_members: bool = True,
+    ) -> AsyncIterator[RESTObjectList]:
+        """
+        Fetches all members of an object (e.g., Project or Group) generically.
         """
         try:
-            logger.info(f"Fetching all members of project {project.name}")
-            fetch_func = (
-                project.members_all.list
-                if include_inherited_members
-                else project.members.list
-            )
+            obj_name = getattr(obj, "name", "unknown")
+            logger.info(f"Fetching all members of {obj_name}")
+
+            members_attr = "members_all" if include_inherited_members else "members"
+            members_manager = getattr(obj, members_attr, None)
+            if not members_manager:
+                raise AttributeError(f"Object does not have attribute '{members_attr}'")
+
+            fetch_func = members_manager.list
+
             validation_func = functools.partial(
                 self.should_run_for_members, include_bot_members
             )
@@ -747,105 +755,18 @@ class GitlabService:
                 order_by="id",
                 sort="asc",
             ):
-                members: List[ProjectMember] = typing.cast(
-                    List[ProjectMember], members_batch
-                )
+                members: RESTObjectList = typing.cast(RESTObjectList, members_batch)
+
                 logger.info(
-                    f"Queried {len(members)} members {[member.username for member in members]} from {project.name}"
+                    f"Queried {len(members)} members {[member.username for member in members]} from {obj_name}"
                 )
                 yield members
         except Exception as e:
-            logger.error(f"Failed to get members for project={project.name}. error={e}")
+            logger.error(f"Failed to get members for object='{obj_name}'. Error: {e}")
             return
-
-    async def enrich_project_with_members(
-        self,
-        project: Project,
-        include_inherited_members: bool = False,
-        include_bot_members: bool = True,
-        include_public_email: bool = False,
-    ) -> dict[str, Any]:
-        project_members = []
-        async for members in self.get_all_project_members(
-            project, include_inherited_members, include_bot_members
-        ):
-            if include_public_email:
-                tasks = [
-                    self.enrich_member_with_public_email(member) for member in members
-                ]
-                project_members.extend(await asyncio.gather(*tasks))
-            else:
-                project_members.extend(member.asdict() for member in members)
-
-        project_dict: dict[str, Any] = project.asdict()
-        project_dict["__members"] = project_members
-        return project_dict
-
-    async def get_all_group_members(
-        self,
-        group: Group,
-        include_inherited_members: bool = False,
-        include_bot_members: bool = True,
-    ) -> typing.AsyncIterator[List[GroupMember]]:
-        """
-        Fetches all members of a group
-        :param group: Group object
-        :param include_inherited_members: Whether to include members inherited through ancestor groups
-        :return: List of GroupMember objects
-        """
-        try:
-            logger.info(f"Fetching all members of group {group.name}")
-            fetch_func = (
-                group.members_all.list
-                if include_inherited_members
-                else group.members.list
-            )
-            validation_func = functools.partial(
-                self.should_run_for_members, include_bot_members
-            )
-            async for members_batch in AsyncFetcher.fetch_batch(
-                fetch_func=fetch_func,
-                validation_func=validation_func,
-                pagination="offset",
-                order_by="id",
-                sort="asc",
-            ):
-                members: List[GroupMember] = typing.cast(
-                    List[GroupMember], members_batch
-                )
-                logger.info(
-                    f"Queried {len(members)} members {[member.username for member in members]} from {group.name}"
-                )
-                yield members
-        except Exception as e:
-            logger.error(f"Failed to get members for group={group.name}. error={e}")
-            return
-
-    async def enrich_group_with_members(
-        self,
-        group: Group,
-        include_public_email: bool = False,
-        include_inherited_members: bool = False,
-        include_bot_members: bool = True,
-    ) -> dict[str, Any]:
-        group_members = []
-        async for members in self.get_all_group_members(
-            group, include_inherited_members, include_bot_members
-        ):
-            if include_public_email:
-                tasks = [
-                    self.enrich_member_with_public_email(member) for member in members
-                ]
-                group_members.extend(await asyncio.gather(*tasks))
-            else:
-                group_members.extend(member.asdict() for member in members)
-
-        group_dict: dict[str, Any] = group.asdict()
-        group_dict["__members"] = group_members
-        return group_dict
 
     async def enrich_member_with_public_email(
-        self, member: GroupMember | ProjectMember
+        self, member: RESTObject
     ) -> dict[str, Any]:
         user: User = await self.get_user(member.id)
         member_dict: dict[str, Any] = member.asdict()

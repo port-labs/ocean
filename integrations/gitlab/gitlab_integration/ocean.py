@@ -146,11 +146,11 @@ async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
         async for groups_batch in service.get_all_groups():
             tasks = [
-                service.enrich_group_with_members(
+                service.enrich_object_with_members(
                     group,
-                    include_public_email,
                     include_inherited_members,
                     include_bot_members,
+                    include_public_email,
                 )
                 for group in groups_batch
             ]
@@ -227,7 +227,7 @@ async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     f"Finished Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
                 )
                 members_tasks = [
-                    service.enrich_project_with_members(
+                    service.enrich_object_with_members(
                         project,
                         include_inherited_members,
                         include_bot_members,

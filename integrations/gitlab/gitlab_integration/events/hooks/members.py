@@ -20,7 +20,7 @@ class Members(GroupHandler):
         if gitlab_group:
             event_name, user_username = (body["event_name"], body["user_username"])
             logger.info(f"Handling {event_name} for group member {user_username}")
-            await self._register_group_with_members(
+            await self._register_object_with_members(
                 ObjectKind.GROUPWITHMEMBERS, gitlab_group
             )
         else:
