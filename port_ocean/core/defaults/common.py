@@ -90,24 +90,19 @@ def get_port_integration_defaults(
     custom_defaults_dir: Optional[str] = None,
     base_path: Path = Path("."),
 ) -> Defaults | None:
-    default_defaults_dir = base_path / ".port/resources"
-    defaults_dir = (
-        base_path / custom_defaults_dir if custom_defaults_dir else default_defaults_dir
-    )
+    fallback_dir = base_path / ".port/resources"
 
-    if not is_valid_dir(defaults_dir):
-        if custom_defaults_dir:
-            logger.warning(
-                f"Could not find custom defaults directory {custom_defaults_dir}, using default"
-            )
-        defaults_dir = default_defaults_dir
-
-    if not is_valid_dir(defaults_dir):
+    if custom_defaults_dir and is_valid_dir(base_path / custom_defaults_dir):
+        defaults_dir = base_path / custom_defaults_dir
+    elif is_valid_dir(fallback_dir):
+        defaults_dir = fallback_dir
+    else:
         logger.warning(
-            f"Could not find defaults directory {defaults_dir}, skipping defaults"
+            f"Could not find defaults directory {fallback_dir}, skipping defaults"
         )
         return None
 
+    logger.info(f"Loading defaults from {defaults_dir}")
     default_jsons = {}
     allowed_file_names = [
         field_model.alias for _, field_model in Defaults.__fields__.items()
