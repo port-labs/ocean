@@ -39,26 +39,7 @@ class GitLabClient(GitLabRateLimiter):
     async def get_resource_api_version(resource_type: ObjectKind) -> str:
         return RESOURCE_API_VERSIONS.get(resource_type, "v4")
 
-    async def update_resource(
-            self,
-            resource_id: str,
-            resource_type: ObjectKind
-    ):
-        api_version = await self.get_resource_api_version(resource_type)
-        url = f"{self.api_url}/{api_version}/{resource_type.value}s/{resource_id}"
-
-        try:
-            response = await self._get_single_resource(url)
-            resource = response.json()
-
-            await ocean.register_raw(resource_type, resource)
-            logger.info(f"Updated {resource_type} {resource_id} in Port")
-        except Exception as e:
-            logger.error(f"Failed to update {resource_type.value} {resource_id}: {str(e)}")
-
-        return
-
-    async def _get_single_resource(
+    async def get_single_resource(
         self,
         url: str,
         query_params: Optional[dict[str, Any]] = None,
@@ -88,7 +69,7 @@ class GitLabClient(GitLabRateLimiter):
                 logger.info(
                     f"Fetching data from {url} with query params {pagination_params}"
                 )
-                response = await self._get_single_resource(
+                response = await self.get_single_resource(
                     url=url, query_params=pagination_params
                 )
                 yield response.json()
