@@ -726,6 +726,7 @@ class GitlabService:
         Fetches all members of a project
         :param project: Project object
         :param include_inherited_members: Whether to include members inherited through ancestor groups
+        :param include_bot_members: Whether to include bot members (tokens, etc.)
         :return: List of ProjectMember objects
         """
         try:
@@ -820,30 +821,6 @@ class GitlabService:
             logger.error(f"Failed to get members for group={group.name}. error={e}")
             return
 
-    async def get_unsynced_group_members(
-        self, group: Group
-    ) -> typing.AsyncIterator[List[GroupMember]]:
-        logger.info(f"Fetching members unique to group {group.name}")
-
-        cached_member_ids = event.attributes.setdefault(
-            MEMBERS_CACHE_KEY, {}
-        ).setdefault(self.gitlab_client.private_token, [])
-        async for members_batch in self.get_all_group_members(
-            group, include_inherited_members=True
-        ):
-            unsynced_members = [
-                member for member in members_batch if member.id not in cached_member_ids
-            ]
-
-            if unsynced_members:
-                cached_member_ids.extend(member.id for member in unsynced_members)
-
-                logger.info(
-                    f"Found {len(unsynced_members)} members "
-                    f"{[member.username for member in unsynced_members]} unique to {group.name}"
-                )
-                yield unsynced_members
-
     async def enrich_group_with_members(
         self,
         group: Group,
@@ -872,7 +849,7 @@ class GitlabService:
     ) -> dict[str, Any]:
         user: User = await self.get_user(member.id)
         member_dict: dict[str, Any] = member.asdict()
-        member_dict.update({"__public_email": user.public_email})
+        member_dict["__public_email"] = user.public_email
         return member_dict
 
     async def get_user(self, user_id: str) -> User:
@@ -893,23 +870,6 @@ class GitlabService:
                 user_id
             ] = user
             return user
-
-    # async def get_group_member(
-    #     self, group: Group, member_id: int
-    # ) -> Optional[GroupMember]:
-    #     try:
-
-    #         logger.info(f"fetching group member {member_id} from group {group.id}")
-    #         result = await AsyncFetcher.fetch_single(group.members.get, member_id)
-    #         group_member = typing.cast(GroupMember, result)
-    #         return group_member if self.should_run_for_members(group_member) else None
-
-    #     except gitlab.exceptions.GitlabGetError as err:
-    #         if err.response_code == 404:
-    #             logger.warning(f"Group Member with ID {member_id} not found (404).")
-    #             return None
-    #         logger.error(f"Failed to fetch group with ID {member_id}: {err}")
-    #         raise
 
     async def get_entities_diff(
         self,
