@@ -99,6 +99,9 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
             resource_configs = typing.cast(
                 JiraPortAppConfig, event.port_app_config
             ).resources
+            for resource_config in resource_configs:
+                logger.info(f"Resource config selector: {type(resource_config.selector)}")
+                logger.info(f"Is type: {type(resource_config.selector) == JiraIssueSelector}")
 
             matching_resource_configs = [
                 resource_config
@@ -119,7 +122,11 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
                 params["jql"] = f"{config.jql} AND key = {data['issue']['key']}"
             else:
                 params["jql"] = f"key = {data['issue']['key']}"
-            issues = await anext(client.get_all_issues(params))
+
+            issues: list[dict[str, Any]] = []
+            async for issue in client.get_all_issues(params):
+                issues.append(issue)
+            # issues = await client.get_all_issues(params)
             if not issues:
                 logger.warning(
                     f"Issue {data['issue']['key']} not found."
