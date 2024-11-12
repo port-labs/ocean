@@ -114,7 +114,7 @@ class Ocean:
             )
             await repeated_function()
 
-    def initialize_app(self):
+    def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         @asynccontextmanager
