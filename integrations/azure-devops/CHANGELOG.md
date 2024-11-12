@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.83 (2024-11-12)
+
+
+### Improvements
+
+- Updated wiql base query to use immutable fields for fetching work items related to a project
+
+
 ## 0.1.82 (2024-11-12)
 
 
