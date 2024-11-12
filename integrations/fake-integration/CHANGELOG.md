@@ -5,6 +5,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.16-dev (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+## 0.1.15-dev (2024-11-11)
+
+
+### Bug Fixes
+
+- Resolve vulnerability "Black vulnerable to Regular Expression Denial of Service (ReDoS)" by bumping to ^24.4.2
+
+
+## 0.1.14-dev (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+## 0.1.13-dev (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
+## 0.1.12-dev (2024-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+
 ## 0.1.11-dev (2024-10-23)
 
 

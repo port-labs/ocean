@@ -4,6 +4,7 @@ from typing import Type
 import httpx
 from loguru import logger
 
+from port_ocean.config.settings import IntegrationConfiguration
 from port_ocean.context.ocean import ocean
 from port_ocean.core.defaults.common import (
     get_port_integration_defaults,
@@ -14,12 +15,13 @@ from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 
 def clean_defaults(
     config_class: Type[PortAppConfig],
+    integration_config: IntegrationConfiguration,
     force: bool,
     wait: bool,
 ) -> None:
     try:
         asyncio.new_event_loop().run_until_complete(
-            _clean_defaults(config_class, force, wait)
+            _clean_defaults(config_class, integration_config, force, wait)
         )
 
     except Exception as e:
@@ -27,13 +29,18 @@ def clean_defaults(
 
 
 async def _clean_defaults(
-    config_class: Type[PortAppConfig], force: bool, wait: bool
+    config_class: Type[PortAppConfig],
+    integration_config: IntegrationConfiguration,
+    force: bool,
+    wait: bool,
 ) -> None:
     port_client = ocean.port_client
     is_exists = await is_integration_exists(port_client)
     if not is_exists:
         return None
-    defaults = get_port_integration_defaults(config_class)
+    defaults = get_port_integration_defaults(
+        config_class, integration_config.resources_path
+    )
     if not defaults:
         return None
 
