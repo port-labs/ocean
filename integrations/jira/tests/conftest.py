@@ -9,7 +9,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.tests.helpers.ocean_app import get_integration_ocean_app
 
-from integration import JiraPortAppConfig
+from overrides import JiraPortAppConfig
 
 from .fixtures import ISSUES, PROJECTS
 

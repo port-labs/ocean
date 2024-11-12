@@ -1,6 +1,5 @@
 from typing import Literal
 
-
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
