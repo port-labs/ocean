@@ -70,6 +70,8 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
 
+        self.app_initialized = False
+
     def is_saas(self) -> bool:
         return self.config.runtime == Runtime.Saas
 
@@ -112,7 +114,7 @@ class Ocean:
             )
             await repeated_function()
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         @asynccontextmanager
@@ -129,4 +131,10 @@ class Ocean:
                 signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
+        self.app_initialized = True
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if not self.app_initialized:
+            self.initialize_app()
+
         await self.fast_api_app(scope, receive, send)

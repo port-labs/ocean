@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Updated wiql base query to use immutable fields for fetching work items related to a project
+
+- Bumped ocean version to ^0.13.1
 
 
 ## 0.1.81 (2024-11-10)
