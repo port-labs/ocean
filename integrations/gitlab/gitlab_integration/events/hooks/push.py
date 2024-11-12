@@ -105,7 +105,7 @@ class PushHook(ProjectHandler):
             )
             await ocean.register_raw(ObjectKind.PROJECT, [enriched_project.asdict()])
             await self._register_object_with_members(
-                ObjectKind.PROJECTWITHMEMBERS, gitlab_project
+                ObjectKind.PROJECTWITHMEMBERS, enriched_project
             )
 
         else:

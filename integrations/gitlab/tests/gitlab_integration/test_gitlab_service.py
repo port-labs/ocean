@@ -1,6 +1,9 @@
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock, AsyncMock
 from gitlab_integration.gitlab_service import GitlabService
+from gitlab.base import RESTObject
+from gitlab.v4.objects import User
+import pytest
 
 
 def mock_search(page: int, *args: Any, **kwargs: Any) -> Any:
@@ -213,3 +216,211 @@ async def test_get_and_parse_single_file_json(
 
     # Assert
     assert expected_parsed_single_file == actual_parsed_single_file
+
+
+class MockMember(RESTObject):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
+
+    def asdict(self):
+        return {"id": self.id, "username": self.username}
+
+    def __setattr__(self, name, value):
+        self.__dict__[name] = value
+
+
+class MockGroup(RESTObject):
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
+        self.members = self.MockMembers()
+        self.members_all = self.MockMembersAll()
+
+    class MockMembers:
+        def list(self, page, *args: Any, **kwargs: Any):
+            if page == 1:
+                return [
+                    MockMember(1, "user1"),
+                    MockMember(1, "bot_user1"),
+                ]
+            elif page == 2:
+                return [
+                    MockMember(2, "user2"),
+                    MockMember(2, "bot_user2"),
+                ]
+            elif page == 3:
+                return [
+                    MockMember(3, "user3"),
+                    MockMember(3, "bot_user3"),
+                ]
+            return
+
+    class MockMembersAll:
+        def list(self, page, *args: Any, **kwargs: Any):
+            if page == 1:
+                return [
+                    MockMember(1, "user1"),
+                    MockMember(1, "bot_user1"),
+                    MockMember(1, "inherited_member_1"),
+                ]
+            elif page == 2:
+                return [
+                    MockMember(2, "user2"),
+                    MockMember(2, "bot_user2"),
+                    MockMember(2, "inherited_member_2"),
+                ]
+            elif page == 3:
+                return [
+                    MockMember(3, "user3"),
+                    MockMember(3, "bot_user3"),
+                    MockMember(3, "inherited_member_3"),
+                ]
+            return
+
+    def asdict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "path": f"get{self.name}-path",
+            "full_name": self.name,
+            "full_path": f"get{self.name}-path",
+        }
+
+    def __setattr__(self, name, value):
+        self.__dict__[name] = value
+
+
+def test_should_run_for_members(
+    monkeypatch: Any, mocked_gitlab_service: GitlabService
+) -> None:
+
+    bot_member = Mock(spec=RESTObject)
+    bot_member.username = "bot_user"
+
+    non_bot_member = Mock(spec=RESTObject)
+    non_bot_member.username = "regular_user"
+
+    assert mocked_gitlab_service.should_run_for_members(True, bot_member) is True
+    assert mocked_gitlab_service.should_run_for_members(True, non_bot_member) is True
+
+    assert mocked_gitlab_service.should_run_for_members(False, bot_member) is False
+    assert mocked_gitlab_service.should_run_for_members(False, non_bot_member) is True
+
+
+@pytest.mark.asyncio
+async def test_enrich_member_with_public_email(
+    monkeypatch: Any, mocked_gitlab_service: GitlabService
+) -> None:
+
+    # Arrange
+    member = MockMember(id="123", username="test_user")
+    mock_user = Mock(spec=User)
+    mock_user.public_email = "user@example.com"
+
+    monkeypatch.setattr(
+        mocked_gitlab_service, "get_user", AsyncMock(return_value=mock_user)
+    )
+
+    # Act
+    enriched_member = await mocked_gitlab_service.enrich_member_with_public_email(
+        member
+    )
+
+    # Assert
+    assert enriched_member == {
+        "id": "123",
+        "username": "test_user",
+        "__public_email": "user@example.com",
+    }
+    mocked_gitlab_service.get_user.assert_awaited_once_with("123")  # type: ignore
+
+
+@pytest.mark.asyncio
+async def test_get_all_object_members(
+    monkeypatch: Any, mocked_gitlab_service: GitlabService
+) -> None:
+
+    # Arrange
+    obj = MockGroup(123, "test_project")
+
+    # Act
+    from typing import List
+
+    results_without_inherited_members: List[RESTObject] = []
+    async for members in mocked_gitlab_service.get_all_object_members(
+        obj, include_inherited_members=False, include_bot_members=True
+    ):
+        results_without_inherited_members.extend(members)
+
+    results_with_inherited_members: List[RESTObject] = []
+    async for members in mocked_gitlab_service.get_all_object_members(
+        obj, include_inherited_members=True, include_bot_members=True
+    ):
+        results_with_inherited_members.extend(members)
+
+    results_without_bot_members: List[RESTObject] = []
+    async for members in mocked_gitlab_service.get_all_object_members(
+        obj, include_inherited_members=True, include_bot_members=False
+    ):
+        results_without_bot_members.extend(members)
+
+    # Assert
+    assert len(results_without_inherited_members) == 6
+    assert results_without_inherited_members[0].username == "user1"
+    assert results_without_inherited_members[1].username == "bot_user1"
+    assert len(results_with_inherited_members) == 9
+    assert len(results_without_bot_members) == 6
+
+
+@pytest.mark.asyncio
+async def test_enrich_object_with_members(
+    monkeypatch: Any, mocked_gitlab_service: GitlabService
+) -> None:
+
+    # Arrange
+    obj = MockGroup(123, "test_project")
+
+    monkeypatch.setattr(
+        mocked_gitlab_service,
+        "enrich_member_with_public_email",
+        AsyncMock(
+            side_effect=[
+                {"id": 1, "username": "user1", "__public_email": "user1@example.com"},
+                {"id": 2, "username": "user2", "__public_email": "user2@example.com"},
+                {"id": 3, "username": "user2", "__public_email": "user3@example.com"},
+            ]
+            * 2
+        ),
+    )
+
+    # Act
+    enriched_obj_with_public_email = (
+        await mocked_gitlab_service.enrich_object_with_members(
+            obj,
+            include_inherited_members=False,
+            include_bot_members=True,
+            include_public_email=True,
+        )
+    )
+
+    enriched_obj = await mocked_gitlab_service.enrich_object_with_members(
+        obj,
+        include_inherited_members=False,
+        include_bot_members=True,
+        include_public_email=False,
+    )
+
+    # Assert
+    assert enriched_obj["name"] == "test_project"
+    assert len(enriched_obj["__members"]) == 6
+    assert enriched_obj["__members"][0] == {"id": 1, "username": "user1"}
+
+    assert enriched_obj_with_public_email["name"] == "test_project"
+    assert len(enriched_obj_with_public_email["__members"]) == 6
+    assert enriched_obj_with_public_email["__members"][0] == {
+        "id": 1,
+        "username": "user1",
+        "__public_email": "user1@example.com",
+    }
+    mocked_gitlab_service.enrich_member_with_public_email.assert_awaited()  # type: ignore
