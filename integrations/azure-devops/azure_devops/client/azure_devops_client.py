@@ -190,9 +190,7 @@ class AzureDevopsClient(HTTPBaseClient):
         :return: A list of work item IDs.
         """
         config = typing.cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
-        wiql_query = (
-            f"SELECT [Id] from WorkItems WHERE [System.TeamProject] = '{project['name']}'"
-        )
+        wiql_query = f"SELECT [Id] from WorkItems WHERE [System.TeamProject] = '{project['name']}'"
 
         if config.selector.wiql:
             # Append the user-provided wiql to the WHERE clause
