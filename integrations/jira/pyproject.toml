@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jira"
-version = "0.1.99"
+version = "0.1.100"
 description = "Integration to bring information from Jira into Port"
 authors = ["Mor Paz <mor@getport.io>"]
 
