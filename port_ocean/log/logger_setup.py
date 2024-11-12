@@ -55,6 +55,7 @@ def _http_loguru_handler(level: LogLevelType) -> None:
     logger.configure(patcher=exception_deserializer)
 
     http_memory_handler = HTTPMemoryHandler()
+    signal_handler.register(http_memory_handler.wait_for_lingering_threads)
     signal_handler.register(http_memory_handler.flush)
 
     queue_listener = QueueListener(queue, http_memory_handler)

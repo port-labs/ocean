@@ -123,6 +123,7 @@ class Ocean:
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
+                logger.complete()
                 sys.exit("Server stopped")
             finally:
                 signal_handler.exit()
