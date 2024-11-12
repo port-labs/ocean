@@ -245,24 +245,9 @@ class PagerDutyClient:
                     return response.json()
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code == 404:
-                        logger.debug(f"Resource not found at {endpoint}")
+                        logger.debug(f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}")
                         return {}
-                    elif e.response.status_code == 429:
-                        requests_remaining = int(
-                            e.response.headers.get("ratelimit-remaining", 0)
-                        )
-                        reset_time = int(e.response.headers.get("ratelimit-reset", 10))
-                        logger.debug(
-                            f"Rate limit reached, {requests_remaining} requests remaining. "
-                            f"Resetting in {reset_time} seconds."
-                        )
-                        await asyncio.sleep(reset_time)
-                        continue
-                    else:
-                        logger.error(f"HTTP error: {e}")
-                        raise
-                except httpx.HTTPError as e:
-                    logger.error(f"HTTP error occurred: {e}")
+                    logger.error(f"HTTP error: {e}")
                     raise
 
     async def fetch_and_cache_users(self) -> None:
