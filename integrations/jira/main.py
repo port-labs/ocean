@@ -8,7 +8,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import CREATE_UPDATE_WEBHOOK_EVENTS, DELETE_WEBHOOK_EVENTS, JiraClient
-from integration import JiraIssueResourceConfig, JiraIssueSelector, JiraPortAppConfig
+from jira_integration.overrides import JiraIssueResourceConfig, JiraIssueSelector, JiraPortAppConfig
 
 
 class ObjectKind(StrEnum):
