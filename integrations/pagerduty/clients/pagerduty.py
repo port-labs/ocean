@@ -213,7 +213,10 @@ class PagerDutyClient:
 
         try:
             data = await self.send_api_request(
-                "analytics/metrics/incidents/services", method="POST", json_data=body, extensions={"retryable": True} 
+                "analytics/metrics/incidents/services",
+                method="POST",
+                json_data=body,
+                extensions={"retryable": True},
             )
             logger.info(f"Successfully fetched analytics for service: {service_id}")
             return data
@@ -240,17 +243,19 @@ class PagerDutyClient:
                     url=f"{self.api_url}/{endpoint}",
                     params=query_params,
                     json=json_data,
-                    extensions=extensions
+                    extensions=extensions,
                 )
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 404:
-                    logger.debug(f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}")
+                    logger.debug(
+                        f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}"
+                    )
                     return {}
                 logger.error(f"HTTP error: {e}")
                 raise
-            
+
     async def fetch_and_cache_users(self) -> None:
         async for users in self.paginate_request_to_pager_duty(data_key=USER_KEY):
             for user in users:
