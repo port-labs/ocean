@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.100 (2024-11-12)
+## 0.1.101 (2024-11-13)
 
 
 ### Features
@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Changed issue priority from id to name
+
+
+## 0.1.100 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
 
 
 ## 0.1.99 (2024-11-12)
