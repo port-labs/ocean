@@ -1,8 +1,7 @@
 from typing import Any
-from unittest.mock import MagicMock, Mock, AsyncMock
+from unittest.mock import MagicMock, Mock
 from gitlab_integration.gitlab_service import GitlabService
 from gitlab.base import RESTObject
-from gitlab.v4.objects import User
 import pytest
 
 

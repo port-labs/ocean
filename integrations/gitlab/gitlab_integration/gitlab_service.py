@@ -705,11 +705,13 @@ class GitlabService:
         """
         Enriches an object (e.g., Project or Group) with its members and optionally their public emails.
         """
-        members_list = []
-        async for members in self.get_all_object_members(
-            obj, include_inherited_members, include_bot_members
-        ):
-            members_list.extend(members)
+        members_list = [
+            member
+            async for members in self.get_all_object_members(
+                obj, include_inherited_members, include_bot_members
+            )
+            for member in members
+        ]
 
         setattr(obj, "__members", [member.asdict() for member in members_list])
         return obj
