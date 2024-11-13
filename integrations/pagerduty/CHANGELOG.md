@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.14.0
 
 
+## 0.1.114 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
 ## 0.1.113 (2024-11-10)
 
 
