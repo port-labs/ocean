@@ -18,10 +18,6 @@ ENDPOINTS = {
 
 @ocean.on_resync()
 async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    """
-    Resync handler based on entity kind. Supports project, group, merge_request, and issue kinds.
-    """
-
     if kind in ENDPOINTS:
         logger.info(f"Resycing {kind} from Gitlab...")
         handler = GitLabHandler()
@@ -39,9 +35,8 @@ async def gitlab_webhook(request: Request) -> dict[str, bool]:
         f"Received payload: {payload} and headers {request.headers} from gitlab"
     )
 
-    webhook_secret = ocean.integration_config.get("gitlab_secret")
-    secret_key = request.headers.get("X-Gitlab-Token")
-    if not secret_key or secret_key != webhook_secret:
+    port_headers = request.headers.get("port-headers")
+    if not port_headers:
         return {"success": False}
 
     payload = await request.json()
@@ -49,11 +44,11 @@ async def gitlab_webhook(request: Request) -> dict[str, bool]:
 
     event = request.headers.get("X-Gitlab-Event")
     if event == "System Hook":
-        # Handles project and groups
-        await handler.system_hook_handler(payload)
+        entity, payload = await handler.system_hook_handler(payload)
     else:
-        # Handles merge request and issues
-        await handler.webhook_handler(payload)
+        entity, payload = await handler.webhook_handler(payload)
+
+    await ocean.register_raw(entity, [payload])
 
     logger.info("Webhook processed successfully.")
 

@@ -9,6 +9,10 @@ features:
       - kind: merge-request
       - kind: issue
 configurations:
+  - name: baseUrl
+    type: url
+    required: true
+    description: "Base URL of the application. Needed to create webhook url."
   - name: gitlabToken
     required: true
     type: string
@@ -18,7 +22,12 @@ configurations:
     type: url
     default: "https://gitlab.com/api/v4"
     description: "Gitlab API base url"
-  - name: gitlabSecret
+  - name: webhookName
+    required: true
+    type: string
+    description: "Gitlab Webhook name"
+    default: "port-hook"
+  - name: webhookSecret
     required: true
     type: string
     description: "Gitlab Webhook secret to verify webhook"
