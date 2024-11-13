@@ -7,6 +7,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.14.0 (2024-11-12)
+
+
+### Improvements
+
+- Add support for choosing default resources that the integration will create dynamically
+
+## 0.13.1 (2024-11-12)
+
+
+### Bug Fixes
+
+- Fix memory leak due to repetitive registration of FastAPI routes
+
+
 ## 0.13.0 (2024-11-10)
 
 
