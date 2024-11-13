@@ -51,7 +51,6 @@ class ObjectKind:
     PIPELINE = "pipeline"
     PROJECT = "project"
     FOLDER = "folder"
-    MEMBER = "member"
     FILE = "file"
     GROUPWITHMEMBERS = "group-with-members"
     PROJECTWITHMEMBERS = "project-with-members"

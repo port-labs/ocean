@@ -15,9 +15,14 @@ class Groups(GroupHandler):
     async def _on_hook(
         self, body: dict[str, Any], gitlab_group: Optional[Group]
     ) -> None:
-        logger.info(f"Handling {body['event_name']} for group {body['group_id']}")
 
+        group_id = body.get("group_id")
         group_full_path = body.get("full_path")
+        event_name = body["event_name"]
+
+        logger.info(
+            f"Handling event '{event_name}' for group with ID '{group_id}' and full path '{group_full_path}'"
+        )
         if gitlab_group:
             await self._register_group(
                 ObjectKind.GROUP,
@@ -26,18 +31,18 @@ class Groups(GroupHandler):
             await self._register_object_with_members(
                 ObjectKind.GROUPWITHMEMBERS, gitlab_group
             )
-            logger.info(f"Registered group {body['group_id']}")
+            logger.info(f"Registered group {group_id}")
         elif (
             group_full_path
             and self.gitlab_service.should_run_for_path(group_full_path)
-            and body["event_name"] in ("subgroup_destroy", "group_destroy")
+            and event_name in ("subgroup_destroy", "group_destroy")
         ):
             await ocean.unregister_raw(ObjectKind.GROUP, [body])
             await ocean.unregister_raw(ObjectKind.GROUPWITHMEMBERS, [body])
-            logger.info(f"Unregistered group {body['group_id']}")
+            logger.info(f"Unregistered group {group_id}")
             return
 
         else:
             logger.info(
-                f"Group {body['group_id']} was filtered for event {body['event_name']}. Skipping..."
+                f"Group {group_id} was filtered for event {event_name}. Skipping..."
             )

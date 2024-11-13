@@ -97,6 +97,8 @@ class ProjectHandler(HookHandler):
 
 class GroupHandler(HookHandler):
     async def on_hook(self, event: str, body: dict[str, Any]) -> None:
+        logger.info(f"Handling {event}")
+
         group_id = body.get("group_id", body.get("group", {}).get("id"))
         group = await self.gitlab_service.get_group(group_id)
         await self._on_hook(body, group)

@@ -133,9 +133,6 @@ class GitlabMemberSelector(Selector):
         default=False,
         description="If set to true, the integration will include inherited members in the group members list. Default value is false",
     )
-    # The "include bot members" flag affects both the "group" and "member" kinds.
-    # To prevent inconsistencies, the behavior or value of this parameter should be consistent for both "groups-with-members" and "project-with-members".
-    # Therefore, it should be included at the top level of the configuration.
     include_bot_members: bool = Field(
         alias="includeBotMembers",
         default=True,

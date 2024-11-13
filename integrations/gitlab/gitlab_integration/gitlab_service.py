@@ -34,8 +34,6 @@ from port_ocean.utils.cache import cache_iterator_result
 import functools
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
-GROUPS_CACHE_KEY = "__cache_all_groups"
-MEMBERS_CACHE_KEY = "__cache_all_members"
 USERS_CACHE_KEY = "__cache_all_users"
 
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
@@ -706,7 +704,7 @@ class GitlabService:
         include_public_email: bool = False,
     ) -> dict[str, Any]:
         """
-        Enriches an object (e.g., Project or Group) with its members.
+        Enriches an object (e.g., Project or Group) with its members and optionally their public emails.
         """
         members_list = []
         async for members in self.get_all_object_members(
