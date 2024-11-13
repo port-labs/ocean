@@ -198,7 +198,9 @@ async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     port_client = ocean.port_client
-    defaults = get_port_integration_defaults(config_class)
+    defaults = get_port_integration_defaults(
+        config_class, integration_config.resources_path
+    )
     if not defaults:
         logger.warning("No defaults found. Skipping initialization...")
         return None
