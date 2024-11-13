@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import hmac
-from typing import Any, cast
+from typing import Any, cast, Optional
 from enum import StrEnum
 from fastapi import Request
 from loguru import logger
@@ -36,12 +36,15 @@ def generate_signature(payload: bytes, secret: str) -> str:
 
 
 def init_client() -> SnykClient:
+    def parse_list(value: str) -> Optional[list[str]]:
+        return [item.strip() for item in value.split(",")] if value else None
+
     return SnykClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
-        ocean.integration_config.get("organization_id"),
-        ocean.integration_config.get("groups"),
+        parse_list(ocean.integration_config.get("organization_id", "")),
+        parse_list(ocean.integration_config.get("groups", "")),
         ocean.integration_config.get("webhook_secret"),
     )
 

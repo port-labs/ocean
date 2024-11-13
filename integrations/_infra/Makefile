@@ -37,20 +37,29 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/prod lint run test clean
+.SILENT: install install/prod install/local-core lint lint/fix run test clean
 
 install:
 	$(call deactivate_virtualenv) && \
 	$(call install_poetry) && \
 	poetry install --with dev
 
+install/local-core: install
+	# NOTE: This is a temporary change that shouldn't be committed
+	$(ACTIVATE) && pip install -e ../../
+
 install/prod:
-	$(call install_poetry) && \
 	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
+	$(call install_poetry) && \
 
 lint:
 	$(ACTIVATE) && \
 	$(call run_checks,.)
+
+lint/fix:
+	$(ACTIVATE) && \
+	black .
+	ruff check --fix .
 
 run:
 	$(ACTIVATE) && ocean sail

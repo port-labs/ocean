@@ -28,7 +28,7 @@ configurations:
   - name: organizationId
     type: string
     required: false
-    description: The unique identifier for the specific organization. When provided, the integration fetches data for a single organization. To find the organization id, see the <a href="https://docs.snyk.io/snyk-admin/groups-and-organizations/organizations/organization-general-settings" target="_blank">Snyk documentation</a>
+    description: A comma-separated list of the unique identifier for specific organization(s). When provided, the integration fetches data for the specific organization(s). To find the organization id, see the <a href="https://docs.snyk.io/snyk-admin/groups-and-organizations/organizations/organization-general-settings" target="_blank">Snyk documentation</a>
   - name: groups
     type: string
     required: false

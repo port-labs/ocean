@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.10.8"
+version = "0.14.1"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -35,16 +35,16 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-pydantic = {version = "^1.10.8", extras = ["dotenv"]}
+python = "^3.12"
+pydantic = { version = "^1.10.8", extras = ["dotenv"] }
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=2.3.4,<4.0.0"
-fastapi = ">=0.100,<0.112"
+fastapi = "^0.115.3"
 uvicorn = ">=0.22,<0.31"
 confluent-kafka = "^2.1.1"
 httpx = ">=0.24.1,<0.28.0"
-pyjq = "^2.6.0"
+jq = "^1.8.0"
 urllib3 = ">=1.26.16,<3.0.0"
 six = "^1.16.0"
 pyhumps = "^3.8.0"
@@ -78,6 +78,8 @@ types-python-dateutil = "^2.9.0.20240316"
 types-pyyaml = "^6.0.12.10"
 types-toml = "^0.10.8.6"
 yamllint = "^1.32.0"
+pytest-timeout = "^2.3.1"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"
@@ -87,35 +89,35 @@ package_dir = "."
 package = "port_ocean"
 underlines = [""]
 
-  [[tool.towncrier.type]]
-  directory = "breaking"
-  name = "Breaking Changes"
-  showcontent = true
+[[tool.towncrier.type]]
+directory = "breaking"
+name = "Breaking Changes"
+showcontent = true
 
-  [[tool.towncrier.type]]
-  directory = "deprecation"
-  name = "Deprecations"
-  showcontent = true
+[[tool.towncrier.type]]
+directory = "deprecation"
+name = "Deprecations"
+showcontent = true
 
-  [[tool.towncrier.type]]
-  directory = "feature"
-  name = "Features"
-  showcontent = true
+[[tool.towncrier.type]]
+directory = "feature"
+name = "Features"
+showcontent = true
 
-  [[tool.towncrier.type]]
-  directory = "improvement"
-  name = "Improvements"
-  showcontent = true
+[[tool.towncrier.type]]
+directory = "improvement"
+name = "Improvements"
+showcontent = true
 
-  [[tool.towncrier.type]]
-  directory = "bugfix"
-  name = "Bug Fixes"
-  showcontent = true
+[[tool.towncrier.type]]
+directory = "bugfix"
+name = "Bug Fixes"
+showcontent = true
 
-  [[tool.towncrier.type]]
-  directory = "doc"
-  name = "Improved Documentation"
-  showcontent = true
+[[tool.towncrier.type]]
+directory = "doc"
+name = "Improved Documentation"
+showcontent = true
 
 [tool.mypy]
 exclude = [
@@ -145,6 +147,7 @@ disallow_untyped_defs = true
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 exclude = ['venv', '.venv', 'integrations']
+target-version = "py311"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -154,7 +157,7 @@ warn_untyped_fields = true
 
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py312']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -174,4 +177,7 @@ exclude = '''
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-addopts = "-vv -n auto --ignore-glob='./integrations/*' ./port_ocean/tests"
+addopts = "-vv -n auto --durations=10 --color=yes --ignore-glob='./integrations/*' ./port_ocean/tests"
+markers = [
+    "smoke: Smoke tests (deselect with '-m \"not smoke\"')"
+]

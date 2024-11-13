@@ -6,19 +6,18 @@ import typing
 from fastapi import Request, Response
 from loguru import logger
 from port_ocean.context.ocean import ocean
-from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from gcp_core.errors import (
     AssetHasNoProjectAncestorError,
     GotFeedCreatedSuccessfullyMessageError,
-    ResourceNotFoundError,
 )
 from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
 from gcp_core.overrides import GCPCloudResourceSelector
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
     feed_event_to_resource,
+    list_all_subscriptions_per_project,
     list_all_topics_per_project,
     search_all_folders,
     search_all_organizations,
@@ -43,6 +42,13 @@ async def _resolve_resync_method_for_resource(
                 list_all_topics_per_project,
                 asset_type=kind,
                 rate_limiter=topic_rate_limiter,
+            )
+        case AssetTypesWithSpecialHandling.SUBSCRIPTION:
+            subscription_rate_limiter, _ = await resolve_request_controllers(kind)
+            return iterate_per_available_project(
+                list_all_subscriptions_per_project,
+                asset_type=kind,
+                rate_limiter=subscription_rate_limiter,
             )
         case AssetTypesWithSpecialHandling.FOLDER:
             return search_all_folders()
@@ -108,6 +114,17 @@ async def resync_topics(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield batch
 
 
+@ocean.on_resync(kind=AssetTypesWithSpecialHandling.SUBSCRIPTION)
+async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    topic_rate_limiter, _ = await resolve_request_controllers(kind)
+    async for batch in iterate_per_available_project(
+        list_all_subscriptions_per_project,
+        asset_type=kind,
+        topic_rate_limiter=topic_rate_limiter,
+    ):
+        yield batch
+
+
 @ocean.on_resync()
 async def resync_resources(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if kind in iter(AssetTypesWithSpecialHandling):
@@ -160,36 +177,26 @@ async def feed_events_callback(request: Request) -> Response:
         asset_project = get_project_name_from_ancestors(
             asset_data["asset"]["ancestors"]
         )
-        with logger.contextualize(
-            asset_type=asset_type, asset_name=asset_name, asset_project=asset_project
-        ):
-            logger.info("Got Real-Time event")
-            resource = await feed_event_to_resource(
-                asset_type=asset_type, project_id=asset_project, asset_name=asset_name
+        logger.info(
+            f"Got Real-Time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
+        )
+        asset_resource_data = await feed_event_to_resource(
+            asset_type, asset_name, asset_project, asset_data
+        )
+        if asset_data.get("deleted") is True:
+            logger.info(
+                f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
             )
-            if asset_data.get("deleted") is True:
-                logger.info("Registering a deleted resource")
-                await ocean.unregister_raw(asset_type, [resource])
-            else:
-                logger.info("Registering a change in the data")
-                await ocean.register_raw(asset_type, [resource])
+            await ocean.unregister_raw(asset_type, [asset_resource_data])
+        else:
+            logger.info(
+                f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
+            )
+            await ocean.register_raw(asset_type, [asset_resource_data])
     except AssetHasNoProjectAncestorError:
         logger.exception(
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
         )
-    except ResourceNotFoundError:
-        logger.warning(
-            f"Didn't find any {asset_type} resource named: {asset_name}. Deleting ocean entity."
-        )
-        await ocean.unregister(
-            [
-                Entity(
-                    blueprint=asset_type,
-                    identifier=asset_name,
-                )
-            ]
-        )
-        return Response(status_code=http.HTTPStatus.NOT_FOUND)
     except GotFeedCreatedSuccessfullyMessageError:
         logger.info("Assets Feed created successfully")
     except Exception:

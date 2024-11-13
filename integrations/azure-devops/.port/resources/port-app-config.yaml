@@ -1,77 +1,125 @@
-createMissingRelatedEntities: true
 deleteDependentEntities: true
+createMissingRelatedEntities: true
 resources:
   - kind: project
     selector:
       query: 'true'
-      defaultTeam: "true"
+      defaultTeam: 'true'
     port:
       entity:
         mappings:
-          identifier: '.id | gsub(" "; "")'
-          blueprint: '"project"'
+          identifier: .id | gsub(" "; "")
           title: .name
+          blueprint: '"project"'
           properties:
-            state: '.state'
-            revision: '.revision'
-            visibility: '.visibility'
-            defaultTeam: '.defaultTeam.name'
-            link: '.url | gsub("_apis/projects/"; "")'
+            state: .state
+            revision: .revision
+            visibility: .visibility
+            defaultTeam: .defaultTeam.name
+            link: .url | gsub("_apis/projects/"; "")
   - kind: repository
     selector:
-      query: "true"
+      query: 'true'
     port:
       entity:
         mappings:
-          identifier: '"\(.project.name | ascii_downcase | gsub(" "; ""))/\(.name | ascii_downcase | gsub(" "; ""))"'
-          blueprint: '"service"'
+          identifier: >-
+            "\(.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.name | ascii_downcase | gsub("[ ();]"; ""))"
           title: .name
+          blueprint: '"service"'
           properties:
-            url: '.remoteUrl'
+            url: .remoteUrl
             readme: file://README.md
           relations:
-            project: '.project.id | gsub(" "; "")'
-
+            project: .project.id | gsub(" "; "")
   - kind: repository-policy
     selector:
-      query: '.type.displayName=="Minimum number of reviewers"'
+      query: .type.displayName=="Minimum number of reviewers"
     port:
       entity:
         mappings:
-          identifier: '"\(.__repository.project.name | ascii_downcase | gsub(" "; ""))/\(.__repository.name | ascii_downcase | gsub(" "; ""))"'
+          identifier: >-
+            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
           blueprint: '"service"'
           properties:
-            minimumApproverCount: '.settings.minimumApproverCount'
-
+            minimumApproverCount: .settings.minimumApproverCount
   - kind: repository-policy
     selector:
-      query: '.type.displayName=="Work item linking"'
+      query: .type.displayName=="Work item linking"
     port:
       entity:
         mappings:
-          identifier: '"\(.__repository.project.name | ascii_downcase | gsub(" "; ""))/\(.__repository.name | ascii_downcase | gsub(" "; ""))"'
+          identifier: >-
+            "\(.__repository.project.name | ascii_downcase | gsub("[ ();]"; ""))/\(.__repository.name | ascii_downcase | gsub("[ ();]"; ""))"
           blueprint: '"service"'
           properties:
-            workItemLinking: '.isEnabled and .isBlocking'
+            workItemLinking: .isEnabled and .isBlocking
+  - kind: board
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | gsub(" "; "")
+          title: .name
+          blueprint: '"board"'
+          properties:
+            link: .url
+          relations:
+            project: .__project.id | gsub(" "; "")
   - kind: work-item
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: '.id | tostring'
+          identifier: .id | tostring
+          title: .fields."System.Title"
           blueprint: '"workItem"'
-          title: '.fields."System.Title"'
           properties:
-            type: '.fields."System.WorkItemType"'
-            state: '.fields."System.State"'
-            effort: '.fields."Microsoft.VSTS.Scheduling.Effort"'
-            description: '.fields."System.Description"'
-            link: '.url'
-            reason: '.fields."System.Reason"'
-            createdBy: '.fields."System.CreatedBy".displayName'
-            changedBy: '.fields."System.ChangedBy".displayName'
-            createdDate: '.fields."System.CreatedDate"'
-            changedDate: '.fields."System.ChangedDate"'
+            type: .fields."System.WorkItemType"
+            state: .fields."System.State"
+            effort: .fields."Microsoft.VSTS.Scheduling.Effort"
+            description: .fields."System.Description"
+            link: .url
+            reason: .fields."System.Reason"
+            createdBy: .fields."System.CreatedBy".displayName
+            changedBy: .fields."System.ChangedBy".displayName
+            createdDate: .fields."System.CreatedDate"
+            changedDate: .fields."System.ChangedDate"
           relations:
-            project: '.fields."System.TeamProject" | gsub(" "; "")'
+            project: .__projectId | gsub(" "; "")
+            column: >-
+              .fields."System.WorkItemType"+"-"+.fields."System.BoardColumn"+"-"+.__project.id
+              | gsub(" "; "")
+  - kind: column
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .__stateType+"-"+.name+"-"+.__board.__project.id | gsub(" "; "")
+          title: .name
+          blueprint: '"column"'
+          relations:
+            board: .__board.id | gsub(" "; "")
+  - kind: release
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .projectReference.id + "-" + (.id | tostring) | gsub(" "; "")
+          title: .name
+          blueprint: '"release"'
+          properties:
+            status: .status
+            reason: .reason
+            createdDate: .createdOn
+            modifiedDate: .modifiedOn
+            createdBy: .createdBy.uniqueName
+            modifiedBy: .modifiedBy.uniqueName
+            definitionName: .releaseDefinition.name
+            link: ._links.web.href | gsub("_release?releaseId="; "")
+          relations:
+            project: .projectReference.id | gsub(" "; "")

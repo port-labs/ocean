@@ -7,6 +7,158 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.15 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
+## 0.2.14 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+## 0.2.13 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+## 0.2.12 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
+## 0.2.11 (2024-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+
+## 0.2.10 (2024-10-23)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.7
+
+
+## 0.2.9 (2024-10-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.6
+
+
+## 0.2.8 (2024-10-14)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.4
+
+
+## 0.2.7 (2024-10-09)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.3
+
+
+## 0.2.6 (2024-10-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.2
+
+
+## 0.2.5 (2024-10-01)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.1
+
+
+## 0.2.4 (2024-09-29)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.11.0
+
+
+## 0.2.3 (2024-09-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.12
+
+
+## 0.2.2 (2024-09-17)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.11
+
+
+## 0.2.1 (2024-09-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.10 (#1)
+
+
+## 0.2.0 (2024-09-09)
+
+
+### Improvements
+
+- Added new kinds for `team`, `schedule` and `schedule-oncall`
+- Added support for filtering data from OpsGenie API to fetch only required data
+- Introduced logs to facilitate easier debugging of integration issues
+
+### Breaking Changes
+
+- Removed extra API calls for fetching impacted services, improving performance with existing incident-service relations
+- Removed extra API calls for relating alerts to incidents, using JQ for better performance and accuracy
+- Changed `OpsGenieService` blueprint by removing team properties and making it a relation to team blueprint
+
+
+## 0.1.77 (2024-09-05)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.9 (#1)
+
+
+## 0.1.76 (2024-09-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.10.8 (#1)
+
+
 ## 0.1.75 (2024-09-01)
 
 

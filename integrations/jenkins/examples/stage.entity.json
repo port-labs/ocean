@@ -1,0 +1,20 @@
+{
+  "identifier": "job-Phalbert-job-salesdash-job-master-229-execution-node-17-wfapi-describe",
+  "title": "Declarative: Post Actions",
+  "icon": null,
+  "blueprint": "jenkinsStage",
+  "team": [],
+  "properties": {
+    "status": "SUCCESS",
+    "startTimeMillis": 1717073272012,
+    "durationMillis": 26,
+    "stageUrl": "http://localhost:8080/job/Phalbert/job/salesdash/job/master/229/execution/node/17/wfapi/describe"
+  },
+  "relations": {
+    "parentBuild": "job-Phalbert-job-salesdash-job-master-229"
+  },
+  "createdAt": "2024-08-28T10:27:33.549Z",
+  "createdBy": "<port-client-id>",
+  "updatedAt": "2024-08-28T10:27:30.274Z",
+  "updatedBy": "<port-client-id>"
+}

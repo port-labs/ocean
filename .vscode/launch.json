@@ -76,6 +76,28 @@
       "python": "${workspaceFolder}/integrations/aws/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/test-integration",
+      "envFile": "${workspaceFolder}/integrations/test-integration/.env",
+      "justMyCode": true,
+      "name": "Run test-integration integration",
+      "program": "${workspaceFolder}/integrations/test-integration/debug.py",
+      "python": "${workspaceFolder}/integrations/test-integration/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/backstage",
+      "envFile": "${workspaceFolder}/integrations/backstage/.env",
+      "justMyCode": true,
+      "name": "Run backstage integration",
+      "program": "${workspaceFolder}/integrations/backstage/debug.py",
+      "python": "${workspaceFolder}/integrations/backstage/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
     }
   ]
 }

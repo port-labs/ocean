@@ -101,7 +101,7 @@ class EntityClientMixin:
                 )
                 for entity in entities
             ),
-            return_exceptions=should_raise,
+            return_exceptions=True,
         )
         entity_results = [
             entity for entity in modified_entities_results if isinstance(entity, Entity)

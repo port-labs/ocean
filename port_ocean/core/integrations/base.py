@@ -54,7 +54,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         """
         Initializes handlers, establishes integration at the specified port, and starts the event listener.
         """
-        logger.info("Starting integration")
+        logger.info("Starting integration", integration_type=self.context.config.integration.type)
         if self.started:
             raise IntegrationAlreadyStartedException("Integration already started")
 
