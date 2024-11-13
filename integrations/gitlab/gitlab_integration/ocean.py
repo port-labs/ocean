@@ -141,16 +141,12 @@ async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         include_inherited_members = (
             group_with_members_selector.include_inherited_members
         )
-        include_public_email = group_with_members_selector.include_public_email
         include_bot_members = group_with_members_selector.include_bot_members
 
         async for groups_batch in service.get_all_groups():
             tasks = [
                 service.enrich_object_with_members(
-                    group,
-                    include_inherited_members,
-                    include_bot_members,
-                    include_public_email,
+                    group, include_inherited_members, include_bot_members
                 )
                 for group in groups_batch
             ]
@@ -206,7 +202,6 @@ async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             project_with_members_selector.include_inherited_members
         )
         include_bot_members = project_with_members_selector.include_bot_members
-        include_public_email = project_with_members_selector.include_public_email
 
         async for projects in service.get_all_projects():
             projects_batch_iter = iter(projects)
@@ -231,7 +226,6 @@ async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                         project,
                         include_inherited_members,
                         include_bot_members,
-                        include_public_email,
                     )
                     for project in projects_enriched_with_extras
                 ]

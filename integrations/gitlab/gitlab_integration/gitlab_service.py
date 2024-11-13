@@ -701,7 +701,6 @@ class GitlabService:
         obj: RESTObject,
         include_inherited_members: bool = False,
         include_bot_members: bool = True,
-        include_public_email: bool = False,
     ) -> RESTObject:
         """
         Enriches an object (e.g., Project or Group) with its members and optionally their public emails.
@@ -710,13 +709,7 @@ class GitlabService:
         async for members in self.get_all_object_members(
             obj, include_inherited_members, include_bot_members
         ):
-            if include_public_email:
-                tasks = (
-                    self.enrich_member_with_public_email(member) for member in members
-                )
-                members_list.extend(await asyncio.gather(*tasks))
-            else:
-                members_list.extend(members)
+            members_list.extend(members)
 
         setattr(obj, "__members", [member.asdict() for member in members_list])
         return obj
@@ -761,11 +754,6 @@ class GitlabService:
         except Exception as e:
             logger.error(f"Failed to get members for object='{obj_name}'. Error: {e}")
             return
-
-    async def enrich_member_with_public_email(self, member: RESTObject) -> RESTObject:
-        user: User = await self.get_user(member.id)
-        setattr(member, "__public_email", user.public_email)
-        return member
 
     async def get_user(self, user_id: str) -> User:
         async with semaphore:

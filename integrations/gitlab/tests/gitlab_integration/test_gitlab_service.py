@@ -309,31 +309,6 @@ def test_should_run_for_members(
 
 
 @pytest.mark.asyncio
-async def test_enrich_member_with_public_email(
-    monkeypatch: Any, mocked_gitlab_service: GitlabService
-) -> None:
-
-    # Arrange
-    member = MockMember(id="123", username="test_user")
-    mock_user = Mock(spec=User)
-    mock_user.public_email = "user@example.com"
-
-    monkeypatch.setattr(
-        mocked_gitlab_service, "get_user", AsyncMock(return_value=mock_user)
-    )
-
-    # Act
-    enriched_member = await mocked_gitlab_service.enrich_member_with_public_email(
-        member
-    )
-
-    # Assert
-    member.__public_email = "user@example.com"
-    assert enriched_member.asdict() == member.asdict()
-    mocked_gitlab_service.get_user.assert_awaited_once_with("123")  # type: ignore
-
-
-@pytest.mark.asyncio
 async def test_get_all_object_members(
     monkeypatch: Any, mocked_gitlab_service: GitlabService
 ) -> None:
@@ -377,48 +352,15 @@ async def test_enrich_object_with_members(
 
     # Arrange
     obj = MockGroup(123, "test_group")
-    obj2 = MockGroup(123, "test_group")
-
-    user_1 = MockMember(1, "user1")
-    user_1.__setattr__("__public_email", "user1@example.com"),
-    user_2 = MockMember(2, "user2")
-    user_2.__setattr__("__public_email", "user2@example.com"),
-    user_3 = MockMember(3, "user3")
-    user_3.__setattr__("__public_email", "user3@example.com"),
-
-    monkeypatch.setattr(
-        mocked_gitlab_service,
-        "enrich_member_with_public_email",
-        AsyncMock(side_effect=[user_1, user_2, user_3] * 2),
-    )
 
     # Act
-    enriched_obj_with_public_email = (
-        await mocked_gitlab_service.enrich_object_with_members(
-            obj,
-            include_inherited_members=False,
-            include_bot_members=True,
-            include_public_email=True,
-        )
-    )
-
     enriched_obj: RESTObject = await mocked_gitlab_service.enrich_object_with_members(
-        obj2,
+        obj,
         include_inherited_members=False,
         include_bot_members=True,
-        include_public_email=False,
     )
 
     # Assert
     assert enriched_obj.name == "test_group"
     assert len(enriched_obj.__members) == 6
     assert enriched_obj.__members[0] == {"id": 1, "username": "user1"}
-
-    assert enriched_obj_with_public_email.name == "test_group"
-    assert len(enriched_obj_with_public_email.__members) == 6
-    assert enriched_obj_with_public_email.__members[0] == {
-        "id": 1,
-        "username": "user1",
-        "__public_email": "user1@example.com",
-    }
-    mocked_gitlab_service.enrich_member_with_public_email.assert_awaited()  # type: ignore

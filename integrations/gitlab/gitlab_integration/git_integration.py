@@ -123,11 +123,6 @@ class GitlabResourceConfig(ResourceConfig):
 
 class GitlabMemberSelector(Selector):
 
-    include_public_email: bool = Field(
-        alias="enrichWithPublicEmail",
-        default=False,
-        description="If set to true, the integration will enrich group members with public email field. Default value is false",
-    )
     include_inherited_members: bool = Field(
         alias="includeInheritedMembers",
         default=False,

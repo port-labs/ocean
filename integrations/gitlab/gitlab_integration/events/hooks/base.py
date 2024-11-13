@@ -48,7 +48,6 @@ class HookHandler(ABC):
             return
 
         for resource_config in matching_resource_configs:
-            include_public_email = resource_config.selector.include_public_email
             include_bot_members = resource_config.selector.include_bot_members
             include_inherited_members = (
                 resource_config.selector.include_inherited_members
@@ -57,7 +56,6 @@ class HookHandler(ABC):
             object_result: RESTObject = (
                 await self.gitlab_service.enrich_object_with_members(
                     gitlab_object,
-                    include_public_email,
                     include_bot_members,
                     include_inherited_members,
                 )
