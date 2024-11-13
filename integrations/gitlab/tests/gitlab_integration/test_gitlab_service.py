@@ -224,7 +224,6 @@ class MockMember(RESTObject):
         self.username = username
 
     def asdict(self):
-        # return {"id": self.id, "username": self.username}
         return self.__dict__
 
     def __setattr__(self, name, value):
