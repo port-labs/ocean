@@ -1,42 +1,72 @@
+from fastapi import Request
+from loguru import logger
 from port_ocean.context.ocean import ocean
-from typing import List, Dict
-from client import GitLabHandler
-import logging
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+from client import GitLabHandler, KindNotImplementedException
 
-# Initialize GitLabHandler
-gitlab_handler = GitLabHandler()
+logger.remove()
+logger.add(lambda msg: print(msg, end=""), colorize=True, level="INFO")
 
-# Listen to the resync event for the specified kinds
-@ocean.on_resync()
-async def on_resync(kind: str) -> List[Dict]:
-    """
-    Resync handler based on entity kind. Supports project, group, merge_request, and issue kinds.
-    """
-    if kind == "project":
-        logging.info("Resyncing projects from GitLab...")
-        return await gitlab_handler.fetch_projects()
-    elif kind == "group":
-        logging.info("Resyncing groups from GitLab...")
-        return await gitlab_handler.fetch_groups()
-    elif kind == "merge_request":
-        logging.info("Resyncing merge requests from GitLab...")
-        return await gitlab_handler.fetch_merge_requests()
-    elif kind == "issue":
-        logging.info("Resyncing issues from GitLab...")
-        return await gitlab_handler.fetch_issues()
-    
-    logging.warning(f"Unsupported kind for resync: {kind}")
-    return []
+@ocean.router.post("/webhook")
+async def gitlab_webhook(request: Request) -> dict[str, bool]:
+    try:
+        payload = await request.json()
 
-# Listen to the start event to set up webhooks
+        logger.info(
+            f"Received payload: {payload} and headers {request.headers} from gitlab"
+        )
+
+        webhook_secret = ocean.integration_config.get("gitlab_secret")
+        secret_key = request.headers.get("X-Gitlab-Token")
+        if not secret_key or secret_key != webhook_secret:
+            return {"success": False}
+
+        handler = GitLabHandler()
+
+        event = request.headers.get("X-Gitlab-Event")
+        if event == "System Hook":
+            await handler.system_hook_handler(payload)
+        else:
+            await handler.webhook_handler(payload)
+
+        logger.info("Webhook processed successfully.")
+    except Exception as e:
+        logger.error(f"Error processing webhook: {e}")
+
+    return {"success": True}
+
+@ocean.on_resync("group")
+async def resync_group(kind: str) -> list[dict]:
+    handler = GitLabHandler()
+    results = []
+    async for page in handler.fetch_data("/groups"):
+        results.extend(page)
+    return results
+
+@ocean.on_resync("project")
+async def resync_project(kind: str) -> list[dict]:
+    handler = GitLabHandler()
+    results = []
+    async for page in handler.fetch_data("/projects?membership=yes"):
+        results.extend(page)
+    return results
+
+@ocean.on_resync("merge_request")
+async def resync_merge_request(kind: str) -> list[dict]:
+    handler = GitLabHandler()
+    results = []
+    async for page in handler.fetch_data("/merge_requests"):
+        results.extend(page)
+    return results
+
+@ocean.on_resync("issue")
+async def resync_issues(kind: str) -> list[dict]:
+    handler = GitLabHandler()
+    results = []
+    async for page in handler.fetch_data("/issues"):
+        results.extend(page)
+    return results
+
 @ocean.on_start()
 async def on_start() -> None:
-    """
-    Handler for integration start event.
-    Sets up necessary configurations like webhook subscriptions.
-    """
-    logging.info("Starting GitLab integration and setting up webhooks...")
-    await gitlab_handler.setup_webhook()
+    logger.info("Starting gitlab integration")

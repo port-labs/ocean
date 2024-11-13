@@ -18,7 +18,7 @@ features:
       - kind: issue
 
 configurations:
-  - name: gitlab_api_url
+  - name: gitlab_url
     description: "Base URL for GitLab API"
     type: url
     required: true

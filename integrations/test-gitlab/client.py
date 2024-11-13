@@ -1,165 +1,130 @@
-import os
 import asyncio
-import logging
-from typing import Any, Dict, List, Optional
+import aiolimiter
+from loguru import logger
+from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
-from dotenv import load_dotenv
+from core.utils import parse_datetime, generate_entity_from_port_yaml, load_mappings
+from core.async_fetcher import AsyncFetcher
+from gitlab.v4.objects import Project
 
-# Load environment variables from .env file
-load_dotenv()
+class KindNotImplementedException(Exception):
+    def __init__(self, kind: str, available_kinds: list[str]):
+        self.kind = kind
+        self.available_kinds = available_kinds
+        super().__init__(f"Unsupported kind: {kind}. Available kinds: {', '.join(available_kinds)}")
 
-# Load configuration values
-GITLAB_API_URL = os.getenv("OCEAN__INTEGRATION__CONFIG__GITLAB_API_URL")
-GITLAB_TOKEN = os.getenv("OCEAN__INTEGRATION__CONFIG__GITLAB_TOKEN")
-RATE_LIMIT = int(os.getenv("OCEAN__INTEGRATION__CONFIG__RATE_LIMIT", 10))
-RATE_LIMIT_PERIOD = int(os.getenv("OCEAN__INTEGRATION__CONFIG__RATE_LIMIT_PERIOD", 60))
-WEBHOOK_URL = os.getenv("OCEAN__INTEGRATION__CONFIG__WEBHOOK_URL")
-
-logging.basicConfig(level=logging.INFO)
+    def __reduce__(self):
+        return (self.__class__, (self.kind, self.available_kinds))
 
 class GitLabHandler:
-    def __init__(self, api_url: str = GITLAB_API_URL, token: str = GITLAB_TOKEN) -> None:
-        self.api_url = api_url
-        self.token = token
-        self.rate_limit = RATE_LIMIT
-        self.rate_limit_period = RATE_LIMIT_PERIOD
+    def __init__(self) -> None:
+        self.token = ocean.integration_config.get("gitlab_token")
+        self.gitlab_baseurl = ocean.integration_config.get("gitlab_url")
+        self.port_url = ocean.config.port.base_url
+        self.client = http_async_client
+        self.headers = {"Authorization": f"Bearer {self.token}"}
+        self.rate_limiter = aiolimiter.AsyncLimiter(
+            max_rate=10  # Adjust based on GitLab rate limits
+        )
 
-        if not self.token:
-            logging.error("GITLAB_TOKEN is missing. Please set it in the environment.")
-            raise ValueError("GITLAB_TOKEN is required for GitLab API access")
+        # Load mappings from port-app-config.yml
+        self.mappings = load_mappings(".port/resources/port-app-config.yml")
 
-    async def _rate_limited_request(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """Perform a rate-limited, paginated request to the GitLab API."""
-        url = f"{self.api_url}{endpoint}"
-        headers = {"Authorization": f"Bearer {self.token}"}
-        all_data = []
+    async def fetch_data(self, endpoint: str, params: dict = None) -> list:
+        url = f"{self.gitlab_baseurl}{endpoint}"
+        async for page in self.paginated_fetch(url, params):
+            yield page
 
-        while url:
-            response = await http_async_client.get(url, params=params, headers=headers, timeout=30)
+    async def paginated_fetch(self, url: str, params: dict = None) -> list:
+        params = params or {}
+        params["per_page"] = 100  # Adjust based on GitLab API
+        params["page"] = 1
 
-            if response.status_code == 429:  # Too Many Requests
-                logging.warning("Rate limit reached; retrying after delay")
-                await asyncio.sleep(self.rate_limit_period)
-                continue
+        while True:
+            async with self.rate_limiter:
+                resp = await self.client.get(url, headers=self.headers, params=params)
+                if resp.status_code == 429:  # Rate Limiting
+                    message = resp.json().get("message", "")
+                    logger.error(f"{message}, retry will start in 5 minutes.")
+                    await asyncio.sleep(300)  # Sleep for 5 minutes
+                    continue
 
-            response.raise_for_status()
-            data = response.json()
-            all_data.extend(data)
+                if resp.status_code != 200:
+                    logger.error(
+                        f"Encountered an HTTP error with status code: {resp.status_code} and response text: {resp.text} while calling {url}"
+                    )
+                    return  # Use return without a value to indicate the end of the generator
 
-            # Check for pagination
-            next_page = response.headers.get("X-Next-Page")
-            url = f"{self.api_url}{endpoint}?page={next_page}" if next_page else None
+                data = resp.json()
+                if not data:
+                    return  # Use return without a value to indicate the end of the generator
 
-        return all_data
+                yield data
+                params["page"] += 1
 
-    async def fetch_groups(self, parent_id: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Fetch groups and subgroups from GitLab."""
-        logging.info(f"Fetching groups from GitLab... Parent ID: {parent_id}")
-        endpoint = "/groups" if not parent_id else f"/groups/{parent_id}/subgroups"
-        data = await self._rate_limited_request(endpoint)
-        all_groups = []
+    async def patch_entity(
+        self, blueprint_identifier: str, entity_identifier: str, payload: dict
+    ):
+        port_headers = await ocean.port_client.auth.headers()
+        url = f"{self.port_url}/v1/blueprints/{blueprint_identifier}/entities/{entity_identifier}"
+        resp = await self.client.put(url, json=payload, headers=port_headers)
+        if resp.status_code != 200:
+            logger.error(
+                f"Error Upserting entity: {entity_identifier} of blueprint: {blueprint_identifier}"
+            )
+            logger.error(
+                f"Request failed with status code: {resp.status_code}, Error: {resp.text}"
+            )
 
-        for group in data:
-            all_groups.append({
-                "identifier": group["id"],
-                "name": group["name"],
-                "url": group["web_url"],
-                "description": group.get("description"),
-                "visibility": group.get("visibility"),
-            })
+        return resp.json()
 
-            # Recursively fetch subgroups, only if there are any
-            if group.get("subgroup_count", 0) > 0:
-                subgroups = await self.fetch_groups(parent_id=group["id"])
-                all_groups.extend(subgroups)
+    async def generic_handler(self, data: dict, kind: str) -> None:
+        if kind not in self.mappings:
+            available_kinds = list(self.mappings.keys())
+            raise KindNotImplementedException(kind, available_kinds)
 
-        return all_groups
-
-
-    async def fetch_projects(self) -> List[Dict[str, Any]]:
-        """Fetch projects from GitLab."""
-        logging.info("Fetching projects from GitLab...")
-        endpoint = "/projects"
-        params = {"per_page": self.rate_limit}
-        data = await self._rate_limited_request(endpoint, params)
-
-        return [
-            {
-                "identifier": project["id"],
-                "name": project["name"],
-                "url": project["web_url"],
-                "description": project["description"],
-                "namespace": project.get("namespace", {}).get("full_path"),
-            }
-            for project in data
-        ]
-
-    async def fetch_merge_requests(self) -> List[Dict[str, Any]]:
-        """Fetch merge requests from GitLab."""
-        logging.info("Fetching merge requests from GitLab...")
-        endpoint = "/merge_requests"
-        params = {"scope": "all", "per_page": self.rate_limit}
-        data = await self._rate_limited_request(endpoint, params)
-
-        return [
-            {
-                "identifier": mr["id"],
-                "title": mr["title"],
-                "status": mr["state"],
-                "author": mr["author"]["username"],
-                "createdAt": mr["created_at"],
-                "updatedAt": mr["updated_at"],
-                "mergedAt": mr.get("merged_at"),
-                "link": mr["web_url"],
-                "reviewers": [reviewer["username"] for reviewer in mr.get("reviewers", [])],
-            }
-            for mr in data
-        ]
-
-    async def fetch_issues(self) -> List[Dict[str, Any]]:
-        """Fetch issues from GitLab."""
-        logging.info("Fetching issues from GitLab...")
-        endpoint = "/issues"
-        params = {"scope": "all", "per_page": self.rate_limit}
-        data = await self._rate_limited_request(endpoint, params)
-
-        return [
-            {
-                "identifier": issue["id"],
-                "title": issue["title"],
-                "status": issue["state"],
-                "author": issue["author"]["username"],
-                "createdAt": issue["created_at"],
-                "updatedAt": issue["updated_at"],
-                "closedAt": issue.get("closed_at"),
-                "link": issue["web_url"],
-                "labels": issue.get("labels", []),
-            }
-            for issue in data
-        ]
-
-    async def setup_webhook(self) -> None:
-        """Set up an instance-level webhook to handle events across all GitLab projects and groups."""
-        logging.info("Setting up instance-level webhook for all GitLab resources...")
-        endpoint = "/hooks"
-        payload = {
-            "url": WEBHOOK_URL,
-            "enable_ssl_verification": True,
-            "push_events": True,
-            "merge_requests_events": True,
-            "issues_events": True,
-            "note_events": True,
-            "tag_push_events": True,
-            "wiki_page_events": True,
-            "pipeline_events": True,
-            "job_events": True,
-            "deployment_events": True
+        # Create a raw entity dictionary
+        raw_entity = {
+            "identifier": jq.compile(self.mappings[kind]["identifier"]).input(data).first(),
+            "title": jq.compile(self.mappings[kind]["title"]).input(data).first(),
+            "blueprint": self.mappings[kind]["blueprint"],
+            "properties": data,
+            "relations": data,
         }
-        headers = {"Authorization": f"Bearer {self.token}"}
 
-        try:
-            response = await http_async_client.post(f"{self.api_url}{endpoint}", json=payload, headers=headers, timeout=30)
-            response.raise_for_status()
-            logging.info("Instance-level webhook setup complete.")
-        except Exception as e:
-            logging.error(f"Failed to set up instance-level webhook: {e}")
+        # Map data using the generate_entity_from_port_yaml method
+        project_id = jq.compile(self.mappings[kind]["relations"].get("service", "")).input(data).first() if "relations" in self.mappings[kind] else None
+        if project_id:
+            project = await self.fetch_project(project_id)
+            ref = "main"  # Adjust the ref as needed
+            payload = await generate_entity_from_port_yaml(raw_entity, project, ref, self.mappings[kind])
+        else:
+            payload = raw_entity
+
+        payload["properties"]["createdAt"] = await parse_datetime(payload["properties"]["createdAt"])
+        payload["properties"]["updatedAt"] = await parse_datetime(payload["properties"]["updatedAt"])
+
+        logger.debug(f"Payload before upsert: {payload}")
+        await self.patch_entity(payload["blueprint"], payload["identifier"], payload)
+
+    async def fetch_project(self, project_id: str) -> Project:
+        gitlab_url = ocean.integration_config.get("gitlab_url")
+        token = ocean.integration_config.get("gitlab_token")
+        gitlab = await AsyncFetcher.get_gitlab_client(gitlab_url, token)
+        return gitlab.projects.get(project_id)
+
+    async def webhook_handler(self, data: dict) -> None:
+        object_kind = data["object_kind"]
+        await self.generic_handler(data, object_kind)
+
+    async def system_hook_handler(self, data: dict) -> None:
+        event_name = data["event_name"]
+        if event_name in [
+            "project_create",
+            "project_destroy",
+            "project_rename",
+            "project_update",
+        ]:
+            await self.generic_handler(data, "project")
+        elif event_name in ["group_create", "group_destroy", "group_rename"]:
+            await self.generic_handler(data, "gitlabGroup")
