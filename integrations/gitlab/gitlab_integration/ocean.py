@@ -155,7 +155,7 @@ async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 for group in groups_batch
             ]
             enriched_groups = await asyncio.gather(*tasks)
-            yield enriched_groups
+            yield [enriched_group.asdict() for enriched_group in enriched_groups]
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -184,7 +184,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     f"Finished Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
                 )
                 yield [
-                    enriched_project.asict() for enriched_project in enriched_projects
+                    enriched_project.asdict() for enriched_project in enriched_projects
                 ]
 
 
@@ -236,7 +236,10 @@ async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                     for project in projects_enriched_with_extras
                 ]
                 projects_enriched_with_members = await asyncio.gather(*members_tasks)
-                yield projects_enriched_with_members
+                yield [
+                    enriched_projects.asdict()
+                    for enriched_projects in projects_enriched_with_members
+                ]
 
 
 @ocean.on_resync(ObjectKind.FOLDER)

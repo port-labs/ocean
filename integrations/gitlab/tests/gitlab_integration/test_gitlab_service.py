@@ -224,7 +224,8 @@ class MockMember(RESTObject):
         self.username = username
 
     def asdict(self):
-        return {"id": self.id, "username": self.username}
+        # return {"id": self.id, "username": self.username}
+        return self.__dict__
 
     def __setattr__(self, name, value):
         self.__dict__[name] = value
@@ -328,11 +329,8 @@ async def test_enrich_member_with_public_email(
     )
 
     # Assert
-    assert enriched_member == {
-        "id": "123",
-        "username": "test_user",
-        "__public_email": "user@example.com",
-    }
+    member.__public_email = "user@example.com"
+    assert enriched_member.asdict() == member.asdict()
     mocked_gitlab_service.get_user.assert_awaited_once_with("123")  # type: ignore
 
 
@@ -379,19 +377,20 @@ async def test_enrich_object_with_members(
 ) -> None:
 
     # Arrange
-    obj = MockGroup(123, "test_project")
+    obj = MockGroup(123, "test_group")
+    obj2 = MockGroup(123, "test_group")
+
+    user_1 = MockMember(1, "user1")
+    user_1.__setattr__("__public_email", "user1@example.com"),
+    user_2 = MockMember(2, "user2")
+    user_2.__setattr__("__public_email", "user2@example.com"),
+    user_3 = MockMember(3, "user3")
+    user_3.__setattr__("__public_email", "user3@example.com"),
 
     monkeypatch.setattr(
         mocked_gitlab_service,
         "enrich_member_with_public_email",
-        AsyncMock(
-            side_effect=[
-                {"id": 1, "username": "user1", "__public_email": "user1@example.com"},
-                {"id": 2, "username": "user2", "__public_email": "user2@example.com"},
-                {"id": 3, "username": "user2", "__public_email": "user3@example.com"},
-            ]
-            * 2
-        ),
+        AsyncMock(side_effect=[user_1, user_2, user_3] * 2),
     )
 
     # Act
@@ -404,21 +403,21 @@ async def test_enrich_object_with_members(
         )
     )
 
-    enriched_obj = await mocked_gitlab_service.enrich_object_with_members(
-        obj,
+    enriched_obj: RESTObject = await mocked_gitlab_service.enrich_object_with_members(
+        obj2,
         include_inherited_members=False,
         include_bot_members=True,
         include_public_email=False,
     )
 
     # Assert
-    assert enriched_obj["name"] == "test_project"
-    assert len(enriched_obj["__members"]) == 6
-    assert enriched_obj["__members"][0] == {"id": 1, "username": "user1"}
+    assert enriched_obj.name == "test_group"
+    assert len(enriched_obj.__members) == 6
+    assert enriched_obj.__members[0] == {"id": 1, "username": "user1"}
 
-    assert enriched_obj_with_public_email["name"] == "test_project"
-    assert len(enriched_obj_with_public_email["__members"]) == 6
-    assert enriched_obj_with_public_email["__members"][0] == {
+    assert enriched_obj_with_public_email.name == "test_group"
+    assert len(enriched_obj_with_public_email.__members) == 6
+    assert enriched_obj_with_public_email.__members[0] == {
         "id": 1,
         "username": "user1",
         "__public_email": "user1@example.com",

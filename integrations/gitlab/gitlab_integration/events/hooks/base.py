@@ -54,7 +54,7 @@ class HookHandler(ABC):
                 resource_config.selector.include_inherited_members
             )
 
-            object_result: Dict[str, Any] = (
+            object_result: RESTObject = (
                 await self.gitlab_service.enrich_object_with_members(
                     gitlab_object,
                     include_public_email,
@@ -62,7 +62,7 @@ class HookHandler(ABC):
                     include_inherited_members,
                 )
             )
-            await ocean.register_raw(resource_config.kind, [object_result])
+            await ocean.register_raw(resource_config.kind, [object_result.asdict()])
 
 
 class ProjectHandler(HookHandler):
