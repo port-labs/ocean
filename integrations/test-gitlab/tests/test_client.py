@@ -91,7 +91,6 @@ def mock_gitlab_handler(mock_ocean):
 
 @pytest.fixture
 def init_ocean():
-    # Initialize the PortOcean context
     ocean._app = MagicMock()
     ocean._app.config = MagicMock()
     ocean._app.config.integration = MagicMock()
@@ -103,37 +102,30 @@ def init_ocean():
     ocean._app.config.port = MagicMock()
     ocean._app.config.port.base_url = "mock_port_url"
     yield
-    # Clean up
     ocean._app = None
 
 @pytest.mark.asyncio
 @patch('client.AsyncFetcher.fetch_single', new_callable=AsyncMock)
 async def test_fetch_project_success(mock_fetch_single, mock_ocean, mock_gitlab_handler, init_ocean):
-    # Arrange
     mock_project = MagicMock(spec=Project)
-    mock_project.files = MagicMock()  # Ensure the project object has the files attribute
+    mock_project.files = MagicMock()  
     mock_fetch_single.return_value = mock_project
     handler = GitLabHandler()
 
-    # Act
     project = await handler.fetch_project("123")
 
-    # Assert
     assert project == mock_project
     mock_fetch_single.assert_called_once_with("https://mock_url", "mock_token", "123")
 
 @pytest.mark.asyncio
 async def test_patch_entity_success(mock_ocean, mock_gitlab_handler, init_ocean):
-    # Arrange
     mock_port_headers = {"Authorization": "Bearer mock_token"}
     mock_response = MagicMock(status_code=200, json=AsyncMock(return_value={"success": True}))
     mock_gitlab_handler.client.put = AsyncMock(return_value=mock_response)
     handler = GitLabHandler()
 
-    # Act
     result = await handler.patch_entity("blueprint1", "entity1", {"key": "value"})
 
-    # Assert
     assert result == {"success": True}
     mock_gitlab_handler.client.put.assert_called_once_with(
         "mock_port_url/v1/blueprints/blueprint1/entities/entity1",
@@ -143,15 +135,12 @@ async def test_patch_entity_success(mock_ocean, mock_gitlab_handler, init_ocean)
 
 @pytest.mark.asyncio
 async def test_patch_entity_failure(mock_ocean, mock_gitlab_handler, init_ocean):
-    # Arrange
     mock_response = MagicMock(status_code=400, json=AsyncMock(return_value={"error": "Bad Request"}))
     mock_gitlab_handler.client.put = AsyncMock(return_value=mock_response)
     handler = GitLabHandler()
 
-    # Act
     result = await handler.patch_entity("blueprint1", "entity1", {"key": "value"})
 
-    # Assert
     assert result == {"error": "Bad Request"}
     mock_gitlab_handler.client.put.assert_called_once_with(
         "mock_port_url/v1/blueprints/blueprint1/entities/entity1",
@@ -161,7 +150,6 @@ async def test_patch_entity_failure(mock_ocean, mock_gitlab_handler, init_ocean)
 
 @pytest.mark.asyncio
 async def test_generic_handler_success(mock_ocean, mock_gitlab_handler, init_ocean):
-    # Arrange
     data = {
         "name": "Mock Project",
         "description": "This is a mock project",
@@ -175,16 +163,13 @@ async def test_generic_handler_success(mock_ocean, mock_gitlab_handler, init_oce
     mock_gitlab_handler.fetch_project.return_value = mock_project
     handler = GitLabHandler()
 
-    # Act
     await handler.generic_handler(data, kind)
 
-    # Assert
     mock_gitlab_handler.fetch_project.assert_called_once_with("mock_service")
     mock_gitlab_handler.generic_handler.assert_called_once_with(data, kind)
 
 @pytest.mark.asyncio
 async def test_generic_handler_failure(mock_ocean, mock_gitlab_handler, init_ocean):
-    # Arrange
     data = {
         "name": "Mock Project",
         "description": "This is a mock project",
@@ -195,7 +180,6 @@ async def test_generic_handler_failure(mock_ocean, mock_gitlab_handler, init_oce
     kind = "unsupported_kind"
     handler = GitLabHandler()
 
-    # Act & Assert
     with pytest.raises(KindNotImplementedException) as e:
         await handler.generic_handler(data, kind)
 
@@ -203,7 +187,6 @@ async def test_generic_handler_failure(mock_ocean, mock_gitlab_handler, init_oce
 
 @pytest.mark.asyncio
 async def test_webhook_handler_success(mock_ocean, mock_gitlab_handler, init_ocean):
-    # Arrange
     data = {
         "object_kind": "project",
         "name": "Mock Project",
@@ -214,15 +197,12 @@ async def test_webhook_handler_success(mock_ocean, mock_gitlab_handler, init_oce
     }
     handler = GitLabHandler()
 
-    # Act
     await handler.webhook_handler(data)
 
-    # Assert
     mock_gitlab_handler.webhook_handler.assert_called_once_with(data)
 
 @pytest.mark.asyncio
 async def test_system_hook_handler_success(mock_ocean, mock_gitlab_handler, init_ocean):
-    # Arrange
     data = {
         "event_name": "project_create",
         "name": "Mock Project",
@@ -232,26 +212,20 @@ async def test_system_hook_handler_success(mock_ocean, mock_gitlab_handler, init
         "service": "mock_service"
     }
     handler = GitLabHandler()
-
-    # Act
     await handler.system_hook_handler(data)
 
-    # Assert
     mock_gitlab_handler.system_hook_handler.assert_called_once_with(data)
 
 @pytest.mark.asyncio
 async def test_fetch_data_success(mock_ocean, mock_gitlab_handler, init_ocean):
-    # Arrange
     mock_gitlab_handler.fetch_data.return_value = AsyncMock()
     mock_gitlab_handler.fetch_data.return_value.__aiter__.return_value = AsyncMock()
     mock_gitlab_handler.fetch_data.return_value.__aiter__.return_value.__anext__.side_effect = [({"key": "value"},), StopAsyncIteration()]
     handler = GitLabHandler()
 
-    # Act
     results = []
     async for page in handler.fetch_data("/groups"):
         results.extend(page)
 
-    # Assert
     assert results == [{"key": "value"}]
     mock_gitlab_handler.fetch_data.assert_called_once_with("/groups", params=None)

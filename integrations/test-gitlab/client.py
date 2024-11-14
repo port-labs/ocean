@@ -24,10 +24,9 @@ class GitLabHandler:
         self.client = http_async_client
         self.headers = {"Authorization": f"Bearer {self.token}"}
         self.rate_limiter = aiolimiter.AsyncLimiter(
-            max_rate=10  # Adjust based on GitLab rate limits
+            max_rate=10 
         )
 
-        # Load mappings from port-app-config.yml
         self.mappings = load_mappings(".port/resources/port-app-config.yml")
 
     async def fetch_data(self, endpoint: str, params: dict = None) -> list:
@@ -37,27 +36,27 @@ class GitLabHandler:
 
     async def paginated_fetch(self, url: str, params: dict = None) -> list:
         params = params or {}
-        params["per_page"] = 100  # Adjust based on GitLab API
+        params["per_page"] = 100
         params["page"] = 1
 
         while True:
             async with self.rate_limiter:
                 resp = await self.client.get(url, headers=self.headers, params=params)
-                if resp.status_code == 429:  # Rate Limiting
+                if resp.status_code == 429:  
                     message = resp.json().get("message", "")
                     logger.error(f"{message}, retry will start in 5 minutes.")
-                    await asyncio.sleep(300)  # Sleep for 5 minutes
+                    await asyncio.sleep(300)  
                     continue
 
                 if resp.status_code != 200:
                     logger.error(
                         f"Encountered an HTTP error with status code: {resp.status_code} and response text: {resp.text} while calling {url}"
                     )
-                    return  # Use return without a value to indicate the end of the generator
+                    return  
 
                 data = resp.json()
                 if not data:
-                    return  # Use return without a value to indicate the end of the generator
+                    return 
 
                 yield data
                 params["page"] += 1
@@ -83,7 +82,6 @@ class GitLabHandler:
             available_kinds = list(self.mappings.keys())
             raise KindNotImplementedException(kind, available_kinds)
 
-        # Create a raw entity dictionary
         raw_entity = {
             "identifier": jq.compile(self.mappings[kind]["identifier"]).input(data).first(),
             "title": jq.compile(self.mappings[kind]["title"]).input(data).first(),
@@ -92,11 +90,10 @@ class GitLabHandler:
             "relations": data,
         }
 
-        # Map data using the generate_entity_from_port_yaml method
         project_id = jq.compile(self.mappings[kind]["relations"].get("service", "")).input(data).first() if "relations" in self.mappings[kind] else None
         if project_id:
             project = await self.fetch_project(project_id)
-            ref = "main"  # Adjust the ref as needed
+            ref = "main" 
             payload = await generate_entity_from_port_yaml(raw_entity, project, ref, self.mappings[kind])
         else:
             payload = raw_entity

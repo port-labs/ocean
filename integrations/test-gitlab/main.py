@@ -2,7 +2,7 @@ from fastapi import Request
 from loguru import logger
 from port_ocean.context.ocean import ocean
 
-from client import GitLabHandler, KindNotImplementedException
+from client import GitLabHandler
 
 logger.remove()
 logger.add(lambda msg: print(msg, end=""), colorize=True, level="INFO")

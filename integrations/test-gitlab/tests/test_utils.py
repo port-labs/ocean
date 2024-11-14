@@ -10,19 +10,14 @@ import jq
 
 @pytest.mark.asyncio
 async def test_parse_datetime():
-    # Arrange
     datetime_str = "2023-10-01T12:34:56Z"
-
-    # Act
     result = await parse_datetime(datetime_str)
 
-    # Assert
     assert result == "2023-10-01T12:34:56.000000Z"
 
 @pytest.mark.asyncio
 @patch('core.async_fetcher.AsyncFetcher.fetch_single')
 async def test_generate_entity_from_port_yaml(mock_fetch_single):
-    # Arrange
     raw_entity = {
         "properties": {
             "createdAt": "2023-10-01T12:34:56Z",
@@ -49,10 +44,8 @@ async def test_generate_entity_from_port_yaml(mock_fetch_single):
     mock_file_content = b'{"serviceName": "mock_service"}'
     mock_fetch_single.return_value = mock_file_content
 
-    # Act
     result = await generate_entity_from_port_yaml(raw_entity, project, ref, mappings)
 
-    # Assert
     mock_fetch_single.assert_called_once_with(project.files.get, "path/to/file.json", ref)
     assert result == {
         "identifier": jq.compile(mappings["identifier"]).input(raw_entity["properties"]).first(),
@@ -69,7 +62,6 @@ async def test_generate_entity_from_port_yaml(mock_fetch_single):
     }
 
 def test_load_mappings():
-    # Arrange
     config_path = ".port/resource/port-app-config.yml"
     mock_config = {
         "resources": [
@@ -102,10 +94,8 @@ def test_load_mappings():
         ]
     }
     with patch('builtins.open', return_value=MagicMock(read=MagicMock(return_value=yaml.dump(mock_config)))) as mock_open:
-        # Act
         mappings = load_mappings(config_path)
 
-        # Assert
         mock_open.assert_called_once_with(config_path, "r")
         assert mappings == {
             "project": {
@@ -121,4 +111,3 @@ def test_load_mappings():
                 }
             }
         }
-        
