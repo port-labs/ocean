@@ -18,6 +18,7 @@ async def test_full_sync_produces_correct_response_from_api(
     integration_path: str,
     issues: list[dict[str, Any]],
     projects: list[dict[str, Any]],
+    mock_ocean_context: Any,
 ) -> None:
     projects_mock = AsyncMock()
     projects_mock.return_value = projects
