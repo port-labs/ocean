@@ -12,7 +12,6 @@ from gitlab import Gitlab, GitlabError, GitlabList
 from gitlab.base import RESTObject, RESTObjectList
 from gitlab.v4.objects import (
     Group,
-    User,
     GroupMergeRequest,
     Issue,
     MergeRequest,
@@ -34,7 +33,7 @@ from port_ocean.utils.cache import cache_iterator_result
 import functools
 
 PROJECTS_CACHE_KEY = "__cache_all_projects"
-USERS_CACHE_KEY = "__cache_all_users"
+
 
 MAX_ALLOWED_FILE_SIZE_IN_BYTES = 1024 * 1024  # 1MB
 GITLAB_SEARCH_RATE_LIMIT = 100
@@ -756,25 +755,6 @@ class GitlabService:
         except Exception as e:
             logger.error(f"Failed to get members for object='{obj_name}'. Error: {e}")
             return
-
-    async def get_user(self, user_id: str) -> User:
-        async with semaphore:
-            logger.info(f"fetching user {user_id}")
-            users = event.attributes.setdefault(USERS_CACHE_KEY, {}).setdefault(
-                self.gitlab_client.private_token, {}
-            )
-
-            if cached_user := users.get(user_id):
-                return cached_user
-
-            user_response = await AsyncFetcher.fetch_single(
-                self.gitlab_client.users.get, user_id
-            )
-            user: User = typing.cast(User, user_response)
-            event.attributes[USERS_CACHE_KEY][self.gitlab_client.private_token][
-                user_id
-            ] = user
-            return user
 
     async def get_entities_diff(
         self,

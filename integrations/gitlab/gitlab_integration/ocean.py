@@ -25,7 +25,7 @@ from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not export live changes from the gitlab"
-PROJECT_RESYNC_BATCH_SIZE = 10
+RESYNC_BATCH_SIZE = 10
 
 
 async def start_processors() -> None:
@@ -143,15 +143,23 @@ async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         )
         include_bot_members = group_with_members_selector.include_bot_members
 
-        async for groups_batch in service.get_all_groups():
-            tasks = [
-                service.enrich_object_with_members(
-                    group, include_inherited_members, include_bot_members
+        async for groups in service.get_all_groups():
+            groups_batch_iter = iter(groups)
+            groups_processed_in_full_batch = 0
+
+            while groups_batch := tuple(islice(groups_batch_iter, RESYNC_BATCH_SIZE)):
+                groups_processed_in_full_batch += len(groups_batch)
+                logger.info(
+                    f"Processing extras for {groups_processed_in_full_batch}/{len(groups)} groups in batch"
                 )
-                for group in groups_batch
-            ]
-            enriched_groups = await asyncio.gather(*tasks)
-            yield [enriched_group.asdict() for enriched_group in enriched_groups]
+                tasks = [
+                    service.enrich_object_with_members(
+                        group, include_inherited_members, include_bot_members
+                    )
+                    for group in groups_batch
+                ]
+                enriched_groups = await asyncio.gather(*tasks)
+                yield [enriched_group.asdict() for enriched_group in enriched_groups]
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
@@ -166,7 +174,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
             while projects_batch := tuple(
-                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+                islice(projects_batch_iter, RESYNC_BATCH_SIZE)
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
@@ -207,7 +215,7 @@ async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
             while projects_batch := tuple(
-                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+                islice(projects_batch_iter, RESYNC_BATCH_SIZE)
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
@@ -277,7 +285,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
             while projects_batch := tuple(
-                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+                islice(projects_batch_iter, RESYNC_BATCH_SIZE)
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
