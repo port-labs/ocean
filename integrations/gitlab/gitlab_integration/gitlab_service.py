@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, List, Optional, Tupl
 import aiolimiter
 import anyio.to_thread
 import yaml
+import gitlab.exceptions
 from gitlab import Gitlab, GitlabError, GitlabList
 from gitlab.base import RESTObject, RESTObjectList
 from gitlab.v4.objects import (
@@ -451,13 +452,23 @@ class GitlabService:
         else:
             return None
 
-    async def get_group(self, group_id: int) -> Group | None:
-        logger.info(f"fetching group {group_id}")
-        group = await AsyncFetcher.fetch_single(self.gitlab_client.groups.get, group_id)
-        if isinstance(group, Group) and self.should_run_for_group(group):
-            return group
-        else:
-            return None
+    async def get_group(self, group_id: int) -> Optional[Group]:
+        try:
+            logger.info(f"Fetching group with ID: {group_id}")
+            group = await AsyncFetcher.fetch_single(
+                self.gitlab_client.groups.get, group_id
+            )
+            if isinstance(group, Group) and self.should_run_for_group(group):
+                return group
+            else:
+                return None
+        except gitlab.exceptions.GitlabGetError as err:
+            if err.response_code == 404:
+                logger.warning(f"Group with ID {group_id} not found (404).")
+                return None
+            else:
+                logger.error(f"Failed to fetch group with ID {group_id}: {err}")
+                raise
 
     @cache_iterator_result()
     async def get_all_groups(
