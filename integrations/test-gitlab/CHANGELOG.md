@@ -5,51 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0-beta] - 2024-11-06
+## [0.1.0-beta] - 2024-11-13
 
 ### Added
-- **Webhook Integration**: Refined webhook setup to handle GitLab group, project, and other relevant events more effectively.
-  - Added support for instance-level webhooks to capture events across all GitLab resources.
-  - Improved error handling for webhook setup to handle permission errors.
-- **Testing Suite Enhancements**:
-  - Added unit tests and integration tests for data-fetching methods (`fetch_groups`, `fetch_projects`, `fetch_merge_requests`, `fetch_issues`).
-  - Mocked responses in unit tests to simulate API responses, ensuring consistency and isolating logic.
-  - Integrated logging in test cases to provide detailed information about test execution progress.
 
-### Fixed
-- **Blueprint Availability Issue**: Resolved issues with missing or misconfigured blueprints that could interfere with entity upserts.
+- **Initial Implementation of GitLab Integration**: Added the core components for integrating with GitLab, including fetching data, handling webhooks, and syncing entities to Port.
+- **AsyncFetcher Class**: Created `AsyncFetcher` class in `core/async_fetcher.py` to handle asynchronous fetching from GitLab.
+- **Utility Functions**: Implemented utility functions in `core/utils.py` such as `parse_datetime`, `generate_entity_from_port_yaml`, and `load_mappings`.
+- **GitLabHandler Class**: Developed `GitLabHandler` class in `client.py` to manage interactions with GitLab and Port, including fetching projects, handling webhooks, and syncing entities.
+- **Main Application Logic**: Implemented main application logic in `main.py` to handle FastAPI routes and integration events, including webhook handling and resync logic.
+- **Test Cases**: Added comprehensive test cases in `tests/test_client.py` and `tests/test_utils.py` to ensure the correctness of the integration.
 
 ### Changed
-- **Error Handling**: Enhanced error handling and logging for webhook setup to improve debugging for `403 Forbidden` responses and other potential issues.
 
-## [0.5.0] - 2024-11-06
+- **Initialization of PortOcean Context**: Refactored the initialization of the PortOcean context to ensure it is properly set up for testing and production use.
+- **Mocking for Tests**: Used `AsyncMock` and `MagicMock` to mock asynchronous and synchronous calls in test cases, ensuring tests are isolated and reliable.
+- **Error Handling**: Improved error handling for unsupported kinds and HTTP errors, providing meaningful error messages.
 
-### Added
-- **GitLab Issues Integration**: Added support for syncing GitLab issues into Port Ocean.
-  - Fetches issue details, including ID, title, status, author, creation date, update date, close date (if applicable), labels, and description, and maps them to Port Ocean entities.
+### Fixed
 
-## [0.4.0] - 2024-11-06
+- **Type Errors in Tests**: Corrected type errors in test cases where `MagicMock` objects were used in `await` expressions by using `AsyncMock`.
+- **Name Errors**: Resolved name errors related to the `jq` library by ensuring it is imported in test files.
+- **Assertion Errors**: Fixed assertion errors in `test_generate_entity_from_port_yaml` by ensuring the expected result matches the actual result.
+- **Connection Errors**: Mocked HTTP requests to avoid connection errors by using `AsyncMock` for asynchronous HTTP calls.
+- **Pagination Logic**: Ensured that pagination logic correctly handles `MagicMock` objects by returning expected values.
 
-### Added
-- **GitLab Merge Requests Integration**: Added support for syncing GitLab merge requests into Port Ocean.
-  - Fetches merge request details, including ID, title, status, author, creation date, update date, merge date (if applicable), and associated reviewers, and maps them to Port Ocean entities.
+### Removed
 
-## [0.3.0] - 2024-11-06
+- **Deprecated Code**: Removed any deprecated or unused code to keep the project clean and maintainable.
 
-### Added
-- **GitLab Projects Integration**: Added support for syncing GitLab projects into Port Ocean.
-  - Fetches project details, including project ID, name, description, and namespace, and maps them to Port Ocean entities.
+### Security
 
-## [0.2.0] - 2024-11-05
+- **Environment Variables**: Ensured that sensitive information such as tokens and URLs are managed through environment variables and configuration files.
 
-### Added
-- **Webhooks Integration**: Added support for GitLab webhooks to enable real-time updates for projects and groups in Port Ocean.
-- **Pagination Support**: Implemented pagination to fetch large data sets from GitLab effectively.
-- **Rate Limiting**: Added rate limiting to control API request frequency, avoiding GitLab API rate restrictions.
-- **Recursive Fetching for Subgroups**: Enabled recursive fetching of subgroups, allowing hierarchical group structures to be synced completely.
+### Performance
 
-## [0.1.0-beta] - 2024-11-04
+- **Efficient Data Fetching**: Optimized data fetching using asynchronous methods to improve performance and reduce latency.
 
-### Added
-- **GitLab Groups Integration**: Initial support for syncing GitLab groups into Port Ocean.
-  - Fetches top-level group details from GitLab and maps them to Port Ocean entities.
+### Documentation
+
+- **README and Comments**: Added detailed comments in the code and README to explain the purpose and usage of each module and function.
+
+### Dependencies
+
+- **Added Dependencies**: Added necessary dependencies such as `gitlab`, `jq`, `pytest`, and `httpx` to the project.
