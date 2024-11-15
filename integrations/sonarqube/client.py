@@ -34,7 +34,7 @@ MAX_PORTFOLIO_REQUESTS = 20
 
 
 class Endpoints:
-    PROJECTS = "components/search_projects"
+    PROJECTS = "components/search"
     WEBHOOKS = "webhooks"
     MEASURES = "measures/component"
     BRANCHES = "project_branches/list"
