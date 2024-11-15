@@ -28,16 +28,12 @@ class GitLabClient(GitLabRateLimiter):
     def create_from_ocean_config(cls) -> "GitLabClient":
         if cache := event.attributes.get("async_gitlab_client"):
             return cache
-        github_client = cls(
-            ocean.integration_config["gitlabHost"],
-            ocean.integration_config["accessToken"],
+        gitlab_client = cls(
+            ocean.integration_config["gitlab_host"],
+            ocean.integration_config["access_token"],
         )
-        event.attributes["async_gitlab_client"] = github_client
-        return github_client
-
-    @staticmethod
-    async def get_resource_api_version(resource_type: ObjectKind) -> str:
-        return "v4"
+        event.attributes["async_gitlab_client"] = gitlab_client
+        return gitlab_client
 
     async def get_single_resource(
         self,
@@ -63,8 +59,7 @@ class GitLabClient(GitLabRateLimiter):
     async def get_paginated_resources(
         self, resource_type: ObjectKind, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        api_version = await self.get_resource_api_version(resource_type)
-        url = f"{self.api_url}/{api_version}/{resource_type.value}s"
+        url = f"{self.api_url}/v4/{resource_type.value}s"
 
         pagination_params: dict[str, Any] = {"per_page": PAGE_SIZE, **(query_params or {})}
         while url:

@@ -30,12 +30,6 @@ def test_create_from_ocean_config():
 
 
 @pytest.mark.asyncio
-async def test_get_resource_api_version(gitlab_client):
-    version = await gitlab_client.get_resource_api_version(ObjectKind.PROJECT)
-    assert version == "v4"
-
-
-@pytest.mark.asyncio
 async def test_get_single_resource_success(gitlab_client, mock_response):
     with patch.object(gitlab_client.http_client, "get", return_value=mock_response) as mock_get:
         response = await gitlab_client._get_single_resource("https://gitlab.com/api/v4/projects/1")
