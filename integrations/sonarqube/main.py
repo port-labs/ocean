@@ -59,11 +59,11 @@ async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield analyses_list
             fetched_analyses = True
 
-    if not fetched_analyses:
-        logger.error("No analysis found in Sonarqube")
-        raise RuntimeError(
-            "No analysis found in Sonarqube, failing the resync to avoid data loss"
-        )
+        if not fetched_analyses:
+            logger.error("No analysis found in Sonarqube")
+            raise RuntimeError(
+                "No analysis found in Sonarqube, failing the resync to avoid data loss"
+            )
 
 
 @ocean.on_resync(ObjectKind.ONPREM_ANALYSIS)
