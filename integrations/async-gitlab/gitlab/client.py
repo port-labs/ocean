@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, Optional, Dict
-from httpx import HTTPStatusError, Response
+from httpx import HTTPStatusError, HTTPError, Response
 from loguru import logger
 import re
 from port_ocean.context.ocean import ocean
@@ -29,15 +29,15 @@ class GitLabClient(GitLabRateLimiter):
         if cache := event.attributes.get("async_gitlab_client"):
             return cache
         github_client = cls(
-            ocean.integration_config["gitlab_host"],
-            ocean.integration_config["access_token"],
+            ocean.integration_config["gitlabHost"],
+            ocean.integration_config["accessToken"],
         )
         event.attributes["async_gitlab_client"] = github_client
         return github_client
 
     @staticmethod
     async def get_resource_api_version(resource_type: ObjectKind) -> str:
-        return RESOURCE_API_VERSIONS.get(resource_type, "v4")
+        return "v4"
 
     async def get_single_resource(
         self,
@@ -54,6 +54,9 @@ class GitLabClient(GitLabRateLimiter):
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
+            raise
+        except HTTPError as e:
+            logger.error(f"HTTP error occurred: {str(e)}")
             raise
 
     @cache_iterator_result()
@@ -88,6 +91,9 @@ class GitLabClient(GitLabRateLimiter):
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
                 raise
+            except HTTPError as e:
+                logger.error(f"HTTP error occurred: {str(e)}")
+                raise
 
     @cache_iterator_result()
     async def get_resources(
@@ -119,4 +125,7 @@ class GitLabClient(GitLabRateLimiter):
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
+            raise
+        except HTTPError as e:
+            logger.error(f"HTTP error occurred: {str(e)}")
             raise

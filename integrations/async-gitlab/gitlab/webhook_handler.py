@@ -19,9 +19,7 @@ class WebhookHandler:
             "pipeline": ObjectKind.PROJECT,
             "job": ObjectKind.PROJECT,
             "deployment": ObjectKind.PROJECT,
-            "release": ObjectKind.PROJECT,
-            "project_token": ObjectKind.PROJECT,
-            "group_token": ObjectKind.GROUP,
+            "release": ObjectKind.PROJECT
         }
         self.events = [
             "push_events", "tag_push_events",
@@ -29,8 +27,7 @@ class WebhookHandler:
             "group_create", "group_update", "group_delete",
             "merge_request_events", "pipeline_events", "deployment_events",
             "note_events", "wiki_page_events",
-            "issue_events", "feature_flag_events", "releases_events",
-            "project_token_events", "group_token_events"
+            "issue_events", "feature_flag_events", "releases_events"
         ]
 
     async def handle_event(self, event_type: str, payload: Dict[str, Any]):

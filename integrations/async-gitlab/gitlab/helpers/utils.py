@@ -15,14 +15,6 @@ class ObjectKind(StrEnum):
     RELEASE = "release"
 
 
-RESOURCE_API_VERSIONS = {
-    ObjectKind.GROUP: "v4",
-    ObjectKind.PROJECT: "v4",
-    ObjectKind.MERGE_REQUEST: "v4",
-    ObjectKind.ISSUE: "v4",
-}
-
-
 class ResourceKindsHandledViaWebhooks(StrEnum):
     ISSUE = ObjectKind.ISSUE
     MERGE_REQUEST = ObjectKind.MERGE_REQUEST

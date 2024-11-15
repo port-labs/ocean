@@ -2,19 +2,27 @@ description: async-gitlab integration for Port Ocean
 icon: Gitlab
 features:
   - type: exporter
-    section: Under Development
+    section: Git Providers
     resources:
       - kind: group
       - kind: project
       - kind: merge_request
       - kind: issue
 configurations:
-  - name: gitlab_host
+  - name: gitlabHost
     required: true
     type: url
     sensitive: false
     default: https://gitlab.com
-  - name: access_token
+  - name: accessToken
     type: string
     required: true
     sensitive: true
+  - name: webhookSecret
+    type: string
+    required: true
+    sensitive: true
+  - name: appHost
+    required: true
+    type: url
+    sensitive: false
