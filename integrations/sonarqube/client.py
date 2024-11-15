@@ -95,10 +95,7 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        _headers = {
-            **self.http_client.headers,
-            "Authorization": "Bearer <masked>"
-        }
+        _headers = {**self.http_client.headers, "Authorization": "Bearer <masked>"}
         logger.debug(
             f"Sending {method} request to {endpoint} with headers:"
             f" {_headers} and json data: {json_data}"
@@ -131,10 +128,7 @@ class SonarQubeClient:
         query_params = query_params or {}
         query_params["ps"] = PAGE_SIZE
         all_resources = []  # List to hold all fetched resources
-        _headers = {
-            **self.http_client.headers,
-            "Authorization": "Bearer <masked>"
-        }
+        _headers = {**self.http_client.headers, "Authorization": "Bearer <masked>"}
 
         try:
             logger.debug(
