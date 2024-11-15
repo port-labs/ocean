@@ -9,20 +9,20 @@ features:
       - kind: merge_request
       - kind: issue
 configurations:
-  - name: gitlab_host
+  - name: gitlabHost
     required: true
     type: url
     sensitive: false
     default: https://gitlab.com
-  - name: access_token
+  - name: accessToken
     type: string
     required: true
     sensitive: true
-  - name: webhook_secret
+  - name: webhookSecret
     type: string
     required: false
     sensitive: true
-  - name: app_host
+  - name: appHost
     required: false
     type: url
     sensitive: false
