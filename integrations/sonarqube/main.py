@@ -26,12 +26,14 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
 
     async for project_list in sonar_client.get_all_projects():
+        logger.info(f"Received project batch of size: {len(project_list)}")
         yield project_list
 
 
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for issues_list in sonar_client.get_all_issues():
+        logger.info(f"Received issues batch of size: {len(issues_list)}")
         yield issues_list
 
 
@@ -39,20 +41,25 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.SASS_ANALYSIS)
 async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if not ocean.integration_config["sonar_is_on_premise"]:
+        logger.info("Sonar is not on-premise, processing SonarCloud on saas analysis")
         async for analyses_list in sonar_client.get_all_sonarcloud_analyses():
+            logger.info(f"Received analysis batch of size: {len(analyses_list)}")
             yield analyses_list
 
 
 @ocean.on_resync(ObjectKind.ONPREM_ANALYSIS)
 async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     if ocean.integration_config["sonar_is_on_premise"]:
+        logger.info("Sonar is on-premise, processing on-premise SonarQube analysis")
         async for analyses_list in sonar_client.get_all_sonarqube_analyses():
+            logger.info(f"Received analysis batch of size: {len(analyses_list)}")
             yield analyses_list
 
 
 @ocean.on_resync(ObjectKind.PORTFOLIOS)
 async def on_portfolio_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for portfolio_list in sonar_client.get_all_portfolios():
+        logger.info(f"Received portfolio batch of size: {len(portfolio_list)}")
         yield portfolio_list
 
 

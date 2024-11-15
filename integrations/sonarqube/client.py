@@ -95,8 +95,14 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
+        _headers = {
+            **self.http_client.headers,
+            "Authorization": "Bearer <masked>"
+        }
         logger.debug(
-            f"Sending API request to {method} {endpoint} with query params: {query_params}"
+            f"Sending {method} request to {endpoint} with headers:"
+            f" {_headers} and json data: {json_data}"
+            f" with query params: {query_params}"
         )
         try:
             response = await self.http_client.request(
@@ -125,10 +131,16 @@ class SonarQubeClient:
         query_params = query_params or {}
         query_params["ps"] = PAGE_SIZE
         all_resources = []  # List to hold all fetched resources
+        _headers = {
+            **self.http_client.headers,
+            "Authorization": "Bearer <masked>"
+        }
 
         try:
             logger.debug(
-                f"Sending API request to {method} {endpoint} with query params: {query_params}"
+                f"Sending {method} request to {endpoint} with headers:"
+                f" {_headers} and json data: {json_data}"
+                f" with query params: {query_params}"
             )
 
             while True:
@@ -140,6 +152,10 @@ class SonarQubeClient:
                 )
                 response.raise_for_status()
                 response_json = response.json()
+                logger.debug(
+                    f"Received response with status code: {response.status_code}"
+                    f" and response: {response_json}"
+                )
                 resource = response_json.get(data_key, [])
                 all_resources.extend(resource)
 
