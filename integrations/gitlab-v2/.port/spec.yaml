@@ -2,14 +2,14 @@ description: gitlab-v2 integration for Port Ocean
 icon: Gitlab  # Should be one of the available icons in Port
 features:
   - type: exporter
-    section: Under Development  # Should be one of the available sections in Port
+    section: Git Providers  # Should be one of the available sections in Port
     resources:
       - kind: group
       - kind: project
       - kind: merge-request
       - kind: issue
 configurations:
-  - name: baseUrl
+  - name: appHost
     type: url
     required: true
     description: "Base URL of the application. Needed to create webhook url."
@@ -22,11 +22,6 @@ configurations:
     type: url
     default: "https://gitlab.com/api/v4"
     description: "Gitlab API base url"
-  - name: webhookName
-    required: true
-    type: string
-    description: "Gitlab Webhook name"
-    default: "port-hook"
   - name: webhookSecret
     required: true
     type: string
