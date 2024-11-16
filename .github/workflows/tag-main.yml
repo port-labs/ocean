@@ -5,17 +5,41 @@ on:
       - main
     paths:
       - 'pyproject.toml'
+  # manual run
+  workflow_dispatch:
+
 
 jobs:
   tag-main:
+    permissions:
+      contents: write
+
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-      - name: tag main
+      - name: Get current version
+        id: get_current_version
         run: |
-          # get tag from pyproject.toml
-          TAG=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
-          git tag "v${TAG}"
+          # Get the current version from pyproject.toml
+          CURRENT_TAG=$(grep -E '^version = ".*"' pyproject.toml | cut -d'"' -f2)
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_ENV
+
+      - name: Get previous version
+        id: get_previous_version
+        run: |
+          # Get the version from the previous commit for comparison
+          PREV_TAG=$(git show HEAD~1:pyproject.toml | grep -E '^version = ".*"' | cut -d'"' -f2)
+          echo "prev_tag=$PREV_TAG" >> $GITHUB_ENV
+
+      - name: Tag main
+        run: |
+          if [ "$current_tag" == "$prev_tag" ]; then
+            echo "Version has not changed. Skipping tagging."
+            exit 0
+          fi
+          git tag "v${current_tag}"
           git push origin main --tags
