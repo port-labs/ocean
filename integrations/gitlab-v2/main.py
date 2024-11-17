@@ -4,7 +4,7 @@ from aiolimiter import AsyncLimiter
 from fastapi import Request
 from loguru import logger
 
-from client import GitLabHandler
+from client import GitLabHandler, get_gitlab_handler, WebhookEventHandler
 from port_ocean.context.ocean import ocean
 from choices import Endpoint, Entity
 
@@ -16,35 +16,22 @@ ENDPOINT_MAP = {
     Entity.ISSUE.value: Endpoint.ISSUE.value,
 }
 
-
-async def get_limiter(entity: str) -> AsyncLimiter:
-    if entity == Entity.GROUP.value:
-        rate_limit = ocean.integration_config.get("group_ratelimit", 200)
-    elif entity == Entity.PROJECT.value:
-        rate_limit = ocean.integration_config.get("project_ratelimit", 200)
-    elif entity == Entity.MERGE_REQUEST.value:
-        rate_limit = ocean.integration_config.get("mergerequest_ratelimit", 200)
-    else:
-        rate_limit = ocean.integration_config.get("issue_ratelimit", 200)
-
-    return AsyncLimiter(0.8 * rate_limit)
+RESOURCE_RATE_LIMIT = {
+    Entity.GROUP.value: 200,
+    Entity.PROJECT.value: 200,
+    Entity.MERGE_REQUEST.value: 200,
+    Entity.ISSUE.value: 200,
+}
 
 
 @ocean.on_resync()
 async def on_resync(kind: str) -> list[dict[Any, Any]]:
     if kind in ENDPOINT_MAP:
-        logger.info(f"Resycing {kind} from Gitlab...")
+        logger.info(f"Resycing {kind}...")
 
-        limiter = await get_limiter(kind)
-
-        handler = GitLabHandler(
-            host=ocean.integration_config["app_host"],
-            gitlab_token=ocean.integration_config["gitlab_token"],
-            gitlab_url=ocean.integration_config["gitlab_url"],
-            webhook_secret=ocean.integration_config["webhook_secret"],
-            rate_limit=limiter,
-        )
-        return await handler.fetch_data(ENDPOINT_MAP[kind])
+        limiter = AsyncLimiter(0.8 * RESOURCE_RATE_LIMIT[kind])
+        handler: GitLabHandler = await get_gitlab_handler(limiter)
+        return await handler.send_gitlab_api_request(ENDPOINT_MAP[kind])
 
     logger.warning(f"Unsupported kind for resync: {kind}")
     return []
@@ -61,20 +48,22 @@ async def gitlab_webhook(request: Request) -> dict[str, bool]:
         logger.error(f"Port headers not found in webhook headers: {request.headers}")
         return {"success": False}
 
+    gitlab_handler = await get_gitlab_handler()
+
+    expected_port_headers = gitlab_handler.webhook_secret
+    if port_headers != expected_port_headers:
+        logger.error("Invalid port headers")
+        return {"success": False}
+
     payload = await request.json()
-    handler = GitLabHandler(
-        host=ocean.integration_config["app_host"],
-        gitlab_token=ocean.integration_config["gitlab_token"],
-        gitlab_url=ocean.integration_config["gitlab_url"],
-        webhook_secret=ocean.integration_config["webhook_secret"],
-        rate_limit=AsyncLimiter(0.8 * 200),
-    )
+
+    webhook_handler = WebhookEventHandler(gitlab_handler)
 
     event = request.headers.get("X-Gitlab-Event")
     if event == "System Hook":
-        entity, payload = await handler.system_hook_handler(payload)
+        entity, payload = await webhook_handler.system_hook_handler(payload)
     else:
-        entity, payload = await handler.group_hook_handler(payload)
+        entity, payload = await webhook_handler.group_hook_handler(payload)
 
     if entity and payload:
         await ocean.register_raw(entity, [payload])
@@ -83,3 +72,16 @@ async def gitlab_webhook(request: Request) -> dict[str, bool]:
         logger.info(f"Skipped webhook payload: {payload} from gitlab")
 
     return {"success": True}
+
+
+@ocean.on_start()
+async def on_start() -> None:
+    handler: GitLabHandler = await get_gitlab_handler()
+    if handler.app_host and handler.webhook_secret:
+        logger.info("Fetching group data for webhook...")
+        group_list = await handler.send_gitlab_api_request(Endpoint.GROUP.value)
+
+        for group_data in group_list:
+            group_id = group_data["id"]
+            logger.info(f"Setting up hooks for group: {group_id}...")
+            await handler.create_webhook(group_id)

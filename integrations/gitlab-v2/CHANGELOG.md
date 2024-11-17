@@ -10,4 +10,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-- Added integration for pulling of gitlab entity to port using APIs and webhook. (0.0.1)
+- Added integration for pulling of gitlab entity to port using APIs and webhook. (0.1.0)

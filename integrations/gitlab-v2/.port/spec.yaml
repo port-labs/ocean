@@ -11,7 +11,6 @@ features:
 configurations:
   - name: appHost
     type: url
-    required: true
     description: "Base URL of the application. Needed to create webhook url."
   - name: gitlabToken
     required: true
@@ -23,25 +22,6 @@ configurations:
     default: "https://gitlab.com/api/v4"
     description: "Gitlab API base url"
   - name: webhookSecret
-    required: true
     type: string
     description: "Gitlab Webhook secret to verify webhook"
     sensitive: true
-  - name: groupRatelimit
-    type: integer
-    default: 200
-    description: "Rate limit (per minute) set on gitlab group API,
-    https://docs.gitlab.com/ee/administration/settings/rate_limit_on_groups_api.html"
-  - name: projectRatelimit
-    type: integer
-    default: 200
-    description: "Rate limit (per minute) set on gitlab project API,
-    https://docs.gitlab.com/ee/administration/settings/rate_limit_on_projects_api.html"
-  - name: mergerequestRatelimit
-    type: integer
-    default: 200
-    description: "Rate limit (per minute) set on gitlab merge request API."
-  - name: issueRatelimit
-    type: integer
-    default: 200
-    description: "Rate limit (per minute) set on gitlab issue API."

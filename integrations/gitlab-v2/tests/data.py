@@ -745,7 +745,7 @@ __ISSUES = [
 ]
 
 
-DATA = {
+API_DATA = {
     Entity.GROUP.value: __GROUPS,
     Entity.PROJECT.value: __PROJECTS,
     Entity.MERGE_REQUEST.value: __MERGE_REQUESTS,
