@@ -1,4 +1,3 @@
-from lib2to3.pgen2.tokenize import group
 from typing import Any, Dict
 from loguru import logger
 from port_ocean.context.ocean import ocean
