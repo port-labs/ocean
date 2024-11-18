@@ -16,7 +16,7 @@ class GitLabClient(GitLabRateLimiter):
     def __init__(self, gitlab_host: str, access_token: str) -> None:
         super().__init__(gitlab_host, access_token)
         self.token = access_token
-        self.api_url = f"{gitlab_host}/api"
+        self.api_url = f"{gitlab_host}/api/v4"
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
 
@@ -59,7 +59,7 @@ class GitLabClient(GitLabRateLimiter):
     async def get_paginated_resources(
         self, resource_type: ObjectKind, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        url = f"{self.api_url}/v4/{resource_type.value}s"
+        url = f"{self.api_url}/{resource_type.value}s"
 
         pagination_params: dict[str, Any] = {"per_page": PAGE_SIZE, **(query_params or {})}
         while url:
@@ -109,7 +109,7 @@ class GitLabClient(GitLabRateLimiter):
         payload: Dict
     ) -> Response:
         try:
-            url = f"{self.api_url}/v4/{path}"
+            url = f"{self.api_url}/{path}"
 
             self.http_client.headers.update(self.api_auth_header)
             response = await self.http_client.post(url=url, json=payload)

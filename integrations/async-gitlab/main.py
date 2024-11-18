@@ -19,7 +19,6 @@ async def on_resources_resync(kind: str) -> None:
     async for resources in gitlab_client.get_resources(kind):
         logger.info(f"Re-syncing {len(resources)} {kind}")
         yield resources
-        return
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -29,7 +28,6 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for projects in gitlab_client.get_resources(ObjectKind.PROJECT, {"owned": "yes"}):
         logger.info(f"Re-syncing {len(projects)} projects")
         yield projects
-        return
 
 @ocean.router.post("/webhook")
 async def on_webhook_alert(request: Request) -> dict[str, Any]:
