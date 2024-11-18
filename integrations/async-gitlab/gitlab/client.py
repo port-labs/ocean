@@ -64,26 +64,34 @@ class GitLabClient(GitLabRateLimiter):
             logger.error(f"HTTP error occurred: {str(e)}")
             raise
 
+    def extract_next_link(self, link_header: str) -> str:
+        """
+        Extracts the 'next' link from the Link header.
+        """
+        links = [link.strip() for link in link_header.split(",")]
+        for link in links:
+            if 'rel="next"' in link:
+                return link.split(";")[0].strip("<>")
+        return ""
 
     @cache_iterator_result()
     async def get_paginated_resources(
         self, resource_type: ObjectKind, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        endpoint = f"{resource_type.value}s"
+        url = f"{self.base_url}/{resource_type.value}s"
 
         pagination_params: dict[str, Any] = {"per_page": PAGE_SIZE, **(query_params or {})}
-        while endpoint:
+        while url:
             try:
-                response = await self.send_api_request(
-                    endpoint=endpoint, query_params=pagination_params
+                self.http_client.headers.update(self.api_auth_header)
+                response = await self.http_client.get(
+                    url=url,
+                    params=pagination_params
                 )
+                response.raise_for_status()
                 yield response.json()
 
-                next_page = response.headers.get('x-next-page')
-                if next_page:
-                    pagination_params = {"page": next_page, **(pagination_params or {})}
-                else:
-                    endpoint = None
+                url = self.extract_next_link(response.headers.get("link", ""))
             except HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
