@@ -31,12 +31,22 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/webhook")
 async def on_webhook_alert(request: Request) -> dict[str, Any]:
-    body = await request.json()
-    event = body.get("object_kind")
+    token = request.headers.get("X-Gitlab-Token")
+    if not token:
+        return {"status": "error"}
 
-    if event in iter(ResourceKindsHandledViaWebhooks):
-        webhook_handler = WebhookHandler()
-        await webhook_handler.handle_event(event, body)
+    webhook_handler = WebhookHandler.create_from_ocean_config()
+
+    if webhook_handler.verify_token(token) is not True:
+        return {"status": "error"}
+
+    payload = await request.json()
+
+    event = request.headers.get("X-Gitlab-Event")
+    if event == "System Hook":
+        await webhook_handler.handle_event(payload, True)
+    else:
+        await webhook_handler.handle_event(payload)
 
     return {"status": "success"}
 
@@ -45,5 +55,5 @@ async def on_start() -> None:
     logger.info("Starting async-gitlab integration...")
 
     logger.info("Initializing webhook setup...")
-    webhook_handler = WebhookHandler()
+    webhook_handler = WebhookHandler.create_from_ocean_config()
     await webhook_handler.setup()

@@ -16,7 +16,7 @@ class GitLabClient(GitLabRateLimiter):
     def __init__(self, gitlab_host: str, access_token: str) -> None:
         super().__init__(gitlab_host, access_token)
         self.token = access_token
-        self.api_url = f"{gitlab_host}/api/v4"
+        self.base_url = f"{gitlab_host}/api/v4"
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
 
@@ -35,17 +35,26 @@ class GitLabClient(GitLabRateLimiter):
         event.attributes["async_gitlab_client"] = gitlab_client
         return gitlab_client
 
-    async def get_single_resource(
-        self,
-        url: str,
-        query_params: Optional[dict[str, Any]] = None,
+    async def send_api_request(
+            self,
+            endpoint: str,
+            method: str = "GET",
+            query_params: Optional[dict[str, Any]] = None,
+            json_data: Optional[dict[str, Any]] = None,
     ) -> Response:
+        logger.debug(
+            f"Sending API request to {method} {endpoint} with query params: {query_params}"
+        )
         try:
             self.http_client.headers.update(self.api_auth_header)
-            response = await self.http_client.get(url=url, params=query_params)
+            response = await self.http_client.request(
+                method=method,
+                url=f"{self.base_url}/{endpoint}",
+                params=query_params,
+                json=json_data,
+            )
             response.raise_for_status()
             return response
-
         except HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
@@ -55,32 +64,26 @@ class GitLabClient(GitLabRateLimiter):
             logger.error(f"HTTP error occurred: {str(e)}")
             raise
 
+
     @cache_iterator_result()
     async def get_paginated_resources(
         self, resource_type: ObjectKind, query_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        url = f"{self.api_url}/{resource_type.value}s"
+        endpoint = f"{resource_type.value}s"
 
         pagination_params: dict[str, Any] = {"per_page": PAGE_SIZE, **(query_params or {})}
-        while url:
+        while endpoint:
             try:
-                logger.info(
-                    f"Fetching data from {url} with query params {pagination_params}"
-                )
-                response = await self.get_single_resource(
-                    url=url, query_params=pagination_params
+                response = await self.send_api_request(
+                    endpoint=endpoint, query_params=pagination_params
                 )
                 yield response.json()
 
-                if response.headers.get('x-next-page'):
-                    link_header = response.headers.get('link')
-
-                    rel = "next"
-                    pattern = re.compile(r'<([^>]+)>;\s*rel="%s"' % rel)
-                    match = pattern.search(link_header)
-
-                    if match:
-                        url = await match.group(1)
+                next_page = response.headers.get('x-next-page')
+                if next_page:
+                    pagination_params = {"page": next_page, **(pagination_params or {})}
+                else:
+                    endpoint = None
             except HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
@@ -109,18 +112,15 @@ class GitLabClient(GitLabRateLimiter):
         payload: Dict
     ) -> Response:
         try:
-            url = f"{self.api_url}/{path}"
-
-            self.http_client.headers.update(self.api_auth_header)
-            response = await self.http_client.post(url=url, json=payload)
-            response.raise_for_status()
-            return response
-
-        except HTTPStatusError as e:
-            logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+            response = await self.send_api_request(
+                endpoint=path,
+                method="POST",
+                json_data=payload
             )
-            raise
+            return response.json()
         except HTTPError as e:
             logger.error(f"HTTP error occurred: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise

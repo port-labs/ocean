@@ -1,16 +1,17 @@
+from lib2to3.pgen2.tokenize import group
 from typing import Any, Dict
 from loguru import logger
 from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
 from gitlab.helpers.utils import ObjectKind
 from gitlab.client import GitLabClient
 
-WEBHOOK_SECRET = ocean.integration_config.get('webhook_secret')
-SECRET_LENGTH = 32
-WEBHOOK_URL = ocean.integration_config.get('app_host')
 
 class WebhookHandler:
-    def __init__(self) -> None:
-        self.gitlab_handler = GitLabClient.create_from_ocean_config()
+    def __init__(self, webhook_secret: str, webhook_url: str) -> None:
+        self.webhook_secret = webhook_secret
+        self.webhook_url = webhook_url
+        self.gitlab_client = GitLabClient.create_from_ocean_config()
         self.event_handlers = {
             "push": ObjectKind.PROJECT,
             "tag_push": ObjectKind.PROJECT,
@@ -21,68 +22,184 @@ class WebhookHandler:
             "deployment": ObjectKind.PROJECT,
             "release": ObjectKind.PROJECT
         }
-        self.events = [
+        self.system_actions = [
+            "project_create", "project_destroy", "project_rename", "project_update",
+            "group_create", "group_destroy", "group_rename",
+        ]
+        self.system_events = [
             "push_events", "tag_push_events",
-            "project_create", "project_update", "project_delete",
-            "group_create", "group_update", "group_delete",
-            "merge_request_events", "pipeline_events", "deployment_events",
-            "note_events", "wiki_page_events",
+            "merge_requests_events", "repository_update_events"
+        ]
+        self.group_events = [
+            "push_events", "tag_push_events",
+            "subgroup_events", "member_events",
+            "merge_request_events", "job_events", "pipeline_events", "deployment_events",
+            "note_events", "confidential_note_events",
+            "wiki_page_events", "resource_access_token_events"
             "issue_events", "feature_flag_events", "releases_events"
         ]
 
-    async def handle_event(self, event_type: str, payload: Dict[str, Any]):
-        kind = self.event_handlers.get(event_type)
-        if kind:
-            await self._update_resource(kind, payload)
+    @classmethod
+    def create_from_ocean_config(cls) -> "WebhookHandler":
+        if cache := event.attributes.get("async_webhook_client"):
+            return cache
+        webhook_client = cls(
+            ocean.integration_config["webhook_secret"],
+            ocean.integration_config["app_host"],
+        )
+        event.attributes["async_webhook_client"] = webhook_client
+        return webhook_client
+
+    def verify_token(self, token: str):
+        if token != self.webhook_secret:
+            return False
         else:
-            logger.warning(f"Unhandled event type: {event_type}")
+            return True
+
+    async def handle_event(self, payload: Dict[str, Any], is_system_hook: bool = False):
+        if is_system_hook:
+            event_type = payload.get("event_name")
+
+            if event_type in self.system_actions:
+                project_id = payload.get("project_id")
+                group_id = payload.get("group_id")
+
+                if project_id:
+                    payload.update({
+                        'project': {
+                            'id': project_id
+                        }
+                    })
+                    await self._update_resource(ObjectKind.PROJECT, payload)
+                elif group_id:
+                    payload.update({
+                        'group': {
+                            'id': group_id
+                        }
+                    })
+                    await self._update_resource(ObjectKind.GROUP, payload)
+                else:
+                    logger.warning(f"skipping event type: {event_type}, because it doesn't have a handler")
+            else:
+                logger.warning(f"skipping event type: {event_type}, because it doesn't have a handler")
+        else:
+            object_kind = payload.get("object_kind")
+            event_type = payload.get("event_name")
+
+            kind = self.event_handlers.get(object_kind)
+            if kind:
+                await self._update_resource(kind, payload)
+            else:
+                logger.warning(f"skipping event type: {event_type}, because it doesn't have a handler")
 
     async def _update_resource(self, resource_type: ObjectKind, payload: Dict[str, Any]):
+        logger.debug(
+            f"Attempting update for resource type: {resource_type}"
+        )
+
         response = None
-        api_version = await self.gitlab_handler.get_resource_api_version(resource_type)
+        idx = None
 
         match resource_type:
             case ObjectKind.PROJECT:
                 if project_id := payload.get("project", {}).get("id"):
-                    url = f"{self.gitlab_handler.api_url}/{api_version}/{resource_type.value}s/{project_id}"
-                    response = await self.gitlab_handler.get_single_resource(url)
-                    logger.info(f"Updated project resource with ID: {project_id}")
+                    idx = project_id
+                    path = f"{resource_type.value}s/{project_id}"
+                    response = await self.gitlab_client.send_api_request(path)
 
             case ObjectKind.ISSUE:
-                project_id = payload.get("project", {}).get("id")
                 if issue_id := payload.get("object_attributes", {}).get("id"):
-                    url = f"{self.gitlab_handler.api_url}/{api_version}/{resource_type.value}s/{issue_id}"
-                    response = await self.gitlab_handler.get_single_resource(url)
-                    logger.info(f"Updated issue resource with ID: {issue_id} for project ID: {project_id}")
+                    idx = issue_id
+                    path = f"{resource_type.value}s/{issue_id}"
+                    response = await self.gitlab_client.send_api_request(path)
 
             case ObjectKind.MERGE_REQUEST:
-                project_id = payload.get("project", {}).get("id")
                 if merge_request_id := payload.get("object_attributes", {}).get("id"):
-                    url = f"{self.gitlab_handler.api_url}/{api_version}/{resource_type.value}s/{merge_request_id}"
-                    response = await self.gitlab_handler.get_single_resource(url)
-                    logger.info(
-                        f"Updated merge request resource with ID: {merge_request_id} for project ID: {project_id}")
+                    idx = merge_request_id
+                    path = f"{resource_type.value}s/{merge_request_id}"
+                    response = await self.gitlab_client.send_api_request(path)
 
             case ObjectKind.GROUP:
                 if group_id := payload.get("group", {}).get("id"):
-                    url = f"{self.gitlab_handler.api_url}/{api_version}/{resource_type.value}s/{group_id}"
-                    response = await self.gitlab_handler.get_single_resource(url)
-                    logger.info(f"Updated group resource with ID: {group_id}")
+                    idx = group_id
+                    path = f"{resource_type.value}s/{group_id}"
+                    response = await self.gitlab_client.send_api_request(path)
 
-        if response is not None:
+        if response:
             resource = response.json()
             await ocean.register_raw(resource_type, resource)
+            logger.info(f"Updated kind: {resource_type} with ID: {idx}")
 
     async def setup(self) -> None:
+        try:
+            await self.setup_system_webhooks()
+            await self.setup_group_webhooks()
+            logger.info("Webhooks setup completed")
+        except Exception as e:
+            logger.error(f"Error setting up webhooks: {e}")
+
+    async def setup_system_webhooks(self) -> None:
         path = "/hooks"
-        payload = {
-            "url": WEBHOOK_URL,
-            "events": self.events,
-            "enable_ssl_verification": True,
-        }
+
+        payload = {item: True for item in self.system_events}
+        payload.update({
+            'url': self.webhook_url,
+            'token': self.webhook_secret,
+            'enable_ssl_verification': True,
+        })
 
         try:
-            await self.gitlab_handler.create_resource(path, payload)
-            logger.info("Webhook setup completed")
+            response = await self.gitlab_client.send_api_request(
+                endpoint=path,
+                method="POST",
+                json_data=payload
+            )
+            return response.json()
         except Exception as e:
-            logger.error(f"Error setting up webhook: {e}")
+            logger.error(f"An unexpected error occurred while setting up system hooks: {str(e)}")
+            raise
+
+    async def setup_group_webhooks(self) -> None:
+        async for groups in self.gitlab_client.get_paginated_resources(resource_type="groups", query_params={"owned": "yes"}):
+            for group in groups:
+                if not isinstance(group, dict) or "id" not in group:
+                    logger.error(f"Invalid group structure: {group}")
+                    continue
+                group_id = str(group["id"])
+                logger.info(f"Handling group: {group_id}")
+
+                try:
+                    existing_hooks = await self.gitlab_client.send_api_request(f"{group_id}/hooks")
+                    hook_exists = any(
+                        isinstance(hook, dict) and hook.get("url") == self.webhook_url
+                        for hook in existing_hooks
+                    )
+
+                    if not hook_exists:
+                        payload = {item: True for item in self.group_events}
+                        payload.update({
+                            'url': self.webhook_url,
+                            'token': self.webhook_secret,
+                            'enable_ssl_verification': True
+                        })
+
+                        response = await self.gitlab_client.send_api_request(endpoint=f"groups/{group_id}/hooks", method="POST", json_data=payload)
+                        resource = response.json()
+
+                        if resource.get('id'):
+                            logger.info(f"Webhook created successfully for group {group_id}")
+                        else:
+                            logger.error(f"Failed to create webhook for group {group_id}")
+
+                    else:
+                        logger.info(f"Ignoring... webhook exists for group {group_id}")
+                except Exception as e:
+                    logger.error(f"An error occurred while setting up webhook for group {group_id}: {str(e)}")
+
+    async def delete_group_webhook(self, group_id: str, webhook_id: str):
+        try:
+            await self.gitlab_client.send_api_request(endpoint=f"groups/{group_id}/hooks/{webhook_id}", method="DELETE")
+            logger.info(f"Successfully deleted webhook {webhook_id} for group {group_id}")
+        except Exception as e:
+            logger.error(f"An error occurred while deleting webhook {webhook_id} for group {group_id}: {str(e)}")
+            raise
