@@ -34,7 +34,8 @@ MAX_PORTFOLIO_REQUESTS = 20
 
 
 class Endpoints:
-    PROJECTS = "components/search_projects"
+    PROJECTS_INTERNAL = "components/search_projects"
+    PROJECTS = "projects/search"
     WEBHOOKS = "webhooks"
     MEASURES = "measures/component"
     BRANCHES = "project_branches/list"
@@ -216,7 +217,7 @@ class SonarQubeClient:
 
         try:
             response = await self.send_paginated_api_request(
-                endpoint=Endpoints.PROJECTS,
+                endpoint=Endpoints.PROJECTS_INTERNAL,
                 data_key="components",
                 query_params=query_params,
             )
@@ -298,12 +299,26 @@ class SonarQubeClient:
         :return (list[Any]): A list containing projects data for your organization.
         """
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
-        self.metrics = cast(
-            SonarQubeProjectResourceConfig, event.resource_config
-        ).selector.metrics
-        components = await self.get_components()
-        for component in components:
-            project_data = await self.get_single_project(project=component)
+        selector = cast(SonarQubeProjectResourceConfig, event.resource_config).selector
+        self.metrics = selector.metrics
+
+        all_projects = {}
+        for project in await self.send_paginated_api_request(
+            endpoint=Endpoints.PROJECTS, data_key="components"
+        ):
+            project_key = project.get("key")
+            all_projects[project_key] = project
+
+        if selector.use_internal_api:
+            components = await self.get_components()
+            for component in components:
+                all_projects[component["key"]] = {
+                    **all_projects.get(component["key"], {}),
+                    **component,
+                }
+
+        for project in all_projects.values():
+            project_data = await self.get_single_project(project=project)
             yield [project_data]
 
     async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:

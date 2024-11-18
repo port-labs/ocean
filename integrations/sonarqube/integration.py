@@ -184,6 +184,11 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
         metrics: list[str] = Field(
             description="List of metric keys", default=default_metrics()
         )
+        use_internal_api: bool = Field(
+            alias="useInternalApi",
+            description="Use internal API to fetch more data",
+            default=True,
+        )
 
     kind: Literal["projects"]
     selector: SonarQubeProjectSelector
