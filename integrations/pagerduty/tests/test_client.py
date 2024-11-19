@@ -38,14 +38,12 @@ TEST_DATA: Dict[str, List[Dict[str, Any]]] = {
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
-    """Create a mock ocean context for testing."""
     try:
         mock_app = MagicMock()
         mock_app.config.integration.config = TEST_CONFIG
-        context = initialize_port_ocean_context(mock_app)
-        return context
+        initialize_port_ocean_context(mock_app)  # type: ignore
     except PortOceanContextAlreadyInitializedError:
-        return None
+        pass
 
 
 @pytest.fixture
