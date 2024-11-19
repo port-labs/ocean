@@ -318,7 +318,10 @@ class SonarQubeClient:
                     **component,
                 }
 
-        yield [await self.get_single_project(component) for component in all_projects.values()]
+        yield [
+            await self.get_single_project(component)
+            for component in all_projects.values()
+        ]
 
     async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
@@ -337,8 +340,7 @@ class SonarQubeClient:
         )
 
         components = await self.get_components(
-            endpoint=Endpoints.PROJECTS,
-            api_query_params=project_api_query_params
+            endpoint=Endpoints.PROJECTS, api_query_params=project_api_query_params
         )
         for component in components:
             response = await self.get_issues_by_component(
