@@ -41,7 +41,7 @@ def mock_ocean_context() -> None:
     try:
         mock_app = MagicMock()
         mock_app.config.integration.config = TEST_CONFIG
-        initialize_port_ocean_context(mock_app)  # type: ignore
+        initialize_port_ocean_context(mock_app)
     except PortOceanContextAlreadyInitializedError:
         pass
 
