@@ -86,7 +86,7 @@ class PagerDutyClient:
                 has_more_data = data["more"]
                 if has_more_data:
                     offset += data["limit"]
-            except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+            except httpx.HTTPStatusError as e:
                 logger.error(
                     f"Got {e.response.status_code} status code while fetching paginated data: {str(e)}"
                 )
