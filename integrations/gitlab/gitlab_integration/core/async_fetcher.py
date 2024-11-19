@@ -12,6 +12,8 @@ from gitlab.v4.objects import (
     ProjectPipeline,
     Issue,
     Group,
+    User,
+    GroupMember,
     ProjectFile,
 )
 from loguru import logger
@@ -36,6 +38,8 @@ class AsyncFetcher:
                 Issue,
                 Project,
                 Group,
+                User,
+                GroupMember,
             ],
         ],
         *args,

@@ -33,7 +33,7 @@ resources:
           blueprint: '"pagerdutyIncident"'
           properties:
             status: .status
-            url: .self
+            url: .html_url
             urgency: .urgency
             assignees: .assignments | map(.assignee.email)
             escalation_policy: .escalation_policy.summary
