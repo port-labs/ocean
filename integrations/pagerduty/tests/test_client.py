@@ -56,7 +56,9 @@ def client() -> PagerDutyClient:
 
 @pytest.mark.asyncio
 class TestPagerDutyClient:
-    async def test_paginate_request_to_pager_duty(self, client: PagerDutyClient) -> None:
+    async def test_paginate_request_to_pager_duty(
+        self, client: PagerDutyClient
+    ) -> None:
         # Simulate multiple pages of data
         mock_responses = [
             MagicMock(
@@ -173,7 +175,10 @@ class TestPagerDutyClient:
 
     async def test_get_incident_analytics(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
-        expected_analytics: Dict[str, int] = {"total_incidents": 10, "mean_time_to_resolve": 3600}
+        expected_analytics: Dict[str, int] = {
+            "total_incidents": 10,
+            "mean_time_to_resolve": 3600,
+        }
         mock_response.json.return_value = expected_analytics
 
         with patch(
