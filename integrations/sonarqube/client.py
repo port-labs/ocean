@@ -188,7 +188,9 @@ class SonarQubeClient:
             raise
 
     async def get_components(
-        self, endpoint: str, api_query_params: Optional[dict[str, Any]] = None
+        self,
+        endpoint: str = Endpoints.PROJECTS,
+        api_query_params: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
