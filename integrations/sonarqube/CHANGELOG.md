@@ -15,22 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Increased logs presence in integration (0.1.111)
 - Replaced calls to internal API for projects to GA version, making internal API use optional (0.1.111)
 
-### Bug Fixes
-
-- Fixed bug where issues/list API is not available for older SonarQube instance versions (0.1.105)
-
-
-## 0.1.111 (2024-11-15)
-
-
-### Improvements
-
-- Increased logs presence in integration (0.1.111)
-
-### Bug Fixes
-
-- Fixed bug where issues/list API is not available for older SonarQube instance versions (0.1.105)
-
 
 ## 0.1.110 (2024-11-12)
 

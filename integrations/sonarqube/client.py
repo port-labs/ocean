@@ -186,7 +186,7 @@ class SonarQubeClient:
             raise
 
     async def get_components(
-        self, api_query_params: Optional[dict[str, Any]] = None
+        self, endpoint: str, api_query_params: Optional[dict[str, Any]] = None
     ) -> list[dict[str, Any]]:
         """
         Retrieve all components from SonarQube organization.
@@ -217,7 +217,7 @@ class SonarQubeClient:
 
         try:
             response = await self.send_paginated_api_request(
-                endpoint=Endpoints.PROJECTS_INTERNAL,
+                endpoint=endpoint,
                 data_key="components",
                 query_params=query_params,
             )
@@ -310,16 +310,15 @@ class SonarQubeClient:
             all_projects[project_key] = project
 
         if selector.use_internal_api:
-            components = await self.get_components()
+            # usint the internal API to fetch more data
+            components = await self.get_components(Endpoints.PROJECTS_INTERNAL)
             for component in components:
                 all_projects[component["key"]] = {
                     **all_projects.get(component["key"], {}),
                     **component,
                 }
 
-        for project in all_projects.values():
-            project_data = await self.get_single_project(project=project)
-            yield [project_data]
+        yield [await self.get_single_project(component) for component in all_projects.values()]
 
     async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
@@ -338,6 +337,7 @@ class SonarQubeClient:
         )
 
         components = await self.get_components(
+            endpoint=Endpoints.PROJECTS,
             api_query_params=project_api_query_params
         )
         for component in components:
@@ -391,7 +391,7 @@ class SonarQubeClient:
 
         :return (list[Any]): A list containing analysis data for all components.
         """
-        components = await self.get_components()
+        components = await self.get_components(Endpoints.PROJECTS)
 
         for component in components:
             response = await self.get_analysis_by_project(component=component)
@@ -517,7 +517,7 @@ class SonarQubeClient:
     async def get_all_sonarqube_analyses(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        components = await self.get_components()
+        components = await self.get_components(Endpoints.PROJECTS)
         for component in components:
             analysis_data = await self.get_measures_for_all_pull_requests(
                 project_key=component["key"]
@@ -600,7 +600,7 @@ class SonarQubeClient:
         logger.info(f"Subscribing to webhooks in organization: {self.organization_id}")
         webhook_endpoint = Endpoints.WEBHOOKS
         invoke_url = f"{self.app_host}/integration/webhook"
-        projects = await self.get_components()
+        projects = await self.get_components(Endpoints.PROJECTS)
 
         # Iterate over projects and add webhook
         webhooks_to_create = []

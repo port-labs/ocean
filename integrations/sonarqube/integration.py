@@ -187,7 +187,7 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
         use_internal_api: bool = Field(
             alias="useInternalApi",
             description="Use internal API to fetch more data",
-            default=True,
+            default=False,
         )
 
     kind: Literal["projects"]
