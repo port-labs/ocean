@@ -87,7 +87,9 @@ class PagerDutyClient:
                 if has_more_data:
                     offset += data["limit"]
             except (httpx.HTTPStatusError, httpx.HTTPError) as e:
-                logger.error(f"Got {e.status_code} status code while fetching paginated data: {str(e)}")
+                logger.error(
+                    f"Got {e.status_code} status code while fetching paginated data: {str(e)}"
+                )
                 raise
 
     async def get_singular_from_pager_duty(
@@ -253,7 +255,9 @@ class PagerDutyClient:
                         f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}"
                     )
                     return {}
-                logger.error(f"HTTP error for endpoint '{endpoint}': Status code {e.response.status_code}, Method: {method}, Query params: {query_params}, Response text: {e.response.text}")
+                logger.error(
+                    f"HTTP error for endpoint '{endpoint}': Status code {e.response.status_code}, Method: {method}, Query params: {query_params}, Response text: {e.response.text}"
+                )
                 raise
 
     async def fetch_and_cache_users(self) -> None:
