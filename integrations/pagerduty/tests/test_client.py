@@ -1,4 +1,5 @@
 import pytest
+from typing import Dict, List, Any, Optional
 from unittest.mock import patch, MagicMock
 import httpx
 from port_ocean.context.ocean import initialize_port_ocean_context
@@ -6,13 +7,13 @@ from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedErro
 from clients.pagerduty import PagerDutyClient
 
 
-TEST_CONFIG = {
+TEST_CONFIG: Dict[str, str] = {
     "token": "mock-token",
     "api_url": "https://api.pagerduty.com",
     "app_host": "https://app.example.com",
 }
 
-TEST_DATA = {
+TEST_DATA: Dict[str, List[Dict[str, Any]]] = {
     "users": [
         {"id": "PU123", "email": "user1@example.com"},
         {"id": "PU456", "email": "user2@example.com"},
@@ -36,24 +37,26 @@ TEST_DATA = {
 
 
 @pytest.fixture(autouse=True)
-def mock_ocean_context():
+def mock_ocean_context() -> Optional[Any]:
+    """Create a mock ocean context for testing."""
     try:
         mock_app = MagicMock()
         mock_app.config.integration.config = TEST_CONFIG
         context = initialize_port_ocean_context(mock_app)
         return context
     except PortOceanContextAlreadyInitializedError:
-        pass
+        return None
 
 
 @pytest.fixture
-def client():
+def client() -> PagerDutyClient:
+    """Create a PagerDuty client fixture."""
     return PagerDutyClient(**TEST_CONFIG)
 
 
 @pytest.mark.asyncio
 class TestPagerDutyClient:
-    async def test_paginate_request_to_pager_duty(self, client):
+    async def test_paginate_request_to_pager_duty(self, client: PagerDutyClient) -> None:
         # Simulate multiple pages of data
         mock_responses = [
             MagicMock(
@@ -70,13 +73,13 @@ class TestPagerDutyClient:
         with patch(
             "port_ocean.utils.http_async_client.request", side_effect=mock_responses
         ):
-            collected_data = []
+            collected_data: List[Dict[str, Any]] = []
             async for page in client.paginate_request_to_pager_duty("users"):
                 collected_data.extend(page)
 
             assert collected_data == TEST_DATA["users"]
 
-    async def test_get_singular_from_pager_duty(self, client):
+    async def test_get_singular_from_pager_duty(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {"user": TEST_DATA["users"][0]}
 
@@ -86,7 +89,7 @@ class TestPagerDutyClient:
             result = await client.get_singular_from_pager_duty("users", "PU123")
             assert result == {"user": TEST_DATA["users"][0]}
 
-    async def test_create_webhooks_if_not_exists(self, client):
+    async def test_create_webhooks_if_not_exists(self, client: PagerDutyClient) -> None:
         # Scenario 1: No existing webhooks
         no_webhook_response = MagicMock()
         no_webhook_response.json.return_value = {
@@ -131,7 +134,7 @@ class TestPagerDutyClient:
         )
         await client_no_host.create_webhooks_if_not_exists()
 
-    async def test_get_oncall_user(self, client):
+    async def test_get_oncall_user(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "oncalls": TEST_DATA["oncalls"],
@@ -144,7 +147,7 @@ class TestPagerDutyClient:
             result = await client.get_oncall_user("PE123", "PE456")
             assert result == TEST_DATA["oncalls"]
 
-    async def test_update_oncall_users(self, client):
+    async def test_update_oncall_users(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "oncalls": TEST_DATA["oncalls"],
@@ -154,7 +157,7 @@ class TestPagerDutyClient:
         with patch(
             "port_ocean.utils.http_async_client.request", return_value=mock_response
         ):
-            services = TEST_DATA["services"].copy()
+            services: List[Dict[str, Any]] = TEST_DATA["services"].copy()
             updated = await client.update_oncall_users(services)
 
             assert len(updated) == len(services)
@@ -168,9 +171,9 @@ class TestPagerDutyClient:
                 ]
                 assert service["__oncall_user"] == matching_oncalls
 
-    async def test_get_incident_analytics(self, client):
+    async def test_get_incident_analytics(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
-        expected_analytics = {"total_incidents": 10, "mean_time_to_resolve": 3600}
+        expected_analytics: Dict[str, int] = {"total_incidents": 10, "mean_time_to_resolve": 3600}
         mock_response.json.return_value = expected_analytics
 
         with patch(
@@ -179,9 +182,9 @@ class TestPagerDutyClient:
             result = await client.get_incident_analytics("INCIDENT123")
             assert result == expected_analytics
 
-    async def test_get_service_analytics(self, client):
+    async def test_get_service_analytics(self, client: PagerDutyClient) -> None:
         mock_response = MagicMock()
-        expected_analytics = {"total_services": 5, "mean_incidents": 2}
+        expected_analytics: Dict[str, int] = {"total_services": 5, "mean_incidents": 2}
         mock_response.json.return_value = expected_analytics
 
         with patch(
@@ -190,7 +193,7 @@ class TestPagerDutyClient:
             result = await client.get_service_analytics("SERVICE123")
             assert result == expected_analytics
 
-    async def test_send_api_request(self, client):
+    async def test_send_api_request(self, client: PagerDutyClient) -> None:
         # Successful request
         mock_response = MagicMock()
         mock_response.json.return_value = {"result": "success"}
@@ -217,27 +220,13 @@ class TestPagerDutyClient:
             result = await client.send_api_request("nonexistent/endpoint")
             assert result == {}
 
-    # async def test_fetch_and_cache_users(self, client):
-    #     # Mock the paginate_request method to return test users
-    #     async def mock_paginate():
-    #         yield TEST_DATA["users"]
-
-    #     with patch.object(client, 'paginate_request_to_pager_duty', side_effect=mock_paginate):
-    #         # Create a mock for the event attributes
-    #         with patch('port_ocean.context.event.event.attributes', new_callable=dict) as mock_attributes:
-    #             await client.fetch_and_cache_users()
-
-    #             # Check if users are cached
-    #             assert mock_attributes.get("PU123") == "user1@example.com"
-    #             assert mock_attributes.get("PU456") == "user2@example.com"
-
-    async def test_transform_user_ids_to_emails(self, client):
+    async def test_transform_user_ids_to_emails(self, client: PagerDutyClient) -> None:
         # Mock the fetch_and_cache_users method to populate user cache
-        async def mock_fetch_and_cache_users():
+        async def mock_fetch_and_cache_users() -> None:
             pass
 
         # Mock get_cached_user to return emails
-        def mock_get_cached_user(user_id):
+        def mock_get_cached_user(user_id: str) -> Optional[str]:
             user_map = {"PU123": "user1@example.com", "PU456": "user2@example.com"}
             return user_map.get(user_id)
 
@@ -247,14 +236,14 @@ class TestPagerDutyClient:
             with patch.object(
                 client, "get_cached_user", side_effect=mock_get_cached_user
             ):
-                schedules = TEST_DATA["schedules"].copy()
+                schedules: List[Dict[str, Any]] = TEST_DATA["schedules"].copy()
                 transformed = await client.transform_user_ids_to_emails(schedules)
 
                 assert len(transformed[0]["users"]) == 2
                 assert transformed[0]["users"][0]["__email"] == "user1@example.com"
                 assert transformed[0]["users"][1]["__email"] == "user2@example.com"
 
-    def test_client_properties(self, client):
+    def test_client_properties(self, client: PagerDutyClient) -> None:
         # Test events lists
         assert len(client.incident_upsert_events) > 0
         assert len(client.service_upsert_events) > 0
