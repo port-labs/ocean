@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "jenkins"
-version = "0.1.64"
+version = "0.1.72"
 description = "Jenkins Integration to Port Ocean"
 authors = ["Albert Luganga <ahosea15@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-port_ocean = {version = "^0.12.4", extras = ["cli"]}
+python = "^3.12"
+port_ocean = {version = "^0.14.0", extras = ["cli"]}
 pip = "^23.3.1"
 python-dotenv = "^1.0.0"
 loguru = "^0.7.2"

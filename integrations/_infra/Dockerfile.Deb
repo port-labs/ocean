@@ -1,6 +1,7 @@
-ARG BASE_PYTHON_IMAGE=debian:trixie-slim
+ARG BASE_BUILDER_PYTHON_IMAGE=ghcr.io/port-labs/port-ocean-base-builder:latest
+ARG BASE_RUNNER_PYTHON_IMAGE=ghcr.io/port-labs/port-ocean-base-runner:latest
 
-FROM ${BASE_PYTHON_IMAGE} AS base
+FROM ${BASE_BUILDER_PYTHON_IMAGE} AS base
 
 ARG BUILD_CONTEXT
 ARG BUILDPLATFORM
@@ -10,43 +11,31 @@ ENV LIBRDKAFKA_VERSION=1.9.2 \
     POETRY_VIRTUALENVS_IN_PROJECT=1 \
     PIP_ROOT_USER_ACTION=ignore
 
-RUN apt-get update \
-    && apt-get install -y \
-        wget \
-        g++ \
-        libssl-dev \
-        autoconf \
-        automake \
-        libtool \
-        curl \
-        librdkafka-dev \
-        python3 \
-        python3-pip \
-        python3-poetry \
-    && apt-get clean
-
 WORKDIR /app
 
 COPY ./${BUILD_CONTEXT}/pyproject.toml ./${BUILD_CONTEXT}/poetry.lock /app/
 
 RUN poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
 
-FROM ${BASE_PYTHON_IMAGE} AS prod
+FROM ${BASE_RUNNER_PYTHON_IMAGE} AS prod
 
 ARG INTEGRATION_VERSION
 ARG BUILD_CONTEXT
 
 ENV LIBRDKAFKA_VERSION=1.9.2
 
+RUN apt-get update \
+    && apt-get install -y \
+        ca-certificates \
+        openssl \
+        curl \
+    && apt-get clean
+
 LABEL INTEGRATION_VERSION=${INTEGRATION_VERSION}
 # Used to ensure that new integrations will be public, see https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility
 LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean
 
 ENV PIP_ROOT_USER_ACTION=ignore
-
-RUN apt-get update \
-    && apt-get install -y librdkafka-dev python3 \
-    && apt-get clean
 
 WORKDIR /app
 
