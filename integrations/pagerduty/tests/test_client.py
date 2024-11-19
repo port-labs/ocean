@@ -4,7 +4,6 @@ import httpx
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from clients.pagerduty import PagerDutyClient
-from port_ocean.context.event import event
 
 
 TEST_CONFIG = {
