@@ -253,7 +253,7 @@ class PagerDutyClient:
                         f"Resource not found at endpoint '{endpoint}' with params: {query_params}, method: {method}"
                     )
                     return {}
-                logger.error(f"HTTP error: {e}")
+                logger.error(f"HTTP error for endpoint '{endpoint}': Status code {e.response.status_code}, Method: {method}, Query params: {query_params}, Response text: {e.response.text}")
                 raise
 
     async def fetch_and_cache_users(self) -> None:

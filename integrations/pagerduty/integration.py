@@ -147,7 +147,7 @@ class PagerdutyServiceResourceConfig(ResourceConfig):
             alias="apiQueryParams"
         )
         service_analytics: bool = Field(
-            default=False,
+            default=True,
             description="If set to true, will ingest service analytics data to Port. Default value is true",
             alias="serviceAnalytics",
         )
