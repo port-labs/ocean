@@ -37,7 +37,7 @@ TEST_DATA: Dict[str, List[Dict[str, Any]]] = {
 
 
 @pytest.fixture(autouse=True)
-def mock_ocean_context() -> Optional[Any]:
+def mock_ocean_context() -> None:
     """Create a mock ocean context for testing."""
     try:
         mock_app = MagicMock()
