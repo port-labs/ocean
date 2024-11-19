@@ -152,6 +152,7 @@ class SonarQubeClient:
                     f" and response: {response_json}"
                 )
                 resource = response_json.get(data_key, [])
+                logger.debug(f"Received {len(resource)} resources")
                 all_resources.extend(resource)
 
                 # Check for paging information and decide whether to fetch more pages
@@ -161,6 +162,7 @@ class SonarQubeClient:
 
                 query_params["p"] = paging_info["pageIndex"] + 1
 
+            logger.debug(f"Total resources fetched: {len(all_resources)}")
             return all_resources
 
         except httpx.HTTPStatusError as e:
