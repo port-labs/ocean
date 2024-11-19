@@ -87,7 +87,7 @@ class PagerDutyClient:
                 if has_more_data:
                     offset += data["limit"]
             except (httpx.HTTPStatusError, httpx.HTTPError) as e:
-                logger.error(f"Error fetching paginated data: {e}")
+                logger.error(f"Got {e.status_code} status code while fetching paginated data: {str(e)}")
                 raise
 
     async def get_singular_from_pager_duty(
