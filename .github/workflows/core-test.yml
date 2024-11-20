@@ -79,7 +79,7 @@ jobs:
           SCRIPT_TO_RUN="PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@v5
         if: ${{ always() }}
         with:
           report_paths: '**/junit/**-test-results-**/*.xml'
