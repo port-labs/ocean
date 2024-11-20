@@ -7,13 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.111 (2024-11-18)
+## 0.1.112 (2024-11-20)
 
 
 ### Improvements
 
-- Increased logs presence in integration (0.1.111)
-- Replaced calls to internal API for projects to GA version, making internal API use optional (0.1.111)
+- Increased logs presence in integration
+- Replaced calls to internal API for projects to GA version, making internal API use optional
+
+
+## 0.1.111 (2024-11-20)
+
+
+### Bug Fixes
+
+- Added defensive mechanism to fail the resyn event for the kind when no data is fetched from Sonar API
+
+### Improvements
+
+- Added more logs to track the request and response object made to the Sonar API
 
 
 ## 0.1.110 (2024-11-12)

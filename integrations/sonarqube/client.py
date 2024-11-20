@@ -128,10 +128,12 @@ class SonarQubeClient:
         query_params = query_params or {}
         query_params["ps"] = PAGE_SIZE
         all_resources = []  # List to hold all fetched resources
-
         try:
 
             while True:
+                logger.info(
+                    f"Sending API request to {method} {endpoint} with query params: {query_params}"
+                )
                 logger.info(
                     f"Sending API request to {method} {endpoint} with query params: {query_params}"
                 )
@@ -149,6 +151,9 @@ class SonarQubeClient:
                 )
                 resource = response_json.get(data_key, [])
                 logger.debug(f"Received {len(resource)} resources")
+                if not resource:
+                    logger.warning(f"No {data_key} found in response: {response_json}")
+
                 all_resources.extend(resource)
 
                 # Check for paging information and decide whether to fetch more pages

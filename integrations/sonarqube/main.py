@@ -37,14 +37,29 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise RuntimeError(
             "No projects found in Sonarqube, failing the resync to avoid data loss"
         )
+        fetched_projects = True
+
+    if not fetched_projects:
+        logger.error("No projects found in Sonarqube")
+        raise RuntimeError(
+            "No projects found in Sonarqube, failing the resync to avoid data loss"
+        )
 
 
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     fetched_issues = False
+    fetched_issues = False
     async for issues_list in sonar_client.get_all_issues():
         logger.info(f"Received issues batch of size: {len(issues_list)}")
         yield issues_list
+        fetched_issues = True
+
+    if not fetched_issues:
+        logger.error("No issues found in Sonarqube")
+        raise RuntimeError(
+            "No issues found in Sonarqube, failing the resync to avoid data loss"
+        )
         fetched_issues = True
 
     if not fetched_issues:
@@ -63,6 +78,13 @@ async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         async for analyses_list in sonar_client.get_all_sonarcloud_analyses():
             logger.info(f"Received analysis batch of size: {len(analyses_list)}")
             yield analyses_list
+            fetched_analyses = True
+
+        if not fetched_analyses:
+            logger.error("No analysis found in Sonarqube")
+            raise RuntimeError(
+                "No analysis found in Sonarqube, failing the resync to avoid data loss"
+            )
             fetched_analyses = True
 
         if not fetched_analyses:
