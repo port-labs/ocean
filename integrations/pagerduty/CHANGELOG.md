@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added rate limit to the integration
+- Added a mechanism to control concurrency and rate limit using semaphores
 
 ## 0.1.116 (2024-11-18)
 
