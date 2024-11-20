@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 # period of time, before raising an exception.
 # The max_connections value can't be too high, as it will cause the application to run out of memory.
 # The max_keepalive_connections can't be too high, as it will cause the application to run out of available connections.
-PORT_HTTP_MAX_CONNECTIONS_LIMIT = 200
+PORT_HTTP_MAX_CONNECTIONS_LIMIT = 100
 PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS = 50
 PORT_HTTP_TIMEOUT = 60.0
 
