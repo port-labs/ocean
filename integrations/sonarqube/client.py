@@ -98,11 +98,8 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        _headers = {**self.http_client.headers, "Authorization": "Bearer <masked>"}
         logger.debug(
-            f"Sending {method} request to {endpoint} with headers:"
-            f" {_headers} and json data: {json_data}"
-            f" with query params: {query_params}"
+            f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
         try:
             response = await self.http_client.request(
@@ -131,16 +128,13 @@ class SonarQubeClient:
         query_params = query_params or {}
         query_params["ps"] = PAGE_SIZE
         all_resources = []  # List to hold all fetched resources
-        _headers = {**self.http_client.headers, "Authorization": "Bearer <masked>"}
 
         try:
-            logger.debug(
-                f"Sending {method} request to {endpoint} with headers:"
-                f" {_headers} and json data: {json_data}"
-                f" with query params: {query_params}"
-            )
 
             while True:
+                logger.info(
+                    f"Sending API request to {method} {endpoint} with query params: {query_params}"
+                )
                 response = await self.http_client.request(
                     method=method,
                     url=f"{self.base_url}/api/{endpoint}",
@@ -227,7 +221,9 @@ class SonarQubeClient:
                 data_key="components",
                 query_params=query_params,
             )
-
+            logger.info(
+                f"Fetched {len(response)} components {[item.get("key") for item in response]} from SonarQube"
+            )
             return response
         except Exception as e:
             logger.error(f"Error occurred while fetching components: {e}")
