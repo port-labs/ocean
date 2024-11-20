@@ -106,18 +106,27 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                 should_raise=False,
             )
         else:
+            entities_with_search_identifier: list[Entity] = []
+            entities_without_search_identifier: list[Entity] = []
+            for entity in entities:
+                if entity.is_using_search_identifier:
+                    entities_with_search_identifier.append(entity)
+                else:
+                    entities_without_search_identifier.append(entity)
+
             ordered_created_entities = reversed(
-                order_by_entities_dependencies(entities)
+                entities_with_search_identifier
+                + order_by_entities_dependencies(entities_without_search_identifier)
             )
             for entity in ordered_created_entities:
-                modified_entities.append(
-                    await self.context.port_client.upsert_entity(
-                        entity,
-                        event.port_app_config.get_port_request_options(),
-                        user_agent_type,
-                        should_raise=False,
-                    )
+                upsertedEntity = await self.context.port_client.upsert_entity(
+                    entity,
+                    event.port_app_config.get_port_request_options(),
+                    user_agent_type,
+                    should_raise=False,
                 )
+                if upsertedEntity:
+                    modified_entities.append(upsertedEntity)
         return modified_entities
 
     async def delete(

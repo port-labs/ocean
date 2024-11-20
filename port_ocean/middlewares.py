@@ -52,7 +52,14 @@ async def request_handler(
     request_id = generate_uuid()
 
     with logger.contextualize(request_id=request_id):
-        logger.bind(url=str(request.url), method=request.method).info("Request started")
+        log_level = (
+            "DEBUG"
+            if request.url.path == "/docs" or request.url.path == "/openapi.json"
+            else "INFO"
+        )
+        logger.bind(url=str(request.url), method=request.method).log(
+            log_level, f"Request to {request.url.path} started"
+        )
         response = await _handle_silently(call_next, request)
 
         end_time = get_time(seconds_precision=False)
@@ -61,5 +68,6 @@ async def request_handler(
         response.headers["X-Process-Time"] = str(time_elapsed)
         logger.bind(
             time_elapsed=time_elapsed, response_status=response.status_code
-        ).info("Request ended")
+        ).log(log_level, f"Request to {request.url.path} ended")
+
         return response

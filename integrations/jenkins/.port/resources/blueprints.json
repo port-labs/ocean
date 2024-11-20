@@ -60,12 +60,14 @@
                     "enum": [
                         "SUCCESS",
                         "FAILURE",
-                        "UNSTABLE"
+                        "UNSTABLE",
+                        "ABORTED"
                     ],
                     "enumColors": {
                         "SUCCESS": "green",
                         "FAILURE": "red",
-                        "UNSTABLE": "yellow"
+                        "UNSTABLE": "yellow",
+                        "ABORTED": "darkGray"
                     }
                 },
                 "buildUrl": {

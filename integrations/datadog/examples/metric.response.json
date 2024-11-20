@@ -1,0 +1,68 @@
+{
+  "status": "ok",
+  "res_type": "time_series",
+  "resp_version": 1,
+  "query": "avg:system.mem.used{service:inventory-management,env:staging}",
+  "from_date": 1723796537000,
+  "to_date": 1723797137000,
+  "series": [
+    {
+      "unit": [
+        {
+          "family": "bytes",
+          "id": 2,
+          "name": "byte",
+          "short_name": "B",
+          "plural": "bytes",
+          "scale_factor": 1.0
+        }
+      ],
+      "query_index": 0,
+      "aggr": "avg",
+      "metric": "system.mem.used",
+      "tag_set": [],
+      "expression": "avg:system.mem.used{env:staging,service:inventory-management}",
+      "scope": "env:staging,service:inventory-management",
+      "interval": 2,
+      "length": 39,
+      "start": 1723796546000,
+      "end": 1723797117000,
+      "pointlist": [
+        [1723796546000.0, 528986112.0],
+        [1723796562000.0, 531886080.0],
+        [1723796576000.0, 528867328.0],
+        [1723796592000.0, 522272768.0],
+        [1723796606000.0, 533704704.0],
+        [1723796846000.0, 533028864.0],
+        [1723796862000.0, 527417344.0],
+        [1723796876000.0, 531513344.0],
+        [1723796892000.0, 533577728.0],
+        [1723796906000.0, 533471232.0],
+        [1723796922000.0, 528125952.0],
+        [1723796936000.0, 530542592.0],
+        [1723796952000.0, 530767872.0],
+        [1723796966000.0, 526966784.0],
+        [1723796982000.0, 528560128.0],
+        [1723796996000.0, 530792448.0],
+        [1723797012000.0, 527384576.0],
+        [1723797026000.0, 529534976.0],
+        [1723797042000.0, 521650176.0],
+        [1723797056000.0, 531001344.0],
+        [1723797072000.0, 525955072.0],
+        [1723797086000.0, 529469440.0],
+        [1723797102000.0, 532279296.0],
+        [1723797116000.0, 526979072.0]
+      ],
+      "display_name": "system.mem.used",
+      "attributes": {}
+    }
+  ],
+  "values": [],
+  "times": [],
+  "message": "",
+  "group_by": [],
+  "__service": "inventory-management",
+  "__query_id": "avg:system.mem.used/service:inventory-management/env:staging",
+  "__query": "avg:system.mem.used",
+  "__env": "staging"
+}

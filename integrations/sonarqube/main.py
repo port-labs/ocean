@@ -1,10 +1,10 @@
 from typing import Any
-from loguru import logger
 
-from client import SonarQubeClient
+from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
+from client import SonarQubeClient
 from integration import ObjectKind
 
 
@@ -18,37 +18,65 @@ def init_sonar_client() -> SonarQubeClient:
     )
 
 
+sonar_client = init_sonar_client()
+
+
 @ocean.on_resync(ObjectKind.PROJECTS)
 async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
-
-    sonar_client = init_sonar_client()
+    fetched_projects = False
     async for project_list in sonar_client.get_all_projects():
         yield project_list
+        fetched_projects = True
+
+    if not fetched_projects:
+        logger.error("No projects found in Sonarqube")
+        raise RuntimeError(
+            "No projects found in Sonarqube, failing the resync to avoid data loss"
+        )
 
 
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sonar_client = init_sonar_client()
+    fetched_issues = False
     async for issues_list in sonar_client.get_all_issues():
         yield issues_list
+        fetched_issues = True
+
+    if not fetched_issues:
+        logger.error("No issues found in Sonarqube")
+        raise RuntimeError(
+            "No issues found in Sonarqube, failing the resync to avoid data loss"
+        )
 
 
 @ocean.on_resync(ObjectKind.ANALYSIS)
 @ocean.on_resync(ObjectKind.SASS_ANALYSIS)
 async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sonar_client = init_sonar_client()
     if not ocean.integration_config["sonar_is_on_premise"]:
+        fetched_analyses = False
         async for analyses_list in sonar_client.get_all_sonarcloud_analyses():
             yield analyses_list
+            fetched_analyses = True
+
+        if not fetched_analyses:
+            logger.error("No analysis found in Sonarqube")
+            raise RuntimeError(
+                "No analysis found in Sonarqube, failing the resync to avoid data loss"
+            )
 
 
 @ocean.on_resync(ObjectKind.ONPREM_ANALYSIS)
 async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    sonar_client = init_sonar_client()
     if ocean.integration_config["sonar_is_on_premise"]:
         async for analyses_list in sonar_client.get_all_sonarqube_analyses():
             yield analyses_list
+
+
+@ocean.on_resync(ObjectKind.PORTFOLIOS)
+async def on_portfolio_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for portfolio_list in sonar_client.get_all_portfolios():
+        yield portfolio_list
 
 
 @ocean.router.post("/webhook")
@@ -56,7 +84,6 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
     logger.info(
         f"Processing Sonarqube webhook for event type: {webhook_data.get('project', {}).get('key')}"
     )
-    sonar_client = init_sonar_client()
 
     project = await sonar_client.get_single_component(
         webhook_data.get("project", {})
@@ -89,7 +116,6 @@ async def on_start() -> None:
                 "Organization ID is required for SonarCloud. Please specify a valid sonarOrganizationId"
             )
 
-    sonar_client = init_sonar_client()
     sonar_client.sanity_check()
 
     if ocean.event_listener_type == "ONCE":

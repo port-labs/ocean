@@ -20,6 +20,9 @@ class ProjectFiles(ProjectHandler):
     system_events = ["push"]
 
     async def _on_hook(self, body: dict[str, Any], gitlab_project: Project) -> None:
+        logger.debug(
+            f"Handling push hook for project {gitlab_project.path_with_namespace}, ref: {body.get('ref')}, commit_id: {body.get('after')}"
+        )
         added_files = [
             added_file
             for commit in body.get("commits", [])
@@ -50,7 +53,9 @@ class ProjectFiles(ProjectHandler):
             )
         ]
         if not matching_resource_configs:
-            logger.debug("Could not find file kind to handle the push event")
+            logger.debug(
+                f"Could not find file kind to handle the push event for project {gitlab_project.path_with_namespace}"
+            )
             return
 
         for resource_config in matching_resource_configs:
@@ -61,7 +66,7 @@ class ProjectFiles(ProjectHandler):
             if self.gitlab_service.should_process_project(
                 gitlab_project, selector.files.repos
             ):
-                matched_file_paths = await self.gitlab_service._get_file_paths(
+                matched_file_paths = await self.gitlab_service.get_all_file_paths(
                     gitlab_project, selector.files.path, gitlab_project.default_branch
                 )
                 await self._process_modified_files(

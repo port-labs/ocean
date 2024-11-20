@@ -1,24 +1,27 @@
 [tool.poetry]
 name = "jira"
-version = "0.1.77"
+version = "0.1.100"
 description = "Integration to bring information from Jira into Port"
 authors = ["Mor Paz <mor@getport.io>"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-port_ocean = {version = "^0.10.0", extras = ["cli"]}
-httpx = "^0.24.1"
+python = "^3.12"
+port_ocean = {version = "^0.14.0", extras = ["cli"]}
+httpx = "^0.27.0"
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
 # port_ocean = { path = '../../', develop = true, extras = ['all'] }
-pytest = "^7.2"
 black = "^24.4.2"
 mypy = "^1.3.0"
-ruff = "^0.0.278"
-pylint = "^2.17.4"
-towncrier = "^23.6.0"
+pylint = ">=2.17.4,<4.0.0"
+pytest = ">=8.2,<9.0"
+pytest-asyncio = ">=0.24.0"
+pytest-httpx = ">=0.30.0"
 pytest-xdist = "^3.6.1"
+ruff = "^0.6.3"
+towncrier = "^23.6.0"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"
@@ -105,3 +108,8 @@ exclude = '''
   |\.venv
 )/
 '''
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-vv -n auto ./tests"

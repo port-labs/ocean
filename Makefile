@@ -5,7 +5,7 @@ define run_checks
 	cd $1; \
 	poetry check || exit_code=$$?;\
 	mypy . --exclude '/\.venv/' || exit_code=$$?; \
-	ruff . || exit_code=$$?; \
+	ruff check . || exit_code=$$?; \
 	black --check . || exit_code=$$?; \
 	yamllint . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
@@ -43,7 +43,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all lint build run new test clean bump/integrations bump/single-integration
+.SILENT: install install/all test/all test/smoke clean/smoke lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all
 
 
 # Install dependencies
@@ -55,7 +55,29 @@ install:
 	$(call install_precommit)
 
 test/all: test
-	pytest --import-mode=importlib -n auto ./port_ocean/tests ./integrations/*/tests
+	$(ACTIVATE) && \
+	for dir in $(wildcard $(CURDIR)/integrations/*); do \
+		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
+		if [ $$count -ne 0 ]; then \
+			echo "Testing $$dir"; \
+		  	cd $$dir; \
+			$(MAKE) test || exit_code=$$?; \
+			cd ../..; \
+		fi; \
+	done;
+
+
+execute/all:
+	# run script for all integrations (${SCRIPT_TO_RUN})
+	for dir in $(wildcard $(CURDIR)/integrations/*); do \
+		count=$$(find $$dir -type f -name '*.py' -not -path "*/venv/*" | wc -l); \
+		if [ $$count -ne 0 ]; then \
+			echo "Running '${SCRIPT_TO_RUN}' $$dir"; \
+		  	cd $$dir; \
+			${SCRIPT_TO_RUN} || exit_code=$$?; \
+			cd ../..; \
+		fi; \
+	done;
 
 install/all: install
 	exit_code=0; \
@@ -77,6 +99,11 @@ lint:
 	$(ACTIVATE) && \
 	$(call run_checks,.)
 
+lint/fix:
+	$(ACTIVATE) && \
+	black .
+	ruff check --fix .
+
 # Development commands
 build:
 	$(ACTIVATE) && poetry build
@@ -88,7 +115,19 @@ new:
 	$(ACTIVATE) && poetry run ocean new ./integrations --public
 
 test:
-	$(ACTIVATE) && pytest -vv -n auto --ignore-glob=./integrations/* ./port_ocean/tests
+	$(ACTIVATE) && pytest -m 'not smoke'
+
+test/smoke:
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} pytest -m smoke
+
+clean/smoke:
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./scripts/clean-smoke-test.py
+
+test/watch:
+	$(ACTIVATE) && \
+		pytest \
+			--color=yes \
+			-f
 
 clean:
 	@find . -name '.venv' -type d -exec rm -rf {} \;

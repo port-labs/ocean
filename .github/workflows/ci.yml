@@ -37,7 +37,6 @@ jobs:
           echo $(echo ${integrations_to_build[@]} | jq -R -c 'split(" ")')
           echo "INTEGRATIONS_MATRIX=$(echo ${integrations_to_build[@]} | jq -R -c 'split(" ")')" >> $GITHUB_OUTPUT
 
-
   build-integration:
     runs-on: ubuntu-latest
     if: needs.prepare-matrix.outputs.matrix != '[]'
@@ -47,17 +46,16 @@ jobs:
       contents: read
     needs: [prepare-matrix]
     strategy:
+      max-parallel: 10
       matrix:
         integration: ${{fromJson(needs.prepare-matrix.outputs.matrix)}}
+        platform:
+          - linux/amd64
+          - linux/arm64
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+
       - name: Prepare Docker images tags
         id: prepare_tags
         run: |
@@ -73,6 +71,7 @@ jobs:
 
           dockerfile_path=integrations/_infra/Dockerfile
           if test -e $folder/../Dockerfile; then
+            echo "Choosing a custom Dockerfile for ${{ matrix.integration }}"
             dockerfile_path=$folder/../Dockerfile
           fi
           echo "dockerfile_path=$dockerfile_path" >> $GITHUB_OUTPUT
@@ -91,14 +90,15 @@ jobs:
             echo "is_dev_version=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build
-        uses: docker/build-push-action@v6
+      - name: Build Docker Image
+        uses: ./.github/workflows/actions/build-docker-image
         with:
-          context: .
-          file: ${{ steps.prepare_tags.outputs.dockerfile_path }}
-          platforms: linux/amd64,linux/arm64
-          push: false
+          dockerfile: ${{ steps.prepare_tags.outputs.dockerfile_path }}
+          platforms: ${{ matrix.platform }}
           tags: ${{ steps.prepare_tags.outputs.tags }}
           build-args: |
             BUILD_CONTEXT=${{ steps.prepare_tags.outputs.context_dir }}
             INTEGRATION_VERSION=${{ steps.prepare_tags.outputs.version }}
+          docker-user: ${{ secrets.DOCKER_MACHINE_USER }}
+          docker-password: ${{ secrets.DOCKER_MACHINE_TOKEN }}
+          skip-push: 'true'

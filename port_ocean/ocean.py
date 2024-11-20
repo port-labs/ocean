@@ -70,6 +70,8 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
 
+        self.app_initialized = False
+
     def is_saas(self) -> bool:
         return self.config.runtime == Runtime.Saas
 
@@ -82,6 +84,10 @@ class Ocean:
             try:
                 await self.integration.sync_raw_all()
                 await self.resync_state_updater.update_after_resync()
+            except asyncio.CancelledError:
+                logger.warning(
+                    "resync was cancelled by the scheduled resync, skipping state update"
+                )
             except Exception as e:
                 await self.resync_state_updater.update_after_resync(
                     IntegrationStateStatus.Failed
@@ -89,9 +95,11 @@ class Ocean:
                 raise e
 
         interval = self.config.scheduled_resync_interval
+        loop = asyncio.get_event_loop()
         if interval is not None:
             logger.info(
-                f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)"
+                f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)",
+                scheduled_interval=interval,
             )
             repeated_function = repeat_every(
                 seconds=interval * 60,
@@ -99,12 +107,14 @@ class Ocean:
                 wait_first=True,
             )(
                 lambda: threading.Thread(
-                    target=lambda: asyncio.run(execute_resync_all())
+                    target=lambda: asyncio.run_coroutine_threadsafe(
+                        execute_resync_all(), loop
+                    )
                 ).start()
             )
             await repeated_function()
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         @asynccontextmanager
@@ -115,9 +125,16 @@ class Ocean:
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
+                logger.complete()
                 sys.exit("Server stopped")
             finally:
                 signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
+        self.app_initialized = True
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if not self.app_initialized:
+            self.initialize_app()
+
         await self.fast_api_app(scope, receive, send)
