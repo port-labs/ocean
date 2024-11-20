@@ -125,13 +125,11 @@ class SonarQubeClient:
         query_params = query_params or {}
         query_params["ps"] = PAGE_SIZE
         all_resources = []  # List to hold all fetched resources
-
         try:
-            logger.debug(
-                f"Sending API request to {method} {endpoint} with query params: {query_params}"
-            )
-
             while True:
+                logger.info(
+                    f"Sending API request to {method} {endpoint} with query params: {query_params}"
+                )
                 response = await self.http_client.request(
                     method=method,
                     url=f"{self.base_url}/api/{endpoint}",
@@ -141,6 +139,9 @@ class SonarQubeClient:
                 response.raise_for_status()
                 response_json = response.json()
                 resource = response_json.get(data_key, [])
+                if not resource:
+                    logger.warning(f"No {data_key} found in response: {response_json}")
+
                 all_resources.extend(resource)
 
                 # Check for paging information and decide whether to fetch more pages
@@ -210,7 +211,9 @@ class SonarQubeClient:
                 data_key="components",
                 query_params=query_params,
             )
-
+            logger.info(
+                f"Fetched {len(response)} components {[item.get("key") for item in response]} from SonarQube"
+            )
             return response
         except Exception as e:
             logger.error(f"Error occurred while fetching components: {e}")
