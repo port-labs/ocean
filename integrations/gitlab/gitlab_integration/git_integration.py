@@ -121,6 +121,25 @@ class GitlabResourceConfig(ResourceConfig):
     selector: GitlabSelector
 
 
+class GitlabMemberSelector(Selector):
+
+    include_inherited_members: bool = Field(
+        alias="includeInheritedMembers",
+        default=False,
+        description="If set to true, the integration will include inherited members in the group members list. Default value is false",
+    )
+    include_bot_members: bool = Field(
+        alias="includeBotMembers",
+        default=True,
+        description="If set to false, bots will be filtered out from the members list. Default value is true",
+    )
+
+
+class GitlabObjectWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["project-with-members", "group-with-members"]
+    selector: GitlabMemberSelector
+
+
 class FilesSelector(BaseModel):
     path: str = Field(description="The path to get the files from")
     repos: List[str] = Field(
@@ -146,7 +165,7 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-    resources: list[GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitlabObjectWithMembersResourceConfig | GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

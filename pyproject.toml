@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.12.7"
+version = "0.14.0"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -35,12 +35,12 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 pydantic = { version = "^1.10.8", extras = ["dotenv"] }
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=2.3.4,<4.0.0"
-fastapi = ">=0.100,<0.112"
+fastapi = "^0.115.3"
 uvicorn = ">=0.22,<0.31"
 confluent-kafka = "^2.1.1"
 httpx = ">=0.24.1,<0.28.0"
@@ -147,6 +147,7 @@ disallow_untyped_defs = true
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 exclude = ['venv', '.venv', 'integrations']
+target-version = "py311"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -156,7 +157,7 @@ warn_untyped_fields = true
 
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py312']
 include = '\.pyi?$'
 exclude = '''
 /(

@@ -7,6 +7,8 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.context import EventContextNotFoundError
 
+RETRY_TRANSIENT_ERRORS = True
+
 
 def get_all_services() -> List[GitlabService]:
     logic_settings = ocean.integration_config
@@ -16,7 +18,11 @@ def get_all_services() -> List[GitlabService]:
         f"Creating gitlab clients for {len(logic_settings['token_mapping'])} tokens"
     )
     for token, group_mapping in logic_settings["token_mapping"].items():
-        gitlab_client = Gitlab(logic_settings["gitlab_host"], token)
+        gitlab_client = Gitlab(
+            logic_settings["gitlab_host"],
+            token,
+            retry_transient_errors=RETRY_TRANSIENT_ERRORS,
+        )
         gitlab_service = GitlabService(
             gitlab_client, logic_settings["app_host"], group_mapping
         )
@@ -46,3 +52,5 @@ class ObjectKind:
     PROJECT = "project"
     FOLDER = "folder"
     FILE = "file"
+    GROUPWITHMEMBERS = "group-with-members"
+    PROJECTWITHMEMBERS = "project-with-members"

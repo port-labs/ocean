@@ -28,7 +28,9 @@ async def resync_persons(kind: str) -> List[Dict[Any, Any]]:
     return persons
 
 
+initialize_fake_routes()
+
+
 @ocean.on_start()
 async def on_start() -> None:
     print("Starting fake integration!")
-    initialize_fake_routes()
