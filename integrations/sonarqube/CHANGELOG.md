@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added more logs to track the API request and response made to the Sonar API
+- Added more logs to track the request and response object made to the Sonar API
 
 
 ## 0.1.110 (2024-11-12)
