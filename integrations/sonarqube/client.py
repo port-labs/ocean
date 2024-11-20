@@ -1,6 +1,7 @@
 import asyncio
 import base64
 from typing import Any, AsyncGenerator, Generator, Optional, cast
+from itertools import islice
 
 import httpx
 from loguru import logger
@@ -46,6 +47,7 @@ class Endpoints:
 
 
 PAGE_SIZE = 100
+PROJECTS_RESYNC_BATCH_SIZE = 10
 
 PORTFOLIO_VIEW_QUALIFIERS = ["VW", "SVW"]
 
@@ -300,32 +302,45 @@ class SonarQubeClient:
         """
         Retrieve all projects from SonarQube API.
 
-        :return (list[Any]): A list containing projects data for your organization.
+        :return: A list containing projects data for your organization.
         """
         logger.info(f"Fetching all projects in organization: {self.organization_id}")
         selector = cast(SonarQubeProjectResourceConfig, event.resource_config).selector
         self.metrics = selector.metrics
 
-        all_projects = {}
-        for project in await self.send_paginated_api_request(
-            endpoint=Endpoints.PROJECTS, data_key="components"
-        ):
-            project_key = project.get("key")
-            all_projects[project_key] = project
+        components = await self.get_components(endpoint=Endpoints.PROJECTS)
+
+        all_components = {component["key"]: component for component in components}
 
         if selector.use_internal_api:
-            # usint the internal API to fetch more data
-            components = await self.get_components(Endpoints.PROJECTS_INTERNAL)
-            for component in components:
-                all_projects[component["key"]] = {
-                    **all_projects.get(component["key"], {}),
-                    **component,
+            logger.info("Fetching projects using the internal API")
+            components_from_internal_api = await self.get_components(
+                Endpoints.PROJECTS_INTERNAL
+            )
+            all_components.update(
+                {
+                    component["key"]: {
+                        **all_components.get(component["key"], {}),
+                        **component,
+                    }
+                    for component in components_from_internal_api
                 }
+            )
 
-        yield [
-            await self.get_single_project(component)
-            for component in all_projects.values()
-        ]
+        components_batch_iter = iter(all_components.values())
+        projects_processed_in_batch = 0
+        while components_batch := tuple(
+            islice(components_batch_iter, PROJECTS_RESYNC_BATCH_SIZE)
+        ):
+
+            logger.info(
+                f"Processing {projects_processed_in_batch}/{len(all_components)} projects in batch"
+            )
+            enriched_projects = await asyncio.gather(
+                *[self.get_single_project(component) for component in components_batch]
+            )
+            yield enriched_projects
+            projects_processed_in_batch += len(components_batch)
 
     async def get_all_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
