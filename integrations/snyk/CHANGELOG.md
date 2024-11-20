@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+
+## 0.1.102 (2024-11-14)
+
+
+### Improvements
+
+- Added rate limiting handling to the integration to prevent reaching the Snyk API rate limit
+
+
 ## 0.1.101 (2024-11-12)
 
 

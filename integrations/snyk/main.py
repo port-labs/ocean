@@ -8,11 +8,13 @@ from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-
+from aiolimiter import AsyncLimiter
 from snyk.client import SnykClient
 from snyk.overrides import ProjectResourceConfig
 
 CONCURRENT_REQUESTS = 20
+SNYK_LIMIT = 1320
+RATELIMITER = AsyncLimiter(SNYK_LIMIT)
 
 
 class ObjectKind(StrEnum):
@@ -46,6 +48,7 @@ def init_client() -> SnykClient:
         parse_list(ocean.integration_config.get("organization_id", "")),
         parse_list(ocean.integration_config.get("groups", "")),
         ocean.integration_config.get("webhook_secret"),
+        RATELIMITER,
     )
 
 
