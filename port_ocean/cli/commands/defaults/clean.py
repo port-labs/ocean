@@ -51,4 +51,6 @@ def clean(path: str, force: bool, wait: bool) -> None:
         default_app,
     )
 
-    clean_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, force, wait)
+    clean_defaults(
+        app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config, force, wait
+    )
