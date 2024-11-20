@@ -62,7 +62,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         wrapped_transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport],
         max_attempts: int = 10,
         max_backoff_wait: float = MAX_BACKOFF_WAIT,
-        base_delay: float = 0.15,
+        base_delay: float = 0.3,
         jitter_ratio: float = 0.1,
         respect_retry_after_header: bool = True,
         retryable_methods: Iterable[str] | None = None,
