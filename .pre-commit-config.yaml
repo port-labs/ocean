@@ -1,0 +1,22 @@
+exclude: 'cookiecutter.*'
+repos:
+  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-executables-have-shebangs
+      - id: check-symlinks
+      - id: detect-aws-credentials
+  - repo: local
+    hooks:
+      - id: fix lint
+        name: Fix linter
+        description: This hooks fixes our linters
+        entry: make lint/fix
+        language: system
+        types:
+          - python

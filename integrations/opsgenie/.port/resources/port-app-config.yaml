@@ -1,25 +1,59 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: team
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"opsGenieTeam"'
+          properties:
+            description: .description
+            url: .links.web
+  - kind: schedule
+    selector:
+      query: 'true'
+      apiQueryParams:
+        expand: rotation
+    port:
+      itemsToParse: .rotations
+      entity:
+        mappings:
+          identifier: .id + "_" + .item.id
+          title: .name + "_" + .item.name
+          blueprint: '"opsGenieSchedule"'
+          properties:
+            timezone: .timezone
+            description: .description
+            startDate: .item.startDate
+            endDate: .item.endDate
+            rotationType: .item.type
+            users: '[.item.participants[] | select(has("username")) | .username]'
+          relations:
+            ownerTeam: .ownerTeam.id
   - kind: service
     selector:
       query: 'true'
     port:
       entity:
         mappings:
-          identifier: .name | gsub("[^a-zA-Z0-9@_.:/=-]"; "-") | tostring
+          identifier: .id
           title: .name
           blueprint: '"opsGenieService"'
           properties:
             description: .description
             url: .links.web
             tags: .tags
-            oncallTeam: .__team.name
-            teamMembers: '[.__team.members[].user.username]'
-            oncallUsers: .__oncalls.onCallRecipients
+          relations:
+            ownerTeam: .teamId
   - kind: alert
     selector:
       query: 'true'
+      apiQueryParams:
+        status: open
     port:
       entity:
         mappings:
@@ -40,10 +74,12 @@ resources:
             description: .description
             integration: .integration.name
           relations:
-            relatedIncident: .__relatedIncident.id
+            relatedIncident: 'if (.alias | contains("_")) then (.alias | split("_")[0]) else null end'
   - kind: incident
     selector:
       query: 'true'
+      apiQueryParams:
+        status: open
     port:
       entity:
         mappings:
@@ -60,4 +96,15 @@ resources:
             updatedAt: .updatedAt
             description: .description
           relations:
-            services: '[.__impactedServices[] | .name | gsub("[^a-zA-Z0-9@_.:/=-]"; "-") | tostring]'
+            services: .impactedServices
+  - kind: schedule-oncall
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .ownerTeam.id
+          title: .ownerTeam.name
+          blueprint: '"opsGenieTeam"'
+          properties:
+            oncallUsers: .__currentOncalls.onCallRecipients

@@ -5,9 +5,9 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from httpx import Timeout
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+from aiolimiter import AsyncLimiter
 
 
 class CacheKeys(StrEnum):
@@ -28,14 +28,15 @@ class SnykClient:
         token: str,
         api_url: str,
         app_host: str | None,
-        organization_id: str | None,
-        group_ids: str | None,
+        organization_ids: list[str] | None,
+        group_ids: list[str] | None,
         webhook_secret: str | None,
+        rate_limiter: AsyncLimiter,
     ):
         self.token = token
         self.api_url = f"{api_url}/v1"
         self.app_host = app_host
-        self.organization_id = organization_id
+        self.organization_ids = organization_ids
         self.group_ids = group_ids
         self.rest_api_url = f"{api_url}/rest"
         self.webhook_secret = webhook_secret
@@ -43,6 +44,7 @@ class SnykClient:
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
         self.snyk_api_version = "2024-06-21"
+        self.rate_limiter = rate_limiter
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -60,20 +62,21 @@ class SnykClient:
             **(query_params or {}),
             **({"version": version} if version is not None else {}),
         }
-        try:
-            response = await self.http_client.request(
-                method=method, url=url, params=query_params, json=json_data
-            )
-            response.raise_for_status()
-            return response.json()
+        async with self.rate_limiter:
+            try:
+                response = await self.http_client.request(
+                    method=method, url=url, params=query_params, json=json_data
+                )
+                response.raise_for_status()
+                return response.json()
 
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
-                f"version: {version}, json: {json_data}. "
-                f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
-            )
-            raise
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
+                    f"version: {version}, json: {json_data}. "
+                    f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
+                )
+                raise
 
     async def _get_paginated_resources(
         self,
@@ -407,32 +410,31 @@ class SnykClient:
 
         all_organizations = await self.get_all_organizations()
 
-        if self.organization_id:
-            logger.info(f"Specified organization ID: {self.organization_id}")
+        if self.organization_ids:
+            logger.info(f"Specified organization ID(s): {self.organization_ids}")
             matching_organization = [
-                org for org in all_organizations if org["id"] == self.organization_id
+                org for org in all_organizations if org["id"] in self.organization_ids
             ]
-
+            logger.info(
+                f"Fetched {len(matching_organization)} organizations for the given organization ID(s)."
+            )
             if matching_organization:
                 event.attributes[CacheKeys.GROUP] = matching_organization
                 return matching_organization
             else:
                 logger.warning(
-                    f"Specified organization ID '{self.organization_id}' not found in the fetched organizations."
+                    f"Specified organization ID(s) '{self.organization_ids}' not found in the fetched organizations."
                 )
                 return []
-
         elif self.group_ids:
-            groups = self.group_ids.split(",")
-
             logger.info(
-                f"Found {len(groups)} groups to filter. Group IDs: {str(groups)}. Getting all organizations associated with these groups"
+                f"Found {len(self.group_ids)} groups to filter. Group IDs: {str(self.group_ids)}. Getting all organizations associated with these groups"
             )
-
             matching_organizations_in_groups = [
                 org
                 for org in all_organizations
-                if org.get("attributes") and org["attributes"].get("group_id") in groups
+                if org.get("attributes")
+                and org["attributes"].get("group_id") in self.group_ids
             ]
 
             logger.info(

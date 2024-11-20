@@ -1,4 +1,4 @@
-from typing import Any, Literal, Type
+from typing import Any, Literal, Type, cast
 
 from pydantic import Extra, AnyHttpUrl, parse_obj_as, parse_raw_as
 from pydantic.class_validators import root_validator, validator
@@ -55,9 +55,8 @@ class IntegrationSettings(BaseOceanModel, extra=Extra.allow):
             integ_type = get_integration_name()
 
         values["type"] = integ_type.lower() if integ_type else None
-        values["identifier"] = values.get(
-            "identifier", f"my-{integ_type}-integration".lower()
-        )
+        if not values.get("identifier"):
+            values["identifier"] = f"my-{integ_type}-integration".lower()
 
         return values
 
@@ -68,13 +67,18 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     allow_environment_variables_jq_access: bool = True
     initialize_port_resources: bool = True
     scheduled_resync_interval: int | None = None
-    client_timeout: int = 30
+    client_timeout: int = 60
     send_raw_data_examples: bool = True
     port: PortSettings
-    event_listener: EventListenerSettingsType
+    event_listener: EventListenerSettingsType = Field(
+        default=cast(EventListenerSettingsType, {"type": "POLLING"})
+    )
     # If an identifier or type is not provided, it will be generated based on the integration name
-    integration: IntegrationSettings = IntegrationSettings(type="", identifier="")
-    runtime: Runtime = "OnPrem"
+    integration: IntegrationSettings = Field(
+        default_factory=lambda: IntegrationSettings(type="", identifier="")
+    )
+    runtime: Runtime = Runtime.OnPrem
+    resources_path: str = Field(default=".port/resources")
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -98,8 +102,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         return values
 
     @validator("runtime")
-    def validate_runtime(cls, runtime: Literal["OnPrem", "Saas"]) -> Runtime:
-        if runtime == "Saas":
+    def validate_runtime(cls, runtime: Runtime) -> Runtime:
+        if runtime == Runtime.Saas:
             spec = get_spec_file()
             if spec is None:
                 raise ValueError(

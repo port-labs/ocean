@@ -1,18 +1,20 @@
 import asyncio
 import hashlib
 import hmac
-from typing import Any, cast
+from typing import Any, cast, Optional
 from enum import StrEnum
 from fastapi import Request
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
-
+from aiolimiter import AsyncLimiter
 from snyk.client import SnykClient
 from snyk.overrides import ProjectResourceConfig
 
 CONCURRENT_REQUESTS = 20
+SNYK_LIMIT = 1320
+RATELIMITER = AsyncLimiter(SNYK_LIMIT)
 
 
 class ObjectKind(StrEnum):
@@ -36,13 +38,17 @@ def generate_signature(payload: bytes, secret: str) -> str:
 
 
 def init_client() -> SnykClient:
+    def parse_list(value: str) -> Optional[list[str]]:
+        return [item.strip() for item in value.split(",")] if value else None
+
     return SnykClient(
         ocean.integration_config["token"],
         ocean.integration_config["api_url"],
         ocean.integration_config.get("app_host"),
-        ocean.integration_config.get("organization_id"),
-        ocean.integration_config.get("groups"),
+        parse_list(ocean.integration_config.get("organization_id", "")),
+        parse_list(ocean.integration_config.get("groups", "")),
         ocean.integration_config.get("webhook_secret"),
+        RATELIMITER,
     )
 
 

@@ -13,18 +13,22 @@ class Rule(BaseModel):
     value: str
 
 
-class SearchRelation(BaseModel):
+class IngestSearchQuery(BaseModel):
     combinator: str
-    rules: list[Rule | SearchRelation]
+    rules: list[Rule | IngestSearchQuery]
 
 
 class EntityMapping(BaseModel):
-    identifier: str
+    identifier: str | IngestSearchQuery
     title: str | None
     blueprint: str
     team: str | None
     properties: dict[str, str] = Field(default_factory=dict)
-    relations: dict[str, str | SearchRelation] = Field(default_factory=dict)
+    relations: dict[str, str | IngestSearchQuery] = Field(default_factory=dict)
+
+    @property
+    def is_using_search_identifier(self) -> bool:
+        return isinstance(self.identifier, dict)
 
 
 class MappingsConfig(BaseModel):

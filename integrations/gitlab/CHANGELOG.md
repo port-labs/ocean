@@ -7,12 +7,328 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.1.141 (2024-11-13)
+===================
+
+### Features
+
+- Added support for gitlab member ingestion (PORT-7708)
+
+
+0.1.140 (2024-11-12)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
+0.1.139 (2024-11-12)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+0.1.138 (2024-11-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+0.1.137 (2024-11-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
+0.1.136 (2024-11-06)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+0.1.135 (2024-10-31)
+====================
+
+### Improvements
+
+- Explicitly declaring the file search in projects to use the advanced search type, in cases where the default search in gitlab changes.
+- Enhanced more verbosity on file kind
+
+
+0.1.134 (2024-10-23)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.7
+
+
+0.1.133 (2024-10-22)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.6
+
+
+0.1.132 (2024-10-14)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.4
+
+
+0.1.131 (2024-10-09)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.3
+
+
+0.1.130 (2024-10-08)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.2
+
+
+0.1.129 (2024-10-02)
+====================
+
+### Bug Fixes
+
+- Removed keyset pagination parameters from the listing of repository tree so the application can paginate data using the standard page index and page size parameters in the AsyncFetcher.fetch_batch (0.1.129)
+
+
+0.1.128 (2024-10-02)
+====================
+
+### Improvements
+
+- Improved real time event handling and added more verbosity on event handling
+
+
+0.1.127 (2024-10-01)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.1
+
+
+0.1.126 (2024-09-29)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.11.0
+
+
+0.1.125 (2024-09-25)
+====================
+
+### Improvements
+
+- Added log for when file kind's project iteration found a relevant project, and for when the batch entirely isn't relevant
+
+
+0.1.124 (2024-09-24)
+====================
+
+### Improvements
+
+- Added more logs and implemented the webhook creation in async (0.1.124)
+
+
+0.1.123 (2024-09-22)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.12
+
+
+0.1.122 (2024-09-17)
+====================
+
+### Improvements
+
+- Updated the webhook creation logic to recreate hooks for urls that are disabled by GitLab (0.1.122)
+
+
+0.1.121 (2024-09-17)
+====================
+
+### Improvements
+
+- Improved on the way the integration handles GitOps push events by using only files that have been changed in the push even rather than fetching the entire repository tree (0.1.121)
+
+
+0.1.120 (2024-09-17)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.11
+
+
+0.1.119 (2024-09-12)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.10 (#1)
+
+
+0.1.118 (2024-09-05)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.9 (#1)
+
+
+0.1.117 (2024-09-05)
+====================
+
+### Bugfixes
+
+- Fixed case the project should be collected from the token but not from the repos specification (#1)
+- Added log for empty pages of projects and didn't return them (#1)
+
+0.1.116 (2024-09-04)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.8 (#1)
+
+
+0.1.114 (2024-08-29)
+====================
+
+### Improvements
+
+- Improved Resync performance for file-kind: Now will search if the project has a file-base name for the searched file-kind, and only after the metadata object gets filtered as relevant, we pull the file kind. (#1)
+- Improved Resync stability using an aiolimiter to make sure calls to the Gitlab API aren't getting rate-limited, In a way that's not blocking the event loop (as Gitlab's way of handling a rate-limit is a time.sleep, which blocks the entire event loop)
+- Improved verbosity for the resync, as more logs and pagination were taken place.
+- Improved Real-time mechanism - now paginating through a file instead of waiting for Gitlab's api to return the entire repository tree.
+
+
+0.1.115 (2024-09-01)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.7 (#1)
+
+
+0.1.114 (2024-08-30)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.5 (#1)
+
+
+0.1.113 (2024-08-28)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.4 (#1)
+
+
+0.1.112 (2024-08-28)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.3 (#1)
+
+
+0.1.111 (2024-08-26)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.2 (#1)
+
+
+0.1.110 (2024-08-26)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.1 (#1)
+
+
+0.1.109 (2024-08-22)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.10.0 (#1)
+
+
+0.1.108 (2024-08-20)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.9.14 (#1)
+
+
+0.1.107 (2024-08-19)
+====================
+
+### Bug Fixes
+
+- Fixed merge requests and issue resync methods to use an async method of listing root groups to avoid blocking the event loop
+
+
+0.1.106 (2024-08-19)
+====================
+
+### Bug Fixes
+
+- Fixed an issue when we were still processing a file larger than the allowed file size
+- Added more verbosity to the logs of the file kind
+
+
+0.1.105 (2024-08-15)
+===================
+
+### Improvements
+
+- Added description to configuration properties in spec.yaml (PORT-9538)
+
+
+0.1.104 (2024-08-14)
+====================
+
+### Improvements
+
+- Fixed issue with webhook not syncing repository languages
+
+
 0.1.103 (2024-08-14)
 ====================
 
 ### Improvements
 
-- Added support for exporting files 
+- Added support for exporting files
 
 
 0.1.102 (2024-08-13)
@@ -496,7 +812,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Improvements
 
-- Updated templates to have description in scorecard rules and pie charts (#1) 
+- Updated templates to have description in scorecard rules and pie charts (#1)
 
 
 ## 0.1.42 (2024-01-01)

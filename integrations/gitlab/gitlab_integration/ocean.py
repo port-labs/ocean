@@ -15,15 +15,27 @@ from gitlab_integration.events.setup import setup_application
 from gitlab_integration.git_integration import (
     GitlabResourceConfig,
     GitLabFilesResourceConfig,
+    GitlabObjectWithMembersResourceConfig,
 )
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.log.sensetive import sensitive_log_filter
+from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
 NO_WEBHOOK_WARNING = "Without setting up the webhook, the integration will not export live changes from the gitlab"
-PROJECT_RESYNC_BATCH_SIZE = 10
+RESYNC_BATCH_SIZE = 10
+
+
+async def start_processors() -> None:
+    """Helper function to start the event processors."""
+    try:
+        logger.info("Starting event processors")
+        await event_handler.start_event_processor()
+        await system_event_handler.start_event_processor()
+    except Exception as e:
+        logger.exception(f"Failed to start event processors: {e}")
 
 
 @ocean.router.post("/hook/{group_id}")
@@ -31,7 +43,7 @@ async def handle_webhook_request(group_id: str, request: Request) -> dict[str, A
     event_id = f"{request.headers.get('X-Gitlab-Event')}:{group_id}"
     with logger.contextualize(event_id=event_id):
         try:
-            logger.debug(f"Received webhook event {event_id} from Gitlab")
+            logger.info(f"Received webhook event {event_id} from Gitlab")
             body = await request.json()
             await event_handler.notify(event_id, body)
             return {"ok": True}
@@ -49,7 +61,7 @@ async def handle_system_webhook_request(request: Request) -> dict[str, Any]:
         # some system hooks have event_type instead of event_name in the body, such as merge_request events
         event_name: str = str(body.get("event_name") or body.get("event_type"))
         with logger.contextualize(event_name=event_name):
-            logger.debug(f"Received system webhook event {event_name} from Gitlab")
+            logger.info(f"Received system webhook event {event_name} from Gitlab")
             await system_event_handler.notify(event_name, body)
 
         return {"ok": True}
@@ -78,8 +90,14 @@ async def on_start() -> None:
 
     if not integration_config.get("app_host"):
         logger.warning(
-            f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}"
+            f"No app host provided, skipping webhook creation. {NO_WEBHOOK_WARNING}. Starting the event processors"
         )
+        try:
+            await start_processors()
+        except Exception as e:
+            logger.exception(
+                f"Failed to start event processors: {e}. {NO_WEBHOOK_WARNING}"
+            )
         return
 
     token_webhook_mapping: WebhookMappingConfig | None = None
@@ -90,21 +108,19 @@ async def on_start() -> None:
         )
 
     try:
-        setup_application(
+        await setup_application(
             integration_config["token_mapping"],
             integration_config["gitlab_host"],
             integration_config["app_host"],
             integration_config["use_system_hook"],
             token_webhook_mapping,
         )
-
-        await event_handler.start_event_processor()
-        await system_event_handler.start_event_processor()
     except Exception as e:
-        logger.warning(
-            f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}",
-            stack_info=True,
-        )
+        logger.exception(f"Failed to setup webhook: {e}. {NO_WEBHOOK_WARNING}")
+    try:
+        await start_processors()  # Ensure event processors are started regardless of webhook setup
+    except Exception as e:
+        logger.exception(f"Failed to start event processors: {e}. {NO_WEBHOOK_WARNING}")
 
 
 @ocean.on_resync(ObjectKind.GROUP)
@@ -114,8 +130,40 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             yield [group.asdict() for group in groups_batch]
 
 
+@ocean.on_resync(ObjectKind.GROUPWITHMEMBERS)
+async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+
+    for service in get_cached_all_services():
+        group_with_members_resource_config: GitlabObjectWithMembersResourceConfig = (
+            typing.cast(GitlabObjectWithMembersResourceConfig, event.resource_config)
+        )
+        group_with_members_selector = group_with_members_resource_config.selector
+        include_inherited_members = (
+            group_with_members_selector.include_inherited_members
+        )
+        include_bot_members = group_with_members_selector.include_bot_members
+
+        async for groups in service.get_all_groups():
+            groups_batch_iter = iter(groups)
+            groups_processed_in_full_batch = 0
+
+            while groups_batch := tuple(islice(groups_batch_iter, RESYNC_BATCH_SIZE)):
+                groups_processed_in_full_batch += len(groups_batch)
+                logger.info(
+                    f"Processing extras for {groups_processed_in_full_batch}/{len(groups)} groups in batch"
+                )
+                tasks = [
+                    service.enrich_object_with_members(
+                        group, include_inherited_members, include_bot_members
+                    )
+                    for group in groups_batch
+                ]
+                enriched_groups = await asyncio.gather(*tasks)
+                yield [enriched_group.asdict() for enriched_group in enriched_groups]
+
+
 @ocean.on_resync(ObjectKind.PROJECT)
-async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
         masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
         logger.info(f"fetching projects for token {masked_token}")
@@ -126,7 +174,7 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             projects_batch_iter = iter(projects)
             projects_processed_in_full_batch = 0
             while projects_batch := tuple(
-                islice(projects_batch_iter, PROJECT_RESYNC_BATCH_SIZE)
+                islice(projects_batch_iter, RESYNC_BATCH_SIZE)
             ):
                 projects_processed_in_full_batch += len(projects_batch)
                 logger.info(
@@ -139,7 +187,61 @@ async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 logger.info(
                     f"Finished Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
                 )
-                yield enriched_projects
+                yield [
+                    enriched_project.asdict() for enriched_project in enriched_projects
+                ]
+
+
+@ocean.on_resync(ObjectKind.PROJECTWITHMEMBERS)
+async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+
+    for service in get_cached_all_services():
+
+        project_with_members_resource_config: GitlabObjectWithMembersResourceConfig = (
+            typing.cast(GitlabObjectWithMembersResourceConfig, event.resource_config)
+        )
+        if not isinstance(
+            project_with_members_resource_config, GitlabObjectWithMembersResourceConfig
+        ):
+            return
+
+        project_with_members_selector = project_with_members_resource_config.selector
+        include_inherited_members = (
+            project_with_members_selector.include_inherited_members
+        )
+        include_bot_members = project_with_members_selector.include_bot_members
+
+        async for projects in service.get_all_projects():
+            projects_batch_iter = iter(projects)
+            projects_processed_in_full_batch = 0
+            while projects_batch := tuple(
+                islice(projects_batch_iter, RESYNC_BATCH_SIZE)
+            ):
+                projects_processed_in_full_batch += len(projects_batch)
+                logger.info(
+                    f"Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
+                )
+                tasks = [
+                    service.enrich_project_with_extras(project)
+                    for project in projects_batch
+                ]
+                projects_enriched_with_extras = await asyncio.gather(*tasks)
+                logger.info(
+                    f"Finished Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
+                )
+                members_tasks = [
+                    service.enrich_object_with_members(
+                        project,
+                        include_inherited_members,
+                        include_bot_members,
+                    )
+                    for project in projects_enriched_with_extras
+                ]
+                projects_enriched_with_members = await asyncio.gather(*members_tasks)
+                yield [
+                    enriched_projects.asdict()
+                    for enriched_projects in projects_enriched_with_members
+                ]
 
 
 @ocean.on_resync(ObjectKind.FOLDER)
@@ -170,6 +272,7 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             "GitLabFilesResourceConfig", event.resource_config
         )
         if not isinstance(gitlab_resource_config, GitLabFilesResourceConfig):
+            logger.error("Invalid resource config type for GitLab files resync")
             return
 
         selector = gitlab_resource_config.selector
@@ -178,13 +281,44 @@ async def resync_files(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.warning("No path provided in the selector, skipping fetching files")
             return
 
-        async for projects_batch in service.get_all_projects():
-            for project in projects_batch:
-                if service.should_process_project(project, selector.files.repos):
-                    async for files_batch in service.get_all_files_in_project(
-                        project, selector.files.path
-                    ):
-                        yield files_batch
+        async for projects in service.get_all_projects():
+            projects_batch_iter = iter(projects)
+            projects_processed_in_full_batch = 0
+            while projects_batch := tuple(
+                islice(projects_batch_iter, RESYNC_BATCH_SIZE)
+            ):
+                projects_processed_in_full_batch += len(projects_batch)
+                logger.info(
+                    f"Processing project files for {projects_processed_in_full_batch}/{len(projects)} "
+                    f"projects in batch: {[project.path_with_namespace for project in projects_batch]}"
+                )
+                tasks = []
+                matching_projects = []
+                for project in projects_batch:
+                    if service.should_process_project(project, selector.files.repos):
+                        matching_projects.append(project)
+                        tasks.append(
+                            service.search_files_in_project(
+                                project, selector.files.path
+                            )
+                        )
+
+                if tasks:
+                    logger.info(
+                        f"Found {len(tasks)} relevant projects in batch, projects: {[project.path_with_namespace for project in matching_projects]}"
+                    )
+                    async for batch in stream_async_iterators_tasks(*tasks):
+                        yield batch
+                else:
+                    logger.info(
+                        f"No relevant projects were found in batch for path '{selector.files.path}', skipping projects: {[project.path_with_namespace for project in projects_batch]}"
+                    )
+                logger.info(
+                    f"Finished Processing project files for {projects_processed_in_full_batch}/{len(projects)}"
+                )
+        logger.info(
+            f"Finished processing all projects for path '{selector.files.path}'"
+        )
 
 
 @ocean.on_resync(ObjectKind.MERGE_REQUEST)
@@ -192,21 +326,29 @@ async def resync_merge_requests(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     updated_after = datetime.now() - timedelta(days=14)
 
     for service in get_cached_all_services():
-        for group in service.get_root_groups():
-            async for merge_request_batch in service.get_opened_merge_requests(group):
-                yield [merge_request.asdict() for merge_request in merge_request_batch]
-            async for merge_request_batch in service.get_closed_merge_requests(
-                group, updated_after
-            ):
-                yield [merge_request.asdict() for merge_request in merge_request_batch]
+        async for groups_batch in service.get_all_root_groups():
+            for group in groups_batch:
+                async for merge_request_batch in service.get_opened_merge_requests(
+                    group
+                ):
+                    yield [
+                        merge_request.asdict() for merge_request in merge_request_batch
+                    ]
+                async for merge_request_batch in service.get_closed_merge_requests(
+                    group, updated_after
+                ):
+                    yield [
+                        merge_request.asdict() for merge_request in merge_request_batch
+                    ]
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     for service in get_cached_all_services():
-        for group in service.get_root_groups():
-            async for issues_batch in service.get_all_issues(group):
-                yield [issue.asdict() for issue in issues_batch]
+        async for groups_batch in service.get_all_root_groups():
+            for group in groups_batch:
+                async for issues_batch in service.get_all_issues(group):
+                    yield [issue.asdict() for issue in issues_batch]
 
 
 @ocean.on_resync(ObjectKind.JOB)

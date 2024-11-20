@@ -3,7 +3,6 @@ from urllib.parse import quote_plus
 
 import httpx
 from loguru import logger
-
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_status_code
 from port_ocean.log.sensetive import sensitive_log_filter
@@ -110,7 +109,7 @@ class IntegrationClientMixin:
                 "logs": logs,
             },
         )
-        handle_status_code(response)
+        handle_status_code(response, should_log=False)
         logger.debug("Logs successfully ingested")
 
     async def ingest_integration_kind_examples(

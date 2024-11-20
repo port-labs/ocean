@@ -1,0 +1,27 @@
+name: "Verify PR Title Convention"
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  check-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check PR title convention"
+        id: title-check
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [[ ! "$PR_TITLE" =~ ^\[(Integration|Core|Docs|CI|Infra)\](\[.*\])?\ .+ ]]; then
+            echo "PR title does not match the required convention."
+            echo "Examples of acceptable titles:"
+            echo "[Integration] Resolve missing team context in board ingestion for non-default teams"
+            echo "[Core] Ensure ingestion of integration logs"
+            echo "[Core] Upgrade FastAPI version to improve performance and compatibility"
+            echo "[Docs] Correct documentation on Ocean's denial-of-service vulnerability in http-proxy-middleware"
+            echo "[Integration] Enable region-specific resource querying support"
+            exit 1
+          else
+            echo "PR title matches the required convention."
+          fi

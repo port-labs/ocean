@@ -143,7 +143,7 @@
           "title": "Escalation Policy"
         },
         "created_at": {
-          "title": "Create At",
+          "title": "Created At",
           "type": "string",
           "format": "date-time"
         },
