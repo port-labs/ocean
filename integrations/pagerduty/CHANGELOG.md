@@ -1,3 +1,4 @@
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
@@ -7,15 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.116 (2024-11-20)
+## 0.1.117 (2024-11-20)
 
 
 ### Improvements
 
 - Added rate limit to the integration
 
-
-## 0.1.115 (2024-11-18)
+## 0.1.116 (2024-11-18)
 
 
 ### Improvements
@@ -23,12 +23,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated the incident url mapping to use html_url instead of the api url. (0.1.116)
 
 
-## 0.1.114 (2024-11-12)
+## 0.1.115 (2024-11-12)
 
 
 ### Improvements
 
 - Bumped ocean version to ^0.14.0
+
+
+## 0.1.114 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
 
 
 ## 0.1.113 (2024-11-10)
