@@ -1,11 +1,12 @@
 [tool.poetry]
 name = "snyk"
-version = "0.1.101"
+version = "0.1.102"
 description = "Snyk integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
+aiolimiter = "^1.1.0"
 port_ocean = {version = "^0.14.0", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]

@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.115 (2024-11-20)
+## 0.1.116 (2024-11-18)
+
+
+### Improvements
+
+- Updated the incident url mapping to use html_url instead of the api url. (0.1.116)
+
+
+## 0.1.115 (2024-11-12)
 
 
 ### Improvements
