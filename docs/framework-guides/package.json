@@ -26,7 +26,7 @@
     "@docusaurus/theme-search-algolia": "^3.6.2",
     "@easyops-cn/docusaurus-search-local": "^0.45.0",
     "@mdx-js/react": "^3.0.0",
-    "@stackql/docusaurus-plugin-hubspot": "^1.0.1",
+    "@stackql/docusaurus-plugin-hubspot": "^1.1.0",
     "clsx": "^1.1.1",
     "docusaurus-plugin-module-alias": "^0.0.2",
     "docusaurus-plugin-sass": "^0.2.5",
