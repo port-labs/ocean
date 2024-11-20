@@ -30,10 +30,11 @@
     "docusaurus-plugin-sass": "^0.2.5",
     "prettier": "^2.8.2",
     "prism-react-renderer": "^2.3.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "redocusaurus": "^2.0.0",
     "remark-math": "^5.1.1",
+    "sass": "^1.81.0",
     "stream": "^0.0.2",
     "timers": "^0.1.1",
     "xml2js": "^0.6.2"
