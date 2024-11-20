@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Increased logs presence in integration
-- Replaced calls to internal API for projects to GA version, making internal API use optional
+- Replaced calls to internal API for projects to GA version, making the use of internal APIs optional
 
 
 ## 0.1.111 (2024-11-20)

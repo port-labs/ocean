@@ -1,11 +1,18 @@
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import SonarQubeClient
-from integration import ObjectKind
+from integration import (
+    CustomSelector,
+    ObjectKind,
+    SonarQubeIssueResourceConfig,
+    SonarQubeProjectApiFilter,
+    SonarQubeProjectResourceConfig,
+)
 
 
 def init_sonar_client() -> SonarQubeClient:
@@ -18,6 +25,52 @@ def init_sonar_client() -> SonarQubeClient:
     )
 
 
+def produce_project_params(
+    api_filter: SonarQubeProjectApiFilter | None,
+) -> dict[str, Any]:
+    project_params: dict[str, Any] = {}
+    if not api_filter:
+        return project_params
+
+    if api_filter.analyzed_before:
+        project_params["analyzedBefore"] = api_filter.analyzed_before
+
+    if api_filter.on_provisioned_only:
+        project_params["onProvisionedOnly"] = api_filter.on_provisioned_only
+
+    if api_filter.projects:
+        project_params["projects"] = ",".join(api_filter.projects)
+
+    if api_filter.qualifiers:
+        project_params["qualifiers"] = ",".join(api_filter.qualifiers)
+
+    return project_params
+
+
+def produce_component_params(
+    client: SonarQubeClient, selector: Any, initial_params: dict[str, Any] = {}
+) -> dict[str, Any]:
+    component_query_params: dict[str, Any] = {}
+    if client.organization_id:
+        component_query_params["organization"] = client.organization_id
+
+    ## Handle query_params based on environment
+    if client.is_onpremise:
+        if initial_params:
+            component_query_params.update(initial_params)
+        elif event.resource_config:
+            # This might be called from places where event.resource_config is not set
+            # like on_start() when creating webhooks
+
+            selector = cast(CustomSelector, event.resource_config.selector)
+            component_query_params.update(selector.generate_request_params())
+
+    # remove project query params
+    for key in ["analyzedBefore", "onProvisionedOnly", "projects", "qualifiers"]:
+        component_query_params.pop(key, None)
+    return component_query_params
+
+
 sonar_client = init_sonar_client()
 
 
@@ -26,8 +79,18 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info(f"Listing Sonarqube resource: {kind}")
 
     fetched_projects = False
+    selector = cast(SonarQubeProjectResourceConfig, event.resource_config).selector
+    sonar_client.metrics = selector.metrics
 
-    async for project_list in sonar_client.get_all_projects():
+    project_query_params = produce_project_params(selector.api_filters)
+
+    component_params = produce_component_params(sonar_client, selector)
+
+    async for project_list in sonar_client.get_all_projects(
+        params=project_query_params,
+        use_internal_api=selector.use_internal_api,
+        component_params=component_params,
+    ):
         logger.info(f"Received project batch of size: {len(project_list)}")
         yield project_list
         fetched_projects = True
@@ -37,7 +100,6 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise RuntimeError(
             "No projects found in Sonarqube, failing the resync to avoid data loss"
         )
-        fetched_projects = True
 
     if not fetched_projects:
         logger.error("No projects found in Sonarqube")
@@ -48,9 +110,23 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    selector = cast(SonarQubeIssueResourceConfig, event.resource_config).selector
+    query_params = selector.generate_request_params()
+    project_query_params = produce_project_params(selector.project_api_filters)
+    initial_component_query_params = (
+        selector.project_api_filters.generate_request_params()
+        if selector.project_api_filters
+        else {}
+    )
+    component_params = produce_component_params(
+        sonar_client, selector, initial_component_query_params
+    )
     fetched_issues = False
-    fetched_issues = False
-    async for issues_list in sonar_client.get_all_issues():
+    async for issues_list in sonar_client.get_all_issues(
+        query_params=query_params,
+        project_query_params=project_query_params,
+        component_query_params=component_params,
+    ):
         logger.info(f"Received issues batch of size: {len(issues_list)}")
         yield issues_list
         fetched_issues = True
@@ -60,7 +136,6 @@ async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         raise RuntimeError(
             "No issues found in Sonarqube, failing the resync to avoid data loss"
         )
-        fetched_issues = True
 
     if not fetched_issues:
         logger.error("No issues found in Sonarqube")
@@ -85,7 +160,6 @@ async def on_saas_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             raise RuntimeError(
                 "No analysis found in Sonarqube, failing the resync to avoid data loss"
             )
-            fetched_analyses = True
 
         if not fetched_analyses:
             logger.error("No analysis found in Sonarqube")
@@ -120,9 +194,9 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
         webhook_data.get("project", {})
     )  ## making sure we're getting the right project details
     project_data = await sonar_client.get_single_project(project)
-    issues_data = await sonar_client.get_issues_by_component(project)
     await ocean.register_raw(ObjectKind.PROJECTS, [project_data])
-    await ocean.register_raw(ObjectKind.ISSUES, issues_data)
+    async for issues_data in sonar_client.get_issues_by_component(project):
+        await ocean.register_raw(ObjectKind.ISSUES, issues_data)
 
     if ocean.integration_config["sonar_is_on_premise"]:
         onprem_analysis_data = await sonar_client.get_measures_for_all_pull_requests(

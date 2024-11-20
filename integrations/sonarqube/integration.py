@@ -67,6 +67,18 @@ class BaseSonarQubeApiFilter(BaseModel):
 
 class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
     filter: SonarQubeComponentSearchFilter | None
+    analyzed_before: str | None = Field(
+        alias="analyzedBefore",
+        description="Filter the projects for which the last analysis of all branches are older than the given date (exclusive).",
+    )
+    on_provisioned_only: bool | None = Field(
+        alias="onProvisionedOnly",
+        description="Filter the projects that are provisioned only",
+    )
+    projects: list[str] | None = Field(description="List of project keys to filter on")
+    qualifiers: list[Literal["TRK", "APP", "VW"]] | None = Field(
+        description="List of component qualifiers"
+    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -75,6 +87,11 @@ class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
             value["filter"] = filter_instance.generate_search_filters()
         if s := value.pop("s", None):
             value["s"] = s
+        if self.projects:
+            value["projects"] = ",".join(self.projects)
+
+        if self.qualifiers:
+            value["qualifiers"] = ",".join(self.qualifiers)
 
         return value
 
@@ -164,8 +181,7 @@ class CustomResourceConfig(ResourceConfig):
 
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
-    class SonarQubeProjectSelector(SelectorWithApiFilters):
-
+    class SonarQubeComponentProjectSelector(SelectorWithApiFilters):
         @staticmethod
         def default_metrics() -> list[str]:
             return [
@@ -187,11 +203,11 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
         use_internal_api: bool = Field(
             alias="useInternalApi",
             description="Use internal API to fetch more data",
-            default=False,
+            default=True,
         )
 
     kind: Literal["projects"]
-    selector: SonarQubeProjectSelector
+    selector: SonarQubeComponentProjectSelector
 
 
 class SonarQubeIssueResourceConfig(CustomResourceConfig):
