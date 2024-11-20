@@ -55,14 +55,14 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             HTTPStatus.GATEWAY_TIMEOUT,
         ]
     )
-    MAX_BACKOFF_WAIT = 60
+    MAX_BACKOFF_WAIT = 60 * 5  # 5 minutes
 
     def __init__(
         self,
         wrapped_transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport],
         max_attempts: int = 10,
         max_backoff_wait: float = MAX_BACKOFF_WAIT,
-        backoff_factor: float = 0.1,
+        base_delay: float = 0.15,
         jitter_ratio: float = 0.1,
         respect_retry_after_header: bool = True,
         retryable_methods: Iterable[str] | None = None,
@@ -80,10 +80,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 Defaults to 10.
             max_backoff_wait (float, optional):
                 The maximum amount of time (in seconds) to wait before retrying a request.
-                Defaults to 60.
-            backoff_factor (float, optional):
+                Defaults to 300.
+            base_delay (float, optional):
                 The factor by which the waiting time will be multiplied in each retry attempt.
-                Defaults to 0.1.
+                Defaults to 0.15.
             jitter_ratio (float, optional):
                 The ratio of randomness added to the waiting time to prevent simultaneous retries.
                 Should be between 0 and 0.5. Defaults to 0.1.
@@ -105,7 +105,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             )
 
         self._max_attempts = max_attempts
-        self._backoff_factor = backoff_factor
+        self._base_delay = base_delay
         self._respect_retry_after_header = respect_retry_after_header
         self._retryable_methods = (
             frozenset(retryable_methods)
@@ -255,7 +255,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             except ValueError:
                 pass
 
-        backoff = self._backoff_factor * (2 ** (attempts_made - 1))
+        backoff = self._base_delay * (2 ** (attempts_made - 1))
         jitter = (backoff * self._jitter_ratio) * random.choice([1, -1])
         total_backoff = backoff + jitter
         return min(total_backoff, self._max_backoff_wait)
