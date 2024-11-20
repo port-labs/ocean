@@ -101,7 +101,7 @@ class PagerDutyClient:
             )
             return data
         except (httpx.HTTPStatusError, httpx.HTTPError) as e:
-            logger.error(f"Error fetching data: {e}")
+            logger.error(f"Error fetching data for {object_type} with identifier {identifier}: {e}")
             raise
 
     async def create_webhooks_if_not_exists(self) -> None:
