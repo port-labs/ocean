@@ -22,7 +22,7 @@
     "@docusaurus/preset-classic": "^3.0.1",
     "@docusaurus/theme-common": "^3.0.1",
     "@docusaurus/theme-live-codeblock": "^3.0.1",
-    "@easyops-cn/docusaurus-search-local": "^0.23.3",
+    "@easyops-cn/docusaurus-search-local": "^0.45.0",
     "@mdx-js/react": "^3.0.0",
     "@stackql/docusaurus-plugin-hubspot": "^1.0.1",
     "clsx": "^1.1.1",
