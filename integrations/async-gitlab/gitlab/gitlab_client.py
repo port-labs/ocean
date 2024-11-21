@@ -54,15 +54,20 @@ class GitLabClient(GitLabRateLimiter):
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
         )
         try:
-            self.http_client.headers.update(self.api_auth_header)
-            response = await self.http_client.request(
-                method=method,
-                url=f"{self.base_url}/{endpoint}",
-                params=query_params,
-                json=json_data,
-            )
-            response.raise_for_status()
-            return response
+            async with self.limiter:
+                self.http_client.headers.update(self.api_auth_header)
+                response = await self.http_client.request(
+                    method=method,
+                    url=f"{self.base_url}/{endpoint}",
+                    params=query_params,
+                    json=json_data,
+                )
+                response.raise_for_status()
+
+                # Handle rate-limit headers
+                await self.handle_rate_limit_headers(response.headers)
+
+                return response
         except HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
@@ -91,15 +96,20 @@ class GitLabClient(GitLabRateLimiter):
         pagination_params: dict[str, Any] = {"per_page": PAGE_SIZE, **(query_params or {})}
         while url:
             try:
-                self.http_client.headers.update(self.api_auth_header)
-                response = await self.http_client.get(
-                    url=url,
-                    params=pagination_params
-                )
-                response.raise_for_status()
-                yield response.json()
+                async with self.limiter:
+                    self.http_client.headers.update(self.api_auth_header)
+                    response = await self.http_client.get(
+                        url=url,
+                        params=pagination_params
+                    )
+                    response.raise_for_status()
 
-                url = self.extract_next_link(response.headers.get("link", ""))
+                    # Handle rate-limit headers
+                    await self.handle_rate_limit_headers(response.headers)
+
+                    yield response.json()
+
+                    url = self.extract_next_link(response.headers.get("link", ""))
             except HTTPStatusError as e:
                 logger.error(
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
@@ -115,12 +125,11 @@ class GitLabClient(GitLabRateLimiter):
         resource_type: ObjectKind,
         query_params: Optional[Dict[str, str]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async with self.limiter:
-            async for resources in self.get_paginated_resources(
-                    resource_type=resource_type,
-                    query_params=query_params
-            ):
-                yield resources
+        async for resources in self.get_paginated_resources(
+                resource_type=resource_type,
+                query_params=query_params
+        ):
+            yield resources
 
     async def create_resource(
         self,
@@ -128,12 +137,13 @@ class GitLabClient(GitLabRateLimiter):
         payload: Dict
     ) -> Response:
         try:
-            response = await self.send_api_request(
-                endpoint=path,
-                method="POST",
-                json_data=payload
-            )
-            return response.json()
+            async with self.limiter:
+                response = await self.send_api_request(
+                    endpoint=path,
+                    method="POST",
+                    json_data=payload
+                )
+                return response.json()
         except HTTPError as e:
             logger.error(f"HTTP error occurred: {str(e)}")
             raise
