@@ -70,7 +70,7 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     query_params = selector.api_query_params
 
     async for incidents in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.INCIDENTS,
+        resource=ObjectKind.INCIDENTS,
         params=query_params.generate_request_params() if query_params else None,
     ):
         logger.info(f"Received batch with {len(incidents)} incidents")
@@ -94,7 +94,7 @@ async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector
 
     async for services in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.SERVICES,
+        resource=ObjectKind.SERVICES,
         params=(
             selector.api_query_params.generate_request_params()
             if selector.api_query_params
@@ -120,7 +120,7 @@ async def on_schedules_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector.api_query_params
 
     async for schedules in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.SCHEDULES,
+        resource=ObjectKind.SCHEDULES,
         params=query_params.generate_request_params() if query_params else None,
     ):
         yield await pager_duty_client.transform_user_ids_to_emails(schedules)
@@ -136,7 +136,7 @@ async def on_oncalls_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector.api_query_params
 
     async for oncalls in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.ONCALLS,
+        resource=ObjectKind.ONCALLS,
         params=query_params.generate_request_params() if query_params else None,
     ):
         yield oncalls
@@ -151,7 +151,7 @@ async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     ).selector
 
     async for escalation_policies in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.ESCALATION_POLICIES,
+        resource=ObjectKind.ESCALATION_POLICIES,
         params=(
             selector.api_query_params.generate_request_params()
             if selector.api_query_params

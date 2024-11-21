@@ -71,7 +71,7 @@ class PagerDutyClient:
         }
 
     async def paginate_request_to_pager_duty(
-        self, data_key: str, params: dict[str, Any] | None = None
+        self, resource: str, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         offset = 0
         has_more_data = True
@@ -79,9 +79,9 @@ class PagerDutyClient:
         while has_more_data:
             try:
                 data = await self.send_api_request(
-                    endpoint=data_key, query_params={"offset": offset, **(params or {})}
+                    endpoint=resource, query_params={"offset": offset, **(params or {})}
                 )
-                yield data[data_key]
+                yield data[resource]
 
                 has_more_data = data["more"]
                 if has_more_data:
@@ -116,7 +116,7 @@ class PagerDutyClient:
 
         invoke_url = f"{self.app_host}/integration/webhook"
         async for subscriptions in self.paginate_request_to_pager_duty(
-            data_key="webhook_subscriptions"
+            resource="webhook_subscriptions"
         ):
             for webhook in subscriptions:
                 if webhook["delivery_method"]["url"] == invoke_url:
@@ -155,7 +155,7 @@ class PagerDutyClient:
         oncalls = []
 
         async for oncall_batch in self.paginate_request_to_pager_duty(
-            data_key="oncalls", params=params
+            resource="oncalls", params=params
         ):
             logger.info(f"Received oncalls with batch size {len(oncall_batch)}")
             oncalls.extend(oncall_batch)
@@ -263,7 +263,7 @@ class PagerDutyClient:
                 raise
 
     async def fetch_and_cache_users(self) -> None:
-        async for users in self.paginate_request_to_pager_duty(data_key=USER_KEY):
+        async for users in self.paginate_request_to_pager_duty(resource=USER_KEY):
             for user in users:
                 event.attributes[user["id"]] = user["email"]
 
