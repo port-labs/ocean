@@ -216,14 +216,15 @@ class PagerDutyClient:
         }
 
         try:
-            data = await self.send_api_request(
+            response = await self.send_api_request(
                 "analytics/metrics/incidents/services",
                 method="POST",
                 json_data=body,
                 extensions={"retryable": True},
             )
             logger.info(f"Successfully fetched analytics for service: {service_id}")
-            return data
+            return response.get("data", [])[0] if response.get("data") else {}
+
         except (httpx.HTTPStatusError, httpx.HTTPError) as e:
             logger.error(f"Error fetching analytics for service {service_id}: {e}")
             raise
