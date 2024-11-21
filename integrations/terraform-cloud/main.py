@@ -107,7 +107,6 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
     async for workspaces in terraform_client.get_paginated_workspaces():
         logger.info(f"Received {len(workspaces)} batch {kind}s")
-        yield workspaces
         enriched_workspace_batch = await enrich_workspaces_with_tags(
             terraform_client, workspaces
         )
@@ -134,7 +133,7 @@ async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         # Process in batches to stay under rate limit
         for i in range(0, len(workspaces), BATCH_SIZE):
             batch = workspaces[i : i + BATCH_SIZE]
-            tasks = [process_workspace(w) for w in batch]
+            tasks = [process_workspace(workspace) for workspace in batch]
 
             for completed_task in asyncio.as_completed(tasks):
                 runs = await completed_task
