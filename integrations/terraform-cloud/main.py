@@ -1,4 +1,5 @@
 from asyncio import gather
+import asyncio
 from enum import StrEnum
 from typing import Any, List
 from loguru import logger
@@ -6,7 +7,6 @@ from loguru import logger
 from client import TerraformClient
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_RESULT
-from port_ocean.utils.queue_utils import process_in_queue
 
 
 class ObjectKind(StrEnum):
@@ -107,6 +107,7 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
     async for workspaces in terraform_client.get_paginated_workspaces():
         logger.info(f"Received {len(workspaces)} batch {kind}s")
+        yield workspaces
         enriched_workspace_batch = await enrich_workspaces_with_tags(
             terraform_client, workspaces
         )
@@ -116,33 +117,29 @@ async def resync_workspaces(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.RUN)
 async def resync_runs(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     terraform_client = init_terraform_client()
-    WORKSPACE_CONCURRENCY = 15
+    BATCH_SIZE = 25  # Stay safely under 30 req/sec limit
 
-    async def fetch_runs_for_workspace(
-        workspace: dict[str, Any]
-    ) -> list[dict[str, Any]]:
-        try:
-            all_runs = []
-            async for runs in terraform_client.get_paginated_runs_for_workspace(
-                workspace["id"]
-            ):
-                all_runs.extend(runs)
-            return all_runs
-        except Exception as e:
-            logger.error(
-                f"Error fetching runs for workspace {workspace['id']}: {str(e)}"
-            )
-            return []
+    async def process_workspace(workspace: dict[str, Any]) -> List[dict[str, Any]]:
+        runs = []
+        async for run_batch in terraform_client.get_paginated_runs_for_workspace(
+            workspace["id"]
+        ):
+            if run_batch:
+                runs.extend(run_batch)
+        return runs
 
     async for workspaces in terraform_client.get_paginated_workspaces():
-        logger.info(f"Getting {kind}s for {len(workspaces)} workspaces")
+        logger.info(f"Processing batch of {len(workspaces)} workspaces")
 
-        runs_per_workspace = await process_in_queue(
-            workspaces, fetch_runs_for_workspace, concurrency=WORKSPACE_CONCURRENCY
-        )
+        # Process in batches to stay under rate limit
+        for i in range(0, len(workspaces), BATCH_SIZE):
+            batch = workspaces[i : i + BATCH_SIZE]
+            tasks = [process_workspace(w) for w in batch]
 
-        for runs in runs_per_workspace:
-            yield runs
+            for completed_task in asyncio.as_completed(tasks):
+                runs = await completed_task
+                if runs:
+                    yield runs
 
 
 @ocean.on_resync(ObjectKind.STATE_VERSION)
