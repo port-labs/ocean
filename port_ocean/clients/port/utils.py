@@ -28,6 +28,8 @@ PORT_HTTPX_LIMITS = httpx.Limits(
 
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
+FIVE_MINUETS = 60 * 5
+
 
 def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
     client = _http_client.top
@@ -36,7 +38,7 @@ def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
             TokenRetryTransport,
             transport_kwargs={
                 "port_client": port_client,
-                "max_backoff_wait": 60 * 5,
+                "max_backoff_wait": FIVE_MINUETS,
                 "base_delay": 0.3,
             },
             timeout=PORT_HTTPX_TIMEOUT,
