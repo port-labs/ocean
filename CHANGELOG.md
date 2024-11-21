@@ -7,12 +7,21 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.14.1 (2024-11-13)
+
+
+### Improvements
+
+- Added a decorator to help with caching results from coroutines.
+
+
 ## 0.14.0 (2024-11-12)
 
 
 ### Improvements
 
 - Add support for choosing default resources that the integration will create dynamically
+
 
 ## 0.13.1 (2024-11-12)
 
@@ -28,6 +37,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Improvements
 
 - Bump python from 3.11 to 3.12 (0.13.0)
+
 
 ## 0.12.9 (2024-11-07)
 
