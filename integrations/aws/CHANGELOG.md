@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.59 (2024-11-21)
+
+
+### Bug Fixes
+
+- Fix an issue where the integration enters an endless loop on permission error when querying resources in a region without permission
+
+
 ## 0.2.58 (2024-11-12)
 
 
