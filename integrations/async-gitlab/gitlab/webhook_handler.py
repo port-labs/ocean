@@ -3,7 +3,7 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from gitlab.helpers.utils import ObjectKind
-from gitlab.client import GitLabClient
+from gitlab.gitlab_client import GitLabClient
 
 
 class WebhookHandler:
@@ -50,32 +50,21 @@ class WebhookHandler:
         return webhook_client
 
     def verify_token(self, token: str):
-        if token != self.webhook_secret:
-            return False
-        else:
-            return True
+        return token == self.webhook_secret
 
     async def handle_event(self, payload: Dict[str, Any], is_system_hook: bool = False):
-        if is_system_hook:
-            event_type = payload.get("event_name")
+        event_type = payload.get("event_name")
 
+        if is_system_hook:
             if event_type in self.system_actions:
                 project_id = payload.get("project_id")
                 group_id = payload.get("group_id")
 
                 if project_id:
-                    payload.update({
-                        'project': {
-                            'id': project_id
-                        }
-                    })
+                    payload["project"] = {"id": project_id}
                     await self._update_resource(ObjectKind.PROJECT, payload)
                 elif group_id:
-                    payload.update({
-                        'group': {
-                            'id': group_id
-                        }
-                    })
+                    payload["group"] = {"id": group_id}
                     await self._update_resource(ObjectKind.GROUP, payload)
                 else:
                     logger.warning(f"skipping event type: {event_type}, because it doesn't have a handler")
@@ -83,9 +72,8 @@ class WebhookHandler:
                 logger.warning(f"skipping event type: {event_type}, because it doesn't have a handler")
         else:
             object_kind = payload.get("object_kind")
-            event_type = payload.get("event_name")
-
             kind = self.event_handlers.get(object_kind)
+
             if kind:
                 await self._update_resource(kind, payload)
             else:

@@ -1,7 +1,6 @@
 from typing import Any, AsyncGenerator, Optional, Dict
 from httpx import HTTPStatusError, HTTPError, Response
 from loguru import logger
-import re
 from port_ocean.context.ocean import ocean
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client

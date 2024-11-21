@@ -2,7 +2,7 @@ import pytest
 import httpx
 from unittest.mock import AsyncMock
 from gitlab.helpers.utils import ObjectKind
-from gitlab.client import GitLabClient
+from gitlab.gitlab_client import GitLabClient
 
 @pytest.fixture
 def gitlab_client():
