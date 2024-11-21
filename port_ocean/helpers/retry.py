@@ -55,13 +55,13 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             HTTPStatus.GATEWAY_TIMEOUT,
         ]
     )
-    MAX_BACKOFF_WAIT = 60 * 5  # 5 minutes
+    MAX_BACKOFF_WAIT_IN_SECONDS = 60 * 5
 
     def __init__(
         self,
         wrapped_transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport],
         max_attempts: int = 10,
-        max_backoff_wait: float = MAX_BACKOFF_WAIT,
+        max_backoff_wait: float = MAX_BACKOFF_WAIT_IN_SECONDS,
         base_delay: float = 0.3,
         jitter_ratio: float = 0.1,
         respect_retry_after_header: bool = True,
