@@ -1,32 +1,16 @@
 import pytest
-
 from typing import Any
 from unittest import mock, IsolatedAsyncioTestCase
-from unittest.mock import patch
 
 from choices import Endpoint, Entity
-from client import get_gitlab_handler, WebhookEventHandler
-from port_ocean.context.ocean import initialize_port_ocean_context
-from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
+from client import get_gitlab_handler
+from tests import setup_ocean_context
 from tests.data import API_DATA
-from tests.webhook_data import WEBHOOK_DATA
 
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
-    try:
-        mock_ocean_app = mock.MagicMock()
-        mock_ocean_app.config.integration.config = {
-            "app_host": "http://gitlab.com/api/v4",
-            "gitlab_token": "tokentoken",
-            "gitlab_url": "http://gitlab.com/api/v4",
-            "webhook_secret": "secretsecret",
-        }
-        mock_ocean_app.integration_router = mock.MagicMock()
-        mock_ocean_app.port_client = mock.MagicMock()
-        initialize_port_ocean_context(mock_ocean_app)
-    except PortOceanContextAlreadyInitializedError:
-        pass
+    setup_ocean_context()
 
 
 class GitlabClientTest(IsolatedAsyncioTestCase):
@@ -42,7 +26,7 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
 
         raise Exception
 
-    @patch("client.http_async_client.request", new_callable=mock.AsyncMock)
+    @mock.patch("client.http_async_client.request", new_callable=mock.AsyncMock)
     async def test_send_api_request(self, mock_http_async_client: mock.AsyncMock):
         handler = await get_gitlab_handler()
 
@@ -72,7 +56,9 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
             ]
         )
 
-    @patch("client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock)
+    @mock.patch(
+        "client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock
+    )
     async def test_fetch_entity(self, mock_fetch_data: mock.AsyncMock):
         handler = await get_gitlab_handler()
 
@@ -100,7 +86,9 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
         self.assertEqual(fetched_issues, API_DATA[Entity.ISSUE.value])
         mock_fetch_data.assert_has_calls([mock.call(Endpoint.ISSUE.value)])
 
-    @patch("client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock)
+    @mock.patch(
+        "client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock
+    )
     async def test_create_webhook(self, mock_fetch_data: mock.AsyncMock):
         mock_fetch_data.return_value = []
 
@@ -124,30 +112,3 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
                 ),
             ]
         )
-
-
-class WebhookHandlerTest(IsolatedAsyncioTestCase):
-    @patch("client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock)
-    async def test_data_handler(self, mock_fetch_data: mock.AsyncMock):
-        mock_fetch_data.return_value = []
-
-        handler = await get_gitlab_handler()
-        webhook_handler = WebhookEventHandler(handler)
-
-        await webhook_handler.merge_request_handler(
-            data=WEBHOOK_DATA[Entity.MERGE_REQUEST.value]
-        )
-        mock_fetch_data.assert_called_with("projects/1/merge_requests/1")
-
-        await webhook_handler.issue_handler(data=WEBHOOK_DATA[Entity.ISSUE.value])
-        mock_fetch_data.assert_called_with("projects/1/issues/23")
-
-        await webhook_handler.system_hook_project_handler(
-            data=WEBHOOK_DATA[Entity.PROJECT.value]
-        )
-        mock_fetch_data.assert_called_with("projects/74")
-
-        await webhook_handler.system_hook_group_handler(
-            data=WEBHOOK_DATA[Entity.GROUP.value]
-        )
-        mock_fetch_data.assert_called_with("groups/78")

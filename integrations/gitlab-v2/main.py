@@ -4,9 +4,10 @@ from aiolimiter import AsyncLimiter
 from fastapi import Request
 from loguru import logger
 
-from client import GitLabHandler, get_gitlab_handler, WebhookEventHandler
+from client import GitLabHandler, get_gitlab_handler
 from port_ocean.context.ocean import ocean
 from choices import Endpoint, Entity
+from webhook import WebhookEventHandler
 
 
 ENDPOINT_MAP = {
