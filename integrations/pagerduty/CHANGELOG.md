@@ -7,12 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.117 (2024-11-20)
+## 0.1.117 (2024-11-21)
 
 
 ### Improvements
 
-- Added a mechanism to control concurrency and rate limit using semaphores
+- Bumped ocean version to ^0.14.1
+
 
 ## 0.1.116 (2024-11-18)
 
