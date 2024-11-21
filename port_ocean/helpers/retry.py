@@ -55,14 +55,14 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             HTTPStatus.GATEWAY_TIMEOUT,
         ]
     )
-    MAX_BACKOFF_WAIT_IN_SECONDS = 60 * 5
+    MAX_BACKOFF_WAIT_IN_SECONDS = 60
 
     def __init__(
         self,
         wrapped_transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport],
         max_attempts: int = 10,
         max_backoff_wait: float = MAX_BACKOFF_WAIT_IN_SECONDS,
-        base_delay: float = 0.3,
+        base_delay: float = 0.1,
         jitter_ratio: float = 0.1,
         respect_retry_after_header: bool = True,
         retryable_methods: Iterable[str] | None = None,
@@ -80,10 +80,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 Defaults to 10.
             max_backoff_wait (float, optional):
                 The maximum amount of time (in seconds) to wait before retrying a request.
-                Defaults to 300.
+                Defaults to 60.
             base_delay (float, optional):
                 The factor by which the waiting time will be multiplied in each retry attempt.
-                Defaults to 0.15.
+                Defaults to 0.1.
             jitter_ratio (float, optional):
                 The ratio of randomness added to the waiting time to prevent simultaneous retries.
                 Should be between 0 and 0.5. Defaults to 0.1.
