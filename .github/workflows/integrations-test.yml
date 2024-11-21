@@ -23,10 +23,10 @@ jobs:
       - name: Install poetry
         run: pipx install poetry
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'poetry'
 
       - name: Install dependencies
@@ -42,7 +42,7 @@ jobs:
           make test
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@v5
         if: ${{ always() }}
         with:
           report_paths: '**/junit/test-results-**/*.xml'
