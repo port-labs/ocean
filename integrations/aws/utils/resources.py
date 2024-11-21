@@ -255,10 +255,5 @@ async def resync_cloudcontrol(
                 if not next_token:
                     break
             except Exception as e:
-                if is_access_denied_exception(e):
-                    logger.warning(
-                        f"Skipping resyncing {kind} in region {region} in account {account_id} due to missing access permissions"
-                    )
-                else:
-                    logger.error(f"Error resyncing {kind} in region {region}, {e}")
-                    raise e
+                logger.error(f"Error resyncing {kind} in region {region}, {e}")
+                raise e
