@@ -223,7 +223,8 @@ class PagerDutyClient:
                 extensions={"retryable": True},
             )
             logger.info(f"Successfully fetched analytics for service: {service_id}")
-            return response["data"][0] if response.get("data") else None
+            return response.get("data", [])[0] if response.get("data") else {}
+
         except (httpx.HTTPStatusError, httpx.HTTPError) as e:
             logger.error(f"Error fetching analytics for service {service_id}: {e}")
             raise
