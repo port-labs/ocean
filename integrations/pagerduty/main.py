@@ -32,8 +32,7 @@ async def enrich_service_with_analytics_data(
     async def fetch_service_analytics(service: dict[str, Any]) -> dict[str, Any]:
         try:
             analytics = await client.get_service_analytics(service["id"], months_period)
-            service_analytics = analytics['data'][0] if analytics and 'data' in analytics else None
-            return {**service, "__analytics": service_analytics}        
+            return {**service, "__analytics": analytics}
         except Exception as e:
             logger.error(f"Failed to fetch analytics for service {service['id']}: {e}")
             return {**service, "__analytics": None}
