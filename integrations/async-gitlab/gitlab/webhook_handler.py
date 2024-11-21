@@ -119,14 +119,17 @@ class WebhookHandler:
 
     async def setup(self) -> None:
         try:
-            await self.setup_system_webhooks()
-            await self.setup_group_webhooks()
-            logger.info("Webhooks setup completed")
+            if self.webhook_url:
+                await self.setup_system_webhooks()
+                await self.setup_group_webhooks()
+                logger.info("Webhooks setup completed")
+            else:
+                logger.info("Skipping webhooks setup... AppHost not provided")
         except Exception as e:
             logger.error(f"Error setting up webhooks: {e}")
 
     async def setup_system_webhooks(self) -> None:
-        path = "/hooks"
+        path = "hooks"
 
         payload = {item: True for item in self.system_events}
         payload.update({
@@ -147,7 +150,7 @@ class WebhookHandler:
             raise
 
     async def setup_group_webhooks(self) -> None:
-        async for groups in self.gitlab_client.get_paginated_resources(resource_type="groups", query_params={"owned": "yes"}):
+        async for groups in self.gitlab_client.get_paginated_resources(resource_type="group", query_params={"owned": "yes"}):
             for group in groups:
                 if not isinstance(group, dict) or "id" not in group:
                     logger.error(f"Invalid group structure: {group}")
@@ -156,10 +159,10 @@ class WebhookHandler:
                 logger.info(f"Handling group: {group_id}")
 
                 try:
-                    existing_hooks = await self.gitlab_client.send_api_request(f"{group_id}/hooks")
+                    existing_hooks = await self.gitlab_client.send_api_request(f"groups/{group_id}/hooks")
                     hook_exists = any(
                         isinstance(hook, dict) and hook.get("url") == self.webhook_url
-                        for hook in existing_hooks
+                        for hook in existing_hooks.json()
                     )
 
                     if not hook_exists:
@@ -169,7 +172,6 @@ class WebhookHandler:
                             'token': self.webhook_secret,
                             'enable_ssl_verification': True
                         })
-
                         response = await self.gitlab_client.send_api_request(endpoint=f"groups/{group_id}/hooks", method="POST", json_data=payload)
                         resource = response.json()
 
