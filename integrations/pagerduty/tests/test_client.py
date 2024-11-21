@@ -186,15 +186,14 @@ class TestPagerDutyClient:
             assert result == expected_analytics
 
     async def test_get_service_analytics(self, client: PagerDutyClient) -> None:
+        # Scenario 1: Successful data retrieval
         mock_response = MagicMock()
-        expected_analytics: Dict[str, int] = {"total_services": 5, "mean_incidents": 2}
-        mock_response.json.return_value = expected_analytics
-
-        with patch(
-            "port_ocean.utils.http_async_client.request", return_value=mock_response
-        ):
+        mock_response.json.return_value = {"data": [{'mean_incidents': 2, 'total_services': 5}]}
+        
+        with patch("port_ocean.utils.http_async_client.request", return_value=mock_response):
             result = await client.get_service_analytics("SERVICE123")
-            assert result == expected_analytics
+            assert result == {'mean_incidents': 2,"total_services": 5}
+
 
     async def test_send_api_request(self, client: PagerDutyClient) -> None:
         # Successful request
