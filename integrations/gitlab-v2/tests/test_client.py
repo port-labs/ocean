@@ -2,6 +2,8 @@ import pytest
 from typing import Any
 from unittest import mock, IsolatedAsyncioTestCase
 
+import httpx
+
 from choices import Endpoint, Entity
 from client import get_gitlab_handler
 from tests import setup_ocean_context
@@ -55,6 +57,45 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
                 )
             ]
         )
+
+    @mock.patch("client.http_async_client.request", new_callable=mock.AsyncMock)
+    @mock.patch("client.asyncio.sleep", new_callable=mock.AsyncMock)
+    async def test_rate_limit(
+        self,
+        mock_asyncio_sleep: mock.AsyncMock,
+        mock_http_async_client: mock.AsyncMock,
+    ):
+        mock_response_headers = {
+            "RateLimit-Limit": "60",
+            "RateLimit-Name": "throttle_authenticated_web",
+            "RateLimit-Observed": "67",
+            "RateLimit-Remaining": "0",
+            "RateLimit-Reset": "1609844400",
+            "RateLimit-ResetTime": "Tue, 05 Jan 2021 11:00:00 GMT",
+            "Retry-After": "30",
+        }
+
+        mock_http_async_client.return_value = httpx.Response(
+            429,
+            json={"message": "Rate limit exceeded."},
+            headers=mock_response_headers,
+            request=httpx.Request("GET", "test-endpoint"),
+        )
+
+        handler = await get_gitlab_handler()
+        await handler.send_gitlab_api_request("get-endpoint")
+
+        mock_http_async_client.assert_has_calls(
+            [
+                mock.call(
+                    headers={"Authorization": "Bearer tokentoken"},
+                    json={},
+                    method="GET",
+                    url="http://gitlab.com/api/v4/get-endpoint",
+                )
+            ]
+        )
+        mock_asyncio_sleep.assert_called_with(int(mock_response_headers["Retry-After"]))
 
     @mock.patch(
         "client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock

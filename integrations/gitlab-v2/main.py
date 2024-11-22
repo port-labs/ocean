@@ -1,6 +1,5 @@
 from typing import Any
 
-from aiolimiter import AsyncLimiter
 from fastapi import Request
 from loguru import logger
 
@@ -17,21 +16,13 @@ ENDPOINT_MAP = {
     Entity.ISSUE.value: Endpoint.ISSUE.value,
 }
 
-RESOURCE_RATE_LIMIT = {
-    Entity.GROUP.value: 200,
-    Entity.PROJECT.value: 200,
-    Entity.MERGE_REQUEST.value: 200,
-    Entity.ISSUE.value: 200,
-}
-
 
 @ocean.on_resync()
 async def on_resync(kind: str) -> list[dict[Any, Any]]:
     if kind in ENDPOINT_MAP:
         logger.info(f"Resycing {kind}...")
 
-        limiter = AsyncLimiter(0.8 * RESOURCE_RATE_LIMIT[kind])
-        handler: GitLabHandler = await get_gitlab_handler(limiter)
+        handler: GitLabHandler = await get_gitlab_handler()
         return await handler.send_gitlab_api_request(ENDPOINT_MAP[kind])
 
     logger.warning(f"Unsupported kind for resync: {kind}")

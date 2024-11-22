@@ -1,8 +1,8 @@
+import asyncio
 from typing import Any
 
 import httpx
 from loguru import logger
-from aiolimiter import AsyncLimiter
 
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
@@ -15,14 +15,12 @@ class GitLabHandler:
         gitlab_token: str,
         gitlab_url: str,
         webhook_secret: str | None,
-        rate_limit: AsyncLimiter,
     ) -> None:
         self.client = http_async_client
         self.app_host = host
         self.gitlab_baseurl = gitlab_url
         self.token = gitlab_token
         self.webhook_secret = webhook_secret
-        self.rate_limit = rate_limit
         self.headers = {"Authorization": f"Bearer {self.token}"}
 
     async def send_gitlab_api_request(
@@ -48,10 +46,18 @@ class GitLabHandler:
             logger.error(
                 f"Encountered an HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
             )
+
+            retry_after = e.response.headers.get("Retry-After")
+            if retry_after:
+                logger.error(
+                    f"Request limit exceeded, retrying after {retry_after} seconds..."
+                )
+                await asyncio.sleep(int(retry_after))
+
             return []
         except httpx.HTTPError as e:
             logger.error(
-                f"Encountered an HTTP error {e} while sending a GET request to {url}"
+                f"Encountered an HTTP error {e} while sending a {method} request to {url}"
             )
             return []
 
@@ -80,13 +86,10 @@ class GitLabHandler:
             )
 
 
-async def get_gitlab_handler(
-    limiter: AsyncLimiter = AsyncLimiter(0.8 * 200),
-) -> GitLabHandler:
+async def get_gitlab_handler() -> GitLabHandler:
     return GitLabHandler(
         host=ocean.integration_config.get("app_host"),
         gitlab_token=ocean.integration_config["gitlab_token"],
         gitlab_url=ocean.integration_config["gitlab_url"],
         webhook_secret=ocean.integration_config.get("webhook_secret"),
-        rate_limit=limiter,
     )
