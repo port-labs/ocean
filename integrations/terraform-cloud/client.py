@@ -2,6 +2,9 @@ from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from aiolimiter import AsyncLimiter
 from loguru import logger
+import asyncio
+import random
+import httpx
 
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
@@ -45,16 +48,56 @@ class TerraformClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        async with self.rate_limiter:
-            url = f"{self.api_url}/{endpoint}"
-            response = await self.client.request(
-                method=method,
-                url=url,
-                params=query_params,
-                json=json_data,
-            )
-            response.raise_for_status()
-            return response.json()
+        url = f"{self.api_url}/{endpoint}"
+
+        try:
+            async with self.rate_limiter:
+                logger.debug(
+                    f"Requesting {method} {url} with params: {query_params} and body: {json_data}"
+                )
+
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=query_params,
+                    json=json_data,
+                )
+
+                # Extract rate limit info from headers
+                rate_limit = response.headers.get("x-ratelimit-limit")
+                rate_limit_remaining = response.headers.get("x-ratelimit-remaining")
+                rate_limit_reset = response.headers.get("x-ratelimit-reset")
+
+                logger.debug(
+                    f"Rate Limit: {rate_limit}, "
+                    f"Remaining: {rate_limit_remaining}, "
+                    f"Reset in: {rate_limit_reset} seconds"
+                )
+
+                response.raise_for_status()
+
+                pagination_meta = response.json().get("meta", {}).get("pagination", {})
+                logger.debug(
+                    f"Successfully fetched {endpoint} with pagination info: {pagination_meta}"
+                )
+
+                return response.json()
+
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                rate_limit_reset = e.response.headers.get("x-ratelimit-reset")
+                reset_time = float(rate_limit_reset or 1.0)
+                wait_time = reset_time + random.uniform(0, 1)  # Add jitter
+                logger.warning(
+                    f"Rate limit exceeded. Waiting for {wait_time:.2f} seconds"
+                )
+                await asyncio.sleep(wait_time)
+            logger.error(f"HTTP error for {url}: {str(e)}")
+            raise
+
+        except Exception as e:
+            logger.error(f"Request failed for {url}: {str(e)}")
+            raise
 
     async def get_paginated_resources(
         self, endpoint: str, params: Optional[dict[str, Any]] = None
