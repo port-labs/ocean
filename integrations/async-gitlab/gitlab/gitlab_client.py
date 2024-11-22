@@ -130,23 +130,3 @@ class GitLabClient(GitLabRateLimiter):
                 query_params=query_params
         ):
             yield resources
-
-    async def create_resource(
-        self,
-        path: str,
-        payload: Dict
-    ) -> Response:
-        try:
-            async with self.limiter:
-                response = await self.send_api_request(
-                    endpoint=path,
-                    method="POST",
-                    json_data=payload
-                )
-                return response.json()
-        except HTTPError as e:
-            logger.error(f"HTTP error occurred: {str(e)}")
-            raise
-        except Exception as e:
-            logger.error(f"An unexpected error occurred: {str(e)}")
-            raise

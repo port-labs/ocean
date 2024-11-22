@@ -184,11 +184,3 @@ class WebhookHandler:
                         logger.info(f"Ignoring... webhook exists for group {group_id}")
                 except Exception as e:
                     logger.error(f"An error occurred while setting up webhook for group {group_id}: {str(e)}")
-
-    async def delete_group_webhook(self, group_id: str, webhook_id: str):
-        try:
-            await self.gitlab_client.send_api_request(endpoint=f"groups/{group_id}/hooks/{webhook_id}", method="DELETE")
-            logger.info(f"Successfully deleted webhook {webhook_id} for group {group_id}")
-        except Exception as e:
-            logger.error(f"An error occurred while deleting webhook {webhook_id} for group {group_id}: {str(e)}")
-            raise

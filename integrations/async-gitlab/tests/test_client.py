@@ -61,21 +61,6 @@ async def test_get_paginated_resources(gitlab_client, mocker):
 
     assert results == [{"id": 1}, {"id": 2}]
 
-@pytest.mark.asyncio
-async def test_create_resource(gitlab_client, mocker):
-    mock_response = AsyncMock(spec=httpx.Response)
-    mock_response.json.return_value = {"id": 1, "name": "test"}
-    mock_response.status_code = 201
-
-    mocker.patch.object(
-        gitlab_client,
-        "send_api_request",
-        return_value=mock_response,
-    )
-
-    payload = {"name": "test"}
-    response = await gitlab_client.create_resource(path="projects", payload=payload)
-    assert response == {"id": 1, "name": "test"}
 
 @pytest.mark.asyncio
 async def test_create_from_ocean_config(mocker):
