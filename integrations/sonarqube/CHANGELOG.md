@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.112 (2024-11-20)
+## 0.1.113 (2024-11-22)
 
 
 ### Improvements
 
 - Increased logs presence in integration
 - Replaced calls to internal API for projects to GA version, making the use of internal APIs optional
+
+
+## 0.1.112 (2024-11-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
 
 
 ## 0.1.111 (2024-11-20)
