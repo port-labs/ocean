@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any
+from typing import Any, Union
 
 import httpx
 from loguru import logger
@@ -28,7 +28,7 @@ class GitLabHandler:
         endpoint: str,
         method: str = "GET",
         payload: dict[str, Any] = {},
-    ) -> list[dict[str, Any]] | dict[str, Any]:
+    ) -> Union[list[dict[str, Any]], dict[str, Any]]:
         url = f"{self.gitlab_baseurl}/{endpoint}"
         logger.info(f"Sending {method} request to Gitlab API: {url}")
 
@@ -74,16 +74,19 @@ class GitLabHandler:
         logger.info(f"Fetching hooks for group: {group_id}")
         result = await self.send_gitlab_api_request(endpoint)
 
-        port_hook = next((item for item in result if item["url"] == webhook_url), None)
-        if not port_hook:
-            logger.info(f"Creating port hook for group: {group_id}")
-            await self.send_gitlab_api_request(
-                endpoint, method="POST", payload=webhook_payload
+        if result and isinstance(result, list):
+            port_hook = next(
+                (item for item in result if item["url"] == webhook_url), None
             )
-        else:
-            logger.info(
-                f"Port hook already exist. Skipping port hook creation for group: {group_id}"
-            )
+            if not port_hook:
+                logger.info(f"Creating port hook for group: {group_id}")
+                await self.send_gitlab_api_request(
+                    endpoint, method="POST", payload=webhook_payload
+                )
+            else:
+                logger.info(
+                    f"Port hook already exist. Skipping port hook creation for group: {group_id}"
+                )
 
 
 async def get_gitlab_handler() -> GitLabHandler:

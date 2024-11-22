@@ -1,3 +1,5 @@
+from typing import Any
+
 from choices import Entity
 
 
@@ -374,7 +376,7 @@ __MERGE_REQUEST = {
 }
 
 
-WEBHOOK_DATA = {
+WEBHOOK_DATA: dict[str, dict[str, Any]] = {
     Entity.GROUP.value: __GROUP,
     Entity.PROJECT.value: __PROJECT,
     Entity.MERGE_REQUEST.value: __MERGE_REQUEST,

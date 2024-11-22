@@ -16,20 +16,25 @@ def mock_ocean_context() -> None:
 
 
 class GitlabClientTest(IsolatedAsyncioTestCase):
-    async def gitlab_data_mocked(self, endpoint: str, **kwargs) -> list[dict[str, Any]]:
-        if endpoint == Endpoint.GROUP.value:
-            return API_DATA[Entity.GROUP.value]
-        elif endpoint == Endpoint.PROJECT.value:
-            return API_DATA[Entity.PROJECT.value]
-        elif endpoint == Endpoint.MERGE_REQUEST.value:
-            return API_DATA[Entity.MERGE_REQUEST.value]
-        elif endpoint == Endpoint.ISSUE.value:
-            return API_DATA[Entity.ISSUE.value]
-
-        raise Exception
+    async def gitlab_data_mocked(
+        self, endpoint: str, **kwargs: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        match endpoint:
+            case Endpoint.GROUP.value:
+                return API_DATA[Entity.GROUP.value]
+            case Endpoint.PROJECT.value:
+                return API_DATA[Entity.PROJECT.value]
+            case Endpoint.MERGE_REQUEST.value:
+                return API_DATA[Entity.MERGE_REQUEST.value]
+            case Endpoint.ISSUE.value:
+                return API_DATA[Entity.ISSUE.value]
+            case _:
+                raise Exception
 
     @mock.patch("client.http_async_client.request", new_callable=mock.AsyncMock)
-    async def test_send_api_request(self, mock_http_async_client: mock.AsyncMock):
+    async def test_send_api_request(
+        self, mock_http_async_client: mock.AsyncMock
+    ) -> None:
         handler = await get_gitlab_handler()
 
         await handler.send_gitlab_api_request("get-endpoint")
@@ -64,7 +69,7 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
         self,
         mock_asyncio_sleep: mock.AsyncMock,
         mock_http_async_client: mock.AsyncMock,
-    ):
+    ) -> None:
         mock_response_headers = {
             "RateLimit-Limit": "60",
             "RateLimit-Name": "throttle_authenticated_web",
@@ -100,7 +105,7 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
     @mock.patch(
         "client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock
     )
-    async def test_fetch_entity(self, mock_fetch_data: mock.AsyncMock):
+    async def test_fetch_entity(self, mock_fetch_data: mock.AsyncMock) -> None:
         handler = await get_gitlab_handler()
 
         mock_fetch_data.side_effect = self.gitlab_data_mocked
@@ -130,8 +135,8 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
     @mock.patch(
         "client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock
     )
-    async def test_create_webhook(self, mock_fetch_data: mock.AsyncMock):
-        mock_fetch_data.return_value = []
+    async def test_create_webhook(self, mock_fetch_data: mock.AsyncMock) -> None:
+        mock_fetch_data.return_value = API_DATA["HOOKS"]
 
         handler = await get_gitlab_handler()
         await handler.create_webhook(group_id="test-id")

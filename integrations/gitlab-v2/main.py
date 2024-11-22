@@ -23,7 +23,9 @@ async def on_resync(kind: str) -> list[dict[Any, Any]]:
         logger.info(f"Resycing {kind}...")
 
         handler: GitLabHandler = await get_gitlab_handler()
-        return await handler.send_gitlab_api_request(ENDPOINT_MAP[kind])
+        response = await handler.send_gitlab_api_request(ENDPOINT_MAP[kind])
+        result = response if isinstance(response, list) else [response]
+        return result
 
     logger.warning(f"Unsupported kind for resync: {kind}")
     return []
@@ -71,8 +73,8 @@ async def on_start() -> None:
     handler: GitLabHandler = await get_gitlab_handler()
     if handler.app_host and handler.webhook_secret:
         logger.info("Fetching group data for webhook...")
-        group_list = await handler.send_gitlab_api_request(Endpoint.GROUP.value)
-
+        response = await handler.send_gitlab_api_request(Endpoint.GROUP.value)
+        group_list = response if isinstance(response, list) else [response]
         for group_data in group_list:
             group_id = group_data["id"]
             logger.info(f"Setting up hooks for group: {group_id}...")

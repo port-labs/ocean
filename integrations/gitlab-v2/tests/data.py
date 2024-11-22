@@ -745,9 +745,52 @@ __ISSUES = [
 ]
 
 
+__HOOKS = [
+  {
+    "id": 1,
+    "url": "http://example.com/hook",
+    "name": "Test group hook",
+    "description": "This is a test group hook.",
+    "created_at": "2024-09-01T09:10:54.854Z",
+    "push_events": True,
+    "tag_push_events": False,
+    "merge_requests_events": False,
+    "repository_update_events": False,
+    "enable_ssl_verification": True,
+    "alert_status": "executable",
+    "disabled_until": None,
+    "url_variables": [],
+    "push_events_branch_filter": None,
+    "branch_filter_strategy": "all_branches",
+    "group_id": 99,
+    "issues_events": False,
+    "confidential_issues_events": False,
+    "note_events": False,
+    "confidential_note_events": False,
+    "pipeline_events": False,
+    "wiki_page_events": False,
+    "job_events": False,
+    "deployment_events": False,
+    "feature_flag_events": False,
+    "releases_events": False,
+    "subgroup_events": False,
+    "emoji_events": False,
+    "resource_access_token_events": False,
+    "member_events": False,
+    "custom_webhook_template": "{\"event\":\"{{object_kind}}\"}",
+    "custom_headers": [
+      {
+        "key": "Authorization"
+      }
+    ]
+  }
+]
+
+
 API_DATA = {
     Entity.GROUP.value: __GROUPS,
     Entity.PROJECT.value: __PROJECTS,
     Entity.MERGE_REQUEST.value: __MERGE_REQUESTS,
     Entity.ISSUE.value: __ISSUES,
+    "HOOKS": __HOOKS,
 }

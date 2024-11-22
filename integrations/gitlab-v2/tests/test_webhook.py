@@ -1,9 +1,11 @@
 import pytest
+from typing import Any
 from unittest import mock, IsolatedAsyncioTestCase
 
-from choices import Entity
+from choices import Endpoint, Entity
 from client import get_gitlab_handler
 from tests import setup_ocean_context
+from tests.data import API_DATA
 from tests.webhook_data import WEBHOOK_DATA
 from webhook import WebhookEventHandler
 
@@ -14,11 +16,28 @@ def mock_ocean_context() -> None:
 
 
 class WebhookHandlerTest(IsolatedAsyncioTestCase):
+    async def gitlab_data_mocked(
+        self, endpoint: str, **kwargs: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        entity_endpoint = endpoint.split("/")[-2]
+
+        match entity_endpoint:
+            case Endpoint.GROUP.value:
+                return API_DATA[Entity.GROUP.value]
+            case "projects":
+                return API_DATA[Entity.PROJECT.value]
+            case Endpoint.MERGE_REQUEST.value:
+                return API_DATA[Entity.MERGE_REQUEST.value]
+            case Endpoint.ISSUE.value:
+                return API_DATA[Entity.ISSUE.value]
+            case _:
+                raise Exception
+
     @mock.patch(
         "client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock
     )
-    async def test_data_handler(self, mock_fetch_data: mock.AsyncMock):
-        mock_fetch_data.return_value = []
+    async def test_data_handler(self, mock_fetch_data: mock.AsyncMock) -> None:
+        mock_fetch_data.side_effect = self.gitlab_data_mocked
 
         handler = await get_gitlab_handler()
         webhook_handler = WebhookEventHandler(handler)
