@@ -155,7 +155,7 @@ async def test_sonarqube_client_will_repeatedly_make_pagination_request(
     )
 
     count = 0
-    async for project in sonarqube_client._handle_paginated_request(
+    async for project in sonarqube_client._send_paginated_request(
         "/api/projects/search",
         "GET",
         "components",
@@ -191,7 +191,7 @@ async def test_get_components_is_called_with_correct_params(
     )
 
     monkeypatch.setattr(
-        sonarqube_client, "_handle_paginated_request", mock_paginated_request
+        sonarqube_client, "_send_paginated_request", mock_paginated_request
     )
 
     async for _ in sonarqube_client._get_components():
@@ -343,7 +343,7 @@ async def test_projects_will_return_correct_data(
     mock_paginated_request.__aiter__.return_value = PURE_PROJECTS[0]
 
     monkeypatch.setattr(
-        sonarqube_client, "_handle_paginated_request", mock_paginated_request
+        sonarqube_client, "_send_paginated_request", mock_paginated_request
     )
 
     async for _ in sonarqube_client._get_projects({}):

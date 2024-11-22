@@ -42,7 +42,7 @@ class Endpoints:
 
 
 PAGE_SIZE = 100
-PROJECTS_RESYNC_BATCH_SIZE = 10
+PROJECTS_RESYNC_BATCH_SIZE = 20
 
 PORTFOLIO_VIEW_QUALIFIERS = ["VW", "SVW"]
 
@@ -111,7 +111,7 @@ class SonarQubeClient:
             )
             raise
 
-    async def _handle_paginated_request(
+    async def _send_paginated_request(
         self,
         endpoint: str,
         data_key: str,
@@ -184,7 +184,7 @@ class SonarQubeClient:
             )
 
         try:
-            async for components in self._handle_paginated_request(
+            async for components in self._send_paginated_request(
                 endpoint=Endpoints.COMPONENTS,
                 data_key="components",
                 method="GET",
@@ -266,7 +266,7 @@ class SonarQubeClient:
     async def _get_projects(
         self, params: dict[str, Any]
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for projects in self._handle_paginated_request(
+        async for projects in self._send_paginated_request(
             endpoint=Endpoints.PROJECTS,
             data_key="components",
             method="GET",
@@ -360,7 +360,7 @@ class SonarQubeClient:
         else:
             query_params["componentKeys"] = component_key
 
-        async for responses in self._handle_paginated_request(
+        async for responses in self._send_paginated_request(
             endpoint=Endpoints.ISSUES_SEARCH,
             data_key="issues",
             query_params=query_params,
@@ -403,7 +403,7 @@ class SonarQubeClient:
 
         logger.info(f"Fetching all analysis data in : {component_key}")
 
-        async for response in self._handle_paginated_request(
+        async for response in self._send_paginated_request(
             endpoint=Endpoints.ANALYSIS,
             data_key="activityFeed",
             query_params={"project": component_key},
