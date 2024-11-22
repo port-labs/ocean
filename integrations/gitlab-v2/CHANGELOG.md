@@ -1,15 +1,3 @@
-## 0.1.1 (2024-11-22)
-
-
-### Features
-
-- Added integration for pulling of gitlab entity to port using APIs and webhook. (0.1.0)
-
-### Improvements
-
-- fixed linting (0.1.1)
-
-
 # Changelog - Ocean - gitlab-v2
 
 All notable changes to this project will be documented in this file.
