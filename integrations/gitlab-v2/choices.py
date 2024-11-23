@@ -10,6 +10,6 @@ class Entity(StrEnum):
 
 class Endpoint(StrEnum):
     GROUP = "groups"
-    PROJECT = "projects?membership=yes"
+    PROJECT = "projects"
     MERGE_REQUEST = "merge_requests"
     ISSUE = "issues"

@@ -1,7 +1,8 @@
 import asyncio
-from typing import Any, Union
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
+from httpx._models import Response as HttpxResponse
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -23,24 +24,39 @@ class GitLabHandler:
         self.webhook_secret = webhook_secret
         self.headers = {"Authorization": f"Bearer {self.token}"}
 
+    async def handle_rate_limit(
+        self,
+        endpoint: str,
+        method: str,
+        payload: Optional[dict[str, Any]],
+        retry_after: str,
+    ) -> None:
+        logger.error(f"Request limit exceeded, retrying after {retry_after} seconds...")
+        await asyncio.sleep(int(retry_after))
+        await self.send_gitlab_api_request(endpoint, method, payload)
+
     async def send_gitlab_api_request(
         self,
         endpoint: str,
         method: str = "GET",
-        payload: dict[str, Any] = {},
-    ) -> Union[list[dict[str, Any]], dict[str, Any]]:
+        payload: Optional[dict[str, Any]] = None,
+        query_params: Optional[dict[str, Any]] = None,
+    ) -> HttpxResponse:
         url = f"{self.gitlab_baseurl}/{endpoint}"
-        logger.info(f"Sending {method} request to Gitlab API: {url}")
+        logger.info(
+            f"URL: {url}, Method: {method}, Params: {query_params}, Payload: {payload}"
+        )
 
         try:
             response = await self.client.request(
                 headers=self.headers,
                 json=payload,
                 method=method,
+                params=query_params,
                 url=url,
             )
             response.raise_for_status()
-            return response.json()
+            return response
 
         except httpx.HTTPStatusError as e:
             logger.error(
@@ -48,18 +64,41 @@ class GitLabHandler:
             )
 
             retry_after = e.response.headers.get("Retry-After")
-            if retry_after:
-                logger.error(
-                    f"Request limit exceeded, retrying after {retry_after} seconds..."
-                )
-                await asyncio.sleep(int(retry_after))
-
-            return []
+            if e.response.status_code == 429 and retry_after:
+                await self.handle_rate_limit(endpoint, method, payload, retry_after)
+            else:
+                raise e
         except httpx.HTTPError as e:
             logger.error(
                 f"Encountered an HTTP error {e} while sending a {method} request to {url}"
             )
-            return []
+            raise e
+
+    async def get_paginated_resource(
+        self,
+        endpoint: str,
+        query_params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        page = 1
+        while page:
+            logger.info(f"Fetching page {page} data from {endpoint}...")
+
+            query_params = query_params or {}
+            query_params.update({"page": page})
+
+            response = await self.send_gitlab_api_request(
+                endpoint, query_params=query_params
+            )
+            yield response.json()
+
+            page = response.headers.get("x-next-page")
+
+    async def get_all_resource(self, endpoint: str) -> list[dict[str, Any]]:
+        records = []
+        async for record in self.get_paginated_resource(endpoint):
+            records.extend(record)
+
+        return records
 
     async def create_webhook(self, group_id: str) -> None:
         webhook_url = f"{self.app_host}/integration/webhook"
@@ -72,21 +111,19 @@ class GitLabHandler:
         endpoint = f"groups/{group_id}/hooks"
 
         logger.info(f"Fetching hooks for group: {group_id}")
-        result = await self.send_gitlab_api_request(endpoint)
 
-        if result and isinstance(result, list):
-            port_hook = next(
-                (item for item in result if item["url"] == webhook_url), None
+        hooks = await self.get_all_resource(endpoint)
+        port_hook = next((hook for hook in hooks if hook["url"] == webhook_url), None)
+        if not port_hook:
+            logger.info(f"Creating port hook for group: {group_id}")
+            response = await self.send_gitlab_api_request(
+                endpoint, method="POST", payload=webhook_payload
             )
-            if not port_hook:
-                logger.info(f"Creating port hook for group: {group_id}")
-                await self.send_gitlab_api_request(
-                    endpoint, method="POST", payload=webhook_payload
-                )
-            else:
-                logger.info(
-                    f"Port hook already exist. Skipping port hook creation for group: {group_id}"
-                )
+            return response.json()
+        else:
+            logger.info(
+                f"Port hook already exist. Skipping port hook creation for group: {group_id}"
+            )
 
 
 async def get_gitlab_handler() -> GitLabHandler:

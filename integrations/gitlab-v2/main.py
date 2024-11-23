@@ -1,10 +1,9 @@
-from typing import Any
-
 from fastapi import Request
 from loguru import logger
 
 from client import GitLabHandler, get_gitlab_handler
 from port_ocean.context.ocean import ocean
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from choices import Endpoint, Entity
 from webhook import WebhookEventHandler
 
@@ -18,17 +17,19 @@ ENDPOINT_MAP = {
 
 
 @ocean.on_resync()
-async def on_resync(kind: str) -> list[dict[Any, Any]]:
-    if kind in ENDPOINT_MAP:
-        logger.info(f"Resycing {kind}...")
+async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if kind not in ENDPOINT_MAP:
+        logger.warning(f"Unsupported kind for resync: {kind}")
+        return
 
-        handler: GitLabHandler = await get_gitlab_handler()
-        response = await handler.send_gitlab_api_request(ENDPOINT_MAP[kind])
-        result = response if isinstance(response, list) else [response]
-        return result
+    logger.info(f"Resycing {kind}...")
 
-    logger.warning(f"Unsupported kind for resync: {kind}")
-    return []
+    handler: GitLabHandler = await get_gitlab_handler()
+    query_params = {"membership": "yes"} if kind == Entity.PROJECT.value else None
+    async for record in handler.get_paginated_resource(
+        ENDPOINT_MAP[kind], query_params=query_params
+    ):
+        yield record
 
 
 @ocean.router.post("/webhook")
@@ -72,10 +73,12 @@ async def gitlab_webhook(request: Request) -> dict[str, bool]:
 async def on_start() -> None:
     handler: GitLabHandler = await get_gitlab_handler()
     if handler.app_host and handler.webhook_secret:
-        logger.info("Fetching group data for webhook...")
-        response = await handler.send_gitlab_api_request(Endpoint.GROUP.value)
-        group_list = response if isinstance(response, list) else [response]
-        for group_data in group_list:
+        logger.info("Fetching group data for webhook creation...")
+
+        group_records = await handler.get_all_resource(
+            f"{Endpoint.GROUP.value}?owned=yes"
+        )
+        for group_data in group_records:
             group_id = group_data["id"]
             logger.info(f"Setting up hooks for group: {group_id}...")
             await handler.create_webhook(group_id)

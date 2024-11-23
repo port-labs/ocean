@@ -42,10 +42,11 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
             [
                 mock.call(
                     headers={"Authorization": "Bearer tokentoken"},
-                    json={},
+                    json=None,
                     method="GET",
+                    params=None,
                     url="http://gitlab.com/api/v4/get-endpoint",
-                )
+                ),
             ]
         )
 
@@ -58,16 +59,17 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
                     headers={"Authorization": "Bearer tokentoken"},
                     json={"key": "value"},
                     method="POST",
+                    params=None,
                     url="http://gitlab.com/api/v4/post-endpoint",
-                )
+                ),
             ]
         )
 
     @mock.patch("client.http_async_client.request", new_callable=mock.AsyncMock)
-    @mock.patch("client.asyncio.sleep", new_callable=mock.AsyncMock)
+    @mock.patch("client.GitLabHandler.handle_rate_limit", new_callable=mock.AsyncMock)
     async def test_rate_limit(
         self,
-        mock_asyncio_sleep: mock.AsyncMock,
+        mock_handle_rate_limit: mock.AsyncMock,
         mock_http_async_client: mock.AsyncMock,
     ) -> None:
         mock_response_headers = {
@@ -94,13 +96,14 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
             [
                 mock.call(
                     headers={"Authorization": "Bearer tokentoken"},
-                    json={},
+                    json=None,
                     method="GET",
+                    params=None,
                     url="http://gitlab.com/api/v4/get-endpoint",
-                )
+                ),
             ]
         )
-        mock_asyncio_sleep.assert_called_with(int(mock_response_headers["Retry-After"]))
+        mock_handle_rate_limit.assert_called()
 
     @mock.patch(
         "client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock
@@ -132,22 +135,23 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
         self.assertEqual(fetched_issues, API_DATA[Entity.ISSUE.value])
         mock_fetch_data.assert_has_calls([mock.call(Endpoint.ISSUE.value)])
 
-    @mock.patch(
-        "client.GitLabHandler.send_gitlab_api_request", new_callable=mock.AsyncMock
-    )
-    async def test_create_webhook(self, mock_fetch_data: mock.AsyncMock) -> None:
-        mock_fetch_data.return_value = API_DATA["HOOKS"]
+    @mock.patch("client.GitLabHandler.get_all_resource", new_callable=mock.AsyncMock)
+    @mock.patch("client.http_async_client.request", new_callable=mock.AsyncMock)
+    async def test_create_webhook(
+        self,
+        mock_http_async_client: mock.AsyncMock,
+        mock_get_all_resource: mock.AsyncMock,
+    ) -> None:
+        mock_get_all_resource.return_value = API_DATA["HOOKS"]
 
         handler = await get_gitlab_handler()
         await handler.create_webhook(group_id="test-id")
 
-        mock_fetch_data.assert_has_calls(
+        mock_http_async_client.assert_has_calls(
             [
-                mock.call("groups/test-id/hooks"),
                 mock.call(
-                    "groups/test-id/hooks",
-                    method="POST",
-                    payload={
+                    headers={"Authorization": "Bearer tokentoken"},
+                    json={
                         "url": "http://gitlab.com/api/v4/integration/webhook",
                         "custom_headers": [
                             {"key": "port-headers", "value": "secretsecret"}
@@ -155,6 +159,9 @@ class GitlabClientTest(IsolatedAsyncioTestCase):
                         "issues_events": True,
                         "merge_requests_events": True,
                     },
+                    method="POST",
+                    params=None,
+                    url="http://gitlab.com/api/v4/groups/test-id/hooks",
                 ),
             ]
         )

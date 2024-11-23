@@ -2,6 +2,8 @@ import pytest
 from typing import Any
 from unittest import mock, IsolatedAsyncioTestCase
 
+from httpx._models import Response as HttpxResponse
+
 from choices import Endpoint, Entity
 from client import get_gitlab_handler
 from tests import setup_ocean_context
@@ -18,18 +20,22 @@ def mock_ocean_context() -> None:
 class WebhookHandlerTest(IsolatedAsyncioTestCase):
     async def gitlab_data_mocked(
         self, endpoint: str, **kwargs: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    ) -> HttpxResponse:
         entity_endpoint = endpoint.split("/")[-2]
 
         match entity_endpoint:
             case Endpoint.GROUP.value:
-                return API_DATA[Entity.GROUP.value]
+                return HttpxResponse(status_code=200, json=API_DATA[Entity.GROUP.value])
             case "projects":
-                return API_DATA[Entity.PROJECT.value]
+                return HttpxResponse(
+                    status_code=200, json=API_DATA[Entity.PROJECT.value]
+                )
             case Endpoint.MERGE_REQUEST.value:
-                return API_DATA[Entity.MERGE_REQUEST.value]
+                return HttpxResponse(
+                    status_code=200, json=API_DATA[Entity.MERGE_REQUEST.value]
+                )
             case Endpoint.ISSUE.value:
-                return API_DATA[Entity.ISSUE.value]
+                return HttpxResponse(status_code=200, json=API_DATA[Entity.ISSUE.value])
             case _:
                 raise Exception
 

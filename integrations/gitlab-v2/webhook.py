@@ -38,11 +38,6 @@ class WebhookEventHandler:
 
         return entity, payload
 
-    async def get_single_entity(self, endpoint: str) -> dict[str, Any]:
-        response = await self.gitlab_handler.send_gitlab_api_request(endpoint)
-        result = response[0] if isinstance(response, list) else response
-        return result
-
     async def merge_request_handler(self, data: dict[str, Any]) -> dict[str, Any]:
         logger.info("Processing merge request event webhook...")
 
@@ -51,7 +46,8 @@ class WebhookEventHandler:
         project_id = data["project"]["id"]
 
         endpoint = f"projects/{project_id}/merge_requests/{entity_id}"
-        return await self.get_single_entity(endpoint)
+        response = await self.gitlab_handler.send_gitlab_api_request(endpoint)
+        return response.json()
 
     async def issue_handler(self, data: dict[str, Any]) -> dict[str, Any]:
         logger.info("Processing issue event webhook...")
@@ -61,7 +57,8 @@ class WebhookEventHandler:
         project_id = data["project"]["id"]
 
         endpoint = f"projects/{project_id}/issues/{entity_id}"
-        return await self.get_single_entity(endpoint)
+        response = await self.gitlab_handler.send_gitlab_api_request(endpoint)
+        return response.json()
 
     async def system_hook_handler(
         self, data: dict[str, Any]
@@ -88,11 +85,13 @@ class WebhookEventHandler:
 
         project_id = data["project_id"]
         endpoint = f"projects/{project_id}"
-        return await self.get_single_entity(endpoint)
+        response = await self.gitlab_handler.send_gitlab_api_request(endpoint)
+        return response.json()
 
     async def system_hook_group_handler(self, data: dict[str, Any]) -> dict[str, Any]:
         logger.info("Processing group event webhook...")
 
         group_id = data["group_id"]
         endpoint = f"groups/{group_id}"
-        return await self.get_single_entity(endpoint)
+        response = await self.gitlab_handler.send_gitlab_api_request(endpoint)
+        return response.json()
