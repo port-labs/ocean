@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.14.5 (2024-12-03)
+
+
+### Improvements
+
+- Add performance test framework
+
+
 ## 0.14.4 (2024-12-03)
 
 

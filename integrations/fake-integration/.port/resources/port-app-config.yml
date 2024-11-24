@@ -26,5 +26,6 @@ resources:
             status: .status
             age: .age
             department: .department.name
+            bio: .bio
           relations:
             department: .department.id
