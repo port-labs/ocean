@@ -19,23 +19,38 @@ class WebhookHandler:
             "pipeline": ObjectKind.PROJECT,
             "job": ObjectKind.PROJECT,
             "deployment": ObjectKind.PROJECT,
-            "release": ObjectKind.PROJECT
+            "release": ObjectKind.PROJECT,
         }
         self.system_actions = [
-            "project_create", "project_destroy", "project_rename", "project_update",
-            "group_create", "group_destroy", "group_rename",
+            "project_create",
+            "project_destroy",
+            "project_rename",
+            "project_update",
+            "group_create",
+            "group_destroy",
+            "group_rename",
         ]
         self.system_events = [
-            "push_events", "tag_push_events",
-            "merge_requests_events", "repository_update_events"
+            "push_events",
+            "tag_push_events",
+            "merge_requests_events",
+            "repository_update_events",
         ]
         self.group_events = [
-            "push_events", "tag_push_events",
-            "subgroup_events", "member_events",
-            "merge_request_events", "job_events", "pipeline_events", "deployment_events",
-            "note_events", "confidential_note_events",
-            "wiki_page_events", "resource_access_token_events"
-            "issue_events", "feature_flag_events", "releases_events"
+            "push_events",
+            "tag_push_events",
+            "subgroup_events",
+            "member_events",
+            "merge_request_events",
+            "job_events",
+            "pipeline_events",
+            "deployment_events",
+            "note_events",
+            "confidential_note_events",
+            "wiki_page_events",
+            "resource_access_token_events" "issue_events",
+            "feature_flag_events",
+            "releases_events",
         ]
 
     @classmethod
@@ -67,9 +82,13 @@ class WebhookHandler:
                     payload["group"] = {"id": group_id}
                     await self._update_resource(ObjectKind.GROUP, payload)
                 else:
-                    logger.warning(f"skipping event type: {event_type}, because it doesn't have a handler")
+                    logger.warning(
+                        f"skipping event type: {event_type}, because it doesn't have a handler"
+                    )
             else:
-                logger.warning(f"skipping event type: {event_type}, because it doesn't have a handler")
+                logger.warning(
+                    f"skipping event type: {event_type}, because it doesn't have a handler"
+                )
         else:
             object_kind = payload.get("object_kind")
             kind = self.event_handlers.get(object_kind)
@@ -77,12 +96,14 @@ class WebhookHandler:
             if kind:
                 await self._update_resource(kind, payload)
             else:
-                logger.warning(f"skipping event type: {event_type}, because it doesn't have a handler")
+                logger.warning(
+                    f"skipping event type: {event_type}, because it doesn't have a handler"
+                )
 
-    async def _update_resource(self, resource_type: ObjectKind, payload: Dict[str, Any]):
-        logger.debug(
-            f"Attempting update for resource type: {resource_type}"
-        )
+    async def _update_resource(
+        self, resource_type: ObjectKind, payload: Dict[str, Any]
+    ):
+        logger.debug(f"Attempting update for resource type: {resource_type}")
 
         response = None
         idx = None
@@ -132,25 +153,29 @@ class WebhookHandler:
         path = "hooks"
 
         payload = {item: True for item in self.system_events}
-        payload.update({
-            'url': self.webhook_url,
-            'token': self.webhook_secret,
-            'enable_ssl_verification': True,
-        })
+        payload.update(
+            {
+                "url": self.webhook_url,
+                "token": self.webhook_secret,
+                "enable_ssl_verification": True,
+            }
+        )
 
         try:
             response = await self.gitlab_client.send_api_request(
-                endpoint=path,
-                method="POST",
-                json_data=payload
+                endpoint=path, method="POST", json_data=payload
             )
             return response.json()
         except Exception as e:
-            logger.error(f"An unexpected error occurred while setting up system hooks: {str(e)}")
+            logger.error(
+                f"An unexpected error occurred while setting up system hooks: {str(e)}"
+            )
             raise
 
     async def setup_group_webhooks(self) -> None:
-        async for groups in self.gitlab_client.get_paginated_resources(resource_type="group", query_params={"owned": "yes"}):
+        async for groups in self.gitlab_client.get_paginated_resources(
+            resource_type="group", query_params={"owned": "yes"}
+        ):
             for group in groups:
                 if not isinstance(group, dict) or "id" not in group:
                     logger.error(f"Invalid group structure: {group}")
@@ -159,7 +184,9 @@ class WebhookHandler:
                 logger.info(f"Handling group: {group_id}")
 
                 try:
-                    existing_hooks = await self.gitlab_client.send_api_request(f"groups/{group_id}/hooks")
+                    existing_hooks = await self.gitlab_client.send_api_request(
+                        f"groups/{group_id}/hooks"
+                    )
                     hook_exists = any(
                         isinstance(hook, dict) and hook.get("url") == self.webhook_url
                         for hook in existing_hooks.json()
@@ -167,20 +194,32 @@ class WebhookHandler:
 
                     if not hook_exists:
                         payload = {item: True for item in self.group_events}
-                        payload.update({
-                            'url': self.webhook_url,
-                            'token': self.webhook_secret,
-                            'enable_ssl_verification': True
-                        })
-                        response = await self.gitlab_client.send_api_request(endpoint=f"groups/{group_id}/hooks", method="POST", json_data=payload)
+                        payload.update(
+                            {
+                                "url": self.webhook_url,
+                                "token": self.webhook_secret,
+                                "enable_ssl_verification": True,
+                            }
+                        )
+                        response = await self.gitlab_client.send_api_request(
+                            endpoint=f"groups/{group_id}/hooks",
+                            method="POST",
+                            json_data=payload,
+                        )
                         resource = response.json()
 
-                        if resource.get('id'):
-                            logger.info(f"Webhook created successfully for group {group_id}")
+                        if resource.get("id"):
+                            logger.info(
+                                f"Webhook created successfully for group {group_id}"
+                            )
                         else:
-                            logger.error(f"Failed to create webhook for group {group_id}")
+                            logger.error(
+                                f"Failed to create webhook for group {group_id}"
+                            )
 
                     else:
                         logger.info(f"Ignoring... webhook exists for group {group_id}")
                 except Exception as e:
-                    logger.error(f"An error occurred while setting up webhook for group {group_id}: {str(e)}")
+                    logger.error(
+                        f"An error occurred while setting up webhook for group {group_id}: {str(e)}"
+                    )

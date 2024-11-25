@@ -9,14 +9,16 @@ _DEFAULT_RATE_LIMIT_QUOTA: int = 60
 
 class GitLabRateLimiter:
     def __init__(
-            self,
-            quota: int = _DEFAULT_RATE_LIMIT_QUOTA,
-            time_period: float = _DEFAULT_RATE_LIMIT_TIME_PERIOD,
-            percentage: float = _PERCENTAGE_OF_QUOTA
+        self,
+        quota: int = _DEFAULT_RATE_LIMIT_QUOTA,
+        time_period: float = _DEFAULT_RATE_LIMIT_TIME_PERIOD,
+        percentage: float = _PERCENTAGE_OF_QUOTA,
     ):
         effective_quota_limit = int(max(round(quota * percentage, 1), 1))
         self.time_period = time_period
-        self.limiter = AsyncLimiter(max_rate=effective_quota_limit, time_period=time_period)
+        self.limiter = AsyncLimiter(
+            max_rate=effective_quota_limit, time_period=time_period
+        )
 
     async def handle_rate_limit_headers(self, response_headers: dict) -> None:
         """

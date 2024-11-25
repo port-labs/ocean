@@ -4,13 +4,18 @@ from unittest.mock import AsyncMock
 from gitlab.helpers.utils import ObjectKind
 from gitlab.gitlab_client import GitLabClient
 
+
 @pytest.fixture
 def gitlab_client():
-    return GitLabClient(gitlab_host="https://gitlab.example.com", access_token="dummy_token")
+    return GitLabClient(
+        gitlab_host="https://gitlab.example.com", access_token="dummy_token"
+    )
+
 
 @pytest.mark.asyncio
 async def test_api_auth_header(gitlab_client):
     assert gitlab_client.api_auth_header == {"Authorization": "Bearer dummy_token"}
+
 
 @pytest.mark.asyncio
 async def test_send_api_request_success(gitlab_client, mocker):
@@ -26,6 +31,7 @@ async def test_send_api_request_success(gitlab_client, mocker):
     response = await gitlab_client.send_api_request(endpoint="test/endpoint")
     assert response.json() == {"key": "value"}
 
+
 @pytest.mark.asyncio
 async def test_send_api_request_http_error(gitlab_client, mocker):
     mock_response = AsyncMock(spec=httpx.Response)
@@ -40,6 +46,7 @@ async def test_send_api_request_http_error(gitlab_client, mocker):
 
     with pytest.raises(httpx.HTTPStatusError):
         await gitlab_client.send_api_request(endpoint="test/endpoint")
+
 
 @pytest.mark.asyncio
 async def test_get_paginated_resources(gitlab_client, mocker):

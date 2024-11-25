@@ -5,7 +5,8 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from gitlab.gitlab_client import GitLabClient
 from gitlab.webhook_handler import WebhookHandler
-from gitlab.helpers.utils import ObjectKind, ResourceKindsHandledViaWebhooks
+from gitlab.helpers.utils import ObjectKind
+
 
 @ocean.on_resync()
 async def on_resources_resync(kind: str) -> None:
@@ -18,13 +19,17 @@ async def on_resources_resync(kind: str) -> None:
         logger.info(f"Re-syncing {len(resources)} {kind}")
         yield resources
 
+
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Project Re-sync req received")
 
-    async for projects in GitLabClient.create_from_ocean_config().get_resources(ObjectKind.PROJECT, {"owned": "yes"}):
+    async for projects in GitLabClient.create_from_ocean_config().get_resources(
+        ObjectKind.PROJECT, {"owned": "yes"}
+    ):
         logger.info(f"Re-syncing {len(projects)} projects")
         yield projects
+
 
 @ocean.router.post("/webhook")
 async def on_webhook_alert(request: Request) -> dict[str, Any]:
@@ -39,9 +44,12 @@ async def on_webhook_alert(request: Request) -> dict[str, Any]:
 
     payload = await request.json()
 
-    await webhook_handler.handle_event(payload, request.headers.get("X-Gitlab-Event") == "System Hook")
+    await webhook_handler.handle_event(
+        payload, request.headers.get("X-Gitlab-Event") == "System Hook"
+    )
 
     return {"status": "success"}
+
 
 @ocean.on_start()
 async def on_start() -> None:

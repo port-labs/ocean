@@ -13,14 +13,15 @@ _DEFAULT_RATE_LIMIT_TIME_PERIOD: float = 60.0
 _PERCENTAGE_OF_QUOTA: float = 0.2
 _DEFAULT_RATE_LIMIT_QUOTA: int = 60
 
+
 class GitLabClient(GitLabRateLimiter):
     def __init__(
-            self,
-            gitlab_host: str,
-            access_token: str,
-            ratelimit_quota: int = _DEFAULT_RATE_LIMIT_QUOTA,
-            ratelimit_time_period: float= _DEFAULT_RATE_LIMIT_TIME_PERIOD,
-            ratelimit_percentage: float= _PERCENTAGE_OF_QUOTA
+        self,
+        gitlab_host: str,
+        access_token: str,
+        ratelimit_quota: int = _DEFAULT_RATE_LIMIT_QUOTA,
+        ratelimit_time_period: float = _DEFAULT_RATE_LIMIT_TIME_PERIOD,
+        ratelimit_percentage: float = _PERCENTAGE_OF_QUOTA,
     ) -> None:
         super().__init__(ratelimit_quota, ratelimit_time_period, ratelimit_percentage)
         self.token = access_token
@@ -44,11 +45,11 @@ class GitLabClient(GitLabRateLimiter):
         return gitlab_client
 
     async def send_api_request(
-            self,
-            endpoint: str,
-            method: str = "GET",
-            query_params: Optional[dict[str, Any]] = None,
-            json_data: Optional[dict[str, Any]] = None,
+        self,
+        endpoint: str,
+        method: str = "GET",
+        query_params: Optional[dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any]] = None,
     ) -> Response:
         logger.debug(
             f"Sending API request to {method} {endpoint} with query params: {query_params}"
@@ -93,14 +94,16 @@ class GitLabClient(GitLabRateLimiter):
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.base_url}/{resource_type}s"
 
-        pagination_params: dict[str, Any] = {"per_page": PAGE_SIZE, **(query_params or {})}
+        pagination_params: dict[str, Any] = {
+            "per_page": PAGE_SIZE,
+            **(query_params or {}),
+        }
         while url:
             try:
                 async with self.limiter:
                     self.http_client.headers.update(self.api_auth_header)
                     response = await self.http_client.get(
-                        url=url,
-                        params=pagination_params
+                        url=url, params=pagination_params
                     )
                     response.raise_for_status()
 
@@ -121,12 +124,9 @@ class GitLabClient(GitLabRateLimiter):
 
     @cache_iterator_result()
     async def get_resources(
-        self,
-        resource_type: ObjectKind,
-        query_params: Optional[Dict[str, str]] = None
+        self, resource_type: ObjectKind, query_params: Optional[Dict[str, str]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for resources in self.get_paginated_resources(
-                resource_type=resource_type,
-                query_params=query_params
+            resource_type=resource_type, query_params=query_params
         ):
             yield resources
