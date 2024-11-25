@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 # period of time, before raising an exception.
 # The max_connections value can't be too high, as it will cause the application to run out of memory.
 # The max_keepalive_connections can't be too high, as it will cause the application to run out of available connections.
-PORT_HTTP_MAX_CONNECTIONS_LIMIT = 200
+PORT_HTTP_MAX_CONNECTIONS_LIMIT = 100
 PORT_HTTP_MAX_KEEP_ALIVE_CONNECTIONS = 50
 PORT_HTTP_TIMEOUT = 60.0
 
@@ -28,13 +28,19 @@ PORT_HTTPX_LIMITS = httpx.Limits(
 
 _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 
+FIVE_MINUETS = 60 * 5
+
 
 def _get_http_client_context(port_client: "PortClient") -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
         client = OceanAsyncClient(
             TokenRetryTransport,
-            transport_kwargs={"port_client": port_client},
+            transport_kwargs={
+                "port_client": port_client,
+                "max_backoff_wait": FIVE_MINUETS,
+                "base_delay": 0.3,
+            },
             timeout=PORT_HTTPX_TIMEOUT,
             limits=PORT_HTTPX_LIMITS,
         )
