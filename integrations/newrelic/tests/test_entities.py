@@ -27,12 +27,6 @@ def mock_http_client() -> AsyncMock:
     return AsyncMock(spec=httpx.AsyncClient)
 
 
-# Fixture to mock sending requests in EntitiesHandler
-from typing import AsyncGenerator
-from unittest.mock import AsyncMock
-import pytest
-
-
 @pytest.fixture
 async def mock_send_request() -> AsyncGenerator[AsyncMock, None]:
     """Fixture to mock send_graph_api_request function."""
