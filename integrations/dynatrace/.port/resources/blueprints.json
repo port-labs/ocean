@@ -212,5 +212,45 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "relations": {}
+  },
+  {
+    "identifier": "dynatraceEntityCloudResource",
+    "description": "This blueprint represents a Dynatrace Entity",
+    "title": "Dynatrace Cloud Resource",
+    "icon": "Dynatrace",
+    "schema": {
+      "properties": {
+        "firstSeen": {
+          "type": "string",
+          "title": "First Seen",
+          "description": "The timestamp at which the entity was first seen, in UTC milliseconds.",
+          "format": "date-time"
+        },
+        "lastSeen": {
+          "type": "string",
+          "title": "Last Seen",
+          "description": "The timestamp at which the entity was last seen, in UTC milliseconds.",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "description": "The type of the entity."
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags",
+          "description": "A list of tags of the entity.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
   }
 ]
