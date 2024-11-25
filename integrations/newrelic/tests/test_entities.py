@@ -121,11 +121,6 @@ class TestEntitiesHandler:
                 "name": "Entity 1",
                 "tags": [{"key": "key1", "values": ["value1"]}],
             }
-
-            # Mock the behavior of extract_data
-            def mock_extract_data(response: Optional[Dict[str, Any]] = None) -> None:
-                return None, [test_entity]
-
             yield test_entity
 
         # Mock resource configuration
@@ -200,7 +195,7 @@ class TestEntitiesHandler:
         async def mock_async_generator(
             *args: Any, **kwargs: Any
         ) -> AsyncGenerator[Dict[str, Any], None]:
-            yield None
+            yield {}
 
         # Mock resource configuration
         with patch(
