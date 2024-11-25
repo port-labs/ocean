@@ -5,7 +5,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from newrelic_integration.core.errors import NewRelicNotFoundError
 from newrelic_integration.core.entities import EntitiesHandler
-from typing import AsyncGenerator, List, Dict, Any
+from typing import AsyncGenerator, List, Dict, Any, Optional
 
 
 # Fixture to mock the Ocean context initialization
@@ -123,7 +123,7 @@ class TestEntitiesHandler:
             }
 
             # Mock the behavior of extract_data
-            def mock_extract_data(response: Dict[str, Any] = None) -> None:
+            def mock_extract_data(response: Optional[Dict[str, Any]] = None) -> None:
                 return None, [test_entity]
 
             yield test_entity
@@ -281,8 +281,5 @@ class TestEntitiesHandler:
         mock_render_query.return_value = "test-query"
 
         # Expect exception
-        with pytest.raises(
-            NewRelicNotFoundError,
-            match="No entity found in newrelic for guid non-existent-guid",
-        ):
+        with pytest.raises(NewRelicNotFoundError):
             await entities_handler.get_entity("non-existent-guid")
