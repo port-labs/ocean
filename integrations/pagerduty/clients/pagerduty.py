@@ -78,10 +78,17 @@ class PagerDutyClient:
         has_more_data = True
 
         while has_more_data:
-            logger.debug(f"Fetching data for {resource} with offset: {offset} limit: {PAGE_SIZE} and params: {params}")
+            logger.debug(
+                f"Fetching data for {resource} with offset: {offset} limit: {PAGE_SIZE} and params: {params}"
+            )
             try:
                 data = await self.send_api_request(
-                    endpoint=resource, query_params={"offset": offset, "limit": PAGE_SIZE, **(params or {})}
+                    endpoint=resource,
+                    query_params={
+                        "offset": offset,
+                        "limit": PAGE_SIZE,
+                        **(params or {}),
+                    },
                 )
                 yield data[resource]
 

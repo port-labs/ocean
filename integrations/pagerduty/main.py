@@ -9,7 +9,8 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.pagerduty import PagerDutyClient
 from integration import (
-    ObjectKind, OBJECTS_WITH_SPECIAL_HANDLING,
+    ObjectKind,
+    OBJECTS_WITH_SPECIAL_HANDLING,
     PagerdutyEscalationPolicyResourceConfig,
     PagerdutyIncidentResourceConfig,
     PagerdutyOncallResourceConfig,
@@ -174,6 +175,7 @@ async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
         else:
             yield escalation_policies
 
+
 @ocean.on_resync()
 async def on_global_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
@@ -188,7 +190,7 @@ async def on_global_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ):
             logger.info(f"Received batch with {len(resource_batch)} {kind}")
             yield resource_batch
-        
+
 
 @ocean.router.post("/webhook")
 async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
