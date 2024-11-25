@@ -2,7 +2,6 @@ from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from aiolimiter import AsyncLimiter
 from loguru import logger
-import httpx
 
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
@@ -63,21 +62,6 @@ class TerraformClient:
 
                 response.raise_for_status()
                 return response.json()
-
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                rate_limit = e.response.headers.get("x-ratelimit-limit")
-                rate_limit_remaining = e.response.headers.get("x-ratelimit-remaining")
-                rate_limit_reset = e.response.headers.get("x-ratelimit-reset")
-
-                logger.info(
-                    "Rate limit reached",
-                    endpoint=endpoint,
-                    rate_limit=rate_limit,
-                    rate_limit_remaining=rate_limit_remaining,
-                    rate_limit_reset=rate_limit_reset,
-                )
-            raise
 
         except Exception as e:
             logger.error(f"Request failed for {url}: {str(e)}")
