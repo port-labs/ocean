@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added support for syncing cloud resources from Datadog, Dynatrace, and New Relic integrations.
+- Added support for syncing cloud resources from New Relic.
 - Included blueprints and entity mappings for cloud resource ingestion.
 
 
