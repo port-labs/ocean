@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.14.0"
+version = "0.14.2"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -9,6 +9,10 @@ repository = "https://github.com/port-labs/Port-Ocean"
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>", "Tom Tankilevitch <tom@getport.io>"]
 packages = [
     { include = "port_ocean", from = "." }
+]
+
+include = [
+    { path = "./integrations/_infra/*", format = ["sdist", "wheel"] }
 ]
 
 keywords = ["ocean", "port-ocean", "port"]
