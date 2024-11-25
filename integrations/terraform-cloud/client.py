@@ -26,6 +26,9 @@ class CacheKeys(StrEnum):
 PAGE_SIZE = 100
 NUMBER_OF_REQUESTS = 25
 NUMBER_OF_SECONDS = 1
+DEFAULT_RATE_LIMIT_RESET = 1.0
+JITTER_MIN_SECONDS = 0
+JITTER_MAX_SECONDS = 1
 
 
 class TerraformClient:
@@ -63,33 +66,27 @@ class TerraformClient:
                     json=json_data,
                 )
 
-                # Extract rate limit info from headers
-                rate_limit = response.headers.get("x-ratelimit-limit")
-                rate_limit_remaining = response.headers.get("x-ratelimit-remaining")
-                rate_limit_reset = response.headers.get("x-ratelimit-reset")
-
-                logger.debug(
-                    f"Rate Limit: {rate_limit}, "
-                    f"Remaining: {rate_limit_remaining}, "
-                    f"Reset in: {rate_limit_reset} seconds"
-                )
-
                 response.raise_for_status()
-
-                pagination_meta = response.json().get("meta", {}).get("pagination", {})
-                logger.debug(
-                    f"Successfully fetched {endpoint} with pagination info: {pagination_meta}"
-                )
-
                 return response.json()
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
+                rate_limit = e.response.headers.get("x-ratelimit-limit")
+                rate_limit_remaining = e.response.headers.get("x-ratelimit-remaining")
                 rate_limit_reset = e.response.headers.get("x-ratelimit-reset")
-                reset_time = float(rate_limit_reset or 1.0)
-                wait_time = reset_time + random.uniform(0, 1)  # Add jitter
-                logger.warning(
-                    f"Rate limit exceeded. Waiting for {wait_time:.2f} seconds"
+
+                reset_time = float(rate_limit_reset or DEFAULT_RATE_LIMIT_RESET)
+                wait_time = reset_time + random.uniform(
+                    JITTER_MIN_SECONDS, JITTER_MAX_SECONDS
+                )
+
+                logger.info(
+                    "Rate limit reached, waiting before retry",
+                    wait_time=f"{wait_time:.2f}",
+                    endpoint=endpoint,
+                    rate_limit=rate_limit,
+                    rate_limit_remaining=rate_limit_remaining,
+                    rate_limit_reset=rate_limit_reset,
                 )
                 await asyncio.sleep(wait_time)
             logger.error(f"HTTP error for {url}: {str(e)}")
