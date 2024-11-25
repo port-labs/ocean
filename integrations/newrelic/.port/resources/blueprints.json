@@ -187,5 +187,53 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "newRelicEntityCloudResource",
+    "description": "This blueprint represents a New Relic cloud resource entity.",
+    "title": "New Relic Cloud Resource",
+    "icon": "NewRelic",
+    "schema": {
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "title": "Account ID",
+          "description": "The New Relic account ID associated with the entity."
+        },
+        "domain": {
+          "type": "string",
+          "title": "Domain",
+          "description": "The domain of the entity (e.g., INFRA, APM)."
+        },
+        "type": {
+          "type": "string",
+          "title": "Entity Type",
+          "description": "The type of the entity."
+        },
+        "infrastructureIntegrationType": {
+          "type": "string",
+          "title": "Infrastructure Integration Type",
+          "description": "The cloud provider integration type."
+        },
+        "tags": {
+          "type": "object",
+          "title": "Tags",
+          "description": "Tags associated with the entity."
+        },
+        "reporting": {
+          "type": "boolean",
+          "title": "Reporting",
+          "description": "Indicates if the entity is reporting data."
+        },
+        "link": {
+          "type": "string",
+          "title": "Entity Link",
+          "description": "A link to the entity in New Relic.",
+          "format": "url"
+        }
+      },
+      "required": []
+    },
+    "relations": {}
   }
 ]

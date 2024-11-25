@@ -90,3 +90,32 @@ resources:
             tags: .tags
           relations:
             newRelicService: .serviceLevel.indicators[0].guid
+  - kind: entity
+    selector:
+      query: 'true'
+      infrastructureIntegrationTypes:
+        - AWS_EC2_INSTANCE
+        - AWS_S3_BUCKET
+        - AWS_RDS_DB_INSTANCE
+        - AWS_LAMBDA_FUNCTION
+        - AWS_ELB_LOAD_BALANCER
+        - AZURE_VIRTUAL_MACHINE
+        - AZURE_SQL_DATABASE
+        - GCP_COMPUTE_INSTANCE
+        - GCP_STORAGE_BUCKET
+        - GCP_SQL_DATABASE_INSTANCE
+        # Add more infrastructure integration types as needed
+    port:
+      entity:
+        mappings:
+          identifier: .guid
+          title: .name
+          blueprint: '"newRelicEntityCloudResource"'
+          properties:
+            accountId: .accountId
+            domain: .domain
+            type: .type
+            infrastructureIntegrationType: .infrastructureIntegrationType
+            reporting: .reporting
+            link: .permalink
+            tags: .tag
