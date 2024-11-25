@@ -2,8 +2,6 @@ from enum import StrEnum
 from typing import Any, AsyncGenerator, Optional
 from aiolimiter import AsyncLimiter
 from loguru import logger
-import asyncio
-import random
 import httpx
 
 from port_ocean.context.event import event
@@ -26,9 +24,6 @@ class CacheKeys(StrEnum):
 PAGE_SIZE = 100
 NUMBER_OF_REQUESTS = 25
 NUMBER_OF_SECONDS = 1
-DEFAULT_RATE_LIMIT_RESET = 1.0
-JITTER_MIN_SECONDS = 0
-JITTER_MAX_SECONDS = 1
 
 
 class TerraformClient:
@@ -75,21 +70,13 @@ class TerraformClient:
                 rate_limit_remaining = e.response.headers.get("x-ratelimit-remaining")
                 rate_limit_reset = e.response.headers.get("x-ratelimit-reset")
 
-                reset_time = float(rate_limit_reset or DEFAULT_RATE_LIMIT_RESET)
-                wait_time = reset_time + random.uniform(
-                    JITTER_MIN_SECONDS, JITTER_MAX_SECONDS
-                )
-
                 logger.info(
-                    "Rate limit reached, waiting before retry",
-                    wait_time=f"{wait_time:.2f}",
+                    "Rate limit reached",
                     endpoint=endpoint,
                     rate_limit=rate_limit,
                     rate_limit_remaining=rate_limit_remaining,
                     rate_limit_reset=rate_limit_reset,
                 )
-                await asyncio.sleep(wait_time)
-            logger.error(f"HTTP error for {url}: {str(e)}")
             raise
 
         except Exception as e:
