@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.58 (2024-11-25)
+
+
+### Improvements
+
+- Added support for syncing cloud resources from Datadog, Dynatrace, and New Relic integrations.
+- Included blueprints and entity mappings for cloud resource ingestion.
+
 ## 0.1.57 (2024-11-25)
 
 
