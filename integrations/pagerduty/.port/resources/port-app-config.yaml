@@ -46,7 +46,6 @@ resources:
             priority: if .priority != null then .priority.summary else null end
             description: .description
             triggered_by: .first_trigger_log_entry.agent.summary
-
           relations:
             pagerdutyService: .service.id
   - kind: incidents

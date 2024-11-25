@@ -19,17 +19,7 @@
             "read_only_user",
             "restricted_access",
             "read_only_limited_user"
-          ],
-          "enumColors": {
-            "admin": "lightGray",
-            "user": "lightGray",
-            "observer": "lightGray",
-            "limited_user": "lightGray",
-            "owner": "lightGray",
-            "read_only_user": "lightGray",
-            "restricted_access": "lightGray",
-            "read_only_limited_user": "lightGray"
-          }
+          ]
         },
         "url": {
           "icon": "DefaultProperty",
