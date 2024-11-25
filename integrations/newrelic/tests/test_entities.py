@@ -31,7 +31,6 @@ def mock_http_client() -> AsyncMock:
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock
 import pytest
-from unittest.mock import patch
 
 
 @pytest.fixture
