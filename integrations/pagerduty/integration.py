@@ -215,7 +215,7 @@ class PagerdutyPortAppConfig(PortAppConfig):
         | ResourceConfig
     ] = Field(
         default_factory=list
-    )  # type: ignore
+    )
 
 
 class PagerdutyIntegration(BaseIntegration):
