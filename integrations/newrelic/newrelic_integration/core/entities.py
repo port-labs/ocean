@@ -78,8 +78,10 @@ class EntitiesHandler:
             entity_query_filter=resource_config.selector.entity_query_filter,
             extra_entity_properties=resource_config.selector.entity_extra_properties_query,
         ):
-            format_tags(entity)
-            yield entity
+
+            if entity:
+                self._format_tags(entity)
+                yield entity
 
     async def list_entities_by_guids(
         self, http_client: httpx.AsyncClient, entity_guids: list[str]
