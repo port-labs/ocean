@@ -11,6 +11,7 @@ from .utils import get_date_range_for_last_n_months
 USER_KEY = "users"
 
 MAX_CONCURRENT_REQUESTS = 10
+PAGE_SIZE = 100
 
 
 class PagerDutyClient:
@@ -77,9 +78,10 @@ class PagerDutyClient:
         has_more_data = True
 
         while has_more_data:
+            logger.debug(f"Fetching data for {resource} with offset: {offset} limit: {PAGE_SIZE} and params: {params}")
             try:
                 data = await self.send_api_request(
-                    endpoint=resource, query_params={"offset": offset, **(params or {})}
+                    endpoint=resource, query_params={"offset": offset, "limit": PAGE_SIZE, **(params or {})}
                 )
                 yield data[resource]
 

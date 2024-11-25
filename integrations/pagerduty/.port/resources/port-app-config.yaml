@@ -25,6 +25,10 @@ resources:
       apiQueryParams:
         include:
           - assignees
+          - first_trigger_log_entries
+        statuses:
+          - triggered
+          - acknowledged
     port:
       entity:
         mappings:
@@ -41,6 +45,35 @@ resources:
             updated_at: .updated_at
             priority: if .priority != null then .priority.summary else null end
             description: .description
+            triggered_by: .first_trigger_log_entry.agent.summary
+
+          relations:
+            pagerdutyService: .service.id
+  - kind: incidents
+    selector:
+      query: 'true'
+      apiQueryParams:
+        include:
+          - assignees
+          - first_trigger_log_entries
+        statuses:
+          - resolved
+    port:
+      entity:
+        mappings:
+          identifier: .id | tostring
+          title: .title
+          blueprint: '"pagerdutyIncident"'
+          properties:
+            status: .status
+            url: .html_url
+            urgency: .urgency
+            escalation_policy: .escalation_policy.summary
+            created_at: .created_at
+            updated_at: .updated_at
+            priority: if .priority != null then .priority.summary else null end
+            description: .description
+            triggered_by: .first_trigger_log_entry.agent.summary
           relations:
             pagerdutyService: .service.id
   - kind: schedules
@@ -92,3 +125,21 @@ resources:
             description: .summary
             primaryOncall: .__oncall_users | sort_by(.escalation_level) | .[0].user.email
             escalationRules: .escalation_rules
+  - kind: users
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .name
+          blueprint: '"pagerdutyUser"'
+          properties:
+            url: .html_url
+            time_zone: .time_zone
+            email: .email
+            description: .description
+            role: .role
+            job_title: .job_title
+            teams: .teams
+            contact_methods: .contact_methods

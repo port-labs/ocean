@@ -9,7 +9,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from clients.pagerduty import PagerDutyClient
 from integration import (
-    ObjectKind,
+    ObjectKind, OBJECTS_WITH_SPECIAL_HANDLING,
     PagerdutyEscalationPolicyResourceConfig,
     PagerdutyIncidentResourceConfig,
     PagerdutyOncallResourceConfig,
@@ -174,6 +174,21 @@ async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
         else:
             yield escalation_policies
 
+@ocean.on_resync()
+async def on_global_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+
+    if kind in OBJECTS_WITH_SPECIAL_HANDLING:
+        logger.info(f"Kind {kind} has a special handling. Skipping...")
+        return
+    else:
+        pager_duty_client = initialize_client()
+
+        async for resource_batch in pager_duty_client.paginate_request_to_pager_duty(
+            resource=kind
+        ):
+            logger.info(f"Received batch with {len(resource_batch)} {kind}")
+            yield resource_batch
+        
 
 @ocean.router.post("/webhook")
 async def upsert_incident_webhook_handler(data: dict[str, Any]) -> None:
