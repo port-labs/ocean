@@ -61,6 +61,7 @@ class TerraformClient:
                 )
 
                 response.raise_for_status()
+                logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
                 return response.json()
 
         except Exception as e:
