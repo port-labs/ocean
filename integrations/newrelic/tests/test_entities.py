@@ -33,6 +33,7 @@ from unittest.mock import AsyncMock
 import pytest
 from unittest.mock import patch
 
+
 @pytest.fixture
 async def mock_send_request() -> AsyncGenerator[AsyncMock, None]:
     """Fixture to mock send_graph_api_request function."""
@@ -41,6 +42,7 @@ async def mock_send_request() -> AsyncGenerator[AsyncMock, None]:
         new_callable=AsyncMock,
     ) as mock:
         yield mock
+
 
 # Fixture to mock the render_query function in EntitiesHandler
 @pytest.fixture
