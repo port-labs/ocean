@@ -213,9 +213,7 @@ class PagerdutyPortAppConfig(PortAppConfig):
         | PagerdutyOncallResourceConfig
         | PagerdutyEscalationPolicyResourceConfig
         | ResourceConfig
-    ] = Field(
-        default_factory=list
-    )
+    ] = Field(default_factory=list)
 
 
 class PagerdutyIntegration(BaseIntegration):
