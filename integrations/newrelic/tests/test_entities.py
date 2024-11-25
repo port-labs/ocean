@@ -5,7 +5,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from newrelic_integration.core.errors import NewRelicNotFoundError
 from newrelic_integration.core.entities import EntitiesHandler
-from typing import AsyncGenerator, List, Dict, Any, Optional
+from typing import AsyncGenerator, List, Dict, Any
 
 
 # Fixture to mock the Ocean context initialization
@@ -28,8 +28,13 @@ def mock_http_client() -> AsyncMock:
 
 
 # Fixture to mock sending requests in EntitiesHandler
+from typing import AsyncGenerator
+from unittest.mock import AsyncMock
+import pytest
+from unittest.mock import patch
+
 @pytest.fixture
-def mock_send_request() -> AsyncMock:
+async def mock_send_request() -> AsyncGenerator[AsyncMock, None]:
     """Fixture to mock send_graph_api_request function."""
     with patch(
         "newrelic_integration.core.entities.send_graph_api_request",
@@ -37,10 +42,9 @@ def mock_send_request() -> AsyncMock:
     ) as mock:
         yield mock
 
-
 # Fixture to mock the render_query function in EntitiesHandler
 @pytest.fixture
-def mock_render_query() -> AsyncMock:
+async def mock_render_query() -> AsyncGenerator[AsyncMock, None]:
     """Fixture to mock render_query function."""
     with patch(
         "newrelic_integration.core.entities.render_query", new_callable=AsyncMock
