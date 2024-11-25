@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved error handling and type safety in NewRelic's extract_entities function, including null-checking for responses.
 
 
+## 0.1.96 (2024-11-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
+
+
 ## 0.1.95 (2024-11-12)
 
 
