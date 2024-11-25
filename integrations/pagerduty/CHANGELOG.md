@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.119 (2024-11-25)
+## 0.1.121 (2024-11-25)
 
 
 ### Improvements
@@ -16,6 +16,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added blueprint and mapping for PagerDuty users
 - Added logs to track the HTTP requests made to PagerDuty API
 - Added a generic resync event handler to allow the integration to bring any valid resource from PagerDuty
+
+
+## 0.1.120 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.3
+
+
+## 0.1.119 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.2
 
 
 ## 0.1.118 (2024-11-21)
