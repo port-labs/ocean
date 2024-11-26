@@ -28,7 +28,9 @@ def mock_ocean_context() -> None:
 class TestSnykClientUserDetails:
     @pytest.fixture
     async def snyk_client(self) -> AsyncGenerator[SnykClient, None]:
-        with patch.object(SnykClient, "_send_api_request", new_callable=AsyncMock):
+        mock_send_api_request = AsyncMock()
+
+        with patch.object(SnykClient, "_send_api_request", mock_send_api_request):
             client = SnykClient(
                 token="test-token",
                 api_url="https://api.test.com",
@@ -38,6 +40,8 @@ class TestSnykClientUserDetails:
                 webhook_secret=None,
                 rate_limiter=AsyncLimiter(5, 1),
             )
+
+            client._send_api_request = mock_send_api_request  # type: ignore
             yield client
 
     @pytest.fixture
@@ -57,7 +61,7 @@ class TestSnykClientUserDetails:
         async with event_context("test_event"):
             result = await snyk_client._get_user_details(None)
             assert result == {}
-            assert not snyk_client._send_api_request.called
+            snyk_client._send_api_request.assert_not_called()  # Changed from .called
 
     @pytest.mark.asyncio
     async def test_user_from_different_org(
@@ -73,7 +77,7 @@ class TestSnykClientUserDetails:
 
             # Assert
             assert result == {}
-            assert not snyk_client._send_api_request.called
+            snyk_client._send_api_request.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_cached_user_details(
@@ -92,7 +96,7 @@ class TestSnykClientUserDetails:
 
             # Assert
             assert result == cached_data
-            assert not snyk_client._send_api_request.called
+            snyk_client._send_api_request.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_successful_user_details_fetch(
