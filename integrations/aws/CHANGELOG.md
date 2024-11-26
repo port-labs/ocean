@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Do not break resync when a region is not accessible
+- Do not break delete entities when a region is not accessible
 
 ## 0.2.62 (2024-11-25)
 
