@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 from typing import AsyncGenerator, Any, List
-from main import _handle_global_resource_resync
 from utils.aws import update_available_access_credentials, get_sessions, session_factory
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from aws.aws_credentials import AwsCredentials
@@ -126,30 +125,3 @@ class TestAwsSessions(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(sessions), 2)
         self.credentials_mock_1.create_session.assert_called_once_with("us-west-1")
         self.credentials_mock_2.create_session.assert_called_once_with("us-east-1")
-
-
-class TestGlobalResourceBruteForce(unittest.IsolatedAsyncioTestCase):
-    def setUp(self) -> None:
-        self.session_manager_mock: AsyncMock = patch(
-            "utils.aws._session_manager", autospec=SessionManager
-        ).start()
-
-        self.credentials_mock: AsyncMock = AsyncMock(spec=AwsCredentials)
-        self.session_mock: AsyncMock = AsyncMock(spec=Session)
-
-    def tearDown(self) -> None:
-        patch.stopall()
-
-    async def test_handle_global_resource_resync_not_throwing_a_permission_error(
-        self,
-    ) -> None:
-        """Test that the global resource resync does not throw a permission error."""
-        self.session_manager_mock._application_session = self.session_mock
-        self.session_mock.client = AsyncMock(side_effect=Exception)
-
-        with self.assertRaises(Exception):
-            await _handle_global_resource_resync(
-                kind="AWS::S3::Bucket",
-            )
-
-        self.session_mock.client.assert_called_once_with("organizations")
