@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 import httpx
-from typing import Any, Dict, Generator
+from typing import Generator
 from port_ocean.context.event import event
 from port_ocean.context.event import event_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -13,6 +13,7 @@ MOCK_API_URL = "https://api.test.com"
 MOCK_TOKEN = "test-token"
 MOCK_ORG_URL = "https://test.com"
 MOCK_PERSONAL_ACCESS_TOKEN = "test-personal-token"
+
 
 # Port Ocean Mocks
 @pytest.fixture(autouse=True)
@@ -55,22 +56,22 @@ class TestSnykClientUserDetails:
             yield mock_event
 
     @pytest.mark.asyncio
-    async def test_none_user_reference(
-        self, snyk_client: SnykClient
-    ) -> None:
+    async def test_none_user_reference(self, snyk_client: SnykClient) -> None:
         """Test handling of None user reference"""
-        with patch.object(snyk_client, "_send_api_request", new_callable=AsyncMock) as mock_send_api_request:
+        with patch.object(
+            snyk_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_send_api_request:
             async with event_context("test_event"):
                 result = await snyk_client._get_user_details(None)
                 assert result == {}
                 mock_send_api_request.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_user_from_different_org(
-        self, snyk_client: SnykClient
-    ) -> None:
+    async def test_user_from_different_org(self, snyk_client: SnykClient) -> None:
         """Test handling of user from non-configured organization"""
-        with patch.object(snyk_client, "_send_api_request", new_callable=AsyncMock) as mock_send_api_request:
+        with patch.object(
+            snyk_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_send_api_request:
             async with event_context("test_event"):
                 # Arrange
                 user_reference = "/rest/orgs/different_org/users/user123"
@@ -83,11 +84,11 @@ class TestSnykClientUserDetails:
                 mock_send_api_request.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_cached_user_details(
-        self, snyk_client: SnykClient
-    ) -> None:
+    async def test_cached_user_details(self, snyk_client: SnykClient) -> None:
         """Test retrieval of cached user details"""
-        with patch.object(snyk_client, "_send_api_request", new_callable=AsyncMock) as mock_send_api_request:
+        with patch.object(
+            snyk_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_send_api_request:
             async with event_context("test_event"):
                 # Arrange
                 user_id = "user123"
@@ -103,11 +104,11 @@ class TestSnykClientUserDetails:
                 mock_send_api_request.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_successful_user_details_fetch(
-        self, snyk_client: SnykClient
-    ) -> None:
+    async def test_successful_user_details_fetch(self, snyk_client: SnykClient) -> None:
         """Test successful user details fetch"""
-        with patch.object(snyk_client, "_send_api_request", new_callable=AsyncMock) as mock_send_api_request:
+        with patch.object(
+            snyk_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_send_api_request:
             async with event_context("test_event"):
                 # Arrange
                 user_id = "user123"
@@ -127,11 +128,11 @@ class TestSnykClientUserDetails:
                 assert event.attributes[f"user-{user_id}"] == api_response
 
     @pytest.mark.asyncio
-    async def test_404_error_handling(
-        self, snyk_client: SnykClient
-    ) -> None:
+    async def test_404_error_handling(self, snyk_client: SnykClient) -> None:
         """Test 404 error handling"""
-        with patch.object(snyk_client, "_send_api_request", new_callable=AsyncMock) as mock_send_api_request:
+        with patch.object(
+            snyk_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_send_api_request:
             async with event_context("test_event"):
                 # Arrange
                 user_reference = "/rest/orgs/org123/users/user123"
@@ -151,11 +152,11 @@ class TestSnykClientUserDetails:
                 assert result == {}
 
     @pytest.mark.asyncio
-    async def test_non_404_error_handling(
-        self, snyk_client: SnykClient
-    ) -> None:
+    async def test_non_404_error_handling(self, snyk_client: SnykClient) -> None:
         """Test non-404 error handling"""
-        with patch.object(snyk_client, "_send_api_request", new_callable=AsyncMock) as mock_send_api_request:
+        with patch.object(
+            snyk_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_send_api_request:
             async with event_context("test_event"):
                 # Arrange
                 user_reference = "/rest/orgs/org123/users/user123"
@@ -173,11 +174,11 @@ class TestSnykClientUserDetails:
                     await snyk_client._get_user_details(user_reference)
 
     @pytest.mark.asyncio
-    async def test_empty_api_response(
-        self, snyk_client: SnykClient
-    ) -> None:
+    async def test_empty_api_response(self, snyk_client: SnykClient) -> None:
         """Test empty API response"""
-        with patch.object(snyk_client, "_send_api_request", new_callable=AsyncMock) as mock_send_api_request:
+        with patch.object(
+            snyk_client, "_send_api_request", new_callable=AsyncMock
+        ) as mock_send_api_request:
             async with event_context("test_event"):
                 # Arrange
                 user_reference = "/rest/orgs/org123/users/user123"
