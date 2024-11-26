@@ -13,7 +13,7 @@ from snyk.client import SnykClient
 def mock_ocean_context() -> None:
     try:
         mock_ocean_app: MagicMock = MagicMock()
-        mock_ocean_app.config.integration.config: Dict[str, str] = {
+        mock_ocean_app.config.integration.config: dict[str, str] = {
             "organization_url": "https://test.com",
             "token": "test-token",
         }
