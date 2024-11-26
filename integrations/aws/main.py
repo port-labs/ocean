@@ -101,6 +101,10 @@ async def resync_resources_for_account(
                 ):
                     yield batch
             except Exception as exc:
+                if is_access_denied_exception(
+                    exc
+                ):  # hide access denied errors since we do not want to exit the resync on permission errors
+                    continue
                 regions.append(session.region_name)
                 errors.append(exc)
                 continue
