@@ -40,7 +40,7 @@ class TestSnykClientUserDetails:
                 rate_limiter=AsyncLimiter(5, 1),
             )
             client._send_api_request = AsyncMock()
-            return client
+            yield client
 
     @pytest.fixture
     async def mock_event_context(self) -> AsyncGenerator[MagicMock, None]:
