@@ -1,4 +1,4 @@
-from typing import Optional, Any, AsyncIterable, Tuple
+from typing import Optional, Any, AsyncIterable, Tuple, Dict
 
 import httpx
 from loguru import logger
@@ -56,15 +56,19 @@ class EntitiesHandler:
             )
 
         async def extract_entities(
-            response: dict[Any, Any]
-        ) -> Tuple[Optional[str], list[dict[Any, Any]]]:
+            response: Optional[Dict[str, Any]] = None
+        ) -> Tuple[Optional[str], list[Dict[str, Any]]]:
+            if not response:
+                return None, []
+
             results = (
                 response.get("data", {})
                 .get("actor", {})
                 .get("entitySearch", {})
                 .get("results", {})
             )
-            return results.get("nextCursor"), results.get("entities", [])
+
+            return (results.get("nextCursor"), results.get("entities", []))
 
         async for entity in send_paginated_graph_api_request(
             self.http_client,
@@ -74,8 +78,10 @@ class EntitiesHandler:
             entity_query_filter=resource_config.selector.entity_query_filter,
             extra_entity_properties=resource_config.selector.entity_extra_properties_query,
         ):
-            format_tags(entity)
-            yield entity
+
+            if entity:
+                self._format_tags(entity)
+                yield entity
 
     async def list_entities_by_guids(
         self, http_client: httpx.AsyncClient, entity_guids: list[str]
