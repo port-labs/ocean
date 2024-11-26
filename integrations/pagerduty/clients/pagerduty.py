@@ -102,7 +102,7 @@ class PagerDutyClient:
                 raise
             except httpx.HTTPError as e:
                 logger.error(
-                    f"Got an HTTP error while fetching paginated data {resource}: {str(e)}"
+                    f"Got an HTTP error while fetching paginated data for {resource}: {str(e)}"
                 )
                 raise
 
