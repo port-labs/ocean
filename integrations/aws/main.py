@@ -103,7 +103,7 @@ async def resync_resources_for_account(
             except Exception as exc:
                 if is_access_denied_exception(
                     exc
-                ):  # hide access denied errors since we do not want to exit the resync on permission errors
+                ):  # skip access denied errors since we do not want to skip deleting resources from port
                     continue
                 regions.append(session.region_name)
                 errors.append(exc)
