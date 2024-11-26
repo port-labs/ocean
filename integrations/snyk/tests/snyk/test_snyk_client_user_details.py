@@ -7,6 +7,7 @@ from port_ocean.context.event import event_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.ocean import initialize_port_ocean_context
 from snyk.client import SnykClient
+from aiolimiter import AsyncLimiter
 
 
 @pytest.fixture(autouse=True)
@@ -36,6 +37,7 @@ class TestSnykClientUserDetails:
                 organization_ids=["org123"],
                 group_ids=None,
                 webhook_secret=None,
+                rate_limiter=AsyncLimiter(5, 1),
             )
             client._send_api_request = AsyncMock()
             return client
