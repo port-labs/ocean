@@ -1,17 +1,17 @@
 [tool.poetry]
 name = "gitlab"
-version = "0.1.134"
+version = "0.1.144"
 description = "Gitlab integration for Port using Port-Ocean Framework"
 authors = ["Yair Siman-Tov <yair@getport.io>"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 aiofiles = "^0.6.0"
 aiolimiter = "^1.1.0"
 python-gitlab = "^3.14.0"
 pathlib = "^1.0.1"
 jsonschema = "^4.17.3"
-port_ocean = {version = "^0.12.7", extras = ["cli"]}
+port_ocean = {version = "^0.14.3", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration

@@ -5,9 +5,9 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from httpx import Timeout
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+from aiolimiter import AsyncLimiter
 
 
 class CacheKeys(StrEnum):
@@ -31,6 +31,7 @@ class SnykClient:
         organization_ids: list[str] | None,
         group_ids: list[str] | None,
         webhook_secret: str | None,
+        rate_limiter: AsyncLimiter,
     ):
         self.token = token
         self.api_url = f"{api_url}/v1"
@@ -43,6 +44,7 @@ class SnykClient:
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
         self.snyk_api_version = "2024-06-21"
+        self.rate_limiter = rate_limiter
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -60,20 +62,21 @@ class SnykClient:
             **(query_params or {}),
             **({"version": version} if version is not None else {}),
         }
-        try:
-            response = await self.http_client.request(
-                method=method, url=url, params=query_params, json=json_data
-            )
-            response.raise_for_status()
-            return response.json()
+        async with self.rate_limiter:
+            try:
+                response = await self.http_client.request(
+                    method=method, url=url, params=query_params, json=json_data
+                )
+                response.raise_for_status()
+                return response.json()
 
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
-                f"version: {version}, json: {json_data}. "
-                f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
-            )
-            raise
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
+                    f"version: {version}, json: {json_data}. "
+                    f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
+                )
+                raise
 
     async def _get_paginated_resources(
         self,

@@ -29,9 +29,11 @@ def generate_fake_persons(
                 email=fake.email(domain=company_domain),
                 age=randint(20, 100),
                 department=department,
-                status=FakePersonStatus.WORKING
-                if randint(0, 2) % 2 == 0
-                else FakePersonStatus.NOPE,
+                status=(
+                    FakePersonStatus.WORKING
+                    if randint(0, 2) % 2 == 0
+                    else FakePersonStatus.NOPE
+                ),
             ).dict()
         )
 
