@@ -100,6 +100,11 @@ class PagerDutyClient:
                     f"Got {e.response.status_code} status code while fetching paginated data: {str(e)}"
                 )
                 raise
+            except httpx.HTTPError as e:
+                logger.error(
+                    f"Got an HTTP error while fetching paginated data {resource}: {str(e)}"
+                )
+                raise
 
     async def get_singular_from_pager_duty(
         self, object_type: str, identifier: str
