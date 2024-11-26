@@ -127,7 +127,7 @@ class JenkinsClient:
 
         jobs_pagination = f"{{{start_idx},{end_idx}}}"
         builds_query = (
-            ",builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName,previousBuild[id,url]]{0,50}"
+            ",builds[id,number,url,result,duration,timestamp,displayName,fullDisplayName,previousBuild[id,url]]{0,100}"
             if resource == "builds"
             else ""
         )

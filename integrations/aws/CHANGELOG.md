@@ -7,6 +7,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.62 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.3
+
+
+## 0.2.61 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.2
+
+
+## 0.2.60 (2024-11-21)
+
+
+### Bug Fixes
+
+- Fix an issue where the integration enters an endless loop on permission error when querying resources in a region without permission
+
+
+## 0.2.59 (2024-11-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
+
+
+## 0.2.58 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
+## 0.2.57 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+## 0.2.56 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+## 0.2.55 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
+## 0.2.54 (2024-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+
+## 0.2.53 (2024-10-31)
+
+
+### Improvements
+
+- Added the option to query resources from specific regions, configurable via the regionPolicy in the selector field of the mapping.
+- Introduced `maximumConcurrentAccount` parameter to control the maximum number of accounts synced concurrently.
+
+### Bug Fixes
+
+- Skip missing resources in a region without interrupting sync across other regions.
+
+
+## 0.2.52 (2024-10-30)
+
+
+### Bug Fixes
+
+-  Updated `joined_timestamp` mapping in AWS Organizations to comply with RFC3339 timestamp format by replacing the space delimiter with 'T' in the `JoinedTimestamp` field.
+
+
 ## 0.2.51 (2024-10-23)
 
 

@@ -1,11 +1,17 @@
 import enum
 
-from port_ocean.context.event import event
+from port_ocean.context.ocean import ocean
+from utils.overrides import AWSResourceConfig
+from typing import List
 import asyncio
 
 
-MAX_CONCURRENT_TASKS = 50
-semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TASKS)
+def get_semaphore() -> asyncio.BoundedSemaphore:
+    max_concurrent_accounts: int = int(
+        ocean.integration_config["maximum_concurrent_accounts"]
+    )
+    semaphore = asyncio.BoundedSemaphore(max_concurrent_accounts)
+    return semaphore
 
 
 class CustomProperties(enum.StrEnum):
@@ -45,17 +51,37 @@ def is_server_error(e: Exception) -> bool:
     return False
 
 
+def is_resource_not_found_exception(e: Exception) -> bool:
+    resource_not_found_error_codes = [
+        "ResourceNotFoundException",
+        "ResourceNotFound",
+        "ResourceNotFoundFault",
+    ]
+
+    if hasattr(e, "response") and e.response is not None:
+        error_code = e.response.get("Error", {}).get("Code")
+        return error_code in resource_not_found_error_codes
+
+    return False
+
+
 def get_matching_kinds_and_blueprints_from_config(
-    kind: str,
-) -> dict[str, list[str]]:
-    kinds: dict[str, list[str]] = {}
-    resources = event.port_app_config.resources
-
-    for resource in resources:
+    kind: str, region: str, resource_configs: List[AWSResourceConfig]
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    allowed_kinds: dict[str, list[str]] = {}
+    disallowed_kinds: dict[str, list[str]] = {}
+    for resource in resource_configs:
         blueprint = resource.port.entity.mappings.blueprint.strip('"')
-        if resource.kind in kinds:
-            kinds[resource.kind].append(blueprint)
+        resource_selector = resource.selector
+        if not resource_selector.is_region_allowed(region) and kind == resource.kind:
+            if kind in disallowed_kinds:
+                disallowed_kinds[kind].append(blueprint)
+            else:
+                disallowed_kinds[kind] = [blueprint]
         elif kind == resource.kind:
-            kinds[resource.kind] = [blueprint]
+            if kind in allowed_kinds:
+                allowed_kinds[kind].append(blueprint)
+            else:
+                allowed_kinds[kind] = [blueprint]
 
-    return kinds
+    return allowed_kinds, disallowed_kinds

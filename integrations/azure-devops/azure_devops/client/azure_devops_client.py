@@ -21,7 +21,7 @@ WEBHOOK_API_PARAMS = {"api-version": "7.1-preview.1"}
 # Maximum number of work item IDs allowed in a single API request
 # (based on Azure DevOps API limitations) https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/list?view=azure-devops-rest-7.1&tabs=HTTP
 MAX_WORK_ITEMS_PER_REQUEST = 200
-MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 20000
+MAX_WORK_ITEMS_RESULTS_PER_PROJECT = 19999
 
 
 class AzureDevopsClient(HTTPBaseClient):
@@ -125,6 +125,18 @@ class AzureDevopsClient(HTTPBaseClient):
                         pipeline["__projectId"] = project["id"]
                     yield pipelines
 
+    async def generate_releases(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for projects in self.generate_projects():
+            for project in projects:
+                releases_url = (
+                    self._organization_base_url.replace(
+                        "dev.azure.com", "vsrm.dev.azure.com"
+                    )
+                    + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
+                )
+                async for releases in self._get_paginated_by_top_and_skip(releases_url):
+                    yield releases
+
     async def generate_repository_policies(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -178,9 +190,7 @@ class AzureDevopsClient(HTTPBaseClient):
         :return: A list of work item IDs.
         """
         config = typing.cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
-        wiql_query = (
-            f"SELECT [Id] from WorkItems WHERE [System.AreaPath] = '{project['name']}'"
-        )
+        wiql_query = f"SELECT [Id] from WorkItems WHERE [System.TeamProject] = '{project['name']}'"
 
         if config.selector.wiql:
             # Append the user-provided wiql to the WHERE clause
@@ -274,24 +284,27 @@ class AzureDevopsClient(HTTPBaseClient):
                 ]
 
     async def _enrich_boards(
-        self, boards: list[dict[str, Any]], project_id: str
+        self, boards: list[dict[str, Any]], project_id: str, team_id: str
     ) -> list[dict[str, Any]]:
         for board in boards:
             response = await self.send_request(
                 "GET",
-                f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/work/boards/{board['id']}",
+                f"{self._organization_base_url}/{project_id}/{team_id}/{API_URL_PREFIX}/work/boards/{board['id']}",
             )
             board.update(response.json())
         return boards
 
-    async def _get_boards(self, project_id: str) -> list[dict[str, Any]]:
-        get_boards_url = (
-            f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/work/boards"
-        )
-        response = await self.send_request("GET", get_boards_url)
-        board_data = response.json().get("value", [])
-        logger.info(f"Found {len(board_data)} boards for project {project_id}")
-        return await self._enrich_boards(board_data, project_id)
+    async def _get_boards(
+        self, project_id: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        teams_url = f"{self._organization_base_url}/{API_URL_PREFIX}/projects/{project_id}/teams"
+        async for teams_in_project in self._get_paginated_by_top_and_skip(teams_url):
+            for team in teams_in_project:
+                get_boards_url = f"{self._organization_base_url}/{project_id}/{team['id']}/{API_URL_PREFIX}/work/boards"
+                response = await self.send_request("GET", get_boards_url)
+                board_data = response.json().get("value", [])
+                logger.info(f"Found {len(board_data)} boards for project {project_id}")
+                yield await self._enrich_boards(board_data, project_id, team["id"])
 
     @cache_iterator_result()
     async def get_boards_in_organization(
@@ -301,7 +314,8 @@ class AzureDevopsClient(HTTPBaseClient):
             yield [
                 {**board, "__project": project}
                 for project in projects
-                for board in await self._get_boards(project["id"])
+                async for boards in self._get_boards(project["id"])
+                for board in boards
             ]
 
     async def generate_subscriptions_webhook_events(self) -> list[WebhookEvent]:

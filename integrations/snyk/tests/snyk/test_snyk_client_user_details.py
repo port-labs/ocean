@@ -1,19 +1,20 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
-from typing import Dict, Any, Optional, AsyncGenerator
+from typing import Dict, Any, Optional
 from port_ocean.context.event import event
 from port_ocean.context.event import event_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.ocean import initialize_port_ocean_context
 from snyk.client import SnykClient
+from aiolimiter import AsyncLimiter
 
 
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     try:
-        mock_ocean_app = MagicMock()
-        mock_ocean_app.config.integration.config = {
+        mock_ocean_app: MagicMock = MagicMock()
+        mock_ocean_app.config.integration.config: dict[str, str] = {
             "organization_url": "https://test.com",
             "token": "test-token",
         }
@@ -26,25 +27,25 @@ def mock_ocean_context() -> None:
 
 class TestSnykClientUserDetails:
     @pytest.fixture
-    async def snyk_client(self) -> AsyncGenerator[SnykClient, None]:
+    def snyk_client(self) -> SnykClient:
         """Create a SnykClient instance with test configuration"""
         with patch("port_ocean.utils.http_async_client"):
-            client = SnykClient(
+            client: SnykClient = SnykClient(
                 token="test-token",
                 api_url="https://api.test.com",
                 app_host=None,
                 organization_ids=["org123"],
                 group_ids=None,
                 webhook_secret=None,
+                rate_limiter=AsyncLimiter(5, 1),
             )
-            # Replace the method with an AsyncMock instead of just mocking it
             client._send_api_request = AsyncMock()
-            yield client
+            return client
 
     @pytest.fixture
-    async def mock_event_context(self) -> AsyncGenerator[MagicMock, None]:
+    def mock_event_context(self) -> MagicMock:
         """Create a mock event context for tests"""
-        mock_event = MagicMock()
+        mock_event: MagicMock = MagicMock()
         mock_event.attributes = {}
 
         with patch("port_ocean.context.event.event", mock_event):
@@ -56,9 +57,9 @@ class TestSnykClientUserDetails:
     ) -> None:
         """Test handling of None user reference"""
         async with event_context("test_event"):
-            result = await snyk_client._get_user_details(None)
+            result: Dict[str, Any] = await snyk_client._get_user_details(None)
             assert result == {}
-            assert not snyk_client._send_api_request.called
+            snyk_client._send_api_request.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_user_from_different_org(
@@ -67,14 +68,14 @@ class TestSnykClientUserDetails:
         """Test handling of user from non-configured organization"""
         async with event_context("test_event"):
             # Arrange
-            user_reference = "/rest/orgs/different_org/users/user123"
+            user_reference: str = "/rest/orgs/different_org/users/user123"
 
             # Act
-            result = await snyk_client._get_user_details(user_reference)
+            result: Dict[str, Any] = await snyk_client._get_user_details(user_reference)
 
             # Assert
             assert result == {}
-            assert not snyk_client._send_api_request.called
+            snyk_client._send_api_request.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_cached_user_details(
@@ -83,17 +84,17 @@ class TestSnykClientUserDetails:
         """Test retrieval of cached user details"""
         async with event_context("test_event"):
             # Arrange
-            user_id = "user123"
-            user_reference = f"/rest/orgs/org123/users/{user_id}"
-            cached_data = {"data": {"id": user_id, "name": "Test User"}}
+            user_id: str = "user123"
+            user_reference: str = f"/rest/orgs/org123/users/{user_id}"
+            cached_data: Dict[str, Any] = {"data": {"id": user_id, "name": "Test User"}}
             event.attributes[f"user-{user_id}"] = cached_data
 
             # Act
-            result = await snyk_client._get_user_details(user_reference)
+            result: Dict[str, Any] = await snyk_client._get_user_details(user_reference)
 
             # Assert
             assert result == cached_data
-            assert not snyk_client._send_api_request.called
+            snyk_client._send_api_request.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_successful_user_details_fetch(
@@ -101,15 +102,17 @@ class TestSnykClientUserDetails:
     ) -> None:
         async with event_context("test_event"):
             # Arrange
-            user_id = "user123"
-            user_reference = f"/rest/orgs/org123/users/{user_id}"
-            api_response = {
+            user_id: str = "user123"
+            user_reference: str = f"/rest/orgs/org123/users/{user_id}"
+            api_response: Dict[str, Any] = {
                 "data": {"id": user_id, "name": "Test User"}
             }
+
+            # Use return_value directly instead of creating a task
             snyk_client._send_api_request.return_value = api_response
 
             # Act
-            result = await snyk_client._get_user_details(user_reference)
+            result: Dict[str, Any] = await snyk_client._get_user_details(user_reference)
 
             # Assert
             assert result == api_response["data"]
@@ -125,18 +128,24 @@ class TestSnykClientUserDetails:
     ) -> None:
         async with event_context("test_event"):
             # Arrange
-            user_reference = "/rest/orgs/org123/users/user123"
-            mock_response = MagicMock(spec=httpx.Response)
+            user_reference: str = "/rest/orgs/org123/users/user123"
+            mock_response: MagicMock = MagicMock(spec=httpx.Response)
             mock_response.status_code = 404
-            error = httpx.HTTPStatusError(
+            error: httpx.HTTPStatusError = httpx.HTTPStatusError(
                 "Not Found",
                 request=MagicMock(spec=httpx.Request),
                 response=mock_response,
             )
-            snyk_client._send_api_request.side_effect = error
+
+            async def mock_raise_error(
+                url: str, query_params: Optional[Dict[str, str]] = None
+            ) -> None:
+                raise error
+
+            snyk_client._send_api_request.side_effect = mock_raise_error
 
             # Act
-            result = await snyk_client._get_user_details(user_reference)
+            result: Dict[str, Any] = await snyk_client._get_user_details(user_reference)
 
             # Assert
             assert result == {}
@@ -147,15 +156,21 @@ class TestSnykClientUserDetails:
     ) -> None:
         async with event_context("test_event"):
             # Arrange
-            user_reference = "/rest/orgs/org123/users/user123"
-            mock_response = MagicMock(spec=httpx.Response)
+            user_reference: str = "/rest/orgs/org123/users/user123"
+            mock_response: MagicMock = MagicMock(spec=httpx.Response)
             mock_response.status_code = 500
-            error = httpx.HTTPStatusError(
+            error: httpx.HTTPStatusError = httpx.HTTPStatusError(
                 "Server Error",
                 request=MagicMock(spec=httpx.Request),
                 response=mock_response,
             )
-            snyk_client._send_api_request.side_effect = error
+
+            async def mock_raise_error(
+                url: str, query_params: Optional[Dict[str, str]] = None
+            ) -> None:
+                raise error
+
+            snyk_client._send_api_request.side_effect = mock_raise_error
 
             # Act/Assert
             with pytest.raises(httpx.HTTPStatusError):
@@ -167,11 +182,12 @@ class TestSnykClientUserDetails:
     ) -> None:
         async with event_context("test_event"):
             # Arrange
-            user_reference = "/rest/orgs/org123/users/user123"
+            user_reference: str = "/rest/orgs/org123/users/user123"
+
             snyk_client._send_api_request.return_value = None
 
             # Act
-            result = await snyk_client._get_user_details(user_reference)
+            result: Dict[str, Any] = await snyk_client._get_user_details(user_reference)
 
             # Assert
             assert result == {}
