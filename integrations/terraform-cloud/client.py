@@ -65,7 +65,14 @@ class TerraformClient:
                 return response.json()
 
         except Exception as e:
-            logger.error(f"Request failed for {url}: {str(e)}")
+            logger.error(
+                "Request failed",
+                error=str(e),
+                url=url,
+                method=method,
+                params=query_params,
+                body=json_data,
+            )
             raise
 
     async def get_paginated_resources(
