@@ -28,8 +28,7 @@ def mock_ocean_context() -> None:
 class TestSnykClientUserDetails:
     @pytest.fixture
     async def snyk_client(self) -> AsyncGenerator[SnykClient, None]:
-        """Create a SnykClient instance with test configuration"""
-        with patch("port_ocean.utils.http_async_client"):
+        with patch.object(SnykClient, '_send_api_request', new_callable=AsyncMock):
             client = SnykClient(
                 token="test-token",
                 api_url="https://api.test.com",
@@ -39,7 +38,6 @@ class TestSnykClientUserDetails:
                 webhook_secret=None,
                 rate_limiter=AsyncLimiter(5, 1),
             )
-            client._send_api_request = AsyncMock()
             yield client
 
     @pytest.fixture
