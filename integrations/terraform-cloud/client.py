@@ -1,10 +1,10 @@
-from typing import Any, AsyncGenerator, Optional
-from port_ocean.utils import http_async_client
-import httpx
-from loguru import logger
 from enum import StrEnum
+from typing import Any, AsyncGenerator, Optional
+from aiolimiter import AsyncLimiter
+from loguru import logger
 
 from port_ocean.context.event import event
+from port_ocean.utils import http_async_client
 
 TERRAFORM_WEBHOOK_EVENTS = [
     "run:applying",
@@ -21,6 +21,8 @@ class CacheKeys(StrEnum):
 
 
 PAGE_SIZE = 100
+NUMBER_OF_REQUESTS = 25
+NUMBER_OF_SECONDS = 1
 
 
 class TerraformClient:
@@ -34,6 +36,8 @@ class TerraformClient:
         self.client = http_async_client
         self.client.headers.update(self.base_headers)
 
+        self.rate_limiter = AsyncLimiter(NUMBER_OF_REQUESTS, NUMBER_OF_SECONDS)
+
     async def send_api_request(
         self,
         endpoint: str,
@@ -41,31 +45,34 @@ class TerraformClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        logger.info(f"Requesting Terraform Cloud data for endpoint: {endpoint}")
+        url = f"{self.api_url}/{endpoint}"
+
         try:
-            url = f"{self.api_url}/{endpoint}"
-            logger.info(
-                f"URL: {url}, Method: {method}, Params: {query_params}, Body: {json_data}"
-            )
-            response = await self.client.request(
-                method=method,
-                url=url,
-                params=query_params,
-                json=json_data,
-            )
-            response.raise_for_status()
+            async with self.rate_limiter:
+                logger.debug(
+                    f"Requesting {method} {url} with params: {query_params} and body: {json_data}"
+                )
 
-            logger.info(f"Successfully retrieved data for endpoint: {endpoint}")
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    params=query_params,
+                    json=json_data,
+                )
 
-            return response.json()
+                response.raise_for_status()
+                logger.debug(f"Successfully retrieved data for endpoint: {endpoint}")
+                return response.json()
 
-        except httpx.HTTPStatusError as e:
+        except Exception as e:
             logger.error(
-                f"HTTP error on {endpoint}: {e.response.status_code} - {e.response.text}"
+                "Request failed",
+                error=str(e),
+                url=url,
+                method=method,
+                params=query_params,
+                body=json_data,
             )
-            raise
-        except httpx.HTTPError as e:
-            logger.error(f"HTTP error on {endpoint}: {str(e)}")
             raise
 
     async def get_paginated_resources(
