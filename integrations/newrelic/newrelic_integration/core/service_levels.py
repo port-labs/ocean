@@ -10,6 +10,7 @@ from newrelic_integration.utils import (
     render_query,
 )
 from newrelic_integration.core.paging import send_paginated_graph_api_request
+from loguru import logger
 
 SLI_OBJECT = "__SLI"
 BATCH_SIZE = 50
@@ -22,6 +23,10 @@ class ServiceLevelsHandler:
     async def get_service_level_indicator_value(
         self, http_client: httpx.AsyncClient, nrql: str
     ) -> dict[Any, Any]:
+        if not nrql:
+            logger.debug("Empty NRQL provided")
+            return {}
+
         query = await render_query(
             GET_SLI_BY_NRQL_QUERY,
             nrql_query=nrql,
@@ -30,6 +35,11 @@ class ServiceLevelsHandler:
         response = await send_graph_api_request(
             http_client, query, request_type="get_service_level_indicator_value"
         )
+
+        if not response:
+            logger.warning("Empty response from API")
+            return {}
+
         service_levels = (
             response.get("data", {})
             .get("actor", {})
@@ -37,21 +47,20 @@ class ServiceLevelsHandler:
             .get("nrql", {})
             .get("results", [])
         )
-        if service_levels:
-            return service_levels[0]
-        return {}
+        return service_levels[0] if service_levels else {}
 
     async def enrich_slo_with_sli_and_tags(
         self, service_level: dict[str, Any]
     ) -> dict[str, Any]:
         # Get the NRQL which is used to build the actual SLI result
-        nrql = (
-            service_level.get("serviceLevel", {})
-            .get("indicators", [])[0]
-            .get("resultQueries", {})
-            .get("indicator", {})
-            .get("nrql")
-        )
+        indicators = service_level.get("serviceLevel", {}).get("indicators", [])
+        if not indicators:
+            logger.warning("No indicators found in service level")
+            service_level[SLI_OBJECT] = {}
+            format_tags(service_level)
+            return service_level
+
+        nrql = indicators[0].get("resultQueries", {}).get("indicator", {}).get("nrql")
         service_level[SLI_OBJECT] = await self.get_service_level_indicator_value(
             self.http_client, nrql
         )
@@ -80,6 +89,10 @@ class ServiceLevelsHandler:
         response: dict[Any, Any]
     ) -> Tuple[Optional[str], list[dict[Any, Any]]]:
         """Extract service levels from the response. used by send_paginated_graph_api_request"""
+        if not response:
+            logger.debug("Empty response in extract_service_levels")
+            return None, []
+
         results = (
             response.get("data", {})
             .get("actor", {})
