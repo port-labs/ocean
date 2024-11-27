@@ -2,14 +2,10 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 from typing import Dict, Any, List, Optional
-import pytest
 
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from newrelic_integration.core.service_levels import (
-    ServiceLevelsHandler,
-    SLI_OBJECT
-)
+from newrelic_integration.core.service_levels import ServiceLevelsHandler, SLI_OBJECT
 
 
 @pytest.fixture(autouse=True)
