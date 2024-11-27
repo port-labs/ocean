@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Handle region policy for global resources
+- Fixed an issue where the region policy was not properly handled for global resources. Now, when a region policy is specified, it strictly adheres to the allowed regions only.
 
 
 ## 0.2.58 (2024-11-12)
