@@ -9,13 +9,11 @@ from loguru import logger
 from types_aiobotocore_sts import STSClient
 
 from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.context.ocean import ocean
 
 
 class AccountNotFoundError(OceanAbortException):
     pass
-
-
-ASSUME_ROLE_DURATION_SECONDS = 3600  # 1 hour
 
 
 class SessionManager:
@@ -98,7 +96,7 @@ class SessionManager:
                 organizations_client = await sts_client.assume_role(
                     RoleArn=organization_role_arn,
                     RoleSessionName="OceanOrgAssumeRoleSession",
-                    DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
+                    DurationSeconds=self._assume_role_duration_seconds(),
                 )
 
                 credentials = organizations_client["Credentials"]
@@ -120,6 +118,10 @@ class SessionManager:
 
     def _get_account_read_role_name(self) -> str:
         return ocean.integration_config.get("account_read_role_name", "")
+    
+    @staticmethod
+    def _assume_role_duration_seconds() -> int:
+        return int(ocean.integration_config["assume_role_duration"])
 
     async def _update_available_access_credentials(self) -> None:
         logger.info("Updating AWS credentials")
@@ -156,7 +158,7 @@ class SessionManager:
             account_role = await sts_client.assume_role(
                 RoleArn=f'arn:aws:iam::{account["Id"]}:role/{self._get_account_read_role_name()}',
                 RoleSessionName="OceanMemberAssumeRoleSession",
-                DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
+                DurationSeconds=self._assume_role_duration_seconds(),
             )
             raw_credentials = account_role["Credentials"]
             credentials = AwsCredentials(
