@@ -8,8 +8,7 @@ from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from newrelic_integration.core.service_levels import (
     ServiceLevelsHandler,
-    SLI_OBJECT,
-    BATCH_SIZE,
+    SLI_OBJECT
 )
 
 
