@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.63 (2024-11-25)
+
+
+### Bug Fixes
+
+- Do not break delete entities when a region is not accessible
+
 ## 0.2.62 (2024-11-25)
 
 
@@ -385,7 +392,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 - Add auto-discover for available regions in case global resources do not have permissions in default region
-- Add access denied handler to STS:AssumeRole 
+- Add access denied handler to STS:AssumeRole
 - Add access denied handler to custom kind resync
 
 
