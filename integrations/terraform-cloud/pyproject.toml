@@ -1,12 +1,13 @@
 [tool.poetry]
 name = "terraform-cloud"
-version = "0.1.79"
+version = "0.1.83"
 description = "Terraform Cloud Integration for Port"
 authors = ["Michael Armah <michaelarmah@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.14.0", extras = ["cli"]}
+port_ocean = {version = "^0.14.3", extras = ["cli"]}
+aiolimiter = "^1.1.0"
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
