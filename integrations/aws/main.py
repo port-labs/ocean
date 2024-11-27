@@ -20,7 +20,6 @@ from utils.resources import (
 from utils.aws import (
     describe_accessible_accounts,
     get_accounts,
-    get_default_region_from_credentials,
     get_sessions,
     update_available_access_credentials,
     validate_request,
@@ -52,32 +51,23 @@ async def _handle_global_resource_resync(
     credentials: AwsCredentials,
     aws_resource_config: AWSResourceConfig,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    denied_access_to_default_region = False
-    default_region = get_default_region_from_credentials(credentials)
-    default_session = await credentials.create_session(default_region)
-    try:
-        async for batch in resync_cloudcontrol(
-            kind, default_session, aws_resource_config
-        ):
-            yield batch
-    except Exception as e:
-        if is_access_denied_exception(e):
-            denied_access_to_default_region = True
-        else:
-            raise e
+    aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
-    if denied_access_to_default_region:
-        logger.info(f"Trying to resync {kind} in all regions until success")
-        async for session in credentials.create_session_for_each_region():
-            try:
-                async for batch in resync_cloudcontrol(
-                    kind, session, aws_resource_config
-                ):
-                    yield batch
-                break
-            except Exception as e:
-                if not is_access_denied_exception(e):
-                    raise e
+    allowed_regions = [
+        region
+        for region in credentials.enabled_regions
+        if aws_resource_config.selector.is_region_allowed(region)
+    ]
+    async for session in credentials.create_session_for_each_region(allowed_regions):
+        try:
+            async for batch in resync_cloudcontrol(kind, session, aws_resource_config):
+                yield batch
+            return
+        except Exception as e:
+            if is_access_denied_exception(e):
+                continue
+            else:
+                raise e
 
 
 async def resync_resources_for_account(
