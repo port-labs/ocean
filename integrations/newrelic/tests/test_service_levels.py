@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
-from typing import Dict, Any, List, Optional, Generator, AsyncGenerator
+from typing import Dict, Any, List, Optional, AsyncGenerator
 
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
@@ -203,9 +203,11 @@ class TestServiceLevelsHandler:
         """Test list_service_levels method with an empty generator."""
 
         # Create mock async generator with no items
-        async def mock_paginated_request(*args: Any, **kwargs: Any) -> AsyncGenerator[AsyncMock, None]:
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[AsyncMock, None]:
             # Empty generator
-            return 
+            return
             yield
 
         # Patch the paginated request method
@@ -234,8 +236,9 @@ class TestServiceLevelsHandler:
             {"id": "6"},
         ]
 
-
-        async def mock_paginated_request(*args: Any, **kwargs: Any) -> AsyncGenerator[dict[str, Any], None]:
+        async def mock_paginated_request(
+            *args: Any, **kwargs: Any
+        ) -> AsyncGenerator[dict[str, Any], None]:
             # Yield individual items instead of batches
             for item in test_batches:
                 yield item
