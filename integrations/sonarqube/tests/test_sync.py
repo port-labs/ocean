@@ -18,12 +18,15 @@ async def test_full_sync_produces_correct_response_from_api(
     integration_path: str,
     issues: list[dict[str, Any]],
     projects: list[dict[str, Any]],
+    component_projects: list[dict[str, Any]],
     analysis: list[dict[str, Any]],
     portfolios: list[dict[str, Any]],
     mock_ocean_context: Any,
 ) -> None:
     projects_mock = AsyncMock()
     projects_mock.return_value = projects
+    component_projects_mock = AsyncMock()
+    component_projects_mock.return_value = component_projects
     issues_mock = AsyncMock()
     issues_mock.return_value = issues
     saas_analysis_mock = AsyncMock()
@@ -33,7 +36,8 @@ async def test_full_sync_produces_correct_response_from_api(
     on_portfolio_resync_mock = AsyncMock()
     on_portfolio_resync_mock.return_value = portfolios
 
-    monkeypatch.setattr(SonarQubeClient, "get_all_projects", projects_mock)
+    monkeypatch.setattr(SonarQubeClient, "get_projects", projects_mock)
+    monkeypatch.setattr(SonarQubeClient, "get_components", component_projects_mock)
     monkeypatch.setattr(SonarQubeClient, "get_all_issues", issues_mock)
     monkeypatch.setattr(
         SonarQubeClient, "get_all_sonarcloud_analyses", saas_analysis_mock

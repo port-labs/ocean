@@ -21,6 +21,7 @@ PURE_PROJECTS: list[dict[str, Any]] = [
     },
 ]
 
+
 COMPONENT_PROJECTS: list[dict[str, Any]] = [
     {
         "key": "project-key-1",
@@ -41,35 +42,6 @@ COMPONENT_PROJECTS: list[dict[str, Any]] = [
         "visibility": "public",
         "isAiCodeAssured": False,
         "isAiCodeFixEnabled": False,
-    },
-]
-
-FULL_PROJECTS: list[dict[str, Any]] = [
-    {
-        "key": "project-key-1",
-        "name": "My Project 1",
-        "qualifier": "TRK",
-        "isFavorite": True,
-        "tags": ["finance", "java"],
-        "visibility": "public",
-        "isAiCodeAssured": False,
-        "isAiCodeFixEnabled": False,
-        "revision": "cfb82f55c6ef32e61828c4cb3db2da12795fd767",
-        "managed": False,
-        "lastAnalysisDate": "2017-03-01T11:39:03+0300",
-    },
-    {
-        "key": "project-key-2",
-        "name": "My Project 2",
-        "qualifier": "TRK",
-        "isFavorite": False,
-        "tags": [],
-        "visibility": "public",
-        "isAiCodeAssured": False,
-        "isAiCodeFixEnabled": False,
-        "revision": "7be96a94ac0c95a61ee6ee0ef9c6f808d386a355",
-        "managed": False,
-        "lastAnalysisDate": "2017-03-02T15:21:47+0300",
     },
 ]
 

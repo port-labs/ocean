@@ -11,7 +11,7 @@ from port_ocean.tests.helpers.ocean_app import get_integration_ocean_app
 
 from integration import SonarQubePortAppConfig
 
-from .fixtures import ANALYSIS, FULL_PROJECTS, ISSUES, PORTFOLIOS
+from .fixtures import ANALYSIS, COMPONENT_PROJECTS, ISSUES, PORTFOLIOS, PURE_PROJECTS
 
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
@@ -80,7 +80,12 @@ def integration_path() -> str:
 
 @pytest.fixture(scope="session")
 def projects() -> list[dict[str, Any]]:
-    return FULL_PROJECTS
+    return PURE_PROJECTS
+
+
+@pytest.fixture(scope="session")
+def component_projects() -> list[dict[str, Any]]:
+    return COMPONENT_PROJECTS
 
 
 @pytest.fixture(scope="session")

@@ -9,8 +9,8 @@ from client import SonarQubeClient
 from integration import (
     CustomSelector,
     ObjectKind,
+    SonarQubeGAProjectResourceConfig,
     SonarQubeIssueResourceConfig,
-    SonarQubeProjectApiFilter,
     SonarQubeProjectResourceConfig,
 )
 
@@ -23,28 +23,6 @@ def init_sonar_client() -> SonarQubeClient:
         ocean.integration_config.get("app_host"),
         ocean.integration_config["sonar_is_on_premise"],
     )
-
-
-def produce_project_params(
-    api_filter: SonarQubeProjectApiFilter | None,
-) -> dict[str, Any]:
-    project_params: dict[str, Any] = {}
-    if not api_filter:
-        return project_params
-
-    if api_filter.analyzed_before:
-        project_params["analyzedBefore"] = api_filter.analyzed_before
-
-    if api_filter.on_provisioned_only:
-        project_params["onProvisionedOnly"] = api_filter.on_provisioned_only
-
-    if api_filter.projects:
-        project_params["projects"] = ",".join(api_filter.projects)
-
-    if api_filter.qualifiers:
-        project_params["qualifiers"] = ",".join(api_filter.qualifiers)
-
-    return project_params
 
 
 def produce_component_params(
@@ -64,10 +42,6 @@ def produce_component_params(
 
             selector = cast(CustomSelector, event.resource_config.selector)
             component_query_params.update(selector.generate_request_params())
-
-    # remove project query params
-    for key in ["analyzedBefore", "onProvisionedOnly", "projects", "qualifiers"]:
-        component_query_params.pop(key, None)
     return component_query_params
 
 
@@ -81,36 +55,39 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(SonarQubeProjectResourceConfig, event.resource_config).selector
     sonar_client.metrics = selector.metrics
 
-    project_query_params = produce_project_params(selector.api_filters)
-
     component_params = produce_component_params(sonar_client, selector)
 
-    async for project_list in sonar_client.get_all_projects(
-        params=project_query_params,
-        use_internal_api=selector.use_internal_api,
-        component_params=component_params,
+    async for projects in sonar_client.get_components(query_params=component_params):
+        logger.info(f"Received project batch of size: {len(projects)}")
+        yield projects
+
+
+@ocean.on_resync(ObjectKind.GA_PROJECTS)
+async def on_ga_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    logger.info(f"Listing Sonarqube resource: {kind}")
+
+    selector = cast(SonarQubeGAProjectResourceConfig, event.resource_config).selector
+    sonar_client.metrics = selector.metrics
+
+    async for projects in sonar_client.get_components(
+        query_params=selector.generate_request_params()
     ):
-        logger.info(f"Received project batch of size: {len(project_list)}")
-        yield project_list
+        logger.info(f"Received project batch of size: {len(projects)}")
+        yield projects
 
 
 @ocean.on_resync(ObjectKind.ISSUES)
 async def on_issues_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(SonarQubeIssueResourceConfig, event.resource_config).selector
     query_params = selector.generate_request_params()
-    project_query_params = produce_project_params(selector.project_api_filters)
-    initial_component_query_params = (
-        selector.project_api_filters.generate_request_params()
-        if selector.project_api_filters
-        else {}
-    )
-    component_params = produce_component_params(
-        sonar_client, selector, initial_component_query_params
-    )
+    project_query_params = (
+        selector.project_api_filters
+        and selector.project_api_filters.generate_request_params()
+    ) or {}
+
     async for issues_list in sonar_client.get_all_issues(
         query_params=query_params,
         project_query_params=project_query_params,
-        component_query_params=component_params,
     ):
         logger.info(f"Received issues batch of size: {len(issues_list)}")
         yield issues_list

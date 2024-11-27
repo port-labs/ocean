@@ -125,6 +125,141 @@
     "relations": {}
   },
   {
+    "identifier": "sonarQubeGAProject",
+    "title": "SonarQube GA Project",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "organization": {
+          "type": "string",
+          "title": "Organization",
+          "icon": "TwoUsers"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Link",
+          "icon": "Link"
+        },
+        "lastAnalysisDate": {
+          "type": "string",
+          "format": "date-time",
+          "icon": "Clock",
+          "title": "Last Analysis Date"
+        },
+        "qualityGateStatus": {
+          "title": "Quality Gate Status",
+          "type": "string",
+          "enum": [
+            "OK",
+            "WARN",
+            "ERROR"
+          ],
+          "enumColors": {
+            "OK": "green",
+            "WARN": "yellow",
+            "ERROR": "red"
+          }
+        },
+        "numberOfBugs": {
+          "type": "number",
+          "title": "Number Of Bugs"
+        },
+        "numberOfCodeSmells": {
+          "type": "number",
+          "title": "Number Of CodeSmells"
+        },
+        "numberOfVulnerabilities": {
+          "type": "number",
+          "title": "Number Of Vulnerabilities"
+        },
+        "numberOfHotSpots": {
+          "type": "number",
+          "title": "Number Of HotSpots"
+        },
+        "numberOfDuplications": {
+          "type": "number",
+          "title": "Number Of Duplications"
+        },
+        "coverage": {
+          "type": "number",
+          "title": "Coverage"
+        },
+        "mainBranch": {
+          "type": "string",
+          "icon": "Git",
+          "title": "Main Branch"
+        },
+        "mainBranchLastAnalysisDate": {
+          "type": "string",
+          "format": "date-time",
+          "icon": "Clock",
+          "title": "Main Branch Last Analysis Date"
+        },
+        "revision": {
+          "type": "string",
+          "title": "Revision"
+        },
+        "managed": {
+          "type": "boolean",
+          "title": "Managed"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "criticalOpenIssues": {
+        "title": "Number Of Open Critical Issues",
+        "type": "number",
+        "target": "sonarQubeIssue",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "in",
+              "value": ["OPEN", "REOPENED"]
+            },
+            {
+              "property": "severity",
+              "operator": "=",
+              "value": "CRITICAL"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      },
+      "numberOfOpenIssues": {
+        "title": "Number Of Open Issues",
+        "type": "number",
+        "target": "sonarQubeIssue",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "in",
+              "value": [
+                "OPEN",
+                "REOPENED"
+              ]
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      }
+    },
+    "relations": {}
+  },
+  {
     "identifier": "sonarQubeAnalysis",
     "title": "SonarQube Analysis",
     "icon": "sonarqube",

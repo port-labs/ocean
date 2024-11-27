@@ -125,6 +125,7 @@ async def test_sonarqube_client_will_send_api_request(
 @pytest.mark.asyncio
 async def test_sonarqube_client_will_repeatedly_make_pagination_request(
     mock_ocean_context: Any,
+    projects: list[dict[str, Any]],
     monkeypatch: Any,
 ) -> None:
     sonarqube_client = SonarQubeClient(
@@ -148,14 +149,14 @@ async def test_sonarqube_client_will_repeatedly_make_pagination_request(
                 "status_code": 200,
                 "json": {
                     "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
-                    "components": PURE_PROJECTS,
+                    "components": projects,
                 },
             },
         ]
     )
 
     count = 0
-    async for project in sonarqube_client._send_paginated_request(
+    async for _ in sonarqube_client._send_paginated_request(
         "/api/projects/search",
         "GET",
         "components",
@@ -165,7 +166,10 @@ async def test_sonarqube_client_will_repeatedly_make_pagination_request(
 
 @pytest.mark.asyncio
 async def test_get_components_is_called_with_correct_params(
+    mock_event_context: Any,
     mock_ocean_context: Any,
+    ocean_app: Any,
+    component_projects: list[dict[str, Any]],
     monkeypatch: Any,
 ) -> None:
     sonarqube_client = SonarQubeClient(
@@ -184,7 +188,7 @@ async def test_get_components_is_called_with_correct_params(
                 "status_code": 200,
                 "json": {
                     "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
-                    "components": PURE_PROJECTS,
+                    "components": component_projects,
                 },
             },
         ]
@@ -194,7 +198,7 @@ async def test_get_components_is_called_with_correct_params(
         sonarqube_client, "_send_paginated_request", mock_paginated_request
     )
 
-    async for _ in sonarqube_client._get_components():
+    async for _ in sonarqube_client.get_components():
         pass
 
     mock_paginated_request.assert_any_call(
@@ -329,7 +333,7 @@ async def test_get_single_project_is_called_with_correct_params(
 
 @pytest.mark.asyncio
 async def test_projects_will_return_correct_data(
-    mock_ocean_context: Any,
+    mock_event_context: Any,
     monkeypatch: Any,
 ) -> None:
     sonarqube_client = SonarQubeClient(
@@ -346,7 +350,7 @@ async def test_projects_will_return_correct_data(
         sonarqube_client, "_send_paginated_request", mock_paginated_request
     )
 
-    async for _ in sonarqube_client._get_projects({}):
+    async for _ in sonarqube_client.get_projects({}):
         pass
 
     mock_paginated_request.assert_any_call(

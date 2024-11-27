@@ -164,7 +164,8 @@ class SonarQubeClient:
             logger.error(f"HTTP occurred while fetching paginated data: {e}")
             raise
 
-    async def _get_components(
+    @cache_iterator_result()
+    async def get_components(
         self,
         query_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -193,7 +194,9 @@ class SonarQubeClient:
                 logger.info(
                     f"Fetched {len(components)} components {[item.get('key') for item in components]} from SonarQube"
                 )
-                yield components
+                yield await asyncio.gather(
+                    *[self.get_single_project(project) for project in components]
+                )
         except Exception as e:
             logger.error(f"Error occurred while fetching components: {e}")
             raise
@@ -263,58 +266,15 @@ class SonarQubeClient:
 
         return project
 
-    async def _get_projects(
-        self, params: dict[str, Any]
+    @cache_iterator_result()
+    async def get_projects(
+        self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         async for projects in self._send_paginated_request(
             endpoint=Endpoints.PROJECTS,
             data_key="components",
             method="GET",
             query_params=params,
-        ):
-            yield projects
-
-    @cache_iterator_result()
-    async def get_all_projects(
-        self,
-        params: dict[str, Any] = {},
-        use_internal_api: bool = True,
-        component_params: dict[str, Any] | None = None,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """
-        Retrieve all projects from SonarQube API.
-
-        :return: A list containing projects data for your organization.
-        """
-        if self.organization_id:
-            logger.info(
-                f"Fetching all projects in organization: {self.organization_id}"
-            )
-        else:
-            logger.info("Fetching all projects in SonarQube")
-        original_projects: list[dict[str, Any]] = []
-        async for projects in self._get_projects(params=params):
-            original_projects.extend(projects)
-
-        all_projects: dict[str, dict[str, Any]] = {
-            project["key"]: project for project in original_projects
-        }
-
-        if use_internal_api:
-            logger.info("Enriching projects with extra data using the internal API")
-            async for components in self._get_components(component_params):
-                all_projects.update(
-                    {
-                        component["key"]: {
-                            **all_projects.get(component["key"], {}),
-                            **component,
-                        }
-                        for component in components
-                    }
-                )
-
-        for projects in turn_sequence_to_chunks(
-            list(all_projects.values()), PROJECTS_RESYNC_BATCH_SIZE
         ):
             yield await asyncio.gather(
                 *[self.get_single_project(project) for project in projects]
@@ -324,7 +284,6 @@ class SonarQubeClient:
         self,
         query_params: dict[str, Any],
         project_query_params: dict[str, Any],
-        component_query_params: dict[str, Any],
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieve issues data across all components from SonarQube API  as an asynchronous generator.
@@ -332,9 +291,7 @@ class SonarQubeClient:
         :return (list[Any]): A list containing issues data for all projects.
         """
 
-        async for components in self.get_all_projects(
-            params=project_query_params, component_params=component_query_params
-        ):
+        async for components in self.get_projects(params=project_query_params):
             for component in components:
                 async for responses in self.get_issues_by_component(
                     component=component, query_params=query_params
@@ -381,7 +338,7 @@ class SonarQubeClient:
 
         :return (list[Any]): A list containing analysis data for all components.
         """
-        async for components in self.get_all_projects():
+        async for components in self.get_projects():
             tasks = [
                 self.get_analysis_by_project(component=component)
                 for component in components
@@ -508,7 +465,7 @@ class SonarQubeClient:
     async def get_all_sonarqube_analyses(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for components in self.get_all_projects():
+        async for components in self.get_projects():
             for analysis in await asyncio.gather(
                 *[
                     self.get_measures_for_all_pull_requests(
@@ -595,7 +552,7 @@ class SonarQubeClient:
         logger.info(f"Subscribing to webhooks in organization: {self.organization_id}")
         webhook_endpoint = Endpoints.WEBHOOKS
         invoke_url = f"{self.app_host}/integration/webhook"
-        async for projects in self.get_all_projects():
+        async for projects in self.get_projects():
 
             # Iterate over projects and add webhook
             webhooks_to_create = []

@@ -14,6 +14,7 @@ from pydantic.main import BaseModel
 
 class ObjectKind:
     PROJECTS = "projects"
+    GA_PROJECTS = "ga_projects"
     ISSUES = "issues"
     ANALYSIS = "analysis"
     SASS_ANALYSIS = "saas_analysis"
@@ -67,18 +68,6 @@ class BaseSonarQubeApiFilter(BaseModel):
 
 class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
     filter: SonarQubeComponentSearchFilter | None
-    analyzed_before: str | None = Field(
-        alias="analyzedBefore",
-        description="Filter the projects for which the last analysis of all branches are older than the given date (exclusive).",
-    )
-    on_provisioned_only: bool | None = Field(
-        alias="onProvisionedOnly",
-        description="Filter the projects that are provisioned only",
-    )
-    projects: list[str] | None = Field(description="List of project keys to filter on")
-    qualifiers: list[Literal["TRK", "APP", "VW"]] | None = Field(
-        description="List of component qualifiers"
-    )
 
     def generate_request_params(self) -> dict[str, Any]:
         value = self.dict(exclude_none=True)
@@ -87,6 +76,26 @@ class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
             value["filter"] = filter_instance.generate_search_filters()
         if s := value.pop("s", None):
             value["s"] = s
+
+        return value
+
+
+class SonarQubeGAProjectAPIFilter(BaseSonarQubeApiFilter):
+    analyzed_before: str | None = Field(
+        alias="analyzedBefore",
+        description="To retrieve projects analyzed before the given date",
+    )
+    on_provisioned_only: bool | None = Field(
+        alias="onProvisionedOnly",
+        description="To retrieve projects on provisioned only",
+    )
+    projects: list[str] | None = Field(description="List of projects")
+    qualifiers: list[Literal["TRK", "APP"]] | None = Field(
+        description="List of qualifiers"
+    )
+
+    def generate_request_params(self) -> dict[str, Any]:
+        value = self.dict(exclude_none=True)
         if self.projects:
             value["projects"] = ",".join(self.projects)
 
@@ -200,20 +209,39 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
         metrics: list[str] = Field(
             description="List of metric keys", default=default_metrics()
         )
-        use_internal_api: bool = Field(
-            alias="useInternalApi",
-            description="Use internal API to fetch more data",
-            default=True,
-        )
 
     kind: Literal["projects"]
     selector: SonarQubeComponentProjectSelector
 
 
+class SonarQubeGAProjectResourceConfig(ResourceConfig):
+    class SonarQubeGAProjectSelector(Selector, SonarQubeGAProjectAPIFilter):
+        @staticmethod
+        def default_metrics() -> list[str]:
+            return [
+                "code_smells",
+                "coverage",
+                "bugs",
+                "vulnerabilities",
+                "duplicated_files",
+                "security_hotspots",
+                "new_violations",
+                "new_coverage",
+                "new_duplicated_lines_density",
+            ]
+
+        metrics: list[str] = Field(
+            description="List of metric keys", default=default_metrics()
+        )
+
+    kind: Literal["ga_projects"]
+    selector: SonarQubeGAProjectSelector
+
+
 class SonarQubeIssueResourceConfig(CustomResourceConfig):
     class SonarQubeIssueSelector(SelectorWithApiFilters):
         api_filters: SonarQubeIssueApiFilter | None = Field(alias="apiFilters")
-        project_api_filters: SonarQubeProjectApiFilter | None = Field(
+        project_api_filters: SonarQubeGAProjectAPIFilter | None = Field(
             alias="projectApiFilters",
             description="Allows users to control which projects to query the issues for",
         )
@@ -228,6 +256,7 @@ class SonarQubePortAppConfig(PortAppConfig):
             SonarQubeProjectResourceConfig,
             SonarQubeIssueResourceConfig,
             CustomResourceConfig,
+            SonarQubeGAProjectResourceConfig,
         ]
     ] = Field(
         default_factory=list
