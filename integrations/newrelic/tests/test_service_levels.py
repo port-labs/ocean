@@ -203,7 +203,7 @@ class TestServiceLevelsHandler:
         """Test list_service_levels method with an empty generator."""
 
         # Create mock async generator with no items
-        async def mock_paginated_request(*args, **kwargs) -> AsyncGenerator:
+        async def mock_paginated_request(*args: Any, **kwargs: Any) -> AsyncGenerator[AsyncMock, None]:
             # Empty generator
             return 
             yield
@@ -234,7 +234,8 @@ class TestServiceLevelsHandler:
             {"id": "6"},
         ]
 
-        async def mock_paginated_request(*args, **kwargs) -> AsyncGenerator:
+
+        async def mock_paginated_request(*args: Any, **kwargs: Any) -> AsyncGenerator[dict[str, Any], None]:
             # Yield individual items instead of batches
             for item in test_batches:
                 yield item
