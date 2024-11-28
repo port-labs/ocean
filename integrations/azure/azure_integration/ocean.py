@@ -99,7 +99,8 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async with DefaultAzureCredential() as credential:
         async with SubscriptionClient(credential=credential) as subscription_client:
             async for subscriptions_batch in batch_resources_iterator(
-                subscription_client.subscriptions.list, api_version=resource_selector.api_version
+                subscription_client.subscriptions.list,
+                api_version=resource_selector.api_version,
             ):
                 yield subscriptions_batch
 
