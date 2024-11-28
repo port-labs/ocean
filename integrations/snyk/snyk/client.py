@@ -262,38 +262,23 @@ class SnykClient:
 
         return project
 
-    async def _get_user_details_old(self, user_id: str | None) -> dict[str, Any]:
-        if (
-            not user_id
-        ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
-            return {}
-        cached_details = event.attributes.get(f"{CacheKeys.USER}-{user_id}")
-        if cached_details:
-            return cached_details
-
-        try:
-            user_details = await self._send_api_request(
-                url=f"{self.api_url}/user/{user_id}"
-            )
-
-            if not user_details:
-                return {}
-
-            event.attributes[f"{CacheKeys.USER}-{user_id}"] = user_details
-            return user_details
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.debug(f"user {user_id} not was not found, skipping...")
-                return {}
-            else:
-                raise
-
     async def _get_user_details(self, user_reference: str | None) -> dict[str, Any]:
         if (
             not user_reference
         ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
             return {}
-        user_id = user_reference.split("/")[-1]
+
+        # The user_reference is in the format of /rest/orgs/{org_id}/users/{user_id}. Some users may not be associated with the organization that the integration is configured with. In this instance, we can return an empty dict
+        reference_parts = user_reference.split("/")
+        org_id = reference_parts[3]
+        user_id = reference_parts[-1]
+
+        if self.organization_ids and org_id not in self.organization_ids:
+            logger.debug(
+                f"User {user_id} in organization {org_id} is not associated with any of the organizations provided to the integration org_id. Skipping..."
+            )
+            return {}
+
         user_cache_key = f"{CacheKeys.USER}-{user_id}"
         user_reference = user_reference.replace("/rest", "")
         cached_details = event.attributes.get(user_cache_key)
