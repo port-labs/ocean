@@ -7,6 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.14.3 (2024-11-25)
+
+
+### Improvements
+
+- Support the reduction of Port rate limit in the integrations.
+
+## 0.14.2 (2024-11-24)
+
+
+### Bug Fixes
+
+- Fix ocean new.
+
 ## 0.14.1 (2024-11-13)
 
 
