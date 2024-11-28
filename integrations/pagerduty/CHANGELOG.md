@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.120 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.3
+
+
+## 0.1.119 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.2
+
+
+## 0.1.118 (2024-11-21)
+
+
+### Improvements
+
+- Added a mechanism to control concurrency and rate limit using semaphores (0.1.118)
+
+
+## 0.1.117 (2024-11-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
+
+
+## 0.1.116 (2024-11-18)
+
+
+### Improvements
+
+- Updated the incident url mapping to use html_url instead of the api url. (0.1.116)
+
+
 ## 0.1.115 (2024-11-12)
 
 
