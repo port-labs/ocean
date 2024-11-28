@@ -53,11 +53,9 @@ async def _handle_global_resource_resync(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
-    allowed_regions = [
-        region
-        for region in credentials.enabled_regions
-        if aws_resource_config.selector.is_region_allowed(region)
-    ]
+    allowed_regions = filter(
+        aws_resource_config.selector.is_region_allowed, credentials.enabled_regions
+    )
     async for session in credentials.create_session_for_each_region(allowed_regions):
         try:
             async for batch in resync_cloudcontrol(kind, session, aws_resource_config):
