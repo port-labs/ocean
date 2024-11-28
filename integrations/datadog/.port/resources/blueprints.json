@@ -352,7 +352,6 @@
     "title": "Datadog Cloud Resource",
     "icon": "Datadog",
     "schema": {
-      "type": "object",
       "properties": {
         "up": {
           "type": "boolean",
@@ -395,13 +394,13 @@
           "description": "Indicates whether alerts for that specific host are temporarily suppressed."
         },
         "sources": {
-          "type": "array",
           "title": "Sources",
+          "type": "array",
           "description": "Source or cloud provider associated with your host."
         },
         "tags": {
-          "type": "object",
           "title": "Tags",
+          "type": "object",
           "description": "Tags associated with the host."
         }
       },
