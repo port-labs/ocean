@@ -1,3 +1,14 @@
+0.1.108 (2024-11-28)
+
+### Improvements
+
+- Bumped azure-mgmt-resource to `23.2.0` and aiohttp
+
+### Bug Fixes
+
+- Fixed the listing of azure subscription resource to use latest version of the SDK, this fixes the issue where some keys were not being returned in the response
+
+
 0.1.107 (2024-11-25)
 
 ### Improvements
