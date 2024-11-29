@@ -24,7 +24,7 @@ class ServiceLevelsHandler:
         self, http_client: httpx.AsyncClient, nrql: str
     ) -> dict[Any, Any]:
         if not nrql:
-            logger.debug("Empty NRQL provided")
+            logger.debug("Empty NRQL provided, skipping graph api request...")
             return {}
 
         query = await render_query(
