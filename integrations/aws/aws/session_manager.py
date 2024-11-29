@@ -9,7 +9,6 @@ from loguru import logger
 from types_aiobotocore_sts import STSClient
 
 from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.context.ocean import ocean
 
 
 class AccountNotFoundError(OceanAbortException):
@@ -118,7 +117,7 @@ class SessionManager:
 
     def _get_account_read_role_name(self) -> str:
         return ocean.integration_config.get("account_read_role_name", "")
-    
+
     @staticmethod
     def _assume_role_duration_seconds() -> int:
         return int(ocean.integration_config["assume_role_duration"])

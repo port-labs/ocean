@@ -23,8 +23,12 @@ class TestUpdateAvailableAccessCredentials(unittest.IsolatedAsyncioTestCase):
 
     @patch("utils.aws._session_manager.reset", new_callable=AsyncMock)
     @patch("utils.aws.lock", new_callable=AsyncMock)
+    @patch(
+        "port_ocean.context.ocean.PortOceanContext.integration_config",
+        return_value={"assume_role_duration": 3600},
+    )
     async def test_multiple_task_execution(
-        self, mock_lock: AsyncMock, mock_reset: AsyncMock
+        self, integration_config_mock: Any, mock_lock: AsyncMock, mock_reset: AsyncMock
     ) -> None:
         tasks: List[Any] = await self._create_iterator_tasks(
             self._run_update_access_iterator_result, 10
@@ -35,20 +39,22 @@ class TestUpdateAvailableAccessCredentials(unittest.IsolatedAsyncioTestCase):
         # Assert that the reset method was awaited exactly once (i.e., no thundering herd)
         mock_reset.assert_awaited_once()
 
-        mock_lock.__aenter__.assert_awaited_once()
-        mock_lock.__aexit__.assert_awaited_once()
+        self.assertEqual(mock_lock.__aenter__.call_count, 10)
+        self.assertEqual(mock_lock.__aexit__.call_count, 10)
 
 
 class TestAwsSessions(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        self.session_manager_mock: AsyncMock = patch(
-            "utils.aws._session_manager", autospec=SessionManager
-        ).start()
+        patcher = patch("utils.aws._session_manager", autospec=SessionManager)
+        self.session_manager_mock = patcher.start()
+        self.addCleanup(patcher.stop)
+
+        self.session_manager_mock._assume_role_duration_seconds.return_value = 3600
 
         self.credentials_mock: AsyncMock = AsyncMock(spec=AwsCredentials)
         self.session_mock: AsyncMock = AsyncMock(spec=Session)
 
-    def tearDown(self) -> None:
+    async def asyncTearDown(self) -> None:
         patch.stopall()
 
     async def test_get_sessions_with_custom_account_id(self) -> None:
