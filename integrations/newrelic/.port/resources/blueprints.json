@@ -234,6 +234,9 @@
       },
       "required": []
     },
-    "relations": {}
+    "relations": {},
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
   }
 ]
