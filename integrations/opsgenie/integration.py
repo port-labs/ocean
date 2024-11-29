@@ -90,8 +90,8 @@ class ScheduleSelector(Selector):
 class TeamSelector(Selector):
     include_members: bool = Field(
         alias="includeMembers",
-        default=False,
-        description="Whether to include the members of the team, defaults to false",
+        default=True,
+        description="Whether to include the members of the team, defaults to true",
     )
 
 
