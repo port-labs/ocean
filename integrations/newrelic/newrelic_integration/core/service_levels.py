@@ -37,7 +37,7 @@ class ServiceLevelsHandler:
         )
 
         if not response:
-            logger.warning("Empty response from API")
+            logger.warning("Empty response from API, skipping...")
             return {}
 
         service_levels = (
