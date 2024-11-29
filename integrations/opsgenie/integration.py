@@ -86,12 +86,14 @@ class ScheduleSelector(Selector):
         description="The query parameters to filter schedules",
     )
 
+
 class TeamSelector(Selector):
     include_members: bool = Field(
         alias="includeMembers",
         default=False,
         description="Whether to include the members of the team, defaults to false",
     )
+
 
 class AlertAndIncidentResourceConfig(ResourceConfig):
     kind: Literal["alert", "incident"]
@@ -102,13 +104,18 @@ class ScheduleResourceConfig(ResourceConfig):
     kind: Literal["schedule"]
     selector: ScheduleSelector
 
+
 class TeamResourceConfig(ResourceConfig):
     kind: Literal["team"]
     selector: TeamSelector
 
+
 class OpsGeniePortAppConfig(PortAppConfig):
     resources: list[
-        AlertAndIncidentResourceConfig | ScheduleResourceConfig | TeamResourceConfig | ResourceConfig
+        AlertAndIncidentResourceConfig
+        | ScheduleResourceConfig
+        | TeamResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 

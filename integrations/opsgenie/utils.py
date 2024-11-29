@@ -17,7 +17,7 @@ RESOURCE_API_VERSIONS = {
     ObjectKind.SERVICE: "v1",
     ObjectKind.TEAM: "v2",
     ObjectKind.INCIDENT: "v1",
-    ObjectKind.SCHEDULE: "v2"
+    ObjectKind.SCHEDULE: "v2",
 }
 
 

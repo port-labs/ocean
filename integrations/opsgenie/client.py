@@ -30,9 +30,7 @@ class OpsGenieClient:
         query_params: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         try:
-            logger.info(
-                    f"Fetching data from {url} with query params {query_params}"
-                )
+            logger.info(f"Fetching data from {url} with query params {query_params}")
             response = await self.http_client.get(url=url, params=query_params)
             response.raise_for_status()
             return response.json()
