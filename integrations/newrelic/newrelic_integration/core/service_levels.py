@@ -55,7 +55,9 @@ class ServiceLevelsHandler:
         # Get the NRQL which is used to build the actual SLI result
         indicators = service_level.get("serviceLevel", {}).get("indicators", [])
         if not indicators:
-            logger.warning("No indicators found in service level, returning the raw service level")
+            logger.warning(
+                "No indicators found in service level, returning the raw service level"
+            )
             service_level[SLI_OBJECT] = {}
             format_tags(service_level)
             return service_level
