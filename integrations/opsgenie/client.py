@@ -30,6 +30,9 @@ class OpsGenieClient:
         query_params: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         try:
+            logger.info(
+                    f"Fetching data from {url} with query params {query_params}"
+                )
             response = await self.http_client.get(url=url, params=query_params)
             response.raise_for_status()
             return response.json()
@@ -50,9 +53,6 @@ class OpsGenieClient:
         pagination_params: dict[str, Any] = {"limit": PAGE_SIZE, **(query_params or {})}
         while url:
             try:
-                logger.info(
-                    f"Fetching data from {url} with query params {pagination_params}"
-                )
                 response = await self._get_single_resource(
                     url=url, query_params=pagination_params
                 )
