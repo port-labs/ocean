@@ -255,8 +255,8 @@ class SonarQubePortAppConfig(PortAppConfig):
         Union[
             SonarQubeProjectResourceConfig,
             SonarQubeIssueResourceConfig,
-            CustomResourceConfig,
             SonarQubeGAProjectResourceConfig,
+            CustomResourceConfig,
         ]
     ] = Field(
         default_factory=list

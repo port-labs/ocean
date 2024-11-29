@@ -165,6 +165,61 @@ async def test_sonarqube_client_will_repeatedly_make_pagination_request(
 
 
 @pytest.mark.asyncio
+async def test_pagination_with_large_dataset(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    # Mock three pages of results
+    mock_responses = [
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 1, "pageSize": 2, "total": 6},
+                "components": [{"key": "project1"}, {"key": "project2"}],
+            },
+        },
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 2, "pageSize": 2, "total": 6},
+                "components": [{"key": "project3"}, {"key": "project4"}],
+            },
+        },
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 3, "pageSize": 2, "total": 6},
+                "components": [{"key": "project5"}, {"key": "project6"}],
+            },
+        },
+    ]
+
+    sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
+
+    project_keys: list[Any] = []
+    async for components in sonarqube_client.get_components():
+        project_keys.extend(comp["key"] for comp in components)
+
+    assert len(project_keys) == 6
+    assert project_keys == [
+        "project1",
+        "project2",
+        "project3",
+        "project4",
+        "project5",
+        "project6",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_get_components_is_called_with_correct_params(
     mock_event_context: Any,
     mock_ocean_context: Any,
@@ -356,3 +411,469 @@ async def test_projects_will_return_correct_data(
     mock_paginated_request.assert_any_call(
         endpoint="projects/search", data_key="components", method="GET", query_params={}
     )
+
+
+@pytest.mark.asyncio
+async def test_get_all_issues_makes_correct_calls(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    # Mock responses for both projects and issues
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {
+                "status_code": 200,
+                "json": {
+                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                    "components": [{"key": "project1"}],
+                },
+            },
+            {
+                "status_code": 200,
+                "json": {
+                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                    "issues": [{"key": "issue1", "severity": "CRITICAL"}],
+                },
+            },
+        ]
+    )
+
+    query_params = {"severity": "CRITICAL"}
+    project_params = {"languages": "python"}
+
+    issues = []
+    async for issue_batch in sonarqube_client.get_all_issues(
+        query_params, project_params
+    ):
+        issues.extend(issue_batch)
+
+    assert len(issues) == 1
+    assert issues[0]["key"] == "issue1"
+    assert issues[0]["severity"] == "CRITICAL"
+
+
+@pytest.mark.asyncio
+async def test_get_analysis_by_project_processes_data_correctly(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    mock_response = {
+        "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+        "activityFeed": [
+            {
+                "type": "analysis",
+                "data": {
+                    "branch": {
+                        "name": "main",
+                        "analysisDate": "2024-01-01",
+                        "commit": "abc123",
+                    }
+                },
+            },
+            {"type": "not_analysis", "data": {}},
+        ],
+    }
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [{"status_code": 200, "json": mock_response}]  # type: ignore
+    )
+
+    component = {"key": "test-project"}
+    results = []
+    async for analysis_data in sonarqube_client.get_analysis_by_project(component):
+        results.extend(analysis_data)
+
+    assert len(results) == 1
+    assert results[0]["__branchName"] == "main"
+    assert results[0]["__analysisDate"] == "2024-01-01"
+    assert results[0]["__commit"] == "abc123"
+    assert results[0]["__component"] == component
+    assert results[0]["__project"] == "test-project"
+
+
+@pytest.mark.asyncio
+async def test_get_all_portfolios_processes_subportfolios(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+
+    mock_get_portfolio_details = AsyncMock()
+    mock_get_portfolio_details.side_effect = lambda key: {"key": key, "subViews": []}
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    monkeypatch.setattr(
+        sonarqube_client, "_get_portfolio_details", mock_get_portfolio_details
+    )
+
+    portfolio_response = {"views": [{"key": "portfolio1"}, {"key": "portfolio2"}]}
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {"status_code": 200, "json": portfolio_response},
+        ]
+    )
+
+    portfolio_keys = set()
+    async for portfolios in sonarqube_client.get_all_portfolios():
+        for portfolio in portfolios:
+            portfolio_keys.add(portfolio.get("key"))
+
+    assert portfolio_keys == {"portfolio1", "portfolio2"}
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_webhook_url_creates_when_needed(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "http://app.host",
+        False,
+    )
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {
+                "status_code": 200,
+                "json": {
+                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                    "components": [{"key": "project1"}],
+                },
+            },
+            {"status_code": 200, "json": {"webhooks": []}},  # No existing webhooks
+            {
+                "status_code": 200,
+                "json": {"webhook": "created"},  # Webhook creation response
+            },
+        ]
+    )
+
+    await sonarqube_client.get_or_create_webhook_url()
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_webhook_url_skips_if_exists(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "http://app.host",
+        False,
+    )
+
+    existing_webhook_url = "http://app.host/integration/webhook"
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {
+                "status_code": 200,
+                "json": {
+                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                    "components": [{"key": "project1"}],
+                },
+            },
+            {"status_code": 200, "json": {"webhooks": [{"url": existing_webhook_url}]}},
+        ]
+    )
+
+    await sonarqube_client.get_or_create_webhook_url()
+
+
+def test_sanity_check_handles_errors(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    # Test successful response
+    with patch("httpx.get") as mock_get:
+        mock_get.return_value = httpx.Response(
+            status_code=200,
+            json={"status": "UP", "version": "1.0"},
+            headers={"content-type": "application/json"},
+            request=httpx.Request("GET", "https://sonarqube.com"),
+        )
+        sonarqube_client.sanity_check()
+
+    # Test HTTP error
+    with patch("httpx.get") as mock_get:
+        mock_get.side_effect = httpx.HTTPStatusError(
+            "Error",
+            request=httpx.Request("GET", "https://sonarqube.com"),
+            response=httpx.Response(
+                500, request=httpx.Request("GET", "https://sonarqube.com")
+            ),
+        )
+        with pytest.raises(httpx.HTTPStatusError):
+            sonarqube_client.sanity_check()
+
+
+@pytest.mark.asyncio
+async def test_get_pull_requests_for_project(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    mock_prs = [
+        {"key": "pr1", "title": "First PR"},
+        {"key": "pr2", "title": "Second PR"},
+    ]
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [{"status_code": 200, "json": {"pullRequests": mock_prs}}]  # type: ignore
+    )
+
+    result = await sonarqube_client.get_pull_requests_for_project("project1")
+    assert result == mock_prs
+    assert len(result) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_pull_request_measures(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    sonarqube_client.metrics = ["coverage", "bugs"]
+    mock_measures = [
+        {"metric": "coverage", "value": "85.5"},
+        {"metric": "bugs", "value": "12"},
+    ]
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {
+                "status_code": 200,
+                "json": {"component": {"key": "project1", "measures": mock_measures}},
+            }
+        ]
+    )
+
+    result = await sonarqube_client.get_pull_request_measures("project1", "pr1")
+    assert result == mock_measures
+
+
+@pytest.mark.asyncio
+async def test_get_analysis_for_task_handles_missing_data(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    # Mock responses for both task and analysis requests
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {"status_code": 200, "json": {"task": {"analysisId": "analysis1"}}},
+            {"status_code": 200, "json": {"activityFeed": []}},  # Empty analysis data
+        ]
+    )
+
+    webhook_data = {"taskId": "task1", "project": {"key": "project1"}}
+
+    result = await sonarqube_client.get_analysis_for_task(webhook_data)
+    assert result == {}  # Should return empty dict when no analysis found
+
+
+@pytest.mark.asyncio
+async def test_get_issues_by_component_handles_404(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {"status_code": 404, "json": {"errors": [{"msg": "Component not found"}]}}
+        ]
+    )
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        async for _ in sonarqube_client.get_issues_by_component({"key": "nonexistent"}):
+            pass
+
+    assert exc_info.value.response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_measures_empty_metrics(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    sonarqube_client.metrics = []  # Empty metrics list
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {
+                "status_code": 200,
+                "json": {"component": {"key": "project1", "measures": []}},
+            }
+        ]
+    )
+
+    result = await sonarqube_client.get_measures("project1")
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_get_branches_main_branch_missing(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    # Mock branches without a main branch
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {
+                "status_code": 200,
+                "json": {
+                    "branches": [
+                        {"name": "feature1", "isMain": False},
+                        {"name": "feature2", "isMain": False},
+                    ]
+                },
+            }
+        ]
+    )
+
+    project = {"key": "project1"}
+    result = await sonarqube_client.get_branches(project["key"])
+    assert len(result) == 2
+    assert all(not branch["isMain"] for branch in result)
+
+
+@pytest.mark.asyncio
+async def test_get_all_sonarqube_analyses_with_empty_pulls(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+
+    # Mock project list and empty pull requests
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {
+                "status_code": 200,
+                "json": {
+                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                    "components": [{"key": "project1"}],
+                },
+            },
+            {"status_code": 200, "json": {"pullRequests": []}},
+        ]
+    )
+
+    results = []
+    async for analyses in sonarqube_client.get_all_sonarqube_analyses():
+        results.extend(analyses)
+
+    assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_webhook_url_with_organization(
+    mock_ocean_context: Any,
+    monkeypatch: Any,
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "test-org",  # With organization
+        "http://app.host",
+        False,
+    )
+
+    sonarqube_client.http_client = MockHttpxClient(
+        [  # type: ignore
+            {
+                "status_code": 200,
+                "json": {
+                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                    "components": [{"key": "project1"}],
+                },
+            },
+            {"status_code": 200, "json": {"webhooks": []}},
+            {"status_code": 200, "json": {"webhook": "created"}},
+        ]
+    )
+
+    await sonarqube_client.get_or_create_webhook_url()

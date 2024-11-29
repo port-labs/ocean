@@ -69,8 +69,8 @@ async def on_ga_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(SonarQubeGAProjectResourceConfig, event.resource_config).selector
     sonar_client.metrics = selector.metrics
 
-    async for projects in sonar_client.get_components(
-        query_params=selector.generate_request_params()
+    async for projects in sonar_client.get_projects(
+        selector.generate_request_params()
     ):
         logger.info(f"Received project batch of size: {len(projects)}")
         yield projects
