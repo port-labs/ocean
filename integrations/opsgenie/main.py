@@ -7,7 +7,7 @@ from port_ocean.context.event import event
 from client import OpsGenieClient
 from utils import ObjectKind, ResourceKindsWithSpecialHandling
 
-from integration import AlertAndIncidentResourceConfig, ScheduleResourceConfig
+from integration import AlertAndIncidentResourceConfig, ScheduleResourceConfig, TeamResourceConfig
 
 CONCURRENT_REQUESTS = 5
 
@@ -37,6 +37,23 @@ async def enrich_schedule_with_oncall_data(
 
     return schedule_batch
 
+async def enrich_team_with_members(
+    opsgenie_client: OpsGenieClient,
+    semaphore: asyncio.Semaphore,
+    team_batch: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+
+    async def fetch_team_members(team_id: str) -> dict[str, Any]:
+        async with semaphore:
+            return await opsgenie_client.get_team_members(team_id)
+
+    team_tasks = [fetch_team_members(team["id"]) for team in team_batch]
+    results = await asyncio.gather(*team_tasks)
+
+    for team, members in zip(team_batch, results):
+        team["__members"] = members
+
+    return team_batch
 
 @ocean.on_resync()
 async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -52,6 +69,23 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(f"Received batch with {len(resource_batch)} {kind}")
         yield resource_batch
 
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_team_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    opsgenie_client = init_client()
+
+    selector = cast(TeamResourceConfig, event.resource_config).selector
+    async for team_batch in opsgenie_client.get_paginated_resources(
+        resource_type=ObjectKind.TEAM,
+    ):
+        logger.info(f"Received batch with {len(team_batch)} teams")
+        if selector.include_members:
+            semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
+            team_with_members = await enrich_team_with_members(
+                opsgenie_client, semaphore, team_batch
+            )
+            yield team_with_members
+        else:
+            yield team_batch
 
 @ocean.on_resync(ObjectKind.SERVICE)
 async def on_service_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:

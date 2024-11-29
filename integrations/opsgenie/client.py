@@ -78,3 +78,10 @@ class OpsGenieClient:
         api_version = await self.get_resource_api_version(ObjectKind.SCHEDULE)
         url = f"{self.api_url}/{api_version}/schedules/{schedule_identifier}/on-calls?flat=true"
         return (await self._get_single_resource(url))["data"]
+
+    async def get_team_members(self, team_identifier: str) -> dict[str, Any]:
+        logger.debug(f"Fetching members for team {team_identifier}")
+
+        api_version = await self.get_resource_api_version(ObjectKind.TEAM)
+        url = f"{self.api_url}/{api_version}/teams/{team_identifier}"
+        return (await self._get_single_resource(url))["data"].get("members", [])
