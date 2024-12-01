@@ -90,11 +90,13 @@ resources:
             tags: .tags
           relations:
             newRelicService: .serviceLevel.indicators[0].guid
-
-  - kind: newRelicCloudResource
+  - kind: entity
     selector:
       query: 'true'
-      entityQueryFilter: "type in ('AWSAPIGATEWAYAPI')"
+      entityQueryFilter: type IN ( 'AWSEC2INSTANCE', 'AWS3BUCKET', 'AWSRDSDBINSTANCE',
+        'AWSLAMBDAFUNCTION', 'AWSELBLOADBALANCER', 'AZUREVIRTUALMACHINE',
+        'AZURESQLDATABASE', 'GCPCOMPUTEINSTANCE', 'GCPSTORAGEBUCKET',
+        'GCPSQLDATABASEINSTANCE' )
     port:
       entity:
         mappings:
@@ -108,4 +110,4 @@ resources:
             infrastructureIntegrationType: .type
             reporting: .reporting
             link: .permalink
-            tags: .tag
+            tags: .tags
