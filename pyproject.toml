@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.12.8"
+version = "0.14.3"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -9,6 +9,10 @@ repository = "https://github.com/port-labs/Port-Ocean"
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>", "Tom Tankilevitch <tom@getport.io>"]
 packages = [
     { include = "port_ocean", from = "." }
+]
+
+include = [
+    { path = "./integrations/_infra/*", format = ["sdist", "wheel"] }
 ]
 
 keywords = ["ocean", "port-ocean", "port"]
@@ -35,7 +39,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 pydantic = { version = "^1.10.8", extras = ["dotenv"] }
 loguru = "^0.7.0"
 pyyaml = "^6.0"
@@ -157,7 +161,7 @@ warn_untyped_fields = true
 
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py312']
 include = '\.pyi?$'
 exclude = '''
 /(

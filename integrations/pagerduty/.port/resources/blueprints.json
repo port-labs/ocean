@@ -1,5 +1,70 @@
 [
   {
+    "identifier": "pagerdutyUser",
+    "description": "This blueprint represents a PagerDuty user in our software catalog",
+    "title": "PagerDuty User",
+    "icon": "pagerduty",
+    "schema": {
+      "properties": {
+        "role": {
+          "icon": "DefaultProperty",
+          "title": "Role",
+          "type": "string",
+          "enum": [
+            "admin",
+            "user",
+            "observer",
+            "limited_user",
+            "owner",
+            "read_only_user",
+            "restricted_access",
+            "read_only_limited_user"
+          ]
+        },
+        "url": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "format": "url",
+          "title": "User URL"
+        },
+        "job_title": {
+          "title": "Job Title",
+          "icon": "DefaultProperty",
+          "type": "string"
+        },
+        "contact_methods": {
+          "title": "Contact Methods",
+          "icon": "DefaultProperty",
+          "type": "array"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "teams": {
+          "title": "Teams",
+          "icon": "DefaultProperty",
+          "type": "array"
+        },
+        "time_zone": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Time Zone"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "user"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "pagerdutyService",
     "description": "This blueprint represents a PagerDuty service in our software catalog",
     "title": "PagerDuty Service",
@@ -151,6 +216,10 @@
           "title": "Updated At",
           "type": "string",
           "format": "date-time"
+        },
+        "triggered_by": {
+          "type": "string",
+          "title": "Triggered By"
         }
       },
       "required": []

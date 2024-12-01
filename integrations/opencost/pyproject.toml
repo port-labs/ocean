@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "opencost"
-version = "0.1.87"
+version = "0.1.94"
 description = "Ocean integration for OpenCost"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-port_ocean = {version = "^0.12.8", extras = ["cli"]}
+python = "^3.12"
+port_ocean = {version = "^0.14.3", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration

@@ -72,6 +72,7 @@ async def test_create_group_webhook_success(
             "tag_push_events": False,
             "subgroup_events": False,
             "confidential_issues_events": False,
+            "member_events": False,
         }
     )
 
@@ -103,5 +104,6 @@ async def test_create_group_webhook_failure(
             "tag_push_events": False,
             "subgroup_events": False,
             "confidential_issues_events": False,
+            "member_events": False,
         }
     )

@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.64 (2024-11-27)
+
+
+### Bug Fixes
+
+- Fixed an issue where the region policy was not properly handled for global resources. Now, when a region policy is specified, it strictly adheres to the allowed regions only.
+
+
+## 0.2.63 (2024-11-25)
+
+
+### Bug Fixes
+
+- Do not break delete entities when a region is not accessible
+
+
+## 0.2.62 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.3
+
+
+## 0.2.61 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.2
+
+
+## 0.2.60 (2024-11-21)
+
+
+### Bug Fixes
+
+- Fix an issue where the integration enters an endless loop on permission error when querying resources in a region without permission
+
+
+## 0.2.59 (2024-11-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
+
+
+## 0.2.58 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
+## 0.2.57 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+## 0.2.56 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+## 0.2.55 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
 ## 0.2.54 (2024-11-06)
 
 
@@ -321,7 +401,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 - Add auto-discover for available regions in case global resources do not have permissions in default region
-- Add access denied handler to STS:AssumeRole 
+- Add access denied handler to STS:AssumeRole
 - Add access denied handler to custom kind resync
 
 

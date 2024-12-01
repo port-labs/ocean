@@ -1,4 +1,4 @@
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, Optional, Iterable
 import aioboto3
 
 
@@ -49,7 +49,8 @@ class AwsCredentials:
             )
 
     async def create_session_for_each_region(
-        self,
+        self, allowed_regions: Optional[Iterable[str]] = None
     ) -> AsyncIterator[aioboto3.Session]:
-        for region in self.enabled_regions:
+        regions = allowed_regions or self.enabled_regions
+        for region in regions:
             yield await self.create_session(region)
