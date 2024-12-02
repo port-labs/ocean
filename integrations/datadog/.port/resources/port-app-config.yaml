@@ -85,7 +85,7 @@ resources:
     selector:
       query: "true"
       timeframe: 30
-      period_of_time_in_years: 12
+      periodOfTimeInMonths: 6
     port:
       entity:
         mappings:

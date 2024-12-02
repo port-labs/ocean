@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.58 (2024-11-28)
+
+
+### Bug Fixes
+
+- Fixed SLO history configuration parsing and improved error handling:
+  - Added descriptive field documentation for configuration parameters
+  - Changed validation to use warnings instead of errors
+  - Fixed field alias to match schema
+  - Added detailed warning messages for troubleshooting
+  - Updated default period from 12 to 6 months for better performance
+
+
 ## 0.1.58 (2024-11-25)
 
 

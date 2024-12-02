@@ -3,10 +3,10 @@ from typing import Any, Optional, AsyncIterable
 import azure.mgmt.resource.resources.v2022_09_01.aio.operations._operations
 from azure.mgmt.resource.resources.v2022_09_01.aio import ResourceManagementClient
 from azure.core.rest import HttpRequest
-from azure.mgmt.resource.resources.v2022_09_01.operations._operations import (  # type: ignore
-    _format_url_section,
+from azure.mgmt.resource.resources.v2022_09_01.operations._operations import (
     _SERIALIZER,
 )
+from azure.mgmt.subscription._vendor import _format_url_section
 from loguru import logger
 
 

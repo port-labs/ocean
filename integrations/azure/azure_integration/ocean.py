@@ -24,7 +24,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 from azure.identity.aio import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
-from azure.mgmt.subscription.aio import SubscriptionClient
+from azure.mgmt.resource.subscriptions.aio import SubscriptionClient
 
 from azure_integration.utils import (
     ResourceKindsWithSpecialHandling,
@@ -93,10 +93,14 @@ async def resync_subscriptions(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     """
     Re-syncs subscriptions, this is done separately because the subscriptions api is different from the other apis
     """
+    resource_selector = typing.cast(
+        AzureSpecificKindSelector, get_current_resource_config().selector
+    )
     async with DefaultAzureCredential() as credential:
         async with SubscriptionClient(credential=credential) as subscription_client:
             async for subscriptions_batch in batch_resources_iterator(
                 subscription_client.subscriptions.list,
+                api_version=resource_selector.api_version,
             ):
                 yield subscriptions_batch
 
