@@ -93,7 +93,7 @@ resources:
   - kind: entity
     selector:
       query: 'true'
-      entityQueryFilter:  
+      entityQueryFilter:
         type IN (
           'AWSEC2INSTANCE',
           'AWSS3BUCKET',
