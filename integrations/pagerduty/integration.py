@@ -24,6 +24,15 @@ class ObjectKind:
     ESCALATION_POLICIES = "escalation_policies"
 
 
+OBJECTS_WITH_SPECIAL_HANDLING = [
+    ObjectKind.SERVICES,
+    ObjectKind.INCIDENTS,
+    ObjectKind.SCHEDULES,
+    ObjectKind.ONCALLS,
+    ObjectKind.ESCALATION_POLICIES,
+]
+
+
 class PagerdutyServiceAPIQueryParams(BaseModel):
     include: (
         list[
@@ -203,9 +212,8 @@ class PagerdutyPortAppConfig(PortAppConfig):
         | PagerdutyScheduleResourceConfig
         | PagerdutyOncallResourceConfig
         | PagerdutyEscalationPolicyResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore
+        | ResourceConfig
+    ] = Field(default_factory=list)
 
 
 class PagerdutyIntegration(BaseIntegration):
