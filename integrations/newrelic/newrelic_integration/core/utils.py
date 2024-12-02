@@ -20,7 +20,7 @@ async def render_query(query_template: str, **kwargs: Any) -> str:
 
 
 async def send_graph_api_request(
-    async_client: httpx.AsyncClient, query: str, **log_fields: Anysend_graph_api_request
+    async_client: httpx.AsyncClient, query: str, **log_fields: Any
 ) -> Any:
     logger.debug("Sending graph api request", **log_fields)
     api_url = cast(str, ocean.integration_config.get("new_relic_graphql_url"))
