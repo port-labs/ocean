@@ -18,7 +18,7 @@ class GCPCloudResourceConfig(ResourceConfig):
 
 
 class GCPResourceSelector(Selector):
-    preserve_api_response_case_style: bool = Field(
+    preserve_api_response_case_style: bool | None = Field(
         default=None,
         alias="preserveApiResponseCaseStyle",
         description=(
