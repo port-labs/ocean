@@ -189,7 +189,7 @@ async def test_feed_to_resource(
 
 @pytest.mark.asyncio
 @patch("gcp_core.utils.get_current_resource_config")
-async def test_preserve_case_style(
+async def test_preserve_case_style_combined(
     get_current_resource_config_mock: MagicMock, monkeypatch: Any
 ) -> None:
     # Arrange
@@ -199,6 +199,8 @@ async def test_preserve_case_style(
         subscriber_async_client_mock,
     )
     subscriber_async_client_mock.get_subscription = AsyncMock()
+
+    # Mock for preserve_case_style = True
     subscriber_async_client_mock.get_subscription.return_value = pubsub.Subscription(
         {
             "name": "subscription_name",
@@ -214,14 +216,16 @@ async def test_preserve_case_style(
         }
     )
 
-    # Mock the resource config
-    mock_resource_config = MagicMock()
-    mock_resource_config.selector = MagicMock(preserve_api_response_case_style=True)
-    get_current_resource_config_mock.return_value = mock_resource_config
+    # Mock the resource config with preserve_api_response_case_style set to True
+    mock_resource_config_true = MagicMock()
+    mock_resource_config_true.selector = MagicMock(
+        preserve_api_response_case_style=True
+    )
+    get_current_resource_config_mock.return_value = mock_resource_config_true
 
     from gcp_core.search.resource_searches import get_single_subscription
 
-    expected_subscription = {
+    expected_subscription_true = {
         "ackDeadlineSeconds": 0,
         "detached": False,
         "enableExactlyOnceDelivery": False,
@@ -235,54 +239,24 @@ async def test_preserve_case_style(
     }
     mock_project = "project_name"
 
-    # Act within event context
+    # Act within event context for preserve_case_style = True
     async with event_context("test_event"):
-        # Instead of setting event.resource_config, mock the method that retrieves it
-        event.get_resource_config = AsyncMock(return_value=mock_resource_config)
-
-        actual_subscription = await get_single_subscription(
+        event.get_resource_config = AsyncMock(return_value=mock_resource_config_true)
+        actual_subscription_true = await get_single_subscription(
             mock_project, "subscription_name"
         )
 
-    # Assert
-    assert actual_subscription == expected_subscription
+    # Assert for preserve_case_style = True
+    assert actual_subscription_true == expected_subscription_true
 
-
-@pytest.mark.asyncio
-@patch("gcp_core.utils.get_current_resource_config")
-async def test_preserve_case_style_false(
-    get_current_resource_config_mock: MagicMock, monkeypatch: Any
-) -> None:
-    # Arrange
-    subscriber_async_client_mock = AsyncMock
-    monkeypatch.setattr(
-        "google.pubsub_v1.services.subscriber.SubscriberAsyncClient",
-        subscriber_async_client_mock,
+    # Mock for preserve_case_style = False
+    mock_resource_config_false = MagicMock()
+    mock_resource_config_false.selector = MagicMock(
+        preserve_api_response_case_style=False
     )
-    subscriber_async_client_mock.get_subscription = AsyncMock()
-    subscriber_async_client_mock.get_subscription.return_value = pubsub.Subscription(
-        {
-            "name": "subscription_name",
-            "topic": "projects/project_name/topics/topic_name",
-            "ack_deadline_seconds": 0,
-            "retain_acked_messages": False,
-            "labels": {},
-            "enable_message_ordering": False,
-            "filter": "",
-            "detached": False,
-            "enable_exactly_once_delivery": False,
-            "state": 0,
-        }
-    )
+    get_current_resource_config_mock.return_value = mock_resource_config_false
 
-    # Mock the resource config with preserve_api_response_case_style set to False
-    mock_resource_config = MagicMock()
-    mock_resource_config.selector = MagicMock(preserve_api_response_case_style=False)
-    get_current_resource_config_mock.return_value = mock_resource_config
-
-    from gcp_core.search.resource_searches import get_single_subscription
-
-    expected_subscription = {
+    expected_subscription_false = {
         "ack_deadline_seconds": 0,
         "detached": False,
         "enable_exactly_once_delivery": False,
@@ -294,75 +268,14 @@ async def test_preserve_case_style_false(
         "state": 0,
         "topic": "projects/project_name/topics/topic_name",
     }
-    mock_project = "project_name"
 
-    # Act within event context
+    # Act within event context for preserve_case_style = False
     async with event_context("test_event"):
-        event.get_resource_config = AsyncMock(return_value=mock_resource_config)
-
-        actual_subscription = await get_single_subscription(
+        event.get_resource_config = AsyncMock(return_value=mock_resource_config_false)
+        actual_subscription_false = await get_single_subscription(
             mock_project, "subscription_name"
         )
 
-    # Assert
-    assert actual_subscription == expected_subscription
+    # Assert for preserve_case_style = False
+    assert actual_subscription_false == expected_subscription_false
 
-
-@pytest.mark.asyncio
-@patch("gcp_core.utils.get_current_resource_config")
-async def test_preserve_case_style_none(
-    get_current_resource_config_mock: MagicMock, monkeypatch: Any
-) -> None:
-    # Arrange
-    subscriber_async_client_mock = AsyncMock
-    monkeypatch.setattr(
-        "google.pubsub_v1.services.subscriber.SubscriberAsyncClient",
-        subscriber_async_client_mock,
-    )
-    subscriber_async_client_mock.get_subscription = AsyncMock()
-    subscriber_async_client_mock.get_subscription.return_value = pubsub.Subscription(
-        {
-            "name": "subscription_name",
-            "topic": "projects/project_name/topics/topic_name",
-            "ack_deadline_seconds": 0,
-            "retain_acked_messages": False,
-            "labels": {},
-            "enable_message_ordering": False,
-            "filter": "",
-            "detached": False,
-            "enable_exactly_once_delivery": False,
-            "state": 0,
-        }
-    )
-
-    # Mock the resource config with preserve_api_response_case_style set to None
-    mock_resource_config = MagicMock()
-    mock_resource_config.selector = MagicMock(preserve_api_response_case_style=None)
-    get_current_resource_config_mock.return_value = mock_resource_config
-
-    from gcp_core.search.resource_searches import get_single_subscription
-
-    expected_subscription = {
-        "ack_deadline_seconds": 0,
-        "detached": False,
-        "enable_exactly_once_delivery": False,
-        "enable_message_ordering": False,
-        "filter": "",
-        "labels": {},
-        "name": "subscription_name",
-        "retain_acked_messages": False,
-        "state": 0,
-        "topic": "projects/project_name/topics/topic_name",
-    }
-    mock_project = "project_name"
-
-    # Act within event context
-    async with event_context("test_event"):
-        event.get_resource_config = AsyncMock(return_value=mock_resource_config)
-
-        actual_subscription = await get_single_subscription(
-            mock_project, "subscription_name"
-        )
-
-    # Assert
-    assert actual_subscription == expected_subscription
