@@ -23,6 +23,9 @@ WEBHOOK_EVENTS = [
     "project_restored_deleted",
     "project_archived",
     "project_restored_archived",
+    "user_created",
+    "user_updated",
+    "user_deleted",
 ]
 
 
