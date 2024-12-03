@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Adds Support for sync Jira users to Port, relates jira users to jira issues
+- Added support to sync Jira users to Port and created relevant relations to jira issues assignee and reporter
 
 ## 0.1.103 (2024-11-25)
 
