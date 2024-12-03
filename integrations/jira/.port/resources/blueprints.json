@@ -133,11 +133,6 @@
     "description": "A Jira user account",
     "schema": {
       "properties": {
-        "accountId": {
-          "title": "Account ID",
-          "type": "string",
-          "description": "Unique identifier for the user account"
-        },
         "emailAddress": {
           "title": "Email",
           "type": "string",

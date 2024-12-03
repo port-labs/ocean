@@ -50,7 +50,6 @@ resources:
           title: .displayName
           blueprint: '"jiraUser"'
           properties:
-            accountId: .accountId
             emailAddress: .emailAddress
             displayName: .displayName
             active: .active
