@@ -63,9 +63,7 @@ class JiraClient:
         issue_response.raise_for_status()
         return issue_response.json()
 
-    async def _get_users_data(
-        self, params: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    async def _get_users_data(self, params: dict[str, Any]) -> list[dict[str, Any]]:
         user_response = await self.client.get(f"{self.api_url}/users", params=params)
         user_response.raise_for_status()
         return user_response.json()
