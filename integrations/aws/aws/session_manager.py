@@ -15,7 +15,7 @@ class AccountNotFoundError(OceanAbortException):
     pass
 
 
-ASSUME_ROLE_DURATION_SECONDS = 3600  # 1 hour
+ASSUME_ROLE_DURATION_SECONDS = 900  # 1 hour
 
 
 class SessionManager:
@@ -47,7 +47,9 @@ class SessionManager:
         application_credentials = await self._get_application_credentials()
         await application_credentials.update_enabled_regions()
         self._application_account_id = application_credentials.account_id
-        self._application_session = await application_credentials.create_session()
+        self._application_session = (
+            await application_credentials.create_refreshable_session()
+        )
 
         self._aws_credentials.append(application_credentials)
         self._aws_accessible_accounts.append(
@@ -120,6 +122,10 @@ class SessionManager:
 
     def _get_account_read_role_name(self) -> str:
         return ocean.integration_config.get("account_read_role_name", "")
+
+    @staticmethod
+    def _assume_role_duration_seconds() -> int:
+        return int(ocean.integration_config.get("assume_role_duration", 900))
 
     async def _update_available_access_credentials(self) -> None:
         logger.info("Updating AWS credentials")

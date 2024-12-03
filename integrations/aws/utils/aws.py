@@ -4,35 +4,39 @@ import aioboto3
 from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 
-from aws.session_manager import SessionManager, ASSUME_ROLE_DURATION_SECONDS
+from aws.session_manager import SessionManager
 from aws.aws_credentials import AwsCredentials
 
-from aiocache import cached, Cache  # type: ignore
+from aiocache import Cache  # type: ignore
 from asyncio import Lock
 
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
 
+
 _session_manager: SessionManager = SessionManager()
-
-CACHE_DURATION_SECONDS = (
-    0.80 * ASSUME_ROLE_DURATION_SECONDS
-)  # Refresh role credentials after exhausting 80% of the session duration
-
 lock = Lock()
+cache = Cache(Cache.MEMORY)
 
 
-@cached(ttl=CACHE_DURATION_SECONDS, cache=Cache.MEMORY)
+def _get_cache_duration_seconds() -> float:
+    return 0.50 * _session_manager._assume_role_duration_seconds()
+
+
 async def update_available_access_credentials() -> bool:
-    """
-    Fetches the AWS account IDs that the current IAM role can access.
-    and saves them up to use as sessions
-
-    :return: List of AWS account IDs.
-    """
+    cache_key = "update_available_access_credentials"
     async with lock:
+        result = await cache.get(cache_key)
+        if result is not None:
+            return result
+
         await _session_manager.reset()
-        # makes this run once per DurationSeconds
+        await cache.set(cache_key, True, ttl=_get_cache_duration_seconds())
         return True
+
+
+async def initialize_access_credentials() -> bool:
+    await _session_manager.reset()
+    return True
 
 
 def describe_accessible_accounts() -> list[dict[str, Any]]:
@@ -49,7 +53,7 @@ async def get_accounts() -> AsyncIterator[AwsCredentials]:
     """
     Gets the AWS account IDs that the current IAM role can access.
     """
-    await update_available_access_credentials()
+
     for credentials in _session_manager._aws_credentials:
         yield credentials
 
@@ -62,11 +66,11 @@ async def session_factory(
 
     if use_default_region:
         default_region = get_default_region_from_credentials(credentials)
-        yield await credentials.create_session(default_region)
+        yield await credentials.create_refreshable_session(default_region)
     elif custom_region:
-        yield await credentials.create_session(custom_region)
+        yield await credentials.create_refreshable_session(custom_region)
     else:
-        async for session in credentials.create_session_for_each_region():
+        async for session in credentials.create_refreshable_session_for_each_region():
             yield session
 
 
@@ -78,7 +82,6 @@ async def get_sessions(
     """
     Gets boto3 sessions for the AWS regions.
     """
-    await update_available_access_credentials()
 
     if custom_account_id:
         credentials = _session_manager.find_credentials_by_account_id(custom_account_id)
