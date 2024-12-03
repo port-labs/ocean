@@ -27,7 +27,10 @@ def mock_ocean_context():
 @pytest.fixture
 def integration_config_mock():
     """Fixture to mock integration configuration."""
-    with patch("port_ocean.context.ocean.PortOceanContext.integration_config", new_callable=MagicMock) as mock:
+    with patch(
+        "port_ocean.context.ocean.PortOceanContext.integration_config",
+        new_callable=MagicMock,
+    ) as mock:
         yield mock
 
 
@@ -58,7 +61,9 @@ async def test_list_all_subscriptions_per_project(integration_config_mock: Any) 
 
 @pytest.mark.asyncio
 @patch("gcp_core.utils.get_current_resource_config")
-async def test_get_single_subscription(get_current_resource_config_mock: MagicMock, monkeypatch: Any) -> None:
+async def test_get_single_subscription(
+    get_current_resource_config_mock: MagicMock, monkeypatch: Any
+) -> None:
     # Arrange
     subscriber_async_client_mock = AsyncMock
     monkeypatch.setattr(
@@ -103,9 +108,12 @@ async def test_get_single_subscription(get_current_resource_config_mock: MagicMo
     # Assert
     assert actual_subscription == expected_subscription
 
+
 @pytest.mark.asyncio
 @patch("gcp_core.utils.get_current_resource_config")
-async def test_feed_to_resource(get_current_resource_config_mock: MagicMock, monkeypatch: Any) -> None:
+async def test_feed_to_resource(
+    get_current_resource_config_mock: MagicMock, monkeypatch: Any
+) -> None:
     # Arrange
     projects_async_client_mock = AsyncMock
     monkeypatch.setattr(
@@ -181,7 +189,9 @@ async def test_feed_to_resource(get_current_resource_config_mock: MagicMock, mon
 
 @pytest.mark.asyncio
 @patch("gcp_core.utils.get_current_resource_config")
-async def test_preserve_case_style(get_current_resource_config_mock: MagicMock, monkeypatch: Any) -> None:
+async def test_preserve_case_style(
+    get_current_resource_config_mock: MagicMock, monkeypatch: Any
+) -> None:
     # Arrange
     subscriber_async_client_mock = AsyncMock
     monkeypatch.setattr(
@@ -237,9 +247,12 @@ async def test_preserve_case_style(get_current_resource_config_mock: MagicMock, 
     # Assert
     assert actual_subscription == expected_subscription
 
+
 @pytest.mark.asyncio
 @patch("gcp_core.utils.get_current_resource_config")
-async def test_preserve_case_style_false(get_current_resource_config_mock: MagicMock, monkeypatch: Any) -> None:
+async def test_preserve_case_style_false(
+    get_current_resource_config_mock: MagicMock, monkeypatch: Any
+) -> None:
     # Arrange
     subscriber_async_client_mock = AsyncMock
     monkeypatch.setattr(
@@ -294,9 +307,12 @@ async def test_preserve_case_style_false(get_current_resource_config_mock: Magic
     # Assert
     assert actual_subscription == expected_subscription
 
+
 @pytest.mark.asyncio
 @patch("gcp_core.utils.get_current_resource_config")
-async def test_preserve_case_style_none(get_current_resource_config_mock: MagicMock, monkeypatch: Any) -> None:
+async def test_preserve_case_style_none(
+    get_current_resource_config_mock: MagicMock, monkeypatch: Any
+) -> None:
     # Arrange
     subscriber_async_client_mock = AsyncMock
     monkeypatch.setattr(
@@ -350,4 +366,3 @@ async def test_preserve_case_style_none(get_current_resource_config_mock: MagicM
 
     # Assert
     assert actual_subscription == expected_subscription
-    
