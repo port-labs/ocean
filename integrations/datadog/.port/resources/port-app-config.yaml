@@ -85,7 +85,7 @@ resources:
     selector:
       query: "true"
       timeframe: 30
-      period_of_time_in_years: 12
+      periodOfTimeInMonths: 6
     port:
       entity:
         mappings:
@@ -102,3 +102,25 @@ resources:
             timeframe: .__timeframe
           relations:
             slo: .slo.id
+  - kind: host
+    selector:
+      query: >-
+        [.sources[] | . as $source | ["azure", "gcp", "gce", "aws"] |
+        contains([$source])] | any(.)
+    port:
+      entity:
+        mappings:
+          blueprint: '"datadogCloudResource"'
+          identifier: .id | tostring
+          title: .aws_name // .host_name
+          properties:
+            up: .up
+            host_name: .host_name
+            platform: .meta.platform
+            is_muted: .is_muted
+            machine: .meta.machine
+            description: .description
+            sources: .sources
+            cpu_cores: .meta.cpuCores
+            agent_version: .meta.agent_version
+            tags: .tags_by_source

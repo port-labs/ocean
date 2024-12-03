@@ -20,7 +20,6 @@ from utils.resources import (
 from utils.aws import (
     describe_accessible_accounts,
     get_accounts,
-    get_default_region_from_credentials,
     get_sessions,
     update_available_access_credentials,
     validate_request,
