@@ -91,7 +91,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         await ocean.register_raw(ObjectKind.ISSUE, [issue])
     elif "user" in data:
         logger.info(f'Received webhook event for user: {data["user"]["accountId"]}')
-        user = data["user"]
+        user = await client.get_single_user(data["user"]["accountId"])
         await ocean.register_raw(ObjectKind.USER, [user])
     logger.info("Webhook event processed")
     return {"ok": True}

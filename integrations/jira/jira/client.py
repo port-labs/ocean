@@ -185,3 +185,9 @@ class JiraClient:
 
             yield user_response_list
             params["startAt"] += PAGE_SIZE
+            
+    async def get_single_user(self, account_id: str) -> dict[str, Any]:
+        user_response = await self.client.get(f"{self.api_url}/user", params={"accountId": account_id})
+        user_response.raise_for_status()
+        return user_response.json()
+    
