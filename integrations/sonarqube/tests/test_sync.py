@@ -1,7 +1,6 @@
 from typing import Any
 from unittest.mock import AsyncMock
 
-import pytest
 from port_ocean import Ocean
 from port_ocean.tests.helpers.ocean_app import (
     get_integation_resource_configs,
@@ -11,7 +10,6 @@ from port_ocean.tests.helpers.ocean_app import (
 from client import SonarQubeClient
 
 
-@pytest.mark.asyncio
 async def test_full_sync_produces_correct_response_from_api(
     monkeypatch: Any,
     ocean_app: Ocean,
@@ -21,7 +19,6 @@ async def test_full_sync_produces_correct_response_from_api(
     component_projects: list[dict[str, Any]],
     analysis: list[dict[str, Any]],
     portfolios: list[dict[str, Any]],
-    mock_ocean_context: Any,
 ) -> None:
     projects_mock = AsyncMock()
     projects_mock.return_value = projects

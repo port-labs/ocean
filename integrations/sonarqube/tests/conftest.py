@@ -68,7 +68,7 @@ def app() -> Ocean:
     return application
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def ocean_app() -> Ocean:
     return app()
 

@@ -64,6 +64,7 @@ class SonarQubeClient:
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
         self.metrics: list[str] = []
+        self.webhook_invoke_url = f"{self.app_host}/integration/webhook"
 
     @property
     def api_auth_params(self) -> dict[str, Any]:
@@ -543,6 +544,56 @@ class SonarQubeClient:
             )
             raise
 
+    async def _create_webhook_payload_for_project(
+        self, project_key: str
+    ) -> dict[str, Any]:
+        """
+        Create webhook for a project
+
+        :param project_key: Project key
+
+        :return: dict[str, Any]
+        """
+        logger.info(f"Fetching existing webhooks in project: {project_key}")
+        params = {}
+        if self.organization_id:
+            params["organization"] = self.organization_id
+
+        webhooks_response = await self._send_api_request(
+            endpoint=f"{Endpoints.WEBHOOKS}/list",
+            query_params={
+                "project": project_key,
+                **params,
+            },
+        )
+
+        webhooks = webhooks_response.get("webhooks", [])
+        logger.info(webhooks)
+
+        if any(webhook["url"] == self.webhook_invoke_url for webhook in webhooks):
+            logger.info(f"Webhook already exists in project: {project_key}")
+            return {}
+
+        params = {}
+        if self.organization_id:
+            params["organization"] = self.organization_id
+        return {
+            "name": "Port Ocean Webhook",
+            "project": project_key,
+            **params,
+        }
+
+    async def _create_webhooks_for_projects(
+        self, webhook_payloads: list[dict[str, Any]]
+    ) -> None:
+        for webhook in webhook_payloads:
+            await self._send_api_request(
+                endpoint=f"{Endpoints.WEBHOOKS}/create",
+                method="POST",
+                query_params={**webhook, "url": self.webhook_invoke_url},
+            )
+            logger.info(f"Webhook added to project: {webhook['project']}")
+
     async def get_or_create_webhook_url(self) -> None:
         """
         Get or create webhook URL for projects
@@ -550,51 +601,13 @@ class SonarQubeClient:
         :return: None
         """
         logger.info(f"Subscribing to webhooks in organization: {self.organization_id}")
-        webhook_endpoint = Endpoints.WEBHOOKS
-        invoke_url = f"{self.app_host}/integration/webhook"
         async for projects in self.get_projects():
-
-            # Iterate over projects and add webhook
             webhooks_to_create = []
             for project in projects:
-                project_key = project["key"]
-                logger.info(f"Fetching existing webhooks in project: {project_key}")
-                params = {}
-                if self.organization_id:
-                    params["organization"] = self.organization_id
-                webhooks_response = await self._send_api_request(
-                    endpoint=f"{webhook_endpoint}/list",
-                    query_params={
-                        "project": project_key,
-                        **params,
-                    },
+                project_webhook_payload = (
+                    await self._create_webhook_payload_for_project(project["key"])
                 )
+                if project_webhook_payload:
+                    webhooks_to_create.append(project_webhook_payload)
 
-                webhooks = webhooks_response.get("webhooks", [])
-                logger.info(webhooks)
-
-                if any(webhook["url"] == invoke_url for webhook in webhooks):
-                    logger.info(f"Webhook already exists in project: {project_key}")
-                    continue
-
-                params = {}
-                if self.organization_id:
-                    params["organization"] = self.organization_id
-                webhooks_to_create.append(
-                    {
-                        "name": "Port Ocean Webhook",
-                        "project": project_key,
-                        **params,
-                    }
-                )
-
-            for webhook in webhooks_to_create:
-                await self._send_api_request(
-                    endpoint=f"{webhook_endpoint}/create",
-                    method="POST",
-                    query_params={**webhook, "url": invoke_url},
-                )
-                logger.info(f"Webhook added to project: {webhook['project']}")
-
-
-__all__ = ["SonarQubeClient", "turn_sequence_to_chunks"]
+            await self._create_webhooks_for_projects(webhooks_to_create)
