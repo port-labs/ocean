@@ -62,6 +62,13 @@ class JiraClient:
         issue_response = await self.client.get(f"{self.api_url}/search", params=params)
         issue_response.raise_for_status()
         return issue_response.json()
+       
+    async def _get_paginated_users(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        user_response = await self.client.get(
+            f"{self.api_url}/users", params=params
+        )
+        user_response.raise_for_status()
+        return user_response.json()
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
@@ -144,4 +151,37 @@ class JiraClient:
             logger.info(f"Current query position: {params['startAt']}/{total_issues}")
             issue_response_list = (await self._get_paginated_issues(params))["issues"]
             yield issue_response_list
+            params["startAt"] += PAGE_SIZE
+
+    async def get_paginated_users(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting users from Jira")
+
+        params = self._generate_base_req_params()
+
+        # Since the method returns a list directly, use len() on the first response
+        total_users = len(await self._get_paginated_users(params))
+
+        if total_users == 0:
+            logger.warning(
+                "User query returned 0 users, did you provide the correct Jira API credentials?"
+            )
+
+        params["maxResults"] = PAGE_SIZE
+        while params["startAt"] < total_users:
+            logger.info(f"Current query position: {params['startAt']}/{total_users}")
+            
+            user_response_list = await self._get_paginated_users(params)
+            
+            if not user_response_list:
+                logger.warning(f"No users found at {params['startAt']}")
+                break
+
+            logger.info(
+            f"Retrieved users: {len(user_response_list)} "
+            f"(Position: {params['startAt']}/{total_users})"
+            )
+                
+            yield user_response_list
             params["startAt"] += PAGE_SIZE
