@@ -132,13 +132,18 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             httpx.Response: The response received.
 
         """
-        transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
-        if request.method in self._retryable_methods:
-            send_method = partial(transport.handle_request)
-            response = self._retry_operation(request, send_method)
-        else:
-            response = transport.handle_request(request)
-        return response
+        try:
+            transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
+            if request.method in self._retryable_methods:
+                send_method = partial(transport.handle_request)
+                response = self._retry_operation(request, send_method)
+            else:
+                response = transport.handle_request(request)
+            return response
+        except Exception as e:
+            if not self._is_retryable_method(request) and self._logger is not None:
+                self._logger.exception(f"{repr(e)} - {request.url}", exc_info=e)
+            raise e
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         """Sends an HTTP request, possibly with retries.
@@ -150,13 +155,19 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             The response.
 
         """
-        transport: httpx.AsyncBaseTransport = self._wrapped_transport  # type: ignore
-        if self._is_retryable_method(request):
-            send_method = partial(transport.handle_async_request)
-            response = await self._retry_operation_async(request, send_method)
-        else:
-            response = await transport.handle_async_request(request)
-        return response
+        try:
+            transport: httpx.AsyncBaseTransport = self._wrapped_transport  # type: ignore
+            if self._is_retryable_method(request):
+                send_method = partial(transport.handle_async_request)
+                response = await self._retry_operation_async(request, send_method)
+            else:
+                response = await transport.handle_async_request(request)
+            return response
+        except Exception as e:
+            # Retyable methods are logged via _log_error
+            if not self._is_retryable_method(request) and self._logger is not None:
+                self._logger.exception(f"{repr(e)} - {request.url}", exc_info=e)
+            raise e
 
     async def aclose(self) -> None:
         """
