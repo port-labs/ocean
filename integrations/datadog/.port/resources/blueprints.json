@@ -345,5 +345,69 @@
         "many": false
       }
     }
+  },
+  {
+    "identifier": "datadogCloudResource",
+    "description": "This blueprint represents a cloud resource in Datadog",
+    "title": "Datadog Cloud Resource",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "up": {
+          "type": "boolean",
+          "title": "Is Running?",
+          "description": "Is the host up?"
+        },
+        "host_name": {
+          "type": "string",
+          "title": "Host Name",
+          "description": "the name of the host"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "the host description"
+        },
+        "platform": {
+          "type": "string",
+          "title": "Platform",
+          "description": "the host platform"
+        },
+        "machine": {
+          "type": "string",
+          "title": "Machine",
+          "description": "The CPU architecture of the host machine (e.g., amd64, x86, x64, arm, arm64)."
+        },
+        "cpu_cores": {
+          "type": "number",
+          "title": "CPU Cores",
+          "description": "the host CPU cores"
+        },
+        "agent_version": {
+          "type": "string",
+          "title": "Datadog Agent Version",
+          "description": "the Datadog agent version installed on the host"
+        },
+        "is_muted": {
+          "type": "boolean",
+          "title": "Is Host Muted?",
+          "description": "Indicates whether alerts for that specific host are temporarily suppressed."
+        },
+        "sources": {
+          "title": "Sources",
+          "type": "array",
+          "description": "Source or cloud provider associated with your host."
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object",
+          "description": "Tags associated with the host."
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {}
   }
 ]
