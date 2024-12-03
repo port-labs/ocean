@@ -34,7 +34,7 @@ def mock_ocean_context() -> None:
         pass
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def mock_event_context() -> Generator[MagicMock, None, None]:
     """Fixture to mock the event context."""
     mock_event = MagicMock(spec=EventContext)
