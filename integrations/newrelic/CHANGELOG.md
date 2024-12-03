@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adds unit tests for the service level class.
 
 
+## 0.1.100 (2024-11-25)
+
+
+### Improvements
+
+- Added support for syncing cloud resources from New Relic.
+- Included blueprints and entity mappings for cloud resource ingestion.
+
+
 ## 0.1.99 (2024-11-25)
 
 
