@@ -1,6 +1,6 @@
 from typing import Any, TypedDict
 from unittest.mock import AsyncMock, MagicMock, patch
-
+from port_ocean.context.event import event_context
 import httpx
 import pytest
 
@@ -124,9 +124,9 @@ async def test_sonarqube_client_will_send_api_request(
 
 @pytest.mark.asyncio
 async def test_sonarqube_client_will_repeatedly_make_pagination_request(
-    mock_ocean_context: Any,
     projects: list[dict[str, Any]],
     monkeypatch: Any,
+    mock_ocean_context: Any
 ) -> None:
     sonarqube_client = SonarQubeClient(
         "https://sonarqube.com",
@@ -135,94 +135,93 @@ async def test_sonarqube_client_will_repeatedly_make_pagination_request(
         "app_host",
         False,
     )
+    async with event_context("test_event"):
+        sonarqube_client.http_client = MockHttpxClient(  # type: ignore
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
+                        "components": PURE_PROJECTS,
+                    },
+                },
+                {
+                    "status_code": 200,
+                    "json": {
+                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
+                        "components": projects,
+                    },
+                },
+            ]
+        )
 
-    sonarqube_client.http_client = MockHttpxClient(  # type: ignore
-        [
+        count = 0
+        async for _ in sonarqube_client._send_paginated_request(
+            "/api/projects/search",
+            "GET",
+            "components",
+        ):
+            count += 1
+
+
+    @pytest.mark.asyncio
+    async def test_pagination_with_large_dataset(
+        mock_ocean_context: Any,
+        monkeypatch: Any,
+    ) -> None:
+        sonarqube_client = SonarQubeClient(
+            "https://sonarqube.com",
+            "token",
+            "organization_id",
+            "app_host",
+            False,
+        )
+
+        # Mock three pages of results
+        mock_responses = [
             {
                 "status_code": 200,
                 "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
-                    "components": PURE_PROJECTS,
+                    "paging": {"pageIndex": 1, "pageSize": 2, "total": 6},
+                    "components": [{"key": "project1"}, {"key": "project2"}],
                 },
             },
             {
                 "status_code": 200,
                 "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
-                    "components": projects,
+                    "paging": {"pageIndex": 2, "pageSize": 2, "total": 6},
+                    "components": [{"key": "project3"}, {"key": "project4"}],
+                },
+            },
+            {
+                "status_code": 200,
+                "json": {
+                    "paging": {"pageIndex": 3, "pageSize": 2, "total": 6},
+                    "components": [{"key": "project5"}, {"key": "project6"}],
                 },
             },
         ]
-    )
 
-    count = 0
-    async for _ in sonarqube_client._send_paginated_request(
-        "/api/projects/search",
-        "GET",
-        "components",
-    ):
-        count += 1
+        sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
 
+        project_keys: list[Any] = []
+        async for components in sonarqube_client.get_components():
+            project_keys.extend(comp["key"] for comp in components)
 
-@pytest.mark.asyncio
-async def test_pagination_with_large_dataset(
-    mock_ocean_context: Any,
-    monkeypatch: Any,
-) -> None:
-    sonarqube_client = SonarQubeClient(
-        "https://sonarqube.com",
-        "token",
-        "organization_id",
-        "app_host",
-        False,
-    )
-
-    # Mock three pages of results
-    mock_responses = [
-        {
-            "status_code": 200,
-            "json": {
-                "paging": {"pageIndex": 1, "pageSize": 2, "total": 6},
-                "components": [{"key": "project1"}, {"key": "project2"}],
-            },
-        },
-        {
-            "status_code": 200,
-            "json": {
-                "paging": {"pageIndex": 2, "pageSize": 2, "total": 6},
-                "components": [{"key": "project3"}, {"key": "project4"}],
-            },
-        },
-        {
-            "status_code": 200,
-            "json": {
-                "paging": {"pageIndex": 3, "pageSize": 2, "total": 6},
-                "components": [{"key": "project5"}, {"key": "project6"}],
-            },
-        },
-    ]
-
-    sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
-
-    project_keys: list[Any] = []
-    async for components in sonarqube_client.get_components():
-        project_keys.extend(comp["key"] for comp in components)
-
-    assert len(project_keys) == 6
-    assert project_keys == [
-        "project1",
-        "project2",
-        "project3",
-        "project4",
-        "project5",
-        "project6",
-    ]
+        assert len(project_keys) == 6
+        assert project_keys == [
+            "project1",
+            "project2",
+            "project3",
+            "project4",
+            "project5",
+            "project6",
+        ]
 
 
 @pytest.mark.asyncio
 async def test_get_components_is_called_with_correct_params(
-    mock_event_context: Any,
-    ocean_app: Any,
+    mock_ocean_context: Any,
     component_projects: list[dict[str, Any]],
     monkeypatch: Any,
 ) -> None:
@@ -236,31 +235,33 @@ async def test_get_components_is_called_with_correct_params(
     mock_paginated_request = MagicMock()
     mock_paginated_request.__aiter__.return_value = ()
 
-    sonarqube_client.http_client = MockHttpxClient(  # type: ignore
-        [
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
-                    "components": component_projects,
+    async with event_context("test_event"):
+
+        sonarqube_client.http_client = MockHttpxClient(  # type: ignore
+            [
+                {
+                    "status_code": 200,
+                    "json": {
+                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
+                        "components": component_projects,
+                    },
                 },
-            },
-        ]
-    )
+            ]
+        )
 
-    monkeypatch.setattr(
-        sonarqube_client, "_send_paginated_request", mock_paginated_request
-    )
+        monkeypatch.setattr(
+            sonarqube_client, "_send_paginated_request", mock_paginated_request
+        )
 
-    async for _ in sonarqube_client.get_components():
-        pass
+        async for _ in sonarqube_client.get_components():
+            pass
 
-    mock_paginated_request.assert_any_call(
-        endpoint="components/search_projects",
-        data_key="components",
-        method="GET",
-        query_params=None,
-    )
+        mock_paginated_request.assert_any_call(
+            endpoint="components/search_projects",
+            data_key="components",
+            method="GET",
+            query_params=None,
+        )
 
 
 @pytest.mark.asyncio
@@ -388,75 +389,80 @@ async def test_get_single_project_is_called_with_correct_params(
 @pytest.mark.asyncio
 async def test_projects_will_return_correct_data(
     mock_event_context: Any,
-    monkeypatch: Any,
-) -> None:
-    sonarqube_client = SonarQubeClient(
-        "https://sonarqube.com",
-        "token",
-        "organization_id",
-        "app_host",
-        False,
-    )
-    mock_paginated_request = MagicMock()
-    mock_paginated_request.__aiter__.return_value = PURE_PROJECTS[0]
-
-    monkeypatch.setattr(
-        sonarqube_client, "_send_paginated_request", mock_paginated_request
-    )
-
-    async for _ in sonarqube_client.get_projects({}):
-        pass
-
-    mock_paginated_request.assert_any_call(
-        endpoint="projects/search", data_key="components", method="GET", query_params={}
-    )
-
-
-@pytest.mark.asyncio
-async def test_get_all_issues_makes_correct_calls(
     mock_ocean_context: Any,
-    monkeypatch: Any,
+    monkeypatch: Any
 ) -> None:
-    sonarqube_client = SonarQubeClient(
-        "https://sonarqube.com",
-        "token",
-        "organization_id",
-        "app_host",
-        False,
-    )
 
-    # Mock responses for both projects and issues
-    sonarqube_client.http_client = MockHttpxClient(
-        [  # type: ignore
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
-                    "components": [{"key": "project1"}],
+    async with event_context("test_event"):
+
+        sonarqube_client = SonarQubeClient(
+            "https://sonarqube.com",
+            "token",
+            "organization_id",
+            "app_host",
+            False,
+        )
+        mock_paginated_request = MagicMock()
+        mock_paginated_request.__aiter__.return_value = PURE_PROJECTS[0]
+
+        monkeypatch.setattr(
+            sonarqube_client, "_send_paginated_request", mock_paginated_request
+        )
+
+        async for _ in sonarqube_client.get_projects({}):
+            pass
+
+        mock_paginated_request.assert_any_call(
+            endpoint="projects/search", data_key="components", method="GET", query_params={}
+        )
+
+
+    @pytest.mark.asyncio
+    async def test_get_all_issues_makes_correct_calls(
+        mock_ocean_context: Any,
+        mock_event_context: Any,
+        monkeypatch: Any,
+    ) -> None:
+        sonarqube_client = SonarQubeClient(
+            "https://sonarqube.com",
+            "token",
+            "organization_id",
+            "app_host",
+            False,
+        )
+
+        # Mock responses for both projects and issues
+        sonarqube_client.http_client = MockHttpxClient(
+            [  # type: ignore
+                {
+                    "status_code": 200,
+                    "json": {
+                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                        "components": [{"key": "project1"}],
+                    },
                 },
-            },
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
-                    "issues": [{"key": "issue1", "severity": "CRITICAL"}],
+                {
+                    "status_code": 200,
+                    "json": {
+                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                        "issues": [{"key": "issue1", "severity": "CRITICAL"}],
+                    },
                 },
-            },
-        ]
-    )
+            ]
+        )
 
-    query_params = {"severity": "CRITICAL"}
-    project_params = {"languages": "python"}
+        query_params = {"severity": "CRITICAL"}
+        project_params = {"languages": "python"}
 
-    issues = []
-    async for issue_batch in sonarqube_client.get_all_issues(
-        query_params, project_params
-    ):
-        issues.extend(issue_batch)
+        issues = []
+        async for issue_batch in sonarqube_client.get_all_issues(
+            query_params, project_params
+        ):
+            issues.extend(issue_batch)
 
-    assert len(issues) == 1
-    assert issues[0]["key"] == "issue1"
-    assert issues[0]["severity"] == "CRITICAL"
+        assert len(issues) == 1
+        assert issues[0]["key"] == "issue1"
+        assert issues[0]["severity"] == "CRITICAL"
 
 
 @pytest.mark.asyncio
@@ -555,24 +561,25 @@ async def test_get_or_create_webhook_url_creates_when_needed(
         False,
     )
 
-    sonarqube_client.http_client = MockHttpxClient(
-        [  # type: ignore
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
-                    "components": [{"key": "project1"}],
+    async with event_context("test_event"):
+        sonarqube_client.http_client = MockHttpxClient(
+            [  # type: ignore
+                {
+                    "status_code": 200,
+                    "json": {
+                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                        "components": [{"key": "project1"}],
+                    },
                 },
-            },
-            {"status_code": 200, "json": {"webhooks": []}},  # No existing webhooks
-            {
-                "status_code": 200,
-                "json": {"webhook": "created"},  # Webhook creation response
-            },
-        ]
-    )
+                {"status_code": 200, "json": {"webhooks": []}},  # No existing webhooks
+                {
+                    "status_code": 200,
+                    "json": {"webhook": "created"},  # Webhook creation response
+                },
+            ]
+        )
 
-    await sonarqube_client.get_or_create_webhook_url()
+        await sonarqube_client.get_or_create_webhook_url()
 
 
 @pytest.mark.asyncio
@@ -588,21 +595,23 @@ async def test_get_or_create_webhook_url_skips_if_exists(
         False,
     )
 
-    existing_webhook_url = "http://app.host/integration/webhook"
-    sonarqube_client.http_client = MockHttpxClient(
-        [  # type: ignore
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
-                    "components": [{"key": "project1"}],
-                },
-            },
-            {"status_code": 200, "json": {"webhooks": [{"url": existing_webhook_url}]}},
-        ]
-    )
 
-    await sonarqube_client.get_or_create_webhook_url()
+    async with event_context("test_event"):
+        existing_webhook_url = "http://app.host/integration/webhook"
+        sonarqube_client.http_client = MockHttpxClient(
+            [  # type: ignore
+                {
+                    "status_code": 200,
+                    "json": {
+                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                        "components": [{"key": "project1"}],
+                    },
+                },
+                {"status_code": 200, "json": {"webhooks": [{"url": existing_webhook_url}]}},
+            ]
+        )
+
+        await sonarqube_client.get_or_create_webhook_url()
 
 
 def test_sanity_check_handles_errors(
@@ -827,25 +836,29 @@ async def test_get_all_sonarqube_analyses_with_empty_pulls(
         False,
     )
 
-    # Mock project list and empty pull requests
-    sonarqube_client.http_client = MockHttpxClient(
-        [  # type: ignore
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
-                    "components": [{"key": "project1"}],
+
+
+        # Mock project list and empty pull requests
+    async with event_context("test_event"):
+
+        sonarqube_client.http_client = MockHttpxClient(
+            [  # type: ignore
+                {
+                    "status_code": 200,
+                    "json": {
+                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                        "components": [{"key": "project1"}],
+                    },
                 },
-            },
-            {"status_code": 200, "json": {"pullRequests": []}},
-        ]
-    )
+                {"status_code": 200, "json": {"pullRequests": []}},
+            ]
+        )
 
-    results = []
-    async for analyses in sonarqube_client.get_all_sonarqube_analyses():
-        results.extend(analyses)
+        results = []
+        async for analyses in sonarqube_client.get_all_sonarqube_analyses():
+            results.extend(analyses)
 
-    assert len(results) == 0
+        assert len(results) == 0
 
 
 @pytest.mark.asyncio
@@ -860,19 +873,20 @@ async def test_get_or_create_webhook_url_with_organization(
         "http://app.host",
         False,
     )
+    async with event_context("test_event"):
 
-    sonarqube_client.http_client = MockHttpxClient(
-        [  # type: ignore
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
-                    "components": [{"key": "project1"}],
+        sonarqube_client.http_client = MockHttpxClient(
+            [  # type: ignore
+                {
+                    "status_code": 200,
+                    "json": {
+                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
+                        "components": [{"key": "project1"}],
+                    },
                 },
-            },
-            {"status_code": 200, "json": {"webhooks": []}},
-            {"status_code": 200, "json": {"webhook": "created"}},
-        ]
-    )
+                {"status_code": 200, "json": {"webhooks": []}},
+                {"status_code": 200, "json": {"webhook": "created"}},
+            ]
+        )
 
-    await sonarqube_client.get_or_create_webhook_url()
+        await sonarqube_client.get_or_create_webhook_url()
