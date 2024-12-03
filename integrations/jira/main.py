@@ -10,6 +10,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
+    USER = "user"
 
 
 async def setup_application() -> None:
@@ -57,6 +58,19 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for issues in client.get_paginated_issues():
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
+        
+                
+@ocean.on_resync(ObjectKind.USER)
+async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = JiraClient(
+        ocean.integration_config["jira_host"],
+        ocean.integration_config["atlassian_user_email"],
+        ocean.integration_config["atlassian_user_token"],
+    )
+
+    async for users in client.get_paginated_users():
+        logger.info(f"Received users batch with {len(users)} users")
+        yield users
 
 
 @ocean.router.post("/webhook")
