@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.101 (2024-12-3)
+
+
+### Improvements
+
+- Improved error handling and type safety in NewRelic's service levels class, including null-checking for responses.
+- Adds unit tests for the service level class.
+
+
 ## 0.1.100 (2024-11-25)
 
 
