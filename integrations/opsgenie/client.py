@@ -1,5 +1,5 @@
 from typing import Any, AsyncGenerator, Optional
-
+import asyncio
 import httpx
 from loguru import logger
 
@@ -8,6 +8,7 @@ from port_ocean.utils.cache import cache_iterator_result
 from utils import ObjectKind, RESOURCE_API_VERSIONS
 
 PAGE_SIZE = 100
+CONCURRENT_REQUESTS = 5
 
 
 class OpsGenieClient:
@@ -16,6 +17,7 @@ class OpsGenieClient:
         self.api_url = api_url
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_header)
+        self.semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -29,17 +31,24 @@ class OpsGenieClient:
         url: str,
         query_params: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
-        try:
-            logger.info(f"Fetching data from {url} with query params {query_params}")
-            response = await self.http_client.get(url=url, params=query_params)
-            response.raise_for_status()
-            return response.json()
-
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
-            )
-            raise
+        async with self.semaphore:
+            try:
+                logger.info(
+                    f"Fetching data from {url} with query params {query_params}"
+                )
+                response = await self.http_client.get(url=url, params=query_params)
+                response.raise_for_status()
+                return response.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
+                )
+                raise
+            except httpx.HTTPError as e:
+                logger.error(
+                    f"Encountered an HTTP error while fetching request for url {url} error: {e}"
+                )
+                raise
 
     @cache_iterator_result()
     async def get_paginated_resources(
@@ -62,6 +71,11 @@ class OpsGenieClient:
                     f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"
                 )
                 raise
+            except httpx.HTTPError as e:
+                logger.error(
+                    f"Encountered an HTTP error while fetching request for url {url} error: {e}"
+                )
+                raise
 
     async def get_alert(self, identifier: str) -> dict[str, Any]:
         logger.debug(f"Fetching alert {identifier}")
@@ -78,7 +92,7 @@ class OpsGenieClient:
         return (await self._get_single_resource(url))["data"]
 
     async def get_team_members(self, team_identifier: str) -> dict[str, Any]:
-        logger.debug(f"Fetching members for team {team_identifier}")
+        logger.info(f"Fetching members for team {team_identifier}")
 
         api_version = await self.get_resource_api_version(ObjectKind.TEAM)
         url = f"{self.api_url}/{api_version}/teams/{team_identifier}"

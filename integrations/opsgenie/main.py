@@ -13,8 +13,6 @@ from integration import (
     TeamResourceConfig,
 )
 
-CONCURRENT_REQUESTS = 5
-
 
 def init_client() -> OpsGenieClient:
     return OpsGenieClient(
@@ -25,12 +23,10 @@ def init_client() -> OpsGenieClient:
 
 async def enrich_schedule_with_oncall_data(
     opsgenie_client: OpsGenieClient,
-    semaphore: asyncio.Semaphore,
     schedule_batch: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     async def fetch_oncall(schedule_id: str) -> dict[str, Any]:
-        async with semaphore:
-            return await opsgenie_client.get_oncall_users(schedule_id)
+        return await opsgenie_client.get_oncall_users(schedule_id)
 
     oncall_tasks = [fetch_oncall(schedule["id"]) for schedule in schedule_batch]
     results = await asyncio.gather(*oncall_tasks)
@@ -43,12 +39,10 @@ async def enrich_schedule_with_oncall_data(
 
 async def enrich_team_with_members(
     opsgenie_client: OpsGenieClient,
-    semaphore: asyncio.Semaphore,
     team_batch: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     async def fetch_team_members(team_id: str) -> dict[str, Any]:
-        async with semaphore:
-            return await opsgenie_client.get_team_members(team_id)
+        return await opsgenie_client.get_team_members(team_id)
 
     team_tasks = [fetch_team_members(team["id"]) for team in team_batch]
     results = await asyncio.gather(*team_tasks)
@@ -83,9 +77,8 @@ async def on_team_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ):
         logger.info(f"Received batch with {len(team_batch)} teams")
         if selector.include_members:
-            semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
             team_with_members = await enrich_team_with_members(
-                opsgenie_client, semaphore, team_batch
+                opsgenie_client, team_batch
             )
             yield team_with_members
         else:
@@ -164,9 +157,8 @@ async def on_schedule_oncall_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info(
             f"Received batch with {len(schedules_batch)} schedules, enriching with oncall data"
         )
-        semaphore = asyncio.Semaphore(CONCURRENT_REQUESTS)
         schedule_oncall = await enrich_schedule_with_oncall_data(
-            opsgenie_client, semaphore, schedules_batch
+            opsgenie_client, schedules_batch
         )
         yield schedule_oncall
 
