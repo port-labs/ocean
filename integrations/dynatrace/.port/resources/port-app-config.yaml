@@ -60,3 +60,34 @@ resources:
             evaluatedPercentage: .evaluatedPercentage
             evaluationType: .evaluationType
             filter: .filter
+
+  - kind: entity
+    selector:
+      query: 'true'
+      entityTypes:
+        - "cloud:gcp:k8s_cluster"
+        - "cloud:gcp:pubsub_subscription"
+        - "cloud:gcp:pubsub_topic"
+        - "cloud:gcp:gcs_bucket"
+        - "cloud:gcp:gae_app"
+        - "cloud:aws:acmprivateca"
+        - "cloud:aws:api_gateway"
+        - "cloud:aws:app_runner"
+        - "cloud:aws:appstream"
+        - "cloud:aws:appsync"
+        - "cloud:azure:apimanagement:service"
+        - "cloud:azure:app:containerapps"
+        - "cloud:azure:app:managedenvironments"
+        - "cloud:azure:appconfiguration:configurationstores"
+        - "cloud:azure:appplatform:spring"
+    port:
+      entity:
+        mappings:
+          identifier: .displayName | gsub(" "; "-")
+          title: .displayName
+          blueprint: '"dynatraceEntityCloudResource"'
+          properties:
+            firstSeen: .firstSeenTms / 1000 | todate
+            lastSeen: .lastSeenTms / 1000 | todate
+            type: .type
+            tags: .tags[].stringRepresentation

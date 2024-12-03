@@ -90,3 +90,33 @@ resources:
             tags: .tags
           relations:
             newRelicService: .serviceLevel.indicators[0].guid
+  - kind: entity
+    selector:
+      query: 'true'
+      entityQueryFilter:
+        type IN (
+          'AWSEC2INSTANCE',
+          'AWSS3BUCKET',
+          'AWSRDSDBINSTANCE',
+          'AWSLAMBDAFUNCTION',
+          'AWSELBLOADBALANCER',
+          'AZUREVIRTUALMACHINE',
+          'AZURESQLDATABASE',
+          'GCPCOMPUTEINSTANCE',
+          'GCPSTORAGEBUCKET',
+          'GCPSQLDATABASEINSTANCE'
+        )
+    port:
+      entity:
+        mappings:
+          identifier: .guid
+          title: .name
+          blueprint: '"newRelicEntityCloudResource"'
+          properties:
+            accountId: .accountId
+            domain: .domain
+            type: .entityType
+            infrastructureIntegrationType: .type
+            reporting: .reporting
+            link: .permalink
+            tags: .tags
