@@ -63,7 +63,7 @@ class JiraClient:
         issue_response.raise_for_status()
         return issue_response.json()
 
-    async def _get_paginated_users(
+    async def _get_users_data(
         self, params: dict[str, Any]
     ) -> list[dict[str, Any]]:
         user_response = await self.client.get(f"{self.api_url}/users", params=params)
@@ -160,8 +160,7 @@ class JiraClient:
 
         params = self._generate_base_req_params()
 
-        # Since the method returns a list directly, use len() on the first response
-        total_users = len(await self._get_paginated_users(params))
+        total_users = len(await self._get_users_data(params))
 
         if total_users == 0:
             logger.warning(
@@ -172,7 +171,7 @@ class JiraClient:
         while params["startAt"] < total_users:
             logger.info(f"Current query position: {params['startAt']}/{total_users}")
 
-            user_response_list = await self._get_paginated_users(params)
+            user_response_list = await self._get_users_data(params)
 
             if not user_response_list:
                 logger.warning(f"No users found at {params['startAt']}")
