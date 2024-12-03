@@ -16,7 +16,7 @@ from .fixtures import ANALYSIS, COMPONENT_PROJECTS, ISSUES, PORTFOLIOS, PURE_PRO
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_ocean_context() -> None:
     """Fixture to mock the Ocean context initialization."""
     try:
@@ -34,7 +34,7 @@ def mock_ocean_context() -> None:
         pass
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def mock_event_context() -> Generator[MagicMock, None, None]:
     """Fixture to mock the event context."""
     mock_event = MagicMock(spec=EventContext)

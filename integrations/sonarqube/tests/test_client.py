@@ -222,7 +222,6 @@ async def test_pagination_with_large_dataset(
 @pytest.mark.asyncio
 async def test_get_components_is_called_with_correct_params(
     mock_event_context: Any,
-    mock_ocean_context: Any,
     ocean_app: Any,
     component_projects: list[dict[str, Any]],
     monkeypatch: Any,

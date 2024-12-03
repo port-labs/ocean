@@ -595,3 +595,6 @@ class SonarQubeClient:
                     query_params={**webhook, "url": invoke_url},
                 )
                 logger.info(f"Webhook added to project: {webhook['project']}")
+
+
+__all__ = ["SonarQubeClient", "turn_sequence_to_chunks"]
