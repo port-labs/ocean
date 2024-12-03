@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.70 (2024-11-25)
+
+
+### Improvements
+
+- Added support for syncing cloud resources from Dynatrace.
+- Included blueprints and entity mappings for cloud resource ingestion.
+
+
 ## 0.1.69 (2024-11-25)
 
 
