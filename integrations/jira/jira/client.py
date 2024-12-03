@@ -62,11 +62,11 @@ class JiraClient:
         issue_response = await self.client.get(f"{self.api_url}/search", params=params)
         issue_response.raise_for_status()
         return issue_response.json()
-       
-    async def _get_paginated_users(self, params: dict[str, Any]) -> list[dict[str, Any]]:
-        user_response = await self.client.get(
-            f"{self.api_url}/users", params=params
-        )
+
+    async def _get_paginated_users(
+        self, params: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        user_response = await self.client.get(f"{self.api_url}/users", params=params)
         user_response.raise_for_status()
         return user_response.json()
 
@@ -171,17 +171,17 @@ class JiraClient:
         params["maxResults"] = PAGE_SIZE
         while params["startAt"] < total_users:
             logger.info(f"Current query position: {params['startAt']}/{total_users}")
-            
+
             user_response_list = await self._get_paginated_users(params)
-            
+
             if not user_response_list:
                 logger.warning(f"No users found at {params['startAt']}")
                 break
 
             logger.info(
-            f"Retrieved users: {len(user_response_list)} "
-            f"(Position: {params['startAt']}/{total_users})"
+                f"Retrieved users: {len(user_response_list)} "
+                f"(Position: {params['startAt']}/{total_users})"
             )
-                
+
             yield user_response_list
             params["startAt"] += PAGE_SIZE
