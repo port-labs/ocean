@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.88 (2024-12-03)
+
+
+### Improvements
+
+- Bumped ocean version to 0.14.4
+
+
 ## 0.1.87 (2024-11-25)
 
 
@@ -368,7 +376,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed `visibility` property in mapping which had a typo and changed the default relation to required `false` to be more permissive 
+- Fixed `visibility` property in mapping which had a typo and changed the default relation to required `false` to be more permissive
 
 
 ## 0.1.41 (2024-07-10)
@@ -659,4 +667,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Created Azure DevOps ##  using Ocean (PORT-4585)
-
