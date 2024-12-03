@@ -54,7 +54,7 @@ async def _handle_global_resource_resync(
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
     denied_access_to_default_region = False
     default_region = get_default_region_from_credentials(credentials)
-    default_session = await credentials.create_session(default_region)
+    default_session = await credentials.create_refreshable_session(default_region)
     try:
         async for batch in resync_cloudcontrol(
             kind, default_session, aws_resource_config
@@ -68,7 +68,7 @@ async def _handle_global_resource_resync(
 
     if denied_access_to_default_region:
         logger.info(f"Trying to resync {kind} in all regions until success")
-        async for session in credentials.create_session_for_each_region():
+        async for session in credentials.create_refreshable_session_for_each_region():
             try:
                 async for batch in resync_cloudcontrol(
                     kind, session, aws_resource_config
@@ -97,7 +97,7 @@ async def resync_resources_for_account(
         ):
             yield batch
     else:
-        async for session in credentials.create_session_for_each_region():
+        async for session in credentials.create_refreshable_session_for_each_region():
             try:
                 async for batch in resync_cloudcontrol(
                     kind, session, aws_resource_config

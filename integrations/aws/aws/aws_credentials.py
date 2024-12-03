@@ -1,5 +1,13 @@
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator, Optional, Iterable
 import aioboto3
+
+from aiobotocore.credentials import AioRefreshableCredentials
+from aiobotocore.session import get_session
+
+from datetime import datetime, timedelta
+from time import time
+
+TTL = 900
 
 
 class AwsCredentials:
@@ -33,6 +41,47 @@ class AwsCredentials:
                 if region["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
             ]
 
+    async def __get_session_credentials(self) -> dict:
+            return {
+                "access_key": self.access_key_id,
+                "secret_key": self.secret_access_key,
+                "token": self.session_token,
+                "expiry_time": (datetime.now() + timedelta(seconds=TTL))
+            }
+
+
+    async def create_refreshable_session(self, region:str) -> aioboto3.Session:
+        """
+        Get refreshable aioboto3 session.
+        """
+        try:
+            # get refreshable credentials
+            refreshable_credentials = AioRefreshableCredentials.create_from_metadata(
+                metadata=await self.__get_session_credentials(),
+                refresh_using = self.__get_session_credentials,
+                method="sts-assume-role",
+            )
+
+            # attach refreshable credentials current session
+            session = get_session()
+            session._credentials = refreshable_credentials
+            session.set_config_variable("region", region)
+            autorefresh_session = aioboto3.Session(botocore_session=session)
+
+            return autorefresh_session
+
+        except Exception as e:
+            print(f"Error creating refreshable session: {e}")
+            return aioboto3.Session()
+
+    async def create_refreshable_session_for_each_region(
+        self, allowed_regions: Optional[Iterable[str]] = None
+    ) -> AsyncIterator[aioboto3.Session]:
+        regions = allowed_regions or self.enabled_regions
+        for region in regions:
+            self.region_name = region
+            yield await self.create_refreshable_session(region)
+
     def is_role(self) -> bool:
         return self.session_token is not None
 
@@ -49,7 +98,8 @@ class AwsCredentials:
             )
 
     async def create_session_for_each_region(
-        self,
+        self, allowed_regions: Optional[Iterable[str]] = None
     ) -> AsyncIterator[aioboto3.Session]:
-        for region in self.enabled_regions:
+        regions = allowed_regions or self.enabled_regions
+        for region in regions:
             yield await self.create_session(region)
