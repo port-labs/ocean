@@ -26,3 +26,16 @@ configurations:
     type: string
     description: You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
     sensitive: true
+saas:
+  enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: atlassianUserEmail
+        value: '.oauthData.profile.email'
+        description: '"Email for Jira OAuth2 integration"'
+      - name: atlassianUserToken
+        value: '.oauthData.accessToken'
+        description: '"Access Token for Jira OAuth2 integration"'
+    valuesOverride:
+      integrationSpec:
+        jiraHost: '"https://api.atlassian.com/ex/jira/" + .oauthData.profile.accessibleResources[0].id'
