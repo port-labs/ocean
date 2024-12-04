@@ -49,8 +49,8 @@ class PortAuthentication:
         logger.info(f"Fetching access token for clientId: {client_id}")
         if self._is_personal_token(client_id):
             logger.warning(
-                "Personal credentials detected, please use machine credentials. "
-                "Logs will not be presented in the event logs UI."
+                "Integration is using personal credentials, make sure to use machine credentials. "
+                "Usage of personal credentials might impose unexpected integration behavior."
             )
         credentials = {"clientId": client_id, "clientSecret": client_secret}
         response = await self.client.post(
