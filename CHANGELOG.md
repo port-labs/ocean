@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.14.6 (2024-12-04)
+
+
+### Improvements
+
+- Added a warning log for cases where the Integrations are provided with a personal token and not with machine credentials.
+
 ## 0.14.5 (2024-12-03)
 
 
