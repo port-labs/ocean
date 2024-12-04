@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.14.5 (2024-12-03)
+
+
+### Improvements
+
+- Add performance test framework
+
+
+## 0.14.4 (2024-12-03)
+
+
+### Bug Fixes
+
+- Add try/except block on httpx transport of ocean client to log timeouts and other exceptions (Client timeouts not recorded)
+
+
 ## 0.14.3 (2024-11-25)
 
 

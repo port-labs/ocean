@@ -59,6 +59,7 @@ jobs:
           make test/smoke
 
       - name: Cleanup Smoke Test
+        if: always()
         env:
           PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
