@@ -1,7 +1,7 @@
-from typing import Any
+from typing import Any, Generator
 from unittest.mock import AsyncMock, patch, MagicMock
 import pytest
-from port_ocean.context.event import event_context, event
+from port_ocean.context.event import event_context
 from port_ocean.context.ocean import initialize_port_ocean_context
 
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -17,7 +17,7 @@ async def mock_subscription_pages(
 
 
 @pytest.fixture(autouse=True)
-def mock_ocean_context():
+def mock_ocean_context() -> None:
     """Fixture to initialize the PortOcean context."""
     mock_app = MagicMock()
     mock_app.config.integration.config = {"search_all_resources_per_minute_quota": 100}
@@ -25,7 +25,7 @@ def mock_ocean_context():
 
 
 @pytest.fixture
-def integration_config_mock():
+def integration_config_mock() -> Generator[Any, Any, Any]:
     """Fixture to mock integration configuration."""
     with patch(
         "port_ocean.context.ocean.PortOceanContext.integration_config",
@@ -98,9 +98,6 @@ async def test_get_single_subscription(
 
     # Act within event context
     async with event_context("test_event"):
-        # Instead of setting event.resource_config, mock the method that retrieves it
-        event.get_resource_config = AsyncMock(return_value=mock_resource_config)
-
         actual_subscription = await get_single_subscription(
             mock_project, "subscription_name"
         )
@@ -173,9 +170,6 @@ async def test_feed_to_resource(
 
     # Act within event context
     async with event_context("test_event"):
-        # Instead of setting event.resource_config, mock the method that retrieves it
-        event.get_resource_config = AsyncMock(return_value=mock_resource_config)
-
         actual_resource = await feed_event_to_resource(
             asset_type=mock_asset_type,
             asset_name=mock_asset_name,
@@ -241,7 +235,6 @@ async def test_preserve_case_style_combined(
 
     # Act within event context for preserve_case_style = True
     async with event_context("test_event"):
-        event.get_resource_config = AsyncMock(return_value=mock_resource_config_true)
         actual_subscription_true = await get_single_subscription(
             mock_project, "subscription_name"
         )
@@ -271,11 +264,9 @@ async def test_preserve_case_style_combined(
 
     # Act within event context for preserve_case_style = False
     async with event_context("test_event"):
-        event.get_resource_config = AsyncMock(return_value=mock_resource_config_false)
         actual_subscription_false = await get_single_subscription(
             mock_project, "subscription_name"
         )
 
     # Assert for preserve_case_style = False
     assert actual_subscription_false == expected_subscription_false
-

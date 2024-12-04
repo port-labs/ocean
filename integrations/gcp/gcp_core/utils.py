@@ -61,10 +61,13 @@ def parse_latest_resource_from_asset(asset_data: AssetData) -> dict[Any, Any]:
     versioned_resources = asset_data.get("versioned_resources") or asset_data.get(
         "versionedResources"
     )
-    if not versioned_resources:
+    if not isinstance(versioned_resources, list):
         raise KeyError(
             "Could not find versioned resources under either 'versioned_resources' or 'versionedResources'"
         )
+
+    # Ensure each item in the list is a VersionedResource
+    versioned_resources = typing.cast(list[VersionedResource], versioned_resources)
 
     max_versioned_resource_data = max(versioned_resources, key=lambda x: x["version"])
     return max_versioned_resource_data["resource"]
