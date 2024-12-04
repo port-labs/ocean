@@ -49,7 +49,6 @@ class JiraClient:
         else:
             self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
 
-
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
