@@ -3,7 +3,7 @@
 SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd -P "${SCRIPT_BASE}/../" && pwd)"
 CURRENT_DIR=$(pwd)
-VERSION="^${1:-$(poetry search port-ocean | grep port-ocean | sed 's/.*(\(.*\))/\1/')}"
+VERSION="^${1:-$(pip index versions port-ocean | grep LATEST | cut -d':' -f2 | sed 's/ //g')}"
 
 echo "Going to bump ocean core to version ${VERSION} for all integrations"
 

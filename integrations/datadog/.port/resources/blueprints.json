@@ -284,69 +284,6 @@
     }
   },
   {
-    "identifier": "datadogSloHistory",
-    "description": "This blueprint represents a datadog SLO history",
-    "title": "Datadog SLO History",
-    "icon": "Datadog",
-    "schema": {
-      "properties": {
-        "monitor_type": {
-          "icon": "DefaultProperty",
-          "title": "Type",
-          "type": "string"
-        },
-        "sliValue": {
-          "icon": "DefaultProperty",
-          "title": "SLI Value",
-          "type": "number"
-        },
-        "sampling_start_date": {
-          "icon": "DefaultProperty",
-          "type": "string",
-          "title": "Sampling Start Date",
-          "format": "date-time"
-        },
-        "sampling_end_date": {
-          "icon": "DefaultProperty",
-          "type": "string",
-          "title": "Sampling End Date",
-          "format": "date-time"
-        },
-        "timeframe": {
-          "type": "number",
-          "title": "Timeframe",
-          "enum": [7, 30],
-          "enumColors": {
-            "7": "purple",
-            "30": "pink"
-          }
-        }
-      },
-      "required": []
-    },
-    "mirrorProperties": {
-      "slo_target": {
-        "title": "SLO Target",
-        "path": "slo.targetThreshold"
-      },
-      "slo_warning_threshold": {
-        "title": "SLO Warning Threshold",
-        "path": "slo.warningThreshold"
-      }
-    },
-    "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "slo": {
-        "title": "SLO",
-        "description": "The SLO to which this history belongs to",
-        "target": "datadogSlo",
-        "required": false,
-        "many": false
-      }
-    }
-  },
-  {
     "identifier": "datadogCloudResource",
     "description": "This blueprint represents a cloud resource in Datadog",
     "title": "Datadog Cloud Resource",
