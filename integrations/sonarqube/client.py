@@ -505,25 +505,32 @@ class SonarQubeClient:
         return all_portfolios
 
     async def get_all_portfolios(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        logger.info(f"Fetching all portfolios in organization: {self.organization_id}")
-        portfolios = await self._get_all_portfolios()
-        portfolio_keys_chunks = turn_sequence_to_chunks(
-            [portfolio["key"] for portfolio in portfolios], MAX_PORTFOLIO_REQUESTS
-        )
+        if self.organization_id:
+            logger.info("Skipping portfolio ingestion since organization ID is absent")
+        else:
+            logger.info(
+                f"Fetching all portfolios in organization: {self.organization_id}"
+            )
+            portfolios = await self._get_all_portfolios()
+            portfolio_keys_chunks = turn_sequence_to_chunks(
+                [portfolio["key"] for portfolio in portfolios], MAX_PORTFOLIO_REQUESTS
+            )
 
-        for portfolio_keys in portfolio_keys_chunks:
-            try:
-                portfolios_data = await asyncio.gather(
-                    *[
-                        self._get_portfolio_details(portfolio_key)
-                        for portfolio_key in portfolio_keys
-                    ]
-                )
-                for portfolio_data in portfolios_data:
-                    yield [portfolio_data]
-                    yield self._extract_subportfolios(portfolio_data)
-            except (httpx.HTTPStatusError, httpx.HTTPError) as e:
-                logger.error(f"Error occurred while fetching portfolio details: {e}")
+            for portfolio_keys in portfolio_keys_chunks:
+                try:
+                    portfolios_data = await asyncio.gather(
+                        *[
+                            self._get_portfolio_details(portfolio_key)
+                            for portfolio_key in portfolio_keys
+                        ]
+                    )
+                    for portfolio_data in portfolios_data:
+                        yield [portfolio_data]
+                        yield self._extract_subportfolios(portfolio_data)
+                except (httpx.HTTPStatusError, httpx.HTTPError) as e:
+                    logger.error(
+                        f"Error occurred while fetching portfolio details: {e}"
+                    )
 
     def sanity_check(self) -> None:
         try:

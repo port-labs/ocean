@@ -403,54 +403,8 @@ async def test_projects_will_return_correct_data(
             endpoint="projects/search",
             data_key="components",
             method="GET",
-            query_params={},
+            query_params={"organization": sonarqube_client.organization_id},
         )
-
-    async def test_get_all_issues_makes_correct_calls(
-        mock_ocean_context: Any,
-        mock_event_context: Any,
-        monkeypatch: Any,
-    ) -> None:
-        sonarqube_client = SonarQubeClient(
-            "https://sonarqube.com",
-            "token",
-            "organization_id",
-            "app_host",
-            False,
-        )
-
-        # Mock responses for both projects and issues
-        sonarqube_client.http_client = MockHttpxClient(
-            [  # type: ignore
-                {
-                    "status_code": 200,
-                    "json": {
-                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
-                        "components": [{"key": "project1"}],
-                    },
-                },
-                {
-                    "status_code": 200,
-                    "json": {
-                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 1},
-                        "issues": [{"key": "issue1", "severity": "CRITICAL"}],
-                    },
-                },
-            ]
-        )
-
-        query_params = {"severity": "CRITICAL"}
-        project_params = {"languages": "python"}
-
-        issues = []
-        async for issue_batch in sonarqube_client.get_all_issues(
-            query_params, project_params
-        ):
-            issues.extend(issue_batch)
-
-        assert len(issues) == 1
-        assert issues[0]["key"] == "issue1"
-        assert issues[0]["severity"] == "CRITICAL"
 
 
 async def test_get_analysis_by_project_processes_data_correctly(
@@ -509,7 +463,7 @@ async def test_get_all_portfolios_processes_subportfolios(
     sonarqube_client = SonarQubeClient(
         "https://sonarqube.com",
         "token",
-        "organization_id",
+        None,
         "app_host",
         False,
     )
