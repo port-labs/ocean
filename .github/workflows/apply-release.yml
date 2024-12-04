@@ -28,7 +28,7 @@ jobs:
         id: version
         run: |
           version=$(pip index versions port-ocean | grep LATEST | cut -d':' -f2 | sed 's/ //g')
-          pr_name="Apply Ocean version $version to all integrations"
+          pr_name="[Integration] Apply Ocean version $version to all integrations"
           branch_name="apply-ocean-$version-to-all-integrations"
           echo "Branch Name: $branch_name"
           echo "PR Name: $pr_name"
