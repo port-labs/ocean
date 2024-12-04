@@ -88,7 +88,7 @@ class AwsCredentials:
                     )
                 )
                 botocore_session = get_session()
-                botocore_session._credentials = refreshable_credentials  # type: ignore
+                setattr(botocore_session, "_credentials", refreshable_credentials)
                 if region:
                     botocore_session.set_config_variable("region", region)
                 autorefresh_session = aioboto3.Session(
