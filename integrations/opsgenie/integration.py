@@ -87,6 +87,14 @@ class ScheduleSelector(Selector):
     )
 
 
+class TeamSelector(Selector):
+    include_members: bool = Field(
+        alias="includeMembers",
+        default=False,
+        description="Whether to include the members of the team, defaults to false",
+    )
+
+
 class AlertAndIncidentResourceConfig(ResourceConfig):
     kind: Literal["alert", "incident"]
     selector: AlertAndIncidentSelector
@@ -97,9 +105,17 @@ class ScheduleResourceConfig(ResourceConfig):
     selector: ScheduleSelector
 
 
+class TeamResourceConfig(ResourceConfig):
+    kind: Literal["team"]
+    selector: TeamSelector
+
+
 class OpsGeniePortAppConfig(PortAppConfig):
     resources: list[
-        AlertAndIncidentResourceConfig | ScheduleResourceConfig | ResourceConfig
+        AlertAndIncidentResourceConfig
+        | ScheduleResourceConfig
+        | TeamResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 
