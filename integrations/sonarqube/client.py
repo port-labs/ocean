@@ -269,8 +269,10 @@ class SonarQubeClient:
 
     @cache_iterator_result()
     async def get_projects(
-        self, params: dict[str, Any] | None = None
+        self, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        if self.organization_id:
+            params["organization"] = self.organization_id
         async for projects in self._send_paginated_request(
             endpoint=Endpoints.PROJECTS,
             data_key="components",

@@ -112,9 +112,12 @@ async def on_onprem_analysis_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PORTFOLIOS)
 async def on_portfolio_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    async for portfolio_list in sonar_client.get_all_portfolios():
-        logger.info(f"Received portfolio batch of size: {len(portfolio_list)}")
-        yield portfolio_list
+    if sonar_client.organization_id:
+        logger.info("Skipping portfolio ingestion since organization ID is absent")
+    else:
+        async for portfolio_list in sonar_client.get_all_portfolios():
+            logger.info(f"Received portfolio batch of size: {len(portfolio_list)}")
+            yield portfolio_list
 
 
 @ocean.router.post("/webhook")
