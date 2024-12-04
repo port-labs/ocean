@@ -81,19 +81,49 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         ocean.integration_config["atlassian_user_token"],
     )
     logger.info(f'Received webhook event of type: {data.get("webhookEvent")}')
-    if "project" in data:
-        logger.info(f'Received webhook event for project: {data["project"]["key"]}')
-        project = await client.get_single_project(data["project"]["key"])
-        await ocean.register_raw(ObjectKind.PROJECT, [project])
-    elif "issue" in data:
-        logger.info(f'Received webhook event for issue: {data["issue"]["key"]}')
-        issue = await client.get_single_issue(data["issue"]["key"])
-        await ocean.register_raw(ObjectKind.ISSUE, [issue])
-    elif "user" in data:
-        logger.info(f'Received webhook event for user: {data["user"]["accountId"]}')
-        user = await client.get_single_user(data["user"]["accountId"])
-        await ocean.register_raw(ObjectKind.USER, [user])
-    logger.info("Webhook event processed")
+
+    webhook_event = data.get("webhookEvent")
+    logger.info(f"Processing webhook event: {webhook_event}")
+
+    # Process user event
+    if webhook_event.startswith("user_"):
+        account_id = data["user"]["accountId"]
+        logger.debug(f"Fetching user with accountId: {account_id}")
+        item = await client.get_single_user(account_id)
+        kind = ObjectKind.USER
+
+    # Process project event
+    elif webhook_event.startswith("project_"):
+        project_key = data["project"]["key"]
+        logger.debug(f"Fetching project with key: {project_key}")
+        item = await client.get_single_project(project_key)
+        kind = ObjectKind.PROJECT
+
+    # Process issue event
+    elif webhook_event.startswith("jira:issue_"):
+        issue_key = data["issue"]["key"]
+        logger.debug(f"Fetching issue with key: {issue_key}")
+        item = await client.get_single_issue(issue_key)
+        kind = ObjectKind.ISSUE
+
+    else:
+        logger.error(f"Unknown webhook event type: {webhook_event}")
+        return {"ok": False, "error": f"Unknown webhook event type: {webhook_event}"}
+
+    if not item:
+        logger.error("Failed to retrieve item")
+        return {"ok": False, "error": "Failed to retrieve item"}
+
+    logger.debug(f"Retrieved {kind} item: {item}")
+
+    if "deleted" in webhook_event:
+        logger.info(f"Unregistering {kind} item")
+        await ocean.unregister_raw(kind, [item])
+    else:
+        logger.info(f"Registering {kind} item")
+        await ocean.register_raw(kind, [item])
+
+    logger.info(f"Webhook event '{webhook_event}' processed successfully")
     return {"ok": True}
 
 
