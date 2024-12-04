@@ -15,7 +15,7 @@ class AccountNotFoundError(OceanAbortException):
     pass
 
 
-ASSUME_ROLE_DURATION_SECONDS = 900  # 1 hour
+ASSUME_ROLE_DURATION_SECONDS = 3600  # 1 hour
 
 
 class SessionManager:

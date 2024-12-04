@@ -1,8 +1,13 @@
-from typing import AsyncIterator, Optional, Iterable, List
+from typing import AsyncIterator, Optional, Iterable, List, Dict
 import aioboto3
 from aiobotocore.credentials import AioRefreshableCredentials
 from aiobotocore.session import get_session
+from types_aiobotocore_sts import STSClient
+
 from datetime import datetime, timedelta, timezone
+from functools import partial
+
+
 
 ASSUME_ROLE_DURATION_SECONDS = 3600  # 1 hour
 
@@ -36,35 +41,33 @@ class AwsCredentials:
         self.enabled_regions: List[str] = []
         self.default_regions: List[str] = []
 
-    async def _refresh_credentials(self) -> dict:
+    async def _refresh_credentials(self, sts_client: STSClient) -> dict:
         """
-        Refreshes AWS credentials by re-assuming the role.
+        Refreshes AWS credentials by re-assuming the role to get new credentials.
 
         :return: A dictionary containing the new credentials and their expiration time.
         """
-        # Re-assume the role to get new temporary credentials
         session = aioboto3.Session(
             aws_access_key_id=self.access_key_id,
             aws_secret_access_key=self.secret_access_key,
             aws_session_token=self.session_token,
         )
-        async with session.client("sts") as sts_client:
-            response = await sts_client.assume_role(
-                RoleArn=self.role_arn,
-                RoleSessionName=self.session_name,
-                DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
-            )
-            credentials = response["Credentials"]
-            self.access_key_id = credentials["AccessKeyId"]
-            self.secret_access_key = credentials["SecretAccessKey"]
-            self.session_token = credentials["SessionToken"]
-            expiry_time = credentials["Expiration"].isoformat()
-            return {
-                "access_key": self.access_key_id,
-                "secret_key": self.secret_access_key,
-                "token": self.session_token,
-                "expiry_time": expiry_time,
-            }
+        response = await sts_client.assume_role(
+            RoleArn=self.role_arn,
+            RoleSessionName=self.session_name,
+            DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
+        )
+        credentials = response["Credentials"]
+        self.access_key_id = credentials["AccessKeyId"]
+        self.secret_access_key = credentials["SecretAccessKey"]
+        self.session_token = credentials["SessionToken"]
+        expiry_time = credentials["Expiration"].isoformat()
+        return {
+            "access_key": self.access_key_id,
+            "secret_key": self.secret_access_key,
+            "token": self.session_token,
+            "expiry_time": expiry_time,
+        }
 
     async def create_refreshable_session(
         self, region: Optional[str] = None
@@ -76,18 +79,20 @@ class AwsCredentials:
         :return: An aioboto3 Session object.
         """
         if self.is_role():
-            initial_credentials = await self._refresh_credentials()
-            refreshable_credentials = AioRefreshableCredentials.create_from_metadata(
-                metadata=initial_credentials,
-                refresh_using=self._refresh_credentials,
-                method="sts-assume-role" if self.role_arn else "environment",
-            )
-            session = get_session()
-            session._credentials = refreshable_credentials
-            if region:
-                session.set_config_variable("region", region)
-            autorefresh_session = aioboto3.Session(botocore_session=session)
-            return autorefresh_session
+            async with session.client("sts") as sts_client:
+                initial_credentials = await self._refresh_credentials(sts_client)
+                refresh_credentials = partial(self._refresh_credentials, sts_client)
+                refreshable_credentials = AioRefreshableCredentials.create_from_metadata(
+                    metadata=initial_credentials,
+                    refresh_using=refresh_credentials,
+                    method="sts-assume-role",
+                )
+                session = get_session()
+                session._credentials = refreshable_credentials
+                if region:
+                    session.set_config_variable("region", region)
+                autorefresh_session = aioboto3.Session(botocore_session=session)
+                return autorefresh_session
         else:
             session = aioboto3.Session(
                 aws_access_key_id=self.access_key_id,
