@@ -12,6 +12,25 @@ resources:
           blueprint: '"jiraProject"'
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
+
+  - kind: user
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .accountId
+          title: .displayName
+          blueprint: '"jiraUser"'
+          properties:
+            emailAddress: .emailAddress
+            displayName: .displayName
+            active: .active
+            accountType: .accountType
+            timeZone: .timeZone
+            locale: .locale
+            avatarUrl: .avatarUrls["48x48"]
+
   - kind: issue
     selector:
       query: "true"
@@ -40,20 +59,3 @@ resources:
             assignee: .fields.assignee.accountId
             reporter: .fields.reporter.accountId
 
-  - kind: user
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .accountId
-          title: .displayName
-          blueprint: '"jiraUser"'
-          properties:
-            emailAddress: .emailAddress
-            displayName: .displayName
-            active: .active
-            accountType: .accountType
-            timeZone: .timeZone
-            locale: .locale
-            avatarUrl: .avatarUrls["48x48"]
