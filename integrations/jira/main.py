@@ -107,7 +107,10 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
             kind = ObjectKind.ISSUE
         case _:
             logger.error(f"Unknown webhook event type: {webhook_event}")
-            return {"ok": False, "error": f"Unknown webhook event type: {webhook_event}"}
+            return {
+                "ok": False,
+                "error": f"Unknown webhook event type: {webhook_event}",
+            }
 
     if not item:
         logger.error("Failed to retrieve item")
