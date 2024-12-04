@@ -79,6 +79,9 @@ async def resync_resources_for_account(
     aws_resource_config = typing.cast(AWSResourceConfig, event.resource_config)
 
     if is_global_resource(kind):
+        logger.info(
+            f"Handling global resource {kind} for account {credentials.account_id}"
+        )
         async for batch in _handle_global_resource_resync(
             kind, credentials, aws_resource_config
         ):

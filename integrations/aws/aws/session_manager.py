@@ -100,7 +100,7 @@ class SessionManager:
                 organizations_client = await sts_client.assume_role(
                     RoleArn=organization_role_arn,
                     RoleSessionName="OceanOrgAssumeRoleSession",
-                    DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
+                    DurationSeconds=self._assume_role_duration_seconds(),
                 )
 
                 credentials = organizations_client["Credentials"]
@@ -158,26 +158,36 @@ class SessionManager:
     async def _assume_role_and_update_credentials(
         self, sts_client: STSClient, account: dict[str, Any]
     ) -> None:
+        """
+        Assumes a role in a member account and updates the credentials list.
+
+        :param account: A dictionary containing account information.
+        """
+        role_name = self._get_account_read_role_name()
+        role_arn = f'arn:aws:iam::{account["Id"]}:role/{role_name}'
+        role_session_name = "OceanMemberAssumeRoleSession"
+
         try:
-            account_role = await sts_client.assume_role(
-                RoleArn=f'arn:aws:iam::{account["Id"]}:role/{self._get_account_read_role_name()}',
-                RoleSessionName="OceanMemberAssumeRoleSession",
+            response = await sts_client.assume_role(
+                RoleArn=role_arn,
+                RoleSessionName=role_session_name,
                 DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
             )
-            raw_credentials = account_role["Credentials"]
-            credentials = AwsCredentials(
+            credentials = response["Credentials"]
+            aws_credentials = AwsCredentials(
                 account_id=account["Id"],
-                access_key_id=raw_credentials["AccessKeyId"],
-                secret_access_key=raw_credentials["SecretAccessKey"],
-                session_token=raw_credentials["SessionToken"],
+                access_key_id=credentials["AccessKeyId"],
+                secret_access_key=credentials["SecretAccessKey"],
+                session_token=credentials["SessionToken"],
+                role_arn=role_arn,
+                session_name=role_session_name,
             )
-            await credentials.update_enabled_regions()
-            self._aws_credentials.append(credentials)
+            await aws_credentials.update_enabled_regions()
+            self._aws_credentials.append(aws_credentials)
             self._aws_accessible_accounts.append(account)
         except sts_client.exceptions.ClientError as e:
             if is_access_denied_exception(e):
                 logger.info(f"Cannot assume role in account {account['Id']}. Skipping.")
-                pass  # Skip the account if assume_role fails due to permission issues or non-existent role
             else:
                 raise
 
