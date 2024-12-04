@@ -1,8 +1,7 @@
 import typing
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Generator
 
-from httpx import Timeout, BasicAuth
-import httpx
+from httpx import Timeout, Auth, BasicAuth, Request, Response
 from jira.overrides import JiraResourceConfig
 from loguru import logger
 
@@ -27,16 +26,18 @@ WEBHOOK_EVENTS = [
 ]
 
 
-class BearerAuth(httpx.Auth):
+class BearerAuth(Auth):
     def __init__(self, token: str):
         self.token = token
 
-    def auth_flow(self, request):
+    def auth_flow(self, request: Request) -> Generator[Request, Response, None]:
         request.headers["Authorization"] = f"Bearer {self.token}"
         yield request
 
 
 class JiraClient:
+    jira_api_auth: Auth
+
     def __init__(self, jira_url: str, jira_email: str, jira_token: str) -> None:
         self.jira_url = jira_url
         self.jira_rest_url = f"{self.jira_url}/rest"
@@ -64,9 +65,6 @@ class JiraClient:
             "maxResults": maxResults,
             "startAt": startAt,
         }
-
-    def bearer_auth(self, token):
-        return {"Authorization": f"Bearer {token}"}
 
     async def _get_paginated_projects(self, params: dict[str, Any]) -> dict[str, Any]:
         project_response = await self.client.get(
