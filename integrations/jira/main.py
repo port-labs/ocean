@@ -83,6 +83,10 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     logger.info(f'Received webhook event of type: {data.get("webhookEvent")}')
 
     webhook_event = data.get("webhookEvent")
+    if not webhook_event:
+        logger.error("Missing webhook event")
+        return {"ok": False, "error": "Missing webhook event"}
+    
     logger.info(f"Processing webhook event: {webhook_event}")
 
     # Process user event
