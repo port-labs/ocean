@@ -1,34 +1,28 @@
-from asyncio import gather
-from typing import Any, Dict, List
-
 from port_ocean.context.ocean import ocean
+from loguru import logger
 
-from fake_org_data.fake_client import get_fake_persons
-from fake_org_data.static import FAKE_DEPARTMENTS
+from fake_org_data.fake_client import get_fake_persons, get_departments
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from fake_org_data.fake_router import initialize_fake_routes
 
 
 @ocean.on_resync("fake-department")
-async def resync_department(kind: str) -> List[Dict[Any, Any]]:
-    return [f.dict() for f in FAKE_DEPARTMENTS]
+async def resync_department(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for department_batch in get_departments():
+        logger.info(f"Got a batch of {len(department_batch)} departments")
+        yield department_batch
 
 
 @ocean.on_resync("fake-person")
-async def resync_persons(kind: str) -> List[Dict[Any, Any]]:
-    tasks = []
-    for department in FAKE_DEPARTMENTS:
-        tasks.append(get_fake_persons(department))
+async def resync_persons(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    async for persons_batch in get_fake_persons():
+        logger.info(f"Got a batch of {len(persons_batch)} persons")
+        yield persons_batch
 
-    result = await gather(*tasks)
-    persons = []
-    for persons_per_department in result:
-        for person in persons_per_department:
-            persons.append(person.dict())
 
-    return persons
+initialize_fake_routes()
 
 
 @ocean.on_start()
 async def on_start() -> None:
     print("Starting fake integration!")
-    initialize_fake_routes()

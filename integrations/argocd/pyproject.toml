@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "argocd"
-version = "0.1.94"
+version = "0.1.106"
 description = "Argo CD integration powered by Ocean"
 authors = ["Isaac Coffie <isaac@getport.io>"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
-port_ocean = {version = "^0.12.4", extras = ["cli"]}
+python = "^3.12"
+port_ocean = {version = "^0.14.5", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # Uncomment this if you want to debug the ocean core together with your integration
@@ -85,6 +85,7 @@ disallow_untyped_defs = true
 [tool.ruff]
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
+target-version = "py311"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

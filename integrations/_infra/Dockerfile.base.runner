@@ -1,0 +1,13 @@
+ARG BASE_PYTHON_IMAGE=debian:trixie-slim
+# debian:trixie-slim - Python 3.12
+FROM ${BASE_PYTHON_IMAGE}
+
+LABEL org.opencontainers.image.source=https://github.com/port-labs/ocean
+
+ENV LIBRDKAFKA_VERSION=1.9.2
+
+ENV PIP_ROOT_USER_ACTION=ignore
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends librdkafka-dev python3 \
+    && apt-get clean

@@ -113,3 +113,21 @@ resources:
             createdAt: .__analysisDate
           relations:
             sonarQubeProject: .__project
+
+  - kind: portfolios
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubePortfolio"'
+          identifier: .key
+          title: .name
+          properties:
+            description: .description
+            visibility: if .visibility then .visibility | ascii_upcase else null end
+            selectionMode: if .selectionMode then .selectionMode | ascii_upcase else null end
+            disabled: .disabled
+          relations:
+            subPortfolios: .subViews | map(select(.qualifier as $qualifier | ["VW", "SVW"] | contains([$qualifier])) | .key)
+            referencedBy: .referencedBy | map(select(.qualifier as $qualifier | ["VW", "SVW"] | contains([$qualifier])) | .key)

@@ -7,13 +7,118 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.2.0 (2024-10-20)
+0.2.0 (2024-12-04)
 ====================
 
 ### Improvements
 
 - Added support for OAuth2.0 token
 - Added OAuth installation specification for Port
+
+
+
+0.1.145 (2024-12-04)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+0.1.144 (2024-11-25)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.3
+
+
+0.1.143 (2024-11-25)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.2
+
+
+0.1.142 (2024-11-21)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
+
+
+0.1.141 (2024-11-13)
+===================
+
+### Features
+
+- Added support for gitlab member ingestion (PORT-7708)
+
+
+0.1.140 (2024-11-12)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
+0.1.139 (2024-11-12)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+0.1.138 (2024-11-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+0.1.137 (2024-11-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
+0.1.136 (2024-11-06)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+0.1.135 (2024-10-31)
+====================
+
+### Improvements
+
+- Explicitly declaring the file search in projects to use the advanced search type, in cases where the default search in gitlab changes.
+- Enhanced more verbosity on file kind
+
+
+0.1.134 (2024-10-23)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.7
+
+
+0.1.133 (2024-10-22)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.6
 
 
 0.1.132 (2024-10-14)

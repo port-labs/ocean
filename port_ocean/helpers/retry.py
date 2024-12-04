@@ -55,14 +55,14 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             HTTPStatus.GATEWAY_TIMEOUT,
         ]
     )
-    MAX_BACKOFF_WAIT = 60
+    MAX_BACKOFF_WAIT_IN_SECONDS = 60
 
     def __init__(
         self,
         wrapped_transport: Union[httpx.BaseTransport, httpx.AsyncBaseTransport],
         max_attempts: int = 10,
-        max_backoff_wait: float = MAX_BACKOFF_WAIT,
-        backoff_factor: float = 0.1,
+        max_backoff_wait: float = MAX_BACKOFF_WAIT_IN_SECONDS,
+        base_delay: float = 0.1,
         jitter_ratio: float = 0.1,
         respect_retry_after_header: bool = True,
         retryable_methods: Iterable[str] | None = None,
@@ -81,7 +81,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             max_backoff_wait (float, optional):
                 The maximum amount of time (in seconds) to wait before retrying a request.
                 Defaults to 60.
-            backoff_factor (float, optional):
+            base_delay (float, optional):
                 The factor by which the waiting time will be multiplied in each retry attempt.
                 Defaults to 0.1.
             jitter_ratio (float, optional):
@@ -105,7 +105,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             )
 
         self._max_attempts = max_attempts
-        self._backoff_factor = backoff_factor
+        self._base_delay = base_delay
         self._respect_retry_after_header = respect_retry_after_header
         self._retryable_methods = (
             frozenset(retryable_methods)
@@ -132,13 +132,18 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             httpx.Response: The response received.
 
         """
-        transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
-        if request.method in self._retryable_methods:
-            send_method = partial(transport.handle_request)
-            response = self._retry_operation(request, send_method)
-        else:
-            response = transport.handle_request(request)
-        return response
+        try:
+            transport: httpx.BaseTransport = self._wrapped_transport  # type: ignore
+            if request.method in self._retryable_methods:
+                send_method = partial(transport.handle_request)
+                response = self._retry_operation(request, send_method)
+            else:
+                response = transport.handle_request(request)
+            return response
+        except Exception as e:
+            if not self._is_retryable_method(request) and self._logger is not None:
+                self._logger.exception(f"{repr(e)} - {request.url}", exc_info=e)
+            raise e
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         """Sends an HTTP request, possibly with retries.
@@ -150,13 +155,19 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             The response.
 
         """
-        transport: httpx.AsyncBaseTransport = self._wrapped_transport  # type: ignore
-        if self._is_retryable_method(request):
-            send_method = partial(transport.handle_async_request)
-            response = await self._retry_operation_async(request, send_method)
-        else:
-            response = await transport.handle_async_request(request)
-        return response
+        try:
+            transport: httpx.AsyncBaseTransport = self._wrapped_transport  # type: ignore
+            if self._is_retryable_method(request):
+                send_method = partial(transport.handle_async_request)
+                response = await self._retry_operation_async(request, send_method)
+            else:
+                response = await transport.handle_async_request(request)
+            return response
+        except Exception as e:
+            # Retyable methods are logged via _log_error
+            if not self._is_retryable_method(request) and self._logger is not None:
+                self._logger.exception(f"{repr(e)} - {request.url}", exc_info=e)
+            raise e
 
     async def aclose(self) -> None:
         """
@@ -255,7 +266,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             except ValueError:
                 pass
 
-        backoff = self._backoff_factor * (2 ** (attempts_made - 1))
+        backoff = self._base_delay * (2 ** (attempts_made - 1))
         jitter = (backoff * self._jitter_ratio) * random.choice([1, -1])
         total_backoff = backoff + jitter
         return min(total_backoff, self._max_backoff_wait)

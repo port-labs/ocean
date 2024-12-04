@@ -4,7 +4,12 @@
     "title": "Azure Subscription",
     "icon": "Azure",
     "schema": {
-      "properties": {},
+      "properties": {
+        "tags": {
+          "title": "Tags",
+          "type": "object"
+        }
+      },
       "required": []
     },
     "mirrorProperties": {},

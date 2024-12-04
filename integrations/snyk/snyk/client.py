@@ -5,9 +5,9 @@ from typing import Any, Optional, AsyncGenerator
 import httpx
 from httpx import Timeout
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.utils import http_async_client
+from aiolimiter import AsyncLimiter
 
 
 class CacheKeys(StrEnum):
@@ -31,6 +31,7 @@ class SnykClient:
         organization_ids: list[str] | None,
         group_ids: list[str] | None,
         webhook_secret: str | None,
+        rate_limiter: AsyncLimiter,
     ):
         self.token = token
         self.api_url = f"{api_url}/v1"
@@ -43,6 +44,7 @@ class SnykClient:
         self.http_client.headers.update(self.api_auth_header)
         self.http_client.timeout = Timeout(30)
         self.snyk_api_version = "2024-06-21"
+        self.rate_limiter = rate_limiter
 
     @property
     def api_auth_header(self) -> dict[str, Any]:
@@ -60,20 +62,21 @@ class SnykClient:
             **(query_params or {}),
             **({"version": version} if version is not None else {}),
         }
-        try:
-            response = await self.http_client.request(
-                method=method, url=url, params=query_params, json=json_data
-            )
-            response.raise_for_status()
-            return response.json()
+        async with self.rate_limiter:
+            try:
+                response = await self.http_client.request(
+                    method=method, url=url, params=query_params, json=json_data
+                )
+                response.raise_for_status()
+                return response.json()
 
-        except httpx.HTTPStatusError as e:
-            logger.error(
-                f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
-                f"version: {version}, json: {json_data}. "
-                f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
-            )
-            raise
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Encountered an error while sending a request to {method} {url} with query_params: {query_params}, "
+                    f"version: {version}, json: {json_data}. "
+                    f"Got HTTP error with status code: {e.response.status_code} and response: {e.response.text}"
+                )
+                raise
 
     async def _get_paginated_resources(
         self,
@@ -259,38 +262,23 @@ class SnykClient:
 
         return project
 
-    async def _get_user_details_old(self, user_id: str | None) -> dict[str, Any]:
-        if (
-            not user_id
-        ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
-            return {}
-        cached_details = event.attributes.get(f"{CacheKeys.USER}-{user_id}")
-        if cached_details:
-            return cached_details
-
-        try:
-            user_details = await self._send_api_request(
-                url=f"{self.api_url}/user/{user_id}"
-            )
-
-            if not user_details:
-                return {}
-
-            event.attributes[f"{CacheKeys.USER}-{user_id}"] = user_details
-            return user_details
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.debug(f"user {user_id} not was not found, skipping...")
-                return {}
-            else:
-                raise
-
     async def _get_user_details(self, user_reference: str | None) -> dict[str, Any]:
         if (
             not user_reference
         ):  ## Some projects may not have been assigned to any owner yet. In this instance, we can return an empty dict
             return {}
-        user_id = user_reference.split("/")[-1]
+
+        # The user_reference is in the format of /rest/orgs/{org_id}/users/{user_id}. Some users may not be associated with the organization that the integration is configured with. In this instance, we can return an empty dict
+        reference_parts = user_reference.split("/")
+        org_id = reference_parts[3]
+        user_id = reference_parts[-1]
+
+        if self.organization_ids and org_id not in self.organization_ids:
+            logger.debug(
+                f"User {user_id} in organization {org_id} is not associated with any of the organizations provided to the integration org_id. Skipping..."
+            )
+            return {}
+
         user_cache_key = f"{CacheKeys.USER}-{user_id}"
         user_reference = user_reference.replace("/rest", "")
         cached_details = event.attributes.get(user_cache_key)

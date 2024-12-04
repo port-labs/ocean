@@ -1,5 +1,4 @@
 from enum import StrEnum
-from typing import Any
 
 from client import BackstageClient
 from loguru import logger
@@ -21,8 +20,9 @@ class ObjectKind(StrEnum):
 def init_client() -> BackstageClient:
     return BackstageClient(
         backstage_host=ocean.integration_config["backstage_url"],
-        backstage_token=ocean.integration_config["backstage_token"]
+        backstage_token=ocean.integration_config["backstage_token"],
     )
+
 
 @ocean.on_resync()
 async def on_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:

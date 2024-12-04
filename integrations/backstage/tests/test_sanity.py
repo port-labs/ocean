@@ -1,15 +1,9 @@
 import os
 from typing import Any, Dict
-from unittest.mock import AsyncMock, patch
 
-import pytest
-from pytest_httpx import HTTPXMock
-
-from port_ocean.ocean import Ocean
-from port_ocean.tests.helpers.ocean_app import \
-    get_raw_result_on_integration_sync_resource_config
 
 INTEGRATION_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+
 
 def generate_mock_component(
     name: str = "test-component",
@@ -43,6 +37,7 @@ def generate_mock_component(
         ],
     }
 
+
 def assert_on_results(results: Any, kind: str) -> None:
     assert len(results) > 0
     entities, errors = results
@@ -54,6 +49,7 @@ def assert_on_results(results: Any, kind: str) -> None:
         assert "spec" in entities[0]
     else:
         assert False, f"Unexpected kind: {kind}"
+
 
 # TODO: this test is blocked on ocean integration config not being mocked
 # async def test_component_sync_with_http_mock(

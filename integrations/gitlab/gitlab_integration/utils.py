@@ -8,14 +8,16 @@ from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.exceptions.context import EventContextNotFoundError
 
+RETRY_TRANSIENT_ERRORS = True
+
 
 def generate_gitlab_client(host: str, token: str) -> Gitlab:
     try:
-        gitlab_client = Gitlab(host, token)
+        gitlab_client = Gitlab(host, token, retry_transient_errors=RETRY_TRANSIENT_ERRORS)
         gitlab_client.auth()
         logger.info("Successfully authenticated using the provided private token")
     except gitlab.exceptions.GitlabAuthenticationError:
-        gitlab_client = Gitlab(host, oauth_token=token)
+        gitlab_client = Gitlab(host, oauth_token=token, retry_transient_errors=RETRY_TRANSIENT_ERRORS)
         gitlab_client.auth()
         logger.info("Successfully authenticated using the provided OAuth2.0 token")
 
@@ -60,3 +62,5 @@ class ObjectKind:
     PROJECT = "project"
     FOLDER = "folder"
     FILE = "file"
+    GROUPWITHMEMBERS = "group-with-members"
+    PROJECTWITHMEMBERS = "project-with-members"

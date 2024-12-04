@@ -19,10 +19,10 @@ jobs:
       - name: Install poetry
         run: pipx install poetry
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
           cache: 'poetry'
 
       - name: Install dependencies
@@ -59,6 +59,7 @@ jobs:
           make test/smoke
 
       - name: Cleanup Smoke Test
+        if: always()
         env:
           PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
@@ -66,7 +67,7 @@ jobs:
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
         run: |
-          make test/smoke
+          make clean/smoke
 
       - name: Install current core for all integrations
         run: |
@@ -79,7 +80,7 @@ jobs:
           SCRIPT_TO_RUN="PYTEST_ADDOPTS=--junitxml=${PWD}/junit/test-results-core-change/\`pwd | xargs basename\`.xml make test" make execute/all
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v4
+        uses: mikepenz/action-junit-report@v5
         if: ${{ always() }}
         with:
           report_paths: '**/junit/**-test-results-**/*.xml'
