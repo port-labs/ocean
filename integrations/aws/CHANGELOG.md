@@ -7,12 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.65 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+## 0.2.64 (2024-11-27)
+
+
+### Bug Fixes
+
+- Fixed an issue where the region policy was not properly handled for global resources. Now, when a region policy is specified, it strictly adheres to the allowed regions only.
+
+
 ## 0.2.63 (2024-11-25)
 
 
 ### Bug Fixes
 
 - Do not break delete entities when a region is not accessible
+
 
 ## 0.2.62 (2024-11-25)
 
