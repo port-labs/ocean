@@ -10,13 +10,8 @@
 SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd -P "${SCRIPT_BASE}/../" && pwd)"
 
-RANDOM_ID=""
-if [[ -n ${SMOKE_TEST_SUFFIX} ]]; then
-    RANDOM_ID="-${SMOKE_TEST_SUFFIX}"
-fi
-INTEGRATION_IDENTIFIER="smoke-test-integration${RANDOM_ID}"
-BLUEPRINT_DEPARTMENT="fake-department${RANDOM_ID}"
-BLUEPRINT_PERSON="fake-person${RANDOM_ID}"
+source "${SCRIPT_BASE}/smoke-test-base.sh"
+
 PORT_BASE_URL_FOR_DOCKER=${PORT_BASE_URL}
 
 if [[ ${PORT_BASE_URL} =~ localhost ]]; then
@@ -25,15 +20,6 @@ if [[ ${PORT_BASE_URL} =~ localhost ]]; then
     PORT_BASE_URL_FOR_DOCKER=${PORT_BASE_URL//localhost/host.docker.internal}
 fi
 
-# NOTE: Make the blueprints and mapping immutable by adding a random suffix
-TEMP_DIR=$(mktemp -d -t smoke-test-integration.XXXXXXX)
-RESOURCE_DIR_SUFFIX="integrations/fake-integration/.port/resources"
-cp -r "${ROOT_DIR}"/${RESOURCE_DIR_SUFFIX} "${TEMP_DIR}"
-
-sed -i.bak "s/fake-department/${BLUEPRINT_DEPARTMENT}/g" "${TEMP_DIR}"/resources/blueprints.json
-sed -i.bak "s/fake-person/${BLUEPRINT_PERSON}/g" "${TEMP_DIR}"/resources/blueprints.json
-sed -i.bak "s/\"fake-department\"/\"${BLUEPRINT_DEPARTMENT}\"/g" "${TEMP_DIR}"/resources/port-app-config.yml
-sed -i.bak "s/\"fake-person\"/\"${BLUEPRINT_PERSON}\"/g" "${TEMP_DIR}"/resources/port-app-config.yml
 
 TAR_FULL_PATH=$(ls "${ROOT_DIR}"/dist/*.tar.gz)
 if [[ $? != 0 ]]; then
@@ -50,13 +36,20 @@ echo "Found release ${TAR_FILE}, triggering fake integration with ID: '${INTEGRA
 docker run --rm -i \
     --entrypoint 'bash' \
     -v "${TAR_FULL_PATH}:/opt/dist/${TAR_FILE}" \
-    -v "${TEMP_DIR}/resources:/app/.port/resources" \
+    -v "${TEMP_RESOURCES_DIR}:/opt/port-resources" \
     -e OCEAN__PORT__BASE_URL="${PORT_BASE_URL_FOR_DOCKER}" \
     -e OCEAN__PORT__CLIENT_ID="${PORT_CLIENT_ID}" \
     -e OCEAN__PORT__CLIENT_SECRET="${PORT_CLIENT_SECRET}" \
     -e OCEAN__EVENT_LISTENER='{"type": "POLLING"}' \
     -e OCEAN__INTEGRATION__TYPE="smoke-test" \
     -e OCEAN__INTEGRATION__IDENTIFIER="${INTEGRATION_IDENTIFIER}" \
+    -e OCEAN__INTEGRATION__CONFIG__ENTITY_AMOUNT="${OCEAN__INTEGRATION__CONFIG__ENTITY_AMOUNT:--1}" \
+    -e OCEAN__INTEGRATION__CONFIG__ENTITY_KB_SIZE="${OCEAN__INTEGRATION__CONFIG__ENTITY_KB_SIZE:--1}" \
+    -e OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_BATCH_SIZE="${OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_BATCH_SIZE:--1}" \
+    -e OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS="${OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS:--1}" \
+    -e OCEAN__RESOURCES_PATH="/opt/port-resources" \
     --name=ZOMG-TEST \
     "ghcr.io/port-labs/port-ocean-fake-integration:${FAKE_INTEGRATION_VERSION}" \
     -c "source ./.venv/bin/activate && pip install --root-user-action=ignore /opt/dist/${TAR_FILE}[cli] && ocean sail -O"
+
+rm -rf "${TEMP_DIR}"
