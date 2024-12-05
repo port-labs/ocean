@@ -38,6 +38,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped ocean version to ^0.14.5
 
 
+## 0.1.104 (2024-11-27)
+
+
+### Features
+
+- Added a field to display total issues in a project
+- Added support for ingesting other fields apart from the default fields (Jira Sprint support)
+
+### Improvements
+
+- Changed issue priority from id to name
+
+
 ## 0.1.103 (2024-11-25)
 
 
