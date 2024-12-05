@@ -1,8 +1,8 @@
 import typing
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Generator
 
 import httpx
-from httpx import BasicAuth, Timeout
+from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
@@ -19,6 +19,8 @@ CREATE_UPDATE_WEBHOOK_EVENTS = [
     "project_updated",
     "project_restored_deleted",
     "project_restored_archived",
+    "user_created",
+    "user_updated",
 ]
 
 DELETE_WEBHOOK_EVENTS = [
@@ -26,12 +28,22 @@ DELETE_WEBHOOK_EVENTS = [
     "project_deleted",
     "project_soft_deleted",
     "project_archived",
+    "user_deleted",
 ]
 
 WEBHOOK_EVENTS = [
     *CREATE_UPDATE_WEBHOOK_EVENTS,
     *DELETE_WEBHOOK_EVENTS,
 ]
+
+
+class BearerAuth(Auth):
+    def __init__(self, token: str):
+        self.token = token
+
+    def auth_flow(self, request: Request) -> Generator[Request, Response, None]:
+        request.headers["Authorization"] = f"Bearer {self.token}"
+        yield request
 
 
 class JiraClient:
@@ -41,7 +53,12 @@ class JiraClient:
         self.jira_rest_url = f"{self.jira_url}/rest"
         self.detail_base_url = f"{self.jira_rest_url}/api/3"
 
-        self.jira_api_auth = BasicAuth(jira_email, jira_token)
+        # If the Jira URL is directing to api.atlassian.com, we use OAuth2 Bearer Auth
+        self.jira_api_auth: Auth
+        if "api.atlassian.com" in self.jira_url:
+            self.jira_api_auth = BearerAuth(jira_token)
+        else:
+            self.jira_api_auth = BasicAuth(jira_email, jira_token)
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
         self.client = http_async_client
@@ -110,9 +127,14 @@ class JiraClient:
         ):
             yield issues["issues"]
 
-    async def _get_single_item(self, url: str) -> dict[str, Any]:
+    async def get_all_users(self, params: dict[str, Any] = {}) -> list[dict[str, Any]]:
+        return await self._get_single_item(
+            f"{self.detail_base_url}/users", params=params
+        )
+
+    async def _get_single_item(self, url: str, params: dict[str, Any] = {}) -> Any:
         try:
-            response = await self.client.get(url)
+            response = await self.client.get(url, params=params)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -131,6 +153,11 @@ class JiraClient:
         self, issue: str, fields: dict[str, Any] = {}, jql: str | None = None
     ) -> dict[str, Any]:
         return await self._get_single_item(f"{self.agile_url}/issue/{issue}")
+
+    async def get_single_user(self, account_id: str) -> dict[str, Any]:
+        return await self._get_single_item(
+            f"{self.detail_base_url}/user", params={"accountId": account_id}
+        )
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"

@@ -75,9 +75,11 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ocean.integration_config["atlassian_user_token"],
     )
 
-    async for users in client.get_paginated_users():
-        logger.info(f"Received users batch with {len(users)} users")
-        yield users
+    users = await client.get_all_users()
+
+    logger.info(f"Received user batch with {len(users)} users")
+
+    yield users
 
 
 @ocean.router.post("/webhook")
