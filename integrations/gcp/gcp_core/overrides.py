@@ -22,10 +22,11 @@ class GCPResourceSelector(Selector):
         default=None,
         alias="preserveApiResponseCaseStyle",
         description=(
-            "Controls whether to preserve the gcloud asset API's original field format instead of using protobuf's default snake_case. "
+            "Controls whether to preserve the google cloud API's original field format instead of using protobuf's default snake case. "
             "When False (default): Uses protobuf's default snake_case format (existing behavior). "
-            "When True: Preserves the specific asset API's original format (e.g., camelCase for PubSub). "
+            "When True: Preserves the specific API's original format (e.g., camelCase for PubSub). "
             "If not set, defaults to False to maintain existing behavior (snake_case for all APIs)."
+            "Note that this setting does not affect resources fetched from the cloud asset API"
         ),
     )
 
