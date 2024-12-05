@@ -14,6 +14,7 @@ from overrides import JiraIssueResourceConfig, JiraIssueSelector, JiraPortAppCon
 class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
+    USER = "user"
 
 
 def initialize_client() -> JiraClient:
@@ -66,6 +67,19 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
+@ocean.on_resync(ObjectKind.USER)
+async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = JiraClient(
+        ocean.integration_config["jira_host"],
+        ocean.integration_config["atlassian_user_email"],
+        ocean.integration_config["atlassian_user_token"],
+    )
+
+    async for users in client.get_paginated_users():
+        logger.info(f"Received users batch with {len(users)} users")
+        yield users
+
+
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     client = initialize_client()
@@ -91,6 +105,14 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
         else:
             project = await client.get_single_project(data["project"]["key"])
         await ocean_action(ObjectKind.PROJECT, [project])
+
+    elif "user" in webhook_event:
+        logger.info(f'Received webhook event for user: {data["user"]["accountId"]}')
+        if delete_action:
+            user = data["user"]
+        else:
+            user = await client.get_single_user(data["user"]["accountId"])
+        await ocean_action(ObjectKind.USER, [user])
 
     elif "issue" in webhook_event:
         logger.info(f'Received webhook event for issue: {data["issue"]["key"]}')

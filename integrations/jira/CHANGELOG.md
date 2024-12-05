@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.2.1 (2024-12-05)
+
+
+### Improvements
+
+- Added support to sync Jira users to Port and created relevant relations to jira issues assignee and reporter
+
+## 0.2.0 (2024-12-04)
+
+
+### Improvements
+
+- Supporting Bearer token for Oauth2 authentication
+- Added OAuth installation specification for Port
+
+
+## 0.1.105 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.6
+
+
+## 0.1.104 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
 
 ## 0.1.104 (2024-11-27)
 

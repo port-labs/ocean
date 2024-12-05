@@ -1,3 +1,28 @@
+0.1.110 (2024-12-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.14.6
+
+
+0.1.109 (2024-12-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+0.1.108 (2024-11-28)
+
+### Improvements
+
+- Bumped azure-mgmt-resource to `23.2.0` and aiohttp
+
+### Bug Fixes
+
+- Fixed the listing of azure subscription resource to use latest version of the SDK, this fixes the issue where some keys were not being returned in the response
+
+
 0.1.107 (2024-11-25)
 
 ### Improvements

@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.103 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.6
+
+
+## 0.1.102 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+## 0.1.101 (2024-12-3)
+
+
+### Improvements
+
+- Improved error handling and type safety in NewRelic's service levels class, including null-checking for responses.
+- Adds unit tests for the service level class.
+
+
+## 0.1.100 (2024-11-25)
+
+
+### Improvements
+
+- Added support for syncing cloud resources from New Relic.
+- Included blueprints and entity mappings for cloud resource ingestion.
+
+
 ## 0.1.99 (2024-11-25)
 
 
