@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.21 (2024-12-04)
+
+
+### Improvements
+
+- Added ability to ingest OpsGenie users and team members
+- Enhanced the data model for incidents and alerts by adding responding team relation
+
+
 ## 0.2.20 (2024-12-04)
 
 
