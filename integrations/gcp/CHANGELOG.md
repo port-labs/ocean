@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.1.76 (2024-12-05)
 
+
 ### Improvements
 
 - Added `preserveApiResponseCaseStyle` selector to optionally convert resource fields to and from `snake_case` and `camelCase` for non-cloud asset APIs.
