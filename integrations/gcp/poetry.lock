@@ -734,13 +734,13 @@ libcst = ["libcst (>=0.3.10)"]
 
 [[package]]
 name = "google-cloud-quotas"
-version = "0.1.12"
+version = "0.1.13"
 description = "Google Cloud Quotas API client library"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "google_cloud_quotas-0.1.12-py3-none-any.whl", hash = "sha256:7d24f6dffa9b5b75136d69c6955af2e7fc9850dce5ba459d1e085507030f010d"},
-    {file = "google_cloud_quotas-0.1.12.tar.gz", hash = "sha256:2cee3f9e21f29b308730e21793bb5556d532aac9f0dda9d523598cbddc5abb2e"},
+    {file = "google_cloud_quotas-0.1.13-py3-none-any.whl", hash = "sha256:2145a3edbfb09e7dabbea3cbe75a77a4f9cdbf86dcfc0345b103e1f351eacca0"},
+    {file = "google_cloud_quotas-0.1.13.tar.gz", hash = "sha256:1a6960152927ab3c919093ff124bc92f45cc82534487f01b92fcd767999594ab"},
 ]
 
 [package.dependencies]
