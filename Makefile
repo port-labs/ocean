@@ -48,7 +48,7 @@ define deactivate_virtualenv
     fi
 endef
 
-.SILENT: install install/all test/all test/smoke clean/smoke lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all
+.SILENT: install install/all test/all test/smoke clean/smoke lint lint/fix build run new test test/watch clean bump/integrations bump/single-integration execute/all mock-api/start mock-api/stop
 
 
 # Install dependencies
@@ -156,3 +156,10 @@ bump/integrations:
 # make bump/single-integration INTEGRATION=aws
 bump/single-integration:
 	./scripts/bump-single-integration.sh -i $(INTEGRATION)
+
+# run a mock port api server
+mock-api/start:
+	$(ACTIVATE) && SMOKE_TEST_SUFFIX=$${SMOKE_TEST_SUFFIX:-default_value} python ./port_ocean/tests/helpers/fake_port_api.py &
+
+mock-api/stop:
+	ps aux | grep fake_port_api | egrep -v grep | awk '{print $$2};' | xargs kill -9
