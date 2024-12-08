@@ -1,6 +1,5 @@
 from enum import StrEnum, IntEnum
 from typing import List, Tuple, Dict, Any, AsyncGenerator
-from random import randint
 
 from port_ocean.utils import http_async_client
 from port_ocean.context.ocean import ocean
@@ -15,14 +14,14 @@ USER_AGENT = "Ocean Framework Fake Integration (https://github.com/port-labs/oce
 
 class FakeIntegrationDefaults(IntEnum):
     ENTITY_AMOUNT = 20
-    ENTITY_KB_SIZE_FACTOR = 1
+    ENTITY_KB_SIZE = 1
     THIRD_PARTY_BATCH_SIZE = 1000
     THIRD_PARTY_LATENCY_MS = 0
 
 
 class FakeIntegrationConfigKeys(StrEnum):
     ENTITY_AMOUNT = "entity_amount"
-    ENTITY_KB_SIZE_FACTOR = "entity_kb_size_factor"
+    ENTITY_KB_SIZE = "entity_kb_size"
     THIRD_PARTY_BATCH_SIZE = "third_party_batch_size"
     THIRD_PARTY_LATENCY_MS = "third_party_latency_ms"
     SINGLE_PERF_RUN = "single_department_run"
@@ -41,11 +40,11 @@ def get_config() -> Tuple[List[int], int, int]:
         batch_size = FakeIntegrationDefaults.THIRD_PARTY_BATCH_SIZE
 
     entity_kb_size_factor: int = ocean.integration_config.get(
-        FakeIntegrationConfigKeys.ENTITY_KB_SIZE_FACTOR,
-        FakeIntegrationDefaults.ENTITY_KB_SIZE_FACTOR,
+        FakeIntegrationConfigKeys.ENTITY_KB_SIZE,
+        FakeIntegrationDefaults.ENTITY_KB_SIZE,
     )
     if entity_kb_size_factor < 1:
-        entity_kb_size_factor = FakeIntegrationDefaults.ENTITY_KB_SIZE_FACTOR
+        entity_kb_size_factor = FakeIntegrationDefaults.ENTITY_KB_SIZE
 
     latency_ms = ocean.integration_config.get(
         FakeIntegrationConfigKeys.THIRD_PARTY_LATENCY_MS,
@@ -113,9 +112,7 @@ async def get_departments() -> AsyncGenerator[List[Dict[Any, Any]], None]:
     )
 
     departments = (
-        FAKE_DEPARTMENTS
-        if not single_department_run
-        else [FAKE_DEPARTMENTS[randint(0, len(FAKE_DEPARTMENTS) - 1)]]
+        FAKE_DEPARTMENTS if not single_department_run else [FAKE_DEPARTMENTS[0]]
     )
 
     yield [department.dict() for department in departments]

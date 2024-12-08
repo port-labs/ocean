@@ -1,9 +1,27 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id
+          title: .fullName
+          blueprint: '"opsGenieUser"'
+          properties:
+            email: .username
+            role: .role.name
+            timeZone: .timeZone
+            isVerified: .verified
+            isBlocked: .blocked
+            address: .userAddress
+            createdAt: .createdAt
   - kind: team
     selector:
       query: 'true'
+      includeMembers: true
     port:
       entity:
         mappings:
@@ -13,6 +31,8 @@ resources:
           properties:
             description: .description
             url: .links.web
+          relations:
+            members: if .__members != null then .__members | map(.user.id) else [] end
   - kind: schedule
     selector:
       query: 'true'
@@ -63,7 +83,6 @@ resources:
           properties:
             status: .status
             acknowledged: .acknowledged
-            responders: .responders
             priority: .priority
             sourceName: .source
             tags: .tags
@@ -75,6 +94,7 @@ resources:
             integration: .integration.name
           relations:
             relatedIncident: 'if (.alias | contains("_")) then (.alias | split("_")[0]) else null end'
+            respondingTeam: .responders | [.[] | select(.type == "team") | .id]
   - kind: incident
     selector:
       query: 'true'
@@ -88,7 +108,6 @@ resources:
           blueprint: '"opsGenieIncident"'
           properties:
             status: .status
-            responders: .responders
             priority: .priority
             tags: .tags
             url: .links.web
@@ -97,6 +116,7 @@ resources:
             description: .description
           relations:
             services: .impactedServices
+            respondingTeam: .responders | [.[] | select(.type == "team") | .id]
   - kind: schedule-oncall
     selector:
       query: 'true'
