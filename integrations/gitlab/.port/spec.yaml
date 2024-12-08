@@ -51,6 +51,6 @@ saas:
         description: '"Token mapping for Gitlab OAuth2 integration"'
     valuesOverride:
       appSpec:
-        scheduledResyncInterval: '"2h"'
+        minimumScheduledResyncInterval: '2h'
 deploymentMethodOverride:
   - type: helm
