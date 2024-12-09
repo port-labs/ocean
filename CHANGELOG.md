@@ -7,6 +7,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.14.7 (2024-12-09)
+
+
+### Bug Fixes
+
+- Remove specific timeout for search request in favor of global timeout.
+- Update `handle_request` to use method for indentifying retryable requests.
+- Set upsert entenies as retryable.
+- Update the condition upon which the JWT token is refreshed so it will refresh on expiration instead of only after.
+
+
 ## 0.14.6 (2024-12-04)
 
 
