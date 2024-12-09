@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -14,6 +14,7 @@ from pydantic.main import BaseModel
 
 class ObjectKind:
     PROJECTS = "projects"
+    GA_PROJECTS = "ga_projects"
     ISSUES = "issues"
     ANALYSIS = "analysis"
     SASS_ANALYSIS = "saas_analysis"
@@ -75,6 +76,31 @@ class SonarQubeProjectApiFilter(BaseSonarQubeApiFilter):
             value["filter"] = filter_instance.generate_search_filters()
         if s := value.pop("s", None):
             value["s"] = s
+
+        return value
+
+
+class SonarQubeGAProjectAPIFilter(BaseSonarQubeApiFilter):
+    analyzed_before: str | None = Field(
+        alias="analyzedBefore",
+        description="To retrieve projects analyzed before the given date",
+    )
+    on_provisioned_only: bool | None = Field(
+        alias="onProvisionedOnly",
+        description="To retrieve projects on provisioned only",
+    )
+    projects: list[str] | None = Field(description="List of projects")
+    qualifiers: list[Literal["TRK", "APP"]] | None = Field(
+        description="List of qualifiers"
+    )
+
+    def generate_request_params(self) -> dict[str, Any]:
+        value = self.dict(exclude_none=True)
+        if self.projects:
+            value["projects"] = ",".join(self.projects)
+
+        if self.qualifiers:
+            value["qualifiers"] = ",".join(self.qualifiers)
 
         return value
 
@@ -161,11 +187,16 @@ class SelectorWithApiFilters(CustomSelector):
 
 class CustomResourceConfig(ResourceConfig):
     selector: CustomSelector
+    kind: Literal[
+        "analysis",
+        "onprem_analysis",
+        "saas_analysis",
+        "portfolios",
+    ]
 
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
-    class SonarQubeProjectSelector(SelectorWithApiFilters):
-
+    class SonarQubeComponentProjectSelector(SelectorWithApiFilters):
         @staticmethod
         def default_metrics() -> list[str]:
             return [
@@ -185,32 +216,59 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
             description="List of metric keys", default=default_metrics()
         )
 
-    kind: Literal["projects"]
-    selector: SonarQubeProjectSelector
+    kind: Literal["projects"]  # type: ignore
+    selector: SonarQubeComponentProjectSelector
+
+
+class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
+    class SonarQubeGAProjectSelector(CustomSelector, SonarQubeGAProjectAPIFilter):
+        @staticmethod
+        def default_metrics() -> list[str]:
+            return [
+                "code_smells",
+                "coverage",
+                "bugs",
+                "vulnerabilities",
+                "duplicated_files",
+                "security_hotspots",
+                "new_violations",
+                "new_coverage",
+                "new_duplicated_lines_density",
+            ]
+
+        metrics: list[str] = Field(
+            description="List of metric keys", default=default_metrics()
+        )
+
+    kind: Literal["ga_projects"]  # type: ignore
+    selector: SonarQubeGAProjectSelector
 
 
 class SonarQubeIssueResourceConfig(CustomResourceConfig):
     class SonarQubeIssueSelector(SelectorWithApiFilters):
         api_filters: SonarQubeIssueApiFilter | None = Field(alias="apiFilters")
-        project_api_filters: SonarQubeProjectApiFilter | None = Field(
+        project_api_filters: SonarQubeGAProjectAPIFilter | None = Field(
             alias="projectApiFilters",
             description="Allows users to control which projects to query the issues for",
         )
 
-    kind: Literal["issues"]
+    kind: Literal["issues"]  # type: ignore
     selector: SonarQubeIssueSelector
 
 
+AppConfig = Annotated[
+    Union[
+        SonarQubeProjectResourceConfig,
+        SonarQubeIssueResourceConfig,
+        SonarQubeGAProjectResourceConfig,
+        CustomResourceConfig,
+    ],
+    Field(discriminator="kind"),
+]
+
+
 class SonarQubePortAppConfig(PortAppConfig):
-    resources: list[
-        Union[
-            SonarQubeProjectResourceConfig,
-            SonarQubeIssueResourceConfig,
-            CustomResourceConfig,
-        ]
-    ] = Field(
-        default_factory=list
-    )  # type: ignore
+    resources: list[AppConfig] = Field(default_factory=list)  # type: ignore
 
 
 class SonarQubeIntegration(BaseIntegration):

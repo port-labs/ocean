@@ -6,6 +6,7 @@ features:
     section: Code Quality & Security
     resources:
       - kind: projects
+      - kind: ga_projects
       - kind: saas_analysis
       - kind: onprem_analysis
       - kind: issues
