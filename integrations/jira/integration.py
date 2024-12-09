@@ -1,7 +1,7 @@
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.integrations.base import BaseIntegration
 
-from jira.overrides import JiraPortAppConfig
+from overrides import JiraPortAppConfig
 
 
 class JiraIntegration(BaseIntegration):
