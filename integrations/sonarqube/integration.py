@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -187,6 +187,12 @@ class SelectorWithApiFilters(CustomSelector):
 
 class CustomResourceConfig(ResourceConfig):
     selector: CustomSelector
+    kind: Literal[
+        "analysis",
+        "onprem_analysis",
+        "saas_analysis",
+        "portfolios",
+    ]
 
 
 class SonarQubeProjectResourceConfig(CustomResourceConfig):
@@ -210,12 +216,12 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
             description="List of metric keys", default=default_metrics()
         )
 
-    kind: Literal["projects"]
+    kind: Literal["projects"]  # type: ignore
     selector: SonarQubeComponentProjectSelector
 
 
-class SonarQubeGAProjectResourceConfig(ResourceConfig):
-    class SonarQubeGAProjectSelector(Selector, SonarQubeGAProjectAPIFilter):
+class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
+    class SonarQubeGAProjectSelector(CustomSelector, SonarQubeGAProjectAPIFilter):
         @staticmethod
         def default_metrics() -> list[str]:
             return [
@@ -234,7 +240,7 @@ class SonarQubeGAProjectResourceConfig(ResourceConfig):
             description="List of metric keys", default=default_metrics()
         )
 
-    kind: Literal["ga_projects"]
+    kind: Literal["ga_projects"]  # type: ignore
     selector: SonarQubeGAProjectSelector
 
 
@@ -246,21 +252,23 @@ class SonarQubeIssueResourceConfig(CustomResourceConfig):
             description="Allows users to control which projects to query the issues for",
         )
 
-    kind: Literal["issues"]
+    kind: Literal["issues"]  # type: ignore
     selector: SonarQubeIssueSelector
 
 
+AppConfig = Annotated[
+    Union[
+        SonarQubeProjectResourceConfig,
+        SonarQubeIssueResourceConfig,
+        SonarQubeGAProjectResourceConfig,
+        CustomResourceConfig,
+    ],
+    Field(discriminator="kind"),
+]
+
+
 class SonarQubePortAppConfig(PortAppConfig):
-    resources: list[
-        Union[
-            SonarQubeProjectResourceConfig,
-            SonarQubeIssueResourceConfig,
-            SonarQubeGAProjectResourceConfig,
-            CustomResourceConfig,
-        ]
-    ] = Field(
-        default_factory=list
-    )  # type: ignore
+    resources: list[AppConfig] = Field(default_factory=list)  # type: ignore
 
 
 class SonarQubeIntegration(BaseIntegration):
