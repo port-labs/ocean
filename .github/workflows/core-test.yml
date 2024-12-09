@@ -56,7 +56,7 @@ jobs:
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
         run: |
-          make test/smoke
+          make smoke/test
 
       - name: Cleanup Smoke Test
         if: always()
@@ -67,7 +67,7 @@ jobs:
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
         run: |
-          make clean/smoke
+          make smoke/clean
 
       - name: Install current core for all integrations
         run: |
