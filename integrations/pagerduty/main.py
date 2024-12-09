@@ -30,16 +30,18 @@ def initialize_client() -> PagerDutyClient:
 async def enrich_service_with_analytics_data(
     client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
 ) -> list[dict[str, Any]]:
-    async def fetch_service_analytics(service: dict[str, Any]) -> dict[str, Any]:
+    async def fetch_service_analytics(services: list[dict[str, Any]]) -> dict[str, Any]:
         try:
-            analytics = await client.get_service_analytics(service["id"], months_period)
-            return {**service, "__analytics": analytics}
+            servivce_ids = [s["id"] for s in services]
+            analytics = await client.get_service_analytics(services_ids, months_period)
+            updated_services = [{**service, "__analytics": a} for s in services for a in analytics if a["service_id"] === s["id"]]
+            return updated_servuces
         except Exception as e:
             logger.error(f"Failed to fetch analytics for service {service['id']}: {e}")
             return {**service, "__analytics": None}
 
     return await asyncio.gather(
-        *[fetch_service_analytics(service) for service in services]
+        *fetch_service_analytics(services)
     )
 
 
