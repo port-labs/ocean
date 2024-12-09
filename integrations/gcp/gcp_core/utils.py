@@ -5,6 +5,7 @@ import typing
 from collections.abc import MutableSequence
 from typing import Any, TypedDict, Tuple
 
+from gcp_core.errors import ResourceNotFoundError
 from loguru import logger
 import proto  # type: ignore
 from port_ocean.context.event import event
@@ -55,15 +56,16 @@ def parse_latest_resource_from_asset(asset_data: AssetData) -> dict[Any, Any]:
         dict: The most recent version of the resource
 
     Raises:
-        KeyError: If neither versioned_resources nor versionedResources is found
+        ResourceNotFoundError: If neither versioned_resources nor versionedResources is found
     """
     # Try both key formats since we don't control the input format
     versioned_resources = asset_data.get("versioned_resources") or asset_data.get(
         "versionedResources"
     )
     if not isinstance(versioned_resources, list):
-        raise KeyError(
-            "Could not find versioned resources under either 'versioned_resources' or 'versionedResources'"
+        raise ResourceNotFoundError(
+            "Could not find versioned resources under either 'versioned_resources' or 'versionedResources'. "
+            "Please ensure the asset data contains a list of versioned resources in the expected format."
         )
 
     # Ensure each item in the list is a VersionedResource
