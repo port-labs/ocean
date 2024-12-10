@@ -230,7 +230,6 @@ async def test_get_components_is_called_with_correct_params(
     mock_paginated_request.__aiter__.return_value = ()
 
     async with event_context("test_event"):
-
         sonarqube_client.http_client = MockHttpxClient(  # type: ignore
             [
                 {
@@ -379,9 +378,7 @@ async def test_get_single_project_is_called_with_correct_params(
 async def test_projects_will_return_correct_data(
     mock_event_context: Any, mock_ocean_context: Any, monkeypatch: Any
 ) -> None:
-
     async with event_context("test_event"):
-
         sonarqube_client = SonarQubeClient(
             "https://sonarqube.com",
             "token",
@@ -457,7 +454,6 @@ async def test_get_all_portfolios_processes_subportfolios(
     mock_ocean_context: Any,
     monkeypatch: Any,
 ) -> None:
-
     mock_get_portfolio_details = AsyncMock()
     mock_get_portfolio_details.side_effect = lambda key: {"key": key, "subViews": []}
     sonarqube_client = SonarQubeClient(
@@ -835,7 +831,6 @@ async def test_get_or_create_webhook_url_error_handling(
     ]
 
     async with event_context("test_event"):
-
         sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
 
         with pytest.raises(httpx.HTTPStatusError) as exc_info:

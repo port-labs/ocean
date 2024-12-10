@@ -45,7 +45,6 @@ class SonarQubeComponentSearchFilter(BaseModel):
     def generate_search_filters(self) -> str:
         params = []
         for field, value in self.dict(exclude_none=True).items():
-
             if field == "metrics":
                 for metric_filter in value:
                     for metric_key, metric_value in metric_filter.items():

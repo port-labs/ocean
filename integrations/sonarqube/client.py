@@ -298,7 +298,9 @@ class SonarQubeClient:
         :return (list[Any]): A list containing issues data for all projects.
         """
 
-        async for components in self.get_projects(params=project_query_params, enrich_project=False):
+        async for components in self.get_projects(
+            params=project_query_params, enrich_project=False
+        ):
             for component in components:
                 async for responses in self.get_issues_by_component(
                     component=component, query_params=query_params
