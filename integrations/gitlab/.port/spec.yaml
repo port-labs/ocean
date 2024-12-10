@@ -50,6 +50,8 @@ saas:
         value: '{(.oauthData.accessToken): ["**"]} | @json'
         description: '"Token mapping for Gitlab OAuth2 integration"'
     valuesOverride:
+      integrationSpec:
+        gitlabHost: '"https://gitlab.com"'
       appSpec:
         minimumScheduledResyncInterval: '2h'
 deploymentMethodOverride:
