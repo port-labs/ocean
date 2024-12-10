@@ -48,6 +48,7 @@ class EntityClientMixin:
                     ).lower(),
                     "validation_only": str(validation_only).lower(),
                 },
+                extensions={"retryable": True},
             )
 
         if response.is_error:
@@ -205,7 +206,6 @@ class EntityClientMixin:
                 "include": ["blueprint", "identifier"],
             },
             extensions={"retryable": True},
-            timeout=30,
         )
         handle_status_code(response)
         return [Entity.parse_obj(result) for result in response.json()["entities"]]
