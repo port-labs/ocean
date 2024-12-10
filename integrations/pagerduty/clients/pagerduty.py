@@ -217,7 +217,7 @@ class PagerDutyClient:
 
     async def get_service_analytics(
         self, service_ids: list[str], months_period: int = 3
-    ) -> Dict[str, Any]:
+    ) -> list[Dict[str, Any]]:
         logger.info(f"Fetching analytics for service: {service_id}")
         date_ranges = get_date_range_for_last_n_months(months_period)
 
@@ -237,7 +237,7 @@ class PagerDutyClient:
                 extensions={"retryable": True},
             )
             logger.info(f"Successfully fetched analytics for services: {service_ids}")
-            return response.get("data", []) if response.get("data") else {}
+            return response.get("data", []) if response.get("data") else []
 
         except (httpx.HTTPStatusError, httpx.HTTPError) as e:
             logger.error(f"Error fetching analytics for services {service_ids}: {e}")
