@@ -16,6 +16,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Added OAuth installation specification for Port
 
 
+0.1.147 (2024-12-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
 
 0.1.146 (2024-12-04)
 ====================
