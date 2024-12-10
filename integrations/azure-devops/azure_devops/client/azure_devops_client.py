@@ -163,6 +163,9 @@ class AzureDevopsClient(HTTPBaseClient):
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
         """
+        selector = typing.cast(
+            AzureDevopsWorkItemResourceConfig, event.resource_config
+        ).selector
         async for projects in self.generate_projects():
             for project in projects:
                 # 1. Execute WIQL query to get work item IDs
@@ -172,7 +175,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 # 2. Fetch work items using the IDs (in batches if needed)
                 work_items = await self._fetch_work_items_in_batches(
-                    project["id"], work_item_ids
+                    project["id"],
+                    work_item_ids,
+                    query_params={"$expand": selector.expand},
                 )
                 logger.debug(f"Received {len(work_items)} work items")
 
@@ -217,7 +222,10 @@ class AzureDevopsClient(HTTPBaseClient):
         return [item["id"] for item in wiql_response.json()["workItems"]]
 
     async def _fetch_work_items_in_batches(
-        self, project_id: str, work_item_ids: list[int]
+        self,
+        project_id: str,
+        work_item_ids: list[int],
+        query_params: dict[str, Any] = {},
     ) -> list[dict[str, Any]]:
         """
         Fetches work items in batches based on the list of work item IDs.
@@ -231,6 +239,7 @@ class AzureDevopsClient(HTTPBaseClient):
             batch_ids = work_item_ids[i : i + MAX_WORK_ITEMS_PER_REQUEST]
             work_items_url = f"{self._organization_base_url}/{project_id}/{API_URL_PREFIX}/wit/workitems"
             params = {
+                **query_params,
                 "ids": ",".join(map(str, batch_ids)),
                 "api-version": "7.1-preview.3",
             }
