@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+
+
 def get_date_range_for_last_n_months(n: int) -> tuple[str, str]:
     now = datetime.utcnow()
     start_date = (now - timedelta(days=30 * n)).strftime(
