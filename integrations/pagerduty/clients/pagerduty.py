@@ -216,14 +216,14 @@ class PagerDutyClient:
                 return {}
 
     async def get_service_analytics(
-        self, service_id: str, months_period: int = 3
-    ) -> Dict[str, Any]:
-        logger.info(f"Fetching analytics for service: {service_id}")
+        self, service_ids: list[str], months_period: int = 3
+    ) -> list[Dict[str, Any]]:
+        logger.info(f"Fetching analytics for services: {service_ids}")
         date_ranges = get_date_range_for_last_n_months(months_period)
 
         body = {
             "filters": {
-                "service_ids": [service_id],
+                "service_ids": service_ids,
                 "created_at_start": date_ranges[0],
                 "created_at_end": date_ranges[1],
             }
@@ -236,11 +236,11 @@ class PagerDutyClient:
                 json_data=body,
                 extensions={"retryable": True},
             )
-            logger.info(f"Successfully fetched analytics for service: {service_id}")
-            return response.get("data", [])[0] if response.get("data") else {}
+            logger.info(f"Successfully fetched analytics for services: {service_ids}")
+            return response.get("data", []) if response.get("data") else []
 
         except (httpx.HTTPStatusError, httpx.HTTPError) as e:
-            logger.error(f"Error fetching analytics for service {service_id}: {e}")
+            logger.error(f"Error fetching analytics for services {service_ids}: {e}")
             raise
 
     async def send_api_request(
