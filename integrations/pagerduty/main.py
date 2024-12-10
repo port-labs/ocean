@@ -35,12 +35,12 @@ async def enrich_service_with_analytics_data(
     ) -> list[dict[str, Any]]:
         service_ids = [service["id"] for service in services]
         try:
-            service_analytics = await client.get_service_analytics(
+            services_analytics = await client.get_service_analytics(
                 service_ids, months_period
             )
             # Map analytics to corresponding services
             service_analytics_map = {
-                analytics["service_id"]: analytics for analytics in service_analytics
+                analytics["service_id"]: analytics for analytics in services_analytics
             }
             enriched_services = [
                 {

@@ -218,7 +218,9 @@ class PagerDutyClient:
     async def get_service_analytics(
         self, service_ids: list[str], months_period: int = 3
     ) -> list[Dict[str, Any]]:
-        logger.info(f"Fetching analytics for services: {service_ids}")
+        logger.info(
+            f"Fetching analytics for {len(service_ids)} services: {service_ids}"
+        )
         date_ranges = get_date_range_for_last_n_months(months_period)
 
         body = {
