@@ -7,7 +7,7 @@ from types_aiobotocore_sts import STSClient
 from functools import partial
 
 
-ASSUME_ROLE_DURATION_SECONDS = 3600  # 1 hour
+ASSUME_ROLE_DURATION_SECONDS = 900  # 1 hour
 
 
 class AwsCredentials:
@@ -62,11 +62,9 @@ class AwsCredentials:
             "expiry_time": expiry_time,
         }
 
-    async def create_refreshable_session(
-        self, region: Optional[str] = None
-    ) -> aioboto3.Session:
+    async def create_session(self, region: Optional[str] = None) -> aioboto3.Session:
         """
-        Creates an aioboto3 Session with refreshable credentials.
+        Creates an aioboto3 Session with credentials.
 
         :param region: AWS region for the session.
         :return: An aioboto3 Session object.
@@ -80,15 +78,13 @@ class AwsCredentials:
             async with session.client("sts") as sts_client:
                 initial_credentials = await self._refresh_credentials(sts_client)
                 refresh_credentials = partial(self._refresh_credentials, sts_client)
-                refreshable_credentials = (
-                    AioRefreshableCredentials.create_from_metadata(
-                        metadata=initial_credentials,
-                        refresh_using=refresh_credentials,
-                        method="sts-assume-role",
-                    )
+                credentials = AioRefreshableCredentials.create_from_metadata(
+                    metadata=initial_credentials,
+                    refresh_using=refresh_credentials,
+                    method="sts-assume-role",
                 )
                 botocore_session = get_session()
-                setattr(botocore_session, "_credentials", refreshable_credentials)
+                setattr(botocore_session, "_credentials", credentials)
                 if region:
                     botocore_session.set_config_variable("region", region)
                 autorefresh_session = aioboto3.Session(
@@ -107,7 +103,7 @@ class AwsCredentials:
         """
         Updates the list of enabled regions for the AWS account.
         """
-        session = await self.create_refreshable_session()
+        session = await self.create_session()
         async with session.client("account") as account_client:
             response = await account_client.list_regions(
                 RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"]
@@ -120,18 +116,18 @@ class AwsCredentials:
                 if region["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
             ]
 
-    async def create_refreshable_session_for_each_region(
+    async def create_session_for_each_region(
         self, allowed_regions: Optional[Iterable[str]] = None
     ) -> AsyncIterator[aioboto3.Session]:
         """
-        Creates refreshable sessions for each allowed or enabled region.
+        Creates sessions for each allowed or enabled region.
 
         :param allowed_regions: Iterable of region names to create sessions for.
         :yield: An aioboto3 Session for each region.
         """
         regions = allowed_regions or self.enabled_regions
         for region in regions:
-            yield await self.create_refreshable_session(region)
+            yield await self.create_session(region)
 
     def is_role(self) -> bool:
         """

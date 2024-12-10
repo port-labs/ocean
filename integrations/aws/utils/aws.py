@@ -66,11 +66,11 @@ async def session_factory(
 
     if use_default_region:
         default_region = get_default_region_from_credentials(credentials)
-        yield await credentials.create_refreshable_session(default_region)
+        yield await credentials.create_session(default_region)
     elif custom_region:
-        yield await credentials.create_refreshable_session(custom_region)
+        yield await credentials.create_session(custom_region)
     else:
-        async for session in credentials.create_refreshable_session_for_each_region():
+        async for session in credentials.create_session_for_each_region():
             yield session
 
 

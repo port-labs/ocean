@@ -47,9 +47,7 @@ class SessionManager:
         application_credentials = await self._get_application_credentials()
         await application_credentials.update_enabled_regions()
         self._application_account_id = application_credentials.account_id
-        self._application_session = (
-            await application_credentials.create_refreshable_session()
-        )
+        self._application_session = await application_credentials.create_session()
 
         self._aws_credentials.append(application_credentials)
         self._aws_accessible_accounts.append(

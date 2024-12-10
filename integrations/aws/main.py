@@ -56,9 +56,7 @@ async def _handle_global_resource_resync(
     allowed_regions = filter(
         aws_resource_config.selector.is_region_allowed, credentials.enabled_regions
     )
-    async for session in credentials.create_refreshable_session_for_each_region(
-        allowed_regions
-    ):
+    async for session in credentials.create_session_for_each_region(allowed_regions):
         try:
             async for batch in resync_cloudcontrol(kind, session, aws_resource_config):
                 yield batch
@@ -87,7 +85,7 @@ async def resync_resources_for_account(
         ):
             yield batch
     else:
-        async for session in credentials.create_refreshable_session_for_each_region():
+        async for session in credentials.create_session_for_each_region():
             try:
                 async for batch in resync_cloudcontrol(
                     kind, session, aws_resource_config
