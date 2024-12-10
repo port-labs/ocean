@@ -8,6 +8,7 @@ class ObjectKind(StrEnum):
     INCIDENT = "incident"
     SCHEDULE = "schedule"
     SCHEDULE_ONCALL = "schedule-oncall"
+    USER = "user"
 
 
 # A dictionary to map each resource type to its API version
@@ -26,3 +27,4 @@ class ResourceKindsWithSpecialHandling(StrEnum):
     INCIDENT = ObjectKind.INCIDENT
     SCHEDULE = ObjectKind.SCHEDULE
     SCHEDULE_ONCALL = ObjectKind.SCHEDULE_ONCALL
+    TEAM = ObjectKind.TEAM

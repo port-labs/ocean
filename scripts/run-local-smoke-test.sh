@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+SCRIPT_BASE="$(cd -P "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd -P "${SCRIPT_BASE}/../" && pwd)"
+
+source "${SCRIPT_BASE}/smoke-test-base.sh"
+
+cd "${ROOT_DIR}/integrations/fake-integration" || exit 1
+make install/local-core
+export OCEAN__PORT__BASE_URL="${PORT_BASE_URL}"
+export OCEAN__PORT__CLIENT_ID="${PORT_CLIENT_ID}"
+export OCEAN__PORT__CLIENT_SECRET="${PORT_CLIENT_SECRET}"
+export OCEAN__EVENT_LISTENER='{"type": "POLLING"}'
+export OCEAN__INTEGRATION__TYPE="smoke-test"
+export OCEAN__INTEGRATION__IDENTIFIER="${INTEGRATION_IDENTIFIER}"
+export OCEAN__INTEGRATION__CONFIG__ENTITY_AMOUNT="${OCEAN__INTEGRATION__CONFIG__ENTITY_AMOUNT:-1}"
+export OCEAN__INTEGRATION__CONFIG__ENTITY_KB_SIZE="${OCEAN__INTEGRATION__CONFIG__ENTITY_KB_SIZE:--1}"
+export OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_BATCH_SIZE="${OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_BATCH_SIZE:--1}"
+export OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS="${OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS:--1}"
+export OCEAN__RESOURCES_PATH="${TEMP_RESOURCES_DIR}"
+source ./.venv/bin/activate
+ocean sail -O
+deactivate
+rm -rf "${RESOURCE_DIR_SUFFIX}"
+cd - || exit 1

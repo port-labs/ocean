@@ -284,66 +284,67 @@
     }
   },
   {
-    "identifier": "datadogSloHistory",
-    "description": "This blueprint represents a datadog SLO history",
-    "title": "Datadog SLO History",
+    "identifier": "datadogCloudResource",
+    "description": "This blueprint represents a cloud resource in Datadog",
+    "title": "Datadog Cloud Resource",
     "icon": "Datadog",
     "schema": {
       "properties": {
-        "monitor_type": {
-          "icon": "DefaultProperty",
-          "title": "Type",
-          "type": "string"
+        "up": {
+          "type": "boolean",
+          "title": "Is Running?",
+          "description": "Is the host up?"
         },
-        "sliValue": {
-          "icon": "DefaultProperty",
-          "title": "SLI Value",
-          "type": "number"
-        },
-        "sampling_start_date": {
-          "icon": "DefaultProperty",
+        "host_name": {
           "type": "string",
-          "title": "Sampling Start Date",
-          "format": "date-time"
+          "title": "Host Name",
+          "description": "the name of the host"
         },
-        "sampling_end_date": {
-          "icon": "DefaultProperty",
+        "description": {
           "type": "string",
-          "title": "Sampling End Date",
-          "format": "date-time"
+          "title": "Description",
+          "description": "the host description"
         },
-        "timeframe": {
+        "platform": {
+          "type": "string",
+          "title": "Platform",
+          "description": "the host platform"
+        },
+        "machine": {
+          "type": "string",
+          "title": "Machine",
+          "description": "The CPU architecture of the host machine (e.g., amd64, x86, x64, arm, arm64)."
+        },
+        "cpu_cores": {
           "type": "number",
-          "title": "Timeframe",
-          "enum": [7, 30],
-          "enumColors": {
-            "7": "purple",
-            "30": "pink"
-          }
+          "title": "CPU Cores",
+          "description": "the host CPU cores"
+        },
+        "agent_version": {
+          "type": "string",
+          "title": "Datadog Agent Version",
+          "description": "the Datadog agent version installed on the host"
+        },
+        "is_muted": {
+          "type": "boolean",
+          "title": "Is Host Muted?",
+          "description": "Indicates whether alerts for that specific host are temporarily suppressed."
+        },
+        "sources": {
+          "title": "Sources",
+          "type": "array",
+          "description": "Source or cloud provider associated with your host."
+        },
+        "tags": {
+          "title": "Tags",
+          "type": "object",
+          "description": "Tags associated with the host."
         }
       },
       "required": []
     },
-    "mirrorProperties": {
-      "slo_target": {
-        "title": "SLO Target",
-        "path": "slo.targetThreshold"
-      },
-      "slo_warning_threshold": {
-        "title": "SLO Warning Threshold",
-        "path": "slo.warningThreshold"
-      }
-    },
+    "mirrorProperties": {},
     "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {
-      "slo": {
-        "title": "SLO",
-        "description": "The SLO to which this history belongs to",
-        "target": "datadogSlo",
-        "required": false,
-        "many": false
-      }
-    }
+    "relations": {}
   }
 ]

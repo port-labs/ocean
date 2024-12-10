@@ -1,7 +1,7 @@
 import typing
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Generator
 
-from httpx import Timeout, BasicAuth
+from httpx import Timeout, Auth, BasicAuth, Request, Response
 from jira.overrides import JiraResourceConfig
 from loguru import logger
 
@@ -23,17 +23,35 @@ WEBHOOK_EVENTS = [
     "project_restored_deleted",
     "project_archived",
     "project_restored_archived",
+    "user_created",
+    "user_updated",
+    "user_deleted",
 ]
 
 
+class BearerAuth(Auth):
+    def __init__(self, token: str):
+        self.token = token
+
+    def auth_flow(self, request: Request) -> Generator[Request, Response, None]:
+        request.headers["Authorization"] = f"Bearer {self.token}"
+        yield request
+
+
 class JiraClient:
+    jira_api_auth: Auth
+
     def __init__(self, jira_url: str, jira_email: str, jira_token: str) -> None:
         self.jira_url = jira_url
         self.jira_rest_url = f"{self.jira_url}/rest"
         self.jira_email = jira_email
         self.jira_token = jira_token
 
-        self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
+        # If the Jira URL is directing to api.atlassian.com, we use OAuth2 Bearer Auth
+        if "api.atlassian.com" in self.jira_url:
+            self.jira_api_auth = BearerAuth(self.jira_token)
+        else:
+            self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
 
         self.api_url = f"{self.jira_rest_url}/api/3"
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
@@ -62,6 +80,11 @@ class JiraClient:
         issue_response = await self.client.get(f"{self.api_url}/search", params=params)
         issue_response.raise_for_status()
         return issue_response.json()
+
+    async def _get_users_data(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        user_response = await self.client.get(f"{self.api_url}/users", params=params)
+        user_response.raise_for_status()
+        return user_response.json()
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
@@ -145,3 +168,42 @@ class JiraClient:
             issue_response_list = (await self._get_paginated_issues(params))["issues"]
             yield issue_response_list
             params["startAt"] += PAGE_SIZE
+
+    async def get_paginated_users(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        logger.info("Getting users from Jira")
+
+        params = self._generate_base_req_params()
+
+        total_users = len(await self._get_users_data(params))
+
+        if total_users == 0:
+            logger.warning(
+                "User query returned 0 users, did you provide the correct Jira API credentials?"
+            )
+
+        params["maxResults"] = PAGE_SIZE
+        while params["startAt"] < total_users:
+            logger.info(f"Current query position: {params['startAt']}/{total_users}")
+
+            user_response_list = await self._get_users_data(params)
+
+            if not user_response_list:
+                logger.warning(f"No users found at {params['startAt']}")
+                break
+
+            logger.info(
+                f"Retrieved users: {len(user_response_list)} "
+                f"(Position: {params['startAt']}/{total_users})"
+            )
+
+            yield user_response_list
+            params["startAt"] += PAGE_SIZE
+
+    async def get_single_user(self, account_id: str) -> dict[str, Any]:
+        user_response = await self.client.get(
+            f"{self.api_url}/user", params={"accountId": account_id}
+        )
+        user_response.raise_for_status()
+        return user_response.json()
