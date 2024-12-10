@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.76 (2024-12-09)
+
+
+### Improvements
+
+- Added `preserveApiResponseCaseStyle` selector to optionally convert resource fields to and from `snake_case` and `camelCase` for non-cloud asset APIs.
+
+
 ## 0.1.75 (2024-12-04)
 
 
