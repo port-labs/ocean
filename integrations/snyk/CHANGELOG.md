@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.109 (2024-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
+## 0.1.108 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.6
+
+
+## 0.1.107 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+## 0.1.106 (2024-11-26)
+
+
+### Improvements
+
+- Added validation to skip fetching user details if the user_reference does not belong to an organization associated with the integration, preventing unnecessary API calls for non-existent users
+
+
 ## 0.1.105 (2024-11-25)
 
 

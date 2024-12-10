@@ -11,6 +11,7 @@ from .utils import get_date_range_for_last_n_months
 USER_KEY = "users"
 
 MAX_CONCURRENT_REQUESTS = 10
+PAGE_SIZE = 100
 
 
 class PagerDutyClient:
@@ -77,9 +78,17 @@ class PagerDutyClient:
         has_more_data = True
 
         while has_more_data:
+            logger.debug(
+                f"Fetching data for {resource} with offset: {offset} limit: {PAGE_SIZE} and params: {params}"
+            )
             try:
                 data = await self.send_api_request(
-                    endpoint=resource, query_params={"offset": offset, **(params or {})}
+                    endpoint=resource,
+                    query_params={
+                        "offset": offset,
+                        "limit": PAGE_SIZE,
+                        **(params or {}),
+                    },
                 )
                 yield data[resource]
 
@@ -89,6 +98,11 @@ class PagerDutyClient:
             except httpx.HTTPStatusError as e:
                 logger.error(
                     f"Got {e.response.status_code} status code while fetching paginated data: {str(e)}"
+                )
+                raise
+            except httpx.HTTPError as e:
+                logger.error(
+                    f"Got an HTTP error while fetching paginated data for {resource}: {str(e)}"
                 )
                 raise
 
@@ -202,14 +216,16 @@ class PagerDutyClient:
                 return {}
 
     async def get_service_analytics(
-        self, service_id: str, months_period: int = 3
-    ) -> Dict[str, Any]:
-        logger.info(f"Fetching analytics for service: {service_id}")
+        self, service_ids: list[str], months_period: int = 3
+    ) -> list[Dict[str, Any]]:
+        logger.info(
+            f"Fetching analytics for {len(service_ids)} services: {service_ids}"
+        )
         date_ranges = get_date_range_for_last_n_months(months_period)
 
         body = {
             "filters": {
-                "service_ids": [service_id],
+                "service_ids": service_ids,
                 "created_at_start": date_ranges[0],
                 "created_at_end": date_ranges[1],
             }
@@ -222,11 +238,11 @@ class PagerDutyClient:
                 json_data=body,
                 extensions={"retryable": True},
             )
-            logger.info(f"Successfully fetched analytics for service: {service_id}")
-            return response.get("data", [])[0] if response.get("data") else {}
+            logger.info(f"Successfully fetched analytics for services: {service_ids}")
+            return response.get("data", []) if response.get("data") else []
 
         except (httpx.HTTPStatusError, httpx.HTTPError) as e:
-            logger.error(f"Error fetching analytics for service {service_id}: {e}")
+            logger.error(f"Error fetching analytics for services {service_ids}: {e}")
             raise
 
     async def send_api_request(

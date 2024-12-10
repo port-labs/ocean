@@ -10,6 +10,7 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from clients.pagerduty import PagerDutyClient
 from integration import (
     ObjectKind,
+    OBJECTS_WITH_SPECIAL_HANDLING,
     PagerdutyEscalationPolicyResourceConfig,
     PagerdutyIncidentResourceConfig,
     PagerdutyOncallResourceConfig,
@@ -29,17 +30,31 @@ def initialize_client() -> PagerDutyClient:
 async def enrich_service_with_analytics_data(
     client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
 ) -> list[dict[str, Any]]:
-    async def fetch_service_analytics(service: dict[str, Any]) -> dict[str, Any]:
+    async def fetch_service_analytics(
+        services: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        service_ids = [service["id"] for service in services]
         try:
-            analytics = await client.get_service_analytics(service["id"], months_period)
-            return {**service, "__analytics": analytics}
+            services_analytics = await client.get_service_analytics(
+                service_ids, months_period
+            )
+            # Map analytics to corresponding services
+            service_analytics_map = {
+                analytics["service_id"]: analytics for analytics in services_analytics
+            }
+            enriched_services = [
+                {
+                    **service,
+                    "__analytics": service_analytics_map.get(service["id"], None),
+                }
+                for service in services
+            ]
+            return enriched_services
         except Exception as e:
-            logger.error(f"Failed to fetch analytics for service {service['id']}: {e}")
-            return {**service, "__analytics": None}
+            logger.error(f"Failed to fetch analytics for service {service_ids}: {e}")
+            return [{**service, "__analytics": None} for service in services]
 
-    return await asyncio.gather(
-        *[fetch_service_analytics(service) for service in services]
-    )
+    return await fetch_service_analytics(services)
 
 
 async def enrich_incidents_with_analytics_data(
@@ -173,6 +188,28 @@ async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             yield escalation_policies
         else:
             yield escalation_policies
+
+
+@ocean.on_resync()
+async def on_global_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+
+    if kind in OBJECTS_WITH_SPECIAL_HANDLING:
+        logger.info(f"Kind {kind} has a special handling. Skipping...")
+        return
+    else:
+        pager_duty_client = initialize_client()
+
+        try:
+            async for (
+                resource_batch
+            ) in pager_duty_client.paginate_request_to_pager_duty(resource=kind):
+                logger.info(f"Received batch with {len(resource_batch)} {kind}")
+                yield resource_batch
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch {kind} from Pagerduty due to error: {e}. For information on supported resources, please refer to our documentation at https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/#supported-resources"
+            )
+            raise e
 
 
 @ocean.router.post("/webhook")

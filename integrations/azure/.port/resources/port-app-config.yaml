@@ -9,7 +9,8 @@ resources:
           identifier: .id
           title: .display_name
           blueprint: '"azureSubscription"'
-          properties: {}
+          properties:
+            tags: .tags
   - kind: Microsoft.Resources/resourceGroups
     selector:
       query: 'true'
