@@ -269,19 +269,23 @@ class SonarQubeClient:
 
     @cache_iterator_result()
     async def get_projects(
-        self, params: dict[str, Any] = {}
+        self, params: dict[str, Any] = {}, enrich_project: bool = True
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if self.organization_id:
             params["organization"] = self.organization_id
+
         async for projects in self._send_paginated_request(
             endpoint=Endpoints.PROJECTS,
             data_key="components",
             method="GET",
             query_params=params,
         ):
-            yield await asyncio.gather(
-                *[self.get_single_project(project) for project in projects]
-            )
+            if enrich_project:
+                yield await asyncio.gather(
+                    *[self.get_single_project(project) for project in projects]
+                )
+            else:
+                yield projects
 
     async def get_all_issues(
         self,
@@ -294,7 +298,7 @@ class SonarQubeClient:
         :return (list[Any]): A list containing issues data for all projects.
         """
 
-        async for components in self.get_projects(params=project_query_params):
+        async for components in self.get_projects(params=project_query_params, enrich_project=False):
             for component in components:
                 async for responses in self.get_issues_by_component(
                     component=component, query_params=query_params
@@ -341,7 +345,7 @@ class SonarQubeClient:
 
         :return (list[Any]): A list containing analysis data for all components.
         """
-        async for components in self.get_projects():
+        async for components in self.get_projects(enrich_project=False):
             tasks = [
                 self.get_analysis_by_project(component=component)
                 for component in components
@@ -468,7 +472,7 @@ class SonarQubeClient:
     async def get_all_sonarqube_analyses(
         self,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        async for components in self.get_projects():
+        async for components in self.get_projects(enrich_project=False):
             for analysis in await asyncio.gather(
                 *[
                     self.get_measures_for_all_pull_requests(
@@ -610,7 +614,7 @@ class SonarQubeClient:
         :return: None
         """
         logger.info(f"Subscribing to webhooks in organization: {self.organization_id}")
-        async for projects in self.get_projects():
+        async for projects in self.get_projects(enrich_project=False):
             webhooks_to_create = []
             for project in projects:
                 project_webhook_payload = (
