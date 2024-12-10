@@ -195,8 +195,8 @@ class TestPagerDutyClient:
         with patch(
             "port_ocean.utils.http_async_client.request", return_value=mock_response
         ):
-            result = await client.get_service_analytics("SERVICE123")
-            assert result == {"mean_incidents": 2, "total_services": 5}
+            result = await client.get_service_analytics(["SERVICE123"])
+            assert result == [{"mean_incidents": 2, "total_services": 5}]
 
     async def test_send_api_request(self, client: PagerDutyClient) -> None:
         # Successful request

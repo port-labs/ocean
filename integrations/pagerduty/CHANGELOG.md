@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.124 (2024-12-12)
+
+
+### Improvements
+
+- Updated service enriched analytics to make one call for all services instead of a call per service to PD analytics api
+
 ## 0.1.123 (2024-12-04)
 
 
