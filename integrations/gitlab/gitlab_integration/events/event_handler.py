@@ -97,7 +97,7 @@ class EventHandler(BaseEventHandler):
                     await observer(event_id, body)  # Sequentially call each observer
             except Exception as e:
                 logger.error(
-                    f"Error processing event {event_id} with observer {observer}: {e}"
+                    f"Error processing event {event_id} with observer {observer}: {str(e)}"
                 )
 
 
