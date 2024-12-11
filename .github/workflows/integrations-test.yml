@@ -37,7 +37,7 @@ jobs:
       - name: Test
         working-directory: ${{ format('integrations/{0}', matrix.folder) }}
         env:
-          PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ format('integrations/{0}', matrix.folder) }}.xml
+          PYTEST_ADDOPTS: --junitxml=junit/test-results-${{ format('integrations/{0}', matrix.folder) }}.xml --dist=no
         run: |
           make test
 
