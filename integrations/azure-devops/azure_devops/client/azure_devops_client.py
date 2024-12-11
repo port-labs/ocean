@@ -9,8 +9,6 @@ from loguru import logger
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils.cache import cache_iterator_result
-
-from azure_devops.misc import AzureDevopsWorkItemResourceConfig
 from azure_devops.webhooks.webhook_event import WebhookEvent
 
 from .base_client import HTTPBaseClient
@@ -159,17 +157,14 @@ class AzureDevopsClient(HTTPBaseClient):
                     policy["__repository"] = repo
                 yield repo_policies
 
-    async def generate_work_items(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_work_items(self, wiql: Optional[str], expand: str) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
         """
-        selector = typing.cast(
-            AzureDevopsWorkItemResourceConfig, event.resource_config
-        ).selector
         async for projects in self.generate_projects():
             for project in projects:
                 # 1. Execute WIQL query to get work item IDs
-                work_item_ids = await self._fetch_work_item_ids(project)
+                work_item_ids = await self._fetch_work_item_ids(project, wiql)
                 logger.info(
                     f"Found {len(work_item_ids)} work item IDs for project {project['name']}"
                 )
@@ -177,7 +172,7 @@ class AzureDevopsClient(HTTPBaseClient):
                 work_items = await self._fetch_work_items_in_batches(
                     project["id"],
                     work_item_ids,
-                    query_params={"$expand": selector.expand},
+                    query_params={"$expand": expand},
                 )
                 logger.debug(f"Received {len(work_items)} work items")
 
@@ -187,20 +182,19 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 yield work_items
 
-    async def _fetch_work_item_ids(self, project: dict[str, Any]) -> list[int]:
+    async def _fetch_work_item_ids(self, project: dict[str, Any], wiql: Optional[str]) -> list[int]:
         """
         Executes a WIQL query to fetch work item IDs for a given project.
 
         :param project_id: The ID of the project.
         :return: A list of work item IDs.
         """
-        config = typing.cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
         wiql_query = f"SELECT [Id] from WorkItems WHERE [System.TeamProject] = '{project['name']}'"
 
-        if config.selector.wiql:
+        if wiql:
             # Append the user-provided wiql to the WHERE clause
-            wiql_query += f" AND {config.selector.wiql}"
-            logger.info(f"Found and appended WIQL filter: {config.selector.wiql}")
+            wiql_query += f" AND {wiql}"
+            logger.info(f"Found and appended WIQL filter: {wiql}")
 
         wiql_url = (
             f"{self._organization_base_url}/{project['id']}/{API_URL_PREFIX}/wit/wiql"
