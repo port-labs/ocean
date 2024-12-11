@@ -255,7 +255,7 @@ class SonarQubeIssueResourceConfig(CustomResourceConfig):
     selector: SonarQubeIssueSelector
 
 
-AppConfig = Annotated[
+SonarResourcesConfig = Annotated[
     Union[
         SonarQubeProjectResourceConfig,
         SonarQubeIssueResourceConfig,
@@ -267,7 +267,7 @@ AppConfig = Annotated[
 
 
 class SonarQubePortAppConfig(PortAppConfig):
-    resources: list[AppConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[SonarResourcesConfig] = Field(default_factory=list)  # type: ignore
 
 
 class SonarQubeIntegration(BaseIntegration):

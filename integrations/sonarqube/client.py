@@ -48,6 +48,13 @@ PORTFOLIO_VIEW_QUALIFIERS = ["VW", "SVW"]
 
 
 class SonarQubeClient:
+    """
+    This client has no rate limiting logic implemented. This is
+    because [SonarQube API does not have rate limiting)
+    [https://community.sonarsource.com/t/need-api-limit-documentation/116582].
+    The client is used to interact with the SonarQube API to fetch data.
+    """
+
     def __init__(
         self,
         base_url: str,
@@ -269,7 +276,7 @@ class SonarQubeClient:
 
     @cache_iterator_result()
     async def get_projects(
-        self, params: dict[str, Any] = {}, enrich_project: bool = True
+        self, params: dict[str, Any] = {}, enrich_project: bool = False
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         if self.organization_id:
             params["organization"] = self.organization_id
@@ -280,6 +287,8 @@ class SonarQubeClient:
             method="GET",
             query_params=params,
         ):
+            # if enrich_project is True, fetch the project details
+            # including measures, branches and link
             if enrich_project:
                 yield await asyncio.gather(
                     *[self.get_single_project(project) for project in projects]
