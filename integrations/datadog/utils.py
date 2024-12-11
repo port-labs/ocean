@@ -30,7 +30,7 @@ def transform_period_of_time_in_days_to_timestamps(
     current_time_in_seconds = int(time.time())
 
     logger.info(
-        f"Generating timestamps for the period of time {period_of_time_in_months} years ago"
+        f"Generating timestamps for the period of time {period_of_time_in_months} months ago"
     )
     timestamps = []
     for start_time in range(
