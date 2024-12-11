@@ -7,12 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
-0.1.147 (2024-12-09)
+0.1.148 (2024-12-11)
 ====================
 
 ### Bug Fixes
 
 - Updated integration to process hook events sequentially to temporarily resolve race condition issues experienced when multiple processes attempts to update the same entity
+
+
+0.1.147 (2024-12-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
 
 
 0.1.146 (2024-12-04)
