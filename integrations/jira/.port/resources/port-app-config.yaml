@@ -13,6 +13,21 @@ resources:
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
 
+  - kind: team
+    selector:
+      query: "true"
+    port:
+      entity:
+        mappings:
+          identifier: .teamId
+          title: .displayName
+          blueprint: '"jiraTeam"'
+          properties:
+            displayName: .displayName
+            organizationId: .organizationId
+            teamType: .teamType
+            description: .description
+
   - kind: user
     selector:
       query: "true"
@@ -30,6 +45,8 @@ resources:
             timeZone: .timeZone
             locale: .locale
             avatarUrl: .avatarUrls["48x48"]
+          relations:
+            team: .teamId
 
   - kind: issue
     selector:
