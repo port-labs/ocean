@@ -13,6 +13,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added support to sync Jira users to Port and created relevant relations to jira issues assignee and reporter
 
+## 0.2.2 (2024-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
+## 0.2.1 (2024-12-05)
+
+
+### Improvements
+
+- Added support to sync Jira users to Port and created relevant relations to jira issues assignee and reporter
+
 ## 0.2.0 (2024-12-04)
 
 
