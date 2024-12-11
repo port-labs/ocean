@@ -6,10 +6,6 @@ from typing import List
 import asyncio
 
 
-def get_assume_role_duration_seconds() -> int:
-    return int(ocean.integration_config["assume_role_duration"])
-
-
 def get_semaphore() -> asyncio.BoundedSemaphore:
     max_concurrent_accounts: int = int(
         ocean.integration_config["maximum_concurrent_accounts"]

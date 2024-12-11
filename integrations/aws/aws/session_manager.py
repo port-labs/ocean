@@ -98,7 +98,7 @@ class SessionManager:
                 organizations_client = await sts_client.assume_role(
                     RoleArn=organization_role_arn,
                     RoleSessionName="OceanOrgAssumeRoleSession",
-                    DurationSeconds=self._assume_role_duration_seconds(),
+                    DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
                 )
 
                 credentials = organizations_client["Credentials"]
@@ -120,10 +120,6 @@ class SessionManager:
 
     def _get_account_read_role_name(self) -> str:
         return ocean.integration_config.get("account_read_role_name", "")
-
-    @staticmethod
-    def _assume_role_duration_seconds() -> int:
-        return int(ocean.integration_config.get("assume_role_duration", 900))
 
     async def _update_available_access_credentials(self) -> None:
         logger.info("Updating AWS credentials")

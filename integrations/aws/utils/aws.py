@@ -1,37 +1,16 @@
 from typing import Any, AsyncIterator, Optional, Union
 
 import aioboto3
-from port_ocean.context.ocean import ocean
 from starlette.requests import Request
 
-from aws.session_manager import SessionManager
-from aws.aws_credentials import AwsCredentials
-
-from aiocache import Cache  # type: ignore
-from asyncio import Lock
-
+from port_ocean.context.ocean import ocean
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
+from aws.aws_credentials import AwsCredentials
+from aws.session_manager import SessionManager
 
 
 _session_manager: SessionManager = SessionManager()
-lock = Lock()
-cache = Cache(Cache.MEMORY)
-
-
-def _get_cache_duration_seconds() -> float:
-    return 0.50 * _session_manager._assume_role_duration_seconds()
-
-
-async def update_available_access_credentials() -> bool:
-    cache_key = "update_available_access_credentials"
-    async with lock:
-        result = await cache.get(cache_key)
-        if result is not None:
-            return result
-
-        await _session_manager.reset()
-        await cache.set(cache_key, True, ttl=_get_cache_duration_seconds())
-        return True
 
 
 async def initialize_access_credentials() -> bool:
