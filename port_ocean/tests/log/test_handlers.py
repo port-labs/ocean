@@ -50,7 +50,7 @@ def test_serialize_record_exc_info_group_exception() -> None:
 
 def assert_extra(extra: dict[str, Any]) -> str:
     exc_info = extra.get("exc_info", None)
-    assert type(exc_info) is str
+    assert isinstance(exc_info, str)
     return exc_info
 
 

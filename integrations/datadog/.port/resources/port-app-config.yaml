@@ -81,24 +81,25 @@ resources:
             services: >-
               .monitor_tags + .tags | map(select(startswith("service:"))) |
               unique | map(split(":")[1])
-  - kind: sloHistory
+  - kind: host
     selector:
-      query: "true"
-      timeframe: 30
-      periodOfTimeInMonths: 6
+      query: >-
+        [.sources[] | . as $source | ["azure", "gcp", "gce", "aws"] |
+        contains([$source])] | any(.)
     port:
       entity:
         mappings:
-          identifier: >-
-            (.slo.id | tostring) + "-" + (.from_ts | tostring) + "-" + (.to_ts |
-            tostring)
-          title: .slo.name
-          blueprint: '"datadogSloHistory"'
+          blueprint: '"datadogCloudResource"'
+          identifier: .id | tostring
+          title: .aws_name // .host_name
           properties:
-            monitory_type: .type
-            sampling_start_date: .from_ts | todate
-            sampling_end_date: .to_ts | todate
-            sliValue: .overall.sli_value
-            timeframe: .__timeframe
-          relations:
-            slo: .slo.id
+            up: .up
+            host_name: .host_name
+            platform: .meta.platform
+            is_muted: .is_muted
+            machine: .meta.machine
+            description: .description
+            sources: .sources
+            cpu_cores: .meta.cpuCores
+            agent_version: .meta.agent_version
+            tags: .tags_by_source

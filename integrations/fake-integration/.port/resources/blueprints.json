@@ -40,6 +40,10 @@
                 "age": {
                     "type": "number",
                     "title": "Age"
+                },
+                "bio": {
+                    "type": "string",
+                    "title": "Bio"
                 }
             }
         },

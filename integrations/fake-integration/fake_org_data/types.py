@@ -19,6 +19,7 @@ class FakePerson(BaseModel):
     status: FakePersonStatus
     age: int
     department: FakeDepartment
+    bio: str
 
     class Config:
         use_enum_values = True

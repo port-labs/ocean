@@ -11,6 +11,7 @@ features:
       - kind: schedule
       - kind: team
       - kind: schedule-on-call
+      - kind: user
 configurations:
   - name: apiToken
     required: true

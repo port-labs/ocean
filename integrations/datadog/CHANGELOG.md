@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.63 (2024-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
+## 0.1.62 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.6
+
+
+## 0.1.61 (2024-12-04)
+
+### Improvements
+
+- Remove `slo_history` from default installations
+
+
+## 0.1.60 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+## 0.1.59 (2024-12-2)
+
+
+### Improvements
+
+- Added support for syncing cloud resources from Datadog.
+- Included blueprints and entity mappings for cloud resource ingestion.
+
 ## 0.1.58 (2024-11-28)
 
 

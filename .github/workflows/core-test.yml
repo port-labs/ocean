@@ -56,9 +56,10 @@ jobs:
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
         run: |
-          make test/smoke
+          make smoke/test
 
       - name: Cleanup Smoke Test
+        if: always()
         env:
           PYTEST_ADDOPTS: --junitxml=junit/smoke-test-results-ocean/core.xml
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
@@ -66,7 +67,7 @@ jobs:
           PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
         run: |
-          make clean/smoke
+          make smoke/clean
 
       - name: Install current core for all integrations
         run: |
