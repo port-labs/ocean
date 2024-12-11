@@ -126,5 +126,5 @@ class SystemEventHandler(BaseEventHandler):
                     )  # Sequentially process handlers
                 except Exception as e:
                     logger.error(
-                        f"Error processing event {event_id} with handler {hook_handler_class.__name__} for client {client}: {e}"
+                        f"Error processing event {event_id} with handler {hook_handler_class.__name__} for client {client}: {str(e)}"
                     )
