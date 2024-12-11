@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.125 (2024-12-10)
+
+
+### Improvements
+
+- Improved on the way the integration fetches service analytics by making an aggregate API call instead of fetching the analytics iteratively per service
+
+
 ## 0.1.124 (2024-12-10)
 
 
