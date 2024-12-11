@@ -11,6 +11,7 @@ class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
     USER = "user"
+    TEAM = "team"
 
 
 async def setup_application() -> None:
@@ -60,6 +61,19 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield issues
 
 
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    client = JiraClient(
+        ocean.integration_config["jira_host"],
+        ocean.integration_config["atlassian_user_email"],
+        ocean.integration_config["atlassian_user_token"],
+    )
+
+    async for teams in client.get_paginated_teams():
+        logger.info(f"Received teams batch with {len(teams)} teams")
+        yield teams
+
+
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = JiraClient(
@@ -68,9 +82,11 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ocean.integration_config["atlassian_user_token"],
     )
 
-    async for users in client.get_paginated_users():
-        logger.info(f"Received users batch with {len(users)} users")
-        yield users
+    async for users_batch in client.get_paginated_users():
+        enriched_users = await client.enrich_users_with_teams(users_batch)
+
+        logger.info(f"Received users batch with {len(enriched_users)} users")
+        yield enriched_users
 
 
 @ocean.router.post("/webhook")
