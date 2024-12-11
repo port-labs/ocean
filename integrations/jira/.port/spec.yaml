@@ -7,6 +7,7 @@ features:
     resources:
       - kind: project
       - kind: issue
+      - kind: team
       - kind: user
 configurations:
   - name: appHost
@@ -24,6 +25,11 @@ configurations:
     sensitive: true
   - name: atlassianUserToken
     required: true
+    type: string
+    description: You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
+    sensitive: true
+  - name: atlassianOrganisationId
+    required: false
     type: string
     description: You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
     sensitive: true
