@@ -1,5 +1,5 @@
 import typing
-from typing import Any, AsyncGenerator, Generator
+from typing import Any, AsyncGenerator, Generator, List, Dict, Optional
 
 from httpx import Timeout, Auth, BasicAuth, Request, Response
 from jira.overrides import JiraResourceConfig
@@ -60,6 +60,91 @@ class JiraClient:
         self.client.auth = self.jira_api_auth
         self.client.timeout = Timeout(30)
 
+    async def _send_api_request(
+        self,
+        method: str,
+        url: str,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+
+        response = await self.client.request(
+            method=method, url=url, params=params, json=json, headers=headers
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def _get_paginated_data(
+        self,
+        url: str,
+        extract_key: Optional[str] = None,
+        page_size: int = PAGE_SIZE,
+        initial_params: Optional[Dict[str, Any]] = None,
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Generic method for handling paginated requests."""
+        params = initial_params or {}
+        params.update(self._generate_base_req_params())
+        params["maxResults"] = page_size
+
+        # Initialize pagination
+        start_at = 0
+        while True:
+            params["startAt"] = start_at
+            response_data = await self._send_api_request("GET", url, params=params)
+
+            # Extract items
+            if extract_key:
+                items = response_data.get(extract_key, [])
+            else:
+                items = response_data
+
+            if not items:  # Stop if no items returned
+                break
+
+            yield items
+
+            # Increment to the next page
+            start_at += page_size
+
+            # Optional safeguard for responses with no 'total'
+            if "total" in response_data and start_at >= response_data["total"]:
+                break
+
+    async def _get_cursor_paginated_data(
+        self,
+        url: str,
+        method,
+        extract_key: Optional[str] = None,
+        page_size: int = PAGE_SIZE,
+        initial_params: Optional[Dict[str, Any]] = None,
+        cursor_param: str = "cursor",
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        """Handle cursor-based pagination for specific endpoint."""
+        params = initial_params or {}
+        cursor = params.get(cursor_param)
+
+        while True:
+            if cursor:
+                params[cursor_param] = cursor
+
+            response_data = await self._send_api_request(method, url, params=params)
+
+            items = response_data.get(extract_key, []) if extract_key else response_data
+
+            if not items:
+                break
+
+            yield items
+
+            # Check for next page
+            page_info = response_data.get("pageInfo", {})
+            has_next_page = page_info.get("hasNextPage", False)
+            cursor = page_info.get("endCursor")
+
+            if not has_next_page:
+                break
+
     @staticmethod
     def _generate_base_req_params(
         maxResults: int = 0, startAt: int = 0
@@ -69,28 +154,9 @@ class JiraClient:
             "startAt": startAt,
         }
 
-    async def _get_paginated_projects(self, params: dict[str, Any]) -> dict[str, Any]:
-        project_response = await self.client.get(
-            f"{self.api_url}/project/search", params=params
-        )
-        project_response.raise_for_status()
-        return project_response.json()
-
-    async def _get_paginated_issues(self, params: dict[str, Any]) -> dict[str, Any]:
-        issue_response = await self.client.get(f"{self.api_url}/search", params=params)
-        issue_response.raise_for_status()
-        return issue_response.json()
-
-    async def _get_users_data(self, params: dict[str, Any]) -> list[dict[str, Any]]:
-        user_response = await self.client.get(f"{self.api_url}/users", params=params)
-        user_response.raise_for_status()
-        return user_response.json()
-
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
-        webhook_check_response = await self.client.get(f"{self.webhooks_url}")
-        webhook_check_response.raise_for_status()
-        webhook_check = webhook_check_response.json()
+        webhook_check = await self._send_api_request("GET", self.webhooks_url)
 
         for webhook in webhook_check:
             if webhook["url"] == webhook_target_app_host:
@@ -103,107 +169,132 @@ class JiraClient:
             "events": WEBHOOK_EVENTS,
         }
 
-        webhook_create_response = await self.client.post(
-            f"{self.webhooks_url}", json=body
-        )
-        webhook_create_response.raise_for_status()
+        await self._send_api_request("POST", self.webhooks_url, json=body)
         logger.info("Ocean real time reporting webhook created")
 
-    async def get_single_project(self, project_key: str) -> dict[str, Any]:
-        project_response = await self.client.get(
-            f"{self.api_url}/project/{project_key}"
+    async def get_single_project(self, project_key: str) -> Dict[str, Any]:
+        return await self._send_api_request(
+            "GET", f"{self.api_url}/project/{project_key}"
         )
-        project_response.raise_for_status()
-        return project_response.json()
 
     async def get_paginated_projects(
         self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
+        async for projects in self._get_paginated_data(
+            f"{self.api_url}/project/search", "values"
+        ):
+            yield projects
 
-        params = self._generate_base_req_params()
+    async def get_single_issue(self, issue_key: str) -> Dict[str, Any]:
+        return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
-        total_projects = (await self._get_paginated_projects(params))["total"]
-
-        if total_projects == 0:
-            logger.warning(
-                "Project query returned 0 projects, did you provide the correct Jira API credentials?"
-            )
-
-        params["maxResults"] = PAGE_SIZE
-        while params["startAt"] <= total_projects:
-            logger.info(f"Current query position: {params['startAt']}/{total_projects}")
-            project_response_list = (await self._get_paginated_projects(params))[
-                "values"
-            ]
-            yield project_response_list
-            params["startAt"] += PAGE_SIZE
-
-    async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
-        issue_response = await self.client.get(f"{self.api_url}/issue/{issue_key}")
-        issue_response.raise_for_status()
-        return issue_response.json()
-
-    async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_paginated_issues(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
 
-        params = self._generate_base_req_params()
-
         config = typing.cast(JiraResourceConfig, event.resource_config)
-
+        params = {}
         if config.selector.jql:
             params["jql"] = config.selector.jql
             logger.info(f"Found JQL filter: {config.selector.jql}")
 
-        total_issues = (await self._get_paginated_issues(params))["total"]
+        async for issues in self._get_paginated_data(
+            f"{self.api_url}/search", "issues", initial_params=params
+        ):
+            yield issues
 
-        if total_issues == 0:
-            logger.warning(
-                "Issue query returned 0 issues, did you provide the correct Jira API credentials and JQL query?"
-            )
+    async def get_single_user(self, account_id: str) -> Dict[str, Any]:
+        return await self._send_api_request(
+            "GET", f"{self.api_url}/user", params={"accountId": account_id}
+        )
 
-        params["maxResults"] = PAGE_SIZE
-        while params["startAt"] <= total_issues:
-            logger.info(f"Current query position: {params['startAt']}/{total_issues}")
-            issue_response_list = (await self._get_paginated_issues(params))["issues"]
-            yield issue_response_list
-            params["startAt"] += PAGE_SIZE
-
-    async def get_paginated_users(
-        self,
-    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_paginated_users(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting users from Jira")
+        async for users in self._get_paginated_data(f"{self.api_url}/users/search"):
+            yield users
 
-        params = self._generate_base_req_params()
+    async def get_paginated_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        logger.info("Getting teams from Jira")
 
-        total_users = len(await self._get_users_data(params))
+        org_id = ocean.integration_config["atlassian_organisation_id"]
+        base_url = f"https://admin.atlassian.com/gateway/api/public/teams/v1/org/{org_id}/teams"
 
-        if total_users == 0:
-            logger.warning(
-                "User query returned 0 users, did you provide the correct Jira API credentials?"
-            )
+        cursor = None
+        while True:
+            params = {}
+            if cursor:
+                params["cursor"] = cursor
 
-        params["maxResults"] = PAGE_SIZE
-        while params["startAt"] < total_users:
-            logger.info(f"Current query position: {params['startAt']}/{total_users}")
+            teams_data = await self._send_api_request("GET", base_url, params=params)
 
-            user_response_list = await self._get_users_data(params)
-
-            if not user_response_list:
-                logger.warning(f"No users found at {params['startAt']}")
+            if not teams_data["entities"]:
                 break
 
-            logger.info(
-                f"Retrieved users: {len(user_response_list)} "
-                f"(Position: {params['startAt']}/{total_users})"
-            )
+            logger.info(f"Retrieved {len(teams_data['entities'])} teams")
+            yield teams_data["entities"]
 
-            yield user_response_list
-            params["startAt"] += PAGE_SIZE
+            cursor = teams_data.get("cursor")
+            if not cursor:
+                break
 
-    async def get_single_user(self, account_id: str) -> dict[str, Any]:
-        user_response = await self.client.get(
-            f"{self.api_url}/user", params={"accountId": account_id}
-        )
-        user_response.raise_for_status()
-        return user_response.json()
+    async def get_paginated_team_members(
+        self, team_id: str, page_size: int = 40
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        logger.info(f"Getting members for team {team_id}")
+        org_id = ocean.integration_config["atlassian_organisation_id"]
+        url = f"{self.jira_url}/gateway/api/public/teams/v1/org/{org_id}/teams/{team_id}/members"
+
+        async for members in self._get_cursor_paginated_data(
+            url,
+            method="POST",
+            extract_key="results",
+            page_size=page_size,
+            initial_params={"first": page_size},
+            cursor_param="after",
+        ):
+            logger.info(f"Retrieved {len(members)} members for team {team_id}")
+            yield members
+
+    async def get_user_team_mapping(self) -> Dict[str, str]:
+
+        user_team_mapping = {}
+
+        teams = []
+        async for team_batch in self.get_paginated_teams():
+            teams.extend(team_batch)
+
+        logger.info(f"Processing {len(teams)} teams for user mapping")
+
+        for team in teams:
+            team_id = team["teamId"]
+            async for members in self.get_paginated_team_members(team_id):
+                for member in members:
+                    account_id = member["accountId"]
+                    if account_id not in user_team_mapping:
+                        user_team_mapping[account_id] = team_id
+
+        logger.info(f"Created mapping for {len(user_team_mapping)} users")
+        return user_team_mapping
+
+    async def enrich_users_with_teams(self, users: List[Dict]) -> List[Dict]:
+        """
+        Enriches user objects with their team IDs efficiently using batch processing.
+        """
+        # Get account IDs from users that need team info
+        users_to_process = [user for user in users if "teamId" not in user]
+
+        if not users_to_process:
+            return users
+
+        logger.info(f"Enriching {len(users_to_process)} users with team information")
+
+        # Get the mapping of all user IDs to team IDs
+        user_team_mapping = await self.get_user_team_mapping()
+
+        # Update users with their team IDs
+        for user in users_to_process:
+            account_id = user["accountId"]
+            if account_id in user_team_mapping:
+                user["teamId"] = user_team_mapping[account_id]
+
+        return users
