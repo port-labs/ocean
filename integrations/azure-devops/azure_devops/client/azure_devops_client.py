@@ -1,6 +1,5 @@
 import json
 import asyncio
-import typing
 
 from typing import Any, AsyncGenerator, Optional
 from httpx import HTTPStatusError
@@ -157,7 +156,9 @@ class AzureDevopsClient(HTTPBaseClient):
                     policy["__repository"] = repo
                 yield repo_policies
 
-    async def generate_work_items(self, wiql: Optional[str], expand: str) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def generate_work_items(
+        self, wiql: Optional[str], expand: str
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """
         Retrieves a paginated list of work items within the Azure DevOps organization based on a WIQL query.
         """
@@ -182,7 +183,9 @@ class AzureDevopsClient(HTTPBaseClient):
                 )
                 yield work_items
 
-    async def _fetch_work_item_ids(self, project: dict[str, Any], wiql: Optional[str]) -> list[int]:
+    async def _fetch_work_item_ids(
+        self, project: dict[str, Any], wiql: Optional[str]
+    ) -> list[int]:
         """
         Executes a WIQL query to fetch work item IDs for a given project.
 
