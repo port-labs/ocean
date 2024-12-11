@@ -134,7 +134,9 @@ class AzureDevopsClient(HTTPBaseClient):
                     )
                     + f"/{project['id']}/{API_URL_PREFIX}/release/releases"
                 )
-                async for releases in self._get_paginated_by_top_and_continuation_token(releases_url):
+                async for releases in self._get_paginated_by_top_and_continuation_token(
+                    releases_url
+                ):
                     yield releases
 
     async def generate_repository_policies(

@@ -57,9 +57,11 @@ class HTTPBaseClient:
                 "$top": PAGE_SIZE,
                 **(additional_params or {}),
             }
-            if continuation_token:  # Only add continuationToken if it's not None or empty
+            if (
+                continuation_token
+            ):  # Only add continuationToken if it's not None or empty
                 params["continuationToken"] = continuation_token
-                
+
             response = await self.send_request("GET", url, params=params)
             logger.info(
                 f"Found {len(response.json()['value'])} objects in url {url} with params: {params}"
