@@ -62,7 +62,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info("Skipping team sync - no organization ID configured")
         return
 
-    async for teams in client.get_paginated_teams():
+    async for teams in client.get_paginated_teams(org_id):
         logger.info(f"Received teams batch with {len(teams)} teams for org {org_id}")
         yield teams
 
@@ -74,7 +74,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for users_batch in client.get_paginated_users():
         if org_id:
-            enriched_users = await client.enrich_users_with_teams(users_batch)
+            enriched_users = await client.enrich_users_with_teams(users_batch, org_id)
             logger.info(
                 f"Received enriched users batch with {len(enriched_users)} users for org {org_id}"
             )
