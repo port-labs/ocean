@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     from port_ocean.ocean import Ocean
     from port_ocean.clients.port.client import PortClient
 
+from loguru import logger
+
 
 class PortOceanContext:
     def __init__(self, app: Union["Ocean", None]) -> None:
@@ -63,7 +65,9 @@ class PortOceanContext:
         return self.app.port_client
 
     @property
-    def event_listener_type(self) -> Literal["WEBHOOK", "KAFKA", "POLLING", "ONCE"]:
+    def event_listener_type(
+        self,
+    ) -> Literal["WEBHOOK", "KAFKA", "POLLING", "ONCE", "WEBHOOKS_ONLY"]:
         return self.app.config.event_listener.type
 
     def on_resync(
@@ -71,6 +75,11 @@ class PortOceanContext:
         kind: str | None = None,
     ) -> Callable[[RESYNC_EVENT_LISTENER], RESYNC_EVENT_LISTENER]:
         def wrapper(function: RESYNC_EVENT_LISTENER) -> RESYNC_EVENT_LISTENER:
+            if self.app.config.event_listener.type == "WEBHOOKS_ONLY":
+                logger.debug(
+                    "Webhook only event listener is used, resync events are ignored"
+                )
+                return
             return self.integration.on_resync(function, kind)
 
         return wrapper
