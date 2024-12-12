@@ -23,7 +23,6 @@ resources:
           title: .displayName
           blueprint: '"jiraTeam"'
           properties:
-            displayName: .displayName
             organizationId: .organizationId
             teamType: .teamType
             description: .description
@@ -39,7 +38,6 @@ resources:
           blueprint: '"jiraUser"'
           properties:
             emailAddress: .emailAddress
-            displayName: .displayName
             active: .active
             accountType: .accountType
             timeZone: .timeZone

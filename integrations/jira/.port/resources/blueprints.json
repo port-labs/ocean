@@ -23,11 +23,6 @@
     "description": "A team within the organization",
     "schema": {
       "properties": {
-        "displayName": {
-          "title": "Display Name",
-          "type": "string",
-          "description": "The team's display name"
-        },
         "organizationId": {
           "title": "Organization ID",
           "type": "string",
@@ -38,7 +33,8 @@
           "type": "string",
           "description": "Type of team (e.g., MEMBER_INVITE)",
           "enum": [
-            "MEMBER_INVITE"
+            "MEMBER_INVITE",
+            "OPEN"
           ]
         },
         "description": {
@@ -65,11 +61,6 @@
           "type": "string",
           "format": "email",
           "description": "User's email address"
-        },
-        "displayName": {
-          "title": "Display Name",
-          "type": "string",
-          "description": "User's full name as displayed in Jira"
         },
         "active": {
           "title": "Active Status",
@@ -99,15 +90,7 @@
         }
       }
     },
-    "relations": {
-      "team": {
-        "target": "jiraTeam",
-        "title": "jira Team",
-        "description": "The team this user belongs to",
-        "many": true,
-        "required" : false
-      }
-    },
+    "relations": {},
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {}
