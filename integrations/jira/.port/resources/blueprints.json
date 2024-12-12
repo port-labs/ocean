@@ -17,6 +17,43 @@
     "calculationProperties": {}
   },
   {
+    "identifier": "jiraTeam",
+    "title": "Jira Team",
+    "icon": "Users",
+    "description": "A team within the organization",
+    "schema": {
+      "properties": {
+        "displayName": {
+          "title": "Display Name",
+          "type": "string",
+          "description": "The team's display name"
+        },
+        "organizationId": {
+          "title": "Organization ID",
+          "type": "string",
+          "description": "Unique identifier for the parent organization"
+        },
+        "teamType": {
+          "title": "Team Type",
+          "type": "string",
+          "description": "Type of team (e.g., MEMBER_INVITE)",
+          "enum": [
+            "MEMBER_INVITE"
+          ]
+        },
+        "description": {
+          "title": "Description",
+          "type": "string",
+          "description": "Team description"
+        }
+      }
+    },
+    "relations": {},
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {}
+  },
+  {
     "identifier": "jiraUser",
     "title": "Jira User",
     "icon": "User",
@@ -62,10 +99,18 @@
         }
       }
     },
+    "relations": {
+      "team": {
+        "target": "jiraTeam",
+        "title": "jira Team",
+        "description": "The team this user belongs to",
+        "many": true,
+        "required" : false
+      }
+    },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "aggregationProperties": {},
-    "relations": {}
+    "aggregationProperties": {}
   },
   {
     "identifier": "jiraIssue",
