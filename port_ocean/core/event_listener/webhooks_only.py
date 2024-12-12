@@ -1,5 +1,6 @@
-from typing import Literal, Any
+from typing import Any, Literal
 
+from loguru import logger
 
 from port_ocean.core.event_listener.base import (
     BaseEventListener,
@@ -39,6 +40,4 @@ class WebhooksOnlyEventListener(BaseEventListener):
         self.event_listener_config = event_listener_config
 
     async def _start(self) -> None:
-        raise NotImplementedError(
-            "WebhooksOnlyEventListener does not support resync events."
-        )
+        logger.info("Starting Webhooks-only event listener.")
