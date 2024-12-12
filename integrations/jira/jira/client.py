@@ -67,7 +67,7 @@ class JiraClient:
         params: Optional[Dict[str, Any]] = None,
         json: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+    ) -> Any:
         response = await self.client.request(
             method=method, url=url, params=params, json=json, headers=headers
         )
@@ -148,16 +148,14 @@ class JiraClient:
             "startAt": startAt,
         }
     async def _get_webhooks(self) -> List[Dict[str, Any]]:
-        response = await self.client.request(method="GET", url=self.webhooks_url)
-        response.raise_for_status()
-        return response.json()
+        return await self._send_api_request("GET", url=self.webhooks_url)
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
-        webhook_check = await self._get_webhooks() 
+        webhooks = await self._get_webhooks()
 
-        for webhook in webhook_check:
-            if webhook["url"] == webhook_target_app_host:
+        for webhook in webhooks:
+            if webhook.get("url") == webhook_target_app_host:  # Use .get() to safely access dictionary
                 logger.info("Ocean real time reporting webhook already exists")
                 return
 
@@ -211,10 +209,9 @@ class JiraClient:
         async for users in self._get_paginated_data(f"{self.api_url}/users/search"):
             yield users
 
-    async def get_paginated_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_paginated_teams(self, org_id: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting teams from Jira")
 
-        org_id = ocean.integration_config["atlassian_organisation_id"]
         base_url = f"https://admin.atlassian.com/gateway/api/public/teams/v1/org/{org_id}/teams"
 
         cursor = None
@@ -253,12 +250,12 @@ class JiraClient:
             logger.info(f"Retrieved {len(members)} members for team {team_id}")
             yield members
 
-    async def get_user_team_mapping(self) -> Dict[str, str]:
+    async def get_user_team_mapping(self, org_id: str) -> Dict[str, str]:
 
         user_team_mapping = {}
 
         teams = []
-        async for team_batch in self.get_paginated_teams():
+        async for team_batch in self.get_paginated_teams(org_id):
             teams.extend(team_batch)
 
         logger.info(f"Processing {len(teams)} teams for user mapping")
@@ -274,7 +271,7 @@ class JiraClient:
         logger.info(f"Created mapping for {len(user_team_mapping)} users")
         return user_team_mapping
 
-    async def enrich_users_with_teams(self, users: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    async def enrich_users_with_teams(self, users: List[Dict[str, Any]], org_id: str) -> List[Dict[str, Any]]:
         users_to_process = [user for user in users if "teamId" not in user]
 
         if not users_to_process:
@@ -282,7 +279,7 @@ class JiraClient:
 
         logger.info(f"Enriching {len(users_to_process)} users with team information")
 
-        user_team_mapping = await self.get_user_team_mapping()
+        user_team_mapping = await self.get_user_team_mapping(org_id)
 
         for user in users_to_process:
             account_id = user["accountId"]
