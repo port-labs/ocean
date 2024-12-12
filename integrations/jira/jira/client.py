@@ -87,24 +87,21 @@ class JiraClient:
         params.update(self._generate_base_req_params())
         params["maxResults"] = page_size
 
-        # Initialize pagination
         start_at = 0
         while True:
             params["startAt"] = start_at
             response_data = await self._send_api_request("GET", url, params=params)
 
-            # Extract items
             if extract_key:
                 items = response_data.get(extract_key, [])
             else:
                 items = response_data
 
-            if not items:  # Stop if no items returned
+            if not items:
                 break
 
             yield items
 
-            # Increment to the next page
             start_at += page_size
 
             # Optional safeguard for responses with no 'total'
@@ -277,10 +274,6 @@ class JiraClient:
         return user_team_mapping
 
     async def enrich_users_with_teams(self, users: List[Dict]) -> List[Dict]:
-        """
-        Enriches user objects with their team IDs efficiently using batch processing.
-        """
-        # Get account IDs from users that need team info
         users_to_process = [user for user in users if "teamId" not in user]
 
         if not users_to_process:
@@ -288,10 +281,8 @@ class JiraClient:
 
         logger.info(f"Enriching {len(users_to_process)} users with team information")
 
-        # Get the mapping of all user IDs to team IDs
         user_team_mapping = await self.get_user_team_mapping()
 
-        # Update users with their team IDs
         for user in users_to_process:
             account_id = user["accountId"]
             if account_id in user_team_mapping:
