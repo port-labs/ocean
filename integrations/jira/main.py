@@ -14,6 +14,15 @@ class ObjectKind(StrEnum):
     TEAM = "team"
 
 
+def create_jira_client() -> JiraClient:
+    """Create JiraClient with current configuration."""
+    return JiraClient(
+        ocean.integration_config["jira_host"],
+        ocean.integration_config["atlassian_user_email"],
+        ocean.integration_config["atlassian_user_token"],
+    )
+
+
 async def setup_application() -> None:
     logic_settings = ocean.integration_config
     app_host = logic_settings.get("app_host")
@@ -24,38 +33,21 @@ async def setup_application() -> None:
         )
         return
 
-    jira_client = JiraClient(
-        logic_settings["jira_host"],
-        logic_settings["atlassian_user_email"],
-        logic_settings["atlassian_user_token"],
-    )
-
-    await jira_client.create_events_webhook(
-        logic_settings["app_host"],
-    )
+    client = create_jira_client()
+    await client.create_events_webhook(app_host)
 
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
-
+    client = create_jira_client()
     async for projects in client.get_paginated_projects():
-        logger.info(f"Received project batch with {len(projects)} issues")
+        logger.info(f"Received project batch with {len(projects)} projects")
         yield projects
 
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
-
+    client = create_jira_client()
     async for issues in client.get_paginated_issues():
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
@@ -63,39 +55,40 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
+    client = create_jira_client()
+    org_id = ocean.integration_config.get("atlassian_organisation_id")
+
+    if not org_id:
+        logger.info("Skipping team sync - no organization ID configured")
+        return
 
     async for teams in client.get_paginated_teams():
-        logger.info(f"Received teams batch with {len(teams)} teams")
+        logger.info(f"Received teams batch with {len(teams)} teams for org {org_id}")
         yield teams
 
 
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
+    client = create_jira_client()
+    org_id = ocean.integration_config.get("atlassian_organisation_id")
 
     async for users_batch in client.get_paginated_users():
-        enriched_users = await client.enrich_users_with_teams(users_batch)
-
-        logger.info(f"Received users batch with {len(enriched_users)} users")
-        yield enriched_users
+        if org_id:
+            enriched_users = await client.enrich_users_with_teams(users_batch)
+            logger.info(
+                f"Received enriched users batch with {len(enriched_users)} users for org {org_id}"
+            )
+            yield enriched_users
+        else:
+            logger.info(
+                f"Received users batch with {len(users_batch)} users (no team enrichment)"
+            )
+            yield users_batch
 
 
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
+    client = create_jira_client()
 
     webhook_event = data.get("webhookEvent")
     if not webhook_event:
@@ -129,8 +122,9 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
             }
 
     if not item:
-        logger.error("Failed to retrieve item")
-        return {"ok": False, "error": "Failed to retrieve item"}
+        error_msg = f"Failed to retrieve {kind}"
+        logger.error(error_msg)
+        return {"ok": False, "error": error_msg}
 
     logger.debug(f"Retrieved {kind} item: {item}")
 
