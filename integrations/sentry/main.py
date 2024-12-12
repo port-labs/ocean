@@ -14,6 +14,8 @@ class ObjectKind(StrEnum):
     ISSUE = "issue"
     PROJECT_TAG = "project-tag"
     ISSUE_TAG = "issue-tag"
+    USER = "user"
+    TEAM = "team"
 
 
 def init_client() -> SentryClient:
@@ -24,6 +26,19 @@ def init_client() -> SentryClient:
     )
     return sentry_client
 
+@ocean.on_resync(ObjectKind.USER)
+async def on_resync_user(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sentry_client = init_client()
+    async for users in sentry_client.get_paginated_users():
+        logger.info(f"Received {len(users)} users")
+        yield users
+
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_resync_team(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    sentry_client = init_client()
+    async for teams in sentry_client.get_paginated_teams():
+        logger.info(f"Received {len(teams)} teams")
+        yield teams
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_project(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:

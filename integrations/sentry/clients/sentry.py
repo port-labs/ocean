@@ -242,3 +242,22 @@ class SentryClient:
             if project_tags_batch:
                 project_tags.append(project_tags_batch)
         return flatten_list(project_tags)
+
+
+    @cache_iterator_result()
+    async def get_paginated_teams(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for teams in self._get_paginated_resource(
+            f"{self.api_url}/organizations/{self.organization}/teams/"
+        ):
+            yield teams
+
+    @cache_iterator_result()
+    async def get_paginated_users(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for users in self._get_paginated_resource(
+            f"{self.api_url}/organizations/{self.organization}/members/"
+        ):
+            yield users
