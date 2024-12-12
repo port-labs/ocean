@@ -469,7 +469,7 @@ async def test_generate_releases(mock_event_context: MagicMock) -> None:
     async def mock_generate_projects() -> AsyncGenerator[List[Dict[str, Any]], None]:
         yield [{"id": "proj1", "name": "Project One"}]
 
-    async def mock_get_paginated_by_top_and_skip(
+    async def mock_get_paginated_by_top_and_continuation_token(
         url: str, **kwargs: Any
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         if "releases" in url:
@@ -483,8 +483,8 @@ async def test_generate_releases(mock_event_context: MagicMock) -> None:
         ):
             with patch.object(
                 client,
-                "_get_paginated_by_top_and_skip",
-                side_effect=mock_get_paginated_by_top_and_skip,
+                "_get_paginated_by_top_and_continuation_token",
+                side_effect=mock_get_paginated_by_top_and_continuation_token,
             ):
                 # ACT
                 releases: List[Dict[str, Any]] = []
