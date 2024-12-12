@@ -38,7 +38,7 @@ class WebhooksOnlyEventListener(BaseEventListener):
         super().__init__(events)
         self.event_listener_config = event_listener_config
 
-    async def _on_start(self) -> None:
+    async def _start(self) -> None:
         raise NotImplementedError(
             "WebhooksOnlyEventListener does not support resync events."
         )
