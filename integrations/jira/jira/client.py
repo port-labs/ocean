@@ -68,7 +68,6 @@ class JiraClient:
         json: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-
         response = await self.client.request(
             method=method, url=url, params=params, json=json, headers=headers
         )
@@ -95,7 +94,7 @@ class JiraClient:
             if extract_key:
                 items = response_data.get(extract_key, [])
             else:
-                items = response_data
+                items = response_data if isinstance(response_data, list) else [response_data]
 
             if not items:
                 break
@@ -104,14 +103,13 @@ class JiraClient:
 
             start_at += page_size
 
-            # Optional safeguard for responses with no 'total'
             if "total" in response_data and start_at >= response_data["total"]:
                 break
 
     async def _get_cursor_paginated_data(
         self,
         url: str,
-        method,
+        method: str,
         extract_key: Optional[str] = None,
         page_size: int = PAGE_SIZE,
         initial_params: Optional[Dict[str, Any]] = None,
@@ -127,33 +125,36 @@ class JiraClient:
 
             response_data = await self._send_api_request(method, url, params=params)
 
-            items = response_data.get(extract_key, []) if extract_key else response_data
+            items = (response_data.get(extract_key, []) if extract_key 
+                else ([response_data] if isinstance(response_data, dict) else response_data))
 
             if not items:
                 break
 
             yield items
 
-            # Check for next page
             page_info = response_data.get("pageInfo", {})
             has_next_page = page_info.get("hasNextPage", False)
             cursor = page_info.get("endCursor")
 
             if not has_next_page:
                 break
-
     @staticmethod
     def _generate_base_req_params(
         maxResults: int = 0, startAt: int = 0
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         return {
             "maxResults": maxResults,
             "startAt": startAt,
         }
+    async def _get_webhooks(self) -> List[Dict[str, Any]]:
+        response = await self.client.request(method="GET", url=self.webhooks_url)
+        response.raise_for_status()
+        return response.json()
 
     async def create_events_webhook(self, app_host: str) -> None:
         webhook_target_app_host = f"{app_host}/integration/webhook"
-        webhook_check = await self._send_api_request("GET", self.webhooks_url)
+        webhook_check = await self._get_webhooks() 
 
         for webhook in webhook_check:
             if webhook["url"] == webhook_target_app_host:
@@ -218,7 +219,7 @@ class JiraClient:
 
         cursor = None
         while True:
-            params = {}
+            params: Dict[str, Any] = {}
             if cursor:
                 params["cursor"] = cursor
 
@@ -273,7 +274,7 @@ class JiraClient:
         logger.info(f"Created mapping for {len(user_team_mapping)} users")
         return user_team_mapping
 
-    async def enrich_users_with_teams(self, users: List[Dict]) -> List[Dict]:
+    async def enrich_users_with_teams(self, users: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         users_to_process = [user for user in users if "teamId" not in user]
 
         if not users_to_process:
