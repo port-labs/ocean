@@ -7,6 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.15.0 (2024-12-12)
+
+
+### Features
+
+- Added new webhooks only event listener mode. This event listener handles only webhook invocations and raises error once used for resync.
+
+
 ## 0.14.7 (2024-12-09)
 
 
