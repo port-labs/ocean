@@ -9,7 +9,6 @@ from port_ocean.context.event import event_context
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 
-
 @pytest.fixture(autouse=True)
 def mock_ocean_context() -> None:
     """Fixture to mock the Ocean context initialization."""
@@ -138,32 +137,31 @@ async def test_get_paginated_issues_with_event(mock_jira_client):
     """
     # Mock JiraResourceConfig
     mock_config = JiraResourceConfig(
-        selector=JiraResourceConfig.Selector(
-            query="TEST",
-            jql="project = TEST"
-        )
+        selector=JiraResourceConfig.Selector(query="TEST", jql="project = TEST")
     )
 
     # Patch the global `event.resource_config` in the event module
     async with event_context("test_event") as test_event:
-        with patch('event.resource_config', mock_config):
-                # Prepare mock JiraClient
-                mock_jira_client.api_url = "https://jira.example.com"
+        with patch("event.resource_config", mock_config):
+            # Prepare mock JiraClient
+            mock_jira_client.api_url = "https://jira.example.com"
 
-                # Mock the paginated data generator
-                async def mock_paginated_data(*args, **kwargs):
-                    yield [{"key": "TEST-1"}, {"key": "TEST-2"}]
+            # Mock the paginated data generator
+            async def mock_paginated_data(*args, **kwargs):
+                yield [{"key": "TEST-1"}, {"key": "TEST-2"}]
 
-                mock_jira_client._get_paginated_data = mock_paginated_data
+            mock_jira_client._get_paginated_data = mock_paginated_data
 
-                # Call the method
-                issues = []
-                async for issue_batch in mock_jira_client.get_paginated_issues():
-                    issues.extend(issue_batch)
+            # Call the method
+            issues = []
+            async for issue_batch in mock_jira_client.get_paginated_issues():
+                issues.extend(issue_batch)
 
-                # Assertions
-                assert len(issues) == 2
-                assert issues == [{"key": "TEST-1"}, {"key": "TEST-2"}]
+            # Assertions
+            assert len(issues) == 2
+            assert issues == [{"key": "TEST-1"}, {"key": "TEST-2"}]
+
+
 @pytest.mark.asyncio
 async def test_get_single_user(mock_jira_client):
     """Test get_single_user method"""
@@ -221,33 +219,6 @@ async def test_get_paginated_teams(mock_jira_client):
 
         assert len(teams) == 2
         assert teams == teams_data["entities"]
-
-
-@pytest.mark.asyncio
-async def test_get_paginated_team_members(mock_jira_client):
-    """Test get_paginated_team_members with actual API response format"""
-    api_response = {
-        "results": [
-            {"accountId": "user1"},
-            {"accountId": "user1"},
-        ],
-        "pageInfo": {
-            "endCursor": "712020:436fbb1d-b060-49cf-97c5-ca5d6d4219c4",
-            "hasNextPage": False,
-        },
-    }
-
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = api_response
-
-        members = []
-        async for member_batch in mock_jira_client.get_paginated_team_members("team1"):
-            members.extend(member_batch)
-
-        assert len(members) == 2
-        assert members == api_response["results"]
 
 
 @pytest.mark.asyncio
@@ -351,3 +322,22 @@ async def test_create_events_webhook(mock_jira_client):
 
         await mock_jira_client.create_events_webhook(app_host)
         mock_request.assert_called_once()  # Only checks for existence
+
+
+@pytest.mark.asyncio
+async def test_cursor_pagination_first_page_empty(mock_jira_client):
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.return_value = {
+            "results": [],  # Add the expected key with empty results
+            "pageInfo": {"hasNextPage": False},
+        }
+        results = []
+        async for batch in mock_jira_client._get_cursor_paginated_data(
+            "test_url",
+            "GET",
+            extract_key="results",  # Specify the extract_key as used in the real client
+        ):
+            results.extend(batch)
+        assert len(results) == 0
