@@ -45,8 +45,7 @@ resources:
             timeZone: .timeZone
             locale: .locale
             avatarUrl: .avatarUrls["48x48"]
-          relations:
-            team: .teamId
+
 
   - kind: issue
     selector:
