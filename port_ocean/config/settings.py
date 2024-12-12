@@ -103,7 +103,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
     @validator("runtime")
     def validate_runtime(cls, runtime: Runtime) -> Runtime:
-        if runtime == Runtime.Saas:
+        if runtime.is_saas_runtime:
             spec = get_spec_file()
             if spec is None:
                 raise ValueError(
