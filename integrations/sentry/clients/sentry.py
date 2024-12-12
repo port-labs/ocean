@@ -243,7 +243,6 @@ class SentryClient:
                 project_tags.append(project_tags_batch)
         return flatten_list(project_tags)
 
-
     @cache_iterator_result()
     async def get_paginated_teams(
         self,
