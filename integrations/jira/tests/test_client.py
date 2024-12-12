@@ -221,7 +221,7 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
         ]
 
         teams: List[Dict[str, Any]] = []
-        async for team_batch in mock_jira_client.get_paginated_teams():
+        async for team_batch in mock_jira_client.get_paginated_teams("test_org_id"):
             teams.extend(team_batch)
 
         assert len(teams) == 2
@@ -283,7 +283,7 @@ async def test_get_user_team_mapping(mock_jira_client: JiraClient) -> None:
             team2_members,  # Members for team2
         ]
 
-        mapping = await mock_jira_client.get_user_team_mapping()
+        mapping = await mock_jira_client.get_user_team_mapping("test_org")
 
         # Verify the mapping
         assert isinstance(mapping, dict)
