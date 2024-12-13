@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.15.0 (2024-12-12)
+
+### Features
+
+- Added `SaasOauth` runtime support
+
+
 ## 0.14.7 (2024-12-09)
 
 
