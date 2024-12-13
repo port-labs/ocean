@@ -250,7 +250,7 @@ class JiraClient:
                 break
 
     async def get_paginated_team_members(
-        self, team_id: str, page_size: int = 40
+        self, team_id: str, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info(f"Getting members for team {team_id}")
         org_id = ocean.integration_config["atlassian_organisation_id"]

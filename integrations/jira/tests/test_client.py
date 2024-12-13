@@ -1,13 +1,11 @@
 import pytest
-from typing import List, Dict, Any, AsyncGenerator
+from typing import List, Dict, Any
 from httpx import BasicAuth, Response, Request
 from unittest.mock import AsyncMock, patch, MagicMock
 from jira.client import JiraClient, WEBHOOK_EVENTS, PAGE_SIZE
-from jira.overrides import JiraResourceConfig, JiraPortAppConfig
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.event import event_context
-from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
 
 @pytest.fixture(autouse=True)
