@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.93 (2024-12-12)
 
 
-### Improvements
+### Bug Fixes
 
 - Fixed pagination in Azure DevOps integration by replacing `skip` pagination with `continuationToken` for `generate_releases` method.
 
