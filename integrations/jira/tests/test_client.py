@@ -291,6 +291,7 @@ async def get_user_team_mapping(self, org_id: str) -> Dict[str, List[str]]:
     logger.info(f"Created mapping for {len(user_team_mapping)} users")
     return user_team_mapping
 
+
 @pytest.mark.asyncio
 async def test_create_events_webhook(mock_jira_client: JiraClient) -> None:
     """Test create_events_webhook method"""

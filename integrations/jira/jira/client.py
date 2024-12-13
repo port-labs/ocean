@@ -168,9 +168,7 @@ class JiraClient:
         webhooks = await self._get_webhooks()
 
         for webhook in webhooks:
-            if (
-                webhook.get("url") == webhook_target_app_host
-            ):
+            if webhook.get("url") == webhook_target_app_host:
                 logger.info("Ocean real time reporting webhook already exists")
                 return
 
@@ -266,11 +264,11 @@ class JiraClient:
         ):
             logger.info(f"Retrieved {len(members)} members for team {team_id}")
             yield members
-    
+
     async def get_user_team_mapping(self, org_id: str) -> Dict[str, List[str]]:
 
         user_team_mapping = {}
-        
+
         # Get all teams first
         teams = []
         async for team_batch in self.get_paginated_teams(org_id):
@@ -293,8 +291,10 @@ class JiraClient:
 
         logger.info(f"Created mapping for {len(user_team_mapping)} users")
         return user_team_mapping
-    
-    async def enrich_users_with_teams(self, users: List[Dict[str, Any]], org_id: str) -> List[Dict[str, Any]]:
+
+    async def enrich_users_with_teams(
+        self, users: List[Dict[str, Any]], org_id: str
+    ) -> List[Dict[str, Any]]:
         logger.info(f"Enriching {len(users)} users with team information")
 
         user_team_mapping = await self.get_user_team_mapping(org_id)
@@ -304,5 +304,5 @@ class JiraClient:
             if account_id in user_team_mapping:
                 user["teams"] = user_team_mapping[account_id]
             else:
-                user["teams"] = [] 
+                user["teams"] = []
         return users
