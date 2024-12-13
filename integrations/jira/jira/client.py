@@ -94,7 +94,11 @@ class JiraClient:
             if extract_key:
                 items = response_data.get(extract_key, [])
             else:
-                items = response_data if isinstance(response_data, list) else [response_data]
+                items = (
+                    response_data
+                    if isinstance(response_data, list)
+                    else [response_data]
+                )
 
             if not items:
                 break
@@ -125,8 +129,15 @@ class JiraClient:
 
             response_data = await self._send_api_request(method, url, params=params)
 
-            items = (response_data.get(extract_key, []) if extract_key 
-                else ([response_data] if isinstance(response_data, dict) else response_data))
+            items = (
+                response_data.get(extract_key, [])
+                if extract_key
+                else (
+                    [response_data]
+                    if isinstance(response_data, dict)
+                    else response_data
+                )
+            )
 
             if not items:
                 break
@@ -139,6 +150,7 @@ class JiraClient:
 
             if not has_next_page:
                 break
+
     @staticmethod
     def _generate_base_req_params(
         maxResults: int = 0, startAt: int = 0
@@ -147,6 +159,7 @@ class JiraClient:
             "maxResults": maxResults,
             "startAt": startAt,
         }
+
     async def _get_webhooks(self) -> List[Dict[str, Any]]:
         return await self._send_api_request("GET", url=self.webhooks_url)
 
@@ -155,7 +168,9 @@ class JiraClient:
         webhooks = await self._get_webhooks()
 
         for webhook in webhooks:
-            if webhook.get("url") == webhook_target_app_host:  # Use .get() to safely access dictionary
+            if (
+                webhook.get("url") == webhook_target_app_host
+            ):
                 logger.info("Ocean real time reporting webhook already exists")
                 return
 
@@ -209,7 +224,9 @@ class JiraClient:
         async for users in self._get_paginated_data(f"{self.api_url}/users/search"):
             yield users
 
-    async def get_paginated_teams(self, org_id: str) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_paginated_teams(
+        self, org_id: str
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting teams from Jira")
 
         base_url = f"https://admin.atlassian.com/gateway/api/public/teams/v1/org/{org_id}/teams"
@@ -271,7 +288,9 @@ class JiraClient:
         logger.info(f"Created mapping for {len(user_team_mapping)} users")
         return user_team_mapping
 
-    async def enrich_users_with_teams(self, users: List[Dict[str, Any]], org_id: str) -> List[Dict[str, Any]]:
+    async def enrich_users_with_teams(
+        self, users: List[Dict[str, Any]], org_id: str
+    ) -> List[Dict[str, Any]]:
         users_to_process = [user for user in users if "teamId" not in user]
 
         if not users_to_process:

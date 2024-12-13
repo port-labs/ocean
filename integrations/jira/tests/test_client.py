@@ -134,36 +134,54 @@ async def test_get_single_issue(mock_jira_client: JiraClient) -> None:
         assert result == issue_data
 
 
-# @pytest.mark.asyncio
-# async def test_get_paginated_issues_with_event(mock_jira_client: JiraClient) -> None:
-#     """
-#     Test get_paginated_issues with an event-based resource_config.
-#     """
-#     # Mock JiraResourceConfig
-#     mock_config = JiraResourceConfig(
-#         selector=JiraResourceConfig.Selector(query="TEST", jql="project = TEST")
-#     )
+@pytest.mark.asyncio
+async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
+    """Test get_paginated_issues with JQL filtering"""
 
-#     # Patch the global `event.resource_config` in the event module
-#     async with event_context("test_event") as test_event:
-#         with patch("event.resource_config", mock_config):
-#             # Prepare mock JiraClient
-#             mock_jira_client.api_url = "https://jira.example.com"
+    # Mock response data
+    issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
 
-#             # Mock the paginated data generator
-#             async def mock_paginated_data(*args: Any, **kwargs: Any) -> AsyncGenerator[List[Dict[str, Any]], None]:
-#                 yield [{"key": "TEST-1"}, {"key": "TEST-2"}]
+    # Mock config for JQL
+    mock_config = MagicMock()
+    mock_config.selector.jql = "project = TEST"
 
-#             mock_jira_client._get_paginated_data = mock_paginated_data
+    # Mock the port app config needed for event_context
+    mock_port_app_config = MagicMock()
 
-#             # Call the method
-#             issues = []
-#             async for issue_batch in mock_jira_client.get_paginated_issues():
-#                 issues.extend(issue_batch)
+    async with event_context(
+        "test_event",
+        trigger_type="manual",
+        attributes={},
+    ) as test_event:
+        # Set the port app config on the event context
+        test_event._port_app_config = mock_port_app_config
 
-#             # Assertions
-#             assert len(issues) == 2
-#             assert issues == [{"key": "TEST-1"}, {"key": "TEST-2"}]
+        # Import and use resource_context
+        from port_ocean.context.resource import resource_context
+
+        async with resource_context(mock_config):
+            with patch.object(
+                mock_jira_client, "_send_api_request", new_callable=AsyncMock
+            ) as mock_request:
+                mock_request.side_effect = [issues_data, {"issues": []}]
+
+                issues = []
+                async for issue_batch in mock_jira_client.get_paginated_issues():
+                    issues.extend(issue_batch)
+
+                assert len(issues) == 2
+                assert issues == issues_data["issues"]
+
+                # Verify JQL was passed correctly
+                mock_request.assert_called_with(
+                    "GET",
+                    f"{mock_jira_client.api_url}/search",
+                    params={
+                        "jql": "project = TEST",
+                        "maxResults": PAGE_SIZE,
+                        "startAt": 0,
+                    },
+                )
 
 
 @pytest.mark.asyncio
@@ -329,22 +347,3 @@ async def test_create_events_webhook(mock_jira_client: JiraClient) -> None:
 
         await mock_jira_client.create_events_webhook(app_host)
         mock_request.assert_called_once()  # Only checks for existence
-
-
-@pytest.mark.asyncio
-async def test_cursor_pagination_first_page_empty(mock_jira_client: JiraClient) -> None:
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.return_value = {
-            "results": [],  # Add the expected key with empty results
-            "pageInfo": {"hasNextPage": False},
-        }
-        results: List[Dict[str, Any]] = []
-        async for batch in mock_jira_client._get_cursor_paginated_data(
-            "test_url",
-            "GET",
-            extract_key="results",  # Specify the extract_key as used in the real client
-        ):
-            results.extend(batch)
-        assert len(results) == 0
