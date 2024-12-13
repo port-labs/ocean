@@ -86,7 +86,14 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "members": {
+        "title": "Members",
+        "target": "sentryUser",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "sentryProject",

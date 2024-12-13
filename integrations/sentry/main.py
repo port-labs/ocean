@@ -1,12 +1,15 @@
 from enum import StrEnum
-
-from port_ocean.context.ocean import ocean
-from clients.sentry import SentryClient
-from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
-
+from typing import Any, cast
+import asyncio
 from loguru import logger
 
+from port_ocean.context.ocean import ocean
+from port_ocean.context.event import event
+from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.utils.async_iterators import stream_async_iterators_tasks
+
+from integration import TeamResourceConfig
+from clients.sentry import SentryClient
 
 
 class ObjectKind(StrEnum):
@@ -27,6 +30,22 @@ def init_client() -> SentryClient:
     return sentry_client
 
 
+async def enrich_team_with_members(
+    sentry_client: SentryClient,
+    team_batch: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    async def fetch_team_members(team_slug: str) -> list[dict[str, Any]]:
+        return await sentry_client.get_team_members(team_slug)
+
+    team_tasks = [fetch_team_members(team["slug"]) for team in team_batch]
+    results = await asyncio.gather(*team_tasks)
+
+    for team, members in zip(team_batch, results):
+        team["__members"] = members
+
+    return team_batch
+
+
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_user(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = init_client()
@@ -38,9 +57,16 @@ async def on_resync_user(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.TEAM)
 async def on_resync_team(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     sentry_client = init_client()
-    async for teams in sentry_client.get_paginated_teams():
-        logger.info(f"Received {len(teams)} teams")
-        yield teams
+    selector = cast(TeamResourceConfig, event.resource_config).selector
+    async for team_batch in sentry_client.get_paginated_teams():
+        logger.info(f"Received {len(team_batch)} teams")
+        if selector.include_members:
+            team_with_members = await enrich_team_with_members(
+                sentry_client, team_batch
+            )
+            yield team_with_members
+        else:
+            yield team_batch
 
 
 @ocean.on_resync(ObjectKind.PROJECT)

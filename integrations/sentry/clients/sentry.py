@@ -260,3 +260,13 @@ class SentryClient:
             f"{self.api_url}/organizations/{self.organization}/members/"
         ):
             yield users
+
+    async def get_team_members(self, team_slug: str) -> list[dict[str, Any]]:
+        logger.info(f"Getting team members for team {team_slug}")
+        team_members_List = []
+        async for team_members_batch in self._get_paginated_resource(
+            f"{self.api_url}/teams/{self.organization}/{team_slug}/members/"
+        ):
+            team_members_List.extend(team_members_batch)
+        logger.info(f"Received {len(team_members_List)} members for team {team_slug}")
+        return team_members_List

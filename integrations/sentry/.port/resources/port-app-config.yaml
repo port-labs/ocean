@@ -20,6 +20,7 @@ resources:
   - kind: team
     selector:
       query: 'true'
+      includeMembers: true
     port:
       entity:
         mappings:
@@ -30,6 +31,8 @@ resources:
             dateCreated: .dateCreated
             memberCount: .memberCount
             roles: .teamRole
+          relations:
+            members: if .__members != null then .__members | map(.user.email) | map(select(. != null)) else [] end
   - kind: project-tag
     selector:
       query: "true"
