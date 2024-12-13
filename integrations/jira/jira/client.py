@@ -266,43 +266,43 @@ class JiraClient:
         ):
             logger.info(f"Retrieved {len(members)} members for team {team_id}")
             yield members
-
-    async def get_user_team_mapping(self, org_id: str) -> Dict[str, str]:
+    
+    async def get_user_team_mapping(self, org_id: str) -> Dict[str, List[str]]:
 
         user_team_mapping = {}
-
+        
+        # Get all teams first
         teams = []
         async for team_batch in self.get_paginated_teams(org_id):
             teams.extend(team_batch)
 
         logger.info(f"Processing {len(teams)} teams for user mapping")
 
+        # Process each team and their members
         for team in teams:
             team_id = team["teamId"]
             async for members in self.get_paginated_team_members(team_id):
                 for member in members:
                     account_id = member["accountId"]
+                    # Initialize list if this is first team for user
                     if account_id not in user_team_mapping:
-                        user_team_mapping[account_id] = team_id
+                        user_team_mapping[account_id] = []
+                    # Add team to user's list if not already there
+                    if team_id not in user_team_mapping[account_id]:
+                        user_team_mapping[account_id].append(team_id)
 
         logger.info(f"Created mapping for {len(user_team_mapping)} users")
         return user_team_mapping
-
-    async def enrich_users_with_teams(
-        self, users: List[Dict[str, Any]], org_id: str
-    ) -> List[Dict[str, Any]]:
-        users_to_process = [user for user in users if "teamId" not in user]
-
-        if not users_to_process:
-            return users
-
-        logger.info(f"Enriching {len(users_to_process)} users with team information")
+    
+    async def enrich_users_with_teams(self, users: List[Dict[str, Any]], org_id: str) -> List[Dict[str, Any]]:
+        logger.info(f"Enriching {len(users)} users with team information")
 
         user_team_mapping = await self.get_user_team_mapping(org_id)
 
-        for user in users_to_process:
+        for user in users:
             account_id = user["accountId"]
             if account_id in user_team_mapping:
-                user["teamId"] = user_team_mapping[account_id]
-
+                user["teams"] = user_team_mapping[account_id]
+            else:
+                user["teams"] = [] 
         return users

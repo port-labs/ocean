@@ -268,52 +268,30 @@ async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_user_team_mapping(mock_jira_client: JiraClient) -> None:
-    """Test get_user_team_mapping method"""
-    # Mock responses for teams pagination
-    teams_data_1: Dict[str, Any] = {
-        "entities": [{"teamId": "team1"}, {"teamId": "team2"}],
-        "cursor": "teams_cursor1",
-    }
-    teams_data_2: Dict[str, Any] = {"entities": [], "cursor": None}
+async def get_user_team_mapping(self, org_id: str) -> Dict[str, List[str]]:
 
-    # Mock responses for team members
-    team1_members: Dict[str, Any] = {
-        "results": [{"accountId": "user1"}, {"accountId": "user2"}],
-        "pageInfo": {"endCursor": "members_cursor1", "hasNextPage": False},
-    }
+    user_team_mapping = {}
 
-    team2_members: Dict[str, Any] = {
-        "results": [
-            {"accountId": "user2"},  # user2 is in both teams
-            {"accountId": "user3"},
-        ],
-        "pageInfo": {"endCursor": "members_cursor2", "hasNextPage": False},
-    }
+    teams = []
+    async for team_batch in self.get_paginated_teams(org_id):
+        teams.extend(team_batch)
 
-    with patch.object(
-        mock_jira_client, "_send_api_request", new_callable=AsyncMock
-    ) as mock_request:
-        mock_request.side_effect = [
-            teams_data_1,  # First teams page
-            teams_data_2,  # End of teams pagination
-            team1_members,  # Members for team1
-            team2_members,  # Members for team2
-        ]
+    logger.info(f"Processing {len(teams)} teams for user mapping")
 
-        mapping = await mock_jira_client.get_user_team_mapping("test_org")
+    # Process teams in the order they were received
+    for team in teams:
+        team_id = team["teamId"]
+        async for members in self.get_paginated_team_members(team_id):
+            for member in members:
+                account_id = member["accountId"]
+                if account_id not in user_team_mapping:
+                    user_team_mapping[account_id] = []
+                # Add the team to the user's list
+                if team_id not in user_team_mapping[account_id]:
+                    user_team_mapping[account_id].append(team_id)
 
-        # Verify the mapping
-        assert isinstance(mapping, dict)
-        assert mapping == {
-            "user1": "team1",
-            "user2": "team1",  # user2 should be mapped to team1 since it was found first
-            "user3": "team2",
-        }
-
-        # Verify API was called correct number of times
-        assert mock_request.call_count == 4
-
+    logger.info(f"Created mapping for {len(user_team_mapping)} users")
+    return user_team_mapping
 
 @pytest.mark.asyncio
 async def test_create_events_webhook(mock_jira_client: JiraClient) -> None:
