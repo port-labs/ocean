@@ -21,7 +21,7 @@
     "@docusaurus/plugin-content-docs": "^3.6.2",
     "@docusaurus/plugin-ideal-image": "^3.6.2",
     "@docusaurus/preset-classic": "^3.6.2",
-    "@docusaurus/theme-common": "^3.6.2",
+    "@docusaurus/theme-common": "^3.6.3",
     "@docusaurus/theme-live-codeblock": "^3.6.2",
     "@docusaurus/theme-search-algolia": "^3.6.2",
     "@easyops-cn/docusaurus-search-local": "^0.45.0",
