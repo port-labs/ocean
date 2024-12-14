@@ -15,7 +15,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.6.2",
+    "@docusaurus/core": "^3.6.3",
     "@docusaurus/plugin-client-redirects": "^3.6.2",
     "@docusaurus/plugin-content-blog": "^3.6.2",
     "@docusaurus/plugin-content-docs": "^3.6.2",
