@@ -455,6 +455,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         event.on_abort(lambda: task.cancel())
 
                         creation_results.append(await task)
+                try:
+                    await event.handle_failed()
+                except:
+                    await event.handle_failed_no_sort()
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise

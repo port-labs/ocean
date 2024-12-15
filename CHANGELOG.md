@@ -7,6 +7,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.15.3 (2024-12-15)
+
+
+### Bug Fixes
+
+- On fail of retry because of topological sort - try unsorted upsert.
+- Register callbacks of failed entities.
+- Test upsert with dependencies, with self circular dependency and external entity dependency.
+- Update topologicals sort tree creation so an entity cannot be its own dependency.
+- When done with upserts, try topological sort on failed entities.
+
+
 ## 0.14.7 (2024-12-09)
 
 

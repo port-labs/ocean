@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote_plus
 
 import httpx
@@ -29,7 +29,7 @@ class EntityClientMixin:
         request_options: RequestOptions,
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
-    ) -> Entity | None:
+    ) -> Entity | None | Literal[False]:
         validation_only = request_options["validation_only"]
         async with self.semaphore:
             logger.debug(
@@ -57,6 +57,13 @@ class EntityClientMixin:
                 f"entity: {entity.identifier} of "
                 f"blueprint: {entity.blueprint}"
             )
+            result = response.json()
+            if (
+                response.status_code == 404
+                and result.get("ok") is False
+                and result.get("error") == "not_found"
+            ):
+                return False
         handle_status_code(response, should_raise)
         result = response.json()
 
