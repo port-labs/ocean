@@ -57,10 +57,7 @@ def run(
     # Override config with arguments
     if initialize_port_resources is not None:
         app.config.initialize_port_resources = initialize_port_resources
-    if (
-        app.integration.event_listener_factory.context.event_listener_type
-        != "WEBHOOKS_ONLY"
-    ):
+    if app.config.event_listener.should_create_resources_on_start is True:
         initialize_defaults(
             app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config
         )

@@ -64,7 +64,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         if (
             not self.event_strategy["resync"]
             and self.__class__._on_resync == BaseIntegration._on_resync
-            and self.context.event_listener_type != "WEBHOOKS_ONLY"
+            and self.context.config.event_listener.should_resync is True
         ):
             raise NotImplementedError("on_resync is not implemented")
 

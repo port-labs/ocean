@@ -75,7 +75,7 @@ class PortOceanContext:
         kind: str | None = None,
     ) -> Callable[[RESYNC_EVENT_LISTENER], RESYNC_EVENT_LISTENER | None]:
         def wrapper(function: RESYNC_EVENT_LISTENER) -> RESYNC_EVENT_LISTENER | None:
-            if self.app.config.event_listener.type == "WEBHOOKS_ONLY":
+            if self.app.config.event_listener.should_resync is False:
                 logger.debug(
                     "Webhook only event listener is used, resync events are ignored"
                 )
