@@ -43,7 +43,7 @@ async def validate_integration_runtime(
         should_raise=False, should_log=False
     )
     current_installation_type = current_integration.get("installationType", "OnPrem")
-    if current_integration and requested_runtime.is_installation_type_compatible(
+    if current_integration and not requested_runtime.is_installation_type_compatible(
         current_installation_type
     ):
         raise IntegrationRuntimeException(
