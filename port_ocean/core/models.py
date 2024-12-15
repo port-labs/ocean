@@ -8,12 +8,12 @@ from pydantic.fields import Field
 
 class Runtime(Enum):
     Saas = "Saas"
-    SaasOauth = "SaasOauth"
+    SaasOauth2 = "SaasOauth2"
     OnPrem = "OnPrem"
 
     @property
     def is_saas_runtime(self) -> bool:
-        return self in [Runtime.Saas, Runtime.SaasOauth]
+        return self in [Runtime.Saas, Runtime.SaasOauth2]
 
 
 class Entity(BaseModel):
