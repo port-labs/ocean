@@ -6,13 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
-
-## 0.15.0 (2024-12-12)
+## 0.16.0 (2024-12-15)
 
 
 ### Features
 
 - Added new webhooks only event listener mode. This event listener handles only webhook invocations and raises error once used for resync.
+
+
+## 0.15.1 (2024-12-15)
+
+### Bug Fixes
+
+- Changed `SaasOauth` runtime to `SaasOauth2`
+
+
+## 0.15.0 (2024-12-12)
+
+### Features
+
+- Added `SaasOauth` runtime support
 
 
 ## 0.14.7 (2024-12-09)
