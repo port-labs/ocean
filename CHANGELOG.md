@@ -14,6 +14,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Added new webhooks only event listener mode. This event listener handles only webhook invocations and raises error once used for resync.
 
 
+## 0.15.2 (2024-12-15)
+
+### Improvements
+
+- Add handling for different installation types compatibility
+
+
 ## 0.15.1 (2024-12-15)
 
 ### Bug Fixes
