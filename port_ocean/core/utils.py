@@ -42,10 +42,12 @@ async def validate_integration_runtime(
     current_integration = await port_client.get_current_integration(
         should_raise=False, should_log=False
     )
-    current_runtime = current_integration.get("installationType", "OnPrem")
-    if current_integration and current_runtime != requested_runtime.value:
+    current_installation_type = current_integration.get("installationType", "OnPrem")
+    if current_integration and requested_runtime.is_installation_type_compatible(
+        current_installation_type
+    ):
         raise IntegrationRuntimeException(
-            f"Invalid Runtime! Requested to run existing {current_runtime} integration in {requested_runtime} runtime."
+            f"Invalid Runtime! Requested to run existing {current_installation_type} integration in {requested_runtime} runtime."
         )
 
 
