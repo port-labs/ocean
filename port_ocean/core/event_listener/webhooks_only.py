@@ -15,8 +15,8 @@ class WebhooksOnlyEventListenerSettings(EventListenerSettings):
     """
 
     type: Literal["WEBHOOKS_ONLY"]
-    should_resync = False
-    should_create_resources_on_start = False
+    should_resync: bool = False
+    should_create_resources_on_start: bool = False
 
     def to_request(self) -> dict[str, Any]:
         return {}
