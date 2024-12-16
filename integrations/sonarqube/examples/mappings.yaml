@@ -1,42 +1,7 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
-  - kind: projects
-    selector:
-      query: 'true'
-      apiFilters:
-        filter:
-          qualifier: TRK
-      metrics:
-        - code_smells
-        - coverage
-        - bugs
-        - vulnerabilities
-        - duplicated_files
-        - security_hotspots
-        - new_violations
-        - new_coverage
-        - new_duplicated_lines_density
-    port:
-      entity:
-        mappings:
-          blueprint: '"sonarQubeProject"'
-          identifier: .key
-          title: .name
-          properties:
-            organization: .organization
-            link: .__link
-            qualityGateStatus: .__branch.status.qualityGateStatus
-            lastAnalysisDate: .__branch.analysisDate
-            numberOfBugs: .__measures[]? | select(.metric == "bugs") | .value
-            numberOfCodeSmells: .__measures[]? | select(.metric == "code_smells") | .value
-            numberOfVulnerabilities: .__measures[]? | select(.metric == "vulnerabilities") | .value
-            numberOfHotSpots: .__measures[]? | select(.metric == "security_hotspots") | .value
-            numberOfDuplications: .__measures[]? | select(.metric == "duplicated_files") | .value
-            coverage: .__measures[]? | select(.metric == "coverage") | .value
-            mainBranch: .__branch.name
-            tags: .tags
-  - kind: ga_projects
+  - kind: projects_ga
     selector:
       query: 'true'
       qualifiers:
@@ -72,6 +37,41 @@ resources:
             mainBranchLastAnalysisDate: .__branch.analysisDate
             revision: .revision
             managed: .managed
+  - kind: projects
+    selector:
+      query: 'true'
+      apiFilters:
+        filter:
+          qualifier: TRK
+      metrics:
+        - code_smells
+        - coverage
+        - bugs
+        - vulnerabilities
+        - duplicated_files
+        - security_hotspots
+        - new_violations
+        - new_coverage
+        - new_duplicated_lines_density
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeProject"'
+          identifier: .key
+          title: .name
+          properties:
+            organization: .organization
+            link: .__link
+            qualityGateStatus: .__branch.status.qualityGateStatus
+            lastAnalysisDate: .__branch.analysisDate
+            numberOfBugs: .__measures[]? | select(.metric == "bugs") | .value
+            numberOfCodeSmells: .__measures[]? | select(.metric == "code_smells") | .value
+            numberOfVulnerabilities: .__measures[]? | select(.metric == "vulnerabilities") | .value
+            numberOfHotSpots: .__measures[]? | select(.metric == "security_hotspots") | .value
+            numberOfDuplications: .__measures[]? | select(.metric == "duplicated_files") | .value
+            coverage: .__measures[]? | select(.metric == "coverage") | .value
+            mainBranch: .__branch.name
+            tags: .tags
   - kind: analysis
     selector:
       query: 'true'

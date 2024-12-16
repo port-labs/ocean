@@ -51,7 +51,7 @@ sonar_client = init_sonar_client()
 @ocean.on_resync(ObjectKind.PROJECTS)
 async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.warning(
-        "The `project` resource is deprecated. Please use `ga_projects` instead."
+        "The `project` resource is deprecated. Please use `projects_ga` instead."
     )
     selector = cast(SonarQubeProjectResourceConfig, event.resource_config).selector
     sonar_client.metrics = selector.metrics
@@ -63,7 +63,7 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         yield projects
 
 
-@ocean.on_resync(ObjectKind.GA_PROJECTS)
+@ocean.on_resync(ObjectKind.PROJECTS_GA)
 async def on_ga_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(SonarQubeGAProjectResourceConfig, event.resource_config).selector
     sonar_client.metrics = selector.metrics
@@ -127,7 +127,7 @@ async def handle_sonarqube_webhook(webhook_data: dict[str, Any]) -> None:
     )  ## making sure we're getting the right project details
     project_data = await sonar_client.get_single_project(project)
     await ocean.register_raw(ObjectKind.PROJECTS, [project_data])
-    await ocean.register_raw(ObjectKind.GA_PROJECTS, [project_data])
+    await ocean.register_raw(ObjectKind.PROJECTS_GA, [project_data])
     async for issues_data in sonar_client.get_issues_by_component(project):
         await ocean.register_raw(ObjectKind.ISSUES, issues_data)
 

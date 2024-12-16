@@ -14,7 +14,7 @@ from pydantic.main import BaseModel
 
 class ObjectKind:
     PROJECTS = "projects"
-    GA_PROJECTS = "ga_projects"
+    PROJECTS_GA = "projects_ga"
     ISSUES = "issues"
     ANALYSIS = "analysis"
     SASS_ANALYSIS = "saas_analysis"
@@ -239,7 +239,7 @@ class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
             description="List of metric keys", default=default_metrics()
         )
 
-    kind: Literal["ga_projects"]  # type: ignore
+    kind: Literal["projects_ga"]  # type: ignore
     selector: SonarQubeGAProjectSelector
 
 
