@@ -1,4 +1,3 @@
-import typing
 from typing import Any, AsyncGenerator, Generator, List, Dict, Optional
 
 from httpx import Timeout, Auth, BasicAuth, Request, Response
