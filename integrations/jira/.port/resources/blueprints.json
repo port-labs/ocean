@@ -48,7 +48,7 @@
       "members": {
         "target": "jiraUser",
         "title": "Users",
-        "description": "The Jira users that contains are in this team",
+        "description": "The Jira users belonging to this team",
         "required": false,
         "many": true
       }
