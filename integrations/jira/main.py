@@ -70,20 +70,10 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
-    org_id = ocean.integration_config.get("atlassian_organisation_id")
 
     async for users_batch in client.get_paginated_users():
-        if org_id:
-            enriched_users = await client.enrich_users_with_teams(users_batch, org_id)
-            logger.info(
-                f"Received enriched users batch with {len(enriched_users)} users for org {org_id}"
-            )
-            yield enriched_users
-        else:
-            logger.info(
-                f"Received users batch with {len(users_batch)} users (no team enrichment)"
-            )
-            yield users_batch
+        logger.info(f"Received users batch with {len(users_batch)} users")
+        yield users_batch
 
 
 @ocean.router.post("/webhook")
