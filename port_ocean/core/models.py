@@ -8,12 +8,23 @@ from pydantic.fields import Field
 
 class Runtime(Enum):
     Saas = "Saas"
-    SaasOauth = "SaasOauth"
     OnPrem = "OnPrem"
 
     @property
     def is_saas_runtime(self) -> bool:
-        return self in [Runtime.Saas, Runtime.SaasOauth]
+        return self in [Runtime.Saas]
+
+    def is_installation_type_compatible(self, installation_type: str) -> bool:
+        """
+        Check if the installation type is compatible with the runtime
+
+        if the runtime is Saas, the installation type should start with Saas
+        else the installation type should be OnPrem
+        """
+        return (
+            self.value == Runtime.Saas.value
+            and installation_type.startswith(self.value)
+        ) or installation_type == self.value
 
 
 class Entity(BaseModel):
