@@ -58,9 +58,17 @@ async def on_project_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     component_params = produce_component_params(sonar_client, selector)
 
+    fetched_projects = False
     async for projects in sonar_client.get_components(query_params=component_params):
         logger.info(f"Received project batch of size: {len(projects)}")
         yield projects
+        fetched_projects = True
+
+    if not fetched_projects:
+        logger.error("No projects found in Sonarqube")
+        raise RuntimeError(
+            "No projects found in Sonarqube, failing the resync to avoid data loss"
+        )
 
 
 @ocean.on_resync(ObjectKind.PROJECTS_GA)
