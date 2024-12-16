@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.113 (2024-12-16)
+
+
+###  Bug Fixes
+
+- Corrected typo found in the default blueprint and mapping
+
+
 ## 0.1.112 (2024-12-15)
 
 
