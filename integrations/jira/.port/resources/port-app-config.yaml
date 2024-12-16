@@ -13,20 +13,6 @@ resources:
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
 
-  - kind: team
-    selector:
-      query: "true"
-    port:
-      entity:
-        mappings:
-          identifier: .teamId
-          title: .displayName
-          blueprint: '"jiraTeam"'
-          properties:
-            organizationId: .organizationId
-            teamType: .teamType
-            description: .description
-
   - kind: user
     selector:
       query: "true"
@@ -44,6 +30,22 @@ resources:
             locale: .locale
             avatarUrl: .avatarUrls["48x48"]
 
+  - kind: team
+    selector:
+      query: "true"
+      includeMembers: true
+    port:
+      entity:
+        mappings:
+          identifier: .teamId
+          title: .displayName
+          blueprint: '"jiraTeam"'
+          properties:
+            organizationId: .organizationId
+            teamType: .teamType
+            description: .description
+          relations:
+            members: if .__members != null then .__members | map(.accountId) else [] end
 
   - kind: issue
     selector:

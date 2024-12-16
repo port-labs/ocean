@@ -44,7 +44,15 @@
         }
       }
     },
-    "relations": {},
+    "relations": {
+      "members": {
+        "target": "jiraUser",
+        "title": "Users",
+        "description": "The Jira users that contains are in this team",
+        "required": false,
+        "many": true
+      }
+    },
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {}
