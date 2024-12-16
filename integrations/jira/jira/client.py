@@ -1,8 +1,7 @@
 import typing
-from typing import Any, AsyncGenerator, Generator, List, Dict, Optional, cast
+from typing import Any, AsyncGenerator, Generator, List, Dict, Optional
 
 from httpx import Timeout, Auth, BasicAuth, Request, Response
-from jira.overrides import JiraResourceConfig, TeamResourceConfig
 from loguru import logger
 
 from port_ocean.context.event import event
@@ -199,14 +198,15 @@ class JiraClient:
     async def get_single_issue(self, issue_key: str) -> Dict[str, Any]:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
-    async def get_paginated_issues(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_paginated_issues(
+        self, jql: str | None = None
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
 
-        config = typing.cast(JiraResourceConfig, event.resource_config)
         params = {}
-        if config.selector.jql:
-            params["jql"] = config.selector.jql
-            logger.info(f"Found JQL filter: {config.selector.jql}")
+        if jql:
+            params["jql"] = jql
+            logger.info(f"Using JQL filter: {jql}")
 
         async for issues in self._get_paginated_data(
             f"{self.api_url}/search", "issues", initial_params=params
@@ -228,23 +228,12 @@ class JiraClient:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting teams from Jira")
 
-        selector = cast(TeamResourceConfig, event.resource_config).selector
-        include_members = selector.include_members
-
-        logger.info(f"Include members: {include_members}")
-
-        url = f"{self.teams_base_url}/org/{org_id}/teams"
+        base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org/{org_id}/teams"
 
         async for teams in self._get_cursor_paginated_data(
-            url=url, method="GET", extract_key="entities", cursor_param="cursor"
+            url=base_url, method="GET", extract_key="entities", cursor_param="cursor"
         ):
-            if include_members:
-                enriched_teams = await self.enrich_teams_with_members(teams, org_id)
-                logger.info(f"Retrieved {len(enriched_teams)} teams with their members")
-                yield enriched_teams
-            else:
-                logger.info(f"Retrieved {len(teams)} teams")
-                yield teams
+            yield teams
 
     async def get_paginated_team_members(
         self, team_id: str, org_id: str, page_size: int = PAGE_SIZE

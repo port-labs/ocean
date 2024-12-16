@@ -1,10 +1,12 @@
 from enum import StrEnum
-from typing import Any
+from typing import Any, cast
 
 from jira.client import JiraClient
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+from port_ocean.context.event import event
+from jira.overrides import JiraResourceConfig, TeamResourceConfig
 
 
 class ObjectKind(StrEnum):
@@ -48,7 +50,11 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
-    async for issues in client.get_paginated_issues():
+
+    config = cast(JiraResourceConfig, event.resource_config)
+    jql = config.selector.jql if config else None
+
+    async for issues in client.get_paginated_issues(jql):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 
@@ -62,7 +68,11 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.info("Skipping team sync - no organization ID configured")
         return
 
+    selector = cast(TeamResourceConfig, event.resource_config).selector
+    include_members = selector.include_members
     async for teams in client.get_paginated_teams(org_id):
+        if include_members:
+            teams = await client.enrich_teams_with_members(teams, org_id)
         logger.info(f"Received teams batch with {len(teams)} teams for org {org_id}")
         yield teams
 
