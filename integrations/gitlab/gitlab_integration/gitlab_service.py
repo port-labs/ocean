@@ -552,7 +552,6 @@ class GitlabService:
         try:
             labels = await anyio.to_thread.run_sync(project.labels.list)
             serialized_labels = [label.attributes for label in labels]
-            logger.warning(serialized_labels)
             return {"__labels": serialized_labels}
         except Exception as e:
             logger.warning(
