@@ -1,8 +1,8 @@
 import typing
-from typing import Any, AsyncGenerator, Generator, List, Dict, Optional
+from typing import Any, AsyncGenerator, Generator, List, Dict, Optional, cast
 
 from httpx import Timeout, Auth, BasicAuth, Request, Response
-from jira.overrides import JiraResourceConfig
+from jira.overrides import JiraResourceConfig, TeamResourceConfig
 from loguru import logger
 
 from port_ocean.context.event import event
@@ -54,6 +54,7 @@ class JiraClient:
             self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
 
         self.api_url = f"{self.jira_rest_url}/api/3"
+        self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1"
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
         self.client = http_async_client
@@ -227,82 +228,58 @@ class JiraClient:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting teams from Jira")
 
-        base_url = f"https://admin.atlassian.com/gateway/api/public/teams/v1/org/{org_id}/teams"
+        selector = cast(TeamResourceConfig, event.resource_config).selector
+        include_members = selector.include_members
 
-        cursor = None
-        while True:
-            params: Dict[str, Any] = {}
-            if cursor:
-                params["cursor"] = cursor
+        logger.info(f"Include members: {include_members}")
 
-            teams_data = await self._send_api_request("GET", base_url, params=params)
+        url = f"{self.teams_base_url}/org/{org_id}/teams"
 
-            if not teams_data["entities"]:
-                break
-
-            logger.info(f"Retrieved {len(teams_data['entities'])} teams")
-            yield teams_data["entities"]
-
-            cursor = teams_data.get("cursor")
-            if not cursor:
-                break
+        async for teams in self._get_cursor_paginated_data(
+            url=url, method="GET", extract_key="entities", cursor_param="cursor"
+        ):
+            if include_members:
+                enriched_teams = await self.enrich_teams_with_members(teams, org_id)
+                logger.info(f"Retrieved {len(enriched_teams)} teams with their members")
+                yield enriched_teams
+            else:
+                logger.info(f"Retrieved {len(teams)} teams")
+                yield teams
 
     async def get_paginated_team_members(
-        self, team_id: str, page_size: int = PAGE_SIZE
+        self, team_id: str, org_id: str, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info(f"Getting members for team {team_id}")
-        org_id = ocean.integration_config["atlassian_organisation_id"]
-        url = f"{self.jira_url}/gateway/api/public/teams/v1/org/{org_id}/teams/{team_id}/members"
+        url = f"{self.teams_base_url}/org/{org_id}/teams/{team_id}/members"
 
         async for members in self._get_cursor_paginated_data(
             url,
             method="POST",
             extract_key="results",
-            page_size=page_size,
-            initial_params={"first": page_size},
+            initial_params={
+                "first": page_size
+            },
             cursor_param="after",
         ):
             logger.info(f"Retrieved {len(members)} members for team {team_id}")
             yield members
 
-    async def get_user_team_mapping(self, org_id: str) -> Dict[str, List[str]]:
+    async def enrich_teams_with_members(
+        self, teams: List[Dict[str, Any]], org_id: str
+    ) -> List[Dict[str, Any]]:
+        logger.info(f"Enriching {len(teams)} teams with member information")
 
-        user_team_mapping = {}
-
-        # Get all teams first
-        teams = []
-        async for team_batch in self.get_paginated_teams(org_id):
-            teams.extend(team_batch)
-
-        logger.info(f"Processing {len(teams)} teams for user mapping")
-
-        # Process each team and their members
+        enriched_teams = []
         for team in teams:
             team_id = team["teamId"]
-            async for members in self.get_paginated_team_members(team_id):
-                for member in members:
-                    account_id = member["accountId"]
-                    # Initialize list if this is first team for user
-                    if account_id not in user_team_mapping:
-                        user_team_mapping[account_id] = []
-                    # Add team to user's list if not already there
-                    if team_id not in user_team_mapping[account_id]:
-                        user_team_mapping[account_id].append(team_id)
+            team_members = []
 
-        logger.info(f"Created mapping for {len(user_team_mapping)} users")
-        return user_team_mapping
+            async for members_batch in self.get_paginated_team_members(team_id, org_id):
+                team_members.extend(members_batch)
 
-    async def enrich_users_with_teams(
-        self, users: List[Dict[str, Any]], org_id: str
-    ) -> List[Dict[str, Any]]:
-        logger.info(f"Enriching {len(users)} users with team information")
+            team["__members"] = team_members
+            enriched_teams.append(team)
 
-        user_team_mapping = await self.get_user_team_mapping(org_id)
+            logger.info(f"Added {len(team_members)} members to team {team_id}")
 
-        for user in users:
-            account_id = user["accountId"]
-            if account_id in user_team_mapping:
-                user["teams"] = user_team_mapping[account_id]
-            else:
-                user["teams"] = []
-        return users
+        return enriched_teams
