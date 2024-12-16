@@ -6,6 +6,7 @@ from jira.client import JiraClient, WEBHOOK_EVENTS, PAGE_SIZE
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.event import event_context
+from jira.overrides import JiraResourceConfig, TeamSelector, TeamResourceConfig
 
 
 @pytest.fixture(autouse=True)
@@ -222,12 +223,36 @@ async def test_get_paginated_users(mock_jira_client: JiraClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
-    """Test get_paginated_teams method"""
+    """Test get_paginated_teams method with and without member enrichment"""
+    # Mock data
     teams_data: Dict[str, Any] = {
-        "entities": [{"teamId": "team1"}, {"teamId": "team2"}],
+        "entities": [
+            {"teamId": "team1", "name": "Team 1"},
+            {"teamId": "team2", "name": "Team 2"},
+        ],
         "cursor": None,
     }
 
+    team1_members: Dict[str, Any] = {
+        "results": [
+            {"accountId": "user1", "displayName": "User 1"},
+            {"accountId": "user2", "displayName": "User 2"},
+        ],
+        "pageInfo": {"endCursor": None, "hasNextPage": False},
+    }
+
+    team2_members: Dict[str, Any] = {
+        "results": [
+            {"accountId": "user3", "displayName": "User 3"},
+            {"accountId": "user4", "displayName": "User 4"},
+        ],
+        "pageInfo": {"endCursor": None, "hasNextPage": False},
+    }
+
+    # Mock the port app config needed for event_context
+    mock_port_app_config = MagicMock()
+
+    # Test without member enrichment
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
@@ -236,12 +261,24 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
             {"entities": []},  # Empty response to end pagination
         ]
 
-        teams: List[Dict[str, Any]] = []
-        async for team_batch in mock_jira_client.get_paginated_teams("test_org_id"):
-            teams.extend(team_batch)
+        mock_config = MagicMock()
+        mock_config.selector.include_members = False
+        mock_config.selector.query = "test-query"
 
-        assert len(teams) == 2
-        assert teams == teams_data["entities"]
+        async with event_context("test_event", trigger_type="manual") as test_event:
+            test_event._port_app_config = mock_port_app_config
+
+            from port_ocean.context.resource import resource_context
+
+            async with resource_context(mock_config):
+                teams: List[Dict[str, Any]] = []
+                async for team_batch in mock_jira_client.get_paginated_teams(
+                    "test_org_id"
+                ):
+                    teams.extend(team_batch)
+
+                assert len(teams) == 2
+                assert teams == teams_data["entities"]
 
 
 @pytest.mark.asyncio
@@ -258,38 +295,13 @@ async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
         mock_request.return_value = api_response
 
         members: List[Dict[str, Any]] = []
-        async for member_batch in mock_jira_client.get_paginated_team_members("team1"):
+        async for member_batch in mock_jira_client.get_paginated_team_members(
+            "team1", "test-org"
+        ):
             members.extend(member_batch)
 
         assert len(members) == 2
         assert members == api_response["results"]
-
-
-@pytest.mark.asyncio
-async def get_user_team_mapping(self, org_id: str) -> Dict[str, List[str]]:
-
-    user_team_mapping = {}
-
-    teams = []
-    async for team_batch in self.get_paginated_teams(org_id):
-        teams.extend(team_batch)
-
-    logger.info(f"Processing {len(teams)} teams for user mapping")
-
-    # Process teams in the order they were received
-    for team in teams:
-        team_id = team["teamId"]
-        async for members in self.get_paginated_team_members(team_id):
-            for member in members:
-                account_id = member["accountId"]
-                if account_id not in user_team_mapping:
-                    user_team_mapping[account_id] = []
-                # Add the team to the user's list
-                if team_id not in user_team_mapping[account_id]:
-                    user_team_mapping[account_id].append(team_id)
-
-    logger.info(f"Created mapping for {len(user_team_mapping)} users")
-    return user_team_mapping
 
 
 @pytest.mark.asyncio

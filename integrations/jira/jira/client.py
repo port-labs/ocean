@@ -256,9 +256,7 @@ class JiraClient:
             url,
             method="POST",
             extract_key="results",
-            initial_params={
-                "first": page_size
-            },
+            initial_params={"first": page_size},
             cursor_param="after",
         ):
             logger.info(f"Retrieved {len(members)} members for team {team_id}")
