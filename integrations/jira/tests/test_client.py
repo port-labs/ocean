@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from jira.client import JiraClient, WEBHOOK_EVENTS, PAGE_SIZE
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
-from port_ocean.context.event import event_context
 
 
 @pytest.fixture(autouse=True)
