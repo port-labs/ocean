@@ -6,7 +6,6 @@ from jira.client import JiraClient, WEBHOOK_EVENTS, PAGE_SIZE
 from port_ocean.context.ocean import initialize_port_ocean_context
 from port_ocean.exceptions.context import PortOceanContextAlreadyInitializedError
 from port_ocean.context.event import event_context
-from jira.overrides import JiraResourceConfig, TeamSelector, TeamResourceConfig
 
 
 @pytest.fixture(autouse=True)
@@ -233,22 +232,6 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
         "cursor": None,
     }
 
-    team1_members: Dict[str, Any] = {
-        "results": [
-            {"accountId": "user1", "displayName": "User 1"},
-            {"accountId": "user2", "displayName": "User 2"},
-        ],
-        "pageInfo": {"endCursor": None, "hasNextPage": False},
-    }
-
-    team2_members: Dict[str, Any] = {
-        "results": [
-            {"accountId": "user3", "displayName": "User 3"},
-            {"accountId": "user4", "displayName": "User 4"},
-        ],
-        "pageInfo": {"endCursor": None, "hasNextPage": False},
-    }
-
     # Mock the port app config needed for event_context
     mock_port_app_config = MagicMock()
 
@@ -284,15 +267,19 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
 @pytest.mark.asyncio
 async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
     """Test get_paginated_team_members with example API response format"""
-    api_response: Dict[str, Any] = {
+    page1_response = {
         "results": [{"accountId": "user1"}, {"accountId": "user2"}],
-        "pageInfo": {"endCursor": "cursor1", "hasNextPage": False},
+        "pageInfo": {"endCursor": "cursor1", "hasNextPage": True},
+    }
+    page2_response = {
+        "results": [{"accountId": "user3"}],
+        "pageInfo": {"endCursor": "cursor2", "hasNextPage": False},
     }
 
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
-        mock_request.return_value = api_response
+        mock_request.side_effect = [page1_response, page2_response]
 
         members: List[Dict[str, Any]] = []
         async for member_batch in mock_jira_client.get_paginated_team_members(
@@ -300,8 +287,7 @@ async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
         ):
             members.extend(member_batch)
 
-        assert len(members) == 2
-        assert members == api_response["results"]
+        assert len(members) == 3
 
 
 @pytest.mark.asyncio
