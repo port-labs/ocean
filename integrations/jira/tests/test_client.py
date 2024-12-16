@@ -139,47 +139,28 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
     # Mock response data
     issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
 
-    # Mock config for JQL
-    mock_config = MagicMock()
-    mock_config.selector.jql = "project = TEST"
+    with patch.object(
+        mock_jira_client, "_send_api_request", new_callable=AsyncMock
+    ) as mock_request:
+        mock_request.side_effect = [issues_data, {"issues": []}]
 
-    # Mock the port app config needed for event_context
-    mock_port_app_config = MagicMock()
+        issues = []
+        async for issue_batch in mock_jira_client.get_paginated_issues(jql="project = TEST"):
+            issues.extend(issue_batch)
 
-    async with event_context(
-        "test_event",
-        trigger_type="manual",
-        attributes={},
-    ) as test_event:
-        # Set the port app config on the event context
-        test_event._port_app_config = mock_port_app_config
+        assert len(issues) == 2
+        assert issues == issues_data["issues"]
 
-        # Import and use resource_context
-        from port_ocean.context.resource import resource_context
-
-        async with resource_context(mock_config):
-            with patch.object(
-                mock_jira_client, "_send_api_request", new_callable=AsyncMock
-            ) as mock_request:
-                mock_request.side_effect = [issues_data, {"issues": []}]
-
-                issues = []
-                async for issue_batch in mock_jira_client.get_paginated_issues():
-                    issues.extend(issue_batch)
-
-                assert len(issues) == 2
-                assert issues == issues_data["issues"]
-
-                # Verify JQL was passed correctly
-                mock_request.assert_called_with(
-                    "GET",
-                    f"{mock_jira_client.api_url}/search",
-                    params={
-                        "jql": "project = TEST",
-                        "maxResults": PAGE_SIZE,
-                        "startAt": 0,
-                    },
-                )
+        # Verify JQL was passed correctly
+        mock_request.assert_called_with(
+            "GET",
+            f"{mock_jira_client.api_url}/search",
+            params={
+                "jql": "project = TEST",
+                "maxResults": PAGE_SIZE,
+                "startAt": 0,
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -222,7 +203,7 @@ async def test_get_paginated_users(mock_jira_client: JiraClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
-    """Test get_paginated_teams method with and without member enrichment"""
+    """Test get_paginated_teams method"""
     # Mock data
     teams_data: Dict[str, Any] = {
         "entities": [
@@ -232,10 +213,6 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
         "cursor": None,
     }
 
-    # Mock the port app config needed for event_context
-    mock_port_app_config = MagicMock()
-
-    # Test without member enrichment
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
@@ -244,25 +221,12 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
             {"entities": []},  # Empty response to end pagination
         ]
 
-        mock_config = MagicMock()
-        mock_config.selector.include_members = False
-        mock_config.selector.query = "test-query"
+        teams: List[Dict[str, Any]] = []
+        async for team_batch in mock_jira_client.get_paginated_teams("test_org_id"):
+            teams.extend(team_batch)
 
-        async with event_context("test_event", trigger_type="manual") as test_event:
-            test_event._port_app_config = mock_port_app_config
-
-            from port_ocean.context.resource import resource_context
-
-            async with resource_context(mock_config):
-                teams: List[Dict[str, Any]] = []
-                async for team_batch in mock_jira_client.get_paginated_teams(
-                    "test_org_id"
-                ):
-                    teams.extend(team_batch)
-
-                assert len(teams) == 2
-                assert teams == teams_data["entities"]
-
+        assert len(teams) == 2
+        assert teams == teams_data["entities"]
 
 @pytest.mark.asyncio
 async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
