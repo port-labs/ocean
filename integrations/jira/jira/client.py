@@ -3,7 +3,6 @@ from typing import Any, AsyncGenerator, Generator, List, Dict, Optional
 from httpx import Timeout, Auth, BasicAuth, Request, Response
 from loguru import logger
 
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
@@ -238,7 +237,7 @@ class JiraClient:
         self, team_id: str, org_id: str, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info(f"Getting members for team {team_id}")
-        url = f"{self.teams_base_url}/org/{org_id}/teams/{team_id}/members"
+        url = f"{self.teams_base_url}/org/{org_id}/team/{team_id}/members"
 
         async for members in self._get_cursor_paginated_data(
             url,
