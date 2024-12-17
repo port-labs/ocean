@@ -31,6 +31,7 @@ resources:
             dateCreated: .dateCreated
             memberCount: .memberCount
             roles: .teamRole
+            projects: .projects | map (.slug)
           relations:
             members: if .__members != null then .__members | map(.user.email) | map(select(. != null)) else [] end
   - kind: project-tag
@@ -48,6 +49,13 @@ resources:
             platform: .platform
             status: .status
             link: .organization.links.organizationUrl + "/projects/" + .name
+          relations:
+            team:
+              combinator: '"and"'
+              rules:
+                - property: '"projects"'
+                  operator: '"contains"'
+                  value: .slug
   - kind: issue-tag
     selector:
       query: "true"

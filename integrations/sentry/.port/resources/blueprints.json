@@ -75,6 +75,13 @@
         "roles": {
           "type": "string",
           "title": "Roles"
+        },
+        "projects": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "Projects"
         }
       },
       "required": []
@@ -126,7 +133,14 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "team": {
+        "title": "Team",
+        "target": "sentryTeam",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "sentryIssue",
