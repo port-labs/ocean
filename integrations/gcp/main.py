@@ -196,7 +196,6 @@ async def feed_events_callback(request: Request) -> Response:
                 and isinstance(resource_config.selector, GCPResourceSelector)
             )
         ]
-        logger.warning(f"Found {matching_resource_configs}")
         asset_resource_data = await feed_event_to_resource(
             asset_type, asset_name, asset_project, asset_data, matching_resource_configs
         )
