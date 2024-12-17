@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed bug where push events for port.yml file aren't processed for default branches (0.1.96)
+- Fixed bug where push events for port.yml file aren't processed for default branches
 
 
 ## 0.1.95 (2024-12-15)
