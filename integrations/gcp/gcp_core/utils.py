@@ -75,7 +75,7 @@ def parse_latest_resource_from_asset(asset_data: AssetData) -> dict[Any, Any]:
     return max_versioned_resource_data["resource"]
 
 
-def should_use_snake_case(matching_resource_configs: list = None) -> bool:
+def should_use_snake_case(matching_resource_configs: list[Any] = None) -> bool:
     """
     Determines whether to use snake_case for field names based on preserve_api_response_case_style config.
 
@@ -96,7 +96,7 @@ def should_use_snake_case(matching_resource_configs: list = None) -> bool:
 
 
 def parse_protobuf_message(
-    message: proto.Message, matching_resource_configs: list = None
+    message: proto.Message, matching_resource_configs: list[Any] = None
 ) -> dict[str, Any]:
     """
     Parse protobuf message to dict, controlling field name case style.
