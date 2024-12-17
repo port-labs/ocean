@@ -1,22 +1,24 @@
 import asyncio
 import typing
 from typing import Any, Dict
+
 from loguru import logger
+from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
-from port_ocean.clients.port.types import UserAgentType
-from azure_devops.webhooks.webhook_event import WebhookEvent
-from azure_devops.misc import extract_branch_name_from_ref
-from .listener import HookListener
-from azure_devops.misc import GitPortAppConfig
+
 from azure_devops.gitops.generate_entities import generate_entities_from_commit_id
-from azure_devops.misc import Kind
+from azure_devops.misc import GitPortAppConfig, Kind, extract_branch_name_from_ref
+from azure_devops.webhooks.webhook_event import WebhookEvent
+
+from .listener import HookListener
 
 
 class PushHookListener(HookListener):
     webhook_events = [WebhookEvent(publisherId="tfs", eventType="git.push")]
 
     async def on_hook(self, data: Dict[str, Any]) -> None:
+        logger.debug(f"Got push event with initial data {data}")
         config: GitPortAppConfig = typing.cast(GitPortAppConfig, event.port_app_config)
         push_url = data["resource"]["url"]
         push_params = {"includeRefUpdates": True}
@@ -26,20 +28,35 @@ class PushHookListener(HookListener):
         updates: list[dict[str, Any]] = push_data["refUpdates"]
 
         ref_update_tasks = []
+        logger.debug("Creating tasks for processing updates")
         for update in updates:
-            task = asyncio.create_task(self.process_ref_update(config, update))
+            task = asyncio.create_task(self.process_ref_update(config, update, data))
             ref_update_tasks.append(task)
+
+        logger.debug(f"Created {len(ref_update_tasks)} tasks for processing updates")
 
         await asyncio.gather(*ref_update_tasks, self.register_repository(push_data))
 
     async def process_ref_update(
-        self, config: GitPortAppConfig, update: Dict[str, Any]
+        self,
+        config: GitPortAppConfig,
+        update: Dict[str, Any],
+        initial_data: dict[str, Any] = {},
     ) -> None:
         repo_id = update["repositoryId"]
         branch = extract_branch_name_from_ref(update["name"])
+        default_branch_with_ref: str = initial_data["resource"]["repository"][
+            "defaultBranch"
+        ]
+        default_branch = extract_branch_name_from_ref(default_branch_with_ref)
+        logger.info(
+            f"Processing update for branch {branch}"
+            f" using default branch {default_branch}"
+            f" and config branch {config.branch}"
+        )
         old_commit = update["oldObjectId"]
         new_commit = update["newObjectId"]
-        if config.branch == branch:
+        if branch in [config.branch, default_branch]:
             new_entities = await generate_entities_from_commit_id(
                 self._client, config.spec_path, repo_id, new_commit
             )
