@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Any, cast
+from typing import Any, cast, List, Dict
 
 from jira.client import JiraClient
 from loguru import logger
@@ -7,6 +7,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.event import event
 from jira.overrides import JiraResourceConfig, TeamResourceConfig
+import asyncio
 
 
 class ObjectKind(StrEnum):
@@ -23,6 +24,24 @@ def create_jira_client() -> JiraClient:
         ocean.integration_config["atlassian_user_email"],
         ocean.integration_config["atlassian_user_token"],
     )
+
+
+async def enrich_teams_with_members(
+    client: JiraClient, teams: List[Dict[str, Any]], org_id: str
+) -> List[Dict[str, Any]]:
+    async def fetch_team_members(team_id: str) -> List[Dict[str, Any]]:
+        members = []
+        async for batch in client.get_paginated_team_members(team_id, org_id):
+            members.extend(batch)
+        return members
+
+    team_tasks = [fetch_team_members(team["teamId"]) for team in teams]
+    results = await asyncio.gather(*team_tasks)
+
+    for team, members in zip(teams, results):
+        team["__members"] = members
+
+    return teams
 
 
 async def setup_application() -> None:
@@ -69,10 +88,9 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         return
 
     selector = cast(TeamResourceConfig, event.resource_config).selector
-    include_members = selector.include_members
     async for teams in client.get_paginated_teams(org_id):
-        if include_members:
-            teams = await client.enrich_teams_with_members(teams, org_id)
+        if selector.include_members:
+            teams = await enrich_teams_with_members(client, teams, org_id)
         logger.info(f"Received teams batch with {len(teams)} teams for org {org_id}")
         yield teams
 

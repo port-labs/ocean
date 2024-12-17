@@ -252,16 +252,3 @@ class JiraClient:
         ):
             logger.info(f"Retrieved {len(members)} members for team {team_id}")
             yield members
-
-    async def enrich_teams_with_members(
-        self, teams: List[Dict[str, Any]], org_id: str
-    ) -> List[Dict[str, Any]]:
-        logger.info(f"Enriching {len(teams)} teams with member information")
-
-        async def enrich_team(team: Dict[str, Any]) -> Dict[str, Any]:
-            team["__members"] = []
-            async for batch in self.get_paginated_team_members(team["teamId"], org_id):
-                team["__members"].extend(batch)
-            return team
-
-        return await asyncio.gather(*(enrich_team(team) for team in teams))
