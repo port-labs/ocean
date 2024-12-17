@@ -5,9 +5,11 @@ from loguru import logger
 
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
+import asyncio
 
-PAGE_SIZE = 50
+PAGE_SIZE = 100
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
+MAX_CONCURRENT_REQUESTS = 10
 
 WEBHOOK_EVENTS = [
     "jira:issue_created",
@@ -57,6 +59,7 @@ class JiraClient:
         self.client = http_async_client
         self.client.auth = self.jira_api_auth
         self.client.timeout = Timeout(30)
+        self.semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
     async def _send_api_request(
         self,
@@ -66,11 +69,12 @@ class JiraClient:
         json: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Any:
-        response = await self.client.request(
-            method=method, url=url, params=params, json=json, headers=headers
-        )
-        response.raise_for_status()
-        return response.json()
+        async with self.semaphore:
+            response = await self.client.request(
+                method=method, url=url, params=params, json=json, headers=headers
+            )
+            response.raise_for_status()
+            return response.json()
 
     async def _get_paginated_data(
         self,
@@ -237,7 +241,7 @@ class JiraClient:
         self, team_id: str, org_id: str, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info(f"Getting members for team {team_id}")
-        url = f"{self.teams_base_url}/org/{org_id}/team/{team_id}/members"
+        url = f"{self.teams_base_url}/org/{org_id}/teams/{team_id}/members"
 
         async for members in self._get_cursor_paginated_data(
             url,
@@ -254,17 +258,10 @@ class JiraClient:
     ) -> List[Dict[str, Any]]:
         logger.info(f"Enriching {len(teams)} teams with member information")
 
-        enriched_teams = []
-        for team in teams:
-            team_id = team["teamId"]
-            team_members = []
+        async def enrich_team(team: Dict[str, Any]) -> Dict[str, Any]:
+            team["__members"] = []
+            async for batch in self.get_paginated_team_members(team["teamId"], org_id):
+                team["__members"].extend(batch)
+            return team
 
-            async for members_batch in self.get_paginated_team_members(team_id, org_id):
-                team_members.extend(members_batch)
-
-            team["__members"] = team_members
-            enriched_teams.append(team)
-
-            logger.info(f"Added {len(team_members)} members to team {team_id}")
-
-        return enriched_teams
+        return await asyncio.gather(*(enrich_team(team) for team in teams))
