@@ -144,7 +144,9 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
         mock_request.side_effect = [issues_data, {"issues": []}]
 
         issues = []
-        async for issue_batch in mock_jira_client.get_paginated_issues(jql="project = TEST"):
+        async for issue_batch in mock_jira_client.get_paginated_issues(
+            jql="project = TEST"
+        ):
             issues.extend(issue_batch)
 
         assert len(issues) == 2
@@ -226,6 +228,7 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
 
         assert len(teams) == 2
         assert teams == teams_data["entities"]
+
 
 @pytest.mark.asyncio
 async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
