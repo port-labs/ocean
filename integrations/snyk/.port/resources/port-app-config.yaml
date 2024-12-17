@@ -46,7 +46,7 @@ resources:
           properties:
             origin: .relationships.integration.data.attributes.integration_type
           relations:
-            synk_organization: '.relationships.organization.data.id'
+            snyk_organization: '.relationships.organization.data.id'
   - kind: vulnerability
     selector:
       query: 'true'
