@@ -71,7 +71,7 @@ class ApplicationCredentialsProvider(CredentialsProvider):
     async def get_all_accessible_accounts(
         self, application_session: aioboto3.Session
     ) -> List[Dict[str, Any]]:
-        # For just the application creds provider, only return the current account
+        # For just the application creds provider, we only return the current account
         async with application_session.client("sts") as sts_client:
             caller_identity = await sts_client.get_caller_identity()
             return [{"Id": caller_identity["Account"], "Name": "No name found"}]
@@ -87,9 +87,6 @@ class ApplicationCredentialsProvider(CredentialsProvider):
 
 
 class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
-    def __init__(self) -> None:
-        super().__init__()
-
     def _get_organization_role_arn(self) -> str:
         return ocean.integration_config.get("organization_role_arn", "")
 
@@ -153,9 +150,7 @@ class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
                     )
 
                 return [{"Id": application_account_id, "Name": "No name found"}]
-        logger.info(
-            f"Found {len(accounts)} AWS accounts in the organization."
-        )  ### debug
+        logger.info(f"Found {len(accounts)} AWS accounts in the organization.")
         return accounts
 
     async def get_account_credentials(

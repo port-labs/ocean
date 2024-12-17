@@ -50,8 +50,8 @@ class AwsCredentials:
         """
         if self.is_role():
             # For a role, use a refreshable credentials object
-            logger.warning(
-                f"Creating a session for role {self.role_arn} in account {self.account_id}"
+            logger.debug(
+                f"Creating a refreshable session for role {self.role_arn} in account {self.account_id} for region {region}"
             )
 
             session = aioboto3.Session(
@@ -93,5 +93,6 @@ class AwsCredentials:
         self, allowed_regions: Optional[Iterable[str]] = None
     ) -> AsyncIterator[aioboto3.Session]:
         regions = allowed_regions or self.enabled_regions
+
         for region in regions:
             yield await self.create_session(region)
