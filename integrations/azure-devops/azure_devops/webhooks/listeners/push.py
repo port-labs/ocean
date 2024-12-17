@@ -28,7 +28,6 @@ class PushHookListener(HookListener):
         updates: list[dict[str, Any]] = push_data["refUpdates"]
 
         ref_update_tasks = []
-        logger.debug("Creating tasks for processing updates")
         for update in updates:
             task = asyncio.create_task(self.process_ref_update(config, update, data))
             ref_update_tasks.append(task)
