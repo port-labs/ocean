@@ -8,25 +8,21 @@
       "properties": {
         "username": {
           "type": "string",
-          "title": "Username",
-          "icon": "DefaultProperty"
+          "title": "Username"
         },
         "isActive": {
           "type": "boolean",
-          "title": "Is Active",
-          "icon": "DefaultProperty"
+          "title": "Is Active"
         },
         "dateJoined": {
           "type": "string",
           "format": "date-time",
-          "title": "Date Joined",
-          "icon": "DefaultProperty"
+          "title": "Date Joined"
         },
         "lastLogin": {
           "type": "string",
           "format": "date-time",
-          "title": "Last Login",
-          "icon": "DefaultProperty"
+          "title": "Last Login"
         },
         "orgRole": {
           "icon": "DefaultProperty",

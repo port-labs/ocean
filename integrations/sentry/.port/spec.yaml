@@ -19,6 +19,7 @@ configurations:
     default: "https://sentry.io"
   - name: sentryToken
     required: true
+    sensitive: true
     type: string
     description: The Sentry API token used for authentication. To create a token, see the <a href="https://docs.sentry.io/api/auth/" target="_blank"> Sentry documentation</a>
   - name: sentryOrganization
