@@ -13,7 +13,12 @@ from gcp_core.errors import (
     GotFeedCreatedSuccessfullyMessageError,
 )
 from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
-from gcp_core.overrides import GCPCloudResourceSelector
+from gcp_core.overrides import (
+    GCPCloudResourceSelector,
+    GCPResourceConfig,
+    GCPResourceSelector,
+)
+from port_ocean.context.event import event
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
     feed_event_to_resource,
@@ -180,8 +185,20 @@ async def feed_events_callback(request: Request) -> Response:
         logger.info(
             f"Got Real-Time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
         )
+        resource_configs = typing.cast(
+            GCPResourceConfig, event.port_app_config
+        ).resources
+        matching_resource_configs = [
+            resource_config
+            for resource_config in resource_configs
+            if (
+                resource_config.kind == asset_type
+                and isinstance(resource_config.selector, GCPResourceSelector)
+            )
+        ]
+        logger.warning(f"Found {matching_resource_configs}")
         asset_resource_data = await feed_event_to_resource(
-            asset_type, asset_name, asset_project, asset_data
+            asset_type, asset_name, asset_project, asset_data, matching_resource_configs
         )
         if asset_data.get("deleted") is True:
             logger.info(
