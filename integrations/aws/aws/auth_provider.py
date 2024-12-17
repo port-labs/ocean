@@ -6,7 +6,10 @@ from port_ocean.context.ocean import ocean
 from loguru import logger
 from types_aiobotocore_sts import STSClient
 from utils.misc import is_access_denied_exception
-from aws.session_constants import ASSUME_ROLE_DURATION_SECONDS
+from datetime import datetime, timezone, timedelta
+
+ASSUME_ROLE_DURATION_SECONDS = 3600
+
 
 class CredentialsProvider(ABC):
     @abstractmethod
@@ -14,18 +17,28 @@ class CredentialsProvider(ABC):
         pass
 
     @abstractmethod
-    async def get_all_accessible_accounts(self, application_session: aioboto3.Session) -> List[Dict[str, Any]]:
+    async def get_all_accessible_accounts(
+        self, application_session: aioboto3.Session
+    ) -> List[Dict[str, Any]]:
         """
         Returns a list of all accessible AWS accounts as dictionaries with 'Id' and 'Name'.
         """
         pass
 
     @abstractmethod
-    async def get_account_credentials(self, sts_client: STSClient, account: Dict[str, Any]) -> AwsCredentials:
+    async def get_account_credentials(
+        self, sts_client: STSClient, account: Dict[str, Any]
+    ) -> AwsCredentials:
         """
         Assume a role in the given account and return the credentials.
         """
         pass
+
+    def expiry_time(self) -> str:
+        expiry = datetime.now(timezone.utc) + timedelta(
+            seconds=ASSUME_ROLE_DURATION_SECONDS
+        )
+        return expiry.isoformat() + "Z"
 
 
 class ApplicationCredentialsProvider(CredentialsProvider):
@@ -55,20 +68,26 @@ class ApplicationCredentialsProvider(CredentialsProvider):
                 session_token=frozen_credentials.token,
             )
 
-    async def get_all_accessible_accounts(self, application_session: aioboto3.Session) -> List[Dict[str, Any]]:
+    async def get_all_accessible_accounts(
+        self, application_session: aioboto3.Session
+    ) -> List[Dict[str, Any]]:
         # For just the application creds provider, only return the current account
         async with application_session.client("sts") as sts_client:
             caller_identity = await sts_client.get_caller_identity()
             return [{"Id": caller_identity["Account"], "Name": "No name found"}]
 
-    async def get_account_credentials(self, sts_client: STSClient, account: Dict[str, Any]) -> AwsCredentials:
+    async def get_account_credentials(
+        self, sts_client: STSClient, account: Dict[str, Any]
+    ) -> AwsCredentials:
         # For application-only scenario, there's no cross-account role assumption.
         # Just return the application credentials again if needed.
-        raise NotImplementedError("No cross-account assumption for application-only scenario.")
+        raise NotImplementedError(
+            "No cross-account assumption for application-only scenario."
+        )
 
 
 class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def _get_organization_role_arn(self) -> str:
@@ -77,8 +96,12 @@ class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
     def _get_account_read_role_name(self) -> str:
         return ocean.integration_config.get("account_read_role_name", "")
 
-    async def get_organization_session(self, application_session: aioboto3.Session) -> aioboto3.Session:
+    async def get_organization_session(
+        self, application_session: aioboto3.Session
+    ) -> aioboto3.Session:
         organization_role_arn = self._get_organization_role_arn()
+        role_session_name = "OceanOrgAssumeRoleSession"
+
         if not organization_role_arn:
             logger.warning(
                 "No organization role ARN specified, assuming application role has access."
@@ -89,7 +112,7 @@ class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
             try:
                 org_response = await sts_client.assume_role(
                     RoleArn=organization_role_arn,
-                    RoleSessionName="OceanOrgAssumeRoleSession",
+                    RoleSessionName=role_session_name,
                     DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
                 )
                 credentials = org_response["Credentials"]
@@ -107,7 +130,9 @@ class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
                 else:
                     raise
 
-    async def get_all_accessible_accounts(self, application_session: aioboto3.Session) -> List[Dict[str, Any]]:
+    async def get_all_accessible_accounts(
+        self, application_session: aioboto3.Session
+    ) -> List[Dict[str, Any]]:
         organization_session = await self.get_organization_session(application_session)
         accounts = []
         async with organization_session.client("organizations") as organizations_client:
@@ -120,18 +145,31 @@ class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
                     "Caller is not a member of an AWS organization. Only the application account is accessible."
                 )
                 # Fallback to just application credentials if org isn't accessible
-                sts_client = application_session.client("sts")
-                async with sts_client:
+                async with application_session.client("sts") as sts_client:
                     caller_identity = await sts_client.get_caller_identity()
-                    return [{"Id": caller_identity["Account"], "Name": "No name found"}]
+                    application_account_id = caller_identity["Account"]
+                    logger.debug(
+                        f"Using application account {application_account_id} as fallback."
+                    )
 
+                return [{"Id": application_account_id, "Name": "No name found"}]
+        logger.info(
+            f"Found {len(accounts)} AWS accounts in the organization."
+        )  ### debug
         return accounts
 
-    async def get_account_credentials(self, sts_client: STSClient, account: Dict[str, Any]) -> AwsCredentials:
+    async def get_account_credentials(
+        self, sts_client: STSClient, account: Dict[str, Any]
+    ) -> AwsCredentials:
+        role_arn = (
+            f"arn:aws:iam::{account['Id']}:role/{self._get_account_read_role_name()}"
+        )
+        session_name = "OceanMemberAssumeRoleSession"
+
         try:
             account_role = await sts_client.assume_role(
-                RoleArn=f'arn:aws:iam::{account["Id"]}:role/{self._get_account_read_role_name()}',
-                RoleSessionName="OceanMemberAssumeRoleSession",
+                RoleArn=role_arn,
+                RoleSessionName=session_name,
                 DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
             )
             raw_credentials = account_role["Credentials"]
@@ -140,6 +178,8 @@ class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
                 access_key_id=raw_credentials["AccessKeyId"],
                 secret_access_key=raw_credentials["SecretAccessKey"],
                 session_token=raw_credentials["SessionToken"],
+                role_arn=role_arn,
+                session_name=session_name,
             )
         except sts_client.exceptions.ClientError as e:
             if is_access_denied_exception(e):

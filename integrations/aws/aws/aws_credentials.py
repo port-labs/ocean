@@ -1,8 +1,11 @@
 from typing import AsyncIterator, Optional, Iterable
 import aioboto3
-import datetime
-from aiobotocore.credentials import AioRefreshableCredentials
-from botocore.credentials import ReadOnlyCredentials
+from aiobotocore.credentials import (
+    AioRefreshableCredentials,
+    create_assume_role_refresher,
+)
+from aiobotocore.session import get_session
+from loguru import logger
 
 
 class AwsCredentials:
@@ -12,7 +15,8 @@ class AwsCredentials:
         access_key_id: str,
         secret_access_key: str,
         session_token: Optional[str] = None,
-        expiry_time: Optional[datetime.datetime] = None,
+        role_arn: Optional[str] = None,
+        session_name: Optional[str] = None,
     ):
         self.account_id = account_id
         self.access_key_id = access_key_id
@@ -20,7 +24,8 @@ class AwsCredentials:
         self.session_token = session_token
         self.enabled_regions: list[str] = []
         self.default_regions: list[str] = []
-        self.expiry_time = expiry_time or (datetime.datetime.utcnow() + datetime.timedelta(seconds=3600))
+        self.role_arn = role_arn
+        self.session_name = session_name
 
     def is_role(self) -> bool:
         return self.session_token is not None
@@ -45,37 +50,44 @@ class AwsCredentials:
         """
         if self.is_role():
             # For a role, use a refreshable credentials object
-            refresh_func = self._create_refresh_function()
-            refreshable = AioRefreshableCredentials.create(
-                refresh_func,
-                'sts',
-                'v4',
-                time_fetcher=lambda: datetime.datetime.utcnow()
+            logger.warning(
+                f"Creating a session for role {self.role_arn} in account {self.account_id}"
             )
-            return aioboto3.Session(botocore_session=refreshable.session, region_name=region)
+
+            session = aioboto3.Session(
+                aws_access_key_id=self.access_key_id,
+                aws_secret_access_key=self.secret_access_key,
+                aws_session_token=self.session_token,
+            )
+
+            refresh_func = create_assume_role_refresher(
+                client=session.client("sts"),
+                params={
+                    "RoleArn": self.role_arn,
+                    "RoleSessionName": self.session_name,
+                },
+            )
+
+            credentials = AioRefreshableCredentials.create_from_metadata(
+                metadata=await refresh_func(),
+                refresh_using=refresh_func,
+                method="sts-assume-role",
+            )
+
+            botocore_session = get_session()
+            setattr(botocore_session, "_credentials", credentials)
+            if region:
+                botocore_session.set_config_variable("region", region)
+
+            autorefresh_session = aioboto3.Session(botocore_session=botocore_session)
+            return autorefresh_session
+
         else:
             return aioboto3.Session(
                 aws_access_key_id=self.access_key_id,
                 aws_secret_access_key=self.secret_access_key,
                 region_name=region,
             )
-
-    def _create_refresh_function(self):
-        """
-        Returns a callable that fetches new credentials when the current credentials are close to expiry.
-        For simplicity, this function just returns the current credentials.
-        In a real scenario, you'd re-assume the role or fetch fresh credentials here.
-        """
-        async def refresh():
-            # In a real-world scenario, you'd call STS again to get fresh creds.
-            # Here, we just return the same credentials for demonstration.
-            return {
-                'access_key': self.access_key_id,
-                'secret_key': self.secret_access_key,
-                'token': self.session_token,
-                'expiry_time': (self.expiry_time.isoformat() if self.expiry_time else (datetime.datetime.utcnow() + datetime.timedelta(minutes=50)).isoformat())
-            }
-        return refresh
 
     async def create_session_for_each_region(
         self, allowed_regions: Optional[Iterable[str]] = None

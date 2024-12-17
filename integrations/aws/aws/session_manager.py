@@ -1,19 +1,20 @@
-from typing import Any
+from typing import Any, TYPE_CHECKING
 import typing
 import aioboto3
 from aws.aws_credentials import AwsCredentials
 from loguru import logger
 from port_ocean.exceptions.core import OceanAbortException
-from auth_provider import CredentialsProvider, OrganizationCredentialsProvider, ApplicationCredentialsProvider
 
-ASSUME_ROLE_DURATION_SECONDS = 3600 
+if TYPE_CHECKING:
+    from aws.auth_provider import CredentialsProvider
+
 
 class AccountNotFoundError(OceanAbortException):
     pass
 
 
 class SessionManager:
-    def __init__(self, provider: CredentialsProvider) -> None:
+    def __init__(self, provider: "CredentialsProvider") -> None:
         self._provider = provider
         self._aws_accessible_accounts: list[dict[str, Any]] = []
         self._aws_credentials: list[AwsCredentials] = []
@@ -33,7 +34,9 @@ class SessionManager:
         self._application_session = await application_credentials.create_session()
 
         self._aws_credentials.append(application_credentials)
-        self._aws_accessible_accounts.append({"Id": self._application_account_id, "Name": "No name found"})
+        self._aws_accessible_accounts.append(
+            {"Id": self._application_account_id, "Name": "No name found"}
+        )
 
         await self._update_available_access_credentials()
 
@@ -49,12 +52,16 @@ class SessionManager:
                 self._aws_accessible_accounts[0] = acct
                 break
 
-        async with typing.cast(aioboto3.Session, self._application_session).client("sts") as sts_client:
+        async with typing.cast(aioboto3.Session, self._application_session).client(
+            "sts"
+        ) as sts_client:
             for account in accounts:
                 if account["Id"] == self._application_account_id:
                     continue
                 try:
-                    credentials = await self._provider.get_account_credentials(sts_client, account)
+                    credentials = await self._provider.get_account_credentials(
+                        sts_client, account
+                    )
                     await credentials.update_enabled_regions()
                     self._aws_credentials.append(credentials)
                     self._aws_accessible_accounts.append(account)
@@ -62,7 +69,9 @@ class SessionManager:
                     # Skip accounts we cannot assume into
                     pass
 
-        logger.info(f"Found {len(self._aws_credentials)} AWS accounts")
+        logger.info(
+            f"Found {len(self._aws_credentials)}/{len(accounts)} accessible AWS accounts"
+        )
 
     async def find_account_id_by_session(self, session: aioboto3.Session) -> str:
         session_credentials = await session.get_credentials()  # type: ignore
