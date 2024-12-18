@@ -63,6 +63,7 @@ class ApplicationCredentialsProvider(CredentialsProvider):
             frozen_credentials = await default_credentials.get_frozen_credentials()
             return AwsCredentials(
                 account_id=current_account_id,
+                sts_client=sts_client,
                 access_key_id=frozen_credentials.access_key,
                 secret_access_key=frozen_credentials.secret_key,
                 session_token=frozen_credentials.token,
@@ -156,27 +157,28 @@ class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
     async def get_account_credentials(
         self, sts_client: STSClient, account: Dict[str, Any]
     ) -> Optional[AwsCredentials]:
+        """
+        Create credentials for the give account (members of the organization).
+        """
         role_arn = (
             f"arn:aws:iam::{account['Id']}:role/{self._get_account_read_role_name()}"
         )
         session_name = "OceanMemberAssumeRoleSession"
 
         try:
-            account_role = await sts_client.assume_role(
-                RoleArn=role_arn,
-                RoleSessionName=session_name,
-                DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
-            )
-            raw_credentials = account_role["Credentials"]
-            return AwsCredentials(
+            # MemberAccountCredentials
+            credentials = AwsCredentials(
                 account_id=account["Id"],
-                access_key_id=raw_credentials["AccessKeyId"],
-                secret_access_key=raw_credentials["SecretAccessKey"],
-                session_token=raw_credentials["SessionToken"],
+                sts_client=sts_client,
                 role_arn=role_arn,
                 session_name=session_name,
                 expiry_time=self.expiry_time(),
             )
+
+            # check for access, raises a ClientError if access is denied
+            await credentials.create_session()
+            return credentials
+
         except sts_client.exceptions.ClientError as e:
             if is_access_denied_exception(e):
                 logger.info(f"Cannot assume role in account {account['Id']}. Skipping.")
