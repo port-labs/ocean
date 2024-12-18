@@ -15,7 +15,7 @@ from gcp_core.errors import (
 from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
 from gcp_core.overrides import (
     GCPCloudResourceSelector,
-    GCPPortAppConfig,
+    GCPResourceConfig,
     GCPResourceSelector,
 )
 from port_ocean.context.event import event
@@ -186,7 +186,7 @@ async def feed_events_callback(request: Request) -> Response:
             f"Got Real-Time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
         )
         resource_configs = typing.cast(
-            GCPPortAppConfig, event.port_app_config
+            GCPResourceConfig, event.port_app_config
         ).resources
         matching_resource_configs = [
             resource_config
@@ -197,6 +197,7 @@ async def feed_events_callback(request: Request) -> Response:
             )
         ]
         for matching_resource_config in matching_resource_configs:
+            logger.warning(f"Type {type(matching_resource_config)}")
             asset_resource_data = await feed_event_to_resource(
                 asset_type,
                 asset_name,
