@@ -7,12 +7,12 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from client import SonarQubeClient
 from integration import (
-    CustomSelector,
     ObjectKind,
     SonarQubeGAProjectResourceConfig,
     SonarQubeIssueResourceConfig,
     SonarQubeProjectResourceConfig,
 )
+from utils import produce_component_params
 
 
 def init_sonar_client() -> SonarQubeClient:
@@ -23,26 +23,6 @@ def init_sonar_client() -> SonarQubeClient:
         ocean.integration_config.get("app_host"),
         ocean.integration_config["sonar_is_on_premise"],
     )
-
-
-def produce_component_params(
-    client: SonarQubeClient, selector: Any, initial_params: dict[str, Any] = {}
-) -> dict[str, Any]:
-    component_query_params: dict[str, Any] = {}
-    if client.organization_id:
-        component_query_params["organization"] = client.organization_id
-
-    ## Handle query_params based on environment
-    if client.is_onpremise:
-        if initial_params:
-            component_query_params.update(initial_params)
-        elif event.resource_config:
-            # This might be called from places where event.resource_config is not set
-            # like on_start() when creating webhooks
-
-            selector = cast(CustomSelector, event.resource_config.selector)
-            component_query_params.update(selector.generate_request_params())
-    return component_query_params
 
 
 sonar_client = init_sonar_client()
