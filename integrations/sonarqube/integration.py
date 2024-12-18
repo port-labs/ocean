@@ -220,7 +220,7 @@ class SonarQubeProjectResourceConfig(CustomResourceConfig):
 
 
 class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
-    class SonarQubeGAProjectSelector(CustomSelector, SonarQubeGAProjectAPIFilter):
+    class SonarQubeGAProjectSelector(CustomSelector):
         @staticmethod
         def default_metrics() -> list[str]:
             return [
@@ -234,6 +234,8 @@ class SonarQubeGAProjectResourceConfig(CustomResourceConfig):
                 "new_coverage",
                 "new_duplicated_lines_density",
             ]
+
+        api_filters: SonarQubeGAProjectAPIFilter | None = Field(alias="apiFilters")
 
         metrics: list[str] = Field(
             description="List of metric keys", default=default_metrics()
