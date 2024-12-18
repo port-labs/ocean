@@ -64,7 +64,7 @@ class BaseIntegration(SyncRawMixin, SyncMixin):
         if (
             not self.event_strategy["resync"]
             and self.__class__._on_resync == BaseIntegration._on_resync
-            and self.context.config.event_listener.should_resync is True
+            and self.context.config.event_listener.should_resync
         ):
             raise NotImplementedError("on_resync is not implemented")
 
