@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.27-dev (2024-12-18)
+
+
+### Improvements
+
+- Added webhook route to the fake integration
+
+
 ## 0.1.26-dev (2024-12-15)
 
 
