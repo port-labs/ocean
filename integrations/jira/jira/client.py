@@ -53,7 +53,7 @@ class JiraClient:
             self.jira_api_auth = BasicAuth(self.jira_email, self.jira_token)
 
         self.api_url = f"{self.jira_rest_url}/api/3"
-        self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1"
+        self.teams_base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org"
         self.webhooks_url = f"{self.jira_rest_url}/webhooks/1.0/webhook"
 
         self.client = http_async_client
@@ -230,7 +230,7 @@ class JiraClient:
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info("Getting teams from Jira")
 
-        base_url = f"{self.jira_url}/gateway/api/public/teams/v1/org/{org_id}/teams"
+        base_url = f"{self.teams_base_url}/{org_id}/teams"
 
         async for teams in self._get_cursor_paginated_data(
             url=base_url, method="GET", extract_key="entities", cursor_param="cursor"
@@ -241,7 +241,7 @@ class JiraClient:
         self, team_id: str, org_id: str, page_size: int = PAGE_SIZE
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         logger.info(f"Getting members for team {team_id}")
-        url = f"{self.teams_base_url}/org/{org_id}/teams/{team_id}/members"
+        url = f"{self.teams_base_url}/{org_id}/teams/{team_id}/members"
 
         async for members in self._get_cursor_paginated_data(
             url,
