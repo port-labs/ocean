@@ -242,3 +242,34 @@ class SentryClient:
             if project_tags_batch:
                 project_tags.append(project_tags_batch)
         return flatten_list(project_tags)
+
+    async def get_paginated_teams(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for teams in self._get_paginated_resource(
+            f"{self.api_url}/organizations/{self.organization}/teams/"
+        ):
+            yield teams
+
+    async def get_paginated_users(
+        self,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        async for users in self._get_paginated_resource(
+            f"{self.api_url}/organizations/{self.organization}/members/"
+        ):
+            yield users
+
+    async def get_team_members(self, team_slug: str) -> list[dict[str, Any]]:
+        logger.info(f"Getting team members for team {team_slug}")
+        team_members_List = []
+        async for team_members_batch in self._get_paginated_resource(
+            f"{self.api_url}/teams/{self.organization}/{team_slug}/members/"
+        ):
+            logger.info(
+                f"Received a batch of {len(team_members_batch)} members for team {team_slug}"
+            )
+            team_members_List.extend(team_members_batch)
+        logger.info(
+            f"Received a total of {len(team_members_List)} members for team {team_slug}"
+        )
+        return team_members_List
