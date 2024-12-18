@@ -34,10 +34,7 @@ async def enrich_team_with_members(
     sentry_client: SentryClient,
     team_batch: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    async def fetch_team_members(team_slug: str) -> list[dict[str, Any]]:
-        return await sentry_client.get_team_members(team_slug)
-
-    team_tasks = [fetch_team_members(team["slug"]) for team in team_batch]
+    team_tasks = [sentry_client.get_team_members(team["slug"]) for team in team_batch]
     results = await asyncio.gather(*team_tasks)
 
     for team, members in zip(team_batch, results):
