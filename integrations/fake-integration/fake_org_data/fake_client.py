@@ -106,6 +106,12 @@ async def get_fake_persons() -> AsyncGenerator[List[Dict[Any, Any]], None]:
                 yield current_result
 
 
+async def get_random_person_from_batch() -> Dict[Any, Any]:
+    async for persons_batch in get_fake_persons():
+        return persons_batch[0]
+    return {}
+
+
 async def get_departments() -> AsyncGenerator[List[Dict[Any, Any]], None]:
     single_department_run = ocean.integration_config.get(
         FakeIntegrationConfigKeys.SINGLE_PERF_RUN, False
