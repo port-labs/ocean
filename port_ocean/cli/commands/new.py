@@ -81,7 +81,7 @@ def new(path: str, is_private_integration: bool) -> None:
         f"▶️ [bold][blue]cd {path}/{name} && make install && . .venv/bin/activate[/blue][/bold]\n"
     )
     console.print(
-        f"⚓️ Copy example env file: Run [bold][blue]cp {path}/{name}.env.example {path}/{name}/.env [/blue][/bold] and set your port credentials in the created file.\n"
+        f"⚓️ Copy example env file: Run [bold][blue]cp {path}/{name}/.env.example {path}/{name}/.env [/blue][/bold] and set your port credentials in the created file.\n"
     )
     console.print(
         "⚓️ Set sail with [blue]Ocean[/blue]: Run [bold][blue]ocean sail[/blue] <path_to_integration>[/bold] to run the project using Ocean.\n"
