@@ -196,19 +196,24 @@ async def feed_events_callback(request: Request) -> Response:
                 and isinstance(resource_config.selector, GCPResourceSelector)
             )
         ]
-        asset_resource_data = await feed_event_to_resource(
-            asset_type, asset_name, asset_project, asset_data, matching_resource_configs
-        )
-        if asset_data.get("deleted") is True:
-            logger.info(
-                f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
+        for matching_resource_config in matching_resource_configs:
+            asset_resource_data = await feed_event_to_resource(
+                asset_type,
+                asset_name,
+                asset_project,
+                asset_data,
+                matching_resource_config,
             )
-            await ocean.unregister_raw(asset_type, [asset_resource_data])
-        else:
-            logger.info(
-                f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
-            )
-            await ocean.register_raw(asset_type, [asset_resource_data])
+            if asset_data.get("deleted") is True:
+                logger.info(
+                    f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
+                )
+                await ocean.unregister_raw(asset_type, [asset_resource_data])
+            else:
+                logger.info(
+                    f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
+                )
+                await ocean.register_raw(asset_type, [asset_resource_data])
     except AssetHasNoProjectAncestorError:
         logger.exception(
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
