@@ -44,6 +44,9 @@ $ straw@hat.com
 release_date [2023-08-06]:
 $ 2023-08-06
 
+is_private_integration [y/n] (y):
+y
+
 
 🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!
 Here are your next steps:
@@ -51,6 +54,7 @@ Here are your next steps:
 ⚓️ Install necessary packages: Run make install to install all required packages for your project.
 ▶️ cd ./my_integration && make install && . .venv/bin/activate
 
+⚓️ Copy example env file: Run cp ./my_integration.env.example ./my_integration/.env  and set your port credentials in the created file.
 ⚓️ Set sail with Ocean: Run ocean sail <path_to_integration> to run the project using Ocean.
 ▶️ ocean sail ./my_integration
 
