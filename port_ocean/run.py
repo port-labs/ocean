@@ -57,7 +57,6 @@ def run(
     # Override config with arguments
     if initialize_port_resources is not None:
         app.config.initialize_port_resources = initialize_port_resources
-
     initialize_defaults(app.integration.AppConfigHandlerClass.CONFIG_CLASS, app.config)
 
     uvicorn.run(app, host="0.0.0.0", port=application_settings.port)
