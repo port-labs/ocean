@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 from aws.aws_credentials import AwsCredentials
 import aioboto3
 from port_ocean.context.ocean import ocean
@@ -28,7 +28,7 @@ class CredentialsProvider(ABC):
     @abstractmethod
     async def get_account_credentials(
         self, sts_client: STSClient, account: Dict[str, Any]
-    ) -> AwsCredentials:
+    ) -> Optional[AwsCredentials]:
         """
         Assume a role in the given account and return the credentials.
         """
@@ -38,7 +38,7 @@ class CredentialsProvider(ABC):
         expiry = datetime.now(timezone.utc) + timedelta(
             seconds=ASSUME_ROLE_DURATION_SECONDS
         )
-        return expiry.isoformat() + "Z"
+        return expiry.isoformat()
 
 
 class ApplicationCredentialsProvider(CredentialsProvider):
@@ -78,7 +78,7 @@ class ApplicationCredentialsProvider(CredentialsProvider):
 
     async def get_account_credentials(
         self, sts_client: STSClient, account: Dict[str, Any]
-    ) -> AwsCredentials:
+    ) -> Optional[AwsCredentials]:
         # For application-only scenario, there's no cross-account role assumption.
         # Just return the application credentials again if needed.
         raise NotImplementedError(
@@ -155,7 +155,7 @@ class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
 
     async def get_account_credentials(
         self, sts_client: STSClient, account: Dict[str, Any]
-    ) -> AwsCredentials:
+    ) -> Optional[AwsCredentials]:
         role_arn = (
             f"arn:aws:iam::{account['Id']}:role/{self._get_account_read_role_name()}"
         )
@@ -175,10 +175,11 @@ class OrganizationCredentialsProvider(ApplicationCredentialsProvider):
                 session_token=raw_credentials["SessionToken"],
                 role_arn=role_arn,
                 session_name=session_name,
+                expiry_time=self.expiry_time(),
             )
         except sts_client.exceptions.ClientError as e:
             if is_access_denied_exception(e):
                 logger.info(f"Cannot assume role in account {account['Id']}. Skipping.")
-                raise
+                return None
             else:
                 raise

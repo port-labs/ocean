@@ -46,29 +46,26 @@ class SessionManager:
             typing.cast(aioboto3.Session, self._application_session)
         )
 
-        # Replace the default account placeholder with the real one if found
-        for idx, acct in enumerate(accounts):
-            if acct["Id"] == self._application_account_id:
-                self._aws_accessible_accounts[0] = acct
-                break
-
         async with typing.cast(aioboto3.Session, self._application_session).client(
             "sts"
         ) as sts_client:
             for account in accounts:
                 if account["Id"] == self._application_account_id:
+                    # Skip the current account as it is already added
+                    # Replace the Temp account details with the current account details
+                    self._aws_accessible_accounts[0] = account
                     continue
                 try:
                     credentials = await self._provider.get_account_credentials(
                         sts_client, account
                     )
+                    if not credentials:
+                        continue
                     await credentials.update_enabled_regions()
                     self._aws_credentials.append(credentials)
                     self._aws_accessible_accounts.append(account)
                 except Exception:
-                    # Skip accounts we cannot assume into
-                    pass
-
+                    raise
         logger.info(
             f"Found {len(self._aws_credentials)}/{len(accounts)} accessible AWS accounts"
         )

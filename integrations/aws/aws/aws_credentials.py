@@ -1,8 +1,7 @@
-from typing import AsyncIterator, Optional, Iterable
+from typing import AsyncIterator, Optional, Iterable, Dict, Any, Callable, Awaitable
 import aioboto3
 from aiobotocore.credentials import (
     AioRefreshableCredentials,
-    create_assume_role_refresher,
 )
 from aiobotocore.session import get_session
 from loguru import logger
@@ -17,6 +16,7 @@ class AwsCredentials:
         session_token: Optional[str] = None,
         role_arn: Optional[str] = None,
         session_name: Optional[str] = None,
+        expiry_time: Optional[str] = None,
     ):
         self.account_id = account_id
         self.access_key_id = access_key_id
@@ -26,6 +26,7 @@ class AwsCredentials:
         self.default_regions: list[str] = []
         self.role_arn = role_arn
         self.session_name = session_name
+        self.expiry_time = expiry_time
 
     def is_role(self) -> bool:
         return self.session_token is not None
@@ -44,6 +45,38 @@ class AwsCredentials:
                 if region["RegionOptStatus"] == "ENABLED_BY_DEFAULT"
             ]
 
+    def _create_refresh_function(
+        self, session: aioboto3.Session
+    ) -> Callable[[], Awaitable[Dict[str, Any]]]:
+        """
+        Returns a callable that fetches new credentials when the current credentials are close to expiry.
+        """
+
+        async def refresh() -> Dict[str, Any]:
+            """
+            Refreshes AWS credentials by re-assuming the role to get new credentials.
+
+            :return: A dictionary containing the new credentials and their expiration time.
+            """
+            async with session.client("sts") as sts_client:
+                response = await sts_client.assume_role(
+                    RoleArn=str(self.role_arn),
+                    RoleSessionName=str(self.session_name),
+                )
+                credentials = response["Credentials"]
+                self.access_key_id = credentials["AccessKeyId"]
+                self.secret_access_key = credentials["SecretAccessKey"]
+                self.session_token = credentials["SessionToken"]
+                self.expiry_time = credentials["Expiration"].isoformat()
+                return {
+                    "access_key": self.access_key_id,
+                    "secret_key": self.secret_access_key,
+                    "token": self.session_token,
+                    "expiry_time": self.expiry_time,
+                }
+
+        return refresh
+
     async def create_session(self, region: Optional[str] = None) -> aioboto3.Session:
         """
         Create a session possibly using AioRefreshableCredentials for auto refresh if these are role-based credentials.
@@ -60,16 +93,17 @@ class AwsCredentials:
                 aws_session_token=self.session_token,
             )
 
-            refresh_func = create_assume_role_refresher(
-                client=session.client("sts"),
-                params={
-                    "RoleArn": self.role_arn,
-                    "RoleSessionName": self.session_name,
-                },
-            )
+            refresh_func = self._create_refresh_function(session)
+
+            initial_creds = {
+                "access_key": self.access_key_id,
+                "secret_key": self.secret_access_key,
+                "token": self.session_token,
+                "expiry_time": self.expiry_time,
+            }
 
             credentials = AioRefreshableCredentials.create_from_metadata(
-                metadata=await refresh_func(),
+                metadata=initial_creds,
                 refresh_using=refresh_func,
                 method="sts-assume-role",
             )
