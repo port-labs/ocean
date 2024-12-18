@@ -1,3 +1,20 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+<!-- towncrier release notes start -->
+
+## 0.1.115 (2024-12-16)
+
+
+### Improvements
+
+- Updated the aiohttp dependency to version 3.11.10, resolving known vulnerability issues with medium severity
+
+
 0.1.114 (2024-12-15)
 
 ### Improvements
