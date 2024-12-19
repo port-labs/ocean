@@ -10,7 +10,11 @@ import proto  # type: ignore
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-from gcp_core.overrides import GCPCloudResourceConfig, GCPResourceConfig, GCPResourceSelector
+from gcp_core.overrides import (
+    GCPCloudResourceConfig,
+    GCPResourceConfig,
+    GCPResourceSelector,
+)
 from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
@@ -86,7 +90,9 @@ def should_use_snake_case(
     if matching_resource_config:
         selector = matching_resource_config.selector
     else:
-        selector = typing.cast(GCPResourceSelector, get_current_resource_config().selector)
+        selector = typing.cast(
+            GCPResourceSelector, get_current_resource_config().selector
+        )
     preserve_api_case = (
         getattr(selector, "preserve_api_response_case_style", False)
         if selector
