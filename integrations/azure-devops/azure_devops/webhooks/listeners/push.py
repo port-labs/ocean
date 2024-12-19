@@ -29,8 +29,27 @@ class PushHookListener(HookListener):
 
         ref_update_tasks = []
         for update in updates:
-            task = asyncio.create_task(self.process_ref_update(config, update, data))
+            branch = extract_branch_name_from_ref(update["name"])
+            if config.use_default_branch:
+                # The repository's default branch is not included in the ref updates
+                # but is in the initial data from the webhook event from the path
+                # `resource.repository.defaultBranch`
+                default_branch_with_ref: str = data["resource"]["repository"][
+                    "defaultBranch"
+                ]
+                default_branch = extract_branch_name_from_ref(default_branch_with_ref)
+            else:
+                default_branch = config.branch
+
+            if branch != default_branch:
+                logger.info("Skipping ref update for non-default branch")
+                continue
+            task = asyncio.create_task(self.process_ref_update(config, update))
             ref_update_tasks.append(task)
+
+        if not ref_update_tasks:
+            logger.info("No ref updates to process")
+            return
 
         logger.debug(f"Created {len(ref_update_tasks)} tasks for processing updates")
 
@@ -40,36 +59,26 @@ class PushHookListener(HookListener):
         self,
         config: GitPortAppConfig,
         update: Dict[str, Any],
-        initial_data: dict[str, Any] = {},
     ) -> None:
+        logger.info(f"Processing ref update with update: {update}")
         repo_id = update["repositoryId"]
-        branch = extract_branch_name_from_ref(update["name"])
-        default_branch_with_ref: str = initial_data["resource"]["repository"][
-            "defaultBranch"
-        ]
-        default_branch = extract_branch_name_from_ref(default_branch_with_ref)
-        logger.info(
-            f"Processing update for branch {branch}"
-            f" using default branch {default_branch}"
-            f" and config branch {config.branch}"
-        )
         old_commit = update["oldObjectId"]
         new_commit = update["newObjectId"]
-        if branch in [config.branch, default_branch]:
-            new_entities = await generate_entities_from_commit_id(
-                self._client, config.spec_path, repo_id, new_commit
-            )
-            logger.info(f"Got {len(new_entities)} new entities")
 
-            old_entities = await generate_entities_from_commit_id(
-                self._client, config.spec_path, repo_id, old_commit
-            )
-            logger.info(f"Got {len(old_entities)} old entities")
+        new_entities = await generate_entities_from_commit_id(
+            self._client, config.spec_path, repo_id, new_commit
+        )
+        logger.info(f"Got {len(new_entities)} new entities")
 
-            await ocean.update_diff(
-                {"before": old_entities, "after": new_entities},
-                UserAgentType.gitops,
-            )
+        old_entities = await generate_entities_from_commit_id(
+            self._client, config.spec_path, repo_id, old_commit
+        )
+        logger.info(f"Got {len(old_entities)} old entities")
+
+        await ocean.update_diff(
+            {"before": old_entities, "after": new_entities},
+            UserAgentType.gitops,
+        )
 
     async def register_repository(self, push_data: Dict[str, Any]) -> None:
         await ocean.register_raw(
