@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.67 (2024-12-19)
+
+
+### Improvements
+
+- Adds Datadog Users and Teams
+
+
 ## 0.1.66 (2024-12-15)
 
 
