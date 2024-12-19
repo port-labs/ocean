@@ -65,9 +65,24 @@ class DatadogResourceConfig(ResourceConfig):
     selector: DatadogResourceSelector
 
 
+class TeamSelector(Selector):
+    include_members: bool = Field(
+        alias="includeMembers",
+        default=False,
+        description="Whether to include the members of the team, defaults to false",
+    )
+
+
+class TeamResourceConfig(ResourceConfig):
+    selector: TeamSelector
+
+
 class DataDogPortAppConfig(PortAppConfig):
     resources: list[
-        SLOHistoryResourceConfig | DatadogResourceConfig | ResourceConfig
+        TeamResourceConfig
+        | SLOHistoryResourceConfig
+        | DatadogResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 
