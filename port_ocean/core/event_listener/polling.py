@@ -72,7 +72,7 @@ class PollingEventListener(BaseEventListener):
 
         @repeat_every(seconds=self.event_listener_config.interval)
         async def resync() -> None:
-            logger.info(
+            logger.debug(
                 f"Polling event listener iteration after {self.event_listener_config.interval}. Checking for changes"
             )
             integration = await ocean.app.port_client.get_current_integration()
