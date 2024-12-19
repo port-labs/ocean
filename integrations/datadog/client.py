@@ -158,11 +158,9 @@ class DatadogClient:
                 raise
             return response.json()
         
-    async def get_paginated_team_members(
+    async def get_team_members(
         self, team_id: str, page_size: int = MAX_PAGE_SIZE
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Get paginated team members from Datadog."""
-        logger.info(f"Getting members for team {team_id}")
         page = 0
         
         while True:
@@ -172,26 +170,19 @@ class DatadogClient:
                 params={
                     "page[size]": page_size,
                     "page[number]": page,
-                    "include": "user"
                 },
             )
             
-            # Get users from included section
-            users = [
-                user for user in result.get("included", [])
-                if user["type"] == "users"
-            ]
+            users = result.get("included", [])
             
             if not users:
                 break
-                
+                            
             logger.info(f"Retrieved {len(users)} members for team {team_id}")
             yield users
             page += 1
 
     async def get_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        """Get paginated teams from Datadog."""
-        logger.info("Getting teams from Datadog")
         page = 0
         page_size = MAX_PAGE_SIZE
 
@@ -214,8 +205,6 @@ class DatadogClient:
             page += 1
 
     async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Get paginated users from Datadog."""
-        logger.info("Getting users from Datadog")
         page = 0
         page_size = MAX_PAGE_SIZE
 

@@ -29,14 +29,13 @@ async def enrich_teams_with_members(
     """Enrich teams with their members in parallel."""
     async def fetch_team_members(team: Dict[str, Any]) -> List[Dict[str, Any]]:
         members = []
-        async for batch in client.get_paginated_team_members(team["id"]):
+        async for batch in client.get_team_members(team["id"]):
             members.extend(batch)
         return members
 
     team_tasks = [fetch_team_members(team) for team in teams]
     results = await asyncio.gather(*team_tasks)
 
-    # Simply add .__members to each team
     for team, members in zip(teams, results):
         team["__members"] = members
 
