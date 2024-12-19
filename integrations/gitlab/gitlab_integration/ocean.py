@@ -16,6 +16,7 @@ from gitlab_integration.git_integration import (
     GitlabResourceConfig,
     GitLabFilesResourceConfig,
     GitlabObjectWithMembersResourceConfig,
+    GitLabProjectResourceConfig,
 )
 from gitlab_integration.utils import ObjectKind, get_cached_all_services
 from port_ocean.context.event import event
@@ -132,7 +133,6 @@ async def resync_groups(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.GROUPWITHMEMBERS)
 async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     for service in get_cached_all_services():
         group_with_members_resource_config: GitlabObjectWithMembersResourceConfig = (
             typing.cast(GitlabObjectWithMembersResourceConfig, event.resource_config)
@@ -164,6 +164,9 @@ async def resync_groups_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    project_selector = typing.cast(
+        GitLabProjectResourceConfig, event.resource_config
+    ).selector
     for service in get_cached_all_services():
         masked_token = len(str(service.gitlab_client.private_token)[:-4]) * "*"
         logger.info(f"fetching projects for token {masked_token}")
@@ -182,7 +185,11 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
                 )
                 tasks = []
                 for project in projects_batch:
-                    tasks.append(service.enrich_project_with_extras(project))
+                    tasks.append(
+                        service.enrich_project_with_extras(
+                            project, project_selector.include_labels
+                        )
+                    )
                 enriched_projects = await asyncio.gather(*tasks)
                 logger.info(
                     f"Finished Processing extras for {projects_processed_in_full_batch}/{len(projects)} projects in batch"
@@ -194,9 +201,7 @@ async def resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.PROJECTWITHMEMBERS)
 async def resync_project_with_members(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-
     for service in get_cached_all_services():
-
         project_with_members_resource_config: GitlabObjectWithMembersResourceConfig = (
             typing.cast(GitlabObjectWithMembersResourceConfig, event.resource_config)
         )
