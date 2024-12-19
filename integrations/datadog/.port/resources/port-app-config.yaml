@@ -13,15 +13,10 @@ resources:
           properties:
             email: .attributes.email
             handle: .attributes.handle
-            title: .attributes.title
             status: .attributes.status
             disabled: .attributes.disabled
             verified: .attributes.verified
-            serviceAccount: .attributes.service_account
-            mfaEnabled: .attributes.mfa_enabled
-            icon: .attributes.icon
             createdAt: .attributes.created_at | todate
-            modifiedAt: .attributes.modified_at | todate
   - kind: team
     selector:
       query: 'true'
@@ -33,18 +28,14 @@ resources:
           title: .attributes.name
           blueprint: '"datadogTeam"'
           properties:
-            avatar: .attributes.avatar
             description: .attributes.description
             handle: .attributes.handle
-            linkCount: .attributes.link_count
             userCount: .attributes.user_count
             summary: .attributes.summary
-            visibleModules: .attributes.visible_modules
-            hiddenModules: .attributes.hidden_modules
             createdAt: .attributes.created_at | todate
-            modifiedAt: .attributes.modified_at | todate
           relations:
             members: if .__members then .__members[].id else [] end
+
   - kind: host
     selector:
       query: "true"
