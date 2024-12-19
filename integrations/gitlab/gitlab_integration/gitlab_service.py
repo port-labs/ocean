@@ -572,7 +572,7 @@ class GitlabService:
 
     @classmethod
     async def enrich_project_with_extras(
-        cls, project: Project, include_labels: bool
+        cls, project: Project, include_labels: bool = False
     ) -> Project:
         if include_labels:
             tasks = [
