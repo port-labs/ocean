@@ -3,15 +3,18 @@ import base64
 import os
 import typing
 from collections.abc import MutableSequence
-from typing import Any, TypedDict, Tuple
-
+from typing import Any, TypedDict, Tuple, Optional
 from gcp_core.errors import ResourceNotFoundError
 from loguru import logger
 import proto  # type: ignore
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-from gcp_core.overrides import GCPCloudResourceConfig
+from gcp_core.overrides import (
+    GCPCloudResourceConfig,
+    GCPResourceConfig,
+    GCPResourceSelector,
+)
 from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
@@ -75,23 +78,37 @@ def parse_latest_resource_from_asset(asset_data: AssetData) -> dict[Any, Any]:
     return max_versioned_resource_data["resource"]
 
 
-def should_use_snake_case() -> bool:
+def should_use_snake_case(
+    matching_resource_config: Optional[GCPResourceConfig] = None,
+) -> bool:
     """
     Determines whether to use snake_case for field names based on preserve_api_response_case_style config.
 
     Returns:
         bool: True to use snake_case, False to preserve API's original case style
     """
-    selector = get_current_resource_config().selector
-    preserve_api_case = getattr(selector, "preserve_api_response_case_style", False)
+    if matching_resource_config:
+        selector = matching_resource_config.selector
+    else:
+        selector = typing.cast(
+            GCPResourceSelector, get_current_resource_config().selector
+        )
+    preserve_api_case = (
+        getattr(selector, "preserve_api_response_case_style", False)
+        if selector
+        else False
+    )
     return not preserve_api_case
 
 
-def parse_protobuf_message(message: proto.Message) -> dict[str, Any]:
+def parse_protobuf_message(
+    message: proto.Message,
+    matching_resource_configs: Optional[GCPResourceConfig] = None,
+) -> dict[str, Any]:
     """
     Parse protobuf message to dict, controlling field name case style.
     """
-    use_snake_case = should_use_snake_case()
+    use_snake_case = should_use_snake_case(matching_resource_configs)
     return proto.Message.to_dict(message, preserving_proto_field_name=use_snake_case)
 
 
