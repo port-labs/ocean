@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.121 (2024-12-19)
+
+
+### Bug Fixes
+
+- Fixes bug in pagination, pagination to use total record count instead of response size, preventing early termination
+
+
 ## 0.1.120 (2024-12-15)
 
 
