@@ -14,6 +14,7 @@ from typing import (
 from uuid import uuid4
 
 from loguru import logger
+from port_ocean.utils.failed_entity_handler import FailedEntityHandler
 from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 
@@ -23,6 +24,7 @@ from port_ocean.exceptions.context import (
     ResourceContextNotFoundError,
 )
 from port_ocean.utils.misc import get_time
+
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
@@ -50,6 +52,8 @@ class EventContext:
     _parent_event: Optional["EventContext"] = None
     _event_id: str = field(default_factory=lambda: str(uuid4()))
     _on_abort_callbacks: list[AbortCallbackFunction] = field(default_factory=list)
+
+    failed_entity_handler = FailedEntityHandler()
 
     def on_abort(self, func: AbortCallbackFunction) -> None:
         self._on_abort_callbacks.append(func)
