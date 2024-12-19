@@ -6,6 +6,9 @@
     "email": "Your address email <you@example.com>",
     "release_date": "{% now 'local' %}",
     "is_private_integration": true,
+    "port_client_id": "Your Port client id",
+    "port_client_secret": "Your Port secret",
+    "is_europe_region": true,
     "_extensions": [
         "jinja2_time.TimeExtension",
         "extensions.VersionExtension"
