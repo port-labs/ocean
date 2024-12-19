@@ -121,7 +121,6 @@ class SonarQubeClient:
         query_params: Optional[dict[str, Any]] = None,
         json_data: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
-
         query_params = query_params or {}
         query_params["ps"] = PAGE_SIZE
         all_resources = []  # List to hold all fetched resources
@@ -146,10 +145,20 @@ class SonarQubeClient:
 
                 # Check for paging information and decide whether to fetch more pages
                 paging_info = response_json.get("paging")
-                if paging_info is None or len(resource) < PAGE_SIZE:
+                if not paging_info:
                     break
 
-                query_params["p"] = paging_info["pageIndex"] + 1
+                page_index = paging_info.get(
+                    "pageIndex", 1
+                )  # SonarQube pageIndex starts at 1
+                page_size = paging_info.get("pageSize", PAGE_SIZE)
+                total_records = paging_info.get("total", 0)
+
+                # Check if we have fetched all records
+                if page_index * page_size >= total_records:
+                    break
+
+                query_params["p"] = page_index + 1
 
             return all_resources
 
