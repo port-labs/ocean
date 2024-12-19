@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.15.3 (2024-12-19)
+
+### Features
+
+- Added capability to read configurations from a file, And periodically keep the integration's configuration updated with the file's configuration.
+
+
 ## 0.15.2 (2024-12-15)
 
 ### Improvements
