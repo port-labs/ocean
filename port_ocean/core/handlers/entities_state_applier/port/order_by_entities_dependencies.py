@@ -14,7 +14,6 @@ def node(entity: Entity) -> Node:
 def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
     nodes: dict[Node, Set[Node]] = {}
     entities_map = {}
-
     for entity in entities:
         nodes[node(entity)] = set()
         entities_map[node(entity)] = entity

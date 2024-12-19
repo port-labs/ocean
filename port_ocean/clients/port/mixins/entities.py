@@ -60,7 +60,7 @@ class EntityClientMixin:
             result = response.json()
             if (
                 response.status_code == 404
-                and result.get("ok") is False
+                and not result.get("ok")
                 and result.get("error") == "not_found"
             ):
                 return False

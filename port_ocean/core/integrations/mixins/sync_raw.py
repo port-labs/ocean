@@ -29,7 +29,7 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils import zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
-
+import json
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 
 
@@ -426,6 +426,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 use_cache=False
             )
             logger.info(f"Resync will use the following mappings: {app_config.dict()}")
+
             try:
                 did_fetched_current_state = True
                 entities_at_port = await ocean.port_client.search_entities(
@@ -456,9 +457,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                         creation_results.append(await task)
                 try:
-                    await event.handle_failed()
+                    await event.failed_entity_handler.handle_failed()
                 except:
-                    await event.handle_failed_no_sort()
+                    await event.failed_entity_handler.handle_failed_no_sort()
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise

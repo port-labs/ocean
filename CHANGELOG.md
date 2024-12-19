@@ -12,11 +12,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- On fail of retry because of topological sort - try unsorted upsert.
-- Register callbacks of failed entities.
+- When experiencing cyclic error on topological sort try unsorted upsert of the entities
 - Test upsert with dependencies, with self circular dependency and external entity dependency.
-- Update topologicals sort tree creation so an entity cannot be its own dependency.
-- When done with upserts, try topological sort on failed entities.
+- Fix topologicals sort tree creation so an entity cannot be its own dependency
+- When `createMissingRelatedEntities` is set to `false` and upserting entity failed on not existing entity, the entity will be gathered to the end of the resync and will try sorting all
+  the failed entities through a topological sort and upsert them as well
 
 
 ## 0.14.7 (2024-12-09)

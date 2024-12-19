@@ -10,12 +10,11 @@ from typing import (
     Callable,
     Awaitable,
     Union,
-    Tuple,
-    Coroutine,
 )
 from uuid import uuid4
 
 from loguru import logger
+from port_ocean.utils.failed_entity_handler import FailedEntityHandler
 from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 
@@ -25,10 +24,7 @@ from port_ocean.exceptions.context import (
     ResourceContextNotFoundError,
 )
 from port_ocean.utils.misc import get_time
-from port_ocean.core.handlers.entities_state_applier.port.order_by_entities_dependencies import (
-    order_by_entities_dependencies,
-)
-from port_ocean.core.models import Entity
+
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
@@ -56,37 +52,8 @@ class EventContext:
     _parent_event: Optional["EventContext"] = None
     _event_id: str = field(default_factory=lambda: str(uuid4()))
     _on_abort_callbacks: list[AbortCallbackFunction] = field(default_factory=list)
-    _failed_entity_callback_list: list[
-        Tuple[Entity, Callable[[], Coroutine[Any, Any, Entity | Literal[False] | None]]]
-    ] = field(default_factory=list)
 
-    def register_failed_upsert_call_arguments(
-        self,
-        entity: Entity,
-        func: Callable[[], Coroutine[Any, Any, Entity | Literal[False] | None]],
-    ) -> None:
-        self._failed_entity_callback_list.append((entity, func))
-
-    async def handle_failed(self) -> None:
-        entity_map: dict[
-            str, Callable[[], Coroutine[Any, Any, Entity | Literal[False] | None]]
-        ] = {
-            f"{obj.identifier}-{obj.blueprint}": func
-            for obj, func in self._failed_entity_callback_list
-        }
-        entity_list: list[Entity] = [
-            obj for obj, func in self._failed_entity_callback_list
-        ]
-
-        sorted_and_mapped = order_by_entities_dependencies(entity_list)
-        for obj in sorted_and_mapped:
-            func = entity_map.get(f"{obj.identifier}-{obj.blueprint}")
-            if func is not None:
-                await func()
-
-    async def handle_failed_no_sort(self) -> None:
-        for obj, func in self._failed_entity_callback_list:
-            await func()
+    failed_entity_handler = FailedEntityHandler()
 
     def on_abort(self, func: AbortCallbackFunction) -> None:
         self._on_abort_callbacks.append(func)
