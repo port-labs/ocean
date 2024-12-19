@@ -70,6 +70,7 @@ resources:
   - kind: work-item
     selector:
       query: 'true'
+      expand: 'All'
     port:
       entity:
         mappings:

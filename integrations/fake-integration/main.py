@@ -1,7 +1,14 @@
+from typing import Any
+
+from fastapi import Request
 from port_ocean.context.ocean import ocean
 from loguru import logger
 
-from fake_org_data.fake_client import get_fake_persons, get_departments
+from fake_org_data.fake_client import (
+    get_fake_persons,
+    get_departments,
+    get_random_person_from_batch,
+)
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from fake_org_data.fake_router import initialize_fake_routes
 
@@ -21,6 +28,14 @@ async def resync_persons(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 initialize_fake_routes()
+
+
+@ocean.router.post("/webhook")
+async def webhook_handler(request: Request) -> dict[str, Any]:
+    logger.info("Received a webhook!")
+    person = await get_random_person_from_batch()
+    await ocean.register_raw("fake-person", [person])
+    return {"ok": True}
 
 
 @ocean.on_start()

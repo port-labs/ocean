@@ -51,13 +51,17 @@ class HTTPBaseClient:
     async def _get_paginated_by_top_and_continuation_token(
         self, url: str, additional_params: Optional[dict[str, Any]] = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        continuation_token = ""
+        continuation_token = None
         while True:
             params: dict[str, Any] = {
                 "$top": PAGE_SIZE,
-                "continuationToken": continuation_token,
                 **(additional_params or {}),
             }
+            if (
+                continuation_token
+            ):  # Only add continuationToken if it's not None or empty
+                params["continuationToken"] = continuation_token
+
             response = await self.send_request("GET", url, params=params)
             logger.info(
                 f"Found {len(response.json()['value'])} objects in url {url} with params: {params}"

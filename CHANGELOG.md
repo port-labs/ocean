@@ -18,6 +18,26 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - When `createMissingRelatedEntities` is set to `false` and upserting entity failed on not existing entity, the entity will be gathered to the end of the resync and will try sorting all
   the failed entities through a topological sort and upsert them as well
 
+## 0.15.2 (2024-12-15)
+
+### Improvements
+
+- Add handling for different installation types compatibility
+
+
+## 0.15.1 (2024-12-15)
+
+### Bug Fixes
+
+- Changed `SaasOauth` runtime to `SaasOauth2`
+
+
+## 0.15.0 (2024-12-12)
+
+### Features
+
+- Added `SaasOauth` runtime support
+
 
 ## 0.14.7 (2024-12-09)
 

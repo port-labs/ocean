@@ -1,7 +1,5 @@
 from typing import Type, List
 
-from gitlab import Gitlab
-
 from loguru import logger
 
 from gitlab_integration.events.event_handler import EventHandler, SystemEventHandler
@@ -26,6 +24,7 @@ from gitlab_integration.errors import (
     GitlabEventListenerConflict,
     GitlabIllegalEventName,
 )
+from gitlab_integration.utils import generate_gitlab_client
 
 event_handler = EventHandler()
 system_event_handler = SystemEventHandler()
@@ -161,7 +160,7 @@ async def create_webhooks_by_client(
     groups_hooks_events_override: dict[str, WebhookGroupConfig] | None,
     group_mapping: list[str],
 ) -> tuple[GitlabService, list[str]]:
-    gitlab_client = Gitlab(gitlab_host, token)
+    gitlab_client = generate_gitlab_client(gitlab_host, token)
     gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
 
     groups_for_webhooks = await gitlab_service.get_filtered_groups_for_webhooks(
@@ -203,7 +202,7 @@ async def setup_application(
         logger.info("Using system hook")
         validate_use_system_hook(token_mapping)
         token, group_mapping = list(token_mapping.items())[0]
-        gitlab_client = Gitlab(gitlab_host, token)
+        gitlab_client = generate_gitlab_client(gitlab_host, token)
         gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
         setup_system_listeners([gitlab_service])
 

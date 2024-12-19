@@ -1,6 +1,39 @@
 createMissingRelatedEntities: true
 deleteDependentEntities: true
 resources:
+  - kind: user
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .email
+          title: .user.name
+          blueprint: '"sentryUser"'
+          properties:
+            username: .user.username
+            isActive: .user.isActive
+            dateJoined: .user.dateJoined
+            lastLogin: .user.lastLogin
+            orgRole: .orgRole
+            inviteStatus: .inviteStatus
+  - kind: team
+    selector:
+      query: 'true'
+      includeMembers: true
+    port:
+      entity:
+        mappings:
+          identifier: .slug
+          title: .name
+          blueprint: '"sentryTeam"'
+          properties:
+            dateCreated: .dateCreated
+            memberCount: .memberCount
+            roles: .teamRole
+            projects: .projects | map (.slug)
+          relations:
+            members: if .__members != null then .__members | map(.user.email) | map(select(. != null)) else [] end
   - kind: project-tag
     selector:
       query: "true"
@@ -16,7 +49,13 @@ resources:
             platform: .platform
             status: .status
             link: .organization.links.organizationUrl + "/projects/" + .name
-
+          relations:
+            team:
+              combinator: '"and"'
+              rules:
+                - property: '"projects"'
+                  operator: '"contains"'
+                  value: .slug
   - kind: issue-tag
     selector:
       query: "true"
@@ -33,3 +72,4 @@ resources:
             isUnhandled: .isUnhandled
           relations:
             projectEnvironment: '[(.project.slug as $slug | .__tags[] | "\($slug)-\(.name)")]'
+            assignedTo: .assignedTo.email

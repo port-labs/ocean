@@ -1,5 +1,104 @@
 [
   {
+    "identifier": "sentryUser",
+    "description": "This blueprint represents a Sentry user in our software catalog.",
+    "title": "Sentry User",
+    "icon": "Sentry",
+    "schema": {
+      "properties": {
+        "username": {
+          "type": "string",
+          "title": "Username"
+        },
+        "isActive": {
+          "type": "boolean",
+          "title": "Is Active"
+        },
+        "dateJoined": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Date Joined"
+        },
+        "lastLogin": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last Login"
+        },
+        "orgRole": {
+          "icon": "DefaultProperty",
+          "title": "Organization Role",
+          "type": "string",
+          "enum": [
+            "member",
+            "admin",
+            "owner",
+            "manager",
+            "biling"
+          ],
+          "enumColors": {
+            "member": "pink",
+            "admin": "green",
+            "owner": "green",
+            "manager": "yellow",
+            "biling": "lightGray"
+          }
+        },
+        "inviteStatus": {
+          "type": "string",
+          "title": "Invite Status",
+          "icon": "DefaultProperty"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "sentryTeam",
+    "description": "This blueprint represents an Sentry team in our software catalog",
+    "title": "Sentry Team",
+    "icon": "Sentry",
+    "schema": {
+      "properties": {
+        "dateCreated": {
+          "type": "string",
+          "title": "Date Created",
+          "format": "date-time"
+        },
+        "memberCount": {
+          "type": "number",
+          "title": "Number of Members"
+        },
+        "roles": {
+          "type": "string",
+          "title": "Roles"
+        },
+        "projects": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "title": "Projects"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "members": {
+        "title": "Members",
+        "target": "sentryUser",
+        "required": false,
+        "many": true
+      }
+    }
+  },
+  {
     "identifier": "sentryProject",
     "title": "Sentry Project Environment",
     "icon": "Sentry",
@@ -34,7 +133,14 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "relations": {}
+    "relations": {
+      "team": {
+        "title": "Team",
+        "target": "sentryTeam",
+        "required": false,
+        "many": false
+      }
+    }
   },
   {
     "identifier": "sentryIssue",
@@ -78,6 +184,12 @@
         "target": "sentryProject",
         "required": false,
         "many": true
+      },
+      "assignedTo": {
+        "title": "Assigned To",
+        "target": "sentryUser",
+        "required": false,
+        "many": false
       }
     }
   }

@@ -58,6 +58,10 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
             description="WIQL query to filter work items. If not provided, all work items will be fetched.",
             alias="wiql",
         )
+        expand: Literal["None", "Fields", "Relations", "Links", "All"] = Field(
+            default="All",
+            description="Expand options for work items. Allowed values are 'None', 'Fields', 'Relations', 'Links' and 'All'. Default value is 'All'.",
+        )
 
     kind: Literal["work-item"]
     selector: AzureDevopsSelector
