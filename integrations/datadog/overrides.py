@@ -63,7 +63,8 @@ class DatadogResourceSelector(Selector):
 
 class DatadogResourceConfig(ResourceConfig):
     selector: DatadogResourceSelector
-    
+
+
 class TeamSelector(Selector):
     include_members: bool = Field(
         alias="includeMembers",
@@ -78,7 +79,10 @@ class TeamResourceConfig(ResourceConfig):
 
 class DataDogPortAppConfig(PortAppConfig):
     resources: list[
-        TeamResourceConfig| SLOHistoryResourceConfig | DatadogResourceConfig | ResourceConfig
+        TeamResourceConfig
+        | SLOHistoryResourceConfig
+        | DatadogResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 

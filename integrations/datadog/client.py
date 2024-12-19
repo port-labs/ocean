@@ -157,12 +157,12 @@ class DatadogClient:
                 logger.error(f"Error while making request to url: {url} - {str(e)}")
                 raise
             return response.json()
-        
+
     async def get_team_members(
         self, team_id: str, page_size: int = MAX_PAGE_SIZE
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         page = 0
-        
+
         while True:
             url = f"{self.api_url}/api/v2/team/{team_id}/memberships"
             result = await self._send_api_request(
@@ -172,12 +172,12 @@ class DatadogClient:
                     "page[number]": page,
                 },
             )
-            
+
             users = result.get("included", [])
-            
+
             if not users:
                 break
-                            
+
             logger.info(f"Retrieved {len(users)} members for team {team_id}")
             yield users
             page += 1
