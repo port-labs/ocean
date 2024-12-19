@@ -4,7 +4,6 @@ import os
 import typing
 from collections.abc import MutableSequence
 from typing import Any, TypedDict, Tuple, Optional
-import typing
 from gcp_core.errors import ResourceNotFoundError
 from loguru import logger
 import proto  # type: ignore
@@ -85,7 +84,7 @@ def should_use_snake_case(
         bool: True to use snake_case, False to preserve API's original case style
     """
     if matching_resource_config:
-        selector = typing.cast(GCPResourceSelector, matching_resource_config.selector)
+        selector = matching_resource_config.selector
     else:
         selector = typing.cast(GCPResourceSelector, get_current_resource_config().selector)
     preserve_api_case = (
