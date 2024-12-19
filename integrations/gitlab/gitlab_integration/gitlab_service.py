@@ -571,11 +571,16 @@ class GitlabService:
             return {"__languages": {}}
 
     @classmethod
-    async def enrich_project_with_extras(cls, project: Project) -> Project:
-        tasks = [
-            cls.async_project_language_wrapper(project),
-            cls.async_project_labels_wrapper(project),
-        ]
+    async def enrich_project_with_extras(
+        cls, project: Project, include_labels: bool = False
+    ) -> Project:
+        if include_labels:
+            tasks = [
+                cls.async_project_language_wrapper(project),
+                cls.async_project_labels_wrapper(project),
+            ]
+        else:
+            tasks = [cls.async_project_language_wrapper(project)]
         tasks_extras = await asyncio.gather(*tasks)
         for task_extras in tasks_extras:
             for key, value in task_extras.items():

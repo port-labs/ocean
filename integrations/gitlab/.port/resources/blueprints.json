@@ -45,6 +45,13 @@
             "Other": "yellow"
           },
           "icon": "DefaultProperty"
+        },
+        "labels": {
+          "items": {
+            "type": "object"
+          },
+          "type": "array",
+          "title": "Labels"
         }
       },
       "required": []

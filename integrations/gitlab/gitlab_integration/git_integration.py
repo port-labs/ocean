@@ -122,7 +122,6 @@ class GitlabResourceConfig(ResourceConfig):
 
 
 class GitlabMemberSelector(Selector):
-
     include_inherited_members: bool = Field(
         alias="includeInheritedMembers",
         default=False,
@@ -147,6 +146,14 @@ class FilesSelector(BaseModel):
     )
 
 
+class GitLabProjectSelector(Selector):
+    include_labels: bool = Field(
+        alias="includeLabels",
+        description="Whether to enrich projects with labels",
+        default=False,
+    )
+
+
 class GitLabFilesSelector(Selector):
     files: FilesSelector
 
@@ -154,6 +161,11 @@ class GitLabFilesSelector(Selector):
 class GitLabFilesResourceConfig(ResourceConfig):
     selector: GitLabFilesSelector
     kind: Literal["file"]
+
+
+class GitLabProjectResourceConfig(ResourceConfig):
+    selector: GitLabProjectSelector
+    kind: Literal["project"]
 
 
 class GitlabPortAppConfig(PortAppConfig):
@@ -165,7 +177,7 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-    resources: list[GitlabObjectWithMembersResourceConfig | GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitlabObjectWithMembersResourceConfig | GitLabFilesResourceConfig | GitLabProjectResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:
