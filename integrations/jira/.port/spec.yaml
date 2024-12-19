@@ -31,7 +31,13 @@ configurations:
   - name: atlassianOrganizationId
     required: false
     type: string
-    description: To find your Organization ID, log in to the Atlassian Admin Portal, navigate to Organization Settings, and locate the unique identifier in the organization details.
+    description: |
+      To find your Atlassian Organization ID:
+      1. Visit the Atlassian Admin Portal at https://admin.atlassian.com
+      2. If you belong to multiple organizations, select the relevant one
+      3. In your browser's address bar, you'll see a URL like:
+        https://admin.atlassian.com/o/abcdef12-3456-7890-xxxx-xxxxxxxxxxxx/overview
+      4. abcdef12-3456-7890-xxxx-xxxxxxxxxxxx is your Organization ID
     sensitive: false
 saas:
   enabled: true
