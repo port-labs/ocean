@@ -1,11 +1,12 @@
 import typing
 from enum import StrEnum
-from typing import Any
+from typing import Any, List, Dict, cast
+import asyncio
 
 from loguru import logger
 
 from client import DatadogClient
-from overrides import SLOHistoryResourceConfig, DatadogResourceConfig, DatadogSelector
+from overrides import SLOHistoryResourceConfig, DatadogResourceConfig, DatadogSelector, TeamResourceConfig
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
@@ -18,7 +19,28 @@ class ObjectKind(StrEnum):
     SERVICE = "service"
     SLO_HISTORY = "sloHistory"
     SERVICE_METRIC = "serviceMetric"
+    TEAM = "team"
+    USER = "user"
 
+async def enrich_teams_with_members(
+    client: DatadogClient, 
+    teams: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
+    """Enrich teams with their members in parallel."""
+    async def fetch_team_members(team: Dict[str, Any]) -> List[Dict[str, Any]]:
+        members = []
+        async for batch in client.get_paginated_team_members(team["id"]):
+            members.extend(batch)
+        return members
+
+    team_tasks = [fetch_team_members(team) for team in teams]
+    results = await asyncio.gather(*team_tasks)
+
+    # Simply add .__members to each team
+    for team, members in zip(teams, results):
+        team["__members"] = members
+
+    return teams
 
 def init_client() -> DatadogClient:
     return DatadogClient(
@@ -27,7 +49,29 @@ def init_client() -> DatadogClient:
         ocean.integration_config["datadog_application_key"],
     )
 
+@ocean.on_resync(ObjectKind.TEAM)
+async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+    
+    selector = cast(TeamResourceConfig, event.resource_config).selector
+    
+    async for teams in dd_client.get_teams():
+        if selector.include_members:
+            logger.info(f"Enriching {len(teams)} teams with member information")
+            teams = await enrich_teams_with_members(dd_client, teams)
+        logger.info(f"Received teams batch with {len(teams)} teams")
+        logger.info(teams)
+        yield teams
 
+@ocean.on_resync(ObjectKind.USER)
+async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    dd_client = init_client()
+
+    async for users in dd_client.get_users():
+        logger.info(f"Received batch with {len(users)} users")
+        logger.info(users)
+        yield users
+        
 @ocean.on_resync(ObjectKind.HOST)
 async def on_resync_hosts(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     dd_client = init_client()
