@@ -90,7 +90,7 @@ class SonarQubeGAProjectAPIFilter(BaseSonarQubeApiFilter):
     )
     projects: list[str] | None = Field(description="List of projects")
     qualifiers: list[Literal["TRK", "APP"]] | None = Field(
-        description="List of qualifiers"
+        description="List of qualifiers", alias="qualifier"
     )
 
     def generate_request_params(self) -> dict[str, Any]:

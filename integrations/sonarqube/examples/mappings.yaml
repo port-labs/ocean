@@ -5,7 +5,7 @@ resources:
     selector:
       query: 'true'
       apiFilters:
-        qualifiers:
+        qualifier:
           - TRK
       metrics:
         - code_smells
