@@ -4,14 +4,14 @@ import os
 import typing
 from collections.abc import MutableSequence
 from typing import Any, TypedDict, Tuple, Optional
-
+import typing
 from gcp_core.errors import ResourceNotFoundError
 from loguru import logger
 import proto  # type: ignore
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-from gcp_core.overrides import GCPCloudResourceConfig, GCPResourceConfig
+from gcp_core.overrides import GCPCloudResourceConfig, GCPResourceConfig, GCPResourceSelector
 from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
@@ -85,9 +85,9 @@ def should_use_snake_case(
         bool: True to use snake_case, False to preserve API's original case style
     """
     if matching_resource_config:
-        selector = matching_resource_config.selector
+        selector = typing.cast(GCPResourceSelector, matching_resource_config.selector)
     else:
-        selector = get_current_resource_config().selector
+        selector = typing.cast(GCPResourceSelector, get_current_resource_config().selector)
     preserve_api_case = (
         getattr(selector, "preserve_api_response_case_style", False)
         if selector
