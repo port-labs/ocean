@@ -28,10 +28,10 @@ configurations:
     type: string
     description: You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
     sensitive: true
-  - name: atlassianOrganisationId
+  - name: atlassianOrganizationId
     required: false
     type: string
-    description: To find your Organisation ID, log in to the Atlassian Admin Portal, navigate to Organization Settings, and locate the unique identifier in the organization details.
+    description: To find your Organization ID, log in to the Atlassian Admin Portal, navigate to Organization Settings, and locate the unique identifier in the organization details.
     sensitive: false
 saas:
   enabled: true
