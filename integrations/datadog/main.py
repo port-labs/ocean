@@ -60,7 +60,6 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
             logger.info(f"Enriching {len(teams)} teams with member information")
             teams = await enrich_teams_with_members(dd_client, teams)
         logger.info(f"Received teams batch with {len(teams)} teams")
-        logger.info(teams)
         yield teams
 
 @ocean.on_resync(ObjectKind.USER)
@@ -69,7 +68,6 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     async for users in dd_client.get_users():
         logger.info(f"Received batch with {len(users)} users")
-        logger.info(users)
         yield users
         
 @ocean.on_resync(ObjectKind.HOST)

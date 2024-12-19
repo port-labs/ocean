@@ -202,7 +202,14 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "team": {
+        "target": "datadogTeam",
+        "title": "Team",
+        "many": false,
+        "required": false
+      }
+    }
   },
   {
     "identifier": "datadogSlo",
@@ -252,20 +259,7 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
-    "aggregationProperties": {
-      "sli_average": {
-        "title": "SLI Average",
-        "type": "number",
-        "target": "datadogSloHistory",
-        "calculationSpec": {
-          "func": "average",
-          "averageOf": "total",
-          "property": "sliValue",
-          "measureTimeBy": "$createdAt",
-          "calculationBy": "property"
-        }
-      }
-    },
+    "aggregationProperties": {},
     "relations": {
       "monitors": {
         "title": "SLO Monitors",
@@ -345,6 +339,138 @@
     },
     "mirrorProperties": {},
     "calculationProperties": {},
+    "relations": {}
+  },
+  {
+    "identifier": "datadogTeam",
+    "description": "This blueprint represents a Datadog team",
+    "title": "Datadog Team",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "avatar": {
+          "title": "Avatar",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "handle": {
+          "title": "Handle",
+          "type": "string"
+        },
+        "linkCount": {
+          "title": "Link Count",
+          "type": "number"
+        },
+        "userCount": {
+          "title": "User Count",
+          "type": "number"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "visibleModules": {
+          "title": "Visible Modules",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hiddenModules": {
+          "title": "Hidden Modules",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "modifiedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "members": {
+        "target": "datadogUser",
+        "title": "Members",
+        "many": true,
+        "required": false
+      }
+    }
+  },
+  {
+    "identifier": "datadogUser",
+    "description": "This blueprint represents a Datadog user",
+    "title": "Datadog User",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "email": {
+          "title": "Email",
+          "type": "string",
+          "format": "email"
+        },
+        "handle": {
+          "title": "Handle",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "disabled": {
+          "title": "Disabled",
+          "type": "boolean"
+        },
+        "verified": {
+          "title": "Verified",
+          "type": "boolean"
+        },
+        "serviceAccount": {
+          "title": "Service Account",
+          "type": "boolean"
+        },
+        "mfaEnabled": {
+          "title": "MFA Enabled",
+          "type": "boolean"
+        },
+        "icon": {
+          "title": "Icon",
+          "type": "string"
+        },
+        "createdAt": {
+          "title": "Created At",
+          "type": "string",
+          "format": "date-time"
+        },
+        "modifiedAt": {
+          "title": "Updated At",
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
     "relations": {}
   }
 ]
