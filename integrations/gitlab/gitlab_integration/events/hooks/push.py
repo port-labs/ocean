@@ -7,7 +7,10 @@ from gitlab.v4.objects import Project
 
 from gitlab_integration.core.utils import generate_ref, does_pattern_apply
 from gitlab_integration.events.hooks.base import ProjectHandler
-from gitlab_integration.git_integration import GitlabPortAppConfig
+from gitlab_integration.git_integration import (
+    GitlabPortAppConfig,
+    GitLabProjectResourceConfig,
+)
 from gitlab_integration.utils import ObjectKind
 
 from port_ocean.clients.port.types import UserAgentType
@@ -100,8 +103,9 @@ class PushHook(ProjectHandler):
             logger.info(
                 f"Updating project information after push hook for project {gitlab_project.path_with_namespace}"
             )
+            include_labels = self.should_enrich_project_with_labels(config)
             enriched_project = await self.gitlab_service.enrich_project_with_extras(
-                gitlab_project
+                gitlab_project, include_labels
             )
             await ocean.register_raw(ObjectKind.PROJECT, [enriched_project.asdict()])
             await self._register_object_with_members(
@@ -188,3 +192,14 @@ class PushHook(ProjectHandler):
             logger.debug(
                 f"Skipped {len(skipped_files)} files as they didn't match {spec_path} Skipped files: {skipped_files}"
             )
+
+    def should_enrich_project_with_labels(self, config: GitlabPortAppConfig) -> bool:
+        """Determine if a project should be enriched with labels based on config."""
+        return any(
+            resource_config.selector.include_labels
+            for resource_config in config.resources
+            if (
+                resource_config.kind == ObjectKind.PROJECT
+                and isinstance(resource_config, GitLabProjectResourceConfig)
+            )
+        )
