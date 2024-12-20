@@ -16,12 +16,18 @@ from port_ocean.core.event_listener.once import (
     OnceEventListener,
 )
 
+from port_ocean.core.event_listener.webhooks_only import (
+    WebhooksOnlyEventListener,
+    WebhooksOnlyEventListenerSettings,
+)
+
 
 EventListenerSettingsType = (
     HttpEventListenerSettings
     | KafkaEventListenerSettings
     | PollingEventListenerSettings
     | OnceEventListenerSettings
+    | WebhooksOnlyEventListenerSettings
 )
 
 __all__ = [
@@ -34,4 +40,6 @@ __all__ = [
     "PollingEventListenerSettings",
     "OnceEventListener",
     "OnceEventListenerSettings",
+    "WebhooksOnlyEventListener",
+    "WebhooksOnlyEventListenerSettings",
 ]
