@@ -147,10 +147,19 @@ class SonarQubeClient:
                 yield resources
 
                 paging_info = response.get("paging")
-                if not paging_info or len(resources) < PAGE_SIZE:
-                    return
+                if not paging_info:
+                    break
 
-                query_params["p"] = paging_info["pageIndex"] + 1
+                page_index = paging_info.get(
+                    "pageIndex", 1
+                )  # SonarQube pageIndex starts at 1
+                page_size = paging_info.get("pageSize", PAGE_SIZE)
+                total_records = paging_info.get("total", 0)
+                logger.error("Fetching paginated data")
+                # Check if we have fetched all records
+                if page_index * page_size >= total_records:
+                    break
+                query_params["p"] = page_index + 1
         except httpx.HTTPStatusError as e:
             logger.error(
                 f"HTTP error with status code: {e.response.status_code} and response text: {e.response.text}"

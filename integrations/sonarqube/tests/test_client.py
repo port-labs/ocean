@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from loguru import logger
 from port_ocean.context.event import event_context
 
 from client import SonarQubeClient, turn_sequence_to_chunks
@@ -30,7 +31,9 @@ class MockHttpxClient:
     async def request(
         self, *args: tuple[Any], **kwargs: dict[str, Any]
     ) -> httpx.Response:
-        if self._current_response_index >= len(self.responses):
+        if self._current_response_index == len(self.responses):
+            logger.error(f"Response index {self._current_response_index}")
+            logger.error(f"Responses length: {len(self.responses)}")
             raise httpx.HTTPError("No more responses")
 
         response = self.responses[self._current_response_index]
@@ -145,7 +148,7 @@ async def test_sonarqube_client_will_repeatedly_make_pagination_request(
                 {
                     "status_code": 200,
                     "json": {
-                        "paging": {"pageIndex": 1, "pageSize": 1, "total": 2},
+                        "paging": {"pageIndex": 2, "pageSize": 1, "total": 2},
                         "components": projects,
                     },
                 },
@@ -160,42 +163,50 @@ async def test_sonarqube_client_will_repeatedly_make_pagination_request(
         ):
             count += 1
 
-    async def test_pagination_with_large_dataset(
-        mock_ocean_context: Any,
-        monkeypatch: Any,
-    ) -> None:
-        sonarqube_client = SonarQubeClient(
-            "https://sonarqube.com",
-            "token",
-            "organization_id",
-            "app_host",
-            False,
-        )
 
-        # Mock three pages of results
-        mock_responses = [
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 1, "pageSize": 2, "total": 6},
-                    "components": [{"key": "project1"}, {"key": "project2"}],
-                },
+async def test_pagination_with_large_dataset(
+    mock_ocean_context: Any, monkeypatch: Any
+) -> None:
+    sonarqube_client = SonarQubeClient(
+        "https://sonarqube.com",
+        "token",
+        "organization_id",
+        "app_host",
+        False,
+    )
+    mock_get_single_project = AsyncMock()
+    mock_get_single_project.side_effect = lambda key: key
+
+    # Mock three pages of results
+    mock_responses = [
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 1, "pageSize": 2, "total": 6},
+                "components": [{"key": "project1"}, {"key": "project2"}],
             },
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 2, "pageSize": 2, "total": 6},
-                    "components": [{"key": "project3"}, {"key": "project4"}],
-                },
+        },
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 2, "pageSize": 2, "total": 6},
+                "components": [{"key": "project3"}, {"key": "project4"}],
             },
-            {
-                "status_code": 200,
-                "json": {
-                    "paging": {"pageIndex": 3, "pageSize": 2, "total": 6},
-                    "components": [{"key": "project5"}, {"key": "project6"}],
-                },
+        },
+        {
+            "status_code": 200,
+            "json": {
+                "paging": {"pageIndex": 3, "pageSize": 2, "total": 6},
+                "components": [{"key": "project5"}, {"key": "project6"}],
             },
-        ]
+        },
+    ]
+
+    async with event_context("test_event"):
+
+        monkeypatch.setattr(
+            sonarqube_client, "get_single_project", mock_get_single_project
+        )
 
         sonarqube_client.http_client = MockHttpxClient(mock_responses)  # type: ignore
 
