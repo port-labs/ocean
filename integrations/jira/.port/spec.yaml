@@ -7,6 +7,7 @@ features:
     resources:
       - kind: project
       - kind: issue
+      - kind: team
       - kind: user
 configurations:
   - name: appHost
@@ -27,6 +28,17 @@ configurations:
     type: string
     description: You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
     sensitive: true
+  - name: atlassianOrganizationId
+    required: false
+    type: string
+    description: |
+      To find your Atlassian Organization ID:
+      1. Visit the Atlassian Admin Portal at https://admin.atlassian.com
+      2. If you belong to multiple organizations, select the relevant one
+      3. In your browser's address bar, you'll see a URL like:
+        https://admin.atlassian.com/o/abcdef12-3456-7890-xxxx-xxxxxxxxxxxx/overview
+      4. abcdef12-3456-7890-xxxx-xxxxxxxxxxxx is your Organization ID
+    sensitive: false
 saas:
   enabled: true
   oauthConfiguration:
