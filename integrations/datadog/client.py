@@ -4,7 +4,7 @@ import datetime
 import http
 import json
 import time
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, List, Dict
 from urllib.parse import urlparse, urlunparse
 
 import httpx
@@ -157,6 +157,75 @@ class DatadogClient:
                 logger.error(f"Error while making request to url: {url} - {str(e)}")
                 raise
             return response.json()
+
+    async def get_team_members(
+        self, team_id: str, page_size: int = MAX_PAGE_SIZE
+    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        page = 0
+
+        while True:
+            url = f"{self.api_url}/api/v2/team/{team_id}/memberships"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "page[size]": page_size,
+                    "page[number]": page,
+                },
+            )
+
+            users = result.get("included", [])
+
+            if not users:
+                break
+
+            logger.info(f"Retrieved {len(users)} members for team {team_id}")
+            yield users
+            page += 1
+
+    async def get_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        page = 0
+        page_size = MAX_PAGE_SIZE
+
+        while True:
+            url = f"{self.api_url}/api/v2/team"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "page[size]": page_size,
+                    "page[number]": page,
+                },
+            )
+
+            teams = result.get("data", [])
+            if not teams:
+                break
+
+            logger.info(f"Retrieved {len(teams)} teams")
+            yield teams
+            page += 1
+
+    async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        page = 0
+        page_size = MAX_PAGE_SIZE
+
+        while True:
+            url = f"{self.api_url}/api/v2/users"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "page[number]": page,
+                    "page[size]": page_size,
+                    "schema_version": "v2.2",
+                },
+            )
+
+            users = result.get("data", [])
+            if not users:
+                break
+
+            logger.info(f"Retrieved {len(users)} users")
+            yield users
+            page += 1
 
     async def get_hosts(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         start = 0
