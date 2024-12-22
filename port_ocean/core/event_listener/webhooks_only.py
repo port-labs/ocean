@@ -41,4 +41,4 @@ class WebhooksOnlyEventListener(BaseEventListener):
         self.event_listener_config = event_listener_config
 
     async def _start(self) -> None:
-        logger.info("Starting Webhooks-only event listener.")
+        logger.info("Starting Webhooks-only event listener")
