@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.101 (2024-12-17)
+
+
+### Improvements
+
+- Added support for Sentry users and teams and established a relationship between the two resources
+- Updated issues blueprint to include an assignedTo relation
+
+
 ## 0.1.100 (2024-12-15)
 
 
