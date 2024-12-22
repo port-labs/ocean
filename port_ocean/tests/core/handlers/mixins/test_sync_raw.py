@@ -4,6 +4,7 @@ from typing import Any, AsyncGenerator
 
 from httpx import Response
 from port_ocean.clients.port.client import PortClient
+from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from port_ocean.exceptions.core import OceanAbortException
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
@@ -28,9 +29,6 @@ from port_ocean.core.models import Entity
 from port_ocean.context.event import EventContext, event_context, EventType
 from port_ocean.clients.port.types import UserAgentType
 from port_ocean.context.ocean import ocean
-from port_ocean.core.handlers.entities_state_applier.port.order_by_entities_dependencies import (
-    order_by_entities_dependencies,
-)
 
 
 @pytest.fixture
@@ -199,7 +197,7 @@ async def test_sync_raw_mixin_self_dependency(
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
-        side_effect=order_by_entities_dependencies
+        side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         app_config = (
@@ -216,7 +214,7 @@ async def test_sync_raw_mixin_self_dependency(
             lambda *args, **kwargs: no_op_event_context(event),
         ):
             with patch(
-                "port_ocean.utils.entity_topological_sorter.order_by_entities_dependencies",
+                "port_ocean.core.utils.entity_topological_sorter.EntityTopologicalSorter.order_by_entities_dependencies",
                 mock_order_by_entities_dependencies,
             ):
 
@@ -254,7 +252,7 @@ async def test_sync_raw_mixin_circular_dependency(
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
-        side_effect=order_by_entities_dependencies
+        side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         app_config = (
@@ -288,7 +286,7 @@ async def test_sync_raw_mixin_circular_dependency(
             lambda *args, **kwargs: no_op_event_context(event),
         ):
             with patch(
-                "port_ocean.utils.entity_topological_sorter.order_by_entities_dependencies",
+                "port_ocean.core.utils.entity_topological_sorter.EntityTopologicalSorter.order_by_entities_dependencies",
                 mock_order_by_entities_dependencies,
             ):
 
@@ -300,7 +298,11 @@ async def test_sync_raw_mixin_circular_dependency(
                     len(event.entity_topological_sorter.entities) == 2
                 ), "Expected one failed entity callback due to retry logic"
                 assert event.entity_topological_sorter.register_entity.call_count == 2
-                assert event.entity_topological_sorter.get_entities.call_count == 1
+                assert event.entity_topological_sorter.get_entities.call_count == 2
+                assert [
+                    call[0]
+                    for call in event.entity_topological_sorter.get_entities.call_args_list
+                ] == [(), (False,)]
                 assert len(raiesed_error_handle_failed) == 1
                 assert isinstance(raiesed_error_handle_failed[0], OceanAbortException)
                 assert isinstance(raiesed_error_handle_failed[0].__cause__, CycleError)
@@ -331,7 +333,7 @@ async def test_sync_raw_mixin_dependency(
     mock_sync_raw_mixin.entity_processor.parse_items = AsyncMock(return_value=calc_result_mock)  # type: ignore
 
     mock_order_by_entities_dependencies = MagicMock(
-        side_effect=order_by_entities_dependencies
+        side_effect=EntityTopologicalSorter.order_by_entities_dependencies
     )
     async with event_context(EventType.RESYNC, trigger_type="machine") as event:
         app_config = (
@@ -365,7 +367,7 @@ async def test_sync_raw_mixin_dependency(
             lambda *args, **kwargs: no_op_event_context(event),
         ):
             with patch(
-                "port_ocean.utils.entity_topological_sorter.order_by_entities_dependencies",
+                "port_ocean.core.utils.entity_topological_sorter.EntityTopologicalSorter.order_by_entities_dependencies",
                 mock_order_by_entities_dependencies,
             ):
 

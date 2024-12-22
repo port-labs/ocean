@@ -8,12 +8,11 @@ from port_ocean.core.handlers.entities_state_applier.base import (
 from port_ocean.core.handlers.entities_state_applier.port.get_related_entities import (
     get_related_entities,
 )
-from port_ocean.core.handlers.entities_state_applier.port.order_by_entities_dependencies import (
-    order_by_entities_dependencies,
-)
+
 from port_ocean.core.models import Entity
 from port_ocean.core.ocean_types import EntityDiff
-from port_ocean.core.utils import is_same_entity, get_port_diff
+from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
+from port_ocean.core.utils.utils import is_same_entity, get_port_diff
 
 
 class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
@@ -126,6 +125,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                 )
                 if upsertedEntity:
                     modified_entities.append(upsertedEntity)
+                # condition to false to differentiate from `result_entity.is_using_search_identifier`
                 if upsertedEntity is False:
                     event.entity_topological_sorter.register_entity(entity)
         return modified_entities
@@ -142,7 +142,9 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                 should_raise=False,
             )
         else:
-            ordered_deleted_entities = order_by_entities_dependencies(entities)
+            ordered_deleted_entities = (
+                EntityTopologicalSorter.order_by_entities_dependencies(entities)
+            )
 
             for entity in ordered_deleted_entities:
                 await self.context.port_client.delete_entity(

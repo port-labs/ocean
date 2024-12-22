@@ -11,7 +11,7 @@ from port_ocean.clients.port.utils import (
     handle_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
 )
-from port_ocean.core.models import Entity, PortApiStatus
+from port_ocean.core.models import Entity, PortAPIErrorMessage
 from starlette import status
 
 
@@ -31,6 +31,11 @@ class EntityClientMixin:
         user_agent_type: UserAgentType | None = None,
         should_raise: bool = True,
     ) -> Entity | None | Literal[False]:
+        """
+        [Entity] will be returned on happy flow
+        [None] will be returned if entity is using search identifier
+        [False] will be returned if upsert failed because of unmet dependency
+        """
         validation_only = request_options["validation_only"]
         async with self.semaphore:
             logger.debug(
@@ -62,8 +67,9 @@ class EntityClientMixin:
             if (
                 response.status_code == status.HTTP_404_NOT_FOUND
                 and not result.get("ok")
-                and result.get("error") == PortApiStatus.NOT_FOUND.value
+                and result.get("error") == PortAPIErrorMessage.NOT_FOUND.value
             ):
+                # Return false to differentiate from `result_entity.is_using_search_identifier`
                 return False
         handle_status_code(response, should_raise)
         result = response.json()

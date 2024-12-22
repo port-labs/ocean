@@ -10,13 +10,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## 0.15.3 (2024-12-15)
 
 
+### Improvements
+
+- When `createMissingRelatedEntities` is set to `false` and upserting entity failed on not existing entity, the entity will be gathered to the end of the resync and will try sorting all
+  the failed entities through a topological sort and upsert them as well
+- Test upsert with dependencies, with self circular dependency and external entity dependency.
+
 ### Bug Fixes
 
 - When experiencing cyclic error on topological sort try unsorted upsert of the entities
-- Test upsert with dependencies, with self circular dependency and external entity dependency.
 - Fix topologicals sort tree creation so an entity cannot be its own dependency
-- When `createMissingRelatedEntities` is set to `false` and upserting entity failed on not existing entity, the entity will be gathered to the end of the resync and will try sorting all
-  the failed entities through a topological sort and upsert them as well
 
 
 ## 0.14.7 (2024-12-09)

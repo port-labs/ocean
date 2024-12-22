@@ -28,9 +28,9 @@ from port_ocean.core.ocean_types import (
     RAW_ITEM,
     CalculationResult,
 )
-from port_ocean.core.utils import zip_and_sum, gather_and_split_errors_from_results
+from port_ocean.core.utils.utils import zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
-import json
+
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 
 
@@ -397,7 +397,22 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 {"before": entities_before_flatten, "after": entities_after_flatten},
                 user_agent_type,
             )
+    async def sort_and_upsert_failed_entities(self,user_agent_type: UserAgentType)->None:
+        try:
+            if event.entity_topological_sorter.is_to_execute():
+                logger.info("Executings topological sort of entities failed to upsert")
+            else:
+                logger.info("No failed entities on upsert")
+                return
 
+            for entity in event.entity_topological_sorter.get_entities():
+                await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
+
+        except OceanAbortException as ocean_abort:
+            logger.info("Failed topological sort of failed to upsert entites - trying to upsert unordered")
+            if isinstance(ocean_abort.__cause__,CycleError):
+                for entity in event.entity_topological_sorter.get_entities(False):
+                    await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
     async def sync_raw_all(
         self,
         _: dict[Any, Any] | None = None,
@@ -457,15 +472,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         event.on_abort(lambda: task.cancel())
 
                         creation_results.append(await task)
-                try:
-                    for entity in event.entity_topological_sorter.get_entities():
-                        await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
-                except OceanAbortException as ocean_abort:
-                    if isinstance(ocean_abort.__cause__,CycleError):
-                        for entity in event.entity_topological_sorter.entities:
-                            await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
-
+                await self.sort_and_upsert_failed_entities(user_agent_type)
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise

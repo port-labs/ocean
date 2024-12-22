@@ -14,7 +14,7 @@ from typing import (
 from uuid import uuid4
 
 from loguru import logger
-from port_ocean.utils.entity_topological_sorter import EntityTopologicalSorter
+from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 

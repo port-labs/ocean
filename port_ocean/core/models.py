@@ -11,7 +11,7 @@ class Runtime(Enum):
     OnPrem = "OnPrem"
 
 
-class PortApiStatus(Enum):
+class PortAPIErrorMessage(Enum):
     NOT_FOUND = "not_found"
 
 
