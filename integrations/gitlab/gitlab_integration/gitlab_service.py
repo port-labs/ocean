@@ -548,6 +548,18 @@ class GitlabService:
                 logger.info("No valid projects found for the token in the current page")
 
     @classmethod
+    async def async_project_labels_wrapper(cls, project: Project) -> dict[str, Any]:
+        try:
+            labels = await anyio.to_thread.run_sync(project.labels.list)
+            serialized_labels = [label.attributes for label in labels]
+            return {"__labels": serialized_labels}
+        except Exception as e:
+            logger.warning(
+                f"Failed to get labels for project={project.path_with_namespace}. error={e}"
+            )
+            return {"__labels": []}
+
+    @classmethod
     async def async_project_language_wrapper(cls, project: Project) -> dict[str, Any]:
         try:
             languages = await anyio.to_thread.run_sync(project.languages)
@@ -559,10 +571,16 @@ class GitlabService:
             return {"__languages": {}}
 
     @classmethod
-    async def enrich_project_with_extras(cls, project: Project) -> Project:
-        tasks = [
-            cls.async_project_language_wrapper(project),
-        ]
+    async def enrich_project_with_extras(
+        cls, project: Project, include_labels: bool = False
+    ) -> Project:
+        if include_labels:
+            tasks = [
+                cls.async_project_language_wrapper(project),
+                cls.async_project_labels_wrapper(project),
+            ]
+        else:
+            tasks = [cls.async_project_language_wrapper(project)]
         tasks_extras = await asyncio.gather(*tasks)
         for task_extras in tasks_extras:
             for key, value in task_extras.items():
