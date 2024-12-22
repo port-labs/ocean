@@ -127,12 +127,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                 if upsertedEntity:
                     modified_entities.append(upsertedEntity)
                 if upsertedEntity is False:
-                    event.failed_entity_handler.register_failed_upsert_call_arguments(
-                        entity,
-                        event.port_app_config.get_port_request_options(),
-                        user_agent_type,
-                        self.context.port_client.upsert_entity,
-                    )
+                    event.entity_topological_sorter.register_entity(entity)
         return modified_entities
 
     async def delete(

@@ -1,7 +1,5 @@
-from typing import Any
 from port_ocean.core.models import Entity
-from port_ocean.utils.failed_entity_handler import FailedEntityHandler
-import pytest
+from port_ocean.utils.entity_topological_sorter import EntityTopologicalSorter
 from unittest.mock import MagicMock
 from port_ocean.exceptions.core import (
     OceanAbortException,
@@ -18,16 +16,7 @@ def create_entity(
     return entity
 
 
-processed_order: list[str] = []
-
-
-async def mock_activate(entity: Any, _: Any, __: Any, **kwargs: Any) -> bool:
-    processed_order.append(f"{entity.identifier}-{entity.blueprint}")
-    return True
-
-
-@pytest.mark.asyncio
-async def test_handle_failed_with_dependencies() -> None:
+def test_handle_failed_with_dependencies() -> None:
     # processed_order:list[str] = []
     entity_a = create_entity(
         "entity_a",
@@ -40,19 +29,16 @@ async def test_handle_failed_with_dependencies() -> None:
         "entity_c", "buleprint_b", {"dep_name_2": "entity_b"}
     )  # Depends on entity_b
 
-    failed_entities_handler = FailedEntityHandler()
+    entity_topological_sort = EntityTopologicalSorter()
     # Register fails with unsorted order
-    failed_entities_handler.register_failed_upsert_call_arguments(
-        entity_c, MagicMock(), MagicMock(), mock_activate
-    )
-    failed_entities_handler.register_failed_upsert_call_arguments(
-        entity_a, MagicMock(), MagicMock(), mock_activate
-    )
-    failed_entities_handler.register_failed_upsert_call_arguments(
-        entity_b, MagicMock(), MagicMock(), mock_activate
-    )
+    entity_topological_sort.register_entity(entity_c)
+    entity_topological_sort.register_entity(entity_a)
+    entity_topological_sort.register_entity(entity_b)
 
-    await failed_entities_handler.handle_failed()
+    processed_order = [
+        f"{entity.identifier}-{entity.blueprint}"
+        for entity in list(entity_topological_sort.get_entities())
+    ]
     assert processed_order == [
         "entity_a-buleprint_a",
         "entity_b-buleprint_a",
@@ -60,8 +46,7 @@ async def test_handle_failed_with_dependencies() -> None:
     ], f"Processed order: {processed_order}"
 
 
-@pytest.mark.asyncio
-async def test_handle_failed_with_self_dependencies() -> None:
+def test_handle_failed_with_self_dependencies() -> None:
     entity_a = create_entity(
         "entity_a", "buleprint_a", {"dep_name_1": "entity_a"}
     )  # Self dependency
@@ -72,20 +57,18 @@ async def test_handle_failed_with_self_dependencies() -> None:
         "entity_c", "buleprint_b", {"dep_name_2": "entity_b"}
     )  # Depends on entity_b
 
-    failed_entities_handler = FailedEntityHandler()
+    entity_topological_sort = EntityTopologicalSorter()
 
     # Register fails with unsorted order
-    failed_entities_handler.register_failed_upsert_call_arguments(
-        entity_c, MagicMock(), MagicMock(), mock_activate
-    )
-    failed_entities_handler.register_failed_upsert_call_arguments(
-        entity_a, MagicMock(), MagicMock(), mock_activate
-    )
-    failed_entities_handler.register_failed_upsert_call_arguments(
-        entity_b, MagicMock(), MagicMock(), mock_activate
-    )
+    entity_topological_sort.register_entity(entity_c)
+    entity_topological_sort.register_entity(entity_a)
+    entity_topological_sort.register_entity(entity_b)
 
-    await failed_entities_handler.handle_failed()
+    processed_order = [
+        f"{entity.identifier}-{entity.blueprint}"
+        for entity in list(entity_topological_sort.get_entities())
+    ]
+
     assert processed_order == [
         "entity_a-buleprint_a",
         "entity_b-buleprint_a",
@@ -93,8 +76,7 @@ async def test_handle_failed_with_self_dependencies() -> None:
     ], f"Processed order: {processed_order}"
 
 
-@pytest.mark.asyncio
-async def test_handle_failed_with_circular_dependencies() -> None:
+def test_handle_failed_with_circular_dependencies() -> None:
     # processed_order:list[str] = []
     entity_a = create_entity(
         "entity_a", "buleprint_a", {"dep_name_1": "entity_b"}
@@ -103,15 +85,11 @@ async def test_handle_failed_with_circular_dependencies() -> None:
         "entity_b", "buleprint_a", {"dep_name_1": "entity_a"}
     )  # Depends on entity_a
 
-    failed_entities_handler = FailedEntityHandler()
+    entity_topological_sort = EntityTopologicalSorter()
     try:
-        failed_entities_handler.register_failed_upsert_call_arguments(
-            entity_a, MagicMock(), MagicMock(), mock_activate
-        )
-        failed_entities_handler.register_failed_upsert_call_arguments(
-            entity_b, MagicMock(), MagicMock(), mock_activate
-        )
-        await failed_entities_handler.handle_failed()
+        entity_topological_sort.register_entity(entity_a)
+        entity_topological_sort.register_entity(entity_b)
+        entity_topological_sort.get_entities()
 
     except OceanAbortException as e:
         assert isinstance(e, OceanAbortException)

@@ -11,7 +11,8 @@ from port_ocean.clients.port.utils import (
     handle_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
 )
-from port_ocean.core.models import Entity
+from port_ocean.core.models import Entity, PortApiStatus
+from starlette import status
 
 
 class EntityClientMixin:
@@ -50,7 +51,6 @@ class EntityClientMixin:
                 },
                 extensions={"retryable": True},
             )
-
         if response.is_error:
             logger.error(
                 f"Error {'Validating' if validation_only else 'Upserting'} "
@@ -58,10 +58,11 @@ class EntityClientMixin:
                 f"blueprint: {entity.blueprint}"
             )
             result = response.json()
+
             if (
-                response.status_code == 404
+                response.status_code == status.HTTP_404_NOT_FOUND
                 and not result.get("ok")
-                and result.get("error") == "not_found"
+                and result.get("error") == PortApiStatus.NOT_FOUND.value
             ):
                 return False
         handle_status_code(response, should_raise)

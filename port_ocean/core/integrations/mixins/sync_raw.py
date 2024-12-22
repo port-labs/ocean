@@ -1,4 +1,5 @@
 import asyncio
+from graphlib import CycleError
 import inspect
 import typing
 from typing import Callable, Awaitable, Any
@@ -457,9 +458,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                         creation_results.append(await task)
                 try:
-                    await event.failed_entity_handler.handle_failed()
-                except:
-                    await event.failed_entity_handler.handle_failed_no_sort()
+                    for entity in event.entity_topological_sorter.get_entities():
+                        await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
+
+                except OceanAbortException as ocean_abort:
+                    if isinstance(ocean_abort.__cause__,CycleError):
+                        for entity in event.entity_topological_sorter.entities:
+                            await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
+
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise

@@ -14,7 +14,7 @@ from typing import (
 from uuid import uuid4
 
 from loguru import logger
-from port_ocean.utils.failed_entity_handler import FailedEntityHandler
+from port_ocean.utils.entity_topological_sorter import EntityTopologicalSorter
 from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 
@@ -53,7 +53,7 @@ class EventContext:
     _event_id: str = field(default_factory=lambda: str(uuid4()))
     _on_abort_callbacks: list[AbortCallbackFunction] = field(default_factory=list)
 
-    failed_entity_handler = FailedEntityHandler()
+    entity_topological_sorter = EntityTopologicalSorter()
 
     def on_abort(self, func: AbortCallbackFunction) -> None:
         self._on_abort_callbacks.append(func)
