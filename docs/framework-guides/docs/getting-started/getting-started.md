@@ -45,7 +45,7 @@ release_date [2023-08-06]:
 $ 2023-08-06
 
 is_private_integration [y/n] (y):
-$ y
+$ n
 
 port_client_id (you can find it using: https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials):
 $ <your-port-client-id>
