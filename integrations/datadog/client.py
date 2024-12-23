@@ -178,7 +178,7 @@ class DatadogClient:
             if not users:
                 break
 
-            logger.info(f"Retrieved {len(users)} members for team {team_id}")
+            logger.info(f"Retrieved a batch of {len(users)} members for team {team_id}")
             yield users
             page += 1
 
