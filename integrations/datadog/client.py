@@ -160,7 +160,9 @@ class DatadogClient:
 
     async def get_team_members(
         self, team_id: str, page_size: int = MAX_PAGE_SIZE
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> AsyncGenerator[List[Dict[str, Dict[str, Any]]], None]:
+        logger.info(f"Enriching team {team_id} with members information")
+
         page = 0
 
         while True:
@@ -178,11 +180,10 @@ class DatadogClient:
             if not users:
                 break
 
-            logger.info(f"Retrieved {len(users)} members for team {team_id}")
             yield users
             page += 1
 
-    async def get_teams(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_teams(self) -> AsyncGenerator[List[Dict[str, Dict[str, Any]]], None]:
         page = 0
         page_size = MAX_PAGE_SIZE
 
@@ -223,9 +224,25 @@ class DatadogClient:
             if not users:
                 break
 
-            logger.info(f"Retrieved {len(users)} users")
             yield users
             page += 1
+
+    async def enrich_teams_with_members(
+        self, teams: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        async def fetch_team_members(team: Dict[str, Any]) -> List[Dict[str, Any]]:
+            members = []
+            async for batch in self.get_team_members(team["id"]):
+                members.extend(batch)
+            return members
+
+        team_tasks = [fetch_team_members(team) for team in teams]
+        results = await asyncio.gather(*team_tasks)
+
+        for team, members in zip(teams, results):
+            team["__members"] = members
+
+        return teams
 
     async def get_hosts(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         start = 0

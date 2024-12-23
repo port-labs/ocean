@@ -63,10 +63,9 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(TeamResourceConfig, event.resource_config).selector
 
     async for teams in dd_client.get_teams():
-        if selector.include_members:
-            logger.info(f"Enriching {len(teams)} teams with member information")
-            teams = await enrich_teams_with_members(dd_client, teams)
         logger.info(f"Received teams batch with {len(teams)} teams")
+        if selector.include_members:
+            teams = await dd_client.enrich_teams_with_members(teams)
         yield teams
 
 

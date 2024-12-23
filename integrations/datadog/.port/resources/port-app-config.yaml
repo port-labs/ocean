@@ -98,7 +98,7 @@ resources:
               combinator: '"and"'
               rules:
                 - property: '"handle"'
-                  operator: '"contains"'
+                  operator: '"="'
                   value: .attributes.schema.team
   - kind: slo
     selector:

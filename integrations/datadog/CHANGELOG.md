@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Adds Datadog Users and Teams
+- Added Datadog Users and Teams
 
 
 ## 0.1.66 (2024-12-15)
