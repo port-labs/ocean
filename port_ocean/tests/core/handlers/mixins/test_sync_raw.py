@@ -375,10 +375,10 @@ async def test_sync_raw_mixin_dependency(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
 
+                assert event.entity_topological_sorter.register_entity.call_count == 5
                 assert (
                     len(event.entity_topological_sorter.entities) == 5
                 ), "Expected one failed entity callback due to retry logic"
-                assert event.entity_topological_sorter.register_entity.call_count == 5
                 assert event.entity_topological_sorter.get_entities.call_count == 1
                 assert len(raiesed_error_handle_failed) == 0
                 assert mock_ocean.port_client.client.post.call_count == 10  # type: ignore
