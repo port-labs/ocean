@@ -113,7 +113,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
             item = await client.get_single_issue(issue_key)
             kind = ObjectKind.ISSUE
         case _:
-            logger.error(f"Unknown webhook event type: {webhook_event}")
+            logger.warning(f"Unknown webhook event type: {webhook_event}")
             return {
                 "ok": False,
                 "error": f"Unknown webhook event type: {webhook_event}",
@@ -121,7 +121,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
     if not item:
         error_msg = f"Failed to retrieve {kind}"
-        logger.error(error_msg)
+        logger.warning(error_msg)
         return {"ok": False, "error": error_msg}
 
     logger.debug(f"Retrieved {kind} item: {item}")
