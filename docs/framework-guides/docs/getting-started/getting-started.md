@@ -44,18 +44,25 @@ $ straw@hat.com
 release_date [2023-08-06]:
 $ 2023-08-06
 
+is_private_integration [y/n] (y):
+$ n
+
+port_client_id (you can find it using: https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials):
+$ <your-port-client-id>
+
+port_client_secret (you can find it using: https://docs.getport.io/build-your-software-catalog/custom-integration/api/#find-your-port-credentials):
+$ <your-port-client-secret>
+
+is_us_region [y/n] (n):
+$ y
 
 🌊 Ahoy, Captain! Your project is ready to set sail into the vast ocean of possibilities!
 Here are your next steps:
 
-⚓️ Install necessary packages: Run make install to install all required packages for your project.
-▶️ cd ./my_integration && make install && . .venv/bin/activate
-
-⚓️ Set sail with Ocean: Run ocean sail <path_to_integration> to run the project using Ocean.
-▶️ ocean sail ./my_integration
-
-⚓️ Smooth sailing with Make: Alternatively, you can run make run to launch your project using Make.
-▶️ make run ./my_integration
+⚓️ Install necessary packages: Run cd ./my_integration && make install && . .venv/bin/activate to install all required packages for your project.
+⚓️ Copy example env file: Run cp .env.example .env  and update your integration's configuration in the .env file.
+⚓️ Set sail with Ocean: Run ocean sail to run the project using Ocean.
+⚓️ Smooth sailing with Make: Alternatively, you can run make run ./my_integration to launch your project using Make.
 ```
 
 <br/>
