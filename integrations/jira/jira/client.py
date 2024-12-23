@@ -1,4 +1,4 @@
-from typing import Any, AsyncGenerator, Generator, List, Dict, Optional
+from typing import Any, AsyncGenerator, Generator, Optional
 
 from httpx import Timeout, Auth, BasicAuth, Request, Response
 from loguru import logger
@@ -65,9 +65,9 @@ class JiraClient:
         self,
         method: str,
         url: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        params: Optional[dict[str, Any]] = None,
+        json: Optional[dict[str, Any]] = None,
+        headers: Optional[dict[str, str]] = None,
     ) -> Any:
         async with self.semaphore:
             response = await self.client.request(
@@ -81,8 +81,8 @@ class JiraClient:
         url: str,
         extract_key: Optional[str] = None,
         page_size: int = PAGE_SIZE,
-        initial_params: Optional[Dict[str, Any]] = None,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+        initial_params: Optional[dict[str, Any]] = None,
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Generic method for handling paginated requests."""
         params = initial_params or {}
         params.update(self._generate_base_req_params())
@@ -118,9 +118,9 @@ class JiraClient:
         method: str,
         extract_key: Optional[str] = None,
         page_size: int = PAGE_SIZE,
-        initial_params: Optional[Dict[str, Any]] = None,
+        initial_params: Optional[dict[str, Any]] = None,
         cursor_param: str = "cursor",
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         """Handle cursor-based pagination for specific endpoint."""
         params = initial_params or {}
         cursor = params.get(cursor_param)
@@ -156,13 +156,13 @@ class JiraClient:
     @staticmethod
     def _generate_base_req_params(
         maxResults: int = 0, startAt: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "maxResults": maxResults,
             "startAt": startAt,
         }
 
-    async def _get_webhooks(self) -> List[Dict[str, Any]]:
+    async def _get_webhooks(self) -> list[dict[str, Any]]:
         return await self._send_api_request("GET", url=self.webhooks_url)
 
     async def create_events_webhook(self, app_host: str) -> None:
@@ -183,26 +183,26 @@ class JiraClient:
         await self._send_api_request("POST", self.webhooks_url, json=body)
         logger.info("Ocean real time reporting webhook created")
 
-    async def get_single_project(self, project_key: str) -> Dict[str, Any]:
+    async def get_single_project(self, project_key: str) -> dict[str, Any]:
         return await self._send_api_request(
             "GET", f"{self.api_url}/project/{project_key}"
         )
 
     async def get_paginated_projects(
         self,
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
         async for projects in self._get_paginated_data(
             f"{self.api_url}/project/search", "values"
         ):
             yield projects
 
-    async def get_single_issue(self, issue_key: str) -> Dict[str, Any]:
+    async def get_single_issue(self, issue_key: str) -> dict[str, Any]:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
     async def get_paginated_issues(
         self, jql: str | None = None
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
 
         params = {}
@@ -215,19 +215,19 @@ class JiraClient:
         ):
             yield issues
 
-    async def get_single_user(self, account_id: str) -> Dict[str, Any]:
+    async def get_single_user(self, account_id: str) -> dict[str, Any]:
         return await self._send_api_request(
             "GET", f"{self.api_url}/user", params={"accountId": account_id}
         )
 
-    async def get_paginated_users(self) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    async def get_paginated_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting users from Jira")
         async for users in self._get_paginated_data(f"{self.api_url}/users/search"):
             yield users
 
     async def get_paginated_teams(
         self, org_id: str
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting teams from Jira")
 
         base_url = f"{self.teams_base_url}/{org_id}/teams"
@@ -239,8 +239,7 @@ class JiraClient:
 
     async def get_paginated_team_members(
         self, team_id: str, org_id: str, page_size: int = PAGE_SIZE
-    ) -> AsyncGenerator[List[Dict[str, Any]], None]:
-        logger.info(f"Getting members for team {team_id}")
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         url = f"{self.teams_base_url}/{org_id}/teams/{team_id}/members"
 
         async for members in self._get_cursor_paginated_data(
@@ -250,5 +249,26 @@ class JiraClient:
             initial_params={"first": page_size},
             cursor_param="after",
         ):
-            logger.info(f"Retrieved {len(members)} members for team {team_id}")
             yield members
+
+    async def enrich_teams_with_members(
+        self, teams: list[dict[str, Any]], org_id: str
+    ) -> list[dict[str, Any]]:
+        logger.debug(f"Fetching members for {len(teams)} teams")
+
+        async def fetch_team_members(team_id: str) -> list[dict[str, Any]]:
+            members = []
+            async for batch in self.get_paginated_team_members(team_id, org_id):
+                members.extend(batch)
+            return members
+
+        team_tasks = [fetch_team_members(team["teamId"]) for team in teams]
+        results = await asyncio.gather(*team_tasks)
+
+        total_members = sum(len(members) for members in results)
+        logger.info(f"Retrieved {total_members} members across {len(teams)} teams")
+
+        for team, members in zip(teams, results):
+            team["__members"] = members
+
+        return teams
