@@ -1,5 +1,5 @@
 import pytest
-from typing import List, Dict, Any
+from typing import Any
 from httpx import BasicAuth, Response, Request
 from unittest.mock import AsyncMock, patch, MagicMock
 from jira.client import JiraClient, WEBHOOK_EVENTS, PAGE_SIZE
@@ -71,7 +71,7 @@ async def test_send_api_request_failure(mock_jira_client: JiraClient) -> None:
 @pytest.mark.asyncio
 async def test_get_single_project(mock_jira_client: JiraClient) -> None:
     """Test get_single_project method"""
-    project_data: Dict[str, Any] = {"key": "TEST", "name": "Test Project"}
+    project_data: dict[str, Any] = {"key": "TEST", "name": "Test Project"}
 
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
@@ -88,7 +88,7 @@ async def test_get_single_project(mock_jira_client: JiraClient) -> None:
 @pytest.mark.asyncio
 async def test_get_paginated_projects(mock_jira_client: JiraClient) -> None:
     """Test get_paginated_projects method"""
-    projects_data: Dict[str, Any] = {
+    projects_data: dict[str, Any] = {
         "values": [{"key": "PROJ1"}, {"key": "PROJ2"}],
         "total": 2,
     }
@@ -101,7 +101,7 @@ async def test_get_paginated_projects(mock_jira_client: JiraClient) -> None:
             {"values": []},  # Empty response to end pagination
         ]
 
-        projects: List[Dict[str, Any]] = []
+        projects: list[dict[str, Any]] = []
         async for project_batch in mock_jira_client.get_paginated_projects():
             projects.extend(project_batch)
 
@@ -117,7 +117,7 @@ async def test_get_paginated_projects(mock_jira_client: JiraClient) -> None:
 @pytest.mark.asyncio
 async def test_get_single_issue(mock_jira_client: JiraClient) -> None:
     """Test get_single_issue method"""
-    issue_data: Dict[str, Any] = {"key": "TEST-1", "fields": {"summary": "Test Issue"}}
+    issue_data: dict[str, Any] = {"key": "TEST-1", "fields": {"summary": "Test Issue"}}
 
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
@@ -167,7 +167,7 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
 @pytest.mark.asyncio
 async def test_get_single_user(mock_jira_client: JiraClient) -> None:
     """Test get_single_user method"""
-    user_data: Dict[str, Any] = {
+    user_data: dict[str, Any] = {
         "accountId": "test123",
         "emailAddress": "test@example.com",
     }
@@ -187,14 +187,14 @@ async def test_get_single_user(mock_jira_client: JiraClient) -> None:
 @pytest.mark.asyncio
 async def test_get_paginated_users(mock_jira_client: JiraClient) -> None:
     """Test get_paginated_users method"""
-    users_data: List[Dict[str, Any]] = [{"accountId": "user1"}, {"accountId": "user2"}]
+    users_data: list[dict[str, Any]] = [{"accountId": "user1"}, {"accountId": "user2"}]
 
     with patch.object(
         mock_jira_client, "_send_api_request", new_callable=AsyncMock
     ) as mock_request:
         mock_request.side_effect = [users_data, []]  # Empty response to end pagination
 
-        users: List[Dict[str, Any]] = []
+        users: list[dict[str, Any]] = []
         async for user_batch in mock_jira_client.get_paginated_users():
             users.extend(user_batch)
 
@@ -206,7 +206,7 @@ async def test_get_paginated_users(mock_jira_client: JiraClient) -> None:
 async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
     """Test get_paginated_teams method"""
     # Mock data
-    teams_data: Dict[str, Any] = {
+    teams_data: dict[str, Any] = {
         "entities": [
             {"teamId": "team1", "name": "Team 1"},
             {"teamId": "team2", "name": "Team 2"},
@@ -222,7 +222,7 @@ async def test_get_paginated_teams(mock_jira_client: JiraClient) -> None:
             {"entities": []},  # Empty response to end pagination
         ]
 
-        teams: List[Dict[str, Any]] = []
+        teams: list[dict[str, Any]] = []
         async for team_batch in mock_jira_client.get_paginated_teams("test_org_id"):
             teams.extend(team_batch)
 
@@ -247,7 +247,7 @@ async def test_get_paginated_team_members(mock_jira_client: JiraClient) -> None:
     ) as mock_request:
         mock_request.side_effect = [page1_response, page2_response]
 
-        members: List[Dict[str, Any]] = []
+        members: list[dict[str, Any]] = []
         async for member_batch in mock_jira_client.get_paginated_team_members(
             "team1", "test-org"
         ):
