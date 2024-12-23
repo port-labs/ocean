@@ -25,7 +25,10 @@ class EntityTopologicalSorter:
         )
         self.entities.append(entity)
 
-    def is_to_execute(self):
+    def is_to_execute(self) -> int:
+        return bool(self.get_entities_count())
+
+    def get_entities_count(self) -> int:
         return len(self.entities)
 
     def get_entities(self, sorted: bool = True) -> Generator[Entity, Any, None]:
@@ -34,17 +37,11 @@ class EntityTopologicalSorter:
                 yield entity
             return
 
-        entity_map: dict[str, Entity] = {
-            f"{entity.identifier}-{entity.blueprint}": entity
-            for entity in self.entities
-        }
         sorted_and_mapped = EntityTopologicalSorter.order_by_entities_dependencies(
             self.entities
         )
-        for obj in sorted_and_mapped:
-            entity = entity_map.get(f"{obj.identifier}-{obj.blueprint}")
-            if entity is not None:
-                yield entity
+        for entity in sorted_and_mapped:
+            yield entity
 
     @staticmethod
     def node(entity: Entity) -> Node:

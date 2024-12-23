@@ -32,9 +32,24 @@ class EntityClientMixin:
         should_raise: bool = True,
     ) -> Entity | None | Literal[False]:
         """
-        [Entity] will be returned on happy flow
-        [None] will be returned if entity is using search identifier
-        [False] will be returned if upsert failed because of unmet dependency
+        This function upserts an entity into Port.
+
+        Usage:
+        ```python
+            upsertedEntity = await self.context.port_client.upsert_entity(
+                            entity,
+                            event.port_app_config.get_port_request_options(),
+                            user_agent_type,
+                            should_raise=False,
+                        )
+        ```
+        :param entity: An Entity to be upserted
+        :param request_options: A dictionary specifying how to upsert the entity
+        :param user_agent_type: a UserAgentType specifying who is preforming the action
+        :param should_raise: A boolean specifying whether the error should be raised or handled silently
+        :return: [Entity] if the upsert occured successfully
+        :return: [None] will be returned if entity is using search identifier
+        :return: [False] will be returned if upsert failed because of unmet dependency
         """
         validation_only = request_options["validation_only"]
         async with self.semaphore:

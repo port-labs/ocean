@@ -389,7 +389,7 @@ async def test_sync_raw_mixin_dependency(
 
                 assert "-".join(
                     [call[1].get("json").get("identifier") for call in first]
-                ) == "-".join(reversed([entity.identifier for entity in entities]))
+                ) == "-".join([entity.identifier for entity in entities])
                 assert "-".join(
                     [call[1].get("json").get("identifier") for call in second]
                 ) in (
