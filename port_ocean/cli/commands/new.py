@@ -77,18 +77,15 @@ def new(path: str, is_private_integration: bool) -> None:
     )
     console.print("Here are your next steps:\n", style="bold")
     console.print(
-        "⚓️ Install necessary packages: Run [bold][blue]make install[/blue][/bold] to install all required packages for your project.\n"
-        f"▶️ [bold][blue]cd {path}/{name} && make install && . .venv/bin/activate[/blue][/bold]\n"
+        f"⚓️ Install necessary packages: Run [bold][blue]cd {path}/{name} && make install && . .venv/bin/activate[/blue][/bold] to install all required packages for your project."
     )
     console.print(
-        f"⚓️ Copy example env file: Run [bold][blue]cp {path}/{name}.env.example {path}/{name}/.env [/blue][/bold] and set your port credentials in the created file.\n"
+        "⚓️ Copy example env file: Run [bold][blue]cp .env.example .env [/blue][/bold] and update your integration's configuration in the .env file."
     )
     console.print(
-        "⚓️ Set sail with [blue]Ocean[/blue]: Run [bold][blue]ocean sail[/blue] <path_to_integration>[/bold] to run the project using Ocean.\n"
-        f"▶️ [bold][blue]ocean sail {path}/{name}[/blue][/bold] \n"
+        "⚓️ Set sail with [blue]Ocean[/blue]: Run [bold][blue]ocean sail[/blue][/bold] to run the project using Ocean."
     )
     if not final_private_integration:
         console.print(
-            "⚓️ Smooth sailing with [blue]Make[/blue]: Alternatively, you can run [bold][blue]make run[/blue][/bold] to launch your project using Make. \n"
-            f"▶️ [bold][blue]make run {path}/{name}[/blue][/bold]"
+            f"⚓️ Smooth sailing with [blue]Make[/blue]: Alternatively, you can run [bold][blue]make run {path}/{name}[/blue][/bold] to launch your project using Make."
         )
