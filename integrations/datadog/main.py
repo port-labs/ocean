@@ -28,26 +28,6 @@ class ObjectKind(StrEnum):
     USER = "user"
 
 
-async def enrich_teams_with_members(
-    client: DatadogClient, teams: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
-    """Enrich teams with their members in parallel."""
-
-    async def fetch_team_members(team: Dict[str, Any]) -> List[Dict[str, Any]]:
-        members = []
-        async for batch in client.get_team_members(team["id"]):
-            members.extend(batch)
-        return members
-
-    team_tasks = [fetch_team_members(team) for team in teams]
-    results = await asyncio.gather(*team_tasks)
-
-    for team, members in zip(teams, results):
-        team["__members"] = members
-
-    return teams
-
-
 def init_client() -> DatadogClient:
     return DatadogClient(
         ocean.integration_config["datadog_base_url"],
