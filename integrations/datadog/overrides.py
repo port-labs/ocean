@@ -74,6 +74,7 @@ class TeamSelector(Selector):
 
 
 class TeamResourceConfig(ResourceConfig):
+    kind: typing.Literal["team"]
     selector: TeamSelector
 
 
