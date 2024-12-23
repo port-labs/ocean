@@ -201,7 +201,6 @@ class DatadogClient:
             if not teams:
                 break
 
-            logger.info(f"Retrieved {len(teams)} teams")
             yield teams
             page += 1
 
