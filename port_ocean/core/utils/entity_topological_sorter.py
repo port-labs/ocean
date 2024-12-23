@@ -1,7 +1,6 @@
 from typing import Any, Generator
 from port_ocean.core.models import Entity
 
-from dataclasses import dataclass, field
 from loguru import logger
 
 from graphlib import TopologicalSorter, CycleError
@@ -12,9 +11,9 @@ from port_ocean.exceptions.core import OceanAbortException
 Node = tuple[str, str]
 
 
-@dataclass
 class EntityTopologicalSorter:
-    entities: list[Entity] = field(default_factory=list)
+    def __init__(self) -> None:
+        self.entities: list[Entity] = []
 
     def register_entity(
         self,

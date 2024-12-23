@@ -52,8 +52,9 @@ class EventContext:
     _parent_event: Optional["EventContext"] = None
     _event_id: str = field(default_factory=lambda: str(uuid4()))
     _on_abort_callbacks: list[AbortCallbackFunction] = field(default_factory=list)
-
-    entity_topological_sorter = EntityTopologicalSorter()
+    _entity_topological_sorter: EntityTopologicalSorter = field(
+        default_factory=EntityTopologicalSorter
+    )
 
     def on_abort(self, func: AbortCallbackFunction) -> None:
         self._on_abort_callbacks.append(func)
@@ -96,6 +97,7 @@ class EventContext:
 
     @property
     def port_app_config(self) -> "PortAppConfig":
+        print("self._port_app_config", self._port_app_config)
         if self._port_app_config is None:
             raise ValueError("Port app config is not set")
         return self._port_app_config
@@ -133,6 +135,11 @@ async def event_context(
 ) -> AsyncIterator[EventContext]:
     parent = parent_override or _event_context_stack.top
     parent_attributes = parent.attributes if parent else {}
+    entity_topological_sorter = (
+        parent._entity_topological_sorter
+        if parent and parent._entity_topological_sorter
+        else EntityTopologicalSorter()
+    )
 
     attributes = {**parent_attributes, **(attributes or {})}
     new_event = EventContext(
@@ -142,6 +149,7 @@ async def event_context(
         _parent_event=parent,
         # inherit port app config from parent event, so it can be used in nested events
         _port_app_config=parent.port_app_config if parent else None,
+        _entity_topological_sorter=entity_topological_sorter,
     )
     _event_context_stack.push(new_event)
 

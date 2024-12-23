@@ -206,8 +206,8 @@ async def test_sync_raw_mixin_self_dependency(
             )
         )
         event.port_app_config = app_config
-        event.entity_topological_sorter.register_entity = MagicMock(side_effect=event.entity_topological_sorter.register_entity)  # type: ignore
-        event.entity_topological_sorter.get_entities = MagicMock(side_effect=event.entity_topological_sorter.get_entities)  # type: ignore
+        event._entity_topological_sorter.register_entity = MagicMock(side_effect=event._entity_topological_sorter.register_entity)  # type: ignore
+        event._entity_topological_sorter.get_entities = MagicMock(side_effect=event._entity_topological_sorter.get_entities)  # type: ignore
 
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.event_context",
@@ -223,10 +223,10 @@ async def test_sync_raw_mixin_self_dependency(
                 )
 
                 assert (
-                    len(event.entity_topological_sorter.entities) == 1
+                    len(event._entity_topological_sorter.entities) == 1
                 ), "Expected one failed entity callback due to retry logic"
-                assert event.entity_topological_sorter.register_entity.call_count == 1
-                assert event.entity_topological_sorter.get_entities.call_count == 1
+                assert event._entity_topological_sorter.register_entity.call_count == 1
+                assert event._entity_topological_sorter.get_entities.call_count == 1
 
                 assert mock_order_by_entities_dependencies.call_count == 1
                 assert [
@@ -261,16 +261,16 @@ async def test_sync_raw_mixin_circular_dependency(
             )
         )
         event.port_app_config = app_config
-        org = event.entity_topological_sorter.register_entity
+        org = event._entity_topological_sorter.register_entity
 
         def mock_register_entity(*args: Any, **kwargs: Any) -> Any:
             entity = args[0]
             entity.properties["mock_is_to_fail"] = False
             return org(*args, **kwargs)
 
-        event.entity_topological_sorter.register_entity = MagicMock(side_effect=mock_register_entity)  # type: ignore
+        event._entity_topological_sorter.register_entity = MagicMock(side_effect=mock_register_entity)  # type: ignore
         raiesed_error_handle_failed = []
-        org_get_entities = event.entity_topological_sorter.get_entities
+        org_get_entities = event._entity_topological_sorter.get_entities
 
         def handle_failed_wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
@@ -279,7 +279,7 @@ async def test_sync_raw_mixin_circular_dependency(
                 raiesed_error_handle_failed.append(e)
                 raise e
 
-        event.entity_topological_sorter.get_entities = MagicMock(side_effect=lambda *args, **kwargs: handle_failed_wrapper(*args, **kwargs))  # type: ignore
+        event._entity_topological_sorter.get_entities = MagicMock(side_effect=lambda *args, **kwargs: handle_failed_wrapper(*args, **kwargs))  # type: ignore
 
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.event_context",
@@ -295,13 +295,13 @@ async def test_sync_raw_mixin_circular_dependency(
                 )
 
                 assert (
-                    len(event.entity_topological_sorter.entities) == 2
+                    len(event._entity_topological_sorter.entities) == 2
                 ), "Expected one failed entity callback due to retry logic"
-                assert event.entity_topological_sorter.register_entity.call_count == 2
-                assert event.entity_topological_sorter.get_entities.call_count == 2
+                assert event._entity_topological_sorter.register_entity.call_count == 2
+                assert event._entity_topological_sorter.get_entities.call_count == 2
                 assert [
                     call[0]
-                    for call in event.entity_topological_sorter.get_entities.call_args_list
+                    for call in event._entity_topological_sorter.get_entities.call_args_list
                 ] == [(), (False,)]
                 assert len(raiesed_error_handle_failed) == 1
                 assert isinstance(raiesed_error_handle_failed[0], OceanAbortException)
@@ -342,16 +342,16 @@ async def test_sync_raw_mixin_dependency(
             )
         )
         event.port_app_config = app_config
-        org = event.entity_topological_sorter.register_entity
+        org = event._entity_topological_sorter.register_entity
 
         def mock_register_entity(*args: Any, **kwargs: Any) -> None:
             entity = args[0]
             entity.properties["mock_is_to_fail"] = False
             return org(*args, **kwargs)
 
-        event.entity_topological_sorter.register_entity = MagicMock(side_effect=mock_register_entity)  # type: ignore
+        event._entity_topological_sorter.register_entity = MagicMock(side_effect=mock_register_entity)  # type: ignore
         raiesed_error_handle_failed = []
-        org_event_get_entities = event.entity_topological_sorter.get_entities
+        org_event_get_entities = event._entity_topological_sorter.get_entities
 
         def get_entities_wrapper(*args: Any, **kwargs: Any) -> Any:
             try:
@@ -360,7 +360,7 @@ async def test_sync_raw_mixin_dependency(
                 raiesed_error_handle_failed.append(e)
                 raise e
 
-        event.entity_topological_sorter.get_entities = MagicMock(side_effect=lambda *args, **kwargs: get_entities_wrapper(*args, **kwargs))  # type: ignore
+        event._entity_topological_sorter.get_entities = MagicMock(side_effect=lambda *args, **kwargs: get_entities_wrapper(*args, **kwargs))  # type: ignore
 
         with patch(
             "port_ocean.core.integrations.mixins.sync_raw.event_context",
@@ -375,11 +375,11 @@ async def test_sync_raw_mixin_dependency(
                     trigger_type="machine", user_agent_type=UserAgentType.exporter
                 )
 
-                assert event.entity_topological_sorter.register_entity.call_count == 5
+                assert event._entity_topological_sorter.register_entity.call_count == 5
                 assert (
-                    len(event.entity_topological_sorter.entities) == 5
+                    len(event._entity_topological_sorter.entities) == 5
                 ), "Expected one failed entity callback due to retry logic"
-                assert event.entity_topological_sorter.get_entities.call_count == 1
+                assert event._entity_topological_sorter.get_entities.call_count == 1
                 assert len(raiesed_error_handle_failed) == 0
                 assert mock_ocean.port_client.client.post.call_count == 10  # type: ignore
                 assert mock_order_by_entities_dependencies.call_count == 1
