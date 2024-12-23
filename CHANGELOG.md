@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.15.3 (2024-12-22)
+
+### Bug Fixes
+
+- Extended `Ocean new` cli command to fill out more information for the user and also fixed wrong output
+
+
+## 0.15.2 (2024-12-15)
+
+### Improvements
+
+- Add handling for different installation types compatibility
+
+
+## 0.15.1 (2024-12-15)
+
+### Bug Fixes
+
+- Changed `SaasOauth` runtime to `SaasOauth2`
+
+
+## 0.15.0 (2024-12-12)
+
+### Features
+
+- Added `SaasOauth` runtime support
+
 
 ## 0.14.7 (2024-12-09)
 
