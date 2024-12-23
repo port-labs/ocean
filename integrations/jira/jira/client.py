@@ -251,18 +251,16 @@ class JiraClient:
         ):
             yield members
 
-    async def enrich_teams_with_members(
-        self, teams: list[dict[str, Any]], org_id: str
-    ) -> list[dict[str, Any]]:
+    async def fetch_team_members(self, team_id: str, org_id: str) -> list[dict[str, Any]]:
+        members = []
+        async for batch in self.get_paginated_team_members(team_id, org_id):
+            members.extend(batch)
+        return members
+
+    async def enrich_teams_with_members(self, teams: list[dict[str, Any]], org_id: str) -> list[dict[str, Any]]:
         logger.debug(f"Fetching members for {len(teams)} teams")
-
-        async def fetch_team_members(team_id: str) -> list[dict[str, Any]]:
-            members = []
-            async for batch in self.get_paginated_team_members(team_id, org_id):
-                members.extend(batch)
-            return members
-
-        team_tasks = [fetch_team_members(team["teamId"]) for team in teams]
+        
+        team_tasks = [self.fetch_team_members(team["teamId"], org_id) for team in teams]
         results = await asyncio.gather(*team_tasks)
 
         total_members = sum(len(members) for members in results)
