@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <!-- towncrier release notes start -->
 
 
+## 0.1.122 (2024-12-23)
+
+
+### Improvements
+
+- Increased logs presence in integration
+- Replaced calls to internal API for projects to GA version, making the use of internal APIs optional
+
+
+### Bug Fixes
+
+- Fixed a bug in the pagination logic to use total record count instead of response size, preventing early termination (0.1.121)
 
 
 ## 0.1.121 (2024-12-22)
@@ -15,24 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-
-- Increased logs presence in integration
-- Replaced calls to internal API for projects to GA version, making the use of internal APIs optional
-
-### Bug Fixes
-
-
-
-
-- Fixed a bug in the pagination logic to use total record count instead of response size, preventing early termination (0.1.121)
-
-
-## 0.1.121 (2024-12-16)
-
-
-### Improvements
-
 - Bumped ocean version to ^0.15.3
+
+
 ## 0.1.120 (2024-12-15)
 
 
