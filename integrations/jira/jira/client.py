@@ -117,11 +117,13 @@ class JiraClient:
         return project_response.json()
 
     async def get_paginated_projects(
-        self,
+        self, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
 
-        params = self._generate_base_req_params()
+        params.update(
+            self._generate_base_req_params()
+        )
 
         total_projects = (await self._get_paginated_projects(params))["total"]
 
