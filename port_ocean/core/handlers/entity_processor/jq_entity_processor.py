@@ -31,7 +31,7 @@ class MappedEntity:
     entity: dict[str, Any] = field(default_factory=dict)
     did_entity_pass_selector: bool = False
     raw_data: Optional[dict[str, Any]] = None
-    misconfigurations: dict[str, str] = {}
+    misconfigurations: dict[str, str] = field(default_factory=dict)
 
 
 class JQEntityProcessor(BaseEntityProcessor):
