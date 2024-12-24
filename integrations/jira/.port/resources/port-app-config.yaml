@@ -47,7 +47,7 @@ resources:
             issueType: .fields.issuetype.name
             components: .fields.components
             creator: .fields.creator.emailAddress
-            priority: .fields.priority.id
+            priority: .fields.priority.name
             labels: .fields.labels
             created: .fields.created
             updated: .fields.updated
