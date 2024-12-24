@@ -12,6 +12,7 @@ resources:
           blueprint: '"jiraProject"'
           properties:
             url: (.self | split("/") | .[:3] | join("/")) + "/projects/" + .key
+            totalIssues: .insight.totalIssueCount
 
   - kind: user
     selector:
@@ -52,7 +53,6 @@ resources:
             created: .fields.created
             updated: .fields.updated
             resolutionDate: .fields.resolutiondate
-            totalIssues: .insight.totalIssueCount
           relations:
             project: .fields.project.key
             parentIssue: .fields.parent.key

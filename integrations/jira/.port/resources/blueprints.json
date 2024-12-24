@@ -11,6 +11,11 @@
           "type": "string",
           "format": "url",
           "description": "URL to the project in Jira"
+        },
+        "totalIssues": {
+          "title": "Total Issues",
+          "type": "number",
+          "description": "The total number of issues in the project"
         }
       }
     },
@@ -129,11 +134,6 @@
           "type": "string",
           "description": "The datetime the issue changed to a resolved state",
           "format": "date-time"
-        },
-        "totalIssues": {
-          "title": "Total Issues",
-          "type": "number",
-          "description": "The total number of issues in the project"
         }
       }
     },

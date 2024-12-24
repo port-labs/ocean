@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added a field to display total issues in a project (0.2.7)
+- Added a field to display total issues in a project
 
 
 ## 0.2.6 (2024-12-22)
