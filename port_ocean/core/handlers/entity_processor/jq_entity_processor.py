@@ -96,7 +96,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         self,
         data: dict[str, Any],
         obj: dict[str, Any],
-        misconfigurations: dict[str, str] = {},
+        misconfigurations: dict[str, str] | None = None,
     ) -> dict[str, Any | None]:
         search_tasks: dict[
             str, Task[dict[str, Any | None]] | list[Task[dict[str, Any | None]]]
