@@ -14,7 +14,6 @@ def node(entity: Entity) -> Node:
 def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
     nodes: dict[Node, Set[Node]] = {}
     entities_map = {}
-
     for entity in entities:
         nodes[node(entity)] = set()
         entities_map[node(entity)] = entity
@@ -33,7 +32,11 @@ def order_by_entities_dependencies(entities: list[Entity]) -> list[Entity]:
         ]
 
         for related_entity in related_entities:
-            nodes[node(entity)].add(node(related_entity))
+            if (
+                entity.blueprint is not related_entity.blueprint
+                or entity.identifier is not related_entity.identifier
+            ):
+                nodes[node(entity)].add(node(related_entity))
 
     sort_op = TopologicalSorter(nodes)
     try:

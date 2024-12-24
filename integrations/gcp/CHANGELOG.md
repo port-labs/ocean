@@ -7,12 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.81 (2024-12-23)
+
+## 0.1.82 (2024-12-24)
 
 
 ### Bug Fixes
 
 - Fixed the issue with `get_current_resource_config()` and the `preserveApiResponseCaseStyle` selector in real-time event which leads to the failure of the event processing
+
+
+## 0.1.81 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
 
 
 ## 0.1.80 (2024-12-22)
