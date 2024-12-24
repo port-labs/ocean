@@ -18,6 +18,7 @@ from gcp_core.overrides import (
     GCPCloudResourceSelector,
     GCPPortAppConfig,
     GCPResourceSelector,
+    ResourceSelectorConfig,
 )
 from port_ocean.context.event import event
 from gcp_core.search.iterators import iterate_per_available_project
@@ -199,15 +200,17 @@ async def feed_events_callback(request: Request) -> Response:
         ]
         for matching_resource_config in matching_resource_configs:
             selector = matching_resource_config.selector
-            preserve_api_case = getattr(
-                selector, "preserve_api_response_case_style", False
+            config = ResourceSelectorConfig(
+                preserving_proto_field_name=bool(
+                    getattr(selector, "preserve_api_response_case_style", False)
+                )
             )
             asset_resource_data = await feed_event_to_resource(
                 asset_type,
                 asset_name,
                 asset_project,
                 asset_data,
-                bool(preserve_api_case),
+                config,
             )
             if asset_data.get("deleted") is True:
                 logger.info(
