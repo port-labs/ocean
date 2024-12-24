@@ -5,7 +5,6 @@ from typing import (
     Callable,
     Awaitable,
     NamedTuple,
-    Optional,
 )
 
 from port_ocean.core.models import Entity
@@ -38,7 +37,7 @@ class EntitySelectorDiff(NamedTuple):
 class CalculationResult(NamedTuple):
     entity_selector_diff: EntitySelectorDiff
     errors: list[Exception]
-    misconfigured: Optional[dict[str, str]]
+    misconfigured: dict[str, str] = {}
 
 
 class IntegrationEventsCallbacks(TypedDict):
