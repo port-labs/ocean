@@ -273,6 +273,7 @@ class SonarQubeClient:
         project["__measures"] = await self.get_measures(project_key)
 
         branches = await self.get_branches(project_key)
+        project["__branches"] = branches
         main_branch = [branch for branch in branches if branch.get("isMain")]
         project["__branch"] = main_branch[0]
 
