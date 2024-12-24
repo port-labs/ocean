@@ -65,7 +65,7 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     org_id = ocean.integration_config.get("atlassian_organization_id")
 
     if not org_id:
-        logger.info("Skipping team sync - no organization ID configured")
+        logger.warning("Skipping team sync - no organization ID configured")
         return
 
     selector = cast(TeamResourceConfig, event.resource_config).selector
