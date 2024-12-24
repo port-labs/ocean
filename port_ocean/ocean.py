@@ -1,31 +1,30 @@
 import asyncio
 import sys
-import threading
 from contextlib import asynccontextmanager
-from typing import Callable, Any, Dict, AsyncIterator, Type
+from typing import Any, AsyncIterator, Callable, Dict, Type
 
-from fastapi import FastAPI, APIRouter
+from fastapi import APIRouter, FastAPI
 from loguru import logger
 from pydantic import BaseModel
-from starlette.types import Scope, Receive, Send
+from starlette.types import Receive, Scope, Send
 
-from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
 )
 from port_ocean.context.ocean import (
     PortOceanContext,
-    ocean,
     initialize_port_ocean_context,
+    ocean,
 )
+from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
 from port_ocean.core.integrations.base import BaseIntegration
 from port_ocean.log.sensetive import sensitive_log_filter
 from port_ocean.middlewares import request_handler
-from port_ocean.utils.repeat import repeat_every
+from port_ocean.utils.misc import IntegrationStateStatus
+from port_ocean.utils.repeat import schedule_repeated_task
 from port_ocean.utils.signal import signal_handler
 from port_ocean.version import __integration_version__
-from port_ocean.utils.misc import IntegrationStateStatus
 
 
 class Ocean:
@@ -94,24 +93,21 @@ class Ocean:
                 raise e
 
         interval = self.config.scheduled_resync_interval
-        loop = asyncio.get_event_loop()
         if interval is not None:
             logger.info(
                 f"Setting up scheduled resync, the integration will automatically perform a full resync every {interval} minutes)",
                 scheduled_interval=interval,
             )
-            repeated_function = repeat_every(
-                seconds=interval * 60,
-                # Not running the resync immediately because the event listener should run resync on startup
-                wait_first=True,
-            )(
-                lambda: threading.Thread(
-                    target=lambda: asyncio.run_coroutine_threadsafe(
-                        execute_resync_all(), loop
-                    )
-                ).start()
-            )
-            await repeated_function()
+            await schedule_repeated_task(execute_resync_all, interval * 60)
+
+    async def _setup_scheduled_config_loading(self) -> None:
+        seconds = self.config.config_reload_interval
+        config_file_path = self.config.config_file_path
+        await schedule_repeated_task(
+            self.config.integration.load_config_from_file,
+            seconds,
+            config_file_path=config_file_path,
+        )
 
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
@@ -121,6 +117,8 @@ class Ocean:
             try:
                 await self.integration.start()
                 await self._setup_scheduled_resync()
+                if self.config.config_file_path:
+                    await self._setup_scheduled_config_loading()
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
