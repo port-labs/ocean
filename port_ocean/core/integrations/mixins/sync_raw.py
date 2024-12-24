@@ -399,17 +399,15 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
     async def sort_and_upsert_failed_entities(self,user_agent_type: UserAgentType)->None:
         try:
-            if event.entity_topological_sorter.is_to_execute():
-                logger.info(f"Executings topological sort of {event.entity_topological_sorter.get_entities_count()} entities failed to upsert")
-            else:
-                logger.info("No failed entities on upsert")
-                return
+            if not event.entity_topological_sorter.is_to_execute():
+                return None
+            logger.info(f"Executings topological sort of {event.entity_topological_sorter.get_entities_count()} entities failed to upsert.",failed_toupsert_entities_count=event.entity_topological_sorter.get_entities_count())
 
             for entity in event.entity_topological_sorter.get_entities():
                 await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)
 
         except OceanAbortException as ocean_abort:
-            logger.info("Failed topological sort of failed to upsert entites - trying to upsert unordered")
+            logger.info(f"Failed topological sort of failed to upsert entites - trying to upsert unordered {event.entity_topological_sorter.get_entities_count()} entities.",failed_topological_sort_entities_count=event.entity_topological_sorter.get_entities_count() )
             if isinstance(ocean_abort.__cause__,CycleError):
                 for entity in event.entity_topological_sorter.get_entities(False):
                     await self.entities_state_applier.context.port_client.upsert_entity(entity,event.port_app_config.get_port_request_options(),user_agent_type,should_raise=False)

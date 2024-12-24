@@ -1,4 +1,5 @@
 from typing import Any, Generator
+from port_ocean.context import event
 from port_ocean.core.models import Entity
 
 from loguru import logger
@@ -25,7 +26,7 @@ class EntityTopologicalSorter:
         self.entities.append(entity)
 
     def is_to_execute(self) -> int:
-        return bool(self.get_entities_count())
+        return not event.event.port_app_config.create_missing_related_entities
 
     def get_entities_count(self) -> int:
         return len(self.entities)
