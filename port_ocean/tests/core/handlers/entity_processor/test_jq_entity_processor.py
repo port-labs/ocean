@@ -269,3 +269,35 @@ class TestJQEntityProcessor:
             assert len(result.entity_selector_diff.passed) == 1
             assert result.entity_selector_diff.passed[0].properties.get("foo") == "bar"
             assert not result.errors
+
+    async def test_parse_items_wrong_mapping(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        mapping = Mock()
+        mapping.port.entity.mappings.dict.return_value = {
+            "identifier": ".ark",
+            "blueprint": ".baz",
+            "properties": {"foo": ".bazbar"},
+            "title": ".foo",
+            "desc": ".foobar",
+            "name": ".bar.baz",
+        }
+        mapping.port.items_to_parse = None
+        mapping.selector.query = "true"
+        raw_results = [
+            {
+                "foo": "bar",
+                "baz": "bazbar",
+                "bar": {"foobar": "barfoo", "baz": "barbaz"},
+            },
+            {"foo": "bar", "baz": "bazbar", "bar": {"foobar": "foobar"}},
+        ]
+        result = await mocked_processor._parse_items(mapping, raw_results)
+        assert len(result.misconfigured) > 0
+        assert len(result.misconfigured) == 4
+        assert result.misconfigured == {
+            "identifier": ".ark",
+            "foo": ".bazbar",
+            "desc": ".foobar",
+            "name": ".bar.baz",
+        }
