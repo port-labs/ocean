@@ -214,45 +214,45 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def get_single_project(
-    project_name: str, matching_resource_config: Optional[GCPResourceConfig] = None
+    project_name: str, preserving_proto_field_name: bool = False
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         return parse_protobuf_message(
             await projects_client.get_project(
                 name=project_name, timeout=DEFAULT_REQUEST_TIMEOUT
             ),
-            matching_resource_config,
+            preserving_proto_field_name,
         )
 
 
 async def get_single_folder(
-    folder_name: str, matching_resource_config: Optional[GCPResourceConfig] = None
+    folder_name: str, preserving_proto_field_name: bool = False
 ) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(
             await folders_client.get_folder(
                 name=folder_name, timeout=DEFAULT_REQUEST_TIMEOUT
             ),
-            matching_resource_config,
+            preserving_proto_field_name,
         )
 
 
 async def get_single_organization(
-    organization_name: str, matching_resource_config: Optional[GCPResourceConfig] = None
+    organization_name: str, preserving_proto_field_name: bool = False
 ) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
             await organizations_client.get_organization(
                 name=organization_name, timeout=DEFAULT_REQUEST_TIMEOUT
             ),
-            matching_resource_config,
+            preserving_proto_field_name,
         )
 
 
 async def get_single_topic(
     project_id: str,
     topic_id: str,
-    matching_resource_config: Optional[GCPResourceConfig] = None,
+    preserving_proto_field_name: bool = False,
 ) -> RAW_ITEM:
     """
     The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -263,14 +263,14 @@ async def get_single_topic(
             await async_publisher_client.get_topic(
                 topic=topic_id, timeout=DEFAULT_REQUEST_TIMEOUT
             ),
-            matching_resource_config,
+            preserving_proto_field_name,
         )
 
 
 async def get_single_subscription(
     project_id: str,
     subscription_id: str,
-    matching_resource_config: Optional[GCPResourceConfig] = None,
+    preserving_proto_field_name: bool = False,
 ) -> RAW_ITEM:
     """
     Subscriptions are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -281,7 +281,7 @@ async def get_single_subscription(
             await async_subscriber_client.get_subscription(
                 subscription=subscription_id, timeout=DEFAULT_REQUEST_TIMEOUT
             ),
-            matching_resource_config,
+            preserving_proto_field_name,
         )
 
 
@@ -310,51 +310,53 @@ async def feed_event_to_resource(
     asset_name: str,
     project_id: str,
     asset_data: dict[str, Any],
-    matching_resource_config: Optional[GCPResourceConfig] = None,
+    preserving_proto_field_name: bool = False,
 ) -> RAW_ITEM:
     resource = None
     if asset_data.get("deleted") is True:
         resource = asset_data["priorAsset"]["resource"]["data"]
         resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-            project_id, matching_resource_config
+            project_id, preserving_proto_field_name
         )
     else:
         match asset_type:
             case AssetTypesWithSpecialHandling.TOPIC:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_topic(
-                    project_id, topic_name, matching_resource_config
+                    project_id, topic_name, preserving_proto_field_name
                 )
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, matching_resource_config
+                    project_id, preserving_proto_field_name
                 )
             case AssetTypesWithSpecialHandling.SUBSCRIPTION:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
                 resource = await get_single_subscription(
-                    project_id, topic_name, matching_resource_config
+                    project_id, topic_name, preserving_proto_field_name
                 )
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, matching_resource_config
+                    project_id, preserving_proto_field_name
                 )
             case AssetTypesWithSpecialHandling.FOLDER:
                 folder_id = asset_name.replace(
                     "//cloudresourcemanager.googleapis.com/", ""
                 )
-                resource = await get_single_folder(folder_id, matching_resource_config)
+                resource = await get_single_folder(
+                    folder_id, preserving_proto_field_name
+                )
             case AssetTypesWithSpecialHandling.ORGANIZATION:
                 organization_id = asset_name.replace(
                     "//cloudresourcemanager.googleapis.com/", ""
                 )
                 resource = await get_single_organization(
-                    organization_id, matching_resource_config
+                    organization_id, preserving_proto_field_name
                 )
             case AssetTypesWithSpecialHandling.PROJECT:
                 resource = await get_single_project(
-                    project_id, matching_resource_config
+                    project_id, preserving_proto_field_name
                 )
             case _:
                 resource = asset_data["asset"]["resource"]["data"]
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
-                    project_id, matching_resource_config
+                    project_id, preserving_proto_field_name
                 )
     return resource
