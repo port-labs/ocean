@@ -6,7 +6,6 @@ import typing
 from fastapi import Request, Response
 from loguru import logger
 
-from gcp_core.overrides import GCPResourceConfig
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 

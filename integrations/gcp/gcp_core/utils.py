@@ -10,11 +10,7 @@ import proto  # type: ignore
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-from gcp_core.overrides import (
-    GCPCloudResourceConfig,
-    GCPResourceConfig,
-    GCPResourceSelector,
-)
+from gcp_core.overrides import GCPCloudResourceConfig
 from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path

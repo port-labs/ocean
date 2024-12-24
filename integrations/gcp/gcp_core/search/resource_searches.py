@@ -15,7 +15,6 @@ from google.pubsub_v1.services.subscriber import SubscriberAsyncClient
 from loguru import logger
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE, RAW_ITEM
 from port_ocean.utils.cache import cache_iterator_result
-from gcp_core.overrides import GCPResourceConfig
 from gcp_core.errors import ResourceNotFoundError
 from gcp_core.utils import (
     EXTRA_PROJECT_FIELD,
