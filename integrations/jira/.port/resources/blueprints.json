@@ -129,6 +129,11 @@
           "type": "string",
           "description": "The datetime the issue changed to a resolved state",
           "format": "date-time"
+        },
+        "totalIssues": {
+          "title": "Total Issues",
+          "type": "number",
+          "description": "The total number of issues in the project"
         }
       }
     },
