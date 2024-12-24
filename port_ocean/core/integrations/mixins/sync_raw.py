@@ -399,7 +399,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             )
     async def sort_and_upsert_failed_entities(self,user_agent_type: UserAgentType)->None:
         try:
-            if not event.entity_topological_sorter.is_to_execute():
+            if not event.entity_topological_sorter.should_execute():
                 return None
             logger.info(f"Executings topological sort of {event.entity_topological_sorter.get_entities_count()} entities failed to upsert.",failed_toupsert_entities_count=event.entity_topological_sorter.get_entities_count())
 

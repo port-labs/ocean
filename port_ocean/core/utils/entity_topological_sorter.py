@@ -25,7 +25,7 @@ class EntityTopologicalSorter:
         )
         self.entities.append(entity)
 
-    def is_to_execute(self) -> int:
+    def should_execute(self) -> int:
         return not event.event.port_app_config.create_missing_related_entities
 
     def get_entities_count(self) -> int:
