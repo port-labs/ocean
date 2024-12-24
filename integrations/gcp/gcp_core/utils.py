@@ -86,7 +86,7 @@ def should_use_snake_case() -> bool:
         bool: True to use snake_case, False to preserve API's original case style
     """
 
-    selector = typing.cast(GCPResourceSelector, get_current_resource_config().selector)
+    selector = get_current_resource_config().selector
     preserve_api_case = getattr(selector, "preserve_api_response_case_style", False)
     return not preserve_api_case
 

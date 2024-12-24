@@ -214,7 +214,7 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def get_single_project(
-    project_name: str, preserving_proto_field_name: bool = False
+    project_name: str, preserving_proto_field_name: Optional[bool] = None
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         return parse_protobuf_message(
@@ -226,7 +226,7 @@ async def get_single_project(
 
 
 async def get_single_folder(
-    folder_name: str, preserving_proto_field_name: bool = False
+    folder_name: str, preserving_proto_field_name: Optional[bool] = None
 ) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(
@@ -238,7 +238,7 @@ async def get_single_folder(
 
 
 async def get_single_organization(
-    organization_name: str, preserving_proto_field_name: bool = False
+    organization_name: str, preserving_proto_field_name: Optional[bool] = None
 ) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
@@ -252,7 +252,7 @@ async def get_single_organization(
 async def get_single_topic(
     project_id: str,
     topic_id: str,
-    preserving_proto_field_name: bool = False,
+    preserving_proto_field_name: Optional[bool] = None,
 ) -> RAW_ITEM:
     """
     The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -270,7 +270,7 @@ async def get_single_topic(
 async def get_single_subscription(
     project_id: str,
     subscription_id: str,
-    preserving_proto_field_name: bool = False,
+    preserving_proto_field_name: Optional[bool] = None,
 ) -> RAW_ITEM:
     """
     Subscriptions are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -310,7 +310,7 @@ async def feed_event_to_resource(
     asset_name: str,
     project_id: str,
     asset_data: dict[str, Any],
-    preserving_proto_field_name: bool = False,
+    preserving_proto_field_name: Optional[bool] = None,
 ) -> RAW_ITEM:
     resource = None
     if asset_data.get("deleted") is True:

@@ -200,7 +200,9 @@ async def feed_events_callback(request: Request) -> Response:
         ]
         for matching_resource_config in matching_resource_configs:
             selector = matching_resource_config.selector
-            preserve_api_case = getattr(selector, "preserve_api_response_case_style", False)
+            preserve_api_case = getattr(
+                selector, "preserve_api_response_case_style", False
+            )
             asset_resource_data = await feed_event_to_resource(
                 asset_type,
                 asset_name,
