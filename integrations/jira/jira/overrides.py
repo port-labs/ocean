@@ -1,4 +1,5 @@
 from typing import Annotated, Literal, Union
+
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
     ResourceConfig,
@@ -13,10 +14,7 @@ class JiraResourceConfig(ResourceConfig):
         jql: str | None = None
 
     selector: Selector  # type: ignore
-    kind: Literal[
-        "issue",
-        "user"
-    ]
+    kind: Literal["issue", "user"]
 
 
 class JiraProjectSelector(Selector):
@@ -38,7 +36,6 @@ JiraResourcesConfig = Annotated[
     ],
     Field(discriminator="kind"),
 ]
-
 
 
 class JiraPortAppConfig(PortAppConfig):

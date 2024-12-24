@@ -7,7 +7,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from jira.client import JiraClient
-from jira.overrides import JiraProjectResourceConfig, JiraProjectSelector
+from jira.overrides import JiraProjectResourceConfig
 
 
 class ObjectKind(StrEnum):
