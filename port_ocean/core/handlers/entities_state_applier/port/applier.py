@@ -116,7 +116,7 @@ class HttpEntitiesStateApplier(BaseEntitiesStateApplier):
                     modified_entities.append(upsertedEntity)
                 # condition to false to differentiate from `result_entity.is_using_search_identifier`
                 if upsertedEntity is False:
-                    event._entity_topological_sorter.register_entity(entity)
+                    event.entity_topological_sorter.register_entity(entity)
         return modified_entities
 
     async def delete(
