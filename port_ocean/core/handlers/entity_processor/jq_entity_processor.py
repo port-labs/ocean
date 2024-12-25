@@ -264,7 +264,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             logger.info(
                 f"The mapping resulted with invalid values for \
                     {"identifier, blueprint," if missing_required_fields else ""} \
-                    properties, mapping result: {entity_misconfigurations}"
+                    properties. Mapping result: {entity_misconfigurations}"
             )
         if (
             not calculated_entities_results
