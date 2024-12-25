@@ -101,6 +101,9 @@ class JQEntityProcessor(BaseEntityProcessor):
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
     ) -> dict[str, Any | None]:
+        if misconfigurations is None:
+            misconfigurations = {}
+
         search_tasks: dict[
             str, Task[dict[str, Any | None]] | list[Task[dict[str, Any | None]]]
         ] = {}
@@ -123,8 +126,6 @@ class JQEntityProcessor(BaseEntityProcessor):
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
             try:
-                if misconfigurations is None:
-                    misconfigurations: dict[str, str] = {}
                 if isinstance(task, list):
                     result_list = []
                     for task in task:
@@ -242,6 +243,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         failed_entities = []
         examples_to_send: list[dict[str, Any]] = []
         entity_misconfigurations: dict[str, str] = {}
+        missing_required_fields: bool = False
         for result in calculated_entities_results:
             if len(result.misconfigurations) > 0:
                 entity_misconfigurations |= result.misconfigurations
@@ -256,9 +258,13 @@ class JQEntityProcessor(BaseEntityProcessor):
                         examples_to_send.append(result.raw_data)
                 else:
                     failed_entities.append(parsed_entity)
+            else:
+                missing_required_fields = True
         if len(entity_misconfigurations) > 0:
             logger.info(
-                f"Entity mapping misconfigurations identified. misconfigured mapping: {entity_misconfigurations}"
+                f"The mapping resulted with invalid values for \
+                    {"identifier, blueprint," if missing_required_fields else ""} \
+                    properties, mapping result: {entity_misconfigurations}"
             )
         if (
             not calculated_entities_results
