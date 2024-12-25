@@ -101,6 +101,15 @@ class JQEntityProcessor(BaseEntityProcessor):
         obj: dict[str, Any],
         misconfigurations: dict[str, str] | None = None,
     ) -> dict[str, Any | None]:
+        """
+        the _srearch_as_object function is here to allow us to identify and extract the relevant value for the chosen key and populate it into the entity
+        data: the property itself that holds the key and the value, it is being passed to the task and we get back a task item,
+            if the data is a dict, we will recursively call this function again
+        obj: the key that we want its value to be mapped into our entity
+        misconfigurations: due to the recursive nature of this function,
+            we aim to have a dict that represents all of the misconfigured properties and when used recursively,
+            we pass this value to add the relevant misconfigured keys
+        """
         if misconfigurations is None:
             misconfigurations = {}
 
@@ -281,5 +290,5 @@ class JQEntityProcessor(BaseEntityProcessor):
         return CalculationResult(
             EntitySelectorDiff(passed=passed_entities, failed=failed_entities),
             errors,
-            misconfigured=entity_misconfigurations,
+            misonfigured_entity_keys=entity_misconfigurations,
         )

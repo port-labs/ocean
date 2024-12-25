@@ -10,7 +10,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Added new info log for JQ mapping per batch to notify of misconfigured JQ mappings between a property and the JQ target.
+- Added new info log for JQ mapping per batch to notify of misconfigured JQ mappings between a property and the JQ target
 
 
 ## 0.16.0 (2024-12-24)

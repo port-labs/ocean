@@ -293,9 +293,9 @@ class TestJQEntityProcessor:
             {"foo": "bar", "baz": "bazbar", "bar": {"foobar": "foobar"}},
         ]
         result = await mocked_processor._parse_items(mapping, raw_results)
-        assert len(result.misconfigured) > 0
-        assert len(result.misconfigured) == 4
-        assert result.misconfigured == {
+        assert len(result.misonfigured_entity_keys) > 0
+        assert len(result.misonfigured_entity_keys) == 4
+        assert result.misonfigured_entity_keys == {
             "identifier": ".ark",
             "foo": ".bazbar",
             "desc": ".foobar",
