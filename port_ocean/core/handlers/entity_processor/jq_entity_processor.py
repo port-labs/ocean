@@ -123,6 +123,8 @@ class JQEntityProcessor(BaseEntityProcessor):
         result: dict[str, Any | None] = {}
         for key, task in search_tasks.items():
             try:
+                if misconfigurations is None:
+                    misconfigurations: dict[str, str] = {}
                 if isinstance(task, list):
                     result_list = []
                     for task in task:
