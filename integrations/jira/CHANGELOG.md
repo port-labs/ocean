@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.9 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.2.8 (2024-12-24)
+
+
+### Features
+
+- Added a field to display total issues in a project
+
+
+## 0.2.7 (2024-12-24)
+
+
+### Improvements
+
+- Changed issue priority from id to name
+
+
 ## 0.2.6 (2024-12-22)
 
 
