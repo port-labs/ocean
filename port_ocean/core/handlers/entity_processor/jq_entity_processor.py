@@ -34,6 +34,7 @@ class MappedEntity:
     entity: dict[str, Any] = field(default_factory=dict)
     did_entity_pass_selector: bool = False
     raw_data: Optional[dict[str, Any]] = None
+    misconfigurations: dict[str, str] = field(default_factory=dict)
 
 
 class JQEntityProcessor(BaseEntityProcessor):
@@ -95,21 +96,37 @@ class JQEntityProcessor(BaseEntityProcessor):
         )
 
     async def _search_as_object(
-        self, data: dict[str, Any], obj: dict[str, Any]
+        self,
+        data: dict[str, Any],
+        obj: dict[str, Any],
+        misconfigurations: dict[str, str] | None = None,
     ) -> dict[str, Any | None]:
+        """
+        Identify and extract the relevant value for the chosen key and populate it into the entity
+        :param data: the property itself that holds the key and the value, it is being passed to the task and we get back a task item,
+            if the data is a dict, we will recursively call this function again.
+        :param obj: the key that we want its value to be mapped into our entity.
+        :param misconfigurations: due to the recursive nature of this function,
+            we aim to have a dict that represents all of the misconfigured properties and when used recursively,
+            we pass this reference to misfoncigured object to add the relevant misconfigured keys.
+        :return: Mapped object with found value.
+        """
+
         search_tasks: dict[
             str, Task[dict[str, Any | None]] | list[Task[dict[str, Any | None]]]
         ] = {}
         for key, value in obj.items():
             if isinstance(value, list):
                 search_tasks[key] = [
-                    asyncio.create_task(self._search_as_object(data, obj))
+                    asyncio.create_task(
+                        self._search_as_object(data, obj, misconfigurations)
+                    )
                     for obj in value
                 ]
 
             elif isinstance(value, dict):
                 search_tasks[key] = asyncio.create_task(
-                    self._search_as_object(data, value)
+                    self._search_as_object(data, value, misconfigurations)
                 )
             else:
                 search_tasks[key] = asyncio.create_task(self._search(data, value))
@@ -118,12 +135,20 @@ class JQEntityProcessor(BaseEntityProcessor):
         for key, task in search_tasks.items():
             try:
                 if isinstance(task, list):
-                    result[key] = [await task for task in task]
+                    result_list = []
+                    for task in task:
+                        task_result = await task
+                        if task_result is None and misconfigurations is not None:
+                            misconfigurations[key] = obj[key]
+                        result_list.append(task_result)
+                    result[key] = result_list
                 else:
-                    result[key] = await task
+                    task_result = await task
+                    if task_result is None and misconfigurations is not None:
+                        misconfigurations[key] = obj[key]
+                    result[key] = task_result
             except Exception:
                 result[key] = None
-
         return result
 
     async def _get_mapped_entity(
@@ -135,11 +160,15 @@ class JQEntityProcessor(BaseEntityProcessor):
     ) -> MappedEntity:
         should_run = await self._search_as_bool(data, selector_query)
         if parse_all or should_run:
-            mapped_entity = await self._search_as_object(data, raw_entity_mappings)
+            misconfigurations: dict[str, str] = {}
+            mapped_entity = await self._search_as_object(
+                data, raw_entity_mappings, misconfigurations
+            )
             return MappedEntity(
                 mapped_entity,
                 did_entity_pass_selector=should_run,
                 raw_data=data if should_run else None,
+                misconfigurations=misconfigurations,
             )
 
         return MappedEntity()
@@ -221,7 +250,11 @@ class JQEntityProcessor(BaseEntityProcessor):
         passed_entities = []
         failed_entities = []
         examples_to_send: list[dict[str, Any]] = []
+        entity_misconfigurations: dict[str, str] = {}
+        missing_required_fields: bool = False
         for result in calculated_entities_results:
+            if len(result.misconfigurations) > 0:
+                entity_misconfigurations |= result.misconfigurations
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
                 if result.did_entity_pass_selector:
@@ -233,6 +266,12 @@ class JQEntityProcessor(BaseEntityProcessor):
                         examples_to_send.append(result.raw_data)
                 else:
                     failed_entities.append(parsed_entity)
+            else:
+                missing_required_fields = True
+        if len(entity_misconfigurations) > 0:
+            logger.info(
+                f"The mapping resulted with invalid values for{" identifier, blueprint," if missing_required_fields else " "} properties. Mapping result: {entity_misconfigurations}"
+            )
         if (
             not calculated_entities_results
             and raw_results
@@ -248,4 +287,5 @@ class JQEntityProcessor(BaseEntityProcessor):
         return CalculationResult(
             EntitySelectorDiff(passed=passed_entities, failed=failed_entities),
             errors,
+            misonfigured_entity_keys=entity_misconfigurations,
         )
