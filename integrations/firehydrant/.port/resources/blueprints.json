@@ -334,7 +334,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "proprties": {
+            "properties": {
               "question": { "type": "string" },
               "answer": { "type": "string" }
             }
