@@ -102,16 +102,15 @@ class JQEntityProcessor(BaseEntityProcessor):
         misconfigurations: dict[str, str] | None = None,
     ) -> dict[str, Any | None]:
         """
-        the _srearch_as_object function is here to allow us to identify and extract the relevant value for the chosen key and populate it into the entity
-        data: the property itself that holds the key and the value, it is being passed to the task and we get back a task item,
-            if the data is a dict, we will recursively call this function again
-        obj: the key that we want its value to be mapped into our entity
-        misconfigurations: due to the recursive nature of this function,
+        Identify and extract the relevant value for the chosen key and populate it into the entity
+        :param data: the property itself that holds the key and the value, it is being passed to the task and we get back a task item,
+            if the data is a dict, we will recursively call this function again.
+        :param obj: the key that we want its value to be mapped into our entity.
+        :param misconfigurations: due to the recursive nature of this function,
             we aim to have a dict that represents all of the misconfigured properties and when used recursively,
-            we pass this value to add the relevant misconfigured keys
+            we pass this reference to misfoncigured object to add the relevant misconfigured keys.
+        :return: Mapped object with found value.
         """
-        if misconfigurations is None:
-            misconfigurations = {}
 
         search_tasks: dict[
             str, Task[dict[str, Any | None]] | list[Task[dict[str, Any | None]]]
@@ -139,13 +138,13 @@ class JQEntityProcessor(BaseEntityProcessor):
                     result_list = []
                     for task in task:
                         task_result = await task
-                        if task_result is None:
+                        if task_result is None and misconfigurations is not None:
                             misconfigurations[key] = obj[key]
                         result_list.append(task_result)
                     result[key] = result_list
                 else:
                     task_result = await task
-                    if task_result is None:
+                    if task_result is None and misconfigurations is not None:
                         misconfigurations[key] = obj[key]
                     result[key] = task_result
             except Exception:
@@ -271,9 +270,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                 missing_required_fields = True
         if len(entity_misconfigurations) > 0:
             logger.info(
-                f"The mapping resulted with invalid values for \
-                    {"identifier, blueprint," if missing_required_fields else ""} \
-                    properties. Mapping result: {entity_misconfigurations}"
+                f"The mapping resulted with invalid values for{" identifier, blueprint," if missing_required_fields else " "} properties. Mapping result: {entity_misconfigurations}"
             )
         if (
             not calculated_entities_results

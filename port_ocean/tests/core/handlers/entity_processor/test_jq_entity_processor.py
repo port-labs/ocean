@@ -275,12 +275,14 @@ class TestJQEntityProcessor:
     ) -> None:
         mapping = Mock()
         mapping.port.entity.mappings.dict.return_value = {
+            "title": ".foo",
             "identifier": ".ark",
             "blueprint": ".baz",
-            "properties": {"foo": ".bazbar"},
-            "title": ".foo",
-            "desc": ".foobar",
-            "name": ".bar.baz",
+            "properties": {
+                "description": ".bazbar",
+                "url": ".foobar",
+                "defaultBranch": ".bar.baz",
+            },
         }
         mapping.port.items_to_parse = None
         mapping.selector.query = "true"
@@ -297,7 +299,7 @@ class TestJQEntityProcessor:
         assert len(result.misonfigured_entity_keys) == 4
         assert result.misonfigured_entity_keys == {
             "identifier": ".ark",
-            "foo": ".bazbar",
-            "desc": ".foobar",
-            "name": ".bar.baz",
+            "description": ".bazbar",
+            "url": ".foobar",
+            "defaultBranch": ".bar.baz",
         }
