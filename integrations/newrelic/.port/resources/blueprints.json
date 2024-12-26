@@ -42,14 +42,23 @@
         },
         "sources": {
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "title": "Sources"
         },
         "alertPolicyNames": {
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "title": "Alert Policy Names"
         },
         "conditionName": {
           "type": "array",
+          "items": {
+            "type": "string"
+          },
           "title": "Condition Name"
         },
         "activatedAt": {

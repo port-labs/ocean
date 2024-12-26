@@ -45,6 +45,9 @@
         "packageVersions": {
           "icon": "Package",
           "title": "Package Versions",
+          "items": {
+            "type": "string"
+          },
           "type": "array"
         },
         "type": {

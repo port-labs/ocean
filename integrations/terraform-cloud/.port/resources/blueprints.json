@@ -138,6 +138,9 @@
         "tags": {
           "type": "array",
           "title": "Workspace Tags",
+          "items": {
+            "type": "string"
+          },
           "description": "Terraform workspace tags"
         }
       }
@@ -208,6 +211,9 @@
         "outputData": {
           "type": "array",
           "title": "Output",
+          "items": {
+            "type": "string"
+          },
           "description": "output returned from state version"
         },
         "vcsCommitUrl": {
