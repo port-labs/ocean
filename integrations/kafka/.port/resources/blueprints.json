@@ -72,6 +72,9 @@
         },
         "partitionsMetadata": {
           "title": "Partitions Metadata",
+          "items": {
+            "type": "object"
+          },
           "type": "array"
         },
         "config": {
