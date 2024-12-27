@@ -1,0 +1,24 @@
+resources:
+  - kind: list
+    selector:
+      query: .name | startswith("work.column_1659977338244")
+    port:
+      itemsToParse: .items
+      entity:
+        mappings:
+          blueprint: '"_team"'
+          identifier: .item.id
+          title: .item.name
+  - kind: profile
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .email
+          blueprint: '"_user"'
+          title: .displayName
+          properties:
+            name: .firstName
+          relations:
+            teams: .work.customColumns.column_1659977338244

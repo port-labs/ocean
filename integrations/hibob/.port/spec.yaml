@@ -1,0 +1,18 @@
+description: HiBob integration for Port Ocean
+icon: Cookiecutter  # Should be one of the available icons in Port
+features:
+  - type: exporter
+    section: Other  # Should be one of the available sections in Port
+    resources:
+      - kind: profile
+      - kind: list
+configurations:
+  - name: hibobApiUrl
+    type: url
+  - name: hibobUsername
+    type: string
+    required: true
+  - name: hibobPassword
+    type: string
+    sensitive: true
+    required: true

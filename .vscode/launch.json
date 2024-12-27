@@ -112,6 +112,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/hibob",
+      "envFile": "${workspaceFolder}/integrations/hibob/.env",
+      "justMyCode": true,
+      "name": "Run HiBob integration",
+      "program": "${workspaceFolder}/integrations/hibob/debug.py",
+      "python": "${workspaceFolder}/integrations/hibob/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/port_ocean/cli",
       "justMyCode": true,
       "name": "Run ocean new command",
@@ -119,7 +130,9 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": ["new"]
+      "args": [
+        "new"
+      ]
     }
   ]
 }
