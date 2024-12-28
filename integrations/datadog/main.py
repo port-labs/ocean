@@ -44,7 +44,11 @@ async def on_resync_teams(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     async for teams in dd_client.get_teams():
         logger.info(f"Received teams batch with {len(teams)} teams")
         if selector.include_members:
-            teams = await dd_client.enrich_teams_with_members(teams)
+            for team in teams:
+                members = []
+                async for member_batch in dd_client.get_team_members(team["id"]):
+                    members.extend(member_batch)
+                team["__members"] = members
         yield teams
 
 
