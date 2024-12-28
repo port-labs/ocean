@@ -1,11 +1,10 @@
+import asyncio
 from typing import Any, AsyncGenerator, Generator, Optional
 
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
-
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
-import asyncio
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"

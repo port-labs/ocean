@@ -44,11 +44,7 @@ async def setup_application() -> None:
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
+    client = create_jira_client()
 
     selector = cast(JiraProjectResourceConfig, event.resource_config).selector
     params = {"expand": selector.expand}
