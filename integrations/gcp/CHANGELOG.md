@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.1.83 (2024-12-29)
+
+
+### Bug Fixes
+
+- Fixed the issue with `get_current_resource_config()` and the `preserveApiResponseCaseStyle` selector in real-time event which leads to the failure of the event processing
+
+
+## 0.1.82 (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.1.81 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
 
 ## 0.1.80 (2024-12-22)
 

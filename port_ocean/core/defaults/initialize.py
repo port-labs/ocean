@@ -14,7 +14,7 @@ from port_ocean.core.defaults.common import (
 )
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.models import Blueprint
-from port_ocean.core.utils import gather_and_split_errors_from_results
+from port_ocean.core.utils.utils import gather_and_split_errors_from_results
 from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
