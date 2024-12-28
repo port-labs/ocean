@@ -5,8 +5,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic import BaseModel, Field, Field
-from typing import Literal
+from pydantic import BaseModel, Field
 
 
 class TeamSelector(Selector):
@@ -43,16 +42,9 @@ class JiraProjectResourceConfig(ResourceConfig):
     kind: Literal["project"]
 
 
-JiraResourcesConfig = Annotated[
-    Union[
-        JiraResourceConfig,
-        JiraProjectResourceConfig,
-    ],
-    Field(discriminator="kind"),
-]
-
-
 class JiraPortAppConfig(PortAppConfig):
-    resources: list[TeamResourceConfig | JiraResourceConfig | JiraProjectResourceConfig] = Field(
+    resources: list[
+        TeamResourceConfig | JiraResourceConfig | JiraProjectResourceConfig
+    ] = Field(
         default_factory=list
     )  # type: ignore
