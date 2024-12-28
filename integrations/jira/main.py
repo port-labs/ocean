@@ -1,10 +1,13 @@
 from enum import StrEnum
 from typing import Any, cast
 
-from jira.client import JiraClient
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from jira.client import JiraClient
+from jira.overrides import JiraProjectResourceConfig
 from port_ocean.context.event import event
 from jira.overrides import JiraResourceConfig, TeamResourceConfig
 
@@ -41,9 +44,17 @@ async def setup_application() -> None:
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = create_jira_client()
-    async for projects in client.get_paginated_projects():
-        logger.info(f"Received project batch with {len(projects)} projects")
+    client = JiraClient(
+        ocean.integration_config["jira_host"],
+        ocean.integration_config["atlassian_user_email"],
+        ocean.integration_config["atlassian_user_token"],
+    )
+
+    selector = cast(JiraProjectResourceConfig, event.resource_config).selector
+    params = {"expand": selector.expand}
+
+    async for projects in client.get_paginated_projects(params):
+        logger.info(f"Received project batch with {len(projects)} issues")
         yield projects
 
 

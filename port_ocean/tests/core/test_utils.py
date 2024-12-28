@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from port_ocean.core.utils import validate_integration_runtime
+from port_ocean.core.utils.utils import validate_integration_runtime
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import Runtime
 from port_ocean.tests.helpers.port_client import get_port_client_for_integration

@@ -1,6 +1,6 @@
 from typing import Any, AsyncGenerator, Generator, Optional
 
-from httpx import Timeout, Auth, BasicAuth, Request, Response
+from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 
 from port_ocean.context.ocean import ocean
@@ -189,7 +189,7 @@ class JiraClient:
         )
 
     async def get_paginated_projects(
-        self,
+        self, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
         async for projects in self._get_paginated_data(

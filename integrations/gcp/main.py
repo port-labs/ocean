@@ -5,6 +5,7 @@ import typing
 
 from fastapi import Request, Response
 from loguru import logger
+
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
@@ -13,7 +14,13 @@ from gcp_core.errors import (
     GotFeedCreatedSuccessfullyMessageError,
 )
 from gcp_core.feed_event import get_project_name_from_ancestors, parse_asset_data
-from gcp_core.overrides import GCPCloudResourceSelector
+from gcp_core.overrides import (
+    GCPCloudResourceSelector,
+    GCPPortAppConfig,
+    GCPResourceSelector,
+    ProtoConfig,
+)
+from port_ocean.context.event import event
 from gcp_core.search.iterators import iterate_per_available_project
 from gcp_core.search.resource_searches import (
     feed_event_to_resource,
@@ -180,19 +187,41 @@ async def feed_events_callback(request: Request) -> Response:
         logger.info(
             f"Got Real-Time event for kind: {asset_type} with name: {asset_name} from project: {asset_project}"
         )
-        asset_resource_data = await feed_event_to_resource(
-            asset_type, asset_name, asset_project, asset_data
-        )
-        if asset_data.get("deleted") is True:
-            logger.info(
-                f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
+        resource_configs = typing.cast(
+            GCPPortAppConfig, event.port_app_config
+        ).resources
+        matching_resource_configs = [
+            resource_config
+            for resource_config in resource_configs
+            if (
+                resource_config.kind == asset_type
+                and isinstance(resource_config.selector, GCPResourceSelector)
             )
-            await ocean.unregister_raw(asset_type, [asset_resource_data])
-        else:
-            logger.info(
-                f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
+        ]
+        for matching_resource_config in matching_resource_configs:
+            selector = matching_resource_config.selector
+            config = ProtoConfig(
+                preserving_proto_field_name=bool(
+                    getattr(selector, "preserve_api_response_case_style", False)
+                )
             )
-            await ocean.register_raw(asset_type, [asset_resource_data])
+            asset_resource_data = await feed_event_to_resource(
+                asset_type,
+                asset_name,
+                asset_project,
+                asset_data,
+                config,
+            )
+            if asset_data.get("deleted") is True:
+                logger.info(
+                    f"Resource {asset_type} : {asset_name} has been deleted in GCP, unregistering from port"
+                )
+                await ocean.unregister_raw(asset_type, [asset_resource_data])
+            else:
+                logger.info(
+                    f"Registering creation/update of resource {asset_type} : {asset_name} in project {asset_project} in Port"
+                )
+                await ocean.register_raw(asset_type, [asset_resource_data])
     except AssetHasNoProjectAncestorError:
         logger.exception(
             f"Couldn't find project ancestor to asset {asset_name}. Other types of ancestors and not supported yet."
