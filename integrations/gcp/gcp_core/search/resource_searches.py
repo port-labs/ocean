@@ -27,7 +27,7 @@ from gcp_core.utils import (
 from gcp_core.search.paginated_query import paginated_query, DEFAULT_REQUEST_TIMEOUT
 from gcp_core.helpers.ratelimiter.base import MAXIMUM_CONCURRENT_REQUESTS
 from asyncio import BoundedSemaphore
-from gcp_core.overrides import ResourceSelectorConfig
+from gcp_core.overrides import ProtoConfig
 
 DEFAULT_SEMAPHORE = BoundedSemaphore(MAXIMUM_CONCURRENT_REQUESTS)
 
@@ -214,7 +214,7 @@ async def search_all_organizations() -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 
 async def get_single_project(
-    project_name: str, config: Optional[ResourceSelectorConfig] = None
+    project_name: str, config: Optional[ProtoConfig] = None
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         return parse_protobuf_message(
@@ -226,7 +226,7 @@ async def get_single_project(
 
 
 async def get_single_folder(
-    folder_name: str, config: Optional[ResourceSelectorConfig] = None
+    folder_name: str, config: Optional[ProtoConfig] = None
 ) -> RAW_ITEM:
     async with FoldersAsyncClient() as folders_client:
         return parse_protobuf_message(
@@ -238,7 +238,7 @@ async def get_single_folder(
 
 
 async def get_single_organization(
-    organization_name: str, config: Optional[ResourceSelectorConfig] = None
+    organization_name: str, config: Optional[ProtoConfig] = None
 ) -> RAW_ITEM:
     async with OrganizationsAsyncClient() as organizations_client:
         return parse_protobuf_message(
@@ -250,9 +250,8 @@ async def get_single_organization(
 
 
 async def get_single_topic(
-    project_id: str,
     topic_id: str,
-    config: Optional[ResourceSelectorConfig] = None,
+    config: Optional[ProtoConfig] = None,
 ) -> RAW_ITEM:
     """
     The Topics are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -268,9 +267,8 @@ async def get_single_topic(
 
 
 async def get_single_subscription(
-    project_id: str,
     subscription_id: str,
-    config: Optional[ResourceSelectorConfig] = None,
+    config: Optional[ProtoConfig] = None,
 ) -> RAW_ITEM:
     """
     Subscriptions are handled specifically due to lacks of data in the asset itself within the asset inventory- e.g. some properties missing.
@@ -310,7 +308,7 @@ async def feed_event_to_resource(
     asset_name: str,
     project_id: str,
     asset_data: dict[str, Any],
-    config: Optional[ResourceSelectorConfig] = None,
+    config: Optional[ProtoConfig] = None,
 ) -> RAW_ITEM:
     resource = None
     if asset_data.get("deleted") is True:
@@ -320,13 +318,13 @@ async def feed_event_to_resource(
         match asset_type:
             case AssetTypesWithSpecialHandling.TOPIC:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
-                resource = await get_single_topic(project_id, topic_name, config)
+                resource = await get_single_topic(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
                     project_id, config
                 )
             case AssetTypesWithSpecialHandling.SUBSCRIPTION:
                 topic_name = asset_name.replace("//pubsub.googleapis.com/", "")
-                resource = await get_single_subscription(project_id, topic_name, config)
+                resource = await get_single_subscription(topic_name, config)
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
                     project_id, config
                 )

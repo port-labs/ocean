@@ -18,7 +18,7 @@ from gcp_core.overrides import (
     GCPCloudResourceSelector,
     GCPPortAppConfig,
     GCPResourceSelector,
-    ResourceSelectorConfig,
+    ProtoConfig,
 )
 from port_ocean.context.event import event
 from gcp_core.search.iterators import iterate_per_available_project
@@ -200,7 +200,7 @@ async def feed_events_callback(request: Request) -> Response:
         ]
         for matching_resource_config in matching_resource_configs:
             selector = matching_resource_config.selector
-            config = ResourceSelectorConfig(
+            config = ProtoConfig(
                 preserving_proto_field_name=bool(
                     getattr(selector, "preserve_api_response_case_style", False)
                 )

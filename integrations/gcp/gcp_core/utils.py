@@ -10,7 +10,7 @@ import proto  # type: ignore
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-from gcp_core.overrides import GCPCloudResourceConfig, ResourceSelectorConfig
+from gcp_core.overrides import GCPCloudResourceConfig, ProtoConfig
 from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
@@ -89,7 +89,7 @@ def should_use_snake_case() -> bool:
 
 def parse_protobuf_message(
     message: proto.Message,
-    config: Optional[ResourceSelectorConfig] = None,
+    config: Optional[ProtoConfig] = None,
 ) -> dict[str, Any]:
     """
     Parse protobuf message to dict, controlling field name case style.

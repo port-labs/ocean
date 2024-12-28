@@ -41,5 +41,5 @@ class GCPPortAppConfig(PortAppConfig):
     )
 
 
-class ResourceSelectorConfig(BaseModel):
+class ProtoConfig(BaseModel):
     preserving_proto_field_name: typing.Optional[bool] = None
