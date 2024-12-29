@@ -186,7 +186,7 @@ class JiraClient:
         )
 
     async def get_paginated_projects(
-        self, params: dict[str, Any] | None = None 
+        self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
         async for projects in self._get_paginated_data(
