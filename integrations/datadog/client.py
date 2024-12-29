@@ -4,7 +4,7 @@ import datetime
 import http
 import json
 import time
-from typing import Any, AsyncGenerator, Optional, List, Dict
+from typing import Any, AsyncGenerator, Optional
 from urllib.parse import urlparse, urlunparse
 
 import httpx
