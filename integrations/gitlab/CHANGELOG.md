@@ -7,6 +7,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.10 (2024-12-26)
+==================
+
+### Improvements
+
+- Add support for GitLab OAuth2.0 installation specification for Port
+
 0.2.9 (2024-12-26)
 ==================
 
