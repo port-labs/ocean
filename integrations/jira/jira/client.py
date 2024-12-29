@@ -82,7 +82,6 @@ class JiraClient:
         page_size: int = PAGE_SIZE,
         initial_params: Optional[dict[str, Any]] = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Generic method for handling paginated requests."""
         params = initial_params or {}
         params.update(self._generate_base_req_params())
         params["maxResults"] = page_size
@@ -120,7 +119,6 @@ class JiraClient:
         initial_params: Optional[dict[str, Any]] = None,
         cursor_param: str = "cursor",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        """Handle cursor-based pagination for specific endpoint."""
         params = initial_params or {}
         cursor = params.get(cursor_param)
 
@@ -188,11 +186,11 @@ class JiraClient:
         )
 
     async def get_paginated_projects(
-        self, params: dict[str, Any] = {}
+        self, params: dict[str, Any] | None = None 
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
         async for projects in self._get_paginated_data(
-            f"{self.api_url}/project/search", "values"
+            f"{self.api_url}/project/search", "values", initial_params=params
         ):
             yield projects
 
