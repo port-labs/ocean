@@ -8,6 +8,9 @@ from typing import Any, Callable, Coroutine, Iterable, Mapping, Union
 
 import httpx
 from dateutil.parser import isoparse
+from port_ocean.context import event
+from port_ocean.exceptions.context import EventContextNotFoundError
+from port_ocean.helpers.metric import MetricFieldType
 
 
 # Adapted from https://github.com/encode/httpx/issues/108#issuecomment-1434439481
@@ -162,6 +165,16 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response = await self._retry_operation_async(request, send_method)
             else:
                 response = await transport.handle_async_request(request)
+                try:
+                    (
+                        await event.event._metric_aggregator.increment_status(
+                            str(response.status_code)
+                        )
+                        if event.event._metric_aggregator
+                        else None
+                    )
+                except Exception:
+                    pass
             return response
         except Exception as e:
             # Retyable methods are logged via _log_error
@@ -280,16 +293,45 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
+
+        metric = None
+        try:
+            metric = (
+                await event.event._metric_aggregator.get_metric()
+                if event.event._metric_aggregator
+                else None
+            )
+        except EventContextNotFoundError:
+            pass
+
         while True:
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
+                (
+                    await event.event._metric_aggregator.increment_field(
+                        MetricFieldType.RATE_LIMIT
+                    )
+                    if metric and event.event._metric_aggregator
+                    else None
+                )
 
             error = None
             response = None
             try:
                 response = await send_method(request)
+                try:
+                    (
+                        await event.event._metric_aggregator.increment_status(
+                            str(response.status_code)
+                        )
+                        if metric and event.event._metric_aggregator
+                        else None
+                    )
+                except Exception:
+                    pass
+
                 response.request = request
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)

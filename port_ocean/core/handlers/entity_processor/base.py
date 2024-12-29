@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 from loguru import logger
 
+from port_ocean.context import event
 from port_ocean.core.handlers.base import BaseHandler
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 from port_ocean.core.ocean_types import (
@@ -9,6 +10,7 @@ from port_ocean.core.ocean_types import (
     CalculationResult,
     EntitySelectorDiff,
 )
+from port_ocean.helpers.metric import MetricFieldType, MetricType, metric
 
 
 class BaseEntityProcessor(BaseHandler):
@@ -30,6 +32,7 @@ class BaseEntityProcessor(BaseHandler):
     ) -> CalculationResult:
         pass
 
+    @metric(MetricType.TRANSFORM)
     async def parse_items(
         self,
         mapping: ResourceConfig,
@@ -51,7 +54,38 @@ class BaseEntityProcessor(BaseHandler):
         with logger.contextualize(kind=mapping.kind):
             if not raw_data:
                 return CalculationResult(EntitySelectorDiff([], []), [])
-
-            return await self._parse_items(
+            result = await self._parse_items(
                 mapping, raw_data, parse_all, send_raw_data_examples_amount
             )
+
+            (
+                await event.event._metric_aggregator.increment_field(
+                    MetricFieldType.INPUT_COUNT, len(raw_data)
+                )
+                if event.event._metric_aggregator
+                else None
+            )
+            (
+                await event.event._metric_aggregator.increment_field(
+                    MetricFieldType.OBJECT_COUNT,
+                    len(result.entity_selector_diff.passed),
+                )
+                if event.event._metric_aggregator
+                else None
+            )
+            (
+                await event.event._metric_aggregator.increment_field(
+                    MetricFieldType.FAILED, len(result.entity_selector_diff.failed)
+                )
+                if event.event._metric_aggregator
+                else None
+            )
+            (
+                await event.event._metric_aggregator.increment_field(
+                    MetricFieldType.ERROR_COUNT, len(result.errors)
+                )
+                if event.event._metric_aggregator
+                else None
+            )
+
+            return result
