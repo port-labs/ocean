@@ -21,7 +21,7 @@ class PagerDutyClient:
         self.api_url = api_url
         self.app_host = app_host
         self.http_client = http_async_client
-        self.http_client.headers.update(self.api_auth_param["headers"])
+        self.http_client.headers.update(self.headers)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
 
     @property
@@ -64,16 +64,17 @@ class PagerDutyClient:
         )
 
     @property
-    def api_auth_param(self) -> dict[str, Any]:
-        auth_prefix = (
-            "Bearer " if self.token.startswith(OAUTH_TOKEN_PREFIX) else "Token token="
-        )
-        return {
-            "headers": {
-                "Authorization": f"{auth_prefix}{self.token}",
-                "Content-Type": "application/json",
-            }
-        }
+    def headers(self) -> dict[str, Any]:
+        headers = {"Content-Type": "application/json"}
+        if self.token.startswith(OAUTH_TOKEN_PREFIX):
+            headers.update({
+                "Authorization": f"Bearer {self.token}",
+                "Accept": "application/vnd.pagerduty+json;version=2",
+            })
+        else:
+            headers["Authorization"] = f"Token token={self.token}"
+
+        return headers
 
     async def paginate_request_to_pager_duty(
         self, resource: str, params: dict[str, Any] | None = None
