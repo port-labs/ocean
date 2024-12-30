@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "pagerduty"
-version = "0.1.131"
-description = "Pagerduty Integration"
+version = "0.2.1"
+description = "PagerDuty Integration"
 authors = ["Port Team <support@getport.io>"]
 
 [tool.poetry.dependencies]

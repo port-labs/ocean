@@ -1,3 +1,11 @@
+## 0.1.22-beta (2024-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
 ## 0.1.21-beta (2024-12-26)
 
 

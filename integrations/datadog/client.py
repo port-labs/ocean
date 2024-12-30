@@ -158,6 +158,83 @@ class DatadogClient:
                 raise
             return response.json()
 
+    async def get_team_members(
+        self, team_id: str, page_size: int = MAX_PAGE_SIZE
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get teams members from DataDog
+        Docs: https://docs.datadoghq.com/api/latest/teams/#get-team-memberships
+        """
+
+        logger.info(f"Enriching team {team_id} with members information")
+
+        page = 0
+
+        while True:
+            url = f"{self.api_url}/api/v2/team/{team_id}/memberships"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "page[size]": page_size,
+                    "page[number]": page,
+                },
+            )
+
+            users = result.get("included", [])
+
+            if not users:
+                break
+
+            yield users
+            page += 1
+
+    async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get teams from DataDog
+        Docs: https://docs.datadoghq.com/api/latest/teams/#get-all-teams
+        """
+        page = 0
+        page_size = MAX_PAGE_SIZE
+
+        while True:
+            url = f"{self.api_url}/api/v2/team"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "page[size]": page_size,
+                    "page[number]": page,
+                },
+            )
+
+            teams = result.get("data", [])
+            if not teams:
+                break
+
+            yield teams
+            page += 1
+
+    async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get users from DataDog
+        Docs: https://docs.datadoghq.com/api/latest/users/#list-all-users
+        """
+        page = 0
+        page_size = MAX_PAGE_SIZE
+
+        while True:
+            url = f"{self.api_url}/api/v2/users"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "page[number]": page,
+                    "page[size]": page_size,
+                },
+            )
+
+            users = result.get("data", [])
+            if not users:
+                break
+
+            yield users
+            page += 1
+
     async def get_hosts(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         start = 0
         count = MAX_PAGE_SIZE
