@@ -1,4 +1,5 @@
-description: sentry integration for Port Ocean
+title: Sentry
+description: Sentry integration for Port Ocean
 icon: Sentry
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/sentry
 features:
