@@ -67,10 +67,12 @@ class PagerDutyClient:
     def headers(self) -> dict[str, Any]:
         headers = {"Content-Type": "application/json"}
         if self.token.startswith(OAUTH_TOKEN_PREFIX):
-            headers.update({
-                "Authorization": f"Bearer {self.token}",
-                "Accept": "application/vnd.pagerduty+json;version=2",
-            })
+            headers.update(
+                {
+                    "Authorization": f"Bearer {self.token}",
+                    "Accept": "application/vnd.pagerduty+json;version=2",
+                }
+            )
         else:
             headers["Authorization"] = f"Token token={self.token}"
 
