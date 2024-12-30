@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.0 (2024-12-30)
+
+
+### Improvements
+
+- Added support for OAuth2.0 token
+- Added OAuth installation specification for Port
+
+
 ## 0.1.131 (2024-12-26)
 
 

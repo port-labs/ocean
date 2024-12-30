@@ -12,6 +12,7 @@ USER_KEY = "users"
 
 MAX_CONCURRENT_REQUESTS = 10
 PAGE_SIZE = 100
+OAUTH_TOKEN_PREFIX = 'pd'
 
 
 class PagerDutyClient:
@@ -64,9 +65,10 @@ class PagerDutyClient:
 
     @property
     def api_auth_param(self) -> dict[str, Any]:
+        auth_prefix = "Bearer " if self.token.startswith(OAUTH_TOKEN_PREFIX) else f"Token token="
         return {
             "headers": {
-                "Authorization": f"Token token={self.token}",
+                "Authorization": f"{auth_prefix}{self.token}",
                 "Content-Type": "application/json",
             }
         }
