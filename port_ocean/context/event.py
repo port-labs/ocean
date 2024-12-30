@@ -75,6 +75,20 @@ class EventContext:
                 )
         self._aborted = True
 
+    async def increment_status(self, status_code: str) -> None:
+        try:
+            if self._metric_aggregator:
+                await self._metric_aggregator.increment_status(status_code)
+        except Exception:
+            pass
+
+    async def increment_metric(self, metric: str, amount: int | float = 1) -> None:
+        try:
+            if self._metric_aggregator:
+                await self._metric_aggregator.increment_field(metric, amount)
+        except Exception:
+            pass
+
     @property
     def aborted(self) -> bool:
         return self._aborted

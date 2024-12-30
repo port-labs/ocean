@@ -166,14 +166,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             else:
                 response = await transport.handle_async_request(request)
                 try:
-                    (
-                        await event.event._metric_aggregator.increment_status(
-                            str(response.status_code)
-                        )
-                        if event.event._metric_aggregator
-                        else None
-                    )
-                except Exception:
+                    await event.event.increment_status(str(response.status_code))
+                except EventContextNotFoundError:
                     pass
             return response
         except Exception as e:
@@ -310,10 +304,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
                 (
-                    await event.event._metric_aggregator.increment_field(
-                        MetricFieldType.RATE_LIMIT
-                    )
-                    if metric and event.event._metric_aggregator
+                    await event.event.increment_metric(MetricFieldType.RATE_LIMIT)
+                    if metric
                     else None
                 )
 
@@ -321,16 +313,12 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             response = None
             try:
                 response = await send_method(request)
-                try:
-                    (
-                        await event.event._metric_aggregator.increment_status(
-                            str(response.status_code)
-                        )
-                        if metric and event.event._metric_aggregator
-                        else None
-                    )
-                except Exception:
-                    pass
+
+                (
+                    await event.event.increment_status(str(response.status_code))
+                    if metric
+                    else None
+                )
 
                 response.request = request
                 if remaining_attempts < 1 or not (
@@ -370,6 +358,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
+
         while True:
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})

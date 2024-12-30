@@ -8,6 +8,8 @@ latency_ms=2000
 export PORT_BASE_URL='http://localhost:5555'
 export OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS=$latency_ms
 
+make -f "$ROOT_DIR/Makefile" build
+
 make -f "$ROOT_DIR/Makefile" smoke/start-mock-api
 
 $SCRIPT_BASE/run-smoke-test.sh | grep 'integration metrics' > $TEMP_DIR/metric.log

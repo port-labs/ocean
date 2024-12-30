@@ -75,13 +75,8 @@ class EntityClientMixin:
                 extensions={"retryable": True},
             )
         if response.is_error:
-            (
-                await event.event._metric_aggregator.increment_field(
-                    MetricFieldType.ERROR_COUNT
-                )
-                if event.event._metric_aggregator
-                else None
-            )
+            await event.event.increment_metric(MetricFieldType.ERROR_COUNT)
+
             logger.error(
                 f"Error {'Validating' if validation_only else 'Upserting'} "
                 f"entity: {entity.identifier} of "
@@ -107,13 +102,7 @@ class EntityClientMixin:
         # We return None to ignore the entity later in the delete process
         if result_entity.is_using_search_identifier:
             if not response.is_error:
-                (
-                    await event.event._metric_aggregator.increment_field(
-                        MetricFieldType.ERROR_COUNT
-                    )
-                    if event.event._metric_aggregator
-                    else None
-                )
+                await event.event.increment_metric(MetricFieldType.ERROR_COUNT)
             return None
 
         # In order to save memory we'll keep only the identifier, blueprint and relations of the
@@ -129,21 +118,8 @@ class EntityClientMixin:
             key: None if isinstance(relation, dict) else relation
             for key, relation in result_entity.relations.items()
         }
-
-        (
-            await event.event._metric_aggregator.increment_field(
-                MetricFieldType.OBJECT_COUNT
-            )
-            if event.event._metric_aggregator
-            else None
-        )
-        (
-            await event.event._metric_aggregator.increment_field(
-                MetricFieldType.UPSERTED
-            )
-            if event.event._metric_aggregator
-            else None
-        )
+        await event.event.increment_metric(MetricFieldType.OBJECT_COUNT)
+        await event.event.increment_metric(MetricFieldType.UPSERTED)
 
         return reduced_entity
 
@@ -202,13 +178,7 @@ class EntityClientMixin:
             )
 
             if response.is_error:
-                (
-                    await event.event._metric_aggregator.increment_field(
-                        MetricFieldType.ERROR_COUNT
-                    )
-                    if event.event._metric_aggregator
-                    else None
-                )
+                await event.event.increment_metric(MetricFieldType.ERROR_COUNT)
                 if response.status_code == 404:
                     logger.info(
                         f"Failed to delete entity: {entity.identifier} of blueprint: {entity.blueprint},"
@@ -222,20 +192,8 @@ class EntityClientMixin:
                 )
 
             handle_status_code(response, should_raise)
-            (
-                await event.event._metric_aggregator.increment_field(
-                    MetricFieldType.OBJECT_COUNT
-                )
-                if event.event._metric_aggregator
-                else None
-            )
-            (
-                await event.event._metric_aggregator.increment_field(
-                    MetricFieldType.DELETED
-                )
-                if event.event._metric_aggregator
-                else None
-            )
+            await event.event.increment_metric(MetricFieldType.OBJECT_COUNT)
+            await event.event.increment_metric(MetricFieldType.DELETED)
 
     async def batch_delete_entities(
         self,

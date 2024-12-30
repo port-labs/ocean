@@ -57,35 +57,17 @@ class BaseEntityProcessor(BaseHandler):
             result = await self._parse_items(
                 mapping, raw_data, parse_all, send_raw_data_examples_amount
             )
-
-            (
-                await event.event._metric_aggregator.increment_field(
-                    MetricFieldType.INPUT_COUNT, len(raw_data)
-                )
-                if event.event._metric_aggregator
-                else None
+            await event.event.increment_metric(
+                MetricFieldType.INPUT_COUNT, len(raw_data)
             )
-            (
-                await event.event._metric_aggregator.increment_field(
-                    MetricFieldType.OBJECT_COUNT,
-                    len(result.entity_selector_diff.passed),
-                )
-                if event.event._metric_aggregator
-                else None
+            await event.event.increment_metric(
+                MetricFieldType.OBJECT_COUNT, len(result.entity_selector_diff.passed)
             )
-            (
-                await event.event._metric_aggregator.increment_field(
-                    MetricFieldType.FAILED, len(result.entity_selector_diff.failed)
-                )
-                if event.event._metric_aggregator
-                else None
+            await event.event.increment_metric(
+                MetricFieldType.FAILED, len(result.entity_selector_diff.failed)
             )
-            (
-                await event.event._metric_aggregator.increment_field(
-                    MetricFieldType.ERROR_COUNT, len(result.errors)
-                )
-                if event.event._metric_aggregator
-                else None
+            await event.event.increment_metric(
+                MetricFieldType.ERROR_COUNT, len(result.errors)
             )
 
             return result

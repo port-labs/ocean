@@ -52,7 +52,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
     async def _on_resync(self, kind: str) -> RAW_RESULT:
         raise NotImplementedError("on_resync must be implemented")
 
-    @metric(MetricType.EXTRACT)
     async def _get_resource_raw_results(
         self, resource_config: ResourceConfig
     ) -> tuple[RESYNC_RESULT, list[Exception]]:

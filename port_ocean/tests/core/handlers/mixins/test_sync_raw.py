@@ -158,7 +158,7 @@ def mock_sync_raw_mixin(
     sync_raw_mixin._entity_processor = mock_entity_processor
     sync_raw_mixin._entities_state_applier = mock_entities_state_applier
     sync_raw_mixin._port_app_config_handler = mock_port_app_config_handler
-    sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([{}], []))
+    sync_raw_mixin._get_resource_raw_results = AsyncMock(return_value=([{}], []))  # type: ignore
     sync_raw_mixin._entity_processor.parse_items = AsyncMock(return_value=MagicMock())
 
     return sync_raw_mixin

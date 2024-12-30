@@ -86,8 +86,7 @@ class MetricAggregator:
 
         metric = self.metrics.metrics.get(resource.resource.kind)
         if not metric:
-            async with self._lock:
-                self.metrics.metrics[resource.resource.kind] = MetricsData()
+            self.metrics.metrics[resource.resource.kind] = MetricsData()
 
         return getattr(self.metrics.metrics.get(resource.resource.kind), phase)
 
@@ -99,9 +98,10 @@ class MetricAggregator:
 
     async def increment_status(self, status_code: str) -> None:
         metric = await self.get_metric()
-        if not isinstance(metric, ApiStats):
-            return
+        if metric is None or not isinstance(metric, ApiStats):
+            return None
         async with self._lock:
+
             status = metric.requests.get(status_code)
             if not status:
                 metric.requests[status_code] = 0
@@ -130,13 +130,13 @@ async def timed_generator(
                 items = await anext(generator)
                 end = time.monotonic()
                 duration = end - start
-                (
-                    await port_ocean.context.event.event._metric_aggregator.increment_field(
-                        MetricFieldType.DURATION, duration
-                    )
-                    if port_ocean.context.event.event._metric_aggregator
-                    else None
+                await port_ocean.context.event.event.increment_metric(
+                    MetricFieldType.DURATION, duration
                 )
+                await port_ocean.context.event.event.increment_metric(
+                    MetricFieldType.OBJECT_COUNT, len(items)
+                )
+
                 yield items
             except Exception:
                 break
@@ -158,12 +158,8 @@ def metric(phase: str | None = None, should_capture_time: bool = True) -> Any:
                 if should_capture_time:
                     end = time.monotonic()
                     duration = end - start
-                    (
-                        await port_ocean.context.event.event._metric_aggregator.increment_field(
-                            MetricFieldType.DURATION, duration
-                        )
-                        if port_ocean.context.event.event._metric_aggregator
-                        else None
+                    await port_ocean.context.event.event.increment_metric(
+                        MetricFieldType.DURATION, duration
                     )
                 return res
 
