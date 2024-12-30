@@ -287,16 +287,12 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
-
-        metric = None
+        is_event_started = False
         try:
-            metric = (
-                await event.event._metric_aggregator.get_metric()
-                if event.event._metric_aggregator
-                else None
-            )
+            event.event.should_record_metrics
+            is_event_started = True
         except EventContextNotFoundError:
-            pass
+            is_event_started = False
 
         while True:
             if attempts_made > 0:
@@ -305,7 +301,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 await asyncio.sleep(sleep_time)
                 (
                     await event.event.increment_metric(MetricFieldType.RATE_LIMIT)
-                    if metric
+                    if is_event_started
                     else None
                 )
 
@@ -316,7 +312,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
 
                 (
                     await event.event.increment_status(str(response.status_code))
-                    if metric
+                    if is_event_started
                     else None
                 )
 

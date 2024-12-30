@@ -14,6 +14,7 @@ from typing import (
 from uuid import uuid4
 
 from loguru import logger
+from port_ocean.context import ocean
 from port_ocean.helpers.metric import MetricAggregator
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from pydispatch import dispatcher  # type: ignore
@@ -75,7 +76,13 @@ class EventContext:
                 )
         self._aborted = True
 
+    async def flush_metric_logs(self) -> None:
+        if event._metric_aggregator:
+            await event._metric_aggregator.flush()
+
     async def increment_status(self, status_code: str) -> None:
+        if not self.should_record_metrics:
+            return
         try:
             if self._metric_aggregator:
                 await self._metric_aggregator.increment_status(status_code)
@@ -83,11 +90,17 @@ class EventContext:
             pass
 
     async def increment_metric(self, metric: str, amount: int | float = 1) -> None:
+        if not self.should_record_metrics:
+            return
         try:
             if self._metric_aggregator:
                 await self._metric_aggregator.increment_field(metric, amount)
         except Exception:
             pass
+
+    @property
+    def should_record_metrics(self) -> bool:
+        return ocean.ocean.config.metrics
 
     @property
     def aborted(self) -> bool:

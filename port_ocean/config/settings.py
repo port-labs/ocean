@@ -79,6 +79,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
     )
     runtime: Runtime = Runtime.OnPrem
     resources_path: str = Field(default=".port/resources")
+    metrics: bool = Field(default=False)
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -100,6 +101,12 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         )
 
         return values
+
+    @validator("metrics")
+    def validate_metrics(cls, value: str) -> bool:
+        if value == "1":
+            return True
+        return False
 
     @validator("runtime")
     def validate_runtime(cls, runtime: Runtime) -> Runtime:

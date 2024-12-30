@@ -502,7 +502,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                     logger.error(message, exc_info=error_group)
                 else:
-                    await event._metric_aggregator.flush() if event._metric_aggregator else print("WHAT`")
+                    await event.flush_metric_logs()
                     logger.info(
                         f"Running resync diff calculation, number of entities at Port before resync: {len(entities_at_port)}, number of entities created during sync: {len(flat_created_entities)}"
                     )

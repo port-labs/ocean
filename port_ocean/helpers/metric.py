@@ -121,6 +121,9 @@ class MetricAggregator:
 async def timed_generator(
     generator: ASYNC_GENERATOR_RESYNC_TYPE,
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    if not port_ocean.context.event.event.should_record_metrics:
+        async for items in generator:
+            yield items
     async with port_ocean.context.event.event_context(
         port_ocean.context.event.EventType.METRIC, attributes={"phase": "extract"}
     ):
@@ -146,6 +149,8 @@ def metric(phase: str | None = None, should_capture_time: bool = True) -> Any:
     def decorator(func: Callable[..., Any]) -> Any:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: dict[Any, Any]) -> Any:
+            if not port_ocean.context.event.event.should_record_metrics:
+                return await func(*args, **kwargs)
             if not phase:
                 _phase = port_ocean.context.event.event.attributes.get("phase")
             async with port_ocean.context.event.event_context(
