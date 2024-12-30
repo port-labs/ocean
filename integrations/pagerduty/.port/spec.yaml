@@ -35,4 +35,4 @@ saas:
         description: '"Access Token for Pagerduty OAuth2 integration"'
     valuesOverride:
       integrationSpec:
-        appUrl: '"https://api.pagerduty.com"'
+        apiUrl: '"https://api.pagerduty.com"'
