@@ -103,8 +103,8 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         return values
 
     @validator("metrics")
-    def validate_metrics(cls, value: str) -> bool:
-        if value == "1":
+    def validate_metrics(cls, value: str | bool) -> bool:
+        if value == "1" or value is True:
             return True
         return False
 

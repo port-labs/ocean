@@ -7,6 +7,7 @@ latency_ms=2000
 
 export PORT_BASE_URL='http://localhost:5555'
 export OCEAN__INTEGRATION__CONFIG__THIRD_PARTY_LATENCY_MS=$latency_ms
+export OCEAN__METRICS="1"
 
 make -f "$ROOT_DIR/Makefile" build
 

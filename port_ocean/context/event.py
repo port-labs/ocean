@@ -77,6 +77,8 @@ class EventContext:
         self._aborted = True
 
     async def flush_metric_logs(self) -> None:
+        if not self.should_record_metrics:
+            return
         if event._metric_aggregator:
             await event._metric_aggregator.flush()
 
