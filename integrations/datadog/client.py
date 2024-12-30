@@ -215,7 +215,6 @@ class DatadogClient:
                 params={
                     "page[number]": page,
                     "page[size]": page_size,
-                    "schema_version": "v2.2",
                 },
             )
 
