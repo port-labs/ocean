@@ -1,4 +1,5 @@
-description: pagerduty integration for Port Ocean
+title: PagerDuty
+description: PagerDuty integration for Port Ocean
 icon: pagerduty
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty
 features:
@@ -25,3 +26,13 @@ configurations:
     required: false
     type: string
     description: The host of the Port Ocean app. Used to set up the integration endpoint as the target for Webhooks created in PagerDuty
+saas:
+  enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: token
+        value: '.oauthData.accessToken'
+        description: '"Access Token for Pagerduty OAuth2 integration"'
+    valuesOverride:
+      integrationSpec:
+        appUrl: '"https://api.pagerduty.com"'
