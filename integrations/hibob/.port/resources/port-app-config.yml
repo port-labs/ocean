@@ -1,7 +1,7 @@
 resources:
   - kind: list
     selector:
-      query: .name | startswith("work.column_1659977338244")
+      query: .name | <your-team-list-name>
     port:
       itemsToParse: .items
       entity:
@@ -17,8 +17,5 @@ resources:
         mappings:
           identifier: .email
           blueprint: '"_user"'
-          title: .displayName
-          properties:
-            name: .firstName
           relations:
-            teams: .work.customColumns.column_1659977338244
+            teams: <your-team-list-name>
