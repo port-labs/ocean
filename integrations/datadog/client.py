@@ -161,6 +161,10 @@ class DatadogClient:
     async def get_team_members(
         self, team_id: str, page_size: int = MAX_PAGE_SIZE
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get teams members from DataDog
+        Docs: https://docs.datadoghq.com/api/latest/teams/#get-team-memberships
+        """
+
         logger.info(f"Enriching team {team_id} with members information")
 
         page = 0
@@ -184,6 +188,9 @@ class DatadogClient:
             page += 1
 
     async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get teams from DataDog
+        Docs: https://docs.datadoghq.com/api/latest/teams/#get-all-teams
+        """
         page = 0
         page_size = MAX_PAGE_SIZE
 
@@ -205,6 +212,9 @@ class DatadogClient:
             page += 1
 
     async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get users from DataDog
+        Docs: https://docs.datadoghq.com/api/latest/users/#list-all-users
+        """
         page = 0
         page_size = MAX_PAGE_SIZE
 
