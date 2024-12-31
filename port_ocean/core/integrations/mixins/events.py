@@ -46,7 +46,7 @@ class EventsMixin:
         return func
 
     def on_resync(
-        self, func: RESYNC_EVENT_LISTENER, kind: str | None = None
+        self, func: RESYNC_EVENT_LISTENER| None, kind: str | None = None
     ) -> RESYNC_EVENT_LISTENER:
         """Register a function as a listener for a "resync" event.
 
@@ -57,6 +57,8 @@ class EventsMixin:
         Returns:
             RESYNC_EVENT_LISTENER: The input function, unchanged.
         """
+        if func is None:
+            return None
         if kind is None:
             logger.debug(f"Registering resync event listener any kind")
         else:
