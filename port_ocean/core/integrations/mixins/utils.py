@@ -9,7 +9,7 @@ from port_ocean.core.ocean_types import (
     RESYNC_EVENT_LISTENER,
     RESYNC_RESULT,
 )
-from port_ocean.core.utils import validate_result
+from port_ocean.core.utils.utils import validate_result
 from port_ocean.exceptions.core import (
     RawObjectValidationException,
     OceanAbortException,

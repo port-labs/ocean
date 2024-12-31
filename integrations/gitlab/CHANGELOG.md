@@ -7,6 +7,53 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.2.11 (2025-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+0.2.10 (2024-12-26)
+==================
+
+### Improvements
+
+- Add support for GitLab OAuth2.0 installation specification for Port
+
+0.2.9 (2024-12-26)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+0.2.8 (2024-12-24)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+0.2.7 (2024-12-22)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+0.2.6 (2024-12-19)
+==================
+
+### Improvements
+
+- Added mechanism to make the enrichment of project labels optional
+
+
 0.2.5 (2024-12-16)
 ==================
 

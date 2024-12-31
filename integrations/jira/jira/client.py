@@ -1,13 +1,13 @@
 import typing
 from typing import Any, AsyncGenerator, Generator
 
-from httpx import Timeout, Auth, BasicAuth, Request, Response
-from jira.overrides import JiraResourceConfig
+from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
-
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
+
+from jira.overrides import JiraResourceConfig
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
@@ -117,11 +117,11 @@ class JiraClient:
         return project_response.json()
 
     async def get_paginated_projects(
-        self,
+        self, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
 
-        params = self._generate_base_req_params()
+        params.update(self._generate_base_req_params())
 
         total_projects = (await self._get_paginated_projects(params))["total"]
 

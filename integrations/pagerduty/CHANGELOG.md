@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.1 (2024-12-30)
+
+- Fixed apiUrl typo in spec
+
+
+## 0.2.0 (2024-12-30)
+
+
+### Improvements
+
+- Added support for OAuth2.0 token
+- Added OAuth installation specification for Port
+
+
+## 0.1.132 (2026-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.1.131 (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.1.130 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.1.129 (2024-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
 ## 0.1.128 (2024-12-15)
 
 

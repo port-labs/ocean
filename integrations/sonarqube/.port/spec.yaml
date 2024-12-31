@@ -1,3 +1,4 @@
+title: SonarQube
 description: SonarQube integration for Port Ocean
 icon: sonarqube
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/code-quality-security/sonarqube
@@ -6,6 +7,7 @@ features:
     section: Code Quality & Security
     resources:
       - kind: projects
+      - kind: projects_ga
       - kind: saas_analysis
       - kind: onprem_analysis
       - kind: issues

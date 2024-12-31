@@ -94,13 +94,10 @@ async def test_get_single_subscription(
         "state": 0,
         "topic": "",
     }
-    mock_project = "project_name"
 
     # Act within event context
     async with event_context("test_event"):
-        actual_subscription = await get_single_subscription(
-            mock_project, "subscription_name"
-        )
+        actual_subscription = await get_single_subscription("subscription_name")
 
     # Assert
     assert actual_subscription == expected_subscription
@@ -231,13 +228,10 @@ async def test_preserve_case_style_combined(
         "state": 0,
         "topic": "projects/project_name/topics/topic_name",
     }
-    mock_project = "project_name"
 
     # Act within event context for preserve_case_style = True
     async with event_context("test_event"):
-        actual_subscription_true = await get_single_subscription(
-            mock_project, "subscription_name"
-        )
+        actual_subscription_true = await get_single_subscription("subscription_name")
 
     # Assert for preserve_case_style = True
     assert actual_subscription_true == expected_subscription_true
@@ -264,9 +258,7 @@ async def test_preserve_case_style_combined(
 
     # Act within event context for preserve_case_style = False
     async with event_context("test_event"):
-        actual_subscription_false = await get_single_subscription(
-            mock_project, "subscription_name"
-        )
+        actual_subscription_false = await get_single_subscription("subscription_name")
 
     # Assert for preserve_case_style = False
     assert actual_subscription_false == expected_subscription_false

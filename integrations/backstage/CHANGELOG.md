@@ -1,3 +1,35 @@
+## 0.1.22-beta (2024-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.1.21-beta (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.1.20-beta (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.1.19-beta (2024-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
 ## 0.1.18-beta (2024-12-15)
 
 

@@ -1,4 +1,5 @@
-description: Servicenow integration for Port Ocean
+title: ServiceNow
+description: ServiceNow integration for Port Ocean
 icon: Servicenow  # Should be one of the available icons in Port
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/servicenow
 features:

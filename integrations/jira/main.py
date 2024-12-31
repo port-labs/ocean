@@ -1,10 +1,13 @@
 from enum import StrEnum
-from typing import Any
+from typing import Any, cast
 
-from jira.client import JiraClient
 from loguru import logger
+from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from jira.client import JiraClient
+from jira.overrides import JiraProjectResourceConfig
 
 
 class ObjectKind(StrEnum):
@@ -42,7 +45,10 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ocean.integration_config["atlassian_user_token"],
     )
 
-    async for projects in client.get_paginated_projects():
+    selector = cast(JiraProjectResourceConfig, event.resource_config).selector
+    params = {"expand": selector.expand}
+
+    async for projects in client.get_paginated_projects(params):
         logger.info(f"Received project batch with {len(projects)} issues")
         yield projects
 

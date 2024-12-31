@@ -27,6 +27,10 @@ class Runtime(Enum):
         ) or installation_type == self.value
 
 
+class PortAPIErrorMessage(Enum):
+    NOT_FOUND = "not_found"
+
+
 class Entity(BaseModel):
     identifier: Any
     blueprint: Any

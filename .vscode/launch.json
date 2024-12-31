@@ -98,6 +98,17 @@
       "python": "${workspaceFolder}/integrations/backstage/.venv/bin/python",
       "request": "launch",
       "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/port_ocean/cli",
+      "justMyCode": true,
+      "name": "Run ocean new command",
+      "program": "${workspaceFolder}/port_ocean/debug_cli.py",
+      "python": "${workspaceFolder}/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy",
+      "args": ["new"]
     }
   ]
 }

@@ -3,15 +3,14 @@ import base64
 import os
 import typing
 from collections.abc import MutableSequence
-from typing import Any, TypedDict, Tuple
-
+from typing import Any, TypedDict, Tuple, Optional
 from gcp_core.errors import ResourceNotFoundError
 from loguru import logger
 import proto  # type: ignore
 from port_ocean.context.event import event
 from port_ocean.core.handlers.port_app_config.models import ResourceConfig
 
-from gcp_core.overrides import GCPCloudResourceConfig
+from gcp_core.overrides import GCPCloudResourceConfig, ProtoConfig
 from port_ocean.context.ocean import ocean
 import json
 from pathlib import Path
@@ -82,15 +81,24 @@ def should_use_snake_case() -> bool:
     Returns:
         bool: True to use snake_case, False to preserve API's original case style
     """
+
     selector = get_current_resource_config().selector
     preserve_api_case = getattr(selector, "preserve_api_response_case_style", False)
     return not preserve_api_case
 
 
-def parse_protobuf_message(message: proto.Message) -> dict[str, Any]:
+def parse_protobuf_message(
+    message: proto.Message,
+    config: Optional[ProtoConfig] = None,
+) -> dict[str, Any]:
     """
     Parse protobuf message to dict, controlling field name case style.
     """
+    if config and config.preserving_proto_field_name is not None:
+        use_snake_case = not config.preserving_proto_field_name
+        return proto.Message.to_dict(
+            message, preserving_proto_field_name=use_snake_case
+        )
     use_snake_case = should_use_snake_case()
     return proto.Message.to_dict(message, preserving_proto_field_name=use_snake_case)
 
