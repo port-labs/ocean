@@ -73,7 +73,7 @@ class PortOceanContext:
     def on_resync(
         self,
         kind: str | None = None,
-    ) -> Callable[[RESYNC_EVENT_LISTENER], RESYNC_EVENT_LISTENER | None]:
+    ) -> Callable[[RESYNC_EVENT_LISTENER | None], RESYNC_EVENT_LISTENER | None]:
         def wrapper(
             function: RESYNC_EVENT_LISTENER | None,
         ) -> RESYNC_EVENT_LISTENER | None:
