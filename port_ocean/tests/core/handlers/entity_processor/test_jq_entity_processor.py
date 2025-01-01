@@ -340,9 +340,9 @@ class TestJQEntityProcessor:
         logger.remove(sink_id)
         logs_captured = stream.getvalue()
 
-        assert "identifier: 1, blueprint: 1" in logs_captured
+        assert "2 transformations of batch failed due to empty values" in logs_captured
         assert (
             "{'blueprint': '.bar', 'identifier': '.foo'} (null, missing, or misconfigured)"
             in logs_captured
         )
-        assert "identifier: 0, blueprint: 1" in logs_captured
+        assert "1 transformations of batch failed due to empty values" in logs_captured

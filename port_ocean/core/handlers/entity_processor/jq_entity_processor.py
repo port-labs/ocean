@@ -74,22 +74,10 @@ class JQEntityProcessor(BaseEntityProcessor):
         return inner
 
     @staticmethod
-    def _calculate_mapping_fault_counters(
-        entity_mapping_fault_counters: EntityMappingFaultCounters, result: MappedEntity
-    ) -> EntityMappingFaultCounters:
-        entity_mapping_fault_counters["empty_identifiers"] += (
-            1 if (result.entity.get("identifier") == "") else 0
-        )
-        entity_mapping_fault_counters["empty_blueprints"] += (
-            1 if (result.entity.get("blueprint") == "") else 0
-        )
-        return entity_mapping_fault_counters
-
-    @staticmethod
     def _log_mapping_issues_identified(
         entity_misconfigurations: dict[str, str],
         missing_required_fields: bool,
-        entity_mapping_fault_counters: EntityMappingFaultCounters,
+        entity_mapping_fault_counter: int,
     ) -> None:
 
         if len(entity_misconfigurations) > 0:
@@ -98,9 +86,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
         if missing_required_fields:
             logger.info(
-                f"Unable to find valid data for identifier, blueprint due to empty values: \
-identifier: {entity_mapping_fault_counters['empty_identifiers']}, \
-blueprint: {entity_mapping_fault_counters['empty_blueprints']}"
+                f"{entity_mapping_fault_counter} transformations of batch failed due to empty values"
             )
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
@@ -289,10 +275,7 @@ blueprint: {entity_mapping_fault_counters['empty_blueprints']}"
         examples_to_send: list[dict[str, Any]] = []
         entity_misconfigurations: dict[str, str] = {}
         missing_required_fields: bool = False
-        entity_mapping_fault_counters: EntityMappingFaultCounters = {
-            "empty_identifiers": 0,
-            "empty_blueprints": 0,
-        }
+        entity_mapping_fault_counter: int = 0
 
         for result in calculated_entities_results:
             if len(result.misconfigurations) > 0:
@@ -311,14 +294,20 @@ blueprint: {entity_mapping_fault_counters['empty_blueprints']}"
                     failed_entities.append(parsed_entity)
             else:
                 missing_required_fields = True
-                entity_mapping_fault_counters = self._calculate_mapping_fault_counters(
-                    entity_mapping_fault_counters, result
-                )
+                if (result.entity.get("identifier") == "") or (
+                    result.entity.get("blueprint") == ""
+                ):
+                    entity_mapping_fault_counter += 1
+                else:
+                    logger.debug(
+                        f"Transformation failed, values verification for identifier: {result.entity.get("identifier")}, \
+                                 for blueprint: {result.entity.get("blueprint")}"
+                    )
 
         self._log_mapping_issues_identified(
             entity_misconfigurations,
             missing_required_fields,
-            entity_mapping_fault_counters,
+            entity_mapping_fault_counter,
         )
 
         if (
