@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added Datadog support for OAuth2 authentication
 
 
+## 0.1.72 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
 ## 0.1.71 (2024-12-30)
 
 
