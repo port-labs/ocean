@@ -2,7 +2,7 @@ import asyncio
 from asyncio import Task
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional
 import jq  # type: ignore
 from loguru import logger
 
@@ -34,14 +34,6 @@ class MappedEntity:
     did_entity_pass_selector: bool = False
     raw_data: Optional[dict[str, Any]] = None
     misconfigurations: dict[str, str] = field(default_factory=dict)
-
-
-@dataclass
-class EntityMappingFaultCounters(TypedDict):
-    """Helper class to collect entity mapping batch fault values like empty and none"""
-
-    empty_identifiers: int
-    empty_blueprints: int
 
 
 class JQEntityProcessor(BaseEntityProcessor):
