@@ -69,7 +69,13 @@ def embed_credentials_in_url(url: str, username: str, token: str) -> str:
 
 
 class DatadogClient:
-    def __init__(self, api_url: str, api_key: str, app_key: str, access_token: Optional[str] = None):
+    def __init__(
+        self,
+        api_url: str,
+        api_key: str,
+        app_key: str,
+        access_token: Optional[str] = None,
+    ):
         self.api_url = api_url
         self.dd_api_key = api_key
         self.dd_app_key = app_key
