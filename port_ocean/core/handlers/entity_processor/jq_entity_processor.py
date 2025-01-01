@@ -66,7 +66,7 @@ class JQEntityProcessor(BaseEntityProcessor):
         return inner
 
     @staticmethod
-    def _log_mapping_issues_identified(
+    def _notify_mapping_issues(
         entity_misconfigurations: dict[str, str],
         missing_required_fields: bool,
         entity_mapping_fault_counter: int,
@@ -292,11 +292,11 @@ class JQEntityProcessor(BaseEntityProcessor):
                     entity_mapping_fault_counter += 1
                 else:
                     logger.debug(
-                        f"Transformation failed, values verification for identifier: {result.entity.get("identifier")}, \
+                        f"Mapping failed, values verification for identifier: {result.entity.get("identifier")}, \
                                  for blueprint: {result.entity.get("blueprint")}"
                     )
 
-        self._log_mapping_issues_identified(
+        self._notify_mapping_issues(
             entity_misconfigurations,
             missing_required_fields,
             entity_mapping_fault_counter,
