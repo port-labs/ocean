@@ -1,6 +1,8 @@
 from typing import Any
 from unittest.mock import AsyncMock, Mock
+from loguru import logger
 import pytest
+from io import StringIO
 
 from port_ocean.context.ocean import PortOceanContext
 from port_ocean.core.handlers.entity_processor.jq_entity_processor import (
@@ -303,3 +305,44 @@ class TestJQEntityProcessor:
             "url": ".foobar",
             "defaultBranch": ".bar.baz",
         }
+
+    async def test_parse_items_empty_required(
+        self, mocked_processor: JQEntityProcessor
+    ) -> None:
+        stream = StringIO()
+        sink_id = logger.add(stream, level="DEBUG")
+
+        mapping = Mock()
+        mapping.port.entity.mappings.dict.return_value = {
+            "identifier": ".foo",
+            "blueprint": ".bar",
+        }
+        mapping.port.items_to_parse = None
+        mapping.selector.query = "true"
+        raw_results: list[dict[Any, Any]] = [
+            {"foo": "", "bar": "bluePrintMapped"},
+            {"foo": "identifierMapped", "bar": ""},
+        ]
+        result = await mocked_processor._parse_items(mapping, raw_results)
+        assert "identifier" not in result.misonfigured_entity_keys
+        assert "blueprint" not in result.misonfigured_entity_keys
+
+        raw_results = [
+            {"foo": "identifierMapped", "bar": None},
+            {"foo": None, "bar": ""},
+        ]
+        result = await mocked_processor._parse_items(mapping, raw_results)
+        assert result.misonfigured_entity_keys == {
+            "identifier": ".foo",
+            "blueprint": ".bar",
+        }
+
+        logger.remove(sink_id)
+        logs_captured = stream.getvalue()
+
+        assert "identifier: 1, blueprint: 1" in logs_captured
+        assert (
+            "{'blueprint': '.bar', 'identifier': '.foo'} (null, missing, or misconfigured)"
+            in logs_captured
+        )
+        assert "identifier: 0, blueprint: 1" in logs_captured

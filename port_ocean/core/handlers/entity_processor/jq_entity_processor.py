@@ -2,8 +2,7 @@ import asyncio
 from asyncio import Task
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any, Optional
-
+from typing import Any, Optional, TypedDict
 import jq  # type: ignore
 from loguru import logger
 
@@ -37,6 +36,14 @@ class MappedEntity:
     misconfigurations: dict[str, str] = field(default_factory=dict)
 
 
+@dataclass
+class EntityMappingFaultCounters(TypedDict):
+    """Helper class to collect entity mapping batch fault values like empty and none"""
+
+    empty_identifiers: int
+    empty_blueprints: int
+
+
 class JQEntityProcessor(BaseEntityProcessor):
     """Processes and parses entities using JQ expressions.
 
@@ -65,6 +72,36 @@ class JQEntityProcessor(BaseEntityProcessor):
                 return None
 
         return inner
+
+    @staticmethod
+    def _calculate_mapping_fault_counters(
+        entity_mapping_fault_counters: EntityMappingFaultCounters, result: MappedEntity
+    ) -> EntityMappingFaultCounters:
+        entity_mapping_fault_counters["empty_identifiers"] += (
+            1 if (result.entity.get("identifier") == "") else 0
+        )
+        entity_mapping_fault_counters["empty_blueprints"] += (
+            1 if (result.entity.get("blueprint") == "") else 0
+        )
+        return entity_mapping_fault_counters
+
+    @staticmethod
+    def _log_mapping_issues_identified(
+        entity_misconfigurations: dict[str, str],
+        missing_required_fields: bool,
+        entity_mapping_fault_counters: EntityMappingFaultCounters,
+    ) -> None:
+
+        if len(entity_misconfigurations) > 0:
+            logger.info(
+                f"Unable to find valid data for: {entity_misconfigurations} (null, missing, or misconfigured)"
+            )
+        if missing_required_fields:
+            logger.info(
+                f"Unable to find valid data for identifier, blueprint due to empty values: \
+identifier: {entity_mapping_fault_counters['empty_identifiers']}, \
+blueprint: {entity_mapping_fault_counters['empty_blueprints']}"
+            )
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
         try:
@@ -252,9 +289,15 @@ class JQEntityProcessor(BaseEntityProcessor):
         examples_to_send: list[dict[str, Any]] = []
         entity_misconfigurations: dict[str, str] = {}
         missing_required_fields: bool = False
+        entity_mapping_fault_counters: EntityMappingFaultCounters = {
+            "empty_identifiers": 0,
+            "empty_blueprints": 0,
+        }
+
         for result in calculated_entities_results:
             if len(result.misconfigurations) > 0:
                 entity_misconfigurations |= result.misconfigurations
+
             if result.entity.get("identifier") and result.entity.get("blueprint"):
                 parsed_entity = Entity.parse_obj(result.entity)
                 if result.did_entity_pass_selector:
@@ -268,10 +311,16 @@ class JQEntityProcessor(BaseEntityProcessor):
                     failed_entities.append(parsed_entity)
             else:
                 missing_required_fields = True
-        if len(entity_misconfigurations) > 0:
-            logger.info(
-                f"The mapping resulted with invalid values for{" identifier, blueprint," if missing_required_fields else " "} properties. Mapping result: {entity_misconfigurations}"
-            )
+                entity_mapping_fault_counters = self._calculate_mapping_fault_counters(
+                    entity_mapping_fault_counters, result
+                )
+
+        self._log_mapping_issues_identified(
+            entity_misconfigurations,
+            missing_required_fields,
+            entity_mapping_fault_counters,
+        )
+
         if (
             not calculated_entities_results
             and raw_results
