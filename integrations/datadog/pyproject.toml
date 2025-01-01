@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "datadog"
-version = "0.1.71"
+version = "0.2.0"
 description = "Datadog Ocean Integration"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 

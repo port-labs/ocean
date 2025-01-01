@@ -41,3 +41,25 @@ configurations:
     type: string
     required: false
     sensitive: true
+  - name: datadogAccessToken
+    description: Datadog access token (optional). This is used to authenticate with Datadog using OAuth2. You shouldn't set this value manually.
+    type: string
+    required: false
+    sensitive: true
+
+saas:
+  enabled: true
+  oauthConfiguration:
+    requiredSecrets:
+      - name: datadogApiKey
+        value: '\"OAUTH_ENABLED_API_KEY\"'
+        description: '"API Key for Datadog OAuth2 integration- Not used when OAuth is enabled"'
+      - name: datadogApplicationKey
+        value: '\"OAUTH_ENABLED_APPLICATION_KEY\"'
+        description: '"Application Key for Datadog OAuth2 integration- Not used when OAuth is enabled"'
+      - name: datadogAccessToken
+        value: '.oauthData.accessToken'
+        description: '"Access Token for Datadog OAuth2 integration"'
+    valuesOverride:
+      integrationSpec:
+        datadogBaseUrl: '"https://api.datadoghq.com"'
