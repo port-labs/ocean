@@ -8,6 +8,9 @@ from typing import Any, Callable, Coroutine, Iterable, Mapping, Union
 
 import httpx
 from dateutil.parser import isoparse
+from port_ocean.context import event
+from port_ocean.exceptions.context import EventContextNotFoundError
+from port_ocean.helpers.metric import MetricFieldType
 
 
 # Adapted from https://github.com/encode/httpx/issues/108#issuecomment-1434439481
@@ -162,6 +165,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 response = await self._retry_operation_async(request, send_method)
             else:
                 response = await transport.handle_async_request(request)
+                try:
+                    await event.event.increment_status(str(response.status_code))
+                except EventContextNotFoundError:
+                    pass
             return response
         except Exception as e:
             # Retyable methods are logged via _log_error
@@ -280,16 +287,35 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
+        is_event_started = False
+        try:
+            event.event.should_record_metrics
+            is_event_started = True
+        except EventContextNotFoundError:
+            is_event_started = False
+
         while True:
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
+                (
+                    await event.event.increment_metric(MetricFieldType.RATE_LIMIT)
+                    if is_event_started
+                    else None
+                )
 
             error = None
             response = None
             try:
                 response = await send_method(request)
+
+                (
+                    await event.event.increment_status(str(response.status_code))
+                    if is_event_started
+                    else None
+                )
+
                 response.request = request
                 if remaining_attempts < 1 or not (
                     await self._should_retry_async(response)
@@ -328,6 +354,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         attempts_made = 0
         response: httpx.Response | None = None
         error: Exception | None = None
+
         while True:
             if attempts_made > 0:
                 sleep_time = self._calculate_sleep(attempts_made, {})

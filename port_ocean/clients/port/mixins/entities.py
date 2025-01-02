@@ -11,7 +11,10 @@ from port_ocean.clients.port.utils import (
     handle_status_code,
     PORT_HTTP_MAX_CONNECTIONS_LIMIT,
 )
-from port_ocean.core.models import Entity, PortAPIErrorMessage
+from port_ocean.context import event
+from port_ocean.core.models import Entity
+from port_ocean.helpers.metric import MetricFieldType, MetricType, metric
+from port_ocean.core.models import PortAPIErrorMessage
 from starlette import status
 
 
@@ -72,6 +75,8 @@ class EntityClientMixin:
                 extensions={"retryable": True},
             )
         if response.is_error:
+            await event.event.increment_metric(MetricFieldType.ERROR_COUNT)
+
             logger.error(
                 f"Error {'Validating' if validation_only else 'Upserting'} "
                 f"entity: {entity.identifier} of "
@@ -96,6 +101,8 @@ class EntityClientMixin:
         # Happens when upsert fails and search identifier is defined.
         # We return None to ignore the entity later in the delete process
         if result_entity.is_using_search_identifier:
+            if not response.is_error:
+                await event.event.increment_metric(MetricFieldType.ERROR_COUNT)
             return None
 
         # In order to save memory we'll keep only the identifier, blueprint and relations of the
@@ -111,9 +118,12 @@ class EntityClientMixin:
             key: None if isinstance(relation, dict) else relation
             for key, relation in result_entity.relations.items()
         }
+        await event.event.increment_metric(MetricFieldType.OBJECT_COUNT)
+        await event.event.increment_metric(MetricFieldType.UPSERTED)
 
         return reduced_entity
 
+    @metric(MetricType.LOAD)
     async def batch_upsert_entities(
         self,
         entities: list[Entity],
@@ -145,6 +155,7 @@ class EntityClientMixin:
 
         return entity_results
 
+    @metric(MetricType.LOAD)
     async def delete_entity(
         self,
         entity: Entity,
@@ -167,6 +178,7 @@ class EntityClientMixin:
             )
 
             if response.is_error:
+                await event.event.increment_metric(MetricFieldType.ERROR_COUNT)
                 if response.status_code == 404:
                     logger.info(
                         f"Failed to delete entity: {entity.identifier} of blueprint: {entity.blueprint},"
@@ -180,6 +192,8 @@ class EntityClientMixin:
                 )
 
             handle_status_code(response, should_raise)
+            await event.event.increment_metric(MetricFieldType.OBJECT_COUNT)
+            await event.event.increment_metric(MetricFieldType.DELETED)
 
     async def batch_delete_entities(
         self,

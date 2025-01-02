@@ -30,6 +30,7 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.utils import zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
+from port_ocean.helpers.metric import MetricFieldType, MetricType, metric, timed_generator
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 
@@ -84,6 +85,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         return fns
 
+    @metric(MetricType.EXTRACT)
     async def _execute_resync_tasks(
         self,
         fns: list[Callable[[str], Awaitable[RAW_RESULT]]],
@@ -129,7 +131,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for mapping, results in raw_diff
             )
         )
-
     async def _register_resource_raw(
         self,
         resource: ResourceConfig,
@@ -196,7 +197,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         for generator in async_generators:
             try:
-                async for items in generator:
+                async for items in timed_generator(generator):
                     if send_raw_data_examples_amount > 0:
                         send_raw_data_examples_amount = max(
                             0, send_raw_data_examples_amount - len(passed_entities)
@@ -472,6 +473,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         creation_results.append(await task)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
+
             except asyncio.CancelledError as e:
                 logger.warning("Resync aborted successfully, skipping delete phase. This leads to an incomplete state")
                 raise
@@ -500,6 +502,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                     logger.error(message, exc_info=error_group)
                 else:
+                    await event.flush_metric_logs()
                     logger.info(
                         f"Running resync diff calculation, number of entities at Port before resync: {len(entities_at_port)}, number of entities created during sync: {len(flat_created_entities)}"
                     )

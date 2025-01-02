@@ -46,7 +46,6 @@ class Ocean:
             _integration_config_model=config_factory,
             **(config_override or {}),
         )
-
         # add the integration sensitive configuration to the sensitive patterns to mask out
         sensitive_log_filter.hide_sensitive_strings(
             *self.config.get_sensitive_fields_data()
