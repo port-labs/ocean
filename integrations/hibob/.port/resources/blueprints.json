@@ -17,7 +17,7 @@
     "calculationProperties": {},
     "aggregationProperties": {
       "size": {
-        "title": "Size",
+        "title": "Team Size",
         "type": "number",
         "target": "_user",
         "calculationSpec": {
