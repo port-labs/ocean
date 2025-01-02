@@ -13,7 +13,10 @@ This section explains the structure of the `config.yaml` file.
 
 ## `config.yaml` file
 
-The `config.yaml` file is used to specify the default configuration and parameters for the integration during its deployment phase.
+While the `config.yaml` file provides default configuration templates, Ocean primarily uses `.env` files for actual configuration values, especially for sensitive information. This separation ensures security and flexibility:
+
+- `.env` file: Contains actual configuration values, API keys, and sensitive information
+- `config.yaml`: Provides templates and default configurations, using environment variable references
 
 When an integration is first started, it registers itself with [Port's REST API](https://api.getport.io/static/index.html#/Integrations/post_v1_integration), using the `https://api.getport.io/v1/integration` route.
 
@@ -48,7 +51,7 @@ Let's go over the different sections and their allowed values:
 
 #### `initializePortResources` - Initialize Port resources
 
-This configuration is used to specify whether the integration should initialize its default resources in Port as 
+This configuration is used to specify whether the integration should initialize its default resources in Port as
 described in the [integration specification](./integration-spec-and-default-resources.md#default-resources).
 
 By default, this feature value is set to `false`. To enable it, set the value to `true`.
@@ -121,7 +124,11 @@ eventListener:
   type: KAFKA
 ```
 
-This section is used to specify the type of event listener the integration will use to receive events and resync requests from Port.
+This section configures how your integration receives and processes events from Port. The event listener component:
+- Handles incoming events from Port
+- Manages resync requests
+- Controls how and when the integration updates its data
+- Provides different modes of operation (webhook, polling, or Kafka-based)
 
 <EventListenerTypesList/>
 

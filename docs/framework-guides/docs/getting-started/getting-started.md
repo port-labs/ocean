@@ -10,7 +10,15 @@ In this quickstart guide, you'll learn how to **install** the Ocean CLI, **scaff
 
 ## Requirements
 
-Python 3.11
+### Python Environment
+- Python 3.11 or higher
+- A virtual environment (recommended)
+- pip package manager
+
+### Development Tools
+- Git for version control
+- Basic understanding of Python development
+- Text editor or IDE of your choice
 
 ## Installation
 
@@ -60,7 +68,7 @@ $ y
 Here are your next steps:
 
 ⚓️ Install necessary packages: Run cd ./my_integration && make install && . .venv/bin/activate to install all required packages for your project.
-⚓️ Copy example env file: Run cp .env.example .env  and update your integration's configuration in the .env file.
+⚓️ Configure your integration: Run cp .env.example .env and update your integration's configuration in the .env file. Ocean uses .env as its primary configuration method for secure and easy setup.
 ⚓️ Set sail with Ocean: Run ocean sail to run the project using Ocean.
 ⚓️ Smooth sailing with Make: Alternatively, you can run make run ./my_integration to launch your project using Make.
 ```

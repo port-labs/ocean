@@ -8,8 +8,10 @@ import DocCardList from '@theme/DocCardList';
 
 # ⭐️ Features
 
-The Ocean framework was made to abstract, speed up and streamline the development of integrations for Port. As such, it comes with a variety of abstractions and features that make development for Port and interaction with Port's API simple an straight forward.
+The Ocean framework is designed to abstract, speed up, and streamline the development of integrations for Port. It provides a comprehensive set of abstractions and features that make development and interaction with Port's API simple and straightforward.
 
-See the variety of available features and abstractions below:
+## Available Features and Abstractions
+
+Below you'll find the core features that Ocean provides to help you build robust integrations:
 
 <DocCardList />

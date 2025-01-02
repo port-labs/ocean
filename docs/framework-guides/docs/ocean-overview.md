@@ -13,8 +13,8 @@ import OceanRealTimeArchSvg from '../static/img/RealTimeUpdatesArchitecture.svg'
 ![Thumbnail](https://raw.githubusercontent.com/port-labs/ocean/main/assets/Thumbnail.png)
 
 <p align="center">
-<a href="https://github.com/tiangolo/fastapi/actions?query=lint+event:push+branch:main" target="_blank" style={{marginRight: "0.5em"}}>
-    <img src="https://github.com/port-labs/Port-Ocean/actions/workflows/lint.yml/badge.svg" alt="Lint" />
+<a href="https://github.com/port-labs/ocean/actions?query=workflow%3Alint+event%3Apush+branch%3Amain" target="_blank" style={{marginRight: "0.5em"}}>
+    <img src="https://github.com/port-labs/ocean/actions/workflows/lint.yml/badge.svg" alt="Lint" />
 </a>
 <a href="https://pypi.org/project/port-ocean" target="_blank" style={{marginRight: "0.5em"}}>
     <img src="https://img.shields.io/pypi/v/port-ocean?color=%2334D058&label=pypi%20package" alt="Package version"/>
@@ -54,7 +54,7 @@ Ocean is made up of two distinct pieces:
 - Ocean CLI - used to create boilerplates for new Ocean integrations, and to aid in their development.
 - The Ocean Framework - provides common functionalities and interfaces to make the development of new Port integrations faster and easier.
 
-The following section provides a deep dive into the Ocean framework, To learn more about the Ocean CLI, refer to the [CLI](./framework/cli/cli.md) docs
+The following section provides a deep dive into the Ocean framework. To learn more about the Ocean CLI, refer to the [CLI documentation](./framework/cli/cli.md)
 
 ### The Ocean framework
 
