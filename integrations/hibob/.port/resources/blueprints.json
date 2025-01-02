@@ -105,7 +105,7 @@
     "relations": {
       "teams": {
         "title": "Teams",
-        "target": "_team",
+        "target": "HiBobTeam",
         "required": false,
         "many": true
       }
