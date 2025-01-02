@@ -143,5 +143,4 @@ Your PR description should include:
 ## Additional Resources
 
 - [Ocean Framework Documentation](./framework.md)
-- [Contributing Guidelines](../contributing.md)
-- [Code Style Guide](../code-style-guide.md)
+- [Contributing Guidelines](../contributing/contributing.md)
