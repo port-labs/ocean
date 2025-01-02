@@ -78,7 +78,7 @@ class JQEntityProcessor(BaseEntityProcessor):
             )
         if missing_required_fields:
             logger.info(
-                f"{entity_mapping_fault_counter} transformations of batch failed due to empty values"
+                f"{entity_mapping_fault_counter} transformations of batch failed due to empty, null or missing values"
             )
 
     async def _search(self, data: dict[str, Any], pattern: str) -> Any:
@@ -286,15 +286,7 @@ class JQEntityProcessor(BaseEntityProcessor):
                     failed_entities.append(parsed_entity)
             else:
                 missing_required_fields = True
-                if (result.entity.get("identifier") == "") or (
-                    result.entity.get("blueprint") == ""
-                ):
-                    entity_mapping_fault_counter += 1
-                else:
-                    logger.debug(
-                        f"Mapping failed, values verification for identifier: {result.entity.get("identifier")}, \
-                                 for blueprint: {result.entity.get("blueprint")}"
-                    )
+                entity_mapping_fault_counter += 1
 
         self._notify_mapping_issues(
             entity_misconfigurations,
