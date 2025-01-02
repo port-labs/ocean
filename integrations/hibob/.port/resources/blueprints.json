@@ -19,7 +19,7 @@
       "size": {
         "title": "Team Size",
         "type": "number",
-        "target": "_user",
+        "target": "HiBobUser",
         "calculationSpec": {
           "func": "count",
           "calculationBy": "entities"
@@ -29,9 +29,9 @@
     "relations": {}
   },
   {
-    "identifier": "_user",
+    "identifier": "HiBobUser",
     "description": "This blueprint is synced with active or invited Port users",
-    "title": "User",
+    "title": "HiBob User",
     "icon": "User",
     "schema": {
       "properties": {
