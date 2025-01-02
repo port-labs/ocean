@@ -52,10 +52,10 @@ saas:
   oauthConfiguration:
     requiredSecrets:
       - name: datadogApiKey
-        value: '\"OAUTH_ENABLED_API_KEY\"'
+        value: '"OAUTH_ENABLED_API_KEY"'
         description: '"API Key for Datadog OAuth2 integration- Not used when OAuth is enabled"'
       - name: datadogApplicationKey
-        value: '\"OAUTH_ENABLED_APPLICATION_KEY\"'
+        value: '"OAUTH_ENABLED_APPLICATION_KEY"'
         description: '"Application Key for Datadog OAuth2 integration- Not used when OAuth is enabled"'
       - name: datadogAccessToken
         value: '.oauthData.accessToken'
