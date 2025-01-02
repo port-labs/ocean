@@ -1,8 +1,8 @@
 [
   {
-    "identifier": "_team",
+    "identifier": "HiBobTeam",
     "description": "This blueprint is synced with Port teams",
-    "title": "Team",
+    "title": "HiBob Team",
     "icon": "Team",
     "schema": {
       "properties": {
