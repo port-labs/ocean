@@ -9,7 +9,9 @@ class HiBobClient:
         self.api_url = api_url
         self.username = username
         self.password = password
-        logger.info(f"Initializing Hibob client with API {api_url} and API service username {username}")
+        logger.info(
+            f"Initializing Hibob client with API {api_url} and API service username {username}"
+        )
         self.client = http_async_client
         self.client.auth = BasicAuth(username, password)
         self.client.timeout = Timeout(30)

@@ -130,9 +130,7 @@
       "python": "${workspaceFolder}/.venv/bin/python",
       "request": "launch",
       "type": "debugpy",
-      "args": [
-        "new"
-      ]
+      "args": ["new"]
     }
   ]
 }
