@@ -1,0 +1,240 @@
+kind: integration
+spec:
+  name: slack
+  type: integration
+  icon: slack
+  description: "Sync Slack channels and users to Port"
+
+  # Required configuration for the integration
+  config:
+    - name: token
+      type: string
+      description: "Slack API token"
+      required: true
+      sensitive: true
+
+    - name: workspace_url
+      type: string
+      description: "Slack workspace URL"
+      required: true
+
+  # Port blueprints for Slack resources
+  resources:
+    - kind: slack_channel
+      selector:
+        query: "true"
+      port:
+        entity:
+          mappings:
+            identifier: .id
+            title: .name
+            blueprint: '"slackChannel"'
+            properties:
+              id: .id
+              name: .name
+              topic: .topic.value
+              purpose: .purpose.value
+              is_archived: .is_archived
+              is_private: .is_private
+              created: .created
+              creator_id: .creator
+              member_count: .num_members
+
+
+    - kind: slack_user
+      selector:
+        query: "true"
+      port:
+        entity:
+          mappings:
+            identifier: .id
+            title: .name
+            blueprint: '"slackUser"'
+            properties:
+              id: .id
+              name: .name
+              real_name:
+                # Mask real names for privacy
+                jq: |
+                  if .real_name then
+                    "[MASKED]"
+                  else
+                    null
+                  end
+              display_name: .profile.display_name
+              email:
+                # Mask email addresses for privacy
+                jq: |
+                  if .profile.email then
+                    "[MASKED]"
+                  else
+                    null
+                  end
+              is_admin: .is_admin
+              is_bot: .is_bot
+              is_restricted: .is_restricted
+              is_ultra_restricted: .is_ultra_restricted
+              updated: .updated
+              deleted: .deleted
+              team_id: .team_id
+              status_text:
+                # Mask custom status text for privacy
+                jq: |
+                  if .profile.status_text then
+                    "[MASKED]"
+                  else
+                    null
+                  end
+              status_emoji: .profile.status_emoji
+
+
+    - kind: channel_member
+      selector:
+        query: "true"
+      port:
+        entity:
+          mappings:
+            identifier: (.channel_id + "-" + .user_id)
+            title: (.channel_id + " - " + .user_id)
+            blueprint: '"slackChannelMember"'
+            properties:
+              channel_id: .channel_id
+              user_id: .user_id
+
+  # Blueprint definitions
+  blueprints:
+    - identifier: slackChannel
+      title: Slack Channel
+      icon: Slack
+      schema:
+        properties:
+          id:
+            type: string
+            title: Channel ID
+            description: Unique identifier of the Slack channel
+          name:
+            type: string
+            title: Name
+            description: Display name of the channel
+          topic:
+            type: string
+            title: Topic
+            description: Channel topic
+          purpose:
+            type: string
+            title: Purpose
+            description: Channel purpose
+          is_archived:
+            type: boolean
+            title: Archived
+            description: Whether the channel is archived
+          is_private:
+            type: boolean
+            title: Private
+            description: Whether the channel is private
+          created:
+            type: string
+            format: date-time
+            title: Created At
+            description: When the channel was created
+          creator_id:
+            type: string
+            title: Creator ID
+            description: ID of the user who created the channel
+          member_count:
+            type: number
+            title: Member Count
+            description: Number of members in the channel
+        required:
+          - id
+          - name
+
+    - identifier: slackUser
+      title: Slack User
+      icon: Slack
+      schema:
+        properties:
+          id:
+            type: string
+            title: User ID
+            description: Unique identifier of the Slack user
+          name:
+            type: string
+            title: Username
+            description: The user's username
+          real_name:
+            type: string
+            title: Real Name
+            description: The user's real name (masked)
+          display_name:
+            type: string
+            title: Display Name
+            description: The user's display name
+          email:
+            type: string
+            title: Email
+            description: The user's email address (masked)
+          is_admin:
+            type: boolean
+            title: Admin
+            description: Whether the user is a workspace admin
+          is_bot:
+            type: boolean
+            title: Bot
+            description: Whether the user is a bot
+          is_restricted:
+            type: boolean
+            title: Restricted
+            description: Whether the user is a guest user
+          is_ultra_restricted:
+            type: boolean
+            title: Ultra Restricted
+            description: Whether the user is a single-channel guest
+          updated:
+            type: string
+            format: date-time
+            title: Updated At
+            description: When the user was last updated
+          deleted:
+            type: boolean
+            title: Deleted
+            description: Whether the user has been deactivated
+          team_id:
+            type: string
+            title: Team ID
+            description: The workspace ID this user belongs to
+          status_text:
+            type: string
+            title: Status Text
+            description: The user's status message (masked)
+          status_emoji:
+            type: string
+            title: Status Emoji
+            description: The user's status emoji
+        required:
+          - id
+          - name
+
+    - identifier: slackChannelMember
+      title: Slack Channel Member
+      icon: Slack
+      schema:
+        properties:
+          channel_id:
+            type: string
+            title: Channel ID
+            description: ID of the Slack channel
+          user_id:
+            type: string
+            title: User ID
+            description: ID of the Slack user
+        required:
+          - channel_id
+          - user_id
+        relations:
+          channel:
+            target: slackChannel
+            required: true
+          user:
+            target: slackUser
+            required: true
