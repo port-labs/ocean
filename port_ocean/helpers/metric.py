@@ -42,7 +42,12 @@ class LoadStats(ApiStats):
 
 
 @dataclass
-class MetricsData:
+class TopologicalSortStats(ApiStats):
+    pass
+
+
+@dataclass
+class KindMetricsData:
     extract: ExtractStats = field(default_factory=ExtractStats)
     transform: TransformStats = field(default_factory=TransformStats)
     load: LoadStats = field(default_factory=LoadStats)
@@ -50,7 +55,8 @@ class MetricsData:
 
 @dataclass
 class KindsMetricsData:
-    metrics: dict[str, MetricsData] = field(default_factory=dict)
+    kind_metrics: dict[str, KindMetricsData] = field(default_factory=dict)
+    top_sort: TopologicalSortStats = field(default_factory=TopologicalSortStats)
 
 
 class MetricFieldType:
@@ -65,10 +71,18 @@ class MetricFieldType:
     INPUT_COUNT = "input_count"
 
 
-class MetricType:
+class GlobalMerticKind:
+    TOP_SORT = "top_sort"
+
+
+class KindMetricType:
     EXTRACT = "extract"
     TRANSFORM = "transform"
     LOAD = "load"
+
+
+class MetricType(KindMetricType, GlobalMerticKind):
+    pass
 
 
 class MetricAggregator:
@@ -76,19 +90,24 @@ class MetricAggregator:
         self._lock = asyncio.Lock()
         self.metrics: KindsMetricsData = KindsMetricsData()
 
-    async def get_metrics(self) -> dict[str, MetricsData]:
-        return self.metrics.metrics
+    async def get_metrics(self) -> dict[str, KindMetricsData]:
+        return self.metrics
+
+    def is_kind_metric(self):
+        t = [v for k, v in KindMetricType.__dict__.items() if not k.startswith("__")]
+        return port_ocean.context.event.event.attributes.get("phase", None) in t
 
     async def get_metric(self) -> TransformStats | LoadStats | ExtractStats | None:
         phase = port_ocean.context.event.event.attributes.get("phase", None)
         if not phase:
             return None
+        if self.is_kind_metric():
+            metric = self.metrics.kind_metrics.get(resource.resource.kind)
+            if not metric:
+                self.metrics.kind_metrics[resource.resource.kind] = KindMetricsData()
 
-        metric = self.metrics.metrics.get(resource.resource.kind)
-        if not metric:
-            self.metrics.metrics[resource.resource.kind] = MetricsData()
-
-        return getattr(self.metrics.metrics.get(resource.resource.kind), phase)
+            return getattr(self.metrics.kind_metrics.get(resource.resource.kind), phase)
+        return getattr(self.metrics, phase)
 
     async def increment_field(self, field: str, amount: int | float = 1) -> None:
         metric = await self.get_metric()
