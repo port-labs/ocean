@@ -11,7 +11,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Bug Fixes
 
-- Adjusted log teminology
+- Adjusted log terminology
 - Faild transformations counter increments for all cases (None (null / missing), empty)
 
 ## 0.17.3 (2024-12-31)
