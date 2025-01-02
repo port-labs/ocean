@@ -9,6 +9,7 @@ features:
 configurations:
   - name: hibobApiUrl
     type: url
+    default: "https://api.hibob.com"
   - name: hibobUsername
     type: string
     required: true
