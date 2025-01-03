@@ -37,11 +37,15 @@ class JiraProjectResourceConfig(ResourceConfig):
 JiraResourcesConfig = Annotated[
     Union[
         JiraIssueConfig,
-        JiraProjectResourceConfig,
+        JiraProjectResourceConfig
     ],
     Field(discriminator="kind"),
 ]
 
 
 class JiraPortAppConfig(PortAppConfig):
-    resources: list[JiraIssueConfig | JiraProjectResourceConfig]  # type: ignore
+    resources: list[
+        JiraIssueConfig
+        | JiraProjectResourceConfig
+        | ResourceConfig
+    ]
