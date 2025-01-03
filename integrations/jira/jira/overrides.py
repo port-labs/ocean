@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Union
+from typing import Literal
 
 from port_ocean.core.handlers.port_app_config.models import (
     PortAppConfig,
@@ -6,6 +6,19 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import BaseModel, Field
+
+
+class TeamSelector(Selector):
+    include_members: bool = Field(
+        alias="includeMembers",
+        default=False,
+        description="Whether to include the members of the team, defaults to false",
+    )
+
+
+class TeamResourceConfig(ResourceConfig):
+    kind: Literal["team"]
+    selector: TeamSelector
 
 
 class JiraResourceConfig(ResourceConfig):
@@ -29,14 +42,9 @@ class JiraProjectResourceConfig(ResourceConfig):
     kind: Literal["project"]
 
 
-JiraResourcesConfig = Annotated[
-    Union[
-        JiraResourceConfig,
-        JiraProjectResourceConfig,
-    ],
-    Field(discriminator="kind"),
-]
-
-
 class JiraPortAppConfig(PortAppConfig):
-    resources: list[JiraResourceConfig | JiraProjectResourceConfig]  # type: ignore
+    resources: list[
+        TeamResourceConfig | JiraResourceConfig | JiraProjectResourceConfig
+    ] = Field(
+        default_factory=list
+    )  # type: ignore
