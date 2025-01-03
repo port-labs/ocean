@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.15 (2025-01-03)
+
+
+### Features
+
+- Added support for ingesting other fields apart from the default fields (Jira Sprint support)
+
+
 ## 0.2.14 (2025-01-02)
 
 
