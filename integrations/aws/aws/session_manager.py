@@ -15,7 +15,7 @@ class AccountNotFoundError(OceanAbortException):
     pass
 
 
-ASSUME_ROLE_DURATION_SECONDS = 3600  # 1 hour
+ASSUME_ROLE_DURATION_SECONDS = 900  # 1 hour
 
 
 class SessionManager:
@@ -152,36 +152,25 @@ class SessionManager:
     async def _assume_role_and_update_credentials(
         self, sts_client: STSClient, account: dict[str, Any]
     ) -> None:
-        """
-        Assumes a role in a member account and updates the credentials list.
-
-        :param account: A dictionary containing account information.
-        """
-        role_name = self._get_account_read_role_name()
-        role_arn = f'arn:aws:iam::{account["Id"]}:role/{role_name}'
-        role_session_name = "OceanMemberAssumeRoleSession"
-
         try:
-            response = await sts_client.assume_role(
-                RoleArn=role_arn,
-                RoleSessionName=role_session_name,
-                DurationSeconds=ASSUME_ROLE_DURATION_SECONDS,
-            )
-            credentials = response["Credentials"]
-            aws_credentials = AwsCredentials(
+            role_arn = f"arn:aws:iam::{account['Id']}:role/{self._get_account_read_role_name()}"
+            session_name = "OceanMemberAssumeRoleSession"
+
+            credentials = AwsCredentials(
                 account_id=account["Id"],
-                access_key_id=credentials["AccessKeyId"],
-                secret_access_key=credentials["SecretAccessKey"],
-                session_token=credentials["SessionToken"],
+                sts_client=sts_client,
                 role_arn=role_arn,
-                session_name=role_session_name,
+                session_name=session_name,
+                duration=ASSUME_ROLE_DURATION_SECONDS,
             )
-            await aws_credentials.update_enabled_regions()
-            self._aws_credentials.append(aws_credentials)
+            await credentials.update_enabled_regions()
+            self._aws_credentials.append(credentials)
             self._aws_accessible_accounts.append(account)
+
         except sts_client.exceptions.ClientError as e:
             if is_access_denied_exception(e):
                 logger.info(f"Cannot assume role in account {account['Id']}. Skipping.")
+                pass  # Skip the account if assume_role fails due to permission issues or non-existent role
             else:
                 raise
 
