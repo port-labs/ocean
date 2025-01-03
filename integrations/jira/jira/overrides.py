@@ -8,13 +8,18 @@ from port_ocean.core.handlers.port_app_config.models import (
 from pydantic import BaseModel, Field
 
 
-class JiraResourceConfig(ResourceConfig):
-    class Selector(BaseModel):
-        query: str
-        jql: str | None = None
+class JiraIssueSelector(Selector):
+    query: str
+    jql: str | None = None
+    fields: str | None = Field(
+        description="Additional fields to be included in the API response",
+        default="*all",
+    )
 
-    selector: Selector  # type: ignore
-    kind: Literal["issue", "user"]
+
+class JiraIssueConfig(ResourceConfig):
+    selector: JiraIssueSelector
+    kind: Literal["issue"]
 
 
 class JiraProjectSelector(Selector):
@@ -31,7 +36,7 @@ class JiraProjectResourceConfig(ResourceConfig):
 
 JiraResourcesConfig = Annotated[
     Union[
-        JiraResourceConfig,
+        JiraIssueConfig,
         JiraProjectResourceConfig,
     ],
     Field(discriminator="kind"),
@@ -39,4 +44,4 @@ JiraResourcesConfig = Annotated[
 
 
 class JiraPortAppConfig(PortAppConfig):
-    resources: list[JiraResourceConfig | JiraProjectResourceConfig]  # type: ignore
+    resources: list[JiraIssueConfig | JiraProjectResourceConfig]  # type: ignore
