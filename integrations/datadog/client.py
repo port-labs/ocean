@@ -69,11 +69,17 @@ def embed_credentials_in_url(url: str, username: str, token: str) -> str:
 
 
 class DatadogClient:
-    def __init__(self, api_url: str, api_key: str, app_key: str):
+    def __init__(
+        self,
+        api_url: str,
+        api_key: str,
+        app_key: str,
+        access_token: Optional[str] = None,
+    ):
         self.api_url = api_url
         self.dd_api_key = api_key
         self.dd_app_key = app_key
-
+        self.access_token = access_token
         self.http_client = http_async_client
 
         # These are created to limit the concurrent requests we are making to specific routes.
@@ -89,6 +95,11 @@ class DatadogClient:
 
     @property
     async def auth_headers(self) -> dict[str, Any]:
+        if self.access_token:
+            return {
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json",
+            }
         return {
             "DD-API-KEY": self.dd_api_key,
             "DD-APPLICATION-KEY": self.dd_app_key,
