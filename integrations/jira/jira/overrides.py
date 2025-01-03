@@ -5,7 +5,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 
 class JiraIssueSelector(Selector):
@@ -35,17 +35,10 @@ class JiraProjectResourceConfig(ResourceConfig):
 
 
 JiraResourcesConfig = Annotated[
-    Union[
-        JiraIssueConfig,
-        JiraProjectResourceConfig
-    ],
+    Union[JiraIssueConfig, JiraProjectResourceConfig],
     Field(discriminator="kind"),
 ]
 
 
 class JiraPortAppConfig(PortAppConfig):
-    resources: list[
-        JiraIssueConfig
-        | JiraProjectResourceConfig
-        | ResourceConfig
-    ]
+    resources: list[JiraIssueConfig | JiraProjectResourceConfig | ResourceConfig]
