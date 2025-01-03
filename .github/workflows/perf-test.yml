@@ -108,14 +108,7 @@ jobs:
           SMOKE_TEST_SUFFIX: ${{ github.run_id }}
           MOCK_PORT_API: ${{ inputs.mock_port_api && '1' || '0' }}
         run: |
-          if [[ "${MOCK_PORT_API}" = "1" ]]; then
-            make smoke/start-mock-api
-            make smoke/clean
-            make smoke/stop-mock-api
-          else
-            make smoke/clean
-          fi
-
+          ./scripts/clean-smoke-test.sh
       - name: Publish Performance Test Summary
         run: |
           cat ./perf-test-results-${{ github.run_id }}.log.md >> ${GITHUB_STEP_SUMMARY}

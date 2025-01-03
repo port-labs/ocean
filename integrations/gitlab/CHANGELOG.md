@@ -7,6 +7,72 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.7 (2024-12-22)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+0.2.6 (2024-12-19)
+==================
+
+### Improvements
+
+- Added mechanism to make the enrichment of project labels optional
+
+
+0.2.5 (2024-12-16)
+==================
+
+### Improvements
+
+- Added labels as an extra property to the project kind response
+
+
+0.2.4 (2024-12-15)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.2
+
+
+0.2.3 (2024-12-15)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.1
+
+
+0.2.2 (2024-12-12)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.0
+
+
+0.2.1 (2024-12-12)
+====================
+
+### Bug Fixes
+
+- Updated integration to process hook events sequentially to temporarily resolve race condition issues experienced when multiple processes attempts to update the same entity
+
+
+
+0.2.0 (2024-12-11)
+====================
+
+### Improvements
+
+- Added support for OAuth2.0 token
+- Added OAuth installation specification for Port
+
+
 0.1.147 (2024-12-10)
 ====================
 
