@@ -1,4 +1,5 @@
-from typing import Any, TYPE_CHECKING, Optional, TypedDict
+import asyncio
+from typing import Any, Dict, TYPE_CHECKING, Optional, TypedDict
 from urllib.parse import quote_plus
 
 import httpx
@@ -50,13 +51,36 @@ class IntegrationClientMixin:
             self._log_attributes = response["logAttributes"]
         return self._log_attributes
 
+    async def _poll_integration_until_default_provisioning_is_complete(
+        self,
+        interval=15,
+    ) -> Dict[str, Any]:
+        response = await self._get_current_integration()
+        response_json = response.json()
+        config = response_json.get("integration", {}).get("config", {})
+        if config != {}:
+            return response_json
+
+        logger.info(
+            f"Still waiting for integration config to be ready, waiting {interval} seconds"
+        )
+        await asyncio.sleep(interval)
+
+        # TODO: Ensure that get_integration isn't cached
+        result = await self._poll_integration_until_default_provisioning_is_complete()
+
+        return result
+
     async def create_integration(
         self,
         _type: str,
         changelog_destination: dict[str, Any],
         port_app_config: Optional["PortAppConfig"] = None,
+        use_provisioned_defaults: Optional[bool] = False,
     ) -> dict:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
+        if use_provisioned_defaults:
+            logger.info("Creating integration with `use_provisioned_defaults`")
         headers = await self.auth.headers()
         json = {
             "installationId": self.integration_identifier,
@@ -65,12 +89,21 @@ class IntegrationClientMixin:
             "changelogDestination": changelog_destination,
             "config": {},
         }
-        if port_app_config:
+
+        if use_provisioned_defaults:
+            json["provisionEnabled"] = use_provisioned_defaults
+
+        if port_app_config and not use_provisioned_defaults:
             json["config"] = port_app_config.to_request()
         response = await self.client.post(
             f"{self.auth.api_url}/integration", headers=headers, json=json
         )
         handle_status_code(response)
+        if use_provisioned_defaults:
+            result = (
+                await self._poll_integration_until_default_provisioning_is_complete()
+            )
+            return result["integration"]
         return response.json()["integration"]
 
     async def patch_integration(
