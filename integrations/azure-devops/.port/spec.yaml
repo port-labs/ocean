@@ -1,4 +1,5 @@
-description: azure-devops integration for Port Ocean
+title: Azure Devops
+description: Azure Devops integration for Port Ocean
 icon: AzureDevops
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/azure-devops
 features:

@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.129 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.1.128 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.1.127 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.1.126 (2026-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.1.125 (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.1.124 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.1.123 (2024-12-24)
+
+
+### Improvements
+
+- Added __branches as project attribute in order to map project branches
+
+
+## 0.1.122 (2024-12-23)
+
+
+### Improvements
+
+- Increased logs presence in integration
+- Replaced calls to internal API for projects to GA version, making the use of internal APIs optional
+
+
+### Bug Fixes
+
+- Fixed a bug in the pagination logic to use total record count instead of response size, preventing early termination (0.1.121)
+
+
+## 0.1.121 (2024-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
 ## 0.1.120 (2024-12-15)
 
 

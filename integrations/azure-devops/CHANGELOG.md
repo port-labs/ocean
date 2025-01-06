@@ -7,12 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.96 (2024-12-17)
+## 0.1.103 (2025-01-06)
 
 
 ### Bug Fixes
 
 - Fixed bug where push events for port.yml file aren't processed for default branches
+
+
+## 0.1.102 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.1.101 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.1.100 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.1.99 (2024-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.1.98 (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.1.97 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.1.96 (2024-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
 
 
 ## 0.1.95 (2024-12-15)

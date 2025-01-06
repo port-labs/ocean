@@ -6,6 +6,74 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+## 0.17.4 (2024-12-31)
+
+
+### Bug Fixes
+
+- Adjusted log terminology
+- Failed transformations counter now increments for all cases (None (null / missing), empty)
+
+## 0.17.3 (2024-12-31)
+
+
+### Bug Fixes
+
+- Added support for empty values for JQ mapping logs
+- Added tests to assert for proper response when JQ is missmapped or values are empty
+
+## 0.17.2 (2024-12-31)
+
+
+### Bug Fixes
+
+- Fixed lint failures
+
+
+## 0.17.1 (2024-12-31)
+
+
+### Bug Fixes
+
+- Fixed lint failure for resources that have two `on_resync` decorators
+
+
+## 0.17.0 (2024-12-31)
+
+
+### Features
+
+- Added new webhooks only event listener mode. This event listener handles only webhook invocations and raises error once used for resync.
+
+
+## 0.16.1 (2024-12-25)
+
+### Bug Fixes
+
+- Added new info log for JQ mapping per batch to notify of misconfigured JQ mappings between a property and the JQ target
+
+
+## 0.16.0 (2024-12-24)
+
+
+### Improvements
+
+- When `createMissingRelatedEntities` is set to `false` and upserting entity failed on not existing entity, the entity will be gathered to the end of the resync and will try sorting all
+  the failed entities through a topological sort and upsert them as well
+- Test upsert with dependencies, with self circular dependency and external entity dependency.
+
+### Bug Fixes
+
+- When experiencing cyclic error on topological sort try unsorted upsert of the entities
+- Fix topologicals sort tree creation so an entity cannot be its own dependency
+
+
+## 0.15.3 (2024-12-22)
+
+### Bug Fixes
+
+- Extended `Ocean new` cli command to fill out more information for the user and also fixed wrong output
+
 
 ## 0.15.2 (2024-12-15)
 
