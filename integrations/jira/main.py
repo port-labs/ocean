@@ -7,13 +7,27 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from jira.client import JiraClient
-from jira.overrides import JiraProjectResourceConfig
+from jira.overrides import (
+    JiraIssueSelector,
+    JiraPortAppConfig,
+    JiraProjectResourceConfig,
+    JiraResourceConfig,
+)
 
 
 class ObjectKind(StrEnum):
     PROJECT = "project"
     ISSUE = "issue"
     USER = "user"
+
+
+def create_jira_client() -> JiraClient:
+    """Create JiraClient with current configuration."""
+    return JiraClient(
+        ocean.integration_config["jira_host"],
+        ocean.integration_config["atlassian_user_email"],
+        ocean.integration_config["atlassian_user_token"],
+    )
 
 
 async def setup_application() -> None:
@@ -26,11 +40,7 @@ async def setup_application() -> None:
         )
         return
 
-    jira_client = JiraClient(
-        logic_settings["jira_host"],
-        logic_settings["atlassian_user_email"],
-        logic_settings["atlassian_user_token"],
-    )
+    jira_client = create_jira_client()
 
     await jira_client.create_events_webhook(
         logic_settings["app_host"],
@@ -39,11 +49,7 @@ async def setup_application() -> None:
 
 @ocean.on_resync(ObjectKind.PROJECT)
 async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
+    client = create_jira_client()
 
     selector = cast(JiraProjectResourceConfig, event.resource_config).selector
     params = {"expand": selector.expand}
@@ -55,24 +61,24 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
+    client = create_jira_client()
+    params = {}
+    config = cast(JiraResourceConfig, event.resource_config)
 
-    async for issues in client.get_paginated_issues():
+    if config.selector.jql:
+        params["jql"] = config.selector.jql
+        logger.info(
+            f"Found JQL filter: {config.selector.jql}... Adding to request param"
+        )
+
+    async for issues in client.get_paginated_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 
 
 @ocean.on_resync(ObjectKind.USER)
 async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
+    client = create_jira_client()
 
     async for users in client.get_paginated_users():
         logger.info(f"Received users batch with {len(users)} users")
@@ -81,11 +87,7 @@ async def on_resync_users(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
 @ocean.router.post("/webhook")
 async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
-    client = JiraClient(
-        ocean.integration_config["jira_host"],
-        ocean.integration_config["atlassian_user_email"],
-        ocean.integration_config["atlassian_user_token"],
-    )
+    client = create_jira_client()
 
     webhook_event = data.get("webhookEvent")
     if not webhook_event:
@@ -95,21 +97,58 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     logger.info(f"Processing webhook event: {webhook_event}")
 
     match webhook_event:
-        case event if event.startswith("user_"):
+        case event_data if event_data.startswith("user_"):
             account_id = data["user"]["accountId"]
             logger.debug(f"Fetching user with accountId: {account_id}")
             item = await client.get_single_user(account_id)
             kind = ObjectKind.USER
-        case event if event.startswith("project_"):
+        case event_data if event_data.startswith("project_"):
             project_key = data["project"]["key"]
             logger.debug(f"Fetching project with key: {project_key}")
             item = await client.get_single_project(project_key)
             kind = ObjectKind.PROJECT
-        case event if event.startswith("jira:issue_"):
+        case event_data if event_data.startswith("jira:issue_"):
             issue_key = data["issue"]["key"]
-            logger.debug(f"Fetching issue with key: {issue_key}")
-            item = await client.get_single_issue(issue_key)
-            kind = ObjectKind.ISSUE
+            logger.info(
+                f"Fetching issue with key: {issue_key} and applying specified JQL filter"
+            )
+            resource_configs = cast(JiraPortAppConfig, event.port_app_config).resources
+
+            matching_resource_configs = [
+                resource_config
+                for resource_config in resource_configs
+                if (
+                    resource_config.kind == ObjectKind.ISSUE
+                    and isinstance(resource_config.selector, JiraIssueSelector)
+                )
+            ]
+
+            for matching_resource_config in matching_resource_configs:
+                config = matching_resource_config.selector
+
+                params = {}
+
+                if config.jql:
+                    params["jql"] = f"{config.jql} AND key = {data['issue']['key']}"
+                else:
+                    params["jql"] = f"key = {data['issue']['key']}"
+
+                issues: list[dict[str, Any]] = []
+                async for issues in client.get_paginated_issues(params):
+                    issues.extend(issues)
+
+                if not issues:
+                    logger.warning(
+                        f"Issue {data['issue']['key']} not found."
+                        "This is likely due to JQL filter"
+                    )
+                    logger.info(f"Unregistering issue {data['issue']}")
+                    await ocean.unregister_raw(ObjectKind.ISSUE, [data["issue"]])
+                else:
+                    issue = issues[0]
+                    await ocean.register_raw(ObjectKind.ISSUE, [issue])
+
+                return {"ok": True}
         case _:
             logger.error(f"Unknown webhook event type: {webhook_event}")
             return {

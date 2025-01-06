@@ -5,15 +5,15 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+
+class JiraIssueSelector(Selector):
+    jql: str | None = None
 
 
 class JiraResourceConfig(ResourceConfig):
-    class Selector(BaseModel):
-        query: str
-        jql: str | None = None
-
-    selector: Selector  # type: ignore
+    selector: JiraIssueSelector
     kind: Literal["issue", "user"]
 
 
