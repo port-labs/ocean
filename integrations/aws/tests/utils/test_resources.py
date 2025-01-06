@@ -1,0 +1,66 @@
+import pytest
+from unittest.mock import patch
+from utils.resources import (
+    resync_custom_kind,
+    resync_cloudcontrol,
+    CustomProperties,
+)
+
+
+@pytest.mark.asyncio
+async def test_resync_custom_kind(mock_session, mock_account_id, mock_resource_config):
+    """Test that resync_custom_kind produces valid output."""
+    with patch(
+        "utils.resources._session_manager.find_account_id_by_session",
+        return_value=mock_account_id,
+    ):
+        async for result in resync_custom_kind(
+            kind="AWS::S3::Bucket",
+            session=mock_session,
+            service_name="s3",
+            describe_method="describe_method",
+            list_param="ResourceList",
+            marker_param="NextToken",
+            resource_config=mock_resource_config,
+        ):
+            assert isinstance(result, list)
+            for resource in result:
+                assert resource[CustomProperties.KIND.value] == "AWS::S3::Bucket"
+                assert resource[CustomProperties.ACCOUNT_ID.value] == mock_account_id
+                assert resource[CustomProperties.REGION.value] == "us-west-2"
+                assert "Properties" in resource
+
+
+@pytest.mark.asyncio
+async def test_resync_cloudcontrol(
+    mock_session, mock_account_id, mock_resource_config, mock_event_context
+):
+    """Test that resync_cloudcontrol produces valid output."""
+
+    async def mock_gather(*args, **kwargs):
+        return [
+            {
+                "Identifier": "test-id",
+                "Properties": {"Name": "mocked-resource"},
+                "AdditionalInfo": "mocked-info",
+            }
+        ]
+
+    with (
+        patch("utils.resources.asyncio.gather", return_value=mock_gather()),
+        patch(
+            "utils.resources._session_manager.find_account_id_by_session",
+            return_value=mock_account_id,
+        ),
+    ):
+        async for result in resync_cloudcontrol(
+            kind="AWS::S3::Bucket",
+            session=mock_session,
+            resource_config=mock_resource_config,
+        ):
+            assert isinstance(result, list)
+            for resource in result:
+                assert resource[CustomProperties.KIND.value] == "AWS::S3::Bucket"
+                assert resource[CustomProperties.ACCOUNT_ID.value] == mock_account_id
+                assert resource[CustomProperties.REGION.value] == "us-west-2"
+                assert "Properties" in resource
