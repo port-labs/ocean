@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from typing import AsyncGenerator, Any, Dict, List, Generator
+from typing import Any, Dict, List
 from utils.resources import (
     resync_custom_kind,
     resync_cloudcontrol,
