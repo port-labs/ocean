@@ -79,6 +79,17 @@
     },
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/datadog",
+      "envFile": "${workspaceFolder}/integrations/datadog/.env",
+      "justMyCode": false,
+      "name": "Run Datadog integration",
+      "program": "${workspaceFolder}/integrations/datadog/debug.py",
+      "python": "${workspaceFolder}/integrations/datadog/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/test-integration",
       "envFile": "${workspaceFolder}/integrations/test-integration/.env",
       "justMyCode": true,

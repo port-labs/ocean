@@ -76,6 +76,7 @@ class BaseEventListener:
 
 class EventListenerSettings(BaseOceanModel, extra=Extra.allow):
     type: str
+    should_resync: bool = True
 
     def to_request(self) -> dict[str, Any]:
         """
