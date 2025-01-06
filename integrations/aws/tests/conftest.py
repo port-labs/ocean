@@ -48,9 +48,9 @@ def mock_session() -> AsyncMock:
     async def mock_client(
         service_name: str, **kwargs: Any
     ) -> AsyncGenerator[Any, None]:
-        if service_name == "s3":
+        if service_name == "cloudformation":
 
-            class MockS3Client:
+            class MockCloudFormationClient:
                 async def describe_method(self, **kwargs: Any) -> Dict[str, Any]:
                     return {
                         "NextToken": None,
@@ -62,7 +62,7 @@ def mock_session() -> AsyncMock:
                         ],
                     }
 
-            yield MockS3Client()
+            yield MockCloudFormationClient()
         elif service_name == "cloudcontrol":
 
             class MockCloudControlClient:

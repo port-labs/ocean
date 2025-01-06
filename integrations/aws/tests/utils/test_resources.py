@@ -1,10 +1,10 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Any, Dict, List
+from utils.misc import CustomProperties
 from utils.resources import (
     resync_custom_kind,
     resync_cloudcontrol,
-    CustomProperties,
 )
 
 
@@ -20,9 +20,9 @@ async def test_resync_custom_kind(
         return_value=mock_account_id,
     ):
         async for result in resync_custom_kind(
-            kind="AWS::S3::Bucket",
+            kind="AWS::CloudFormation::Stack",
             session=mock_session,
-            service_name="s3",
+            service_name="cloudformation",
             describe_method="describe_method",
             list_param="ResourceList",
             marker_param="NextToken",
@@ -30,7 +30,7 @@ async def test_resync_custom_kind(
         ):
             assert isinstance(result, list)
             for resource in result:
-                assert resource[CustomProperties.KIND.value] == "AWS::S3::Bucket"
+                assert resource[CustomProperties.KIND.value] == "AWS::CloudFormation::Stack"
                 assert resource[CustomProperties.ACCOUNT_ID.value] == mock_account_id
                 assert resource[CustomProperties.REGION.value] == "us-west-2"
                 assert "Properties" in resource
