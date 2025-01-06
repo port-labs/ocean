@@ -30,7 +30,10 @@ async def test_resync_custom_kind(
         ):
             assert isinstance(result, list)
             for resource in result:
-                assert resource[CustomProperties.KIND.value] == "AWS::CloudFormation::Stack"
+                assert (
+                    resource[CustomProperties.KIND.value]
+                    == "AWS::CloudFormation::Stack"
+                )
                 assert resource[CustomProperties.ACCOUNT_ID.value] == mock_account_id
                 assert resource[CustomProperties.REGION.value] == "us-west-2"
                 assert "Properties" in resource
