@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.15 (2025-01-07)
+
+
+### Bug Fixes
+
+- Fixed a bug where webhook processes issues that are not allowed in a user's integration due to JQL filters
+
+
 ## 0.2.14 (2025-01-02)
 
 
