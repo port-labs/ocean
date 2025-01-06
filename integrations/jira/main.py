@@ -67,7 +67,9 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 
     if config.selector.jql:
         params["jql"] = config.selector.jql
-        logger.info(f"Found JQL filter: {config.selector.jql}... Adding to request param")
+        logger.info(
+            f"Found JQL filter: {config.selector.jql}... Adding to request param"
+        )
 
     if config.selector.fields:
         params["fields"] = config.selector.fields
