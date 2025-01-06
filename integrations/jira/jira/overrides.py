@@ -9,7 +9,6 @@ from pydantic import Field
 
 
 class JiraIssueSelector(Selector):
-    query: str
     jql: str | None = None
     fields: str | None = Field(
         description="Additional fields to be included in the API response",
