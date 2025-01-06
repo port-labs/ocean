@@ -1,5 +1,6 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
+from typing import AsyncGenerator, Any, Dict, List, Generator
 from utils.resources import (
     resync_custom_kind,
     resync_cloudcontrol,
@@ -8,7 +9,11 @@ from utils.resources import (
 
 
 @pytest.mark.asyncio
-async def test_resync_custom_kind(mock_session, mock_account_id, mock_resource_config):
+async def test_resync_custom_kind(
+    mock_session: AsyncMock,
+    mock_account_id: str,
+    mock_resource_config: MagicMock,
+) -> None:
     """Test that resync_custom_kind produces valid output."""
     with patch(
         "utils.resources._session_manager.find_account_id_by_session",
@@ -33,11 +38,14 @@ async def test_resync_custom_kind(mock_session, mock_account_id, mock_resource_c
 
 @pytest.mark.asyncio
 async def test_resync_cloudcontrol(
-    mock_session, mock_account_id, mock_resource_config, mock_event_context
-):
+    mock_session: AsyncMock,
+    mock_account_id: str,
+    mock_resource_config: MagicMock,
+    mock_event_context: MagicMock,
+) -> None:
     """Test that resync_cloudcontrol produces valid output."""
 
-    async def mock_gather(*args, **kwargs):
+    async def mock_gather(*args: Any, **kwargs: Any) -> List[Dict[str, Any]]:
         return [
             {
                 "Identifier": "test-id",
