@@ -185,12 +185,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
         )
-        all_entities, register_errors,_ = await self._register_resource_raw(
-            resource_config,
-            raw_results,
-            user_agent_type,
-            send_raw_data_examples_amount=send_raw_data_examples_amount,
-        )
+        if raw_results:
+            all_entities, register_errors,_ = await self._register_resource_raw(
+                resource_config,
+                raw_results,
+                user_agent_type,
+                send_raw_data_examples_amount=send_raw_data_examples_amount,
+            )
         errors.extend(register_errors)
         passed_entities = list(all_entities.passed)
 
