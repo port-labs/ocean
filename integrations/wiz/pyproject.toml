@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "wiz"
-version = "0.1.88"
+version = "0.1.89"
 description = "Wiz Port integration in Ocean"
 authors = ["Albert Luganga <albertluganga@getport.io>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-port_ocean = {version = "^0.17.4", extras = ["cli"]}
+port_ocean = {version = "^0.17.5", extras = ["cli"]}
 
 [tool.poetry.group.dev.dependencies]
 # uncomment this if you want to debug the ocean core together with your integration
