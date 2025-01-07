@@ -1,0 +1,21 @@
+resources:
+  - kind: list
+    selector:
+      query: .name | startswith("work.column_1659977338244") # Name of the List storing your teams' names (see lists.response.json)
+    port:
+      itemsToParse: .items
+      entity:
+        mappings:
+          blueprint: '"_team"'
+          identifier: .item.id
+          title: .item.name
+  - kind: profile
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .email
+          blueprint: '"_user"'
+          relations:
+            teams: .work.customColumns.column_1659977338244 # Name of the field in Profile storing the ID of the Team from the Teams List (see profiles.response.json)

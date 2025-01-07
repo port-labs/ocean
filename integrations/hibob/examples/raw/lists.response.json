@@ -1,0 +1,177 @@
+{
+  "workingLocations": {
+    "name": "workingLocations",
+    "values": [
+      {
+        "id": "onsite",
+        "value": "Onsite/hybrid",
+        "name": "Onsite/hybrid",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "remote",
+        "value": "Remote",
+        "name": "Remote",
+        "archived": false,
+        "children": []
+      }
+    ],
+    "items": [
+      {
+        "id": "onsite",
+        "value": "Onsite/hybrid",
+        "name": "Onsite/hybrid",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "remote",
+        "value": "Remote",
+        "name": "Remote",
+        "archived": false,
+        "children": []
+      }
+    ]
+  },
+  "complianceConsentStatuses": {
+    "name": "complianceConsentStatuses",
+    "values": [
+      {
+        "id": "expired",
+        "value": "Expired",
+        "name": "Expired",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "missing_initial_consent",
+        "value": "Missing initial consent",
+        "name": "Missing initial consent",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "missing_extended_consent",
+        "value": "Missing extended consent",
+        "name": "Missing extended consent",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "pending_initial_consent",
+        "value": "Pending initial consent",
+        "name": "Pending initial consent",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "pending_extended_consent",
+        "value": "Pending extended consent",
+        "name": "Pending extended consent",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "extended_consent_expiring",
+        "value": "Extended consent expiring",
+        "name": "Extended consent expiring",
+        "archived": false,
+        "children": []
+      }
+    ],
+    "items": [
+      {
+        "id": "expired",
+        "value": "Expired",
+        "name": "Expired",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "missing_initial_consent",
+        "value": "Missing initial consent",
+        "name": "Missing initial consent",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "missing_extended_consent",
+        "value": "Missing extended consent",
+        "name": "Missing extended consent",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "pending_initial_consent",
+        "value": "Pending initial consent",
+        "name": "Pending initial consent",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "pending_extended_consent",
+        "value": "Pending extended consent",
+        "name": "Pending extended consent",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "extended_consent_expiring",
+        "value": "Extended consent expiring",
+        "name": "Extended consent expiring",
+        "archived": false,
+        "children": []
+      }
+    ]
+  },
+  "work.column_1659977338244": {
+    "name": "work.column_1659977338244",
+    "values": [
+      {
+        "id": "262634067",
+        "value": "Marketing",
+        "name": "Marketing",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "262634064",
+        "value": "Legal",
+        "name": "Legal",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "262634066",
+        "value": "IT",
+        "name": "IT",
+        "archived": false,
+        "children": []
+      }
+    ],
+    "items": [
+{
+        "id": "262634067",
+        "value": "Marketing",
+        "name": "Marketing",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "262634064",
+        "value": "Legal",
+        "name": "Legal",
+        "archived": false,
+        "children": []
+      },
+      {
+        "id": "262634066",
+        "value": "IT",
+        "name": "IT",
+        "archived": false,
+        "children": []
+      }
+    ]
+  }
+}

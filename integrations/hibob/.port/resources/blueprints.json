@@ -1,7 +1,7 @@
 [
   {
     "identifier": "HiBobTeam",
-    "description": "This blueprint is synced with Port teams",
+    "description": "Teams that are fetched from employees' profiles",
     "title": "HiBob Team",
     "icon": "Team",
     "schema": {
@@ -30,7 +30,7 @@
   },
   {
     "identifier": "HiBobUser",
-    "description": "This blueprint is synced with active or invited Port users",
+    "description": "Users that are fetched from HiBob",
     "title": "HiBob User",
     "icon": "User",
     "schema": {
@@ -39,65 +39,15 @@
           "type": "string",
           "title": "Name"
         },
-        "port_type": {
-          "icon": "DefaultProperty",
-          "title": "Port Type",
+        "tenure": {
           "type": "string",
-          "default": "Standard",
-          "enum": [
-            "Standard",
-            "Service Account"
-          ],
-          "enumColors": {
-            "Service Account": "pink",
-            "Standard": "blue"
-          }
+          "title": "Tenure"
         },
-        "port_role": {
-          "icon": "DefaultProperty",
-          "title": "Port Role",
-          "type": "string",
-          "default": "Member",
-          "enum": [
-            "Admin",
-            "Moderator",
-            "Member"
-          ],
-          "enumColors": {
-            "Admin": "turquoise",
-            "Moderator": "purple",
-            "Member": "lightGray"
-          }
-        },
-        "moderated_blueprints": {
-          "type": "array",
-          "title": "Moderated Blueprints",
-          "items": {
-            "type": "string",
-            "format": "blueprints"
-          }
-        },
-        "status": {
-          "type": "string",
-          "title": "Status",
-          "default": "Invited",
-          "enum": [
-            "Invited",
-            "Active",
-            "Disabled"
-          ],
-          "enumColors": {
-            "Invited": "lightGray",
-            "Active": "green",
-            "Disabled": "red"
-          }
+        "is_manager": {
+          "type": "boolean",
+          "title": "Is a Manager?"
         }
-      },
-      "required": [
-        "port_role",
-        "status",
-        "port_type"
-      ]
+      }
     },
     "mirrorProperties": {},
     "calculationProperties": {},
@@ -108,6 +58,12 @@
         "target": "HiBobTeam",
         "required": false,
         "many": true
+      },
+      "reportsTo": {
+        "title": "Reports To",
+        "target": "HiBobUser",
+        "required": false,
+        "many": false
       }
     }
   }

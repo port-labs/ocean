@@ -1,14 +1,4 @@
 resources:
-  - kind: list
-    selector:
-      query: .name | <your-team-list-name>
-    port:
-      itemsToParse: .items
-      entity:
-        mappings:
-          blueprint: '"_team"'
-          identifier: .item.id
-          title: .item.name
   - kind: profile
     selector:
       query: 'true'
@@ -16,6 +6,11 @@ resources:
       entity:
         mappings:
           identifier: .email
-          blueprint: '"_user"'
+          blueprint: '"HiBobUser"'
+          properties:
+            name: .displayName
+            tenure: .tenureDuration.humanize
+            is_manager: .isManager
           relations:
-            teams: <your-team-list-name>
+            teams: .department
+            reportsTo: .reportsTo.email

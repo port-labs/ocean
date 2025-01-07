@@ -1,0 +1,128 @@
+{
+  "employees": [
+    {
+      "displayName": "John Doe",
+      "work": {
+        "shortStartDate": "11-01",
+        "startDate": "2021-11-01",
+        "manager": "1234567890123456789",
+        "workPhone": null,
+        "tenureDuration": {
+          "periodISO": "P3Y1M27D",
+          "sortFactor": 1137,
+          "humanize": "3 years, 1 month and 27 days"
+        },
+        "custom": {
+          "field_1659639494941": "9876543210987654321",
+          "field_1664441534861": null,
+          "field_1726685664449": null,
+          "field_1714524363662": "1230984567890123456",
+          "field_1731909549260": "4561237890123456789",
+          "field_1734957243467": null
+        },
+        "durationOfEmployment": {
+          "periodISO": "P3Y1M27D",
+          "sortFactor": 1137,
+          "humanize": "3 years, 1 month and 27 days"
+        },
+        "reportsToIdInCompany": 8,
+        "reportsTo": {
+          "displayName": "Jane Smith",
+          "email": "j.smith@fakeemail.com",
+          "surname": "Smith",
+          "firstName": "Jane",
+          "id": "7891234567890123456"
+        },
+        "indirectReports": 3,
+        "siteId": 2216118,
+        "tenureDurationYears": 3.154,
+        "department": "261454635",
+        "tenureYears": 3,
+        "customColumns": {
+          "column_1689923448119": null,
+          "column_1708713324447": "260046809",
+          "column_1659977358302": null,
+          "column_1667213234760": "253953878",
+          "column_1685480293778": "261454575",
+          "column_1659977338244": "260740101"
+        },
+        "isManager": true,
+        "title": "Senior Developer",
+        "site": "Kuala Lumpur, Malaysia",
+        "originalStartDate": "2021-11-01",
+        "activeEffectiveDate": "2024-08-14",
+        "directReports": 3,
+        "secondLevelManager": "9876543210123456789",
+        "daysOfPreviousService": 0,
+        "yearsOfService": 3.154
+      },
+      "companyId": 571568,
+      "email": "j.doe@fakeemail.com",
+      "surname": "Doe",
+      "id": "1111111111111111111",
+      "firstName": "John"
+    },
+    {
+      "displayName": "Alice Brown",
+      "work": {
+        "shortStartDate": "02-22",
+        "startDate": "2022-02-22",
+        "manager": "2222222222222222222",
+        "workPhone": null,
+        "tenureDuration": {
+          "periodISO": "P2Y10M6D",
+          "sortFactor": 1026,
+          "humanize": "2 years, 10 months and 6 days"
+        },
+        "custom": {
+          "field_1659639494941": "3333333333333333333",
+          "field_1664441534861": null,
+          "field_1726685664449": null,
+          "field_1714524363662": "4444444444444444444",
+          "field_1731909549260": "5555555555555555555",
+          "field_1734957243467": null
+        },
+        "durationOfEmployment": {
+          "periodISO": "P2Y10M6D",
+          "sortFactor": 1026,
+          "humanize": "2 years, 10 months and 6 days"
+        },
+        "reportsToIdInCompany": 571,
+        "reportsTo": {
+          "displayName": "Bob Johnson",
+          "email": "b.johnson@fakeemail.com",
+          "surname": "Johnson",
+          "firstName": "Bob",
+          "id": "6666666666666666666"
+        },
+        "indirectReports": null,
+        "siteId": 2216118,
+        "tenureDurationYears": 2.845,
+        "department": "Marketing",
+        "tenureYears": 3,
+        "customColumns": {
+          "column_1689923448119": null,
+          "column_1708713324447": "260046701",
+          "column_1659977358302": null,
+          "column_1667213234760": "253953878",
+          "column_1685480293778": "261454574",
+          "column_1659977338244": "259236043"
+        },
+        "isManager": false,
+        "title": "Marketing Specialist",
+        "site": "Tel Aviv, Israel",
+        "originalStartDate": "2022-02-22",
+        "activeEffectiveDate": "2024-08-07",
+        "directReports": null,
+        "secondLevelManager": "7777777777777777777",
+        "daysOfPreviousService": 0,
+        "yearsOfService": 2.845
+      },
+      "companyId": 571568,
+      "email": "a.brown@fakeemail.com",
+      "surname": "Brown",
+      "id": "8888888888888888888",
+      "firstName": "Alice"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+[
+  {
+    "identifier": "_team",
+    "description": "This blueprint is synced with Port teams",
+    "title": "Team",
+    "icon": "Team",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "size": {
+        "title": "Team Size",
+        "type": "number",
+        "target": "_user",
+        "calculationSpec": {
+          "func": "count",
+          "calculationBy": "entities"
+        }
+      }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "_user",
+    "description": "This blueprint is synced with active or invited Port users",
+    "title": "HiBob User",
+    "icon": "User",
+    "schema": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name"
+        },
+        "port_type": {
+          "icon": "DefaultProperty",
+          "title": "Port Type",
+          "type": "string",
+          "default": "Standard",
+          "enum": [
+            "Standard",
+            "Service Account"
+          ],
+          "enumColors": {
+            "Service Account": "pink",
+            "Standard": "blue"
+          }
+        },
+        "port_role": {
+          "icon": "DefaultProperty",
+          "title": "Port Role",
+          "type": "string",
+          "default": "Member",
+          "enum": [
+            "Admin",
+            "Moderator",
+            "Member"
+          ],
+          "enumColors": {
+            "Admin": "turquoise",
+            "Moderator": "purple",
+            "Member": "lightGray"
+          }
+        },
+        "moderated_blueprints": {
+          "type": "array",
+          "title": "Moderated Blueprints",
+          "items": {
+            "type": "string",
+            "format": "blueprints"
+          }
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "default": "Invited",
+          "enum": [
+            "Invited",
+            "Active",
+            "Disabled"
+          ],
+          "enumColors": {
+            "Invited": "lightGray",
+            "Active": "green",
+            "Disabled": "red"
+          }
+        }
+      },
+      "required": [
+        "port_role",
+        "status",
+        "port_type"
+      ]
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "teams": {
+        "title": "Teams",
+        "target": "_team",
+        "required": false,
+        "many": true
+      }
+    }
+  }
+]
