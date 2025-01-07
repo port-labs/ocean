@@ -77,7 +77,9 @@ class JiraClient:
                 response.raise_for_status()
                 return response.json()
         except httpx.HTTPStatusError as e:
-            logger.error(f"Jira API request failed with status {e.response.status_code}: {method} {url}")
+            logger.error(
+                f"Jira API request failed with status {e.response.status_code}: {method} {url}"
+            )
             raise
         except httpx.RequestError as e:
             logger.error(f"Failed to connect to Jira API: {method} {url} - {str(e)}")
