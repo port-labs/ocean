@@ -10,11 +10,15 @@ from pydantic import Field
 
 class JiraIssueSelector(Selector):
     jql: str | None = None
+    fields: str | None = Field(
+        description="Additional fields to be included in the API response",
+        default="*all",
+    )
 
 
-class JiraResourceConfig(ResourceConfig):
+class JiraIssueConfig(ResourceConfig):
     selector: JiraIssueSelector
-    kind: Literal["issue", "user"]
+    kind: Literal["issue"]
 
 
 class JiraProjectSelector(Selector):
@@ -30,13 +34,10 @@ class JiraProjectResourceConfig(ResourceConfig):
 
 
 JiraResourcesConfig = Annotated[
-    Union[
-        JiraResourceConfig,
-        JiraProjectResourceConfig,
-    ],
+    Union[JiraIssueConfig, JiraProjectResourceConfig],
     Field(discriminator="kind"),
 ]
 
 
 class JiraPortAppConfig(PortAppConfig):
-    resources: list[JiraResourceConfig | JiraProjectResourceConfig]  # type: ignore
+    resources: list[JiraIssueConfig | JiraProjectResourceConfig | ResourceConfig]
