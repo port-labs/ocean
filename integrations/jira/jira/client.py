@@ -1,8 +1,8 @@
 import asyncio
 from typing import Any, AsyncGenerator, Generator
 
-from httpx import Auth, BasicAuth, Request, Response, Timeout
 import httpx
+from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client

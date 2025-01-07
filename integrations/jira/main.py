@@ -9,10 +9,9 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from jira.client import JiraClient
 from jira.overrides import (
+    JiraIssueConfig,
     JiraProjectResourceConfig,
-    JiraResourceConfig,
     TeamResourceConfig,
-    JiraIssueConfig
 )
 
 

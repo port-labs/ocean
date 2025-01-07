@@ -20,6 +20,7 @@ class TeamResourceConfig(ResourceConfig):
     kind: Literal["team"]
     selector: TeamSelector
 
+
 class JiraIssueSelector(Selector):
     jql: str | None = None
     fields: str | None = Field(
@@ -31,7 +32,8 @@ class JiraIssueSelector(Selector):
 class JiraIssueConfig(ResourceConfig):
     selector: JiraIssueSelector
     kind: Literal["issue"]
-    
+
+
 class JiraResourceConfig(ResourceConfig):
     class Selector(BaseModel):
         query: str
@@ -54,4 +56,9 @@ class JiraProjectResourceConfig(ResourceConfig):
 
 
 class JiraPortAppConfig(PortAppConfig):
-    resources: list[TeamResourceConfig | JiraIssueConfig | JiraProjectResourceConfig | ResourceConfig]
+    resources: list[
+        TeamResourceConfig
+        | JiraIssueConfig
+        | JiraProjectResourceConfig
+        | ResourceConfig
+    ]
