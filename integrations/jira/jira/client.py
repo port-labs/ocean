@@ -1,13 +1,10 @@
-import typing
 from typing import Any, AsyncGenerator, Generator
 
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
-from jira.overrides import JiraResourceConfig
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
