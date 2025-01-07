@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, AsyncGenerator, Generator, Optional
+from typing import Any, AsyncGenerator, Generator
 
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 import httpx
@@ -65,9 +65,9 @@ class JiraClient:
         self,
         method: str,
         url: str,
-        params: Optional[dict[str, Any]] = None,
-        json: Optional[dict[str, Any]] = None,
-        headers: Optional[dict[str, str]] = None,
+        params: dict[str, Any] = {},
+        json: dict[str, Any] = {},
+        headers: dict[str, str] = {},
     ) -> Any:
         try:
             async with self.semaphore:
@@ -88,12 +88,12 @@ class JiraClient:
     async def _get_paginated_data(
         self,
         url: str,
-        extract_key: Optional[str] = None,
+        extract_key: str | None = None,
         page_size: int = PAGE_SIZE,
-        initial_params: Optional[dict[str, Any]] = None,
+        initial_params: dict[str, Any] = {},
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = initial_params or {}
-        params.update(self._generate_base_req_params())
+        params = initial_params
+        params |= self._generate_base_req_params()
         params["maxResults"] = page_size
 
         start_at = 0
@@ -126,10 +126,10 @@ class JiraClient:
         method: str,
         extract_key: str,
         page_size: int = PAGE_SIZE,
-        initial_params: Optional[dict[str, Any]] = None,
+        initial_params: dict[str, Any] = {},
         cursor_param: str = "cursor",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = initial_params or {}
+        params = initial_params
         cursor = params.get(cursor_param)
 
         while True:
@@ -187,7 +187,7 @@ class JiraClient:
         )
 
     async def get_paginated_projects(
-        self, params: dict[str, Any] | None = None
+        self, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
         async for projects in self._get_paginated_data(
