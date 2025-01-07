@@ -9,10 +9,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from jira.client import JiraClient
 from jira.overrides import (
+    JiraIssueConfig,
     JiraIssueSelector,
     JiraPortAppConfig,
     JiraProjectResourceConfig,
-    JiraIssueConfig,
 )
 
 
@@ -63,14 +63,6 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(ObjectKind.ISSUE)
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
-    params = {}
-    config = cast(JiraIssueConfig, event.resource_config)
-
-    if config.selector.jql:
-        params["jql"] = config.selector.jql
-        logger.info(
-            f"Found JQL filter: {config.selector.jql}... Adding to request param"
-        )
 
     params = {}
     config = typing.cast(JiraIssueConfig, event.resource_config)
@@ -127,8 +119,8 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
             )
             resource_configs = cast(JiraPortAppConfig, event.port_app_config).resources
 
-            matching_resource_configs_selector = [
-                resource_config.selector
+            matching_resource_configs: list[JiraIssueConfig] = [
+                resource_config  # type: ignore
                 for resource_config in resource_configs
                 if (
                     resource_config.kind == ObjectKind.ISSUE
@@ -136,12 +128,14 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
                 )
             ]
 
-            for selector in matching_resource_configs_selector:
+            for config in matching_resource_configs:
 
                 params = {}
 
-                if selector.jql:
-                    params["jql"] = f"{selector.jql} AND key = {data['issue']['key']}"
+                if config.selector.jql:
+                    params["jql"] = (
+                        f"{config.selector.jql} AND key = {data['issue']['key']}"
+                    )
                 else:
                     params["jql"] = f"key = {data['issue']['key']}"
 
