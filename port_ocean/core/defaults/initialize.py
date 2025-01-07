@@ -225,7 +225,9 @@ async def _initialize_defaults(
         return
 
     if integration_config.use_provisioned_defaults:
-        logger.info("Skipping creating default due to `use_provisioned_defaults`")
+        logger.info(
+            "Skipping creating defaults resources due to `use_provisioned_defaults`"
+        )
         return
     try:
         logger.info("Found default resources, starting creation process")
