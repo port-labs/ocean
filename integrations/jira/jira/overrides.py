@@ -20,7 +20,18 @@ class TeamResourceConfig(ResourceConfig):
     kind: Literal["team"]
     selector: TeamSelector
 
+class JiraIssueSelector(Selector):
+    jql: str | None = None
+    fields: str | None = Field(
+        description="Additional fields to be included in the API response",
+        default="*all",
+    )
 
+
+class JiraIssueConfig(ResourceConfig):
+    selector: JiraIssueSelector
+    kind: Literal["issue"]
+    
 class JiraResourceConfig(ResourceConfig):
     class Selector(BaseModel):
         query: str
@@ -43,8 +54,4 @@ class JiraProjectResourceConfig(ResourceConfig):
 
 
 class JiraPortAppConfig(PortAppConfig):
-    resources: list[
-        TeamResourceConfig | JiraResourceConfig | JiraProjectResourceConfig
-    ] = Field(
-        default_factory=list
-    )  # type: ignore
+    resources: list[TeamResourceConfig | JiraIssueConfig | JiraProjectResourceConfig | ResourceConfig]

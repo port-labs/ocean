@@ -1,3 +1,4 @@
+import typing
 from enum import StrEnum
 from typing import Any, cast
 
@@ -11,6 +12,7 @@ from jira.overrides import (
     JiraProjectResourceConfig,
     JiraResourceConfig,
     TeamResourceConfig,
+    JiraIssueConfig
 )
 
 
@@ -60,10 +62,17 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
-    config = cast(JiraResourceConfig, event.resource_config)
     params = {}
-    if config and config.selector.jql:
+    config = typing.cast(JiraIssueConfig, event.resource_config)
+
+    if config.selector.jql:
         params["jql"] = config.selector.jql
+        logger.info(
+            f"Found JQL filter: {config.selector.jql}... Adding to request param"
+        )
+
+    if config.selector.fields:
+        params["fields"] = config.selector.fields
 
     async for issues in client.get_paginated_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
