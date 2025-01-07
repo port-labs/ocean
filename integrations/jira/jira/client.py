@@ -199,14 +199,11 @@ class JiraClient:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
     async def get_paginated_issues(
-        self, jql: str | None = None
+        self, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
-
-        params = {}
-        if jql:
-            params["jql"] = jql
-            logger.info(f"Using JQL filter: {jql}")
+        if "jql" in params:
+            logger.info(f"Using JQL filter: {params['jql']}")
 
         async for issues in self._get_paginated_data(
             f"{self.api_url}/search", "issues", initial_params=params

@@ -61,9 +61,11 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
 
     config = cast(JiraResourceConfig, event.resource_config)
-    jql = config.selector.jql if config else None
+    params = {}
+    if config and config.selector.jql:
+        params["jql"] = config.selector.jql
 
-    async for issues in client.get_paginated_issues(jql):
+    async for issues in client.get_paginated_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 

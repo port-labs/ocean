@@ -133,7 +133,7 @@ async def test_get_single_issue(mock_jira_client: JiraClient) -> None:
 
 @pytest.mark.asyncio
 async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
-    """Test get_paginated_issues with JQL filtering"""
+    """Test get_paginated_issues with params including JQL filtering"""
 
     # Mock response data
     issues_data = {"issues": [{"key": "TEST-1"}, {"key": "TEST-2"}], "total": 2}
@@ -145,14 +145,14 @@ async def test_get_paginated_issues(mock_jira_client: JiraClient) -> None:
 
         issues = []
         async for issue_batch in mock_jira_client.get_paginated_issues(
-            jql="project = TEST"
+            params={"jql": "project = TEST"}
         ):
             issues.extend(issue_batch)
 
         assert len(issues) == 2
         assert issues == issues_data["issues"]
 
-        # Verify JQL was passed correctly
+        # Verify params were passed correctly
         mock_request.assert_called_with(
             "GET",
             f"{mock_jira_client.api_url}/search",
