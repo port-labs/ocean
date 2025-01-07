@@ -1,4 +1,5 @@
-description: Gitlab integration for Port Ocean
+title: GitLab
+description: GitLab integration for Port Ocean
 icon: GitLab
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/git/gitlab
 features:

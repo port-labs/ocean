@@ -69,11 +69,17 @@ def embed_credentials_in_url(url: str, username: str, token: str) -> str:
 
 
 class DatadogClient:
-    def __init__(self, api_url: str, api_key: str, app_key: str):
+    def __init__(
+        self,
+        api_url: str,
+        api_key: str,
+        app_key: str,
+        access_token: Optional[str] = None,
+    ):
         self.api_url = api_url
         self.dd_api_key = api_key
         self.dd_app_key = app_key
-
+        self.access_token = access_token
         self.http_client = http_async_client
 
         # These are created to limit the concurrent requests we are making to specific routes.
@@ -89,6 +95,11 @@ class DatadogClient:
 
     @property
     async def auth_headers(self) -> dict[str, Any]:
+        if self.access_token:
+            return {
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json",
+            }
         return {
             "DD-API-KEY": self.dd_api_key,
             "DD-APPLICATION-KEY": self.dd_app_key,
@@ -157,6 +168,83 @@ class DatadogClient:
                 logger.error(f"Error while making request to url: {url} - {str(e)}")
                 raise
             return response.json()
+
+    async def get_team_members(
+        self, team_id: str, page_size: int = MAX_PAGE_SIZE
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get teams members from DataDog
+        Docs: https://docs.datadoghq.com/api/latest/teams/#get-team-memberships
+        """
+
+        logger.info(f"Enriching team {team_id} with members information")
+
+        page = 0
+
+        while True:
+            url = f"{self.api_url}/api/v2/team/{team_id}/memberships"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "page[size]": page_size,
+                    "page[number]": page,
+                },
+            )
+
+            users = result.get("included", [])
+
+            if not users:
+                break
+
+            yield users
+            page += 1
+
+    async def get_teams(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get teams from DataDog
+        Docs: https://docs.datadoghq.com/api/latest/teams/#get-all-teams
+        """
+        page = 0
+        page_size = MAX_PAGE_SIZE
+
+        while True:
+            url = f"{self.api_url}/api/v2/team"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "page[size]": page_size,
+                    "page[number]": page,
+                },
+            )
+
+            teams = result.get("data", [])
+            if not teams:
+                break
+
+            yield teams
+            page += 1
+
+    async def get_users(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+        """Get users from DataDog
+        Docs: https://docs.datadoghq.com/api/latest/users/#list-all-users
+        """
+        page = 0
+        page_size = MAX_PAGE_SIZE
+
+        while True:
+            url = f"{self.api_url}/api/v2/users"
+            result = await self._send_api_request(
+                url,
+                params={
+                    "page[number]": page,
+                    "page[size]": page_size,
+                },
+            )
+
+            users = result.get("data", [])
+            if not users:
+                break
+
+            yield users
+            page += 1
 
     async def get_hosts(self) -> AsyncGenerator[list[dict[str, Any]], None]:
         start = 0

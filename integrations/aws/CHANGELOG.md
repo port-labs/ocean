@@ -7,12 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.73 (2024-12-24)
+## 0.2.79 (2025-01-07)
 
 
 ### Bug Fixes
 
 - Fixed a bug where token refresh fails because its triggered while an active session was still using the old token.
+
+
+## 0.2.78 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.2.77 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.2.76 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.75 (2024-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.2.74 (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.2.73 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
 
 ## 0.2.72 (2024-12-22)
 

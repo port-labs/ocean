@@ -11,6 +11,11 @@
           "type": "string",
           "format": "url",
           "description": "URL to the project in Jira"
+        },
+        "totalIssues": {
+          "title": "Total Issues",
+          "type": "number",
+          "description": "The total number of issues in the project"
         }
       }
     },
