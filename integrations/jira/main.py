@@ -12,7 +12,6 @@ from jira.overrides import (
     JiraIssueSelector,
     JiraPortAppConfig,
     JiraProjectResourceConfig,
-    JiraResourceConfig,
     JiraIssueConfig,
 )
 
@@ -65,7 +64,7 @@ async def on_resync_projects(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     client = create_jira_client()
     params = {}
-    config = cast(JiraResourceConfig, event.resource_config)
+    config = cast(JiraIssueConfig, event.resource_config)
 
     if config.selector.jql:
         params["jql"] = config.selector.jql
@@ -128,8 +127,8 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
             )
             resource_configs = cast(JiraPortAppConfig, event.port_app_config).resources
 
-            matching_resource_configs = [
-                resource_config
+            matching_resource_configs_selector = [
+                resource_config.selector
                 for resource_config in resource_configs
                 if (
                     resource_config.kind == ObjectKind.ISSUE
@@ -137,13 +136,12 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
                 )
             ]
 
-            for matching_resource_config in matching_resource_configs:
-                config = matching_resource_config.selector
+            for selector in matching_resource_configs_selector:
 
                 params = {}
 
-                if config.jql:
-                    params["jql"] = f"{config.jql} AND key = {data['issue']['key']}"
+                if selector.jql:
+                    params["jql"] = f"{selector.jql} AND key = {data['issue']['key']}"
                 else:
                     params["jql"] = f"key = {data['issue']['key']}"
 
