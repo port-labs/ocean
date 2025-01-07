@@ -124,7 +124,7 @@ class JiraClient:
         self,
         url: str,
         method: str,
-        extract_key: Optional[str] = None,
+        extract_key: str,
         page_size: int = PAGE_SIZE,
         initial_params: Optional[dict[str, Any]] = None,
         cursor_param: str = "cursor",
@@ -137,16 +137,7 @@ class JiraClient:
                 params[cursor_param] = cursor
 
             response_data = await self._send_api_request(method, url, params=params)
-
-            items = (
-                response_data.get(extract_key, [])
-                if extract_key
-                else (
-                    [response_data]
-                    if isinstance(response_data, dict)
-                    else response_data
-                )
-            )
+            items = response_data.get(extract_key, [])
 
             if not items:
                 break
