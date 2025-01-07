@@ -6,10 +6,16 @@ import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_status_code
+from port_ocean.exceptions.defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import PortAppConfig
+
+
+INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS = 5
+INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR = 1.5
+INTEGRATION_POLLING_RETRY_LIMIT = 30
 
 
 class LogAttributes(TypedDict):
@@ -53,23 +59,30 @@ class IntegrationClientMixin:
 
     async def _poll_integration_until_default_provisioning_is_complete(
         self,
-        interval=15,
     ) -> Dict[str, Any]:
-        response = await self._get_current_integration()
-        response_json = response.json()
-        config = response_json.get("integration", {}).get("config", {})
-        if config != {}:
-            return response_json
+        attempts = 0
+        current_interval_seconds = INTEGRATION_POLLING_INTERVAL_INITIAL_SECONDS
 
-        logger.info(
-            f"Still waiting for integration config to be ready, waiting {interval} seconds"
-        )
-        await asyncio.sleep(interval)
+        while attempts < INTEGRATION_POLLING_RETRY_LIMIT:
+            logger.info(
+                f"Fetching created integration and validating config, attempt {attempts+1}/{INTEGRATION_POLLING_RETRY_LIMIT}"
+            )
+            response = await self._get_current_integration()
+            response_json = response.json()
+            config = response_json.get("integration", {}).get("config", {})
+            if config != {}:
+                return response_json
 
-        # TODO: Ensure that get_integration isn't cached
-        result = await self._poll_integration_until_default_provisioning_is_complete()
+            logger.info(
+                f"Integration config is still being provisioned, retrying in {current_interval_seconds} seconds"
+            )
+            await asyncio.sleep(current_interval_seconds)
 
-        return result
+            current_interval_seconds = (
+                current_interval_seconds * INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR
+            )
+
+        raise DefaultsProvisionFailed(INTEGRATION_POLLING_RETRY_LIMIT)
 
     async def create_integration(
         self,
@@ -79,8 +92,6 @@ class IntegrationClientMixin:
         use_provisioned_defaults: Optional[bool] = False,
     ) -> dict:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
-        if use_provisioned_defaults:
-            logger.info("Creating integration with `use_provisioned_defaults`")
         headers = await self.auth.headers()
         json = {
             "installationId": self.integration_identifier,

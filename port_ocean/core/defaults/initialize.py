@@ -19,7 +19,7 @@ from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
 
-ORG_USE_PROVISIONED_DEFAULTS_FEATURE_TOGGLE = "USE_PROVISIONED_DEFAULTS"
+ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG = "USE_PROVISIONED_DEFAULTS"
 
 
 def deconstruct_blueprints_to_creation_steps(
@@ -206,17 +206,21 @@ async def _initialize_defaults(
     defaults = get_port_integration_defaults(
         config_class, integration_config.resources_path
     )
-    if not defaults:
-        logger.warning("No defaults found. Skipping initialization...")
-        return None
 
     if integration_config.use_provisioned_defaults:
         logger.info("`use_provisioned_defaults` set, verifying org feature toggle")
-        org_feature_toggles = await port_client.get_organization_feature_toggles()
-        if ORG_USE_PROVISIONED_DEFAULTS_FEATURE_TOGGLE not in org_feature_toggles:
+        org_feature_flags = await port_client.get_organization_feature_flags()
+        if ORG_USE_PROVISIONED_DEFAULTS_FEATURE_FLAG not in org_feature_flags:
+            logger.info(
+                "Although `use_provisioned_defaults` was set, it was not enabled in the organizations feature flags, disabling"
+            )
             integration_config.use_provisioned_defaults = False
 
-    if defaults.port_app_config:
+    if not integration_config.use_provisioned_defaults and not defaults:
+        logger.warning("No defaults found. Skipping initialization...")
+        return None
+
+    if defaults.port_app_config or integration_config.use_provisioned_defaults:
         await _initialize_required_integration_settings(
             port_client, defaults.port_app_config, integration_config
         )
