@@ -76,12 +76,12 @@ class AwsCredentials:
             self.access_key_id = credentials["AccessKeyId"]
             self.secret_access_key = credentials["SecretAccessKey"]
             self.session_token = credentials["SessionToken"]
-            self.expiration = credentials["Expiration"].isoformat()
+            expiration = credentials["Expiration"].isoformat()
             return {
                 "access_key": self.access_key_id,
                 "secret_key": self.secret_access_key,
                 "token": self.session_token,
-                "expiry_time": self.expiration,
+                "expiry_time": expiration,
             }
 
         return refresh
