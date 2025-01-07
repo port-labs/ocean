@@ -2,6 +2,7 @@ import asyncio
 from typing import Any, AsyncGenerator, Generator, Optional
 
 from httpx import Auth, BasicAuth, Request, Response, Timeout
+import httpx
 from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
@@ -68,12 +69,19 @@ class JiraClient:
         json: Optional[dict[str, Any]] = None,
         headers: Optional[dict[str, str]] = None,
     ) -> Any:
-        async with self.semaphore:
-            response = await self.client.request(
-                method=method, url=url, params=params, json=json, headers=headers
-            )
-            response.raise_for_status()
-            return response.json()
+        try:
+            async with self.semaphore:
+                response = await self.client.request(
+                    method=method, url=url, params=params, json=json, headers=headers
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Jira API request failed with status {e.response.status_code}: {method} {url}")
+            raise
+        except httpx.RequestError as e:
+            logger.error(f"Failed to connect to Jira API: {method} {url} - {str(e)}")
+            raise
 
     async def _get_paginated_data(
         self,
