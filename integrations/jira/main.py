@@ -1,3 +1,4 @@
+import typing
 from enum import StrEnum
 from typing import Any, cast
 
@@ -7,7 +8,7 @@ from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 
 from jira.client import JiraClient
-from jira.overrides import JiraProjectResourceConfig
+from jira.overrides import JiraIssueConfig, JiraProjectResourceConfig
 
 
 class ObjectKind(StrEnum):
@@ -61,7 +62,19 @@ async def on_resync_issues(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         ocean.integration_config["atlassian_user_token"],
     )
 
-    async for issues in client.get_paginated_issues():
+    params = {}
+    config = typing.cast(JiraIssueConfig, event.resource_config)
+
+    if config.selector.jql:
+        params["jql"] = config.selector.jql
+        logger.info(
+            f"Found JQL filter: {config.selector.jql}... Adding to request param"
+        )
+
+    if config.selector.fields:
+        params["fields"] = config.selector.fields
+
+    async for issues in client.get_paginated_issues(params):
         logger.info(f"Received issue batch with {len(issues)} issues")
         yield issues
 
