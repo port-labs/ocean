@@ -77,8 +77,7 @@ async def gather_and_split_errors_from_results(
 
 
 def get_port_diff(
-    before: Iterable[Entity],
-    after: Iterable[Entity],
+    before: Iterable[Entity], after: Iterable[Entity], include_properties: bool = False
 ) -> EntityPortDiff:
     before_dict = {}
     after_dict = {}
@@ -99,6 +98,10 @@ def get_port_diff(
     for key, obj in after_dict.items():
         if key not in before_dict:
             created.append(obj)
+        elif include_properties:
+            # check if properties are the same
+            if obj.properties != before_dict[key].properties:
+                modified.append(obj)
         else:
             modified.append(obj)
 

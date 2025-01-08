@@ -28,7 +28,7 @@ from port_ocean.core.ocean_types import (
     RAW_ITEM,
     CalculationResult,
 )
-from port_ocean.core.utils.utils import zip_and_sum, gather_and_split_errors_from_results
+from port_ocean.core.utils.utils import get_port_diff, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -137,10 +137,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         user_agent_type: UserAgentType,
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
+        entities_at_port_with_properties: list[Entity] | None = None,
     ) -> CalculationResult:
         objects_diff = await self._calculate_raw(
             [(resource, results)], parse_all, send_raw_data_examples_amount
         )
+        diff = get_port_diff(entities_at_port_with_properties, objects_diff[0].entity_selector_diff.passed)
+
         modified_objects = await self.entities_state_applier.upsert(
             objects_diff[0].entity_selector_diff.passed, user_agent_type
         )
@@ -171,7 +174,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return entities_selector_diff.passed, errors
 
     async def _register_in_batches(
-        self, resource_config: ResourceConfig, user_agent_type: UserAgentType
+        self, resource_config: ResourceConfig, user_agent_type: UserAgentType, entities_at_port_with_properties: list[Entity]
     ) -> tuple[list[Entity], list[Exception]]:
         results, errors = await self._get_resource_raw_results(resource_config)
         async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
@@ -192,6 +195,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 raw_results,
                 user_agent_type,
                 send_raw_data_examples_amount=send_raw_data_examples_amount,
+                entities_at_port_with_properties=entities_at_port_with_properties,
             )
             errors.extend(register_errors)
             passed_entities = list(all_entities.passed)
@@ -209,6 +213,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         items,
                         user_agent_type,
                         send_raw_data_examples_amount=send_raw_data_examples_amount,
+                        entities_at_port_with_properties=entities_at_port_with_properties,
                     )
                     errors.extend(register_errors)
                     passed_entities.extend(entities.passed)
@@ -462,11 +467,16 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             try:
                 for resource in app_config.resources:
+                    entities_at_port_with_properties = await ocean.port_client.search_entities(
+                        user_agent_type,
+                        include_params=["blueprint", "identifier", "properties"]
+                    )
+                    entities_at_port_with_properties = [entity for entity in entities_at_port_with_properties if entity.blueprint == resource.kind] # need to fix this
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
                     async with resource_context(resource):
                         task = asyncio.get_event_loop().create_task(
-                            self._register_in_batches(resource, user_agent_type)
+                            self._register_in_batches(resource, user_agent_type, entities_at_port_with_properties)
                         )
 
                         event.on_abort(lambda: task.cancel())
