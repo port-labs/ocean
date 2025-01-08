@@ -91,7 +91,7 @@ class JiraClient:
         extract_key: str | None = None,
         initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = {**initial_params} if initial_params is not None else {}
+        params = initial_params or {}
         params |= self._generate_base_req_params()
 
         start_at = 0
@@ -119,7 +119,7 @@ class JiraClient:
         page_size: int = PAGE_SIZE,
         cursor_param: str = "cursor",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = {**initial_params} if initial_params is not None else {}
+        params = initial_params or {}
         cursor = params.get(cursor_param)
 
         while True:
@@ -191,6 +191,7 @@ class JiraClient:
         self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
+        params = params or {}
         if "jql" in params:
             logger.info(f"Using JQL filter: {params['jql']}")
 
