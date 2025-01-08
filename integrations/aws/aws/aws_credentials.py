@@ -43,7 +43,9 @@ class AwsCredentials:
         return expiry.isoformat()
 
     async def update_enabled_regions(self) -> None:
-        session = await self.create_session()
+        session = aioboto3.Session(
+            self.access_key_id, self.secret_access_key, self.session_token
+        )
         async with session.client("account") as account_client:
             response = await account_client.list_regions(
                 RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"]
