@@ -69,6 +69,16 @@ class AzureDevopsWorkItemResourceConfig(ResourceConfig):
 
 class GitPortAppConfig(PortAppConfig):
     spec_path: List[str] | str = Field(alias="specPath", default="port.yml")
+    use_default_branch: bool | None = Field(
+        default=None,
+        description=(
+            "If set to true, it uses default branch of the repository"
+            " for syncing the entities to Port. If set to false or None"
+            ", it uses the branch mentioned in the `branch` config pro"
+            "perty."
+        ),
+        alias="useDefaultBranch",
+    )
     branch: str = "main"
     resources: list[
         AzureDevopsProjectResourceConfig
