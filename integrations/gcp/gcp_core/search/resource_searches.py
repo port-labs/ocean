@@ -179,7 +179,7 @@ async def list_all_subscriptions_per_project(
 
 
 @cache_iterator_result()
-async def search_all_projects( **kwargs: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
+async def search_all_projects(**kwargs: Any) -> ASYNC_GENERATOR_RESYNC_TYPE:
     logger.info("Searching projects")
     async with ProjectsAsyncClient() as projects_client:
         async for projects in paginated_query(
@@ -221,10 +221,18 @@ async def get_single_project(
 ) -> RAW_ITEM:
     async with ProjectsAsyncClient() as projects_client:
         rate_limiter = kwargs.get("rate_limiter")
-        async with rate_limiter:
-            logger.info(
-                f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
-            )
+        if rate_limiter:
+            async with rate_limiter:
+                logger.info(
+                    f"Executing get_single_project. Current rate limit: {rate_limiter.max_rate} requests per {rate_limiter.time_period} seconds."
+                )
+                return parse_protobuf_message(
+                    await projects_client.get_project(
+                        name=project_name, timeout=DEFAULT_REQUEST_TIMEOUT
+                    ),
+                    config,
+                )
+        else:
             return parse_protobuf_message(
                 await projects_client.get_project(
                     name=project_name, timeout=DEFAULT_REQUEST_TIMEOUT
@@ -322,7 +330,9 @@ async def feed_event_to_resource(
     live_event_projects_rate_limiter, _ = await resolve_request_controllers(asset_type)
     if asset_data.get("deleted") is True:
         resource = asset_data["priorAsset"]["resource"]["data"]
-        resource[EXTRA_PROJECT_FIELD] = await get_single_project(project_id, config, rate_limiter=live_event_projects_rate_limiter)
+        resource[EXTRA_PROJECT_FIELD] = await get_single_project(
+            project_id, config, rate_limiter=live_event_projects_rate_limiter
+        )
     else:
         match asset_type:
             case AssetTypesWithSpecialHandling.TOPIC:
@@ -348,7 +358,9 @@ async def feed_event_to_resource(
                 )
                 resource = await get_single_organization(organization_id, config)
             case AssetTypesWithSpecialHandling.PROJECT:
-                resource = await get_single_project(project_id, config, rate_limiter=live_event_projects_rate_limiter)
+                resource = await get_single_project(
+                    project_id, config, rate_limiter=live_event_projects_rate_limiter
+                )
             case _:
                 resource = asset_data["asset"]["resource"]["data"]
                 resource[EXTRA_PROJECT_FIELD] = await get_single_project(
