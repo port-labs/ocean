@@ -145,10 +145,10 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
 
                 if not issues:
                     logger.warning(
-                        f"Issue {data['issue']['key']} not found."
-                        "This is likely due to JQL filter"
+                        f"Issue {data['issue']['key']} not found"
+                        f" using the following query: {params['jql']},"
+                        " trying to remove..."
                     )
-                    logger.info(f"Unregistering issue {data['issue']}")
                     await ocean.unregister_raw(ObjectKind.ISSUE, [data["issue"]])
                 else:
                     issue = issues[0]
