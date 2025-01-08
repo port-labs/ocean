@@ -23,7 +23,7 @@ def _match(pattern_parts: list[str], string_parts: list[str]) -> bool:
 def does_pattern_apply(pattern: str | list[str], string: str) -> bool:
     if not pattern and not string:
         return False
-        
+
     if isinstance(pattern, list):
         return any(
             does_pattern_apply(single_pattern, string) for single_pattern in pattern
