@@ -65,9 +65,9 @@ class JiraClient:
         self,
         method: str,
         url: str,
-        params: dict[str, Any] = {},
-        json: dict[str, Any] = {},
-        headers: dict[str, str] = {},
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Any:
         try:
             async with self.semaphore:
@@ -89,33 +89,23 @@ class JiraClient:
         self,
         url: str,
         extract_key: str | None = None,
-        page_size: int = PAGE_SIZE,
-        initial_params: dict[str, Any] = {},
+        initial_params: dict[str, Any] | None = None,
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = initial_params
+        params = {**initial_params} if initial_params is not None else {}
         params |= self._generate_base_req_params()
-        params["maxResults"] = page_size
 
         start_at = 0
         while True:
             params["startAt"] = start_at
             response_data = await self._send_api_request("GET", url, params=params)
-
-            if extract_key:
-                items = response_data.get(extract_key, [])
-            else:
-                items = (
-                    response_data
-                    if isinstance(response_data, list)
-                    else [response_data]
-                )
+            items = response_data.get(extract_key, []) if extract_key else response_data
 
             if not items:
                 break
 
             yield items
 
-            start_at += page_size
+            start_at += len(items)
 
             if "total" in response_data and start_at >= response_data["total"]:
                 break
@@ -125,11 +115,11 @@ class JiraClient:
         url: str,
         method: str,
         extract_key: str,
+        initial_params: dict[str, Any] | None = None,
         page_size: int = PAGE_SIZE,
-        initial_params: dict[str, Any] = {},
         cursor_param: str = "cursor",
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
-        params = initial_params
+        params = {**initial_params} if initial_params is not None else {}
         cursor = params.get(cursor_param)
 
         while True:
@@ -137,23 +127,22 @@ class JiraClient:
                 params[cursor_param] = cursor
 
             response_data = await self._send_api_request(method, url, params=params)
-            items = response_data.get(extract_key, [])
 
+            items = response_data.get(extract_key, [])
             if not items:
                 break
 
             yield items
 
             page_info = response_data.get("pageInfo", {})
-            has_next_page = page_info.get("hasNextPage", False)
             cursor = page_info.get("endCursor")
 
-            if not has_next_page:
+            if not page_info.get("hasNextPage", False):
                 break
 
     @staticmethod
     def _generate_base_req_params(
-        maxResults: int = 0, startAt: int = 0
+        maxResults: int = PAGE_SIZE, startAt: int = 0
     ) -> dict[str, Any]:
         return {
             "maxResults": maxResults,
@@ -187,7 +176,7 @@ class JiraClient:
         )
 
     async def get_paginated_projects(
-        self, params: dict[str, Any] = {}
+        self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting projects from Jira")
         async for projects in self._get_paginated_data(
@@ -199,7 +188,7 @@ class JiraClient:
         return await self._send_api_request("GET", f"{self.api_url}/issue/{issue_key}")
 
     async def get_paginated_issues(
-        self, params: dict[str, Any] = {}
+        self, params: dict[str, Any] | None = None
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
         if "jql" in params:
