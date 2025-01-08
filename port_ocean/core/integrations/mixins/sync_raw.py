@@ -192,7 +192,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 user_agent_type,
                 send_raw_data_examples_amount=send_raw_data_examples_amount,
             )
-        errors.extend(register_errors)
+            errors.extend(register_errors)
         passed_entities = list(all_entities.passed)
 
         for generator in async_generators:
