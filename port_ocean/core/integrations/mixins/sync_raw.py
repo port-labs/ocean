@@ -121,7 +121,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
     ) -> list[CalculationResult]:
-        print(f"!!!!!!! raw diff {raw_diff}")
         return await asyncio.gather(
             *(
                 self.entity_processor.parse_items(
@@ -259,11 +258,9 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         diffs = list(diffs)
-        print(f"!!!!!!! {diffs}")
         errors = sum(errors, [])
-        print(f"!!!!!!! {errors}")
         misconfigured_entity_keys = list(misconfigured_entity_keys)
-        print(f"!!!!!!! {misconfigured_entity_keys}")
+
 
         if errors:
             message = f"Failed to register {len(errors)} entities. Skipping delete phase due to incomplete state"
