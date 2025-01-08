@@ -121,6 +121,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         parse_all: bool = False,
         send_raw_data_examples_amount: int = 0,
     ) -> list[CalculationResult]:
+        print(f"!!!!!!! raw diff {raw_diff}")
         return await asyncio.gather(
             *(
                 self.entity_processor.parse_items(
@@ -147,6 +148,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
             errors=objects_diff[0].errors,
+            misonfigured_entity_keys=objects_diff[0].misonfigured_entity_keys,
         )
 
     async def _unregister_resource_raw(
@@ -162,7 +164,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             return [], []
 
         objects_diff = await self._calculate_raw([(resource, results)])
-        entities_selector_diff, errors = objects_diff[0]
+        entities_selector_diff, errors, _ = objects_diff[0]
 
         await self.entities_state_applier.delete(
             entities_selector_diff.passed, user_agent_type
@@ -257,8 +259,11 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         )
 
         diffs = list(diffs)
+        print(f"!!!!!!! {diffs}")
         errors = sum(errors, [])
-        misconfigured_entity_keys = sum(misconfigured_entity_keys, [])
+        print(f"!!!!!!! {errors}")
+        misconfigured_entity_keys = list(misconfigured_entity_keys)
+        print(f"!!!!!!! {misconfigured_entity_keys}")
 
         if errors:
             message = f"Failed to register {len(errors)} entities. Skipping delete phase due to incomplete state"
@@ -322,7 +327,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             resource for resource in config.resources if resource.kind == kind
         ]
 
-        entities, errors, misconfigured_entity_keys = zip_and_sum(
+        entities, errors = zip_and_sum(
             await asyncio.gather(
                 *(
                     self._unregister_resource_raw(resource, results, user_agent_type)
