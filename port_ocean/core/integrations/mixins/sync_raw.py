@@ -185,6 +185,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
         )
+        passed_entities = []
         if raw_results:
             all_entities, register_errors,_ = await self._register_resource_raw(
                 resource_config,
@@ -193,7 +194,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 send_raw_data_examples_amount=send_raw_data_examples_amount,
             )
             errors.extend(register_errors)
-        passed_entities = list(all_entities.passed)
+            passed_entities = list(all_entities.passed)
 
         for generator in async_generators:
             try:
