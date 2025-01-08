@@ -426,7 +426,7 @@ async def test_register_raw(
         },
     ]
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
         # Use patch to mock the method instead of direct assignment
         with patch.object(
             mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
@@ -504,7 +504,7 @@ async def test_unregister_raw(
         },
     ]
 
-    async with event_context(EventType.RESYNC, trigger_type="machine") as event:
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
         # Use patch to mock the method instead of direct assignment
         with patch.object(
             mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
