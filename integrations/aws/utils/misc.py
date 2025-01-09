@@ -2,10 +2,15 @@ import enum
 
 from port_ocean.context.event import event
 import asyncio
-
+from aiolimiter import AsyncLimiter
 
 MAX_CONCURRENT_TASKS = 50
 semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TASKS)
+
+
+CLOUD_CONTROL_REQUESTS_PER_SECOND = 50
+CLOUD_CONTROL_REQUESTS_PER_SECOND_PER_CLIENT = 1
+cloud_control_rate_limiter = AsyncLimiter(CLOUD_CONTROL_REQUESTS_PER_SECOND, CLOUD_CONTROL_REQUESTS_PER_SECOND_PER_CLIENT) 
 
 
 class CustomProperties(enum.StrEnum):

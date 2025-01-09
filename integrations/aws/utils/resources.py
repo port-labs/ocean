@@ -10,6 +10,7 @@ from utils.misc import (
     CustomProperties,
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
+    cloud_control_rate_limiter
 )
 from utils.aws import get_sessions
 
@@ -80,25 +81,26 @@ async def describe_single_resource(
                     stack = response.get("Stacks")[0]
                     return fix_unserializable_date_properties(stack)
             case _:
-                async with session.client(
-                    "cloudcontrol",
-                    config=Boto3Config(
-                        retries={"max_attempts": 10, "mode": "standard"},
-                    ),
-                ) as cloudcontrol:
-                    response = await cloudcontrol.get_resource(
-                        TypeName=kind, Identifier=identifier
-                    )
-                    resource_description = response.get("ResourceDescription")
-                    serialized = resource_description.copy()
-                    serialized.update(
-                        {
-                            "Properties": json.loads(
-                                resource_description.get("Properties")
-                            ),
-                        }
-                    )
-                    return serialized
+                async with cloud_control_rate_limiter:
+                    async with session.client(
+                        "cloudcontrol",
+                        config=Boto3Config(
+                            retries={"max_attempts": 20, "mode": "standard"},
+                        ),
+                    ) as cloudcontrol:
+                        response = await cloudcontrol.get_resource(
+                            TypeName=kind, Identifier=identifier
+                        )
+                        resource_description = response.get("ResourceDescription")
+                        serialized = resource_description.copy()
+                        serialized.update(
+                            {
+                                "Properties": json.loads(
+                                    resource_description.get("Properties")
+                                ),
+                            }
+                        )
+                        return serialized
     return {}
 
 
