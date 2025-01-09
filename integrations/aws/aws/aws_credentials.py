@@ -67,7 +67,7 @@ class AwsCredentials:
 
             :return: A dictionary containing the new credentials and their expiration time.
             """
-            logger.info(
+            logger.debug(
                 f"Refreshing AWS credentials for role {self.role_arn} in account {self.account_id}"
             )
             sts_client = typing.cast(STSClient, self.sts_client)
@@ -76,15 +76,11 @@ class AwsCredentials:
                 RoleSessionName=str(self.session_name),
             )
             credentials = response["Credentials"]
-            self.access_key_id = credentials["AccessKeyId"]
-            self.secret_access_key = credentials["SecretAccessKey"]
-            self.session_token = credentials["SessionToken"]
-            expiration = credentials["Expiration"].isoformat()
             return {
-                "access_key": self.access_key_id,
-                "secret_key": self.secret_access_key,
-                "token": self.session_token,
-                "expiry_time": expiration,
+                "access_key": credentials["AccessKeyId"],
+                "secret_key": credentials["SecretAccessKey"],
+                "token": credentials["SessionToken"],
+                "expiry_time": credentials["Expiration"].isoformat(),
             }
 
         return refresh
@@ -103,7 +99,7 @@ class AwsCredentials:
                     region,
                 )
 
-            logger.debug(
+            logger.warning(
                 f"Creating a refreshable session for role {self.role_arn} in account {self.account_id} for region {region}"
             )
 
@@ -134,6 +130,6 @@ class AwsCredentials:
         self, allowed_regions: Optional[Iterable[str]] = None
     ) -> AsyncIterator[aioboto3.Session]:
         regions = allowed_regions or self.enabled_regions
-
+        logger.warning("Creating sessions for each region")
         for region in regions:
             yield await self.create_session(region)
