@@ -9,7 +9,6 @@ from google.pubsub_v1.types import pubsub
 from google.cloud.resourcemanager_v3.types import Project
 
 
-
 async def mock_subscription_pages(
     *args: Any, **kwargs: Any
 ) -> ASYNC_GENERATOR_RESYNC_TYPE:
@@ -108,7 +107,9 @@ async def test_get_single_subscription(
 @patch("gcp_core.utils.resolve_request_controllers")
 @patch("gcp_core.utils.get_current_resource_config")
 async def test_feed_to_resource(
-    get_current_resource_config_mock: MagicMock, resolve_request_controllers_mock: AsyncMock, monkeypatch: Any,
+    get_current_resource_config_mock: MagicMock,
+    resolve_request_controllers_mock: AsyncMock,
+    monkeypatch: Any,
 ) -> None:
     # Arrange
     projects_async_client_mock = AsyncMock
