@@ -37,6 +37,10 @@ class PortOceanContext:
         return self._app
 
     @property
+    def metrics(self):
+        return self._app.metrics
+
+    @property
     def initialized(self) -> bool:
         return self._app is not None
 

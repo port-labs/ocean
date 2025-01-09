@@ -4,6 +4,8 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Callable, Any, Dict, AsyncIterator, Type
 
+import port_ocean.helpers.metric.metric
+
 from fastapi import FastAPI, APIRouter
 from loguru import logger
 from pydantic import BaseModel
@@ -51,6 +53,9 @@ class Ocean:
             *self.config.get_sensitive_fields_data()
         )
         self.integration_router = integration_router or APIRouter()
+        self.metrics = port_ocean.helpers.metric.metric.Metrics(
+            enabled=self.config.metrics
+        )
 
         self.port_client = PortClient(
             base_url=self.config.port.base_url,
@@ -114,6 +119,9 @@ class Ocean:
 
     def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
+        self.fast_api_app.include_router(
+            self.metrics.create_mertic_router(), prefix="/metrics"
+        )
 
         @asynccontextmanager
         async def lifecycle(_: FastAPI) -> AsyncIterator[None]:

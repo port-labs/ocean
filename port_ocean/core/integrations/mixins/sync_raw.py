@@ -30,7 +30,8 @@ from port_ocean.core.ocean_types import (
 )
 from port_ocean.core.utils.utils import zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
-from port_ocean.helpers.metric import MetricFieldType, MetricType, metric, timed_generator
+from port_ocean.helpers.metric.metric import MetricPhase
+from port_ocean.helpers.metric.utils import TimeMetric, timed_generator
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
 
@@ -85,7 +86,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         return fns
 
-    @metric(MetricType.EXTRACT)
+    @TimeMetric(MetricPhase.EXTRACT)
     async def _execute_resync_tasks(
         self,
         fns: list[Callable[[str], Awaitable[RAW_RESULT]]],
@@ -398,7 +399,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 {"before": entities_before_flatten, "after": entities_after_flatten},
                 user_agent_type,
             )
-    @metric(MetricType.TOP_SORT)
+    @TimeMetric(MetricPhase.TOP_SORT)
     async def sort_and_upsert_failed_entities(self,user_agent_type: UserAgentType)->None:
         try:
             if not event.entity_topological_sorter.should_execute():
@@ -461,10 +462,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
             try:
-                for resource in app_config.resources:
+                for index,resource in enumerate(app_config.resources):
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
-                    async with resource_context(resource):
+                    async with resource_context(resource,index):
                         task = asyncio.get_event_loop().create_task(
                             self._register_in_batches(resource, user_agent_type)
                         )
@@ -503,7 +504,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
                     logger.error(message, exc_info=error_group)
                 else:
-                    await event.flush_metric_logs()
+                    await ocean.metrics.flush()
                     logger.info(
                         f"Running resync diff calculation, number of entities at Port before resync: {len(entities_at_port)}, number of entities created during sync: {len(flat_created_entities)}"
                     )

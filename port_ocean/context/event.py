@@ -14,8 +14,6 @@ from typing import (
 from uuid import uuid4
 
 from loguru import logger
-from port_ocean.context import ocean
-from port_ocean.helpers.metric import MetricAggregator
 from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
@@ -55,7 +53,6 @@ class EventContext:
     _parent_event: Optional["EventContext"] = None
     _event_id: str = field(default_factory=lambda: str(uuid4()))
     _on_abort_callbacks: list[AbortCallbackFunction] = field(default_factory=list)
-    _metric_aggregator: Optional["MetricAggregator"] = None
     entity_topological_sorter: EntityTopologicalSorter = field(
         default_factory=EntityTopologicalSorter
     )
@@ -75,34 +72,6 @@ class EventContext:
                     f"Failed to call one of the abort callbacks {ex}", exc_info=True
                 )
         self._aborted = True
-
-    async def flush_metric_logs(self) -> None:
-        if not self.should_record_metrics:
-            return
-        if event._metric_aggregator:
-            await event._metric_aggregator.flush()
-
-    async def increment_status(self, status_code: str) -> None:
-        if not self.should_record_metrics:
-            return
-        try:
-            if self._metric_aggregator:
-                await self._metric_aggregator.increment_status(status_code)
-        except Exception:
-            pass
-
-    async def increment_metric(self, metric: str, amount: int | float = 1) -> None:
-        if not self.should_record_metrics:
-            return
-        try:
-            if self._metric_aggregator:
-                await self._metric_aggregator.increment_field(metric, amount)
-        except Exception:
-            pass
-
-    @property
-    def should_record_metrics(self) -> bool:
-        return ocean.ocean.config.metrics
 
     @property
     def aborted(self) -> bool:
@@ -174,12 +143,6 @@ async def event_context(
 
     attributes = {**parent_attributes, **(attributes or {})}
 
-    aggregator = (
-        parent._metric_aggregator
-        if parent and parent._metric_aggregator
-        else MetricAggregator()
-    )
-
     new_event = EventContext(
         event_type,
         trigger_type=trigger_type,
@@ -187,7 +150,6 @@ async def event_context(
         _parent_event=parent,
         # inherit port app config from parent event, so it can be used in nested events
         _port_app_config=parent.port_app_config if parent else None,
-        _metric_aggregator=aggregator,
         entity_topological_sorter=entity_topological_sorter,
     )
     _event_context_stack.push(new_event)
@@ -203,7 +165,6 @@ async def event_context(
     dispatcher.connect(_handle_event, event_type)
     dispatcher.send(event_type, triggering_event_id=event.id)
 
-    is_silent = EventType.METRIC == event_type
     start_time = get_time(seconds_precision=False)
     with logger.contextualize(
         event_trigger_type=event.trigger_type,
@@ -214,7 +175,7 @@ async def event_context(
             event.resource_config.kind if event.resource_config else None
         ),
     ):
-        logger.info("Event started") if not is_silent else None
+        logger.info("Event started")
         try:
             yield event
         except:
@@ -225,14 +186,10 @@ async def event_context(
         finally:
             end_time = get_time(seconds_precision=False)
             time_elapsed = round(end_time - start_time, 5)
-            (
-                logger.bind(
-                    success=success,
-                    time_elapsed=time_elapsed,
-                ).info("Event finished")
-                if not is_silent
-                else None
-            )
+            logger.bind(
+                success=success,
+                time_elapsed=time_elapsed,
+            ).info("Event finished")
 
             dispatcher.disconnect(_handle_event, event_type)
 
