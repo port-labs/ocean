@@ -70,6 +70,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         retryable_methods: Iterable[str] | None = None,
         retry_status_codes: Iterable[int] | None = None,
         logger: Any | None = None,
+        mode: str = MetricPhase.LOAD,
     ) -> None:
         """
         Initializes the instance of RetryTransport class with the given parameters.
@@ -122,6 +123,7 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
         self._jitter_ratio = jitter_ratio
         self._max_backoff_wait = max_backoff_wait
         self._logger = logger
+        self.mode = mode
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """
@@ -165,7 +167,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             else:
                 response = await transport.handle_async_request(request)
                 port_ocean.context.ocean.ocean.metrics.get_metric(
-                    MetricType.REQUESTS[0], [response.status_code, request.url]
+                    MetricType.REQUESTS[0],
+                    [self.mode, str(response.status_code), str(request.url)],
                 ).inc()
 
             return response
@@ -291,9 +294,10 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
                 sleep_time = self._calculate_sleep(attempts_made, {})
                 self._log_before_retry(request, sleep_time, response, error)
                 await asyncio.sleep(sleep_time)
-                if response.status_code == 429:
+                if response and response.status_code == 429:
                     port_ocean.context.ocean.ocean.metrics.get_metric(
-                        MetricType.RATE_LIMIT_WAIT[0], [MetricPhase.LOAD, request.url]
+                        MetricType.RATE_LIMIT_WAIT[0],
+                        [self.mode, MetricPhase.LOAD, str(request.url)],
                     ).inc(sleep_time)
 
             error = None
@@ -301,7 +305,8 @@ class RetryTransport(httpx.AsyncBaseTransport, httpx.BaseTransport):
             try:
                 response = await send_method(request)
                 port_ocean.context.ocean.ocean.metrics.get_metric(
-                    MetricType.REQUESTS[0], [response.status_code, request.url]
+                    MetricType.REQUESTS[0],
+                    [self.mode, str(response.status_code), str(request.url)],
                 ).inc()
 
                 response.request = request

@@ -32,7 +32,7 @@ async def timed_generator(
             raise e
 
 
-def TimeMetric(phase: str | None = None) -> Any:
+def TimeMetric(phase: str) -> Any:
     def decorator(func: Callable[..., Any]) -> Any:
 
         @wraps(func)

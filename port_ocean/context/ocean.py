@@ -1,6 +1,7 @@
 from typing import Callable, TYPE_CHECKING, Any, Literal, Union
 
 from fastapi import APIRouter
+from port_ocean.helpers.metric.metric import Metrics
 from pydantic.main import BaseModel
 from werkzeug.local import LocalProxy
 
@@ -37,8 +38,8 @@ class PortOceanContext:
         return self._app
 
     @property
-    def metrics(self):
-        return self._app.metrics
+    def metrics(self) -> Metrics:
+        return self.app.metrics
 
     @property
     def initialized(self) -> bool:

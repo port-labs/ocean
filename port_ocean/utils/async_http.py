@@ -1,4 +1,5 @@
 import httpx
+from port_ocean.helpers.metric.metric import MetricPhase
 from werkzeug.local import LocalStack, LocalProxy
 
 from port_ocean.context.ocean import ocean
@@ -11,14 +12,18 @@ _http_client: LocalStack[httpx.AsyncClient] = LocalStack()
 def _get_http_client_context() -> httpx.AsyncClient:
     client = _http_client.top
     if client is None:
-        client = OceanAsyncClient(RetryTransport, timeout=ocean.config.client_timeout)
+        client = OceanAsyncClient(
+            RetryTransport,
+            timeout=ocean.config.client_timeout,
+            mode=MetricPhase.EXTRACT,
+        )
         _http_client.push(client)
 
     return client
 
 
 """
-Utilize this client for all outbound integration requests to the third-party application. It functions as a wrapper 
+Utilize this client for all outbound integration requests to the third-party application. It functions as a wrapper
 around the httpx.AsyncClient, incorporating retry logic at the transport layer for handling retries on 5xx errors and
 connection errors.
 

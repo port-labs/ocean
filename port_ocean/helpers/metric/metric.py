@@ -1,3 +1,4 @@
+from typing import Any
 from fastapi import APIRouter
 from port_ocean.exceptions.context import ResourceContextNotFoundError
 import prometheus_client
@@ -37,8 +38,16 @@ class MetricType:
     REQUESTS = (
         "http_requests_count",
         "requests description",
-        ["kind", "status", "endpoint"],
+        ["kind", "phase", "status", "endpoint"],
     )
+
+
+class EmptyMetric:
+    def inc(self, *args: Any) -> None:
+        return None
+
+    def labels(self, *args: Any) -> None:
+        return None
 
 
 class Metrics:
@@ -49,7 +58,7 @@ class Metrics:
         self.metrics: dict[str, Gauge] = {}
         self.load_metrics()
 
-    def load_metrics(self):
+    def load_metrics(self) -> None:
         if not self.enabled:
             return None
         for attr in dir(MetricType):
@@ -60,23 +69,22 @@ class Metrics:
                 name, description, lables, registry=self.registry
             )
 
-    def get_metric(self, name, lables: list[str]):
+    def get_metric(self, name: str, lables: list[str]) -> Gauge | EmptyMetric:
         if not self.enabled:
+            return EmptyMetric()
+        metrics = self.metrics.get(name)
+        # Should i add a new metric although it was not initialized?
+        if not metrics:
+            return EmptyMetric()
+        return metrics.labels(self.get_kind(), *lables)
 
-            class Empty:
-                def inc(self, *args):
-                    return None
-
-            return Empty()
-        return self.metrics.get(name).labels(self.get_kind(), *lables)
-
-    def create_mertic_router(self):
+    def create_mertic_router(self) -> APIRouter:
         if not self.enabled:
             return APIRouter()
         router = APIRouter()
 
         @router.get("/")
-        async def prom_metrics():
+        async def prom_metrics() -> str:
             return self.generate_latest()
 
         return router
@@ -85,9 +93,9 @@ class Metrics:
         try:
             return f"{resource.resource.kind}-{resource.resource.index}"
         except ResourceContextNotFoundError:
-            return ""
+            return "init"
 
-    def generate_latest(self):
+    def generate_latest(self) -> str:
         return prometheus_client.openmetrics.exposition.generate_latest(
             self.registry
         ).decode()
@@ -106,4 +114,4 @@ class Metrics:
                 dict_key = f"{sample.name}__{label_str}" if label_str else sample.name
 
                 metrics_dict[dict_key] = sample.value
-        logger.info(f"prom metrics - {metrics_dict}")
+        logger.bind(**metrics_dict).info("prometheus metrics")
