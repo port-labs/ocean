@@ -151,8 +151,7 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
                     )
                     await ocean.unregister_raw(ObjectKind.ISSUE, [data["issue"]])
                 else:
-                    issue = issues[0]
-                    await ocean.register_raw(ObjectKind.ISSUE, [issue])
+                    await ocean.register_raw(ObjectKind.ISSUE, issues)
 
                 return {"ok": True}
         case _:
