@@ -36,7 +36,7 @@ class AwsCredentials:
         self.sts_client = sts_client
 
     def is_role(self) -> bool:
-        return self.role_arn is not None
+        return bool(self.session_token or self.role_arn)
 
     def expiry_time(self) -> str:
         expiry = datetime.now(timezone.utc) + timedelta(seconds=self.duration or 3600)
@@ -94,7 +94,12 @@ class AwsCredentials:
         """
         if self.is_role():
             # For a role, use a refreshable credentials object
-            logger.debug(
+            if self.session_token: # application credentials with session token
+                return aioboto3.Session(
+                self.access_key_id, self.secret_access_key, self.session_token, region
+                )
+            
+            logger.warning(
                 f"Creating a refreshable session for role {self.role_arn} in account {self.account_id} for region {region}"
             )
 

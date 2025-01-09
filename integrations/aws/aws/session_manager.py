@@ -80,7 +80,7 @@ class SessionManager:
                 account_id=current_account_id,
                 access_key_id=frozen_credentials.access_key,
                 secret_access_key=frozen_credentials.secret_key,
-                session_token=frozen_credentials.token,
+                session_token=frozen_credentials.token
             )
 
     async def _get_organization_session(self) -> aioboto3.Session | None:
