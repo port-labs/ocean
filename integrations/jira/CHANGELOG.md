@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improvements
 
-- Added support to sync Jira teams to Port.
+- Added support to sync Jira teams to Port
 
 ## 0.2.18 (2025-01-08)
 
