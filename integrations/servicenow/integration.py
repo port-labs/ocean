@@ -33,7 +33,7 @@ class APIQueryParams(BaseModel):
             "<operator>: =, !=, ^, ^OR, LIKE, STARTSWITH, ENDSWITH, ORDERBY<col_name>, ORDERBYDESC<col_name>"
             "<value>: Value to match against"
             "Queries can be chained using ^ or ^OR for AND/OR logic. Example: active=true^nameLIKEincident^urgency=3"
-        )
+        ),
     )
 
     def generate_request_params(self) -> dict[str, Any]:
@@ -48,6 +48,7 @@ class APIQueryParams(BaseModel):
     class Config:
         allow_population_by_field_name = True  # This allows fields in a model to be populated either by their alias or by their field name
 
+
 class ResourceSelector(Selector):
     api_query_params: APIQueryParams | None = Field(
         alias="apiQueryParams",
@@ -55,14 +56,13 @@ class ResourceSelector(Selector):
         description="The query parameters used to filter resources from the ServiceNow API",
     )
 
+
 class ServiceNowResourceConfig(ResourceConfig):
     selector: ResourceSelector
 
 
 class ServiceNowPortAppConfig(PortAppConfig):
-    resources: list[
-        ServiceNowResourceConfig
-    ] = Field(default_factory=list)
+    resources: list[ServiceNowResourceConfig] = Field(default_factory=list)
 
 
 class ServiceNowIntegration(BaseIntegration):

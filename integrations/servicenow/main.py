@@ -26,7 +26,9 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
         logger.warning(f"Using query params: {selector.api_query_params}")
         api_query_params = selector.api_query_params.generate_request_params()
         logger.warning(f"Generated params: {api_query_params}")
-    async for records in servicenow_client.get_paginated_resource(resource_kind=kind, api_query_params=api_query_params):
+    async for records in servicenow_client.get_paginated_resource(
+        resource_kind=kind, api_query_params=api_query_params
+    ):
         logger.info(f"Received {kind} batch with {len(records)} records")
         yield records
 
