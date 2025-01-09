@@ -7,7 +7,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     Selector,
 )
 from pydantic import Field, validator, BaseModel
-
+from loguru import logger
 from port_ocean.core.integrations.base import BaseIntegration
 
 
@@ -18,13 +18,23 @@ class SLOHistorySelector(Selector):
     @validator("timeframe")
     def validate_timeframe_field(cls, v: int) -> int:
         if v < 1:
-            raise ValueError("timeframe must be greater than 0")
+            logger.warning(
+                f"The selector value 'timeframe' ({v}) must be greater than 0. "
+                f"This value determines the time window in days for each SLO history data point. "
+                f"Using default value of 7 days."
+            )
+            return 7
         return v
 
     @validator("period_of_time_in_months")
-    def validate_period_of_time_in_years(cls, v: int) -> int:
-        if v > 1:
-            raise ValueError("period_of_time_in_months must be less or equal to 12")
+    def validate_period_of_time_in_months(cls, v: int) -> int:
+        if v < 1 or v > 12:
+            logger.warning(
+                f"The selector value 'periodOfTimeInMonths' ({v}) must be between 1 and 12. "
+                f"This value determines how far back in time to fetch SLO history. "
+                f"Using default value of 6 months."
+            )
+            return 6
         return v
 
 
@@ -55,9 +65,25 @@ class DatadogResourceConfig(ResourceConfig):
     selector: DatadogResourceSelector
 
 
+class TeamSelector(Selector):
+    include_members: bool = Field(
+        alias="includeMembers",
+        default=False,
+        description="Whether to include the members of the team, defaults to false",
+    )
+
+
+class TeamResourceConfig(ResourceConfig):
+    kind: typing.Literal["team"]
+    selector: TeamSelector
+
+
 class DataDogPortAppConfig(PortAppConfig):
     resources: list[
-        SLOHistoryResourceConfig | DatadogResourceConfig | ResourceConfig
+        TeamResourceConfig
+        | SLOHistoryResourceConfig
+        | DatadogResourceConfig
+        | ResourceConfig
     ] = Field(default_factory=list)
 
 

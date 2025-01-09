@@ -7,6 +7,199 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.34 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.2.33 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.2.32 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.2.31 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.2.30 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.29 (2026-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.2.28 (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.2.27 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.2.26 (2024-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+## 0.2.25 (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.2
+
+
+## 0.2.24 (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.1
+
+
+## 0.2.23 (2024-12-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.0
+
+
+## 0.2.22 (2024-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
+## 0.2.21 (2024-12-04)
+
+
+### Improvements
+
+- Added ability to ingest OpsGenie users and team members
+- Enhanced the data model for incidents and alerts by adding responding team relation
+
+
+## 0.2.20 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.6
+
+
+## 0.2.19 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+## 0.2.18 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.3
+
+
+## 0.2.17 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.2
+
+
+## 0.2.16 (2024-11-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
+
+
+## 0.2.15 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
+## 0.2.14 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+## 0.2.13 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+## 0.2.12 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
+## 0.2.11 (2024-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+
 ## 0.2.10 (2024-10-23)
 
 

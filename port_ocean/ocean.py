@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from starlette.types import Scope, Receive, Send
 
 from port_ocean.core.handlers.resync_state_updater import ResyncStateUpdater
-from port_ocean.core.models import Runtime
 from port_ocean.clients.port.client import PortClient
 from port_ocean.config.settings import (
     IntegrationConfiguration,
@@ -70,8 +69,10 @@ class Ocean:
             self.port_client, self.config.scheduled_resync_interval
         )
 
+        self.app_initialized = False
+
     def is_saas(self) -> bool:
-        return self.config.runtime == Runtime.Saas
+        return self.config.runtime.is_saas_runtime
 
     async def _setup_scheduled_resync(
         self,
@@ -112,7 +113,7 @@ class Ocean:
             )
             await repeated_function()
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    def initialize_app(self) -> None:
         self.fast_api_app.include_router(self.integration_router, prefix="/integration")
 
         @asynccontextmanager
@@ -123,9 +124,16 @@ class Ocean:
                 yield None
             except Exception:
                 logger.exception("Integration had a fatal error. Shutting down.")
+                logger.complete()
                 sys.exit("Server stopped")
             finally:
                 signal_handler.exit()
 
         self.fast_api_app.router.lifespan_context = lifecycle
+        self.app_initialized = True
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if not self.app_initialized:
+            self.initialize_app()
+
         await self.fast_api_app(scope, receive, send)

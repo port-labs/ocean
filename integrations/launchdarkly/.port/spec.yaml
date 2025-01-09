@@ -1,4 +1,5 @@
-description: launchdarkly integration for Port Ocean
+title: LaunchDarkly
+description: LaunchDarkly integration for Port Ocean
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/feature-management/launchdarkly
 icon: Launchdarkly
 features:

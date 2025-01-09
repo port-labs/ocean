@@ -1,4 +1,5 @@
-description: sentry integration for Port Ocean
+title: Sentry
+description: Sentry integration for Port Ocean
 icon: Sentry
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/apm-alerting/sentry
 features:
@@ -9,16 +10,19 @@ features:
       - kind: issue
       - kind: project-tag
       - kind: issue-tag
+      - kind: user
+      - kind: team
 configurations:
   - name: sentryHost
     required: true
     type: url
     description: "Sentry host URL"
+    default: "https://sentry.io"
   - name: sentryToken
     required: true
-    type: string
-    description: "Sentry token"
     sensitive: true
+    type: string
+    description: The Sentry API token used for authentication. To create a token, see the <a href="https://docs.sentry.io/api/auth/" target="_blank"> Sentry documentation</a>
   - name: sentryOrganization
     required: true
     type: string

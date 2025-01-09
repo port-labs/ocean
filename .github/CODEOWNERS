@@ -1,82 +1,82 @@
-@port-labs/experiences-team
+@port-labs/ecosystem-team
 
 # Ocean framework
-/port_ocean/** @port-labs/experiences-team
+/port_ocean/** @port-labs/ecosystem-team
 
 # argocd integration
-/integrations/argocd/** @port-labs/experiences-team
+/integrations/argocd/** @port-labs/ecosystem-team
 
 # aws integration
-/integrations/aws/** @port-labs/experiences-team
+/integrations/aws/** @port-labs/ecosystem-team
 
 # azure-devops integration
-/integrations/azure-devops/** @port-labs/experiences-team
+/integrations/azure-devops/** @port-labs/ecosystem-team
 
 # azure integration
-/integrations/azure/** @port-labs/experiences-team
+/integrations/azure/** @port-labs/ecosystem-team
 
 # datadog integration
-/integrations/datadog/** @port-labs/experiences-team
+/integrations/datadog/** @port-labs/ecosystem-team
 
 # dynatrace integration
-/integrations/dynatrace/** @port-labs/experiences-team
+/integrations/dynatrace/** @port-labs/ecosystem-team
 
 # firehydrant integration
-/integrations/firehydrant/** @port-labs/experiences-team
+/integrations/firehydrant/** @port-labs/ecosystem-team
 
 # gcp integration
-/integrations/gcp/** @port-labs/experiences-team
+/integrations/gcp/** @port-labs/ecosystem-team
 
 # gitlab integration
-/integrations/gitlab/** @port-labs/experiences-team
+/integrations/gitlab/** @port-labs/ecosystem-team
 
 # jenkins integration
-/integrations/jenkins/** @port-labs/experiences-team
+/integrations/jenkins/** @port-labs/ecosystem-team
 
 # jira integration
-/integrations/jira/** @port-labs/experiences-team
+/integrations/jira/** @port-labs/ecosystem-team
 
 # kafka integration
-/integrations/kafka/** @port-labs/experiences-team
+/integrations/kafka/** @port-labs/ecosystem-team
 
 # kubecost integration
-/integrations/kubecost/** @port-labs/experiences-team
+/integrations/kubecost/** @port-labs/ecosystem-team
 
 # launchdarkly integration
-/integrations/launchdarkly/** @port-labs/experiences-team
+/integrations/launchdarkly/** @port-labs/ecosystem-team
 
 # linear integration
-/integrations/linear/** @port-labs/experiences-team
+/integrations/linear/** @port-labs/ecosystem-team
 
 # newrelic integration
-/integrations/newrelic/** @port-labs/experiences-team
+/integrations/newrelic/** @port-labs/ecosystem-team
 
 # opencost integration
-/integrations/opencost/** @port-labs/experiences-team
+/integrations/opencost/** @port-labs/ecosystem-team
 
 # opsgenie integration
-/integrations/opsgenie/** @port-labs/experiences-team
+/integrations/opsgenie/** @port-labs/ecosystem-team
 
 # pagerduty integration
-/integrations/pagerduty/** @port-labs/experiences-team
+/integrations/pagerduty/** @port-labs/ecosystem-team
 
 # sentry integration
-/integrations/sentry/** @port-labs/experiences-team
+/integrations/sentry/** @port-labs/ecosystem-team
 
 # servicenow integration
-/integrations/servicenow/** @port-labs/experiences-team
+/integrations/servicenow/** @port-labs/ecosystem-team
 
 # snyk integration
-/integrations/snyk/** @port-labs/experiences-team
+/integrations/snyk/** @port-labs/ecosystem-team
 
 # sonarqube integration
-/integrations/sonarqube/** @port-labs/experiences-team
+/integrations/sonarqube/** @port-labs/ecosystem-team
 
 # statuspage integration
-/integrations/statuspage/** @port-labs/experiences-team
+/integrations/statuspage/** @port-labs/ecosystem-team
 
 # terraform-cloud integration
-/integrations/terraform-cloud/** @port-labs/experiences-team
+/integrations/terraform-cloud/** @port-labs/ecosystem-team
 
 # wiz integration
-/integrations/wiz/** @port-labs/experiences-team
+/integrations/wiz/** @port-labs/ecosystem-team

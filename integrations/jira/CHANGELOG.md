@@ -7,17 +7,236 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.1.96 (2024-10-23)
+## 0.2.18 (2025-01-08)
+
+
+### Bug Fixes
+
+- Fixed a bug where webhook processes issues that are not allowed in a user's integration due to JQL filters
+
+
+## 0.2.17 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.2.16 (2025-01-07)
+
+
+### Features
+
+- Added support for ingesting other fields apart from the default fields (Jira Sprint support)
+
+
+## 0.2.15 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+## 0.2.14 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+## 0.2.13 (2025-01-02)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+## 0.2.12 (2024-12-31)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.11 (2025-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+## 0.2.10 (2024-12-26)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+## 0.2.9 (2024-12-24)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+## 0.2.8 (2024-12-24)
 
 
 ### Features
 
 - Added a field to display total issues in a project
-- Added support for ingesting other fields apart from the default fields (Jira Sprint support)
+
+
+## 0.2.7 (2024-12-24)
+
 
 ### Improvements
 
 - Changed issue priority from id to name
+
+
+## 0.2.6 (2024-12-22)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+## 0.2.5 (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.2
+
+
+## 0.2.4 (2024-12-15)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.1
+
+
+## 0.2.3 (2024-12-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.15.0
+
+
+## 0.2.2 (2024-12-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
+## 0.2.1 (2024-12-05)
+
+
+### Improvements
+
+- Added support to sync Jira users to Port and created relevant relations to jira issues assignee and reporter
+
+## 0.2.0 (2024-12-04)
+
+
+### Improvements
+
+- Supporting Bearer token for Oauth2 authentication
+- Added OAuth installation specification for Port
+
+
+## 0.1.105 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.6
+
+
+## 0.1.104 (2024-12-04)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+## 0.1.103 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.3
+
+
+## 0.1.102 (2024-11-25)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.2
+
+
+## 0.1.101 (2024-11-21)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
+
+
+## 0.1.100 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
+## 0.1.99 (2024-11-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+## 0.1.98 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+## 0.1.97 (2024-11-10)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
+## 0.1.96 (2024-11-06)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
 
 
 ## 0.1.95 (2024-10-23)

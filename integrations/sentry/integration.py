@@ -1,4 +1,6 @@
 from pydantic.fields import Field
+from typing import Literal
+
 
 from port_ocean.core.handlers.port_app_config.api import APIPortAppConfig
 from port_ocean.core.handlers.port_app_config.models import (
@@ -17,12 +19,28 @@ class SentrySelector(Selector):
     )
 
 
+class TeamSelector(Selector):
+    include_members: bool = Field(
+        alias="includeMembers",
+        default=False,
+        description="Whether to include the members of the team, defaults to false",
+    )
+
+
 class SentryResourceConfig(ResourceConfig):
     selector: SentrySelector
+    kind: Literal["project", "issue", "project-tag", "issue-tag"]
+
+
+class TeamResourceConfig(ResourceConfig):
+    kind: Literal["team"]
+    selector: TeamSelector
 
 
 class SentryPortAppConfig(PortAppConfig):
-    resources: list[SentryResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[SentryResourceConfig | TeamResourceConfig | ResourceConfig] = Field(
+        default_factory=list
+    )
 
 
 class SentryIntegration(BaseIntegration):

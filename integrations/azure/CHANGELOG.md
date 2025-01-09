@@ -1,3 +1,193 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+<!-- towncrier release notes start -->
+
+0.1.124 (2025-01-08)
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+0.1.123 (2025-01-07)
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+0.1.122 (2025-01-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+0.1.121 (2025-01-02)
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+0.1.120 (2024-12-31)
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.1.119 (2024-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+0.1.118 (2024-12-26)
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+0.1.117 (2024-12-24)
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+0.1.116 (2024-12-22)
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+## 0.1.115 (2024-12-16)
+
+
+### Improvements
+
+- Updated the aiohttp dependency to version 3.11.10, resolving known vulnerability issues with medium severity
+
+
+0.1.114 (2024-12-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.15.2
+
+
+0.1.113 (2024-12-15)
+
+### Improvements
+
+- Bumped ocean version to ^0.15.1
+
+
+0.1.112 (2024-12-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.15.0
+
+
+0.1.111 (2024-12-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
+0.1.110 (2024-12-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.14.6
+
+
+0.1.109 (2024-12-04)
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+0.1.108 (2024-11-28)
+
+### Improvements
+
+- Bumped azure-mgmt-resource to `23.2.0` and aiohttp
+
+### Bug Fixes
+
+- Fixed the listing of azure subscription resource to use latest version of the SDK, this fixes the issue where some keys were not being returned in the response
+
+
+0.1.107 (2024-11-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.14.3
+
+
+0.1.106 (2024-11-25)
+
+### Improvements
+
+- Bumped ocean version to ^0.14.2
+
+
+0.1.105 (2024-11-21)
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
+
+
+0.1.104 (2024-11-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
+0.1.103 (2024-11-12)
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+0.1.102 (2024-11-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+0.1.101 (2024-11-10)
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
+0.1.100 (2024-11-06)
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+
 0.1.99 (2024-10-23)
 
 ### Improvements

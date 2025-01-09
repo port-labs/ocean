@@ -1,54 +1,122 @@
-{
-  "identifier": "datadogServiceMetric",
-  "description": "This blueprint represents a Datadog service metric",
-  "title": "Datadog Service Metric",
-  "icon": "Datadog",
-  "schema": {
-    "properties": {
-      "query": {
-        "type": "string",
-        "title": "Query",
-        "description": "The Datadog query used to retrieve this metric"
+[
+  {
+    "identifier": "datadogServiceMetric",
+    "description": "This blueprint represents a Datadog service metric",
+    "title": "Datadog Service Metric",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "query": {
+          "type": "string",
+          "title": "Query",
+          "description": "The Datadog query used to retrieve this metric"
+        },
+        "series": {
+          "type": "array",
+          "title": "Series",
+          "description": "Array containing detailed information about the metric series"
+        },
+        "res_type": {
+          "type": "string",
+          "title": "Response Type",
+          "description": "The type of response from the Datadog API"
+        },
+        "from_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "From Date",
+          "description": "Unix timestamp of the start of the queried time period"
+        },
+        "to_date": {
+          "type": "string",
+          "format": "date-time",
+          "title": "To Date",
+          "description": "Unix timestamp of the end of the queried time period"
+        },
+        "env": {
+          "type": "string",
+          "title": "Environment",
+          "description": "The environment of the service"
+        }
       },
-      "series": {
-        "type": "array",
-        "title": "Series",
-        "description": "Array containing detailed information about the metric series"
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "relations": {
+      "service": {
+        "title": "Service",
+        "description": "The service associated with this query",
+        "target": "datadogService",
+        "required": false,
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "datadogSloHistory",
+    "description": "This blueprint represents a datadog SLO history",
+    "title": "Datadog SLO History",
+    "icon": "Datadog",
+    "schema": {
+      "properties": {
+        "monitor_type": {
+          "icon": "DefaultProperty",
+          "title": "Type",
+          "type": "string"
+        },
+        "sliValue": {
+          "icon": "DefaultProperty",
+          "title": "SLI Value",
+          "type": "number"
+        },
+        "sampling_start_date": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Sampling Start Date",
+          "format": "date-time"
+        },
+        "sampling_end_date": {
+          "icon": "DefaultProperty",
+          "type": "string",
+          "title": "Sampling End Date",
+          "format": "date-time"
+        },
+        "timeframe": {
+          "type": "number",
+          "title": "Timeframe",
+          "enum": [
+            7,
+            30
+          ],
+          "enumColors": {
+            "7": "purple",
+            "30": "pink"
+          }
+        }
       },
-      "res_type": {
-        "type": "string",
-        "title": "Response Type",
-        "description": "The type of response from the Datadog API"
+      "required": []
+    },
+    "mirrorProperties": {
+      "slo_target": {
+        "title": "SLO Target",
+        "path": "slo.targetThreshold"
       },
-      "from_date": {
-        "type": "string",
-        "format": "date-time",
-        "title": "From Date",
-        "description": "Unix timestamp of the start of the queried time period"
-      },
-      "to_date": {
-        "type": "string",
-        "format": "date-time",
-        "title": "To Date",
-        "description": "Unix timestamp of the end of the queried time period"
-      },
-      "env": {
-        "type": "string",
-        "title": "Environment",
-        "description": "The environment of the service"
+      "slo_warning_threshold": {
+        "title": "SLO Warning Threshold",
+        "path": "slo.warningThreshold"
       }
     },
-    "required": []
-  },
-  "mirrorProperties": {},
-  "calculationProperties": {},
-  "relations": {
-    "service": {
-      "title": "Service",
-      "description": "The service associated with this query",
-      "target": "datadogService",
-      "required": false,
-      "many": false
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "slo": {
+        "title": "SLO",
+        "description": "The SLO to which this history belongs to",
+        "target": "datadogSlo",
+        "required": false,
+        "many": false
+      }
     }
   }
-}
+]

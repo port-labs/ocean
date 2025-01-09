@@ -14,6 +14,7 @@ from typing import (
 from uuid import uuid4
 
 from loguru import logger
+from port_ocean.core.utils.entity_topological_sorter import EntityTopologicalSorter
 from pydispatch import dispatcher  # type: ignore
 from werkzeug.local import LocalStack, LocalProxy
 
@@ -23,6 +24,7 @@ from port_ocean.exceptions.context import (
     ResourceContextNotFoundError,
 )
 from port_ocean.utils.misc import get_time
+
 
 if TYPE_CHECKING:
     from port_ocean.core.handlers.port_app_config.models import (
@@ -50,6 +52,9 @@ class EventContext:
     _parent_event: Optional["EventContext"] = None
     _event_id: str = field(default_factory=lambda: str(uuid4()))
     _on_abort_callbacks: list[AbortCallbackFunction] = field(default_factory=list)
+    entity_topological_sorter: EntityTopologicalSorter = field(
+        default_factory=EntityTopologicalSorter
+    )
 
     def on_abort(self, func: AbortCallbackFunction) -> None:
         self._on_abort_callbacks.append(func)
@@ -129,6 +134,11 @@ async def event_context(
 ) -> AsyncIterator[EventContext]:
     parent = parent_override or _event_context_stack.top
     parent_attributes = parent.attributes if parent else {}
+    entity_topological_sorter = (
+        parent.entity_topological_sorter
+        if parent and parent.entity_topological_sorter
+        else EntityTopologicalSorter()
+    )
 
     attributes = {**parent_attributes, **(attributes or {})}
     new_event = EventContext(
@@ -138,6 +148,7 @@ async def event_context(
         _parent_event=parent,
         # inherit port app config from parent event, so it can be used in nested events
         _port_app_config=parent.port_app_config if parent else None,
+        entity_topological_sorter=entity_topological_sorter,
     )
     _event_context_stack.push(new_event)
 

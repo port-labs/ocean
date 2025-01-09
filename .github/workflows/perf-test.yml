@@ -1,0 +1,114 @@
+name: 🌊 Ocean Core Performance Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        type: choice
+        description: Batch size of requests against fake 3rd party API
+        default: "1000"
+        options:
+          - "10"
+          - "100"
+          - "200"
+          - "500"
+          - "1000"
+      entity_kb_size:
+        type: choice
+        description: Entity size in kb
+        default: "1"
+        options:
+          - "1"
+          - "5"
+          - "10"
+          - "25"
+          - "100"
+          - "500"
+      third_party_latency_ms:
+        type: choice
+        description: Latency in ms to each 3rd party API call
+        default: "0"
+        options:
+          - "0"
+          - "5"
+          - "10"
+          - "25"
+          - "100"
+          - "200"
+          - "500"
+      entities_amount:
+        type: choice
+        description: Explicit amount of entities created
+        default: "500"
+        options:
+          - "10"
+          - "50"
+          - "200"
+          - "500"
+          - "2500"
+          - "5000"
+          - "10000"
+          - "20000"
+          - "25000"
+          - "35000"
+      ocean_log_level:
+        type: choice
+        default: 'INFO'
+        options:
+          - 'DEBUG'
+          - 'INFO'
+        description: Log level to use (defaults to INFO)
+      mock_port_api:
+        type: boolean
+        default: false
+        description: Mock the Port API instead of using the real one
+
+jobs:
+  test:
+    name: 🌊 Ocean Performance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pipx install 'poetry>=1.0.0,<2.0.0'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: |
+          make install
+
+      - name: Run Performance Test
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          THIRD_PARTY_BATCH_SIZE: ${{ inputs.batch_size }}
+          THIRD_PARTY_LATENCY_MS: ${{ inputs.third_party_latency_ms }}
+          ENTITY_AMOUNT: ${{ inputs.entities_amount }}
+          ENTITY_KB_SIZE: ${{ inputs.entity_kb_size }}
+          OCEAN_LOG_LEVEL: ${{ inputs.ocean_log_level }}
+          MOCK_PORT_API: ${{ inputs.mock_port_api && '1' || '0' }}
+        run: |
+          ./scripts/run-local-perf-test.sh
+
+      - name: Cleanup Smoke Test
+        if: always()
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_BASE_URL: ${{ secrets.PORT_BASE_URL }}
+          SMOKE_TEST_SUFFIX: ${{ github.run_id }}
+          MOCK_PORT_API: ${{ inputs.mock_port_api && '1' || '0' }}
+        run: |
+          ./scripts/clean-smoke-test.sh
+      - name: Publish Performance Test Summary
+        run: |
+          cat ./perf-test-results-${{ github.run_id }}.log.md >> ${GITHUB_STEP_SUMMARY}

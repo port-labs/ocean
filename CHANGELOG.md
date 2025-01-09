@@ -7,6 +7,208 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.17.6 (2025-01-08)
+
+### Bug Fixes
+
+- Fixed a bug where the `unregister_raw` and `register_raw` were not handling right the errors and misconfigured entity keys
+
+
+## 0.17.5 (2025-01-07)
+
+
+### Bug Fixes
+
+- Explicit poetry version due to major version (2.0.0) breaking the CI
+
+
+## 0.17.4 (2024-12-31)
+
+
+### Bug Fixes
+
+- Adjusted log terminology
+- Failed transformations counter now increments for all cases (None (null / missing), empty)
+
+## 0.17.3 (2024-12-31)
+
+
+### Bug Fixes
+
+- Added support for empty values for JQ mapping logs
+- Added tests to assert for proper response when JQ is missmapped or values are empty
+
+## 0.17.2 (2024-12-31)
+
+
+### Bug Fixes
+
+- Fixed lint failures
+
+
+## 0.17.1 (2024-12-31)
+
+
+### Bug Fixes
+
+- Fixed lint failure for resources that have two `on_resync` decorators
+
+
+## 0.17.0 (2024-12-31)
+
+
+### Features
+
+- Added new webhooks only event listener mode. This event listener handles only webhook invocations and raises error once used for resync.
+
+
+## 0.16.1 (2024-12-25)
+
+### Bug Fixes
+
+- Added new info log for JQ mapping per batch to notify of misconfigured JQ mappings between a property and the JQ target
+
+
+## 0.16.0 (2024-12-24)
+
+
+### Improvements
+
+- When `createMissingRelatedEntities` is set to `false` and upserting entity failed on not existing entity, the entity will be gathered to the end of the resync and will try sorting all
+  the failed entities through a topological sort and upsert them as well
+- Test upsert with dependencies, with self circular dependency and external entity dependency.
+
+### Bug Fixes
+
+- When experiencing cyclic error on topological sort try unsorted upsert of the entities
+- Fix topologicals sort tree creation so an entity cannot be its own dependency
+
+
+## 0.15.3 (2024-12-22)
+
+### Bug Fixes
+
+- Extended `Ocean new` cli command to fill out more information for the user and also fixed wrong output
+
+
+## 0.15.2 (2024-12-15)
+
+### Improvements
+
+- Add handling for different installation types compatibility
+
+
+## 0.15.1 (2024-12-15)
+
+### Bug Fixes
+
+- Changed `SaasOauth` runtime to `SaasOauth2`
+
+
+## 0.15.0 (2024-12-12)
+
+### Features
+
+- Added `SaasOauth` runtime support
+
+
+## 0.14.7 (2024-12-09)
+
+
+### Bug Fixes
+
+- Remove specific timeout for search request in favor of global timeout.
+- Update `handle_request` to use method for indentifying retryable requests.
+- Set upsert entenies as retryable.
+- Update the condition upon which the JWT token is refreshed so it will refresh on expiration instead of only after.
+
+
+## 0.14.6 (2024-12-04)
+
+
+### Improvements
+
+- Added a warning log for cases where the Integrations are provided with a personal token and not with machine credentials.
+
+## 0.14.5 (2024-12-03)
+
+
+### Improvements
+
+- Add performance test framework
+
+
+## 0.14.4 (2024-12-03)
+
+
+### Bug Fixes
+
+- Add try/except block on httpx transport of ocean client to log timeouts and other exceptions (Client timeouts not recorded)
+
+
+## 0.14.3 (2024-11-25)
+
+
+### Improvements
+
+- Support the reduction of Port rate limit in the integrations.
+
+## 0.14.2 (2024-11-24)
+
+
+### Bug Fixes
+
+- Fix ocean new.
+
+## 0.14.1 (2024-11-13)
+
+
+### Improvements
+
+- Added a decorator to help with caching results from coroutines.
+
+
+## 0.14.0 (2024-11-12)
+
+
+### Improvements
+
+- Add support for choosing default resources that the integration will create dynamically
+
+
+## 0.13.1 (2024-11-12)
+
+
+### Bug Fixes
+
+- Fix memory leak due to repetitive registration of FastAPI routes
+
+
+## 0.13.0 (2024-11-10)
+
+
+### Improvements
+
+- Bump python from 3.11 to 3.12 (0.13.0)
+
+
+## 0.12.9 (2024-11-07)
+
+
+### Bug Fixes
+
+- Await logger writing exception on exit (Integration logs not being ingested)
+- Await logger thread on exit (Integration logs not being ingested)
+- Serialize exception (Integration logs not being ingested)
+
+
+## 0.12.8 (2024-11-04)
+
+
+### Improvements
+
+- Bump fastapi to version 0.115.3 - fix Starlette Denial of service (DoS) via multipart/form-data (0.12.8)
+
 ## 0.12.7 (2024-10-23)
 
 

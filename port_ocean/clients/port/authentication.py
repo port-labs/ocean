@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 import httpx
@@ -17,7 +18,7 @@ class TokenResponse(BaseModel):
 
     @property
     def expired(self) -> bool:
-        return self._retrieved_time + self.expires_in < get_time()
+        return self._retrieved_time + self.expires_in <= get_time()
 
     @property
     def full_token(self) -> str:
@@ -46,7 +47,11 @@ class PortAuthentication:
 
     async def _get_token(self, client_id: str, client_secret: str) -> TokenResponse:
         logger.info(f"Fetching access token for clientId: {client_id}")
-
+        if self._is_personal_token(client_id):
+            logger.warning(
+                "Integration is using personal credentials, make sure to use machine credentials. "
+                "Usage of personal credentials might impose unexpected integration behavior."
+            )
         credentials = {"clientId": client_id, "clientSecret": client_secret}
         response = await self.client.post(
             f"{self.api_url}/auth/access_token",
@@ -82,3 +87,8 @@ class PortAuthentication:
                 self.client_id, self.client_secret
             )
         return self.last_token_object.full_token
+
+    @staticmethod
+    def _is_personal_token(client_id: str) -> bool:
+        email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        return re.match(email_regex, client_id) is not None

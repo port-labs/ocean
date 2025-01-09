@@ -1,3 +1,4 @@
+title: AWS
 description: AWS integration for Port Ocean
 icon: AWS
 features:
@@ -37,6 +38,11 @@ configurations:
     type: string
     sensitive: true
     description: AWS API Key for custom events, used to validate the event source for real-time event updates.
+  - name: maximumConcurrentAccounts
+    type: integer
+    require: false
+    description: The number of concurrent accounts to scan. By default, it is set to 50.
+    default: 50
 deploymentMethodRequirements:
   - type: default
     configurations: ['awsAccessKeyId', 'awsSecretAccessKey']
