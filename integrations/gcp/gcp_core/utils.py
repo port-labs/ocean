@@ -24,7 +24,9 @@ from gcp_core.helpers.ratelimiter.overrides import (
 search_all_resources_qpm_per_project = SearchAllResourcesQpmPerProject()
 pubsub_administrator_per_minute_per_project = PubSubAdministratorPerMinutePerProject()
 project_get_requests_per_minute_per_project = ProjectGetRequestsPerMinutePerProject()
-project_search_requests_per_minute_per_project = ProjectSearchRequestsPerMinutePerProject()
+project_search_requests_per_minute_per_project = (
+    ProjectSearchRequestsPerMinutePerProject()
+)
 
 EXTRA_PROJECT_FIELD = "__project"
 DEFAULT_CREDENTIALS_FILE_PATH = (

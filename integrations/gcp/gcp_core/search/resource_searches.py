@@ -327,7 +327,9 @@ async def feed_event_to_resource(
     config: Optional[ProtoConfig] = None,
 ) -> RAW_ITEM:
     resource = None
-    live_event_projects_rate_limiter, _ = await resolve_request_controllers(AssetTypesWithSpecialHandling.PROJECT, method="get")
+    live_event_projects_rate_limiter, _ = await resolve_request_controllers(
+        AssetTypesWithSpecialHandling.PROJECT, method="get"
+    )
     if asset_data.get("deleted") is True:
         resource = asset_data["priorAsset"]["resource"]["data"]
         resource[EXTRA_PROJECT_FIELD] = await get_single_project(
