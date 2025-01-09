@@ -13,7 +13,7 @@ from jira.overrides import (
     JiraIssueSelector,
     JiraPortAppConfig,
     JiraProjectResourceConfig,
-    TeamResourceConfig
+    TeamResourceConfig,
 )
 
 
