@@ -3,6 +3,7 @@ import json
 from typing import Any, Literal
 import typing
 
+from aiolimiter import AsyncLimiter
 import aioboto3
 from loguru import logger
 from utils.misc import (
@@ -10,6 +11,7 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
     is_resource_not_found_exception,
+    cloud_control_rate_limiter
 )
 from utils.aws import get_sessions
 
@@ -81,27 +83,43 @@ async def describe_single_resource(
                     stack = response.get("Stacks")[0]
                     return fix_unserializable_date_properties(stack)
             case _:
-                async with session.client(
-                    "cloudcontrol",
-                    config=Boto3Config(
-                        retries={"max_attempts": 10, "mode": "standard"},
-                    ),
-                ) as cloudcontrol:
-                    response = await cloudcontrol.get_resource(
-                        TypeName=kind, Identifier=identifier
-                    )
-                    resource_description = response.get("ResourceDescription")
-                    serialized = resource_description.copy()
-                    serialized.update(
-                        {
-                            "Properties": json.loads(
-                                resource_description.get("Properties")
-                            ),
-                        }
-                    )
-                    return serialized
+                async with cloud_control_rate_limiter:
+                    async with session.client(
+                        "cloudcontrol",
+                        config=Boto3Config(
+                            retries={"max_attempts": 10, "mode": "standard"},
+                        ),
+                    ) as cloudcontrol:
+                        response = await cloudcontrol.get_resource(
+                            TypeName=kind, Identifier=identifier
+                        )
+                        resource_description = response.get("ResourceDescription")
+                        serialized = resource_description.copy()
+                        serialized.update(
+                            {
+                                "Properties": json.loads(
+                                    resource_description.get("Properties")
+                                ),
+                            }
+                        )
+                        return serialized
     return {}
 
+
+async def describe_single_resource_cloudcontrol(
+    kind: str, identifier: str, cloudcontrol, semaphore, rate_limiter):
+    async with semaphore:
+        async with rate_limiter:
+            response = await cloudcontrol.get_resource(TypeName=kind, Identifier=identifier)
+            resource_description = response.get("ResourceDescription")
+            serialized = resource_description.copy()
+            serialized.update(
+                {
+                    "Properties": json.loads(resource_description.get("Properties")),
+                }
+            )
+            return serialized
+    
 
 async def resync_custom_kind(
     kind: str,
@@ -188,8 +206,10 @@ async def resync_cloudcontrol(
         return
     logger.info(f"Resyncing {kind} in account {account_id} in region {region}")
     next_token = None
-    while True:
-        async with session.client("cloudcontrol") as cloudcontrol:
+    semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent requests
+    rate_limiter = AsyncLimiter(50, 1)  # Limit to 50 requests per second
+    async with session.client("cloudcontrol") as cloudcontrol:
+        while True:
             try:
                 params = {
                     "TypeName": kind,
@@ -204,18 +224,25 @@ async def resync_cloudcontrol(
                     break
                 page_resources = []
                 if use_get_resource_api:
-                    resources = await asyncio.gather(
-                        *(
-                            describe_single_resource(
-                                kind,
-                                instance.get("Identifier"),
-                                account_id=account_id,
-                                region=region,
-                            )
-                            for instance in resources
+                    async with session.client(
+                        "cloudcontrol",
+                        config=Boto3Config(
+                            retries={"max_attempts": 50, "mode": "adaptive"},
                         ),
-                        return_exceptions=True,
-                    )
+                    ) as cloudcontrol:
+                        resources = await asyncio.gather(
+                            *(
+                                describe_single_resource_cloudcontrol(
+                                    kind,
+                                    instance.get("Identifier"),
+                                    cloudcontrol=cloudcontrol,
+                                    semaphore=semaphore,
+                                    rate_limiter=rate_limiter,
+                                )
+                                for instance in resources
+                            ),
+                            return_exceptions=True,
+                        )
                 else:
                     resources = [
                         {

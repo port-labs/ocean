@@ -1,9 +1,15 @@
 import enum
 
+from aiolimiter import AsyncLimiter
+
 from port_ocean.context.ocean import ocean
 from utils.overrides import AWSResourceConfig
 from typing import List
 import asyncio
+
+CLOUD_CONTROL_REQUESTS_PER_ACCOUNT = 50
+CLOUD_CONTROL_REQUESTS_PER_SECOND_PER_ACCOUNT = 1
+cloud_control_rate_limiter = AsyncLimiter(CLOUD_CONTROL_REQUESTS_PER_ACCOUNT, CLOUD_CONTROL_REQUESTS_PER_SECOND_PER_ACCOUNT) 
 
 
 def get_semaphore() -> asyncio.BoundedSemaphore:
