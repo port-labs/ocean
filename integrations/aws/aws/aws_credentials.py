@@ -43,9 +43,7 @@ class AwsCredentials:
         return expiry.isoformat()
 
     async def update_enabled_regions(self) -> None:
-        session = aioboto3.Session(
-            self.access_key_id, self.secret_access_key, self.session_token
-        )
+        session = await self.create_session()
         async with session.client("account") as account_client:
             response = await account_client.list_regions(
                 RegionOptStatusContains=["ENABLED", "ENABLED_BY_DEFAULT"]
@@ -69,6 +67,7 @@ class AwsCredentials:
 
             :return: A dictionary containing the new credentials and their expiration time.
             """
+            logger.info(f"Refreshing AWS credentials for role {self.role_arn} in account {self.account_id}")
             sts_client = typing.cast(STSClient, self.sts_client)
             response = await sts_client.assume_role(
                 RoleArn=str(self.role_arn),
@@ -94,12 +93,12 @@ class AwsCredentials:
         """
         if self.is_role():
             # For a role, use a refreshable credentials object
-            if self.session_token: # application credentials with session token
+            if self.session_token:
                 return aioboto3.Session(
                 self.access_key_id, self.secret_access_key, self.session_token, region
                 )
             
-            logger.warning(
+            logger.debug(
                 f"Creating a refreshable session for role {self.role_arn} in account {self.account_id} for region {region}"
             )
 

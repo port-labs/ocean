@@ -164,6 +164,7 @@ class SessionManager:
                 duration=ASSUME_ROLE_DURATION_SECONDS,
             )
             await credentials.update_enabled_regions()
+            logger.warning("Updated enabled regions for account %s", account["Id"])
             self._aws_credentials.append(credentials)
             self._aws_accessible_accounts.append(account)
 
