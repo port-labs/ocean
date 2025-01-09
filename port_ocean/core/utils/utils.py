@@ -1,5 +1,7 @@
 import asyncio
 from typing import Iterable, Any, TypeVar, Callable, Awaitable
+import hashlib
+import json
 
 from loguru import logger
 from pydantic import parse_obj_as, ValidationError
@@ -76,9 +78,7 @@ async def gather_and_split_errors_from_results(
     return valid_items, errors
 
 
-def get_port_diff(
-    before: Iterable[Entity], after: Iterable[Entity], include_properties: bool = False
-) -> EntityPortDiff:
+def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPortDiff:
     before_dict = {}
     after_dict = {}
     created = []
@@ -98,10 +98,6 @@ def get_port_diff(
     for key, obj in after_dict.items():
         if key not in before_dict:
             created.append(obj)
-        elif include_properties:
-            # check if properties are the same
-            if obj.properties != before_dict[key].properties:
-                modified.append(obj)
         else:
             modified.append(obj)
 
@@ -110,3 +106,55 @@ def get_port_diff(
             deleted.append(obj)
 
     return EntityPortDiff(created=created, modified=modified, deleted=deleted)
+
+
+def are_entities_equal(first_entity: Entity, second_entity: Entity) -> bool:
+    """
+    Compare two entities by their identifier, blueprint, and a hash of their properties.
+
+    Args:
+        first_entity: First entity to compare
+        second_entity: Second entity to compare
+
+    Returns:
+        bool: True if entities have same identifier, blueprint and properties hash
+    """
+    # First check identifiers and blueprints
+    if (
+        first_entity.identifier != second_entity.identifier
+        or first_entity.blueprint != second_entity.blueprint
+    ):
+        return False
+
+    # Create deterministic JSON strings of properties
+    first_props = json.dumps(first_entity.properties, sort_keys=True)
+    second_props = json.dumps(second_entity.properties, sort_keys=True)
+
+    # Create hashes
+    first_hash = hashlib.sha256(first_props.encode()).hexdigest()
+    second_hash = hashlib.sha256(second_props.encode()).hexdigest()
+
+    return first_hash == second_hash
+
+
+def get_unique_entities(
+    third_party_entities: list[Entity], port_entities: list[Entity]
+) -> list[Entity]:
+    """
+    Filter out entities from third party list that already exist in Port entities.
+
+    Args:
+        third_party_entities: List of entities from third party source
+        port_entities: List of existing Port entities
+
+    Returns:
+        list[Entity]: Filtered list of third party entities, excluding matches found in port_entities
+    """
+    return [
+        third_party_entity
+        for third_party_entity in third_party_entities
+        if not any(
+            are_entities_equal(third_party_entity, port_entity)
+            for port_entity in port_entities
+        )
+    ]

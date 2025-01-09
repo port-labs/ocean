@@ -28,7 +28,7 @@ from port_ocean.core.ocean_types import (
     RAW_ITEM,
     CalculationResult,
 )
-from port_ocean.core.utils.utils import get_port_diff, zip_and_sum, gather_and_split_errors_from_results
+from port_ocean.core.utils.utils import get_unique_entities, zip_and_sum, gather_and_split_errors_from_results
 from port_ocean.exceptions.core import OceanAbortException
 
 SEND_RAW_DATA_EXAMPLES_AMOUNT = 5
@@ -142,11 +142,13 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         objects_diff = await self._calculate_raw(
             [(resource, results)], parse_all, send_raw_data_examples_amount
         )
-        diff = get_port_diff(entities_at_port_with_properties, objects_diff[0].entity_selector_diff.passed)
+        unique_entities = get_unique_entities(objects_diff[0].entity_selector_diff.passed, entities_at_port_with_properties)
+        modified_objects = []
 
-        modified_objects = await self.entities_state_applier.upsert(
-            objects_diff[0].entity_selector_diff.passed, user_agent_type
-        )
+        if unique_entities:
+            modified_objects = await self.entities_state_applier.upsert(
+                unique_entities, user_agent_type
+            )
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
             errors=objects_diff[0].errors,
@@ -465,22 +467,23 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
             creation_results: list[tuple[list[Entity], list[Exception]]] = []
 
+
             try:
                 for resource in app_config.resources:
-                    entities_at_port_with_properties = await ocean.port_client.search_entities(
-                        user_agent_type,
-                        include_params=["blueprint", "identifier", "properties"]
-                    )
-                    entities_at_port_with_properties = [entity for entity in entities_at_port_with_properties if entity.blueprint == resource.kind] # need to fix this
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
+                    entities_at_port_with_properties = await ocean.port_client.search_entities(
+                        user_agent_type,
+                        include_params=["blueprint", "identifier"] + [
+                            f"properties.{prop}" for prop in resource.port.entity.mappings.properties
+                        ]
+                    )
                     async with resource_context(resource):
                         task = asyncio.get_event_loop().create_task(
                             self._register_in_batches(resource, user_agent_type, entities_at_port_with_properties)
                         )
 
                         event.on_abort(lambda: task.cancel())
-
                         creation_results.append(await task)
 
                 await self.sort_and_upsert_failed_entities(user_agent_type)
