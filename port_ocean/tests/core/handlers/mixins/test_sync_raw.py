@@ -164,6 +164,14 @@ def mock_sync_raw_mixin(
     return sync_raw_mixin
 
 
+@pytest.fixture
+def mock_sync_raw_mixin_with_jq_processor(
+    mock_sync_raw_mixin: SyncRawMixin,
+) -> SyncRawMixin:
+    mock_sync_raw_mixin._entity_processor = JQEntityProcessor(mock_context)  # type: ignore
+    return mock_sync_raw_mixin
+
+
 @asynccontextmanager
 async def no_op_event_context(
     existing_event: EventContext,
@@ -398,3 +406,147 @@ async def test_sync_raw_mixin_dependency(
                     "entity_3-entity_1-entity_4-entity_2-entity_5",
                     "entity_3-entity_1-entity_4-entity_5-entity_2",
                 )
+
+
+@pytest.mark.asyncio
+async def test_register_raw(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin, mock_ocean: Ocean
+) -> None:
+    kind = "service"
+    user_agent_type = UserAgentType.exporter
+    raw_entity = [
+        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+    ]
+    expected_result = [
+        {
+            "identifier": "entity_1",
+            "blueprint": "service",
+            "name": "entity_1",
+            "properties": {"url": "https://example.com"},
+        },
+    ]
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
+        # Use patch to mock the method instead of direct assignment
+        with patch.object(
+            mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+            "get_port_app_config",
+            return_value=PortAppConfig(
+                enable_merge_entity=True,
+                delete_dependent_entities=True,
+                create_missing_related_entities=False,
+                resources=[
+                    ResourceConfig(
+                        kind=kind,
+                        selector=Selector(query="true"),
+                        port=PortResourceConfig(
+                            entity=MappingsConfig(
+                                mappings=EntityMapping(
+                                    identifier=".id | tostring",
+                                    title=".name",
+                                    blueprint='"service"',
+                                    properties={"url": ".web_url"},
+                                    relations={},
+                                )
+                            )
+                        ),
+                    )
+                ],
+            ),
+        ):
+            # Ensure the event.port_app_config is set correctly
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
+
+            def upsert_side_effect(
+                entities: list[Entity], user_agent_type: UserAgentType
+            ) -> list[Entity]:
+                # Simulate returning the passed entities
+                return entities
+
+            # Patch the upsert method with the side effect
+            with patch.object(
+                mock_sync_raw_mixin_with_jq_processor.entities_state_applier,
+                "upsert",
+                side_effect=upsert_side_effect,
+            ):
+                # Call the register_raw method
+                registered_entities = (
+                    await mock_sync_raw_mixin_with_jq_processor.register_raw(
+                        kind, raw_entity, user_agent_type
+                    )
+                )
+
+                # Assert that the registered entities match the expected results
+                assert len(registered_entities) == len(expected_result)
+                for entity, result in zip(registered_entities, expected_result):
+                    assert entity.identifier == result["identifier"]
+                    assert entity.blueprint == result["blueprint"]
+                    assert entity.properties == result["properties"]
+
+
+@pytest.mark.asyncio
+async def test_unregister_raw(
+    mock_sync_raw_mixin_with_jq_processor: SyncRawMixin, mock_ocean: Ocean
+) -> None:
+    kind = "service"
+    user_agent_type = UserAgentType.exporter
+    raw_entity = [
+        {"id": "entity_1", "name": "entity_1", "web_url": "https://example.com"},
+    ]
+    expected_result = [
+        {
+            "identifier": "entity_1",
+            "blueprint": "service",
+            "name": "entity_1",
+            "properties": {"url": "https://example.com"},
+        },
+    ]
+
+    async with event_context(EventType.HTTP_REQUEST, trigger_type="machine") as event:
+        # Use patch to mock the method instead of direct assignment
+        with patch.object(
+            mock_sync_raw_mixin_with_jq_processor.port_app_config_handler,
+            "get_port_app_config",
+            return_value=PortAppConfig(
+                enable_merge_entity=True,
+                delete_dependent_entities=True,
+                create_missing_related_entities=False,
+                resources=[
+                    ResourceConfig(
+                        kind=kind,
+                        selector=Selector(query="true"),
+                        port=PortResourceConfig(
+                            entity=MappingsConfig(
+                                mappings=EntityMapping(
+                                    identifier=".id | tostring",
+                                    title=".name",
+                                    blueprint='"service"',
+                                    properties={"url": ".web_url"},
+                                    relations={},
+                                )
+                            )
+                        ),
+                    )
+                ],
+            ),
+        ):
+            # Ensure the event.port_app_config is set correctly
+            event.port_app_config = await mock_sync_raw_mixin_with_jq_processor.port_app_config_handler.get_port_app_config(
+                use_cache=False
+            )
+
+            # Call the unregister_raw method
+            unregistered_entities = (
+                await mock_sync_raw_mixin_with_jq_processor.unregister_raw(
+                    kind, raw_entity, user_agent_type
+                )
+            )
+
+            # Assert that the unregistered entities match the expected results
+            assert len(unregistered_entities) == len(expected_result)
+            for entity, result in zip(unregistered_entities, expected_result):
+                assert entity.identifier == result["identifier"]
+                assert entity.blueprint == result["blueprint"]
+                assert entity.properties == result["properties"]
