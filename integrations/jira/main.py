@@ -10,8 +10,10 @@ from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from jira.client import JiraClient
 from jira.overrides import (
     JiraIssueConfig,
+    JiraIssueSelector,
+    JiraPortAppConfig,
     JiraProjectResourceConfig,
-    TeamResourceConfig,
+    TeamResourceConfig
 )
 
 
@@ -116,21 +118,58 @@ async def handle_webhook_request(data: dict[str, Any]) -> dict[str, Any]:
     logger.info(f"Processing webhook event: {webhook_event}")
 
     match webhook_event:
-        case event if event.startswith("user_"):
+        case event_data if event_data.startswith("user_"):
             account_id = data["user"]["accountId"]
             logger.debug(f"Fetching user with accountId: {account_id}")
             item = await client.get_single_user(account_id)
             kind = ObjectKind.USER
-        case event if event.startswith("project_"):
+        case event_data if event_data.startswith("project_"):
             project_key = data["project"]["key"]
             logger.debug(f"Fetching project with key: {project_key}")
             item = await client.get_single_project(project_key)
             kind = ObjectKind.PROJECT
-        case event if event.startswith("jira:issue_"):
+        case event_data if event_data.startswith("jira:issue_"):
             issue_key = data["issue"]["key"]
-            logger.debug(f"Fetching issue with key: {issue_key}")
-            item = await client.get_single_issue(issue_key)
-            kind = ObjectKind.ISSUE
+            logger.info(
+                f"Fetching issue with key: {issue_key} and applying specified JQL filter"
+            )
+            resource_configs = cast(JiraPortAppConfig, event.port_app_config).resources
+
+            matching_resource_configs: list[JiraIssueConfig] = [
+                resource_config  # type: ignore
+                for resource_config in resource_configs
+                if (
+                    resource_config.kind == ObjectKind.ISSUE
+                    and isinstance(resource_config.selector, JiraIssueSelector)
+                )
+            ]
+
+            for config in matching_resource_configs:
+
+                params = {}
+
+                if config.selector.jql:
+                    params["jql"] = (
+                        f"{config.selector.jql} AND key = {data['issue']['key']}"
+                    )
+                else:
+                    params["jql"] = f"key = {data['issue']['key']}"
+
+                issues: list[dict[str, Any]] = []
+                async for issues in client.get_paginated_issues(params):
+                    issues.extend(issues)
+
+                if not issues:
+                    logger.warning(
+                        f"Issue {data['issue']['key']} not found"
+                        f" using the following query: {params['jql']},"
+                        " trying to remove..."
+                    )
+                    await ocean.unregister_raw(ObjectKind.ISSUE, [data["issue"]])
+                else:
+                    await ocean.register_raw(ObjectKind.ISSUE, issues)
+
+                return {"ok": True}
         case _:
             logger.warning(f"Unknown webhook event type: {webhook_event}")
             return {
