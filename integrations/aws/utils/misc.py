@@ -1,15 +1,28 @@
 import enum
 
-from aiolimiter import AsyncLimiter
 
 from port_ocean.context.ocean import ocean
 from utils.overrides import AWSResourceConfig
-from typing import List
+from typing import List, Literal, Protocol, Dict, Any
 import asyncio
 
-CLOUD_CONTROL_REQUESTS_PER_ACCOUNT = 50
-CLOUD_CONTROL_REQUESTS_PER_SECOND_PER_ACCOUNT = 1
-cloud_control_rate_limiter = AsyncLimiter(CLOUD_CONTROL_REQUESTS_PER_ACCOUNT, CLOUD_CONTROL_REQUESTS_PER_SECOND_PER_ACCOUNT) 
+
+class CloudControlClientProtocol(Protocol):
+    async def get_resource(
+        self, *, TypeName: str, Identifier: str
+    ) -> Dict[str, Any]: ...
+
+    async def list_resources(
+        self, *, TypeName: str, NextToken: str | None = None
+    ) -> Dict[str, Any]: ...
+
+
+class CloudControlThrottlingConfig(enum.Enum):
+    RATE_LIMITER_MAX_RATE: int = 100
+    RATE_LIMITER_TIME_PERIOD: float = 60.0  # in seconds
+    SEMAPHORE: int = 50
+    MAX_RETRY_ATTEMPTS: int = 100
+    RETRY_MODE: Literal["legacy", "standard", "adaptive"] = "adaptive"
 
 
 def get_semaphore() -> asyncio.BoundedSemaphore:

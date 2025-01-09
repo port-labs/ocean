@@ -11,7 +11,8 @@ from utils.misc import (
     ResourceKindsWithSpecialHandling,
     is_access_denied_exception,
     is_resource_not_found_exception,
-    cloud_control_rate_limiter
+    CloudControlThrottlingConfig,
+    CloudControlClientProtocol,
 )
 from utils.aws import get_sessions
 
@@ -83,35 +84,36 @@ async def describe_single_resource(
                     stack = response.get("Stacks")[0]
                     return fix_unserializable_date_properties(stack)
             case _:
-                async with cloud_control_rate_limiter:
-                    async with session.client(
-                        "cloudcontrol",
-                        config=Boto3Config(
-                            retries={"max_attempts": 10, "mode": "standard"},
-                        ),
-                    ) as cloudcontrol:
-                        response = await cloudcontrol.get_resource(
-                            TypeName=kind, Identifier=identifier
-                        )
-                        resource_description = response.get("ResourceDescription")
-                        serialized = resource_description.copy()
-                        serialized.update(
-                            {
-                                "Properties": json.loads(
-                                    resource_description.get("Properties")
-                                ),
-                            }
-                        )
-                        return serialized
+                async with session.client(
+                    "cloudcontrol",
+                    config=Boto3Config(
+                        retries={"max_attempts": 10, "mode": "standard"},
+                    ),
+                ) as cloudcontrol:
+                    semaphore = asyncio.BoundedSemaphore(
+                        CloudControlThrottlingConfig.SEMAPHORE.value
+                    )
+                    rate_limiter = AsyncLimiter(
+                        CloudControlThrottlingConfig.RATE_LIMITER_MAX_RATE.value,
+                        CloudControlThrottlingConfig.RATE_LIMITER_TIME_PERIOD.value,
+                    )
+                    return await describe_single_resource_cloudcontrol(
+                        kind, identifier, cloudcontrol, semaphore, rate_limiter
+                    )
     return {}
 
 
 async def describe_single_resource_cloudcontrol(
-    kind: str, identifier: str, cloudcontrol, semaphore, rate_limiter):
+    kind: str,
+    identifier: str,
+    client: CloudControlClientProtocol,
+    semaphore: asyncio.Semaphore,
+    rate_limiter: AsyncLimiter,
+) -> dict[str, str]:
     async with semaphore:
         async with rate_limiter:
-            response = await cloudcontrol.get_resource(TypeName=kind, Identifier=identifier)
-            resource_description = response.get("ResourceDescription")
+            response = await client.get_resource(TypeName=kind, Identifier=identifier)
+            resource_description = response["ResourceDescription"]
             serialized = resource_description.copy()
             serialized.update(
                 {
@@ -119,7 +121,7 @@ async def describe_single_resource_cloudcontrol(
                 }
             )
             return serialized
-    
+
 
 async def resync_custom_kind(
     kind: str,
@@ -156,8 +158,8 @@ async def resync_custom_kind(
 
     if not describe_method_params:
         describe_method_params = {}
-    while True:
-        async with session.client(service_name) as client:
+    async with session.client(service_name) as client:
+        while True:
             try:
                 params: dict[str, Any] = describe_method_params
                 if next_token:
@@ -206,8 +208,14 @@ async def resync_cloudcontrol(
         return
     logger.info(f"Resyncing {kind} in account {account_id} in region {region}")
     next_token = None
-    semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent requests
-    rate_limiter = AsyncLimiter(50, 1)  # Limit to 50 requests per second
+    if use_get_resource_api:
+        semaphore = asyncio.BoundedSemaphore(
+            CloudControlThrottlingConfig.SEMAPHORE.value
+        )
+        rate_limiter = AsyncLimiter(
+            CloudControlThrottlingConfig.RATE_LIMITER_MAX_RATE.value,
+            CloudControlThrottlingConfig.RATE_LIMITER_TIME_PERIOD.value,
+        )
     async with session.client("cloudcontrol") as cloudcontrol:
         while True:
             try:
@@ -227,15 +235,18 @@ async def resync_cloudcontrol(
                     async with session.client(
                         "cloudcontrol",
                         config=Boto3Config(
-                            retries={"max_attempts": 50, "mode": "adaptive"},
+                            retries={
+                                "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS.value,
+                                "mode": CloudControlThrottlingConfig.RETRY_MODE.value,
+                            },
                         ),
-                    ) as cloudcontrol:
+                    ) as cloudcontrol_get_resource_client:
                         resources = await asyncio.gather(
                             *(
                                 describe_single_resource_cloudcontrol(
                                     kind,
                                     instance.get("Identifier"),
-                                    cloudcontrol=cloudcontrol,
+                                    client=cloudcontrol_get_resource_client,
                                     semaphore=semaphore,
                                     rate_limiter=rate_limiter,
                                 )
