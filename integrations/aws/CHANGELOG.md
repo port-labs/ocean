@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.79 (2025-01-07)
+## 0.2.82 (2025-01-9)
 
 
 ### Bug Fixes
 
 - Fixed a bug where token refresh fails because its triggered while an active session was still using the old token.
+
+
+## 0.2.81 (2025-01-08)
+
+
+### Bug Fixes
+
+- Updated the serialized response to include valid custom property json key by accessing the StrEnum value properly. 
+
+
+## 0.2.80 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.2.79 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
 
 
 ## 0.2.78 (2025-01-02)

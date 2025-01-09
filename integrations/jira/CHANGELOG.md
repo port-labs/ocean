@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.2.18 (2025-01-08)
+
+
+### Bug Fixes
+
+- Fixed a bug where webhook processes issues that are not allowed in a user's integration due to JQL filters
+
+
+## 0.2.17 (2025-01-08)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+## 0.2.16 (2025-01-07)
+
+
+### Features
+
+- Added support for ingesting other fields apart from the default fields (Jira Sprint support)
+
+
+## 0.2.15 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
 ## 0.2.14 (2025-01-02)
 
 
