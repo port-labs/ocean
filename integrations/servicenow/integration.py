@@ -39,10 +39,7 @@ class APIQueryParams(BaseModel):
     def generate_request_params(self) -> dict[str, Any]:
         params = {}
         for field, value in self.dict(exclude_none=True).items():
-            if isinstance(value, list):
-                params[field] = ",".join(value)
-            else:
-                params[field] = value
+            params[field] = value
         return params
 
     class Config:
@@ -62,7 +59,9 @@ class ServiceNowResourceConfig(ResourceConfig):
 
 
 class ServiceNowPortAppConfig(PortAppConfig):
-    resources: list[ServiceNowResourceConfig] = Field(default_factory=list)
+    resources: list[ServiceNowResourceConfig | ResourceConfig] = Field(
+        default_factory=list
+    )
 
 
 class ServiceNowIntegration(BaseIntegration):
