@@ -1,5 +1,50 @@
 [
   {
+    "identifier": "opsGenieUser",
+    "description": "This blueprint represents an OpsGenie user in our software catalog",
+    "title": "OpsGenie User",
+    "icon": "OpsGenie",
+    "schema": {
+      "properties": {
+        "role": {
+          "title": "Role",
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "title": "Email",
+          "format": "user"
+        },
+        "address": {
+          "type": "object",
+          "title": "Address"
+        },
+        "timeZone": {
+          "type": "string",
+          "title": "Time Zone"
+        },
+        "isVerified": {
+          "type": "boolean",
+          "title": "Is Verified"
+        },
+        "isBlocked": {
+          "type": "boolean",
+          "title": "Is Blocked"
+        },
+        "createdAt": {
+          "type": "string",
+          "title": "Created At",
+          "format": "date-time"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {}
+  },
+  {
     "identifier": "opsGenieTeam",
     "description": "This blueprint represents an OpsGenie team in our software catalog",
     "title": "OpsGenie Team",
@@ -32,7 +77,14 @@
     "mirrorProperties": {},
     "calculationProperties": {},
     "aggregationProperties": {},
-    "relations": {}
+    "relations": {
+      "members": {
+        "title": "Members",
+        "target": "opsGenieUser",
+        "required": false,
+        "many": true
+      }
+    }
   },
   {
     "identifier": "opsGenieSchedule",
@@ -192,11 +244,6 @@
           },
           "title": "Tags"
         },
-        "responders": {
-          "type": "array",
-          "title": "Responders",
-          "description": "Responders to the alert"
-        },
         "priority": {
           "type": "string",
           "title": "Priority"
@@ -222,6 +269,12 @@
         "target": "opsGenieService",
         "many": true,
         "required": false
+      },
+      "respondingTeam": {
+        "title": "Responding Team",
+        "target": "opsGenieTeam",
+        "required": false,
+        "many": true
       }
     }
   },
@@ -259,11 +312,6 @@
             "type": "string"
           },
           "title": "Tags"
-        },
-        "responders": {
-          "type": "array",
-          "title": "Responders",
-          "description": "Responders to the alert"
         },
         "integration": {
           "type": "string",
@@ -309,6 +357,12 @@
         "target": "opsGenieIncident",
         "required": false,
         "many": false
+      },
+      "respondingTeam": {
+        "title": "Responding Team",
+        "target": "opsGenieTeam",
+        "required": false,
+        "many": true
       }
     }
   }

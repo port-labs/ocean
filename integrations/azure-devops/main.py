@@ -13,6 +13,8 @@ from azure_devops.misc import (
     AzureDevopsProjectResourceConfig,
 )
 
+from azure_devops.misc import AzureDevopsWorkItemResourceConfig
+
 
 @ocean.on_start()
 async def setup_webhooks() -> None:
@@ -106,9 +108,36 @@ async def resync_repository_policies(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
 @ocean.on_resync(Kind.WORK_ITEM)
 async def resync_workitems(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     azure_devops_client = AzureDevopsClient.create_from_ocean_config()
-    async for work_items in azure_devops_client.generate_work_items():
+    config = cast(AzureDevopsWorkItemResourceConfig, event.resource_config)
+    async for work_items in azure_devops_client.generate_work_items(
+        wiql=config.selector.wiql, expand=config.selector.expand
+    ):
         logger.info(f"Resyncing {len(work_items)} work items")
         yield work_items
+
+
+@ocean.on_resync(Kind.COLUMN)
+async def resync_columns(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for columns in azure_devops_client.get_columns():
+        logger.info(f"Resyncing {len(columns)} columns")
+        yield columns
+
+
+@ocean.on_resync(Kind.BOARD)
+async def resync_boards(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for boards in azure_devops_client.get_boards_in_organization():
+        logger.info(f"Resyncing {len(boards)} boards")
+        yield boards
+
+
+@ocean.on_resync(Kind.RELEASE)
+async def resync_releases(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+    azure_devops_client = AzureDevopsClient.create_from_ocean_config()
+    async for releases in azure_devops_client.generate_releases():
+        logger.info(f"Resyncing {len(releases)} releases")
+        yield releases
 
 
 @ocean.router.post("/webhook")

@@ -14,7 +14,7 @@ from port_ocean.core.defaults.common import (
 )
 from port_ocean.core.handlers.port_app_config.models import PortAppConfig
 from port_ocean.core.models import Blueprint
-from port_ocean.core.utils import gather_and_split_errors_from_results
+from port_ocean.core.utils.utils import gather_and_split_errors_from_results
 from port_ocean.exceptions.port_defaults import (
     AbortDefaultCreationError,
 )
@@ -198,7 +198,9 @@ async def _initialize_defaults(
     config_class: Type[PortAppConfig], integration_config: IntegrationConfiguration
 ) -> None:
     port_client = ocean.port_client
-    defaults = get_port_integration_defaults(config_class)
+    defaults = get_port_integration_defaults(
+        config_class, integration_config.resources_path
+    )
     if not defaults:
         logger.warning("No defaults found. Skipping initialization...")
         return None

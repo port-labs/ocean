@@ -1,20 +1,22 @@
+import asyncio
 import typing
 from typing import Any
-import asyncio
 
 from loguru import logger
-
-from clients.pagerduty import PagerDutyClient
-from integration import ObjectKind, PagerdutyServiceResourceConfig
-from integration import (
-    PagerdutyIncidentResourceConfig,
-    PagerdutyScheduleResourceConfig,
-    PagerdutyOncallResourceConfig,
-    PagerdutyEscalationPolicyResourceConfig,
-)
 from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
+
+from clients.pagerduty import PagerDutyClient
+from integration import (
+    ObjectKind,
+    OBJECTS_WITH_SPECIAL_HANDLING,
+    PagerdutyEscalationPolicyResourceConfig,
+    PagerdutyIncidentResourceConfig,
+    PagerdutyOncallResourceConfig,
+    PagerdutyScheduleResourceConfig,
+    PagerdutyServiceResourceConfig,
+)
 
 
 def initialize_client() -> PagerDutyClient:
@@ -28,19 +30,31 @@ def initialize_client() -> PagerDutyClient:
 async def enrich_service_with_analytics_data(
     client: PagerDutyClient, services: list[dict[str, Any]], months_period: int
 ) -> list[dict[str, Any]]:
-    analytics_data = await asyncio.gather(
-        *[
-            client.get_service_analytics(service["id"], months_period)
-            for service in services
-        ]
-    )
+    async def fetch_service_analytics(
+        services: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        service_ids = [service["id"] for service in services]
+        try:
+            services_analytics = await client.get_service_analytics(
+                service_ids, months_period
+            )
+            # Map analytics to corresponding services
+            service_analytics_map = {
+                analytics["service_id"]: analytics for analytics in services_analytics
+            }
+            enriched_services = [
+                {
+                    **service,
+                    "__analytics": service_analytics_map.get(service["id"], None),
+                }
+                for service in services
+            ]
+            return enriched_services
+        except Exception as e:
+            logger.error(f"Failed to fetch analytics for service {service_ids}: {e}")
+            return [{**service, "__analytics": None} for service in services]
 
-    enriched_services = [
-        {**service, "__analytics": analytics}
-        for service, analytics in zip(services, analytics_data)
-    ]
-
-    return enriched_services
+    return await fetch_service_analytics(services)
 
 
 async def enrich_incidents_with_analytics_data(
@@ -71,7 +85,7 @@ async def on_incidents_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     query_params = selector.api_query_params
 
     async for incidents in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.INCIDENTS,
+        resource=ObjectKind.INCIDENTS,
         params=query_params.generate_request_params() if query_params else None,
     ):
         logger.info(f"Received batch with {len(incidents)} incidents")
@@ -95,7 +109,7 @@ async def on_services_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector
 
     async for services in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.SERVICES,
+        resource=ObjectKind.SERVICES,
         params=(
             selector.api_query_params.generate_request_params()
             if selector.api_query_params
@@ -121,7 +135,7 @@ async def on_schedules_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector.api_query_params
 
     async for schedules in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.SCHEDULES,
+        resource=ObjectKind.SCHEDULES,
         params=query_params.generate_request_params() if query_params else None,
     ):
         yield await pager_duty_client.transform_user_ids_to_emails(schedules)
@@ -137,7 +151,7 @@ async def on_oncalls_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     ).selector.api_query_params
 
     async for oncalls in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.ONCALLS,
+        resource=ObjectKind.ONCALLS,
         params=query_params.generate_request_params() if query_params else None,
     ):
         yield oncalls
@@ -152,7 +166,7 @@ async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
     ).selector
 
     async for escalation_policies in pager_duty_client.paginate_request_to_pager_duty(
-        data_key=ObjectKind.ESCALATION_POLICIES,
+        resource=ObjectKind.ESCALATION_POLICIES,
         params=(
             selector.api_query_params.generate_request_params()
             if selector.api_query_params
@@ -174,6 +188,28 @@ async def on_escalation_policies_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYP
             yield escalation_policies
         else:
             yield escalation_policies
+
+
+@ocean.on_resync()
+async def on_global_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
+
+    if kind in OBJECTS_WITH_SPECIAL_HANDLING:
+        logger.info(f"Kind {kind} has a special handling. Skipping...")
+        return
+    else:
+        pager_duty_client = initialize_client()
+
+        try:
+            async for (
+                resource_batch
+            ) in pager_duty_client.paginate_request_to_pager_duty(resource=kind):
+                logger.info(f"Received batch with {len(resource_batch)} {kind}")
+                yield resource_batch
+        except Exception as e:
+            logger.error(
+                f"Failed to fetch {kind} from Pagerduty due to error: {e}. For information on supported resources, please refer to our documentation at https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/pagerduty/#supported-resources"
+            )
+            raise e
 
 
 @ocean.router.post("/webhook")

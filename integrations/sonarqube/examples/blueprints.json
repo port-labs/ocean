@@ -1,0 +1,440 @@
+[
+  {
+    "identifier": "sonarQubeProject",
+    "title": "SonarQube Project",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "organization": {
+          "type": "string",
+          "title": "Organization",
+          "icon": "TwoUsers"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Link",
+          "icon": "Link"
+        },
+        "lastAnalysisDate": {
+          "type": "string",
+          "format": "date-time",
+          "icon": "Clock",
+          "title": "Last Analysis Date"
+        },
+        "qualityGateStatus": {
+          "title": "Quality Gate Status",
+          "type": "string",
+          "enum": [
+            "OK",
+            "WARN",
+            "ERROR"
+          ],
+          "enumColors": {
+            "OK": "green",
+            "WARN": "yellow",
+            "ERROR": "red"
+          }
+        },
+        "numberOfBugs": {
+          "type": "number",
+          "title": "Number Of Bugs"
+        },
+        "numberOfCodeSmells": {
+          "type": "number",
+          "title": "Number Of CodeSmells"
+        },
+        "numberOfVulnerabilities": {
+          "type": "number",
+          "title": "Number Of Vulnerabilities"
+        },
+        "numberOfHotSpots": {
+          "type": "number",
+          "title": "Number Of HotSpots"
+        },
+        "numberOfDuplications": {
+          "type": "number",
+          "title": "Number Of Duplications"
+        },
+        "coverage": {
+          "type": "number",
+          "title": "Coverage"
+        },
+        "mainBranch": {
+          "type": "string",
+          "icon": "Git",
+          "title": "Main Branch"
+        },
+        "mainBranchLastAnalysisDate": {
+          "type": "string",
+          "format": "date-time",
+          "icon": "Clock",
+          "title": "Main Branch Last Analysis Date"
+        },
+        "revision": {
+          "type": "string",
+          "title": "Revision"
+        },
+        "managed": {
+          "type": "boolean",
+          "title": "Managed"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "criticalOpenIssues": {
+        "title": "Number Of Open Critical Issues",
+        "type": "number",
+        "target": "sonarQubeIssue",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "in",
+              "value": ["OPEN", "REOPENED"]
+            },
+            {
+              "property": "severity",
+              "operator": "=",
+              "value": "CRITICAL"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      },
+      "numberOfOpenIssues": {
+        "title": "Number Of Open Issues",
+        "type": "number",
+        "target": "sonarQubeIssue",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "in",
+              "value": [
+                "OPEN",
+                "REOPENED"
+              ]
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "sonarQubeProject",
+    "title": "SonarQube Project",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "organization": {
+          "type": "string",
+          "title": "Organization",
+          "icon": "TwoUsers"
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "title": "Link",
+          "icon": "Link"
+        },
+        "lastAnalysisDate": {
+          "type": "string",
+          "format": "date-time",
+          "icon": "Clock",
+          "title": "Last Analysis Date"
+        },
+        "qualityGateStatus": {
+          "title": "Quality Gate Status",
+          "type": "string",
+          "enum": [
+            "OK",
+            "WARN",
+            "ERROR"
+          ],
+          "enumColors": {
+            "OK": "green",
+            "WARN": "yellow",
+            "ERROR": "red"
+          }
+        },
+        "numberOfBugs": {
+          "type": "number",
+          "title": "Number Of Bugs"
+        },
+        "numberOfCodeSmells": {
+          "type": "number",
+          "title": "Number Of CodeSmells"
+        },
+        "numberOfVulnerabilities": {
+          "type": "number",
+          "title": "Number Of Vulnerabilities"
+        },
+        "numberOfHotSpots": {
+          "type": "number",
+          "title": "Number Of HotSpots"
+        },
+        "numberOfDuplications": {
+          "type": "number",
+          "title": "Number Of Duplications"
+        },
+        "coverage": {
+          "type": "number",
+          "title": "Coverage"
+        },
+        "mainBranch": {
+          "type": "string",
+          "icon": "Git",
+          "title": "Main Branch"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        }
+      },
+      "required": []
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {
+      "criticalOpenIssues": {
+        "title": "Number Of Open Critical Issues",
+        "type": "number",
+        "target": "sonarQubeIssue",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "in",
+              "value": ["OPEN", "REOPENED"]
+            },
+            {
+              "property": "severity",
+              "operator": "=",
+              "value": "CRITICAL"
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      },
+      "numberOfOpenIssues": {
+        "title": "Number Of Open Issues",
+        "type": "number",
+        "target": "sonarQubeIssue",
+        "query": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "status",
+              "operator": "in",
+              "value": [
+                "OPEN",
+                "REOPENED"
+              ]
+            }
+          ]
+        },
+        "calculationSpec": {
+          "calculationBy": "entities",
+          "func": "count"
+        }
+      }
+    },
+    "relations": {}
+  },
+  {
+    "identifier": "sonarQubeAnalysis",
+    "title": "SonarQube Analysis",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "branch": {
+          "type": "string",
+          "title": "Branch",
+          "icon": "GitVersion"
+        },
+        "fixedIssues": {
+          "type": "number",
+          "title": "Fixed Issues"
+        },
+        "newIssues": {
+          "type": "number",
+          "title": "New Issues"
+        },
+        "coverage": {
+          "title": "Coverage",
+          "type": "number"
+        },
+        "duplications": {
+          "type": "number",
+          "title": "Duplications"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        }
+      }
+    },
+    "relations": {
+      "sonarQubeProject": {
+        "target": "sonarQubeProject",
+        "required": false,
+        "title": "SonarQube Project",
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "sonarQubeIssue",
+    "title": "SonarQube Issue",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Type",
+          "enum": [
+            "CODE_SMELL",
+            "BUG",
+            "VULNERABILITY"
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "title": "Severity",
+          "enum": [
+            "MAJOR",
+            "INFO",
+            "MINOR",
+            "CRITICAL",
+            "BLOCKER"
+          ],
+          "enumColors": {
+            "MAJOR": "orange",
+            "INFO": "green",
+            "CRITICAL": "red",
+            "BLOCKER": "red",
+            "MINOR": "yellow"
+          }
+        },
+        "link": {
+          "type": "string",
+          "format": "url",
+          "icon": "Link",
+          "title": "Link"
+        },
+        "status": {
+          "type": "string",
+          "title": "Status",
+          "enum": [
+            "OPEN",
+            "CLOSED",
+            "RESOLVED",
+            "REOPENED",
+            "CONFIRMED"
+          ]
+        },
+        "assignees": {
+          "title": "Assignees",
+          "type": "string",
+          "icon": "TwoUsers"
+        },
+        "tags": {
+          "type": "array",
+          "title": "Tags"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created At"
+        }
+      }
+    },
+    "relations": {
+      "sonarQubeProject": {
+        "target": "sonarQubeProject",
+        "required": false,
+        "title": "SonarQube Project",
+        "many": false
+      }
+    }
+  },
+  {
+    "identifier": "sonarQubePortfolio",
+    "title": "SonarQube Portfolio",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "visibility": {
+          "type": "string",
+          "title": "Visibility",
+          "enum": [
+            "PUBLIC",
+            "PRIVATE"
+          ],
+          "enumColors": {
+            "PUBLIC": "green",
+            "PRIVATE": "lightGray"
+          }
+        },
+        "selectionMode": {
+          "type": "string",
+          "title": "Selection Mode",
+          "enum": [
+            "AUTO",
+            "MANUAL",
+            "NONE"
+          ],
+          "enumColors": {
+            "AUTO": "blue",
+            "MANUAL": "green",
+            "NONE": "lightGray"
+          }
+        },
+        "disabled": {
+          "type": "boolean",
+          "title": "Disabled"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "subPortfolios": {
+        "target": "sonarQubePortfolio",
+        "required": false,
+        "title": "Sub Portfolios",
+        "many": true
+      },
+      "referencedBy": {
+        "target": "sonarQubePortfolio",
+        "required": false,
+        "title": "Referenced By",
+        "many": true
+      }
+    }
+  }
+]

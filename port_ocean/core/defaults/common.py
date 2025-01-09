@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Type, Any, TypedDict, Optional
 
 import httpx
+from loguru import logger
 import yaml
 from pydantic import BaseModel, Field
 from starlette import status
@@ -77,18 +78,33 @@ def deconstruct_blueprints_to_creation_steps(
     )
 
 
+def is_valid_dir(path: Path) -> bool:
+    return path.is_dir()
+
+
 def get_port_integration_defaults(
-    port_app_config_class: Type[PortAppConfig], base_path: Path = Path(".")
+    port_app_config_class: Type[PortAppConfig],
+    custom_defaults_dir: Optional[str] = None,
+    base_path: Path = Path("."),
 ) -> Defaults | None:
-    defaults_dir = base_path / ".port/resources"
-    if not defaults_dir.exists():
+    fallback_dir = base_path / ".port/resources"
+
+    if custom_defaults_dir and is_valid_dir(base_path / custom_defaults_dir):
+        defaults_dir = base_path / custom_defaults_dir
+    elif is_valid_dir(fallback_dir):
+        logger.info(
+            f"Could not find custom defaults directory {custom_defaults_dir}, falling back to {fallback_dir}",
+            fallback_dir=fallback_dir,
+            custom_defaults_dir=custom_defaults_dir,
+        )
+        defaults_dir = fallback_dir
+    else:
+        logger.warning(
+            f"Could not find defaults directory {fallback_dir}, skipping defaults"
+        )
         return None
 
-    if not defaults_dir.is_dir():
-        raise UnsupportedDefaultFileType(
-            f"Defaults directory is not a directory: {defaults_dir}"
-        )
-
+    logger.info(f"Loading defaults from {defaults_dir}", defaults_dir=defaults_dir)
     default_jsons = {}
     allowed_file_names = [
         field_model.alias for _, field_model in Defaults.__fields__.items()

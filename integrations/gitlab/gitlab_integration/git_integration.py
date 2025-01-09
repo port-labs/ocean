@@ -3,7 +3,6 @@ from typing import Dict, Any, Literal, Tuple, List, Type
 from gitlab.v4.objects import Project
 from loguru import logger
 from pydantic import Field, BaseModel
-
 from gitlab_integration.core.async_fetcher import AsyncFetcher
 from gitlab_integration.core.entities import (
     FILE_PROPERTY_PREFIX,
@@ -122,10 +121,36 @@ class GitlabResourceConfig(ResourceConfig):
     selector: GitlabSelector
 
 
+class GitlabMemberSelector(Selector):
+    include_inherited_members: bool = Field(
+        alias="includeInheritedMembers",
+        default=False,
+        description="If set to true, the integration will include inherited members in the group members list. Default value is false",
+    )
+    include_bot_members: bool = Field(
+        alias="includeBotMembers",
+        default=True,
+        description="If set to false, bots will be filtered out from the members list. Default value is true",
+    )
+
+
+class GitlabObjectWithMembersResourceConfig(ResourceConfig):
+    kind: Literal["project-with-members", "group-with-members"]
+    selector: GitlabMemberSelector
+
+
 class FilesSelector(BaseModel):
     path: str = Field(description="The path to get the files from")
     repos: List[str] = Field(
         description="A list of repositories to search files in", default_factory=list
+    )
+
+
+class GitLabProjectSelector(Selector):
+    include_labels: bool = Field(
+        alias="includeLabels",
+        description="Whether to enrich projects with labels",
+        default=False,
     )
 
 
@@ -138,6 +163,11 @@ class GitLabFilesResourceConfig(ResourceConfig):
     kind: Literal["file"]
 
 
+class GitLabProjectResourceConfig(ResourceConfig):
+    selector: GitLabProjectSelector
+    kind: Literal["project"]
+
+
 class GitlabPortAppConfig(PortAppConfig):
     spec_path: str | List[str] = Field(alias="specPath", default="**/port.yml")
     branch: str | None
@@ -147,7 +177,7 @@ class GitlabPortAppConfig(PortAppConfig):
     project_visibility_filter: str | None = Field(
         alias="projectVisibilityFilter", default=None
     )
-    resources: list[GitLabFilesResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
+    resources: list[GitlabObjectWithMembersResourceConfig | GitLabFilesResourceConfig | GitLabProjectResourceConfig | GitlabResourceConfig] = Field(default_factory=list)  # type: ignore
 
 
 def _get_project_from_cache(project_id: int) -> Project | None:

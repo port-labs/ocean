@@ -1,5 +1,6 @@
 deleteDependentEntities: true
 createMissingRelatedEntities: true
+useDefaultBranch: true
 resources:
   - kind: project
     selector:
@@ -54,9 +55,23 @@ resources:
           blueprint: '"service"'
           properties:
             workItemLinking: .isEnabled and .isBlocking
+  - kind: board
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .id | gsub(" "; "")
+          title: .name
+          blueprint: '"board"'
+          properties:
+            link: .url
+          relations:
+            project: .__project.id | gsub(" "; "")
   - kind: work-item
     selector:
       query: 'true'
+      expand: 'All'
     port:
       entity:
         mappings:
@@ -76,3 +91,37 @@ resources:
             changedDate: .fields."System.ChangedDate"
           relations:
             project: .__projectId | gsub(" "; "")
+            column: >-
+              .fields."System.WorkItemType"+"-"+.fields."System.BoardColumn"+"-"+.__project.id
+              | gsub(" "; "")
+  - kind: column
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .__stateType+"-"+.name+"-"+.__board.__project.id | gsub(" "; "")
+          title: .name
+          blueprint: '"column"'
+          relations:
+            board: .__board.id | gsub(" "; "")
+  - kind: release
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          identifier: .projectReference.id + "-" + (.id | tostring) | gsub(" "; "")
+          title: .name
+          blueprint: '"release"'
+          properties:
+            status: .status
+            reason: .reason
+            createdDate: .createdOn
+            modifiedDate: .modifiedOn
+            createdBy: .createdBy.uniqueName
+            modifiedBy: .modifiedBy.uniqueName
+            definitionName: .releaseDefinition.name
+            link: ._links.web.href | gsub("_release?releaseId="; "")
+          relations:
+            project: .projectReference.id | gsub(" "; "")

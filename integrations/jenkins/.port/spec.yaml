@@ -1,3 +1,4 @@
+title: Jenkins
 type: jenkins
 description: Jenkins integration for Port Ocean
 icon: Jenkins
@@ -9,6 +10,7 @@ features:
       - kind: job
       - kind: build
       - kind: user
+      - kind: stage
 configurations:
   - name: jenkinsHost
     description: The base URL of your Jenkins server. This should be the address you use to access the Jenkins dashboard in your browser (e.g., "https://your-jenkins-server.com").

@@ -1,4 +1,5 @@
-description: OpsGenie integration for Port Ocean
+title: Opsgenie
+description: Opsgenie integration for Port Ocean
 icon: OpsGenie
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/incident-management/opsgenie
 features:
@@ -11,6 +12,7 @@ features:
       - kind: schedule
       - kind: team
       - kind: schedule-on-call
+      - kind: user
 configurations:
   - name: apiToken
     required: true

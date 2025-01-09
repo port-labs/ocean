@@ -3,9 +3,13 @@ ACTIVATE := . .venv/bin/activate
 define run_checks
 	exit_code=0; \
 	cd $1; \
+	echo "Running poetry check"; \
 	poetry check || exit_code=$$?;\
-	mypy . || exit_code=$$?; \
+	echo "Running mypy"; \
+	mypy . --exclude '/\.venv/' || exit_code=$$?; \
+	echo "Running ruff"; \
 	ruff check . || exit_code=$$?; \
+	echo "Running black"; \
 	black --check . || exit_code=$$?; \
 	if [ $$exit_code -eq 1 ]; then \
 		echo "\033[0;31mOne or more checks failed with exit code $$exit_code\033[0m"; \
@@ -18,7 +22,7 @@ endef
 define install_poetry
 	if ! command -v poetry &> /dev/null; then \
     	pip install --upgrade pip; \
-		pip install poetry; \
+		pip install 'poetry>=1.0.0,<2.0.0'; \
 	else \
     	echo "Poetry is already installed."; \
 	fi
@@ -49,8 +53,8 @@ install/local-core: install
 	$(ACTIVATE) && pip install -e ../../
 
 install/prod:
-	$(call install_poetry) && \
 	poetry install --without dev --no-root --no-interaction --no-ansi --no-cache
+	$(call install_poetry) && \
 
 lint:
 	$(ACTIVATE) && \

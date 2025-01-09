@@ -1,3 +1,4 @@
+title: Octopus
 description: Octopus Deploy integration for Port Ocean
 icon: Octopus
 docs: https://docs.getport.io/build-your-software-catalog/sync-data-to-catalog/octopus
@@ -19,7 +20,7 @@ configurations:
   - name: serverUrl
     required: true
     type: url
-    description: The base URL of your Octopus Deploy instance. It should include the protocol (e.g., https://).
+    description: The base URL of your Octopus Deploy instance. It should include the protocol (e.g. <a href="https://demo.octopus.com" target="_blank">https://demo.octopus.com</a>).
   - name: appHost
     required: false
     type: url

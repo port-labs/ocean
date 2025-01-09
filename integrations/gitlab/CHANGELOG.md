@@ -7,6 +7,287 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+0.2.16 (2025-01-08)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.6
+
+
+0.2.15 (2025-01-07)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
+0.2.14 (2025-01-02)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.4
+
+
+0.2.13 (2025-01-02)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.3
+
+
+0.2.12 (2024-12-31)
+===================
+
+### Improvements
+
+- Bumped ocean version to ^0.17.2
+
+
+## 0.2.11 (2025-12-30)
+
+
+### Improvements
+
+- Added title to the configuration properties
+
+
+0.2.10 (2024-12-26)
+==================
+
+### Improvements
+
+- Add support for GitLab OAuth2.0 installation specification for Port
+
+0.2.9 (2024-12-26)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.16.1
+
+
+0.2.8 (2024-12-24)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.16.0
+
+
+0.2.7 (2024-12-22)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.3
+
+
+0.2.6 (2024-12-19)
+==================
+
+### Improvements
+
+- Added mechanism to make the enrichment of project labels optional
+
+
+0.2.5 (2024-12-16)
+==================
+
+### Improvements
+
+- Added labels as an extra property to the project kind response
+
+
+0.2.4 (2024-12-15)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.2
+
+
+0.2.3 (2024-12-15)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.1
+
+
+0.2.2 (2024-12-12)
+==================
+
+### Improvements
+
+- Bumped ocean version to ^0.15.0
+
+
+0.2.1 (2024-12-12)
+====================
+
+### Bug Fixes
+
+- Updated integration to process hook events sequentially to temporarily resolve race condition issues experienced when multiple processes attempts to update the same entity
+
+
+
+0.2.0 (2024-12-11)
+====================
+
+### Improvements
+
+- Added support for OAuth2.0 token
+- Added OAuth installation specification for Port
+
+
+0.1.147 (2024-12-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.7
+
+
+0.1.146 (2024-12-04)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.6
+
+
+0.1.145 (2024-12-04)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.5
+
+
+0.1.144 (2024-11-25)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.3
+
+
+0.1.143 (2024-11-25)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.2
+
+
+0.1.142 (2024-11-21)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.1
+
+
+0.1.141 (2024-11-13)
+===================
+
+### Features
+
+- Added support for gitlab member ingestion (PORT-7708)
+
+
+0.1.140 (2024-11-12)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.14.0
+
+
+0.1.139 (2024-11-12)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.13.1
+
+
+0.1.138 (2024-11-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.13.0
+
+
+0.1.137 (2024-11-10)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.9
+
+
+0.1.136 (2024-11-06)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.8
+
+0.1.135 (2024-10-31)
+====================
+
+### Improvements
+
+- Explicitly declaring the file search in projects to use the advanced search type, in cases where the default search in gitlab changes.
+- Enhanced more verbosity on file kind
+
+
+0.1.134 (2024-10-23)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.7
+
+
+0.1.133 (2024-10-22)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.6
+
+
+0.1.132 (2024-10-14)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.4
+
+
+0.1.131 (2024-10-09)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.3
+
+
+0.1.130 (2024-10-08)
+====================
+
+### Improvements
+
+- Bumped ocean version to ^0.12.2
+
+
 0.1.129 (2024-10-02)
 ====================
 

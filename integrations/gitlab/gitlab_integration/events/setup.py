@@ -1,7 +1,5 @@
 from typing import Type, List
 
-from gitlab import Gitlab
-
 from loguru import logger
 
 from gitlab_integration.events.event_handler import EventHandler, SystemEventHandler
@@ -11,7 +9,8 @@ from gitlab_integration.events.hooks.jobs import Job
 from gitlab_integration.events.hooks.merge_request import MergeRequest
 from gitlab_integration.events.hooks.pipelines import Pipelines
 from gitlab_integration.events.hooks.push import PushHook
-from gitlab_integration.events.hooks.group import GroupHook
+from gitlab_integration.events.hooks.members import Members
+from gitlab_integration.events.hooks.group import Groups
 from gitlab_integration.events.hooks.project_files import ProjectFiles
 from gitlab_integration.gitlab_service import GitlabService
 from gitlab_integration.models.webhook_groups_override_config import (
@@ -25,6 +24,7 @@ from gitlab_integration.errors import (
     GitlabEventListenerConflict,
     GitlabIllegalEventName,
 )
+from gitlab_integration.utils import generate_gitlab_client
 
 event_handler = EventHandler()
 system_event_handler = SystemEventHandler()
@@ -122,7 +122,8 @@ def setup_listeners(gitlab_service: GitlabService, group_id: str) -> None:
         Job(gitlab_service),
         Issues(gitlab_service),
         Pipelines(gitlab_service),
-        GroupHook(gitlab_service),
+        Groups(gitlab_service),
+        Members(gitlab_service),
         ProjectFiles(gitlab_service),
     ]
     for handler in handlers:
@@ -140,7 +141,8 @@ def setup_system_listeners(gitlab_clients: list[GitlabService]) -> None:
         Job,
         Issues,
         Pipelines,
-        GroupHook,
+        Groups,
+        Members,
         ProjectFiles,
     ]
     for handler in handlers:
@@ -158,7 +160,7 @@ async def create_webhooks_by_client(
     groups_hooks_events_override: dict[str, WebhookGroupConfig] | None,
     group_mapping: list[str],
 ) -> tuple[GitlabService, list[str]]:
-    gitlab_client = Gitlab(gitlab_host, token)
+    gitlab_client = generate_gitlab_client(gitlab_host, token)
     gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
 
     groups_for_webhooks = await gitlab_service.get_filtered_groups_for_webhooks(
@@ -200,7 +202,7 @@ async def setup_application(
         logger.info("Using system hook")
         validate_use_system_hook(token_mapping)
         token, group_mapping = list(token_mapping.items())[0]
-        gitlab_client = Gitlab(gitlab_host, token)
+        gitlab_client = generate_gitlab_client(gitlab_host, token)
         gitlab_service = GitlabService(gitlab_client, app_host, group_mapping)
         setup_system_listeners([gitlab_service])
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "port-ocean"
-version = "0.12.1"
+version = "0.17.6"
 description = "Port Ocean is a CLI tool for managing your Port projects."
 readme = "README.md"
 homepage = "https://app.getport.io"
@@ -9,6 +9,10 @@ repository = "https://github.com/port-labs/Port-Ocean"
 authors = ["Daniel Sinai <daniel@getport.io>", "Yair Siman-Tov <yair@getport.io>", "Tom Tankilevitch <tom@getport.io>"]
 packages = [
     { include = "port_ocean", from = "." }
+]
+
+include = [
+    { path = "./integrations/_infra/*", format = ["sdist", "wheel"] }
 ]
 
 keywords = ["ocean", "port-ocean", "port"]
@@ -31,16 +35,16 @@ classifiers = [
 ocean = "port_ocean.cli.cli:cli_start"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.0.0,<2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
 pydantic = { version = "^1.10.8", extras = ["dotenv"] }
 loguru = "^0.7.0"
 pyyaml = "^6.0"
 werkzeug = ">=2.3.4,<4.0.0"
-fastapi = ">=0.100,<0.112"
+fastapi = "^0.115.3"
 uvicorn = ">=0.22,<0.31"
 confluent-kafka = "^2.1.1"
 httpx = ">=0.24.1,<0.28.0"
@@ -79,6 +83,7 @@ types-pyyaml = "^6.0.12.10"
 types-toml = "^0.10.8.6"
 yamllint = "^1.32.0"
 pytest-timeout = "^2.3.1"
+cryptography = "^43.0.1"
 
 [tool.towncrier]
 directory = "changelog"
@@ -146,6 +151,7 @@ disallow_untyped_defs = true
 # Never enforce `E501` (line length violations).
 ignore = ["E501"]
 exclude = ['venv', '.venv', 'integrations']
+target-version = "py311"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
@@ -155,7 +161,7 @@ warn_untyped_fields = true
 
 [tool.black]
 line-length = 88
-target-version = ['py311']
+target-version = ['py312']
 include = '\.pyi?$'
 exclude = '''
 /(

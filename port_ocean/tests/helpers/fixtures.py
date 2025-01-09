@@ -1,5 +1,5 @@
 from os import path
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import pytest
 import pytest_asyncio
@@ -30,8 +30,8 @@ def port_client_for_fake_integration() -> Tuple[SmokeTestDetails, PortClient]:
 def get_mocked_ocean_app(request: Any) -> Callable[[], Ocean]:
     test_dir = path.join(path.dirname(request.module.__file__), "..")
 
-    def get_ocean_app() -> Ocean:
-        return get_integration_ocean_app(test_dir)
+    def get_ocean_app(config_overrides: Union[Dict[str, Any], None] = None) -> Ocean:
+        return get_integration_ocean_app(test_dir, config_overrides)
 
     return get_ocean_app
 

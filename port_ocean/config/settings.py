@@ -78,6 +78,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
         default_factory=lambda: IntegrationSettings(type="", identifier="")
     )
     runtime: Runtime = Runtime.OnPrem
+    resources_path: str = Field(default=".port/resources")
 
     @root_validator()
     def validate_integration_config(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -102,7 +103,7 @@ class IntegrationConfiguration(BaseOceanSettings, extra=Extra.allow):
 
     @validator("runtime")
     def validate_runtime(cls, runtime: Runtime) -> Runtime:
-        if runtime == Runtime.Saas:
+        if runtime.is_saas_runtime:
             spec = get_spec_file()
             if spec is None:
                 raise ValueError(

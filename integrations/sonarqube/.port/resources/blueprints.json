@@ -65,9 +65,19 @@
           "icon": "Git",
           "title": "Main Branch"
         },
-        "tags": {
-          "type": "array",
-          "title": "Tags"
+        "mainBranchLastAnalysisDate": {
+          "type": "string",
+          "format": "date-time",
+          "icon": "Clock",
+          "title": "Main Branch Last Analysis Date"
+        },
+        "revision": {
+          "type": "string",
+          "title": "Revision"
+        },
+        "managed": {
+          "type": "boolean",
+          "title": "Managed"
         }
       },
       "required": []
@@ -239,6 +249,66 @@
         "required": false,
         "title": "SonarQube Project",
         "many": false
+      }
+    }
+  },
+  {
+    "identifier": "sonarQubePortfolio",
+    "title": "SonarQube Portfolio",
+    "icon": "sonarqube",
+    "schema": {
+      "properties": {
+        "description": {
+          "type": "string",
+          "title": "Description"
+        },
+        "visibility": {
+          "type": "string",
+          "title": "Visibility",
+          "enum": [
+            "PUBLIC",
+            "PRIVATE"
+          ],
+          "enumColors": {
+            "PUBLIC": "green",
+            "PRIVATE": "lightGray"
+          }
+        },
+        "selectionMode": {
+          "type": "string",
+          "title": "Selection Mode",
+          "enum": [
+            "AUTO",
+            "MANUAL",
+            "NONE"
+          ],
+          "enumColors": {
+            "AUTO": "blue",
+            "MANUAL": "green",
+            "NONE": "lightGray"
+          }
+        },
+        "disabled": {
+          "type": "boolean",
+          "title": "Disabled"
+        }
+      }
+    },
+    "mirrorProperties": {},
+    "calculationProperties": {},
+    "aggregationProperties": {},
+    "relations": {
+      "subPortfolios": {
+        "target": "sonarQubePortfolio",
+        "required": false,
+        "title": "Sub Portfolios",
+        "many": true
+      },
+      "referencedBy": {
+        "target": "sonarQubePortfolio",
+        "required": false,
+        "title": "Referenced By",
+        "many": true
       }
     }
   }

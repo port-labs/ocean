@@ -1,0 +1,169 @@
+createMissingRelatedEntities: true
+deleteDependentEntities: true
+resources:
+  - kind: projects_ga
+    selector:
+      query: 'true'
+      apiFilters:
+        qualifier:
+          - TRK
+      metrics:
+        - code_smells
+        - coverage
+        - bugs
+        - vulnerabilities
+        - duplicated_files
+        - security_hotspots
+        - new_violations
+        - new_coverage
+        - new_duplicated_lines_density
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeProject"'
+          identifier: .key
+          title: .name
+          properties:
+            organization: .organization
+            link: .__link
+            qualityGateStatus: .__branch.status.qualityGateStatus
+            lastAnalysisDate: .analysisDate
+            numberOfBugs: .__measures[]? | select(.metric == "bugs") | .value
+            numberOfCodeSmells: .__measures[]? | select(.metric == "code_smells") | .value
+            numberOfVulnerabilities: .__measures[]? | select(.metric == "vulnerabilities") | .value
+            numberOfHotSpots: .__measures[]? | select(.metric == "security_hotspots") | .value
+            numberOfDuplications: .__measures[]? | select(.metric == "duplicated_files") | .value
+            coverage: .__measures[]? | select(.metric == "coverage") | .value
+            mainBranch: .__branch.name
+            mainBranchLastAnalysisDate: .__branch.analysisDate
+            revision: .revision
+            managed: .managed
+  - kind: projects
+    selector:
+      query: 'true'
+      apiFilters:
+        filter:
+          qualifier: TRK
+      metrics:
+        - code_smells
+        - coverage
+        - bugs
+        - vulnerabilities
+        - duplicated_files
+        - security_hotspots
+        - new_violations
+        - new_coverage
+        - new_duplicated_lines_density
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeProject"'
+          identifier: .key
+          title: .name
+          properties:
+            organization: .organization
+            link: .__link
+            qualityGateStatus: .__branch.status.qualityGateStatus
+            lastAnalysisDate: .__branch.analysisDate
+            numberOfBugs: .__measures[]? | select(.metric == "bugs") | .value
+            numberOfCodeSmells: .__measures[]? | select(.metric == "code_smells") | .value
+            numberOfVulnerabilities: .__measures[]? | select(.metric == "vulnerabilities") | .value
+            numberOfHotSpots: .__measures[]? | select(.metric == "security_hotspots") | .value
+            numberOfDuplications: .__measures[]? | select(.metric == "duplicated_files") | .value
+            coverage: .__measures[]? | select(.metric == "coverage") | .value
+            mainBranch: .__branch.name
+            tags: .tags
+  - kind: analysis
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeAnalysis"'
+          identifier: .analysisId
+          title: .__commit.message // .analysisId
+          properties:
+            branch: .__branchName
+            fixedIssues: .measures.violations_fixed
+            newIssues: .measures.violations_added
+            coverage: .measures.coverage_change
+            duplications: .measures.duplicated_lines_density_change
+            createdAt: .__analysisDate
+          relations:
+            sonarQubeProject: .__project
+  - kind: onprem_analysis
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeAnalysis"'
+          identifier: .__project + "-" + .key
+          title: .title
+          properties:
+            branch: .branch
+            newIssues: .__measures[]? | select(.metric == "new_violations") | .period.value
+            coverage: .__measures[]? | select(.metric == "new_coverage") | .period.value
+            duplications: .__measures[]? | select(.metric == "new_duplicated_lines_density") | .period.value
+            createdAt: .analysisDate
+          relations:
+            sonarQubeProject: .__project
+  - kind: issues
+    selector:
+      query: 'true'
+      apiFilters:
+        resolved: 'false'
+      projectApiFilters:
+        filter:
+          qualifier: TRK
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeIssue"'
+          identifier: .key
+          title: .message
+          properties:
+            type: .type
+            severity: .severity
+            link: .__link
+            status: .status
+            assignees: .assignee
+            tags: .tags
+            createdAt: .creationDate
+          relations:
+            sonarQubeProject: .project
+  - kind: saas_analysis
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubeAnalysis"'
+          identifier: .analysisId
+          title: .__commit.message // .analysisId
+          properties:
+            branch: .__branchName
+            fixedIssues: .measures.violations_fixed
+            newIssues: .measures.violations_added
+            coverage: .measures.coverage_change
+            duplications: .measures.duplicated_lines_density_change
+            createdAt: .__analysisDate
+          relations:
+            sonarQubeProject: .__project
+  - kind: portfolios
+    selector:
+      query: 'true'
+    port:
+      entity:
+        mappings:
+          blueprint: '"sonarQubePortfolio"'
+          identifier: .key
+          title: .name
+          properties:
+            description: .description
+            visibility: if .visibility then .visibility | ascii_upcase else null end
+            selectionMode: if .selectionMode then .selectionMode | ascii_upcase else null end
+            disabled: .disabled
+          relations:
+            subPortfolios: .subViews | map(select(.qualifier as $qualifier | ["VW", "SVW"] | contains([$qualifier])) | .key)
+            referencedBy: .referencedBy | map(select(.qualifier as $qualifier | ["VW", "SVW"] | contains([$qualifier])) | .key)
