@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 <!-- towncrier release notes start -->
+
+## 0.17.6 (2025-01-08)
+
+### Bug Fixes
+
+- Fixed a bug where the `unregister_raw` and `register_raw` were not handling right the errors and misconfigured entity keys
+
+
+## 0.17.5 (2025-01-07)
+
+
+### Bug Fixes
+
+- Explicit poetry version due to major version (2.0.0) breaking the CI
+
+
 ## 0.17.4 (2024-12-31)
 
 

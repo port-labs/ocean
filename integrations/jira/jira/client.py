@@ -1,13 +1,10 @@
-import typing
 from typing import Any, AsyncGenerator, Generator
 
 from httpx import Auth, BasicAuth, Request, Response, Timeout
 from loguru import logger
-from port_ocean.context.event import event
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
-from jira.overrides import JiraResourceConfig
 
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
@@ -144,17 +141,11 @@ class JiraClient:
         issue_response.raise_for_status()
         return issue_response.json()
 
-    async def get_paginated_issues(self) -> AsyncGenerator[list[dict[str, Any]], None]:
+    async def get_paginated_issues(
+        self, params: dict[str, Any] = {}
+    ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
-
-        params = self._generate_base_req_params()
-
-        config = typing.cast(JiraResourceConfig, event.resource_config)
-
-        if config.selector.jql:
-            params["jql"] = config.selector.jql
-            logger.info(f"Found JQL filter: {config.selector.jql}")
-
+        params.update(self._generate_base_req_params())
         total_issues = (await self._get_paginated_issues(params))["total"]
 
         if total_issues == 0:

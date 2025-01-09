@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
+## 0.1.104 (2025-01-08)
+
+
+### Bug Fixes
+
+- Fixed bug where push events for port.yml file aren't processed for default branches
+
+
+## 0.1.103 (2025-01-07)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.5
+
+
 ## 0.1.102 (2025-01-02)
 
 
@@ -487,7 +503,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
-- Fixed `visibility` property in mapping which had a typo and changed the default relation to required `false` to be more permissive 
+- Fixed `visibility` property in mapping which had a typo and changed the default relation to required `false` to be more permissive
 
 
 ## 0.1.41 (2024-07-10)
@@ -778,4 +794,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 - Created Azure DevOps ##  using Ocean (PORT-4585)
-
