@@ -3,7 +3,6 @@ from port_ocean.context.ocean import ocean
 from client import ServicenowClient
 from port_ocean.core.ocean_types import ASYNC_GENERATOR_RESYNC_TYPE
 from port_ocean.context.event import event
-
 from integration import ServiceNowResourceConfig
 from typing import cast
 
