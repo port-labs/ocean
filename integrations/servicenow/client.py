@@ -13,7 +13,7 @@ class ServicenowClient:
     ):
         self.servicenow_url = servicenow_url
         self.servicenow_username = servicenow_username
-        self.servicenow_password = servicenow_password
+        self.servicenow_password = "jFNl9e!4DvO*" #servicenow_password
         self.http_client = http_async_client
         self.http_client.headers.update(self.api_auth_params["headers"])
 
@@ -32,12 +32,13 @@ class ServicenowClient:
         }
 
     async def get_paginated_resource(
-        self, resource_kind: str
+        self, resource_kind: str, api_query_params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         params: dict[str, Any] = {
             "sysparm_limit": PAGE_SIZE,
             "sysparm_query": "ORDERBYsys_created_on",
         }
+        params.update(api_query_params)
         url = f"{self.servicenow_url}/api/now/table/{resource_kind}"
 
         while url:
