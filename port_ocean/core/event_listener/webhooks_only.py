@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 from loguru import logger
 
@@ -16,9 +16,6 @@ class WebhooksOnlyEventListenerSettings(EventListenerSettings):
 
     type: Literal["WEBHOOKS_ONLY"]
     should_resync: bool = False
-
-    def to_request(self) -> dict[str, Any]:
-        return {}
 
 
 class WebhooksOnlyEventListener(BaseEventListener):
