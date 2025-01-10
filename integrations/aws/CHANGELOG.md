@@ -7,21 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.81 (2025-01-08)
-
-
-### Bug Fixes
-
-- Updated the serialized response to include valid custom property json key by accessing the StrEnum value properly. 
-
-
-## 0.2.80 (2025-01-08)
+## 0.2.82 (2025-01-10)
 
 
 ### Improvements
 
 - Added rate limiting and concurrency management in resync_cloudcontrol function to handle AWS throttling more effectively.
 - Improved memory issues by reducing calls to create new boto3 clients.
+
+
+## 0.2.81 (2025-01-08)
+
+
+### Bug Fixes
+
+- Updated the serialized response to include valid custom property json key by accessing the StrEnum value properly. 
 
 
 ## 0.2.80 (2025-01-08)
