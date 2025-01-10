@@ -176,9 +176,9 @@ async def resync_custom_kind(
                 if results:
                     yield [
                         {
-                            CustomProperties.KIND: kind,
-                            CustomProperties.ACCOUNT_ID: account_id,
-                            CustomProperties.REGION: region,
+                            CustomProperties.KIND.value: kind,
+                            CustomProperties.ACCOUNT_ID.value: account_id,
+                            CustomProperties.REGION.value: region,
                             **fix_unserializable_date_properties(resource),
                         }
                         for resource in results
@@ -280,9 +280,9 @@ async def resync_cloudcontrol(
                     serialized = instance.copy()
                     serialized.update(
                         {
-                            CustomProperties.KIND: kind,
-                            CustomProperties.ACCOUNT_ID: account_id,
-                            CustomProperties.REGION: region,
+                            CustomProperties.KIND.value: kind,
+                            CustomProperties.ACCOUNT_ID.value: account_id,
+                            CustomProperties.REGION.value: region,
                         }
                     )
                     page_resources.append(

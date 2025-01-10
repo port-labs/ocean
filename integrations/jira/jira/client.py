@@ -5,6 +5,7 @@ from loguru import logger
 from port_ocean.context.ocean import ocean
 from port_ocean.utils import http_async_client
 
+
 PAGE_SIZE = 50
 WEBHOOK_NAME = "Port-Ocean-Events-Webhook"
 
@@ -144,7 +145,6 @@ class JiraClient:
         self, params: dict[str, Any] = {}
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
         logger.info("Getting issues from Jira")
-
         params.update(self._generate_base_req_params())
         total_issues = (await self._get_paginated_issues(params))["total"]
 
