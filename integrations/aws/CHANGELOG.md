@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Improvements
 
 - Added rate limiting and concurrency management in resync_cloudcontrol function to handle AWS throttling more effectively.
+- Improved memory issues by reducing calls to create new boto3 clients.
 
 
 ## 0.2.80 (2025-01-08)
