@@ -87,7 +87,10 @@ async def describe_single_resource(
                 async with session.client(
                     "cloudcontrol",
                     config=Boto3Config(
-                        retries={"max_attempts": 10, "mode": "standard"},
+                        retries={
+                            "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS,
+                            "mode": CloudControlThrottlingConfig.RETRY_MODE,
+                        },
                     ),
                 ) as cloudcontrol:
                     semaphore = asyncio.BoundedSemaphore(
