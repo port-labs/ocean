@@ -23,9 +23,6 @@ async def on_resources_resync(kind: str) -> ASYNC_GENERATOR_RESYNC_TYPE:
     selector = cast(ServiceNowResourceConfig, event.resource_config).selector
     if selector.api_query_params:
         api_query_params = selector.api_query_params.generate_request_params()
-        logger.info(
-            f"Adding generated params from selector to filter API: {api_query_params}"
-        )
     async for records in servicenow_client.get_paginated_resource(
         resource_kind=kind, api_query_params=api_query_params
     ):
