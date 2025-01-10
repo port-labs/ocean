@@ -18,8 +18,8 @@ class CloudControlClientProtocol(Protocol):
 
 
 class CloudControlThrottlingConfig(enum.Enum):
-    RATE_LIMITER_MAX_RATE: int = 100
-    RATE_LIMITER_TIME_PERIOD: float = 60.0  # in seconds
+    MAX_RATE: int = 100
+    TIME_PERIOD: float = 60.0  # in seconds
     SEMAPHORE: int = 50
     MAX_RETRY_ATTEMPTS: int = 100
     RETRY_MODE: Literal["legacy", "standard", "adaptive"] = "adaptive"

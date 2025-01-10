@@ -97,8 +97,8 @@ async def describe_single_resource(
                         CloudControlThrottlingConfig.SEMAPHORE.value
                     )
                     rate_limiter = AsyncLimiter(
-                        CloudControlThrottlingConfig.RATE_LIMITER_MAX_RATE.value,
-                        CloudControlThrottlingConfig.RATE_LIMITER_TIME_PERIOD.value,
+                        CloudControlThrottlingConfig.MAX_RATE.value,
+                        CloudControlThrottlingConfig.TIME_PERIOD.value,
                     )
                     return await describe_single_resource_cloudcontrol(
                         kind, identifier, cloudcontrol, semaphore, rate_limiter
@@ -216,8 +216,8 @@ async def resync_cloudcontrol(
             CloudControlThrottlingConfig.SEMAPHORE.value
         )
         rate_limiter = AsyncLimiter(
-            CloudControlThrottlingConfig.RATE_LIMITER_MAX_RATE.value,
-            CloudControlThrottlingConfig.RATE_LIMITER_TIME_PERIOD.value,
+            CloudControlThrottlingConfig.MAX_RATE.value,
+            CloudControlThrottlingConfig.TIME_PERIOD.value,
         )
     async with session.client("cloudcontrol") as cloudcontrol:
         while True:
