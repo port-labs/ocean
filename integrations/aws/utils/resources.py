@@ -88,8 +88,8 @@ async def describe_single_resource(
                     "cloudcontrol",
                     config=Boto3Config(
                         retries={
-                            "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS,
-                            "mode": CloudControlThrottlingConfig.RETRY_MODE,
+                            "max_attempts": CloudControlThrottlingConfig.MAX_RETRY_ATTEMPTS.value,
+                            "mode": CloudControlThrottlingConfig.RETRY_MODE.value,
                         },
                     ),
                 ) as cloudcontrol:
