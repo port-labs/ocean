@@ -19,7 +19,7 @@ class UnsupportedDefaultFileType(BaseOceanException):
 class DefaultsProvisionFailed(BaseOceanException):
     def __init__(
         self,
-        retries,
+        retries: int,
     ):
         super().__init__(
             f"Failed to retrieve integration config after {retries} attempts"

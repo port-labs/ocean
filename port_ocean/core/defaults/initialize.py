@@ -56,8 +56,8 @@ def deconstruct_blueprints_to_creation_steps(
 
 async def _initialize_required_integration_settings(
     port_client: PortClient,
-    default_mapping: PortAppConfig,
     integration_config: IntegrationConfiguration,
+    default_mapping: PortAppConfig | None = None,
 ) -> None:
     try:
         logger.info("Initializing integration at port")
@@ -105,8 +105,10 @@ async def _initialize_required_integration_settings(
 
 async def _create_resources(
     port_client: PortClient,
-    defaults: Defaults,
+    defaults: Defaults | None = None,
 ) -> None:
+    if not defaults:
+        return
     creation_stage, *blueprint_patches = deconstruct_blueprints_to_creation_steps(
         defaults.blueprints
     )
@@ -220,9 +222,15 @@ async def _initialize_defaults(
         logger.warning("No defaults found. Skipping initialization...")
         return None
 
-    if defaults.port_app_config or integration_config.use_provisioned_defaults:
+    if (
+        defaults
+        and defaults.port_app_config
+        or integration_config.use_provisioned_defaults
+    ):
         await _initialize_required_integration_settings(
-            port_client, defaults.port_app_config, integration_config
+            port_client,
+            integration_config,
+            defaults.port_app_config if defaults else None,
         )
 
     if not integration_config.initialize_port_resources:
