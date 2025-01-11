@@ -6,7 +6,7 @@ import httpx
 from loguru import logger
 from port_ocean.clients.port.authentication import PortAuthentication
 from port_ocean.clients.port.utils import handle_status_code
-from port_ocean.exceptions.defaults import DefaultsProvisionFailed
+from port_ocean.exceptions.port_defaults import DefaultsProvisionFailed
 from port_ocean.log.sensetive import sensitive_log_filter
 
 if TYPE_CHECKING:
@@ -103,7 +103,7 @@ class IntegrationClientMixin:
         query_params = {}
 
         if use_provisioned_defaults:
-            query_params["provisionEnabled"] = use_provisioned_defaults
+            query_params["provision_enabled"] = use_provisioned_defaults
 
         if port_app_config and not use_provisioned_defaults:
             json["config"] = port_app_config.to_request()
