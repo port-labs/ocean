@@ -152,6 +152,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
             errors=objects_diff[0].errors,
+            misonfigured_entity_keys=objects_diff[0].misonfigured_entity_keys,
         )
 
     async def _unregister_resource_raw(
@@ -167,7 +168,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             return [], []
 
         objects_diff = await self._calculate_raw([(resource, results)])
-        entities_selector_diff, errors = objects_diff[0]
+        entities_selector_diff, errors, _ = objects_diff[0]
 
         await self.entities_state_applier.delete(
             entities_selector_diff.passed, user_agent_type
@@ -254,7 +255,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         if not resource_mappings:
             return []
 
-        diffs, errors = zip(
+        diffs, errors, misconfigured_entity_keys = zip(
             *await asyncio.gather(
                 *(
                     self._register_resource_raw(
@@ -267,6 +268,8 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
 
         diffs = list(diffs)
         errors = sum(errors, [])
+        misconfigured_entity_keys = list(misconfigured_entity_keys)
+
 
         if errors:
             message = f"Failed to register {len(errors)} entities. Skipping delete phase due to incomplete state"
