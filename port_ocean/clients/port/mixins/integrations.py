@@ -68,10 +68,9 @@ class IntegrationClientMixin:
                 f"Fetching created integration and validating config, attempt {attempts+1}/{INTEGRATION_POLLING_RETRY_LIMIT}"
             )
             response = await self._get_current_integration()
-            response_json = response.json()
-            config = response_json.get("integration", {}).get("config", {})
-            if config != {}:
-                return response_json
+            integration_json = response.json()
+            if integration_json.get("integration", {}).get("config", {}):
+                return integration_json
 
             logger.info(
                 f"Integration config is still being provisioned, retrying in {current_interval_seconds} seconds"
@@ -101,13 +100,18 @@ class IntegrationClientMixin:
             "config": {},
         }
 
+        query_params = {}
+
         if use_provisioned_defaults:
-            json["provisionEnabled"] = use_provisioned_defaults
+            query_params["provisionEnabled"] = use_provisioned_defaults
 
         if port_app_config and not use_provisioned_defaults:
             json["config"] = port_app_config.to_request()
         response = await self.client.post(
-            f"{self.auth.api_url}/integration", headers=headers, json=json
+            f"{self.auth.api_url}/integration",
+            headers=headers,
+            json=json,
+            query_params=query_params,
         )
         handle_status_code(response)
         if use_provisioned_defaults:
