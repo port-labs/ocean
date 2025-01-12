@@ -136,19 +136,50 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         results: list[dict[Any, Any]],
         user_agent_type: UserAgentType,
         parse_all: bool = False,
-        send_raw_data_examples_amount: int = 0,
-        entities_at_port_with_properties: list[Entity] | None = None,
+        send_raw_data_examples_amount: int = 0
     ) -> CalculationResult:
         objects_diff = await self._calculate_raw(
             [(resource, results)], parse_all, send_raw_data_examples_amount
+        )
+        query = {
+            "combinator": "and",
+            "rules": [
+                {
+                    "combinator": "or",
+                    "rules": [
+                        {
+                            "property": "$identifier",
+                            "operator": "=",
+                            "value": entity.identifier,
+                        }
+                        for entity in objects_diff[0].entity_selector_diff.passed
+                    ]
+                }
+            ]
+        }
+        entities_at_port_with_properties = await ocean.port_client.search_entities(
+            user_agent_type,
+            include_params=["blueprint", "identifier"] + [
+                f"properties.{prop}" for prop in resource.port.entity.mappings.properties
+            ],
+            query=query
         )
         unique_entities = get_unique_entities(objects_diff[0].entity_selector_diff.passed, entities_at_port_with_properties)
         modified_objects = []
 
         if unique_entities:
+            logger.bind(
+                changed_entities=len(unique_entities),
+                total_entities=len(objects_diff[0].entity_selector_diff.passed),
+            ).info("Upserting changed entities")
             modified_objects = await self.entities_state_applier.upsert(
                 unique_entities, user_agent_type
             )
+        else:
+            logger.bind(
+                total_entities=len(objects_diff[0].entity_selector_diff.passed),
+            ).info("no changed entities, not upserting")
+
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),
             errors=objects_diff[0].errors,
@@ -177,7 +208,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         return entities_selector_diff.passed, errors
 
     async def _register_in_batches(
-        self, resource_config: ResourceConfig, user_agent_type: UserAgentType, entities_at_port_with_properties: list[Entity]
+        self, resource_config: ResourceConfig, user_agent_type: UserAgentType
     ) -> tuple[list[Entity], list[Exception]]:
         results, errors = await self._get_resource_raw_results(resource_config)
         async_generators: list[ASYNC_GENERATOR_RESYNC_TYPE] = []
@@ -191,14 +222,14 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
         send_raw_data_examples_amount = (
             SEND_RAW_DATA_EXAMPLES_AMOUNT if ocean.config.send_raw_data_examples else 0
         )
+
         passed_entities = []
         if raw_results:
             all_entities, register_errors,_ = await self._register_resource_raw(
                 resource_config,
                 raw_results,
                 user_agent_type,
-                send_raw_data_examples_amount=send_raw_data_examples_amount,
-                entities_at_port_with_properties=entities_at_port_with_properties,
+                send_raw_data_examples_amount=send_raw_data_examples_amount
             )
             errors.extend(register_errors)
             passed_entities = list(all_entities.passed)
@@ -215,8 +246,7 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                         resource_config,
                         items,
                         user_agent_type,
-                        send_raw_data_examples_amount=send_raw_data_examples_amount,
-                        entities_at_port_with_properties=entities_at_port_with_properties,
+                        send_raw_data_examples_amount=send_raw_data_examples_amount
                     )
                     errors.extend(register_errors)
                     passed_entities.extend(entities.passed)
@@ -475,15 +505,10 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                 for resource in app_config.resources:
                     # create resource context per resource kind, so resync method could have access to the resource
                     # config as we might have multiple resources in the same event
-                    entities_at_port_with_properties = await ocean.port_client.search_entities(
-                        user_agent_type,
-                        include_params=["blueprint", "identifier"] + [
-                            f"properties.{prop}" for prop in resource.port.entity.mappings.properties
-                        ]
-                    )
+
                     async with resource_context(resource):
                         task = asyncio.get_event_loop().create_task(
-                            self._register_in_batches(resource, user_agent_type, entities_at_port_with_properties)
+                            self._register_in_batches(resource, user_agent_type)
                         )
 
                         event.on_abort(lambda: task.cancel())

@@ -1,10 +1,9 @@
 import asyncio
 from typing import Iterable, Any, TypeVar, Callable, Awaitable
-import hashlib
-import json
 
 from loguru import logger
 from pydantic import parse_obj_as, ValidationError
+from deepdiff import DeepDiff
 
 from port_ocean.clients.port.client import PortClient
 from port_ocean.core.models import Entity, Runtime
@@ -110,14 +109,14 @@ def get_port_diff(before: Iterable[Entity], after: Iterable[Entity]) -> EntityPo
 
 def are_entities_equal(first_entity: Entity, second_entity: Entity) -> bool:
     """
-    Compare two entities by their identifier, blueprint, and a hash of their properties.
+    Compare two entities by their identifier, blueprint, and properties using DeepDiff.
 
     Args:
         first_entity: First entity to compare
         second_entity: Second entity to compare
 
     Returns:
-        bool: True if entities have same identifier, blueprint and properties hash
+        bool: True if entities have same identifier, blueprint and properties
     """
     # First check identifiers and blueprints
     if (
@@ -126,15 +125,11 @@ def are_entities_equal(first_entity: Entity, second_entity: Entity) -> bool:
     ):
         return False
 
-    # Create deterministic JSON strings of properties
-    first_props = json.dumps(first_entity.properties, sort_keys=True)
-    second_props = json.dumps(second_entity.properties, sort_keys=True)
-
-    # Create hashes
-    first_hash = hashlib.sha256(first_props.encode()).hexdigest()
-    second_hash = hashlib.sha256(second_props.encode()).hexdigest()
-
-    return first_hash == second_hash
+    # Compare properties using DeepDiff
+    diff = DeepDiff(
+        first_entity.properties, second_entity.properties, ignore_order=True
+    )
+    return not diff
 
 
 def get_unique_entities(
