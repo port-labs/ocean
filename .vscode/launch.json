@@ -3,6 +3,17 @@
   "configurations": [
     {
       "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/integrations/jira",
+      "envFile": "${workspaceFolder}/integrations/jira/.env",
+      "justMyCode": true,
+      "name": "Run jira integration",
+      "program": "${workspaceFolder}/integrations/jira/debug.py",
+      "python": "${workspaceFolder}/integrations/jira/.venv/bin/python",
+      "request": "launch",
+      "type": "debugpy"
+    },
+    {
+      "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/integrations/snyk",
       "envFile": "${workspaceFolder}/integrations/snyk/.env",
       "justMyCode": true,

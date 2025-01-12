@@ -68,7 +68,7 @@ async def _initialize_required_integration_settings(
             )
             integration = await port_client.create_integration(
                 integration_config.integration.type,
-                integration_config.event_listener.to_request(),
+                integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=default_mapping,
             )
         elif not integration.get("config"):
@@ -77,7 +77,7 @@ async def _initialize_required_integration_settings(
             )
             integration = await port_client.patch_integration(
                 integration_config.integration.type,
-                integration_config.event_listener.to_request(),
+                integration_config.event_listener.get_changelog_destination_details(),
                 port_app_config=default_mapping,
             )
     except httpx.HTTPStatusError as err:
@@ -85,8 +85,10 @@ async def _initialize_required_integration_settings(
         raise err
 
     logger.info("Checking for diff in integration configuration")
-    changelog_destination = integration_config.event_listener.to_request().get(
-        "changelog_destination"
+    changelog_destination = (
+        integration_config.event_listener.get_changelog_destination_details().get(
+            "changelog_destination"
+        )
     )
     if (
         integration.get("changelogDestination") != changelog_destination
