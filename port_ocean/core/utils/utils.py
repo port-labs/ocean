@@ -118,13 +118,6 @@ def are_entities_equal(first_entity: Entity, second_entity: Entity) -> bool:
     Returns:
         bool: True if entities have same identifier, blueprint and properties
     """
-    # First check identifiers and blueprints
-    if (
-        first_entity.identifier != second_entity.identifier
-        or first_entity.blueprint != second_entity.blueprint
-    ):
-        return False
-
     # Compare properties using DeepDiff
     diff = DeepDiff(
         first_entity.properties, second_entity.properties, ignore_order=True
