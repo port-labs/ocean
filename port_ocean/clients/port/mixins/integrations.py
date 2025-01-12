@@ -77,7 +77,8 @@ class IntegrationClientMixin:
             )
             await asyncio.sleep(current_interval_seconds)
 
-            current_interval_seconds = (
+            attempts += 1
+            current_interval_seconds = int(
                 current_interval_seconds * INTEGRATION_POLLING_INTERVAL_BACKOFF_FACTOR
             )
 
@@ -89,7 +90,7 @@ class IntegrationClientMixin:
         changelog_destination: dict[str, Any],
         port_app_config: Optional["PortAppConfig"] = None,
         use_provisioned_defaults: Optional[bool] = False,
-    ) -> dict:
+    ) -> Dict[str, Any]:
         logger.info(f"Creating integration with id: {self.integration_identifier}")
         headers = await self.auth.headers()
         json = {
@@ -111,7 +112,7 @@ class IntegrationClientMixin:
             f"{self.auth.api_url}/integration",
             headers=headers,
             json=json,
-            query_params=query_params,
+            params=query_params,
         )
         handle_status_code(response)
         if use_provisioned_defaults:
