@@ -164,21 +164,26 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
             ],
             query=query
         )
-        unique_entities = get_unique_entities(objects_diff[0].entity_selector_diff.passed, entities_at_port_with_properties)
+        logger.bind(port_entities = len(entities_at_port_with_properties)).info(f"getting Entities from port with properties")
+        if len(entities_at_port_with_properties) > 0:
+            unique_entities = get_unique_entities(objects_diff[0].entity_selector_diff.passed, entities_at_port_with_properties)
+        else:
+            unique_entities = objects_diff[0].entity_selector_diff.passed
+
         modified_objects = []
 
         if unique_entities:
             logger.bind(
                 changed_entities=len(unique_entities),
                 total_entities=len(objects_diff[0].entity_selector_diff.passed),
-            ).info("Upserting changed entities")
-            modified_objects = await self.entities_state_applier.upsert(
+            ).info("Upserting changed entities test")
+            modified_objects = await self.entities_state_applier.upsert( #hit here without the inner function, weird
                 unique_entities, user_agent_type
             )
         else:
             logger.bind(
                 total_entities=len(objects_diff[0].entity_selector_diff.passed),
-            ).info("no changed entities, not upserting")
+            ).info("no changed entities, not upserting test")
 
         return CalculationResult(
             objects_diff[0].entity_selector_diff._replace(passed=modified_objects),

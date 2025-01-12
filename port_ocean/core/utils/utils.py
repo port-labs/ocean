@@ -145,11 +145,20 @@ def get_unique_entities(
     Returns:
         list[Entity]: Filtered list of third party entities, excluding matches found in port_entities
     """
-    return [
-        third_party_entity
-        for third_party_entity in third_party_entities
-        if not any(
-            are_entities_equal(third_party_entity, port_entity)
-            for port_entity in port_entities
-        )
-    ]
+    port_entities_dict = {}
+    unique_entities = []
+
+    # Create dictionaries for before and after lists
+    for entity in port_entities:
+        key = (entity.identifier, entity.blueprint)
+        port_entities_dict[key] = entity
+
+    for entity in third_party_entities:
+        key = (entity.identifier, entity.blueprint)
+        entity_at_port = port_entities_dict.get(key, None)
+        if entity_at_port is None:
+            unique_entities.append(entity)
+        elif not are_entities_equal(entity, port_entities_dict[key]):
+            unique_entities.append(entity)
+
+    return unique_entities
