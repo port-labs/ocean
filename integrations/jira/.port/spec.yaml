@@ -32,7 +32,7 @@ configurations:
   - name: atlassianOrganizationId
     required: false
     type: string
-    description: Your Atlassian Organization ID is used to sync teams and team members. Read <a target="_blank" href="https://confluence.atlassian.com/jirakb/what-it-is-the-organization-id-and-where-to-find-it-1207189876.html">How to find your Atlassian Organization ID</a>
+    description: To sync teams and team members your Atlassian Organization ID is required . Read <a target="_blank" href="https://confluence.atlassian.com/jirakb/what-it-is-the-organization-id-and-where-to-find-it-1207189876.html">How to find your Atlassian Organization ID</a>
     sensitive: false
 saas:
   enabled: true
