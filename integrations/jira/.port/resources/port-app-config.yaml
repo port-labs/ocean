@@ -25,12 +25,28 @@ resources:
           blueprint: '"jiraUser"'
           properties:
             emailAddress: .emailAddress
-            displayName: .displayName
             active: .active
             accountType: .accountType
             timeZone: .timeZone
             locale: .locale
             avatarUrl: .avatarUrls["48x48"]
+
+  - kind: team
+    selector:
+      query: "true"
+      includeMembers: true
+    port:
+      entity:
+        mappings:
+          identifier: .teamId
+          title: .displayName
+          blueprint: '"jiraTeam"'
+          properties:
+            organizationId: .organizationId
+            teamType: .teamType
+            description: .description
+          relations:
+            members: if .__members != null then .__members | map(.accountId) else [] end
 
   - kind: issue
     selector:
@@ -59,3 +75,4 @@ resources:
             subtasks: .fields.subtasks | map(.key)
             assignee: .fields.assignee.accountId // ""
             reporter: .fields.reporter.accountId
+
