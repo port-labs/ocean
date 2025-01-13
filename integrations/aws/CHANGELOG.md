@@ -7,12 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- towncrier release notes start -->
 
-## 0.2.82 (2025-01-9)
+## 0.2.84 (2025-01-13)
 
 
 ### Bug Fixes
 
 - Fixed a bug where token refresh fails because its triggered while an active session was still using the old token.
+
+
+## 0.2.83 (2025-01-12)
+
+
+### Improvements
+
+- Bumped ocean version to ^0.17.7
+
+
+## 0.2.82 (2025-01-10)
+
+
+### Improvements
+
+- Added rate limiting and concurrency management in resync_cloudcontrol function to handle AWS throttling more effectively.
+- Improved memory issues by reducing calls to create new boto3 clients.
 
 
 ## 0.2.81 (2025-01-08)
