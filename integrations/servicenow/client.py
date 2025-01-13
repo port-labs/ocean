@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-PAGE_SIZE = 100
+PAGE_SIZE = 15
 
 
 class ServicenowClient:
@@ -36,7 +36,7 @@ class ServicenowClient:
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
 
         user_query = api_query_params.pop("sysparm_query", "")
-        default_ordering = "ORDERBYsys_created_on"
+        default_ordering = "ORDERBYDESCsys_created_on"
         enhanced_query = (
             f"{user_query}^{default_ordering}" if user_query else default_ordering
         )
