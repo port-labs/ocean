@@ -7,6 +7,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 <!-- towncrier release notes start -->
 
+## 0.17.7 (2025-01-08)
+
+### Bug Fixes
+
+- Fixed a bug where creating an integration with WEBHOOKS_ONLY event listener failed.
+
+### Improvements
+
+- Added jira integration running config to vscode.
+
 ## 0.17.6 (2025-01-08)
 
 ### Bug Fixes

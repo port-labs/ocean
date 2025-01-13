@@ -8,6 +8,7 @@ features:
     resources:
       - kind: project
       - kind: issue
+      - kind: team
       - kind: user
 configurations:
   - name: appHost
@@ -28,6 +29,11 @@ configurations:
     type: string
     description: You can configure the user token on the <a target="_blank" href="https://id.atlassian.com/manage-profile/security/api-tokens">Atlassian account page</a>
     sensitive: true
+  - name: atlassianOrganizationId
+    required: false
+    type: string
+    description: To sync teams and team members your Atlassian Organization ID is required . Read <a target="_blank" href="https://confluence.atlassian.com/jirakb/what-it-is-the-organization-id-and-where-to-find-it-1207189876.html">How to find your Atlassian Organization ID</a>
+    sensitive: false
 saas:
   enabled: true
   oauthConfiguration:
