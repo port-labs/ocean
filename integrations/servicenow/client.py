@@ -4,7 +4,7 @@ import httpx
 from loguru import logger
 from port_ocean.utils import http_async_client
 
-PAGE_SIZE = 15
+PAGE_SIZE = 100
 
 
 class ServicenowClient:
