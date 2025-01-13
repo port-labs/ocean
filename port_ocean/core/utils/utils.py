@@ -125,21 +125,24 @@ def are_entities_equal(first_entity: Entity, second_entity: Entity) -> bool:
     return not diff
 
 
-def get_unique_entities(
+def map_entities(
     third_party_entities: list[Entity], port_entities: list[Entity]
-) -> list[Entity]:
+) -> tuple[list[Entity], list[Entity]]:
     """
-    Filter out entities from third party list that already exist in Port entities.
-
+    Maps the entities into two lists:
+    - Filtered list of third party entities, excluding matches found in port_entities that needs to be upserted
+    - List of entities that are not relevant that should be deleted
     Args:
         third_party_entities: List of entities from third party source
         port_entities: List of existing Port entities
 
     Returns:
-        list[Entity]: Filtered list of third party entities, excluding matches found in port_entities
+        tuple[list[Entity], list[Entity]]: Filtered list of third party entities, excluding matches found in port_entities and list of entities that are not relevant
     """
     port_entities_dict = {}
+    third_party_entities_dict = {}
     unique_entities = []
+    unrelevant_entities = []
 
     # Create dictionaries for before and after lists
     for entity in port_entities:
@@ -148,10 +151,17 @@ def get_unique_entities(
 
     for entity in third_party_entities:
         key = (entity.identifier, entity.blueprint)
+        third_party_entities_dict[key] = entity
         entity_at_port = port_entities_dict.get(key, None)
         if entity_at_port is None:
             unique_entities.append(entity)
         elif not are_entities_equal(entity, port_entities_dict[key]):
             unique_entities.append(entity)
 
-    return unique_entities
+    for entity in port_entities:
+        key = (entity.identifier, entity.blueprint)
+        entity_at_third_party = third_party_entities_dict.get(key, None)
+        if entity_at_third_party is None:
+            unrelevant_entities.append(entity)
+
+    return unique_entities, unrelevant_entities
