@@ -19,6 +19,7 @@ class APIQueryParams(BaseModel):
     sysparm_fields: str | None = Field(
         alias="sysparmFields",
         description="Comma-separated list of fields to return in the response",
+        default=None
     )
     sysparm_exclude_reference_link: Literal["true", "false"] | None = Field(
         alias="sysparmExcludeReferenceLink",
