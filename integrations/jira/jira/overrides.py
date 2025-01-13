@@ -5,7 +5,7 @@ from port_ocean.core.handlers.port_app_config.models import (
     ResourceConfig,
     Selector,
 )
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 
 class TeamSelector(Selector):
