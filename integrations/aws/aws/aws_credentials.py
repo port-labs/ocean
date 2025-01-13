@@ -76,8 +76,9 @@ class AwsCredentials:
                 RoleSessionName=str(self.session_name),
             )
             credentials = response["Credentials"]
+            self.access_key_id = credentials["AccessKeyId"]
             return {
-                "access_key": credentials["AccessKeyId"],
+                "access_key": self.access_key_id,
                 "secret_key": credentials["SecretAccessKey"],
                 "token": credentials["SessionToken"],
                 "expiry_time": credentials["Expiration"].isoformat(),
@@ -90,8 +91,10 @@ class AwsCredentials:
         Create a session possibly using AioRefreshableCredentials for auto refresh if these are role-based credentials.
         """
         if self.is_role():
-            # For a role, use a refreshable credentials object
             if self.session_token:
+                logger.debug(
+                    f"Creating a non refreshable session in account {self.account_id} for region {region}"
+                )
                 return aioboto3.Session(
                     self.access_key_id,
                     self.secret_access_key,
@@ -99,7 +102,8 @@ class AwsCredentials:
                     region,
                 )
 
-            logger.warning(
+            # For a role, use a refreshable credentials object
+            logger.debug(
                 f"Creating a refreshable session for role {self.role_arn} in account {self.account_id} for region {region}"
             )
 
@@ -130,6 +134,5 @@ class AwsCredentials:
         self, allowed_regions: Optional[Iterable[str]] = None
     ) -> AsyncIterator[aioboto3.Session]:
         regions = allowed_regions or self.enabled_regions
-        logger.warning("Creating sessions for each region")
         for region in regions:
             yield await self.create_session(region)
