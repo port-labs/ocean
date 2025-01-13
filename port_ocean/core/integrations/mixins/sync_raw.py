@@ -553,5 +553,6 @@ class SyncRawMixin(HandlerMixin, EventsMixin):
                     logger.info(
                         f"Running resync diff calculation, number of entities created during sync: {len(flat_created_entities)}"
                     )
-                    await self.entities_state_applier._safe_delete(unrelevant_entities, flat_created_entities, user_agent_type)
+                    if unrelevant_entities:
+                        await self.entities_state_applier._safe_delete(unrelevant_entities, flat_created_entities, user_agent_type)
                     logger.info("Resync finished successfully")
