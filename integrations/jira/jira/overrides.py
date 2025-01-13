@@ -34,15 +34,6 @@ class JiraIssueConfig(ResourceConfig):
     kind: Literal["issue"]
 
 
-class JiraResourceConfig(ResourceConfig):
-    class Selector(BaseModel):
-        query: str
-        jql: str | None = None
-
-    selector: Selector  # type: ignore
-    kind: Literal["issue", "user"]
-
-
 class JiraProjectSelector(Selector):
     expand: str = Field(
         description="A comma-separated list of the parameters to expand.",
