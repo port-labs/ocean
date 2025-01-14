@@ -1,1 +1,3 @@
-__all__ = ["DeepDiff", ...]
+from deepdiff import DeepDiff
+
+__all__ = ["DeepDiff"]
